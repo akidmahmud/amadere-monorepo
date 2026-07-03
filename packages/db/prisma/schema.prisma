@@ -7,4 +7,1301 @@ datasource db {
   provider = "postgresql"
 }
 
-// B1 adds the Phase 1 spine models here (auth/RBAC, customer, product, order, ...).
+// =========================================================================
+// B1 — Phase 1 spine. Scope follows AGENTS.md §6/§8 (B1) exactly.
+// Payment/Shipment/FAQ tables are deliberately deferred to B6/B7/B3 — they're
+// additive migrations on top of this spine, not part of it.
+// =========================================================================
+
+enum Locale {
+  EN
+  BN
+}
+
+// ---------------------------------------------------------------------
+// Shared / cross-cutting
+// ---------------------------------------------------------------------
+
+// Generic key-value store so feature flags (e.g. multi_brand_enabled) and
+// tunables never require a migration to change (AGENTS.md §7).
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+enum SeoEntityType {
+  PRODUCT
+  CATEGORY
+  BRAND
+  TAG
+  PRODUCT_BUNDLE
+  BLOG_POST
+  BLOG_CATEGORY
+  PAGE
+}
+
+// Uniform SEO surface for every public entity (AGENTS.md §5/§9) so new
+// entity types inherit SEO/sitemap support for free instead of bespoke columns.
+model SeoMeta {
+  id                 Int           @id @default(autoincrement())
+  entityType         SeoEntityType @map("entity_type")
+  entityId           Int           @map("entity_id")
+  locale             Locale
+  title              String?
+  description        String?
+  canonicalUrl       String?       @map("canonical_url")
+  robots             String        @default("index,follow")
+  ogTitle            String?       @map("og_title")
+  ogDescription      String?       @map("og_description")
+  ogImageUrl         String?       @map("og_image_url")
+  structuredDataType String?       @map("structured_data_type")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityId, locale])
+  @@map("seo_meta")
+}
+
+// Backs the 301 redirect manager and the B12 migration's old->new URL map.
+model Redirect {
+  id         Int      @id @default(autoincrement())
+  fromPath   String   @unique @map("from_path")
+  toPath     String   @map("to_path")
+  statusCode Int      @default(301) @map("status_code")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("redirects")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+// Real asset registry (R2 URLs) instead of the old app's raw path strings,
+// so galleries/videos are referenced by id and reusable across entities.
+model Media {
+  id        Int       @id @default(autoincrement())
+  url       String
+  type      MediaType
+  altText   String?   @map("alt_text")
+  width     Int?
+  height    Int?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  productMedia ProductMedia[]
+
+  @@map("media")
+}
+
+// Every admin/staff write records here (AGENTS.md §4.2). adminUserId is
+// nullable only for system/automated actions (e.g. scheduled jobs).
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  adminUserId Int?     @map("admin_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    Int?     @map("entity_id")
+  entityLabel String?  @map("entity_label")
+  changes     Json?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------
+// Admin / Staff auth + RBAC (AGENTS.md §4.2 — build all of this now)
+// ---------------------------------------------------------------------
+
+enum AdminUserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model AdminUser {
+  id               Int             @id @default(autoincrement())
+  email            String          @unique
+  passwordHash     String          @map("password_hash")
+  firstName        String          @map("first_name")
+  lastName         String          @map("last_name")
+  phone            String?
+  avatarUrl        String?         @map("avatar_url")
+  isSuperAdmin     Boolean         @default(false) @map("is_super_admin")
+  status           AdminUserStatus @default(ACTIVE)
+  twoFactorSecret  String?         @map("two_factor_secret")
+  twoFactorEnabled Boolean         @default(false) @map("two_factor_enabled")
+  // PRD §3.12 IP restriction hook: empty = unrestricted. Enforcement is B11.
+  allowedIps       String[]        @map("allowed_ips")
+  lastLoginAt      DateTime?       @map("last_login_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  deletedAt        DateTime?       @map("deleted_at")
+
+  roles        AdminUserRole[]
+  loginHistory AdminLoginHistory[]
+  auditLogs    AuditLog[]
+  blogPosts    BlogPost[]
+
+  @@map("admin_users")
+}
+
+model AdminLoginHistory {
+  id          Int      @id @default(autoincrement())
+  adminUserId Int      @map("admin_user_id")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  success     Boolean
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_login_history")
+}
+
+// Admin-defined, e.g. "Order Manager", "Content Editor" (AGENTS.md §4.2).
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system") // protects e.g. "Super Admin" from deletion
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  permissions RolePermission[]
+  adminUsers  AdminUserRole[]
+
+  @@map("roles")
+}
+
+// Granular, resource+action based (AGENTS.md §4.2), e.g. "product.create".
+// A real table (not a JSON blob like the old app's users.permissions) so
+// @RequirePermission + the seeded catalog stay the single source of truth.
+model Permission {
+  id       Int    @id @default(autoincrement())
+  resource String
+  action   String
+  key      String @unique // "<resource>.<action>", matches @RequirePermission()
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int @map("role_id")
+  permissionId Int @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model AdminUserRole {
+  adminUserId Int @map("admin_user_id")
+  roleId      Int @map("role_id")
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([adminUserId, roleId])
+  @@map("admin_user_roles")
+}
+
+// ---------------------------------------------------------------------
+// Customer auth + accounts (AGENTS.md §4.1)
+// ---------------------------------------------------------------------
+
+enum CustomerStatus {
+  ACTIVE
+  LOCKED
+}
+
+model Customer {
+  id              Int            @id @default(autoincrement())
+  // Old system made email nullable + dropped its unique index to support
+  // phone-first (OTP) signup — we keep both nullable+unique (Postgres treats
+  // NULLs as distinct) instead of forcing one required identifier.
+  email           String?        @unique
+  phone           String?        @unique
+  passwordHash    String?        @map("password_hash") // null for OTP/social-only accounts
+  firstName       String?        @map("first_name")
+  lastName        String?        @map("last_name")
+  avatarUrl       String?        @map("avatar_url")
+  dob             DateTime?      @db.Date
+  status          CustomerStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?      @map("email_verified_at")
+  phoneVerifiedAt DateTime?      @map("phone_verified_at")
+  legacyId        Int?           @unique @map("legacy_id") // ec_customers.id, for B12 ETL matching
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  // PHASE 2 HOOK: reward-point ledger and referral-code program attach here.
+  // Loyalty/Referral are not implemented — this is the seam only.
+
+  addresses      CustomerAddress[]
+  socialAccounts SocialAccount[]
+  carts          Cart[]
+  orders         Order[]
+  reviews        Review[]
+  discountUses   DiscountCustomer[]
+  redemptions    DiscountRedemption[]
+  wishlistItems  WishlistItem[]
+
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id            Int      @id @default(autoincrement())
+  customerId    Int      @map("customer_id")
+  label         String? // e.g. "Home", "Office"
+  recipientName String   @map("recipient_name")
+  phone         String
+  division      String // Bangladesh division — kept as plain text (single-country now)
+  district      String
+  area          String? // thana/upazila
+  landmark      String?
+  addressLine   String   @map("address_line")
+  postCode      String?  @map("post_code")
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_addresses")
+}
+
+enum OtpPurpose {
+  REGISTER
+  LOGIN
+  RESET_PASSWORD
+  COD_VERIFICATION
+}
+
+// Identifier-based (phone or email), not FK'd to Customer — OTP happens
+// before an account necessarily exists (registration flow).
+model Otp {
+  id         Int        @id @default(autoincrement())
+  identifier String
+  purpose    OtpPurpose
+  code       String
+  expiresAt  DateTime   @map("expires_at")
+  consumedAt DateTime?  @map("consumed_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  @@index([identifier, purpose])
+  @@map("otps")
+}
+
+enum SocialProvider {
+  GOOGLE
+  FACEBOOK
+}
+
+model SocialAccount {
+  id             Int            @id @default(autoincrement())
+  customerId     Int            @map("customer_id")
+  provider       SocialProvider
+  providerUserId String         @map("provider_user_id")
+  accessToken    String?        @map("access_token")
+  refreshToken   String?        @map("refresh_token")
+  tokenExpiresAt DateTime?      @map("token_expires_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@map("social_accounts")
+}
+
+// ---------------------------------------------------------------------
+// Catalog: brand / category / tag
+// ---------------------------------------------------------------------
+
+enum ContentStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  ARCHIVED
+}
+
+model Brand {
+  id         Int           @id @default(autoincrement())
+  slug       String        @unique
+  legacySlug String?       @map("legacy_slug") // preserves old URL for 301s (AGENTS.md §9)
+  logoUrl    String?       @map("logo_url")
+  websiteUrl String?       @map("website_url")
+  isFeatured Boolean       @default(false) @map("is_featured")
+  sortOrder  Int           @default(0) @map("sort_order")
+  status     ContentStatus @default(DRAFT)
+  legacyId   Int?          @unique @map("legacy_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
+
+  translations BrandTranslation[]
+  products     Product[]
+
+  @@map("brands")
+}
+
+model BrandTranslation {
+  id          Int     @id @default(autoincrement())
+  brandId     Int     @map("brand_id")
+  locale      Locale
+  name        String
+  description String?
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, locale])
+  @@map("brand_translations")
+}
+
+// Self-referencing tree, same shape as the old app's category models —
+// this part of Botble's design was fine, kept as-is.
+model Category {
+  id         Int           @id @default(autoincrement())
+  slug       String        @unique
+  legacySlug String?       @map("legacy_slug")
+  parentId   Int?          @map("parent_id")
+  imageUrl   String?       @map("image_url")
+  iconUrl    String?       @map("icon_url")
+  isFeatured Boolean       @default(false) @map("is_featured")
+  sortOrder  Int           @default(0) @map("sort_order")
+  status     ContentStatus @default(DRAFT)
+  legacyId   Int?          @unique @map("legacy_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  translations   CategoryTranslation[]
+  products       ProductCategory[]
+  discountScopes DiscountCategory[]
+
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id          Int     @id @default(autoincrement())
+  categoryId  Int     @map("category_id")
+  locale      Locale
+  name        String
+  description String?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@map("category_translations")
+}
+
+model Tag {
+  id         Int           @id @default(autoincrement())
+  slug       String        @unique
+  legacySlug String?       @map("legacy_slug")
+  status     ContentStatus @default(DRAFT)
+  legacyId   Int?          @unique @map("legacy_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
+
+  translations TagTranslation[]
+  products     ProductTag[]
+
+  @@map("tags")
+}
+
+model TagTranslation {
+  id          Int     @id @default(autoincrement())
+  tagId       Int     @map("tag_id")
+  locale      Locale
+  name        String
+  description String?
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, locale])
+  @@map("tag_translations")
+}
+
+// ---------------------------------------------------------------------
+// Catalog: attributes (variation axes) — a lean Attribute/Value/Variant
+// design, replacing the old app's approach of duplicating a whole extra
+// Product row per SKU combination (see B1 review notes).
+// ---------------------------------------------------------------------
+
+model Attribute {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  translations AttributeTranslation[]
+  values       AttributeValue[]
+  productAxes  ProductAttribute[]
+
+  @@map("attributes")
+}
+
+model AttributeTranslation {
+  id          Int    @id @default(autoincrement())
+  attributeId Int    @map("attribute_id")
+  locale      Locale
+  name        String
+
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([attributeId, locale])
+  @@map("attribute_translations")
+}
+
+model AttributeValue {
+  id          Int     @id @default(autoincrement())
+  attributeId Int     @map("attribute_id")
+  colorHex    String? @map("color_hex")
+  imageUrl    String? @map("image_url")
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  attribute    Attribute                      @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  translations AttributeValueTranslation[]
+  variantLinks ProductVariantAttributeValue[]
+
+  @@map("attribute_values")
+}
+
+model AttributeValueTranslation {
+  id               Int    @id @default(autoincrement())
+  attributeValueId Int    @map("attribute_value_id")
+  locale           Locale
+  value            String
+
+  attributeValue AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@unique([attributeValueId, locale])
+  @@map("attribute_value_translations")
+}
+
+// ---------------------------------------------------------------------
+// Catalog: product
+// ---------------------------------------------------------------------
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  ON_BACKORDER
+}
+
+model Product {
+  id         Int     @id @default(autoincrement())
+  slug       String  @unique
+  legacySlug String? @map("legacy_slug")
+  sku        String? @unique
+  brandId    Int?    @map("brand_id")
+
+  productType ProductType   @default(PHYSICAL) @map("product_type")
+  status      ContentStatus @default(DRAFT)
+  isFeatured  Boolean       @default(false) @map("is_featured")
+  sortOrder   Int           @default(0) @map("sort_order")
+  viewCount   Int           @default(0) @map("view_count")
+  videoUrl    String?       @map("video_url") // embedded video reference (product detail gallery)
+
+  // Simple (non-variant) products price/stock live directly here. Variant
+  // products (hasVariants=true) keep price/stock on ProductVariant instead.
+  hasVariants    Boolean     @default(false) @map("has_variants")
+  trackInventory Boolean     @default(true) @map("track_inventory")
+  allowBackorder Boolean     @default(false) @map("allow_backorder")
+  stock          Int         @default(0)
+  // Held during checkout so concurrent buyers can't oversell (old app had
+  // no reservation at all — a real gap we're deliberately closing, see
+  // AGENTS.md §6 "reserved-stock accounting during checkout"). Populated by B6.
+  reservedStock  Int         @default(0) @map("reserved_stock")
+  stockStatus    StockStatus @default(IN_STOCK) @map("stock_status")
+  price          Decimal?    @db.Decimal(10, 2)
+  salePrice      Decimal?    @map("sale_price") @db.Decimal(10, 2)
+  saleStartsAt   DateTime?   @map("sale_starts_at")
+  saleEndsAt     DateTime?   @map("sale_ends_at")
+  costPerItem    Decimal?    @map("cost_per_item") @db.Decimal(10, 2)
+
+  // Accurate shippable weight for courier charging (AGENTS.md §5/§11),
+  // editable — not just a label/box-volume figure. Kilograms.
+  shippableWeight Decimal? @map("shippable_weight") @db.Decimal(10, 3)
+
+  minOrderQuantity Int  @default(1) @map("min_order_quantity")
+  maxOrderQuantity Int? @map("max_order_quantity")
+
+  legacyId  Int?      @unique @map("legacy_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // PHASE 2 HOOK: batch/expiry tracking, warehouse bins, per-warehouse
+  // stock, and costing method attach here. Do not build now.
+
+  brand          Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  translations   ProductTranslation[]
+  categories     ProductCategory[]
+  tags           ProductTag[]
+  attributes     ProductAttribute[]
+  variants       ProductVariant[]
+  media          ProductMedia[]
+  files          ProductFile[]
+  licenseCodes   ProductLicenseCode[]
+  bundleItems    ProductBundleItem[]
+  relationsFrom  ProductRelation[]    @relation("ProductRelationFrom")
+  relationsTo    ProductRelation[]    @relation("ProductRelationTo")
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+  discountScopes DiscountProduct[]
+  wishlistItems  WishlistItem[]
+
+  @@index([status])
+  @@map("products")
+}
+
+model ProductTranslation {
+  id          Int     @id @default(autoincrement())
+  productId   Int     @map("product_id")
+  locale      Locale
+  name        String
+  description String?
+  content     String? // long-form detail/story content
+  nutrition   String? // grocery/food product nutrition facts
+  ingredients String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, locale])
+  @@map("product_translations")
+}
+
+model ProductCategory {
+  productId  Int @map("product_id")
+  categoryId Int @map("category_id")
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+model ProductTag {
+  productId Int @map("product_id")
+  tagId     Int @map("tag_id")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@map("product_tags")
+}
+
+// Which variation axes (e.g. Color, Size) this product uses.
+model ProductAttribute {
+  productId   Int @map("product_id")
+  attributeId Int @map("attribute_id")
+  sortOrder   Int @default(0) @map("sort_order")
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@id([productId, attributeId])
+  @@map("product_attributes")
+}
+
+// A real, lean variant row (own SKU/price/stock) — NOT a duplicate Product
+// row like the old app. See B1 review notes for why.
+model ProductVariant {
+  id             Int         @id @default(autoincrement())
+  productId      Int         @map("product_id")
+  sku            String?     @unique
+  barcode        String?
+  price          Decimal     @db.Decimal(10, 2)
+  salePrice      Decimal?    @map("sale_price") @db.Decimal(10, 2)
+  stock          Int         @default(0)
+  reservedStock  Int         @default(0) @map("reserved_stock")
+  stockStatus    StockStatus @default(IN_STOCK) @map("stock_status")
+  weightOverride Decimal?    @map("weight_override") @db.Decimal(10, 3)
+  isDefault      Boolean     @default(false) @map("is_default")
+  sortOrder      Int         @default(0) @map("sort_order")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  product         Product                        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeValues ProductVariantAttributeValue[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  licenseCodes    ProductLicenseCode[]
+  bundleItems     ProductBundleItem[]
+
+  @@map("product_variants")
+}
+
+// Per-SKU attribute selection, e.g. this variant = {Color: Red, Size: M}.
+model ProductVariantAttributeValue {
+  variantId        Int @map("variant_id")
+  attributeValueId Int @map("attribute_value_id")
+
+  variant        ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@id([variantId, attributeValueId])
+  @@map("product_variant_attribute_values")
+}
+
+model ProductMedia {
+  productId Int     @map("product_id")
+  mediaId   Int     @map("media_id")
+  sortOrder Int     @default(0) @map("sort_order")
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([productId, mediaId])
+  @@map("product_media")
+}
+
+// Digital-product downloadable attachments.
+model ProductFile {
+  id        Int      @id @default(autoincrement())
+  productId Int      @map("product_id")
+  url       String
+  name      String
+  sizeBytes Int?     @map("size_bytes")
+  mimeType  String?  @map("mime_type")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_files")
+}
+
+enum LicenseCodeStatus {
+  AVAILABLE
+  USED
+}
+
+model ProductLicenseCode {
+  id          Int               @id @default(autoincrement())
+  productId   Int               @map("product_id")
+  variantId   Int?              @map("variant_id")
+  code        String            @unique
+  status      LicenseCodeStatus @default(AVAILABLE)
+  orderItemId Int?              @unique @map("order_item_id")
+  assignedAt  DateTime?         @map("assigned_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  orderItem OrderItem?      @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+
+  @@map("product_license_codes")
+}
+
+// A named, fixed combo pack ("Buy together, save 10%"), distinct from the
+// quantity-threshold Discount engine below.
+model ProductBundle {
+  id          Int           @id @default(autoincrement())
+  slug        String        @unique
+  bundlePrice Decimal?      @map("bundle_price") @db.Decimal(10, 2)
+  discountPct Decimal?      @map("discount_pct") @db.Decimal(5, 2)
+  status      ContentStatus @default(DRAFT)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  translations ProductBundleTranslation[]
+  items        ProductBundleItem[]
+
+  @@map("product_bundles")
+}
+
+model ProductBundleTranslation {
+  id          Int     @id @default(autoincrement())
+  bundleId    Int     @map("bundle_id")
+  locale      Locale
+  name        String
+  description String?
+
+  bundle ProductBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, locale])
+  @@map("product_bundle_translations")
+}
+
+model ProductBundleItem {
+  id        Int  @id @default(autoincrement())
+  bundleId  Int  @map("bundle_id")
+  productId Int  @map("product_id")
+  variantId Int? @map("variant_id")
+  quantity  Int  @default(1)
+
+  bundle  ProductBundle   @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@map("product_bundle_items")
+}
+
+enum ProductRelationType {
+  RELATED
+  CROSS_SELL
+  UP_SELL
+  FREQUENTLY_BOUGHT_TOGETHER
+}
+
+// One flexible table instead of the old app's three separate pivot tables.
+model ProductRelation {
+  fromProductId Int                 @map("from_product_id")
+  toProductId   Int                 @map("to_product_id")
+  type          ProductRelationType
+
+  fromProduct Product @relation("ProductRelationFrom", fields: [fromProductId], references: [id], onDelete: Cascade)
+  toProduct   Product @relation("ProductRelationTo", fields: [toProductId], references: [id], onDelete: Cascade)
+
+  @@id([fromProductId, toProductId, type])
+  @@map("product_relations")
+}
+
+// ---------------------------------------------------------------------
+// Cart
+// ---------------------------------------------------------------------
+
+// DB-backed so a logged-in customer's cart survives across devices; Redis
+// caching in front of this is a later optimization, not a schema concern.
+model Cart {
+  id         Int       @id @default(autoincrement())
+  customerId Int?      @map("customer_id") // null for guest carts
+  guestToken String?   @unique @map("guest_token")
+  couponCode String?   @map("coupon_code")
+  currency   String    @default("BDT")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items    CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id                Int      @id @default(autoincrement())
+  cartId            Int      @map("cart_id")
+  productId         Int      @map("product_id")
+  variantId         Int?     @map("variant_id")
+  quantity          Int
+  unitPriceSnapshot Decimal  @map("unit_price_snapshot") @db.Decimal(10, 2)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId, variantId])
+  @@map("cart_items")
+}
+
+model WishlistItem {
+  id         Int      @id @default(autoincrement())
+  customerId Int      @map("customer_id")
+  productId  Int      @map("product_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+  @@map("wishlist_items")
+}
+
+// ---------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELED
+  PARTIALLY_RETURNED
+  RETURNED
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  orderNumber String      @unique @map("order_number")
+  customerId  Int?        @map("customer_id") // null = guest order
+  status      OrderStatus @default(PENDING)
+
+  subTotal       Decimal @map("sub_total") @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  taxAmount      Decimal @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  shippingAmount Decimal @default(0) @map("shipping_amount") @db.Decimal(10, 2)
+  totalAmount    Decimal @map("total_amount") @db.Decimal(10, 2)
+  currency       String  @default("BDT")
+  couponCode     String? @map("coupon_code")
+
+  shippingMethod String? @map("shipping_method")
+  customerNote   String? @map("customer_note")
+  staffNote      String? @map("staff_note")
+  cancelReason   String? @map("cancel_reason")
+
+  // Durable proof of COD phone-OTP verification (mirrors Review.orderItemId —
+  // a stored fact, not just trusting an Otp row got consumed at some point).
+  codVerifiedAt DateTime? @map("cod_verified_at")
+
+  legacyId    Int?      @unique @map("legacy_id")
+  confirmedAt DateTime? @map("confirmed_at")
+  completedAt DateTime? @map("completed_at")
+  canceledAt  DateTime? @map("canceled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  customer      Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  addresses     OrderAddress[]
+  statusHistory OrderStatusHistory[]
+  reviews       Review[]
+  discountUses  DiscountRedemption[]
+  voucherUses   GiftVoucherRedemption[]
+
+  @@index([status])
+  @@map("orders")
+}
+
+// Snapshots product name/price/sku at time of purchase — deliberately kept
+// from the old app's design, this part was correct (order history must not
+// change retroactively if the product is later edited/deleted).
+model OrderItem {
+  id                  Int       @id @default(autoincrement())
+  orderId             Int       @map("order_id")
+  productId           Int?      @map("product_id")
+  variantId           Int?      @map("variant_id")
+  productNameSnapshot String    @map("product_name_snapshot")
+  skuSnapshot         String?   @map("sku_snapshot")
+  unitPrice           Decimal   @map("unit_price") @db.Decimal(10, 2)
+  quantity            Int
+  taxAmount           Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  optionsSnapshot     Json?     @map("options_snapshot")
+  restockedQuantity   Int       @default(0) @map("restocked_quantity")
+  downloadedAt        DateTime? @map("downloaded_at") // digital products
+
+  order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant     ProductVariant?     @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  licenseCode ProductLicenseCode?
+
+  @@map("order_items")
+}
+
+enum OrderAddressType {
+  SHIPPING
+  BILLING
+}
+
+model OrderAddress {
+  id            Int              @id @default(autoincrement())
+  orderId       Int              @map("order_id")
+  type          OrderAddressType
+  recipientName String           @map("recipient_name")
+  phone         String
+  email         String?
+  division      String
+  district      String
+  area          String? // thana/upazila
+  landmark      String?
+  addressLine   String           @map("address_line")
+  postCode      String?          @map("post_code")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, type])
+  @@map("order_addresses")
+}
+
+model OrderStatusHistory {
+  id          Int         @id @default(autoincrement())
+  orderId     Int         @map("order_id")
+  status      OrderStatus
+  note        String?
+  adminUserId Int?        @map("admin_user_id") // null = system/customer-triggered
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_status_history")
+}
+
+// ---------------------------------------------------------------------
+// Promotions: coupons/promotions + gift vouchers (two different things —
+// a voucher is prepaid stored value, not a percent/fixed-amount discount)
+// ---------------------------------------------------------------------
+
+enum DiscountType {
+  COUPON
+  PROMOTION
+}
+
+enum DiscountValueType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_SHIPPING
+}
+
+model Discount {
+  id                 Int               @id @default(autoincrement())
+  code               String?           @unique // null for auto-applied PROMOTION
+  type               DiscountType
+  valueType          DiscountValueType @map("value_type")
+  value              Decimal           @db.Decimal(10, 2)
+  minOrderAmount     Decimal?          @map("min_order_amount") @db.Decimal(10, 2)
+  maxUsesTotal       Int?              @map("max_uses_total")
+  maxUsesPerCustomer Int?              @map("max_uses_per_customer")
+  usedCount          Int               @default(0) @map("used_count")
+  startsAt           DateTime?         @map("starts_at")
+  endsAt             DateTime?         @map("ends_at")
+  status             ContentStatus     @default(DRAFT)
+  legacyId           Int?              @unique @map("legacy_id")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  products    DiscountProduct[]
+  categories  DiscountCategory[]
+  customers   DiscountCustomer[]
+  redemptions DiscountRedemption[]
+
+  @@map("discounts")
+}
+
+model DiscountProduct {
+  discountId Int @map("discount_id")
+  productId  Int @map("product_id")
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([discountId, productId])
+  @@map("discount_products")
+}
+
+model DiscountCategory {
+  discountId Int @map("discount_id")
+  categoryId Int @map("category_id")
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([discountId, categoryId])
+  @@map("discount_categories")
+}
+
+// Eligibility restriction (which customers may use this discount at all).
+model DiscountCustomer {
+  discountId Int @map("discount_id")
+  customerId Int @map("customer_id")
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@id([discountId, customerId])
+  @@map("discount_customers")
+}
+
+// Actual usage history, tied to the order it was redeemed on (the old app's
+// equivalent tracked customer+coupon only, not which order — worse for audit).
+model DiscountRedemption {
+  id         Int      @id @default(autoincrement())
+  discountId Int      @map("discount_id")
+  customerId Int?     @map("customer_id")
+  orderId    Int      @map("order_id")
+  redeemedAt DateTime @default(now()) @map("redeemed_at")
+
+  discount Discount  @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("discount_redemptions")
+}
+
+enum GiftVoucherStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+}
+
+model GiftVoucher {
+  id                    Int               @id @default(autoincrement())
+  code                  String            @unique
+  initialBalance        Decimal           @map("initial_balance") @db.Decimal(10, 2)
+  remainingBalance      Decimal           @map("remaining_balance") @db.Decimal(10, 2)
+  currency              String            @default("BDT")
+  status                GiftVoucherStatus @default(ACTIVE)
+  expiresAt             DateTime?         @map("expires_at")
+  purchasedByCustomerId Int?              @map("purchased_by_customer_id")
+  createdAt             DateTime          @default(now()) @map("created_at")
+
+  redemptions GiftVoucherRedemption[]
+
+  @@map("gift_vouchers")
+}
+
+model GiftVoucherRedemption {
+  id         Int      @id @default(autoincrement())
+  voucherId  Int      @map("voucher_id")
+  orderId    Int      @map("order_id")
+  amountUsed Decimal  @map("amount_used") @db.Decimal(10, 2)
+  redeemedAt DateTime @default(now()) @map("redeemed_at")
+
+  voucher GiftVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  order   Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("gift_voucher_redemptions")
+}
+
+// ---------------------------------------------------------------------
+// Reviews — verified-purchase enforced by a real FK (orderItemId is
+// required), not just an app-layer check like the old system.
+// ---------------------------------------------------------------------
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Review {
+  id          Int          @id @default(autoincrement())
+  productId   Int          @map("product_id")
+  customerId  Int          @map("customer_id")
+  orderItemId Int          @unique @map("order_item_id") // proves verified purchase
+  rating      Int
+  comment     String?
+  images      String[]     @default([])
+  status      ReviewStatus @default(PENDING)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  product  Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  reply    ReviewReply?
+  order    Order?       @relation(fields: [orderId], references: [id])
+  orderId  Int?
+
+  @@unique([productId, customerId])
+  @@map("reviews")
+}
+
+model ReviewReply {
+  id          Int      @id @default(autoincrement())
+  reviewId    Int      @unique @map("review_id")
+  adminUserId Int      @map("admin_user_id")
+  message     String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("review_replies")
+}
+
+// ---------------------------------------------------------------------
+// Blog
+// ---------------------------------------------------------------------
+
+model BlogPost {
+  id          Int           @id @default(autoincrement())
+  slug        String        @unique
+  legacySlug  String?       @map("legacy_slug")
+  adminUserId Int           @map("admin_user_id") // author; a Role like "Content Editor" governs who may post
+  status      ContentStatus @default(DRAFT)
+  isFeatured  Boolean       @default(false) @map("is_featured")
+  imageUrl    String?       @map("image_url")
+  publishedAt DateTime?     @map("published_at")
+  viewCount   Int           @default(0) @map("view_count")
+  legacyId    Int?          @unique @map("legacy_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  author       AdminUser             @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+  translations BlogPostTranslation[]
+  categories   BlogPostCategory[]
+  tags         BlogPostTag[]
+
+  @@map("blog_posts")
+}
+
+model BlogPostTranslation {
+  id              Int     @id @default(autoincrement())
+  postId          Int     @map("post_id")
+  locale          Locale
+  title           String
+  excerpt         String?
+  content         String
+  metaDescription String? @map("meta_description")
+  // Cached score for the per-article SEO-score feature (AGENTS.md §6);
+  // recomputed by the content-editing flow, not derived at read time.
+  seoScore        Int?    @map("seo_score")
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, locale])
+  @@map("blog_post_translations")
+}
+
+model BlogCategory {
+  id         Int           @id @default(autoincrement())
+  slug       String        @unique
+  legacySlug String?       @map("legacy_slug")
+  parentId   Int?          @map("parent_id")
+  sortOrder  Int           @default(0) @map("sort_order")
+  status     ContentStatus @default(DRAFT)
+  legacyId   Int?          @unique @map("legacy_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  parent   BlogCategory?  @relation("BlogCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children BlogCategory[] @relation("BlogCategoryTree")
+
+  translations BlogCategoryTranslation[]
+  posts        BlogPostCategory[]
+
+  @@map("blog_categories")
+}
+
+model BlogCategoryTranslation {
+  id          Int     @id @default(autoincrement())
+  categoryId  Int     @map("category_id")
+  locale      Locale
+  name        String
+  description String?
+
+  category BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@map("blog_category_translations")
+}
+
+model BlogTag {
+  id         Int           @id @default(autoincrement())
+  slug       String        @unique
+  legacySlug String?       @map("legacy_slug")
+  status     ContentStatus @default(DRAFT)
+  legacyId   Int?          @unique @map("legacy_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  translations BlogTagTranslation[]
+  posts        BlogPostTag[]
+
+  @@map("blog_tags")
+}
+
+model BlogTagTranslation {
+  id     Int    @id @default(autoincrement())
+  tagId  Int    @map("tag_id")
+  locale Locale
+  name   String
+
+  tag BlogTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, locale])
+  @@map("blog_tag_translations")
+}
+
+model BlogPostCategory {
+  postId     Int @map("post_id")
+  categoryId Int @map("category_id")
+
+  post     BlogPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([postId, categoryId])
+  @@map("blog_post_categories")
+}
+
+model BlogPostTag {
+  postId Int @map("post_id")
+  tagId  Int @map("tag_id")
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("blog_post_tags")
+}
+
+// ---------------------------------------------------------------------
+// Static pages (AGENTS.md §5 lists "page" alongside product/category/etc.
+// as a sluggable, SEO-bearing entity)
+// ---------------------------------------------------------------------
+
+model Page {
+  id         Int           @id @default(autoincrement())
+  slug       String        @unique
+  legacySlug String?       @map("legacy_slug")
+  status     ContentStatus @default(DRAFT)
+  legacyId   Int?          @unique @map("legacy_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  deletedAt  DateTime?     @map("deleted_at")
+
+  translations PageTranslation[]
+
+  @@map("pages")
+}
+
+model PageTranslation {
+  id      Int    @id @default(autoincrement())
+  pageId  Int    @map("page_id")
+  locale  Locale
+  title   String
+  content String
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, locale])
+  @@map("page_translations")
+}
+
+// ---------------------------------------------------------------------
+// Newsletter — open signup, not gated behind a customer account.
+// ---------------------------------------------------------------------
+
+enum NewsletterStatus {
+  SUBSCRIBED
+  UNSUBSCRIBED
+}
+
+model NewsletterSubscriber {
+  id             Int              @id @default(autoincrement())
+  email          String           @unique
+  status         NewsletterStatus @default(SUBSCRIBED)
+  subscribedAt   DateTime         @default(now()) @map("subscribed_at")
+  unsubscribedAt DateTime?        @map("unsubscribed_at")
+
+  @@map("newsletter_subscribers")
+}
