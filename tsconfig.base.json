@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "commonjs",
-    "moduleResolution": "node",
+    "moduleResolution": "node10",
+    // Prisma 7's generated client (packages/db/src/generated) uses
+    // import.meta.url internally; only classic commonjs+node10 downlevels it
+    // correctly. Node16/NodeNext module mode breaks that file at runtime.
+    "ignoreDeprecations": "5.0",
     "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
