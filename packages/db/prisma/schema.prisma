@@ -1,0 +1,10 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// B1 adds the Phase 1 spine models here (auth/RBAC, customer, product, order, ...).
