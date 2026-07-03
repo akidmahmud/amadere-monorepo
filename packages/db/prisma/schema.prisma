@@ -593,6 +593,9 @@ model ProductTranslation {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, locale])
+  // Trigram GIN index backs typo-tolerant search (pg_trgm similarity/ILIKE),
+  // added via a manual migration (CREATE EXTENSION pg_trgm) — see B4.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("product_translations")
 }
 
@@ -1304,4 +1307,31 @@ model NewsletterSubscriber {
   unsubscribedAt DateTime?        @map("unsubscribed_at")
 
   @@map("newsletter_subscribers")
+}
+
+// ---------------------------------------------------------------------
+// Search (B4) — admin-managed synonym groups so "ছাতু"/"Chatu"/"Sattu" all
+// expand to the same search, across EN/BN, without a code change per term.
+// ---------------------------------------------------------------------
+
+model SynonymGroup {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  terms SynonymTerm[]
+
+  @@map("synonym_groups")
+}
+
+model SynonymTerm {
+  id      Int    @id @default(autoincrement())
+  groupId Int    @map("group_id")
+  term    String
+  locale  Locale
+
+  group SynonymGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([term, locale])
+  @@index([groupId])
+  @@map("synonym_terms")
 }

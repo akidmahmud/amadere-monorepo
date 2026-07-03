@@ -17,6 +17,7 @@ import { TagsModule } from './modules/tags/tags.module';
 import { AttributesModule } from './modules/attributes/attributes.module';
 import { ProductsModule } from './modules/products/products.module';
 import { ProductBundlesModule } from './modules/product-bundles/product-bundles.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ProductBundlesModule } from './modules/product-bundles/product-bundles.
     AttributesModule,
     ProductsModule,
     ProductBundlesModule,
+    SearchModule,
   ],
 })
 export class AppModule {}
