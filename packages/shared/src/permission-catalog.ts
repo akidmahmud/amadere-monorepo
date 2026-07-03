@@ -61,4 +61,14 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('search_synonym', 'create'),
   perm('search_synonym', 'update'),
   perm('search_synonym', 'delete'),
+
+  perm('discount', 'view'),
+  perm('discount', 'create'),
+  perm('discount', 'update'),
+  perm('discount', 'delete'),
+
+  perm('gift_voucher', 'view'),
+  perm('gift_voucher', 'create'),
+  perm('gift_voucher', 'update'),
+  perm('gift_voucher', 'delete'),
 ];

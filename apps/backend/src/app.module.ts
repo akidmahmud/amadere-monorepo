@@ -18,6 +18,9 @@ import { AttributesModule } from './modules/attributes/attributes.module';
 import { ProductsModule } from './modules/products/products.module';
 import { ProductBundlesModule } from './modules/product-bundles/product-bundles.module';
 import { SearchModule } from './modules/search/search.module';
+import { DiscountsModule } from './modules/discounts/discounts.module';
+import { GiftVouchersModule } from './modules/gift-vouchers/gift-vouchers.module';
+import { CartModule } from './modules/cart/cart.module';
 
 @Module({
   imports: [
@@ -61,6 +64,9 @@ import { SearchModule } from './modules/search/search.module';
     ProductsModule,
     ProductBundlesModule,
     SearchModule,
+    DiscountsModule,
+    GiftVouchersModule,
+    CartModule,
   ],
 })
 export class AppModule {}
