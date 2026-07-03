@@ -1,0 +1,21 @@
+import { AdminUser } from '@amader/db';
+
+export interface AdminProfileDto {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isSuperAdmin: boolean;
+  twoFactorEnabled: boolean;
+}
+
+export function toAdminProfileDto(admin: AdminUser): AdminProfileDto {
+  return {
+    id: admin.id,
+    email: admin.email,
+    firstName: admin.firstName,
+    lastName: admin.lastName,
+    isSuperAdmin: admin.isSuperAdmin,
+    twoFactorEnabled: admin.twoFactorEnabled,
+  };
+}
