@@ -22,4 +22,38 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('staff', 'update'),
   perm('staff', 'delete'),
   perm('audit_log', 'view'),
+
+  perm('media', 'view'),
+  perm('media', 'upload'),
+  perm('media', 'delete'),
+
+  perm('brand', 'view'),
+  perm('brand', 'create'),
+  perm('brand', 'update'),
+  perm('brand', 'delete'),
+
+  perm('category', 'view'),
+  perm('category', 'create'),
+  perm('category', 'update'),
+  perm('category', 'delete'),
+
+  perm('tag', 'view'),
+  perm('tag', 'create'),
+  perm('tag', 'update'),
+  perm('tag', 'delete'),
+
+  perm('attribute', 'view'),
+  perm('attribute', 'create'),
+  perm('attribute', 'update'),
+  perm('attribute', 'delete'),
+
+  perm('product', 'view'),
+  perm('product', 'create'),
+  perm('product', 'update'),
+  perm('product', 'delete'),
+
+  perm('product_bundle', 'view'),
+  perm('product_bundle', 'create'),
+  perm('product_bundle', 'update'),
+  perm('product_bundle', 'delete'),
 ];

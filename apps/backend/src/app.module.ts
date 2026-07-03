@@ -10,6 +10,13 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { AdminUsersModule } from './modules/admin-users/admin-users.module';
+import { MediaModule } from './modules/media/media.module';
+import { BrandsModule } from './modules/brands/brands.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { TagsModule } from './modules/tags/tags.module';
+import { AttributesModule } from './modules/attributes/attributes.module';
+import { ProductsModule } from './modules/products/products.module';
+import { ProductBundlesModule } from './modules/product-bundles/product-bundles.module';
 
 @Module({
   imports: [
@@ -28,6 +35,13 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module';
         CUSTOMER_JWT_REFRESH_SECRET: Joi.string().min(16).required(),
         SUPER_ADMIN_EMAIL: Joi.string().email().required(),
         SUPER_ADMIN_PASSWORD: Joi.string().min(8).required(),
+        // Optional: R2 credentials arrive later (AGENTS.md §6), app must boot
+        // without them — only an actual media upload attempt needs these.
+        R2_ACCOUNT_ID: Joi.string().optional(),
+        R2_ACCESS_KEY_ID: Joi.string().optional(),
+        R2_SECRET_ACCESS_KEY: Joi.string().optional(),
+        R2_BUCKET: Joi.string().optional(),
+        R2_PUBLIC_BASE_URL: Joi.string().optional(),
       }),
     }),
     EventEmitterModule.forRoot(),
@@ -38,6 +52,13 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module';
     AuthModule,
     RbacModule,
     AdminUsersModule,
+    MediaModule,
+    BrandsModule,
+    CategoriesModule,
+    TagsModule,
+    AttributesModule,
+    ProductsModule,
+    ProductBundlesModule,
   ],
 })
 export class AppModule {}
