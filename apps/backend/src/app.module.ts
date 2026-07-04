@@ -23,6 +23,7 @@ import { GiftVouchersModule } from './modules/gift-vouchers/gift-vouchers.module
 import { CartModule } from './modules/cart/cart.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { CourierModule } from './modules/courier/courier.module';
 
 @Module({
   imports: [
@@ -48,6 +49,10 @@ import { OrdersModule } from './modules/orders/orders.module';
         R2_SECRET_ACCESS_KEY: Joi.string().optional(),
         R2_BUCKET: Joi.string().optional(),
         R2_PUBLIC_BASE_URL: Joi.string().optional(),
+        // Optional: Steadfast credentials arrive later — app must boot
+        // without them, only a dispatch attempt needs these.
+        STEADFAST_API_KEY: Joi.string().optional(),
+        STEADFAST_SECRET_KEY: Joi.string().optional(),
       }),
     }),
     EventEmitterModule.forRoot(),
@@ -71,6 +76,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     CartModule,
     PaymentsModule,
     OrdersModule,
+    CourierModule,
   ],
 })
 export class AppModule {}

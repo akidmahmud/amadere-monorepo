@@ -893,6 +893,7 @@ model Order {
   discountUses  DiscountRedemption[]
   voucherUses   GiftVoucherRedemption[]
   payments      Payment[]
+  shipments     Shipment[]
 
   @@index([status])
   @@map("orders")
@@ -1000,6 +1001,72 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------
+// Courier & Fulfilment (B7) — abstraction now, providers as credentials
+// arrive (AGENTS.md §6). Steadfast has a real implementation (proven in the
+// reference codebase); Pathao/RedX/eCourier are stubs behind the same
+// interface. requestPayload + rawResponse are stored on every attempt,
+// success or failure — the old app only ever stored the response, and only
+// on failure — so there's always a durable cross-reference copy of exactly
+// what we sent/received.
+// ---------------------------------------------------------------------
+
+enum CourierProviderName {
+  STEADFAST
+  PATHAO
+  REDX
+  ECOURIER
+}
+
+enum ShipmentStatus {
+  PENDING
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  PARTIALLY_DELIVERED
+  RETURNED
+  CANCELED
+  FAILED
+}
+
+model Shipment {
+  id             Int                 @id @default(autoincrement())
+  orderId        Int                 @map("order_id")
+  provider       CourierProviderName
+  status         ShipmentStatus      @default(PENDING)
+  consignmentId  String?             @map("consignment_id")
+  trackingCode   String?             @map("tracking_code")
+  cost           Decimal?            @db.Decimal(10, 2)
+  weight         Decimal?            @db.Decimal(10, 3)
+  codAmount      Decimal?            @map("cod_amount") @db.Decimal(10, 2)
+  returnReason   String?             @map("return_reason")
+  errorMessage   String?             @map("error_message")
+  requestPayload Json?               @map("request_payload")
+  rawResponse    Json?               @map("raw_response")
+  dispatchedAt   DateTime?           @map("dispatched_at")
+  deliveredAt    DateTime?           @map("delivered_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  order  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events ShipmentEvent[]
+
+  @@map("shipments")
+}
+
+model ShipmentEvent {
+  id         Int            @id @default(autoincrement())
+  shipmentId Int            @map("shipment_id")
+  status     ShipmentStatus
+  note       String?
+  rawPayload Json?          @map("raw_payload")
+  occurredAt DateTime       @default(now()) @map("occurred_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_events")
 }
 
 // ---------------------------------------------------------------------

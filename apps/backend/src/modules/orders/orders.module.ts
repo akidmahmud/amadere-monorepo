@@ -11,5 +11,6 @@ import { OrdersService } from './orders.service';
   imports: [CartModule, PaymentsModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
   providers: [CheckoutService, OrdersService],
+  exports: [OrdersService],
 })
 export class OrdersModule {}
