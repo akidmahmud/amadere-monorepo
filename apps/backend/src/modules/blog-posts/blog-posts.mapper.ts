@@ -1,4 +1,5 @@
 import { ContentStatus, Locale, Prisma } from '@amader/db';
+import type { ResolvedSeoDto } from '../seo/seo.mapper';
 
 export const BLOG_POST_INCLUDE = {
   author: {
@@ -131,4 +132,6 @@ export interface PublicBlogPostDetailDto extends PublicBlogPostSummaryDto {
   toc: { level: number; text: string; anchor: string }[];
   faqs: { question: string; answer: string }[];
   relatedPosts: PublicBlogPostSummaryDto[];
+  seo: ResolvedSeoDto;
+  structuredData: Record<string, unknown>[];
 }

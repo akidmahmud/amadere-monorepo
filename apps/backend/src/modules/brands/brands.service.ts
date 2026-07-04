@@ -9,6 +9,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
+import { SeoService } from '../seo/seo.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
 import {
@@ -22,7 +23,10 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 
 @Injectable()
 export class BrandsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+  ) {}
 
   async adminList(page: number, pageSize: number) {
     const [items, total] = await Promise.all([
@@ -127,13 +131,20 @@ export class BrandsService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale): Promise<PublicBrandDto> {
+  async publicGetBySlug(slug: string, locale: Locale) {
     const brand = await this.prisma.client.brand.findFirst({
       where: { slug, deletedAt: null, status: 'PUBLISHED' },
       include: WITH_TRANSLATIONS,
     });
     if (!brand) throw new NotFoundException('Brand not found');
-    return toPublicBrandDto(brand, locale);
+    const dto = toPublicBrandDto(brand, locale);
+    const seo = await this.seo.resolve('BRAND', brand.id, locale, {
+      title: dto.name,
+      description: dto.description,
+      canonicalPath: `/brands/${dto.slug}`,
+      imageUrl: dto.logoUrl,
+    });
+    return { ...dto, seo };
   }
 
   private async assertSlugAvailable(

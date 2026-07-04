@@ -59,6 +59,21 @@ export class ReviewsService {
     return toReviewDto(review, 'EN');
   }
 
+  // Lightweight aggregate for embedding in Product structured data (B10) —
+  // deliberately not the full publicListForProduct query, which also
+  // fetches/maps a page of review rows nothing needs here.
+  async getAggregateRating(
+    productId: number,
+  ): Promise<{ average: number; count: number } | null> {
+    const where = { productId, status: 'APPROVED' as ReviewStatus };
+    const [count, aggregate] = await Promise.all([
+      this.prisma.client.review.count({ where }),
+      this.prisma.client.review.aggregate({ where, _avg: { rating: true } }),
+    ]);
+    if (count === 0 || aggregate._avg.rating === null) return null;
+    return { average: Number(aggregate._avg.rating.toFixed(2)), count };
+  }
+
   async publicListForProduct(
     productId: number,
     page: number,

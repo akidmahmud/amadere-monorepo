@@ -10,6 +10,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
+import { SeoService } from '../seo/seo.service';
 import {
   BUNDLE_INCLUDE,
   toAdminBundleDto,
@@ -20,7 +21,10 @@ import { UpdateProductBundleDto } from './dto/update-product-bundle.dto';
 
 @Injectable()
 export class ProductBundlesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+  ) {}
 
   async adminList(page: number, pageSize: number) {
     const [items, total] = await Promise.all([
@@ -144,7 +148,13 @@ export class ProductBundlesService {
       include: BUNDLE_INCLUDE,
     });
     if (!bundle) throw new NotFoundException('Bundle not found');
-    return toPublicBundleDto(bundle, locale);
+    const dto = toPublicBundleDto(bundle, locale);
+    const seo = await this.seo.resolve('PRODUCT_BUNDLE', bundle.id, locale, {
+      title: dto.name,
+      description: dto.description,
+      canonicalPath: `/product-bundles/${dto.slug}`,
+    });
+    return { ...dto, seo };
   }
 
   private async assertSlugAvailable(

@@ -10,6 +10,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
+import { SeoService } from '../seo/seo.service';
 import { CreateBlogCategoryDto } from './dto/create-blog-category.dto';
 import { UpdateBlogCategoryDto } from './dto/update-blog-category.dto';
 import {
@@ -22,7 +23,10 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 
 @Injectable()
 export class BlogCategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+  ) {}
 
   async adminList(page: number, pageSize: number, parentId?: number) {
     const where = parentId !== undefined ? { parentId } : {};
@@ -148,7 +152,13 @@ export class BlogCategoriesService {
       include: WITH_TRANSLATIONS,
     });
     if (!category) throw new NotFoundException('Blog category not found');
-    return toPublicBlogCategoryDto(category, locale);
+    const dto = toPublicBlogCategoryDto(category, locale);
+    const seo = await this.seo.resolve('BLOG_CATEGORY', category.id, locale, {
+      title: dto.name,
+      description: dto.description,
+      canonicalPath: `/blog/category/${dto.slug}`,
+    });
+    return { ...dto, seo };
   }
 
   private async assertSlugAvailable(

@@ -9,6 +9,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
+import { SeoService } from '../seo/seo.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
 import { AdminPageDto, toAdminPageDto, toPublicPageDto } from './pages.mapper';
@@ -17,7 +18,10 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 
 @Injectable()
 export class PagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+  ) {}
 
   async adminList(page: number, pageSize: number) {
     const where = { deletedAt: null };
@@ -93,7 +97,12 @@ export class PagesService {
       include: WITH_TRANSLATIONS,
     });
     if (!page) throw new NotFoundException('Page not found');
-    return toPublicPageDto(page, locale);
+    const dto = toPublicPageDto(page, locale);
+    const seo = await this.seo.resolve('PAGE', page.id, locale, {
+      title: dto.title,
+      canonicalPath: `/${dto.slug}`,
+    });
+    return { ...dto, seo };
   }
 
   private async assertSlugAvailable(

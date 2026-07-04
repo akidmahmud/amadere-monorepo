@@ -16,10 +16,21 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { ProductFilterQueryDto } from './dto/product-filter-query.dto';
+import { SeoService } from '../seo/seo.service';
+import { ReviewsService } from '../reviews/reviews.service';
+import {
+  buildBreadcrumbJsonLd,
+  buildProductJsonLd,
+  buildVideoObjectJsonLd,
+} from '../../common/structured-data/structured-data.util';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+    private readonly reviews: ReviewsService,
+  ) {}
 
   async adminList(
     page: number,
@@ -310,7 +321,61 @@ export class ProductsService {
       where: { id: product.id },
       data: { viewCount: { increment: 1 } },
     });
-    return toPublicProductDto(product, locale);
+
+    const dto = toPublicProductDto(product, locale);
+    const imageUrls = dto.media.map((m) => m.url);
+    const seo = await this.seo.resolve('PRODUCT', product.id, locale, {
+      title: dto.name,
+      description: dto.description,
+      canonicalPath: `/products/${dto.slug}`,
+      imageUrl: imageUrls[0] ?? null,
+    });
+
+    const aggregateRating = await this.reviews.getAggregateRating(product.id);
+    // ponytail: salePrice ?? price is the display price for structured data,
+    // not a full re-run of PricingService's sale-window logic — revisit if
+    // a sale-window mismatch ever surfaces here.
+    const structuredData = [
+      buildProductJsonLd({
+        name: dto.name,
+        description: dto.description,
+        imageUrls,
+        sku: dto.sku,
+        brandName: dto.brand?.name ?? null,
+        price: dto.salePrice ?? dto.price,
+        currency: 'BDT',
+        inStock: dto.stockStatus === 'IN_STOCK',
+        canonicalUrl: seo.canonicalUrl,
+        aggregateRating,
+      }),
+      buildBreadcrumbJsonLd([
+        { name: 'Home', url: this.seo.absoluteUrl('/') },
+        ...(dto.categories[0]
+          ? [
+              {
+                name: dto.categories[0].name,
+                url: this.seo.absoluteUrl(
+                  `/categories/${dto.categories[0].slug}`,
+                ),
+              },
+            ]
+          : []),
+        { name: dto.name, url: seo.canonicalUrl },
+      ]),
+      ...(dto.videoUrl
+        ? [
+            buildVideoObjectJsonLd({
+              name: dto.name,
+              description: dto.description,
+              thumbnailUrl: imageUrls[0] ?? null,
+              videoUrl: dto.videoUrl,
+              uploadDate: product.createdAt,
+            }),
+          ]
+        : []),
+    ];
+
+    return { ...dto, seo, structuredData };
   }
 
   private buildWhere(

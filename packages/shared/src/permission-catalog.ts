@@ -106,4 +106,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('page', 'create'),
   perm('page', 'update'),
   perm('page', 'delete'),
+
+  perm('seo_meta', 'view'),
+  perm('seo_meta', 'update'),
+  perm('seo_meta', 'delete'),
+
+  perm('redirect', 'view'),
+  perm('redirect', 'create'),
+  perm('redirect', 'update'),
+  perm('redirect', 'delete'),
 ];

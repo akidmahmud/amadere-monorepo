@@ -9,6 +9,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
+import { SeoService } from '../seo/seo.service';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { UpdateTagDto } from './dto/update-tag.dto';
 import { AdminTagDto, toAdminTagDto, toPublicTagDto } from './tags.mapper';
@@ -17,7 +18,10 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 
 @Injectable()
 export class TagsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+  ) {}
 
   async adminList(page: number, pageSize: number) {
     const [items, total] = await Promise.all([
@@ -111,7 +115,13 @@ export class TagsService {
       include: WITH_TRANSLATIONS,
     });
     if (!tag) throw new NotFoundException('Tag not found');
-    return toPublicTagDto(tag, locale);
+    const dto = toPublicTagDto(tag, locale);
+    const seo = await this.seo.resolve('TAG', tag.id, locale, {
+      title: dto.name,
+      description: dto.description,
+      canonicalPath: `/tags/${dto.slug}`,
+    });
+    return { ...dto, seo };
   }
 
   private async assertSlugAvailable(

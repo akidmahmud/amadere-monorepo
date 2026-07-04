@@ -31,6 +31,9 @@ import { BlogCategoriesModule } from './modules/blog-categories/blog-categories.
 import { BlogTagsModule } from './modules/blog-tags/blog-tags.module';
 import { BlogPostsModule } from './modules/blog-posts/blog-posts.module';
 import { PagesModule } from './modules/pages/pages.module';
+import { SeoModule } from './modules/seo/seo.module';
+import { RedirectsModule } from './modules/redirects/redirects.module';
+import { SitemapModule } from './modules/sitemap/sitemap.module';
 
 @Module({
   imports: [
@@ -60,6 +63,10 @@ import { PagesModule } from './modules/pages/pages.module';
         // without them, only a dispatch attempt needs these.
         STEADFAST_API_KEY: Joi.string().optional(),
         STEADFAST_SECRET_KEY: Joi.string().optional(),
+        // Optional: absolute origin for sitemap/canonical/structured-data
+        // URLs (e.g. https://amadere.com). Without it, URLs are relative —
+        // fine for local dev, must be set before this hits production.
+        STOREFRONT_BASE_URL: Joi.string().optional(),
       }),
     }),
     EventEmitterModule.forRoot(),
@@ -91,6 +98,9 @@ import { PagesModule } from './modules/pages/pages.module';
     BlogTagsModule,
     BlogPostsModule,
     PagesModule,
+    SeoModule,
+    RedirectsModule,
+    SitemapModule,
   ],
 })
 export class AppModule {}

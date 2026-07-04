@@ -22,12 +22,21 @@ import {
 } from './blog-posts.mapper';
 import { computeSeoScore, extractToc } from './content.util';
 import { LinkCandidate, suggestInternalLinks } from './internal-links.util';
+import { SeoService } from '../seo/seo.service';
+import {
+  buildArticleJsonLd,
+  buildBreadcrumbJsonLd,
+  buildFaqPageJsonLd,
+} from '../../common/structured-data/structured-data.util';
 
 const RELATED_POSTS_LIMIT = 5;
 
 @Injectable()
 export class BlogPostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seo: SeoService,
+  ) {}
 
   async adminList(
     page: number,
@@ -243,17 +252,48 @@ export class BlogPostsService {
       post.translations[0];
     const { content, toc } = extractToc(translation?.content ?? '');
     const relatedPosts = await this.findRelatedPosts(post, locale);
+    const summary = toPublicBlogPostSummaryDto(post, locale);
+    const faqs = (translation?.faqs ?? []).map((f) => ({
+      question: f.question,
+      answer: f.answer,
+    }));
+
+    const seo = await this.seo.resolve('BLOG_POST', post.id, locale, {
+      title: summary.title,
+      description: translation?.metaDescription ?? summary.excerpt,
+      canonicalPath: `/blog/${post.slug}`,
+      imageUrl: post.imageUrl,
+    });
+
+    const faqJsonLd = buildFaqPageJsonLd(faqs);
+    const structuredData = [
+      buildArticleJsonLd({
+        headline: summary.title,
+        description: seo.description,
+        imageUrl: post.imageUrl,
+        authorName:
+          `${post.author.firstName ?? ''} ${post.author.lastName ?? ''}`.trim(),
+        datePublished: post.publishedAt,
+        dateModified: post.updatedAt,
+        canonicalUrl: seo.canonicalUrl,
+      }),
+      buildBreadcrumbJsonLd([
+        { name: 'Home', url: this.seo.absoluteUrl('/') },
+        { name: 'Blog', url: this.seo.absoluteUrl('/blog') },
+        { name: summary.title, url: seo.canonicalUrl },
+      ]),
+      ...(faqJsonLd ? [faqJsonLd] : []),
+    ];
 
     return {
-      ...toPublicBlogPostSummaryDto(post, locale),
+      ...summary,
       content,
       metaDescription: translation?.metaDescription ?? null,
       toc,
-      faqs: (translation?.faqs ?? []).map((f) => ({
-        question: f.question,
-        answer: f.answer,
-      })),
+      faqs,
       relatedPosts,
+      seo,
+      structuredData,
     };
   }
 
