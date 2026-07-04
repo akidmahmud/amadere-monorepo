@@ -79,4 +79,10 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('shipment', 'view'),
   perm('shipment', 'dispatch'),
   perm('shipment', 'update'),
+
+  perm('review', 'view'),
+  perm('review', 'moderate'),
+  perm('review', 'reply'),
+
+  perm('newsletter', 'view'),
 ];

@@ -24,6 +24,9 @@ import { CartModule } from './modules/cart/cart.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CourierModule } from './modules/courier/courier.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
+import { NewsletterModule } from './modules/newsletter/newsletter.module';
 
 @Module({
   imports: [
@@ -77,6 +80,9 @@ import { CourierModule } from './modules/courier/courier.module';
     PaymentsModule,
     OrdersModule,
     CourierModule,
+    CustomersModule,
+    ReviewsModule,
+    NewsletterModule,
   ],
 })
 export class AppModule {}
