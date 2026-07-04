@@ -71,4 +71,8 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('gift_voucher', 'create'),
   perm('gift_voucher', 'update'),
   perm('gift_voucher', 'delete'),
+
+  perm('order', 'view'),
+  perm('order', 'update'),
+  perm('order', 'refund'),
 ];

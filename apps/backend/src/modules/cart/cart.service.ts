@@ -274,11 +274,18 @@ export class CartService {
       );
     }
 
-    // Availability check only — stock is *reserved* at checkout (B6), not here.
+    // Advisory only — the atomic hold at checkout (CheckoutService.reserveStock)
+    // is the real guard against overselling; this just gives an earlier,
+    // friendlier error using the same stock-minus-reserved math.
     if (product.trackInventory && !product.allowBackorder) {
+      const variantRow = variantId
+        ? product.variants.find((v) => v.id === variantId)
+        : undefined;
       const available = variantId
-        ? (product.variants.find((v) => v.id === variantId)?.stock ?? 0)
-        : product.stock;
+        ? variantRow
+          ? variantRow.stock - variantRow.reservedStock
+          : 0
+        : product.stock - product.reservedStock;
       if (available < quantity)
         throw new BadRequestException('Insufficient stock');
     }

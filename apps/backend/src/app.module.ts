@@ -21,6 +21,8 @@ import { SearchModule } from './modules/search/search.module';
 import { DiscountsModule } from './modules/discounts/discounts.module';
 import { GiftVouchersModule } from './modules/gift-vouchers/gift-vouchers.module';
 import { CartModule } from './modules/cart/cart.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -67,6 +69,8 @@ import { CartModule } from './modules/cart/cart.module';
     DiscountsModule,
     GiftVouchersModule,
     CartModule,
+    PaymentsModule,
+    OrdersModule,
   ],
 })
 export class AppModule {}

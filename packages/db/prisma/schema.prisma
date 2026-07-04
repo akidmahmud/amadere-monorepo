@@ -892,6 +892,7 @@ model Order {
   reviews       Review[]
   discountUses  DiscountRedemption[]
   voucherUses   GiftVoucherRedemption[]
+  payments      Payment[]
 
   @@index([status])
   @@map("orders")
@@ -958,6 +959,47 @@ model OrderStatusHistory {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_status_history")
+}
+
+// ---------------------------------------------------------------------
+// Payments (B6) — abstraction now, gateways activated when credentials
+// arrive (AGENTS.md §6). COD works end-to-end today; bKash/Nagad/SSLCommerz/
+// Bank Transfer sit behind the same PaymentProvider interface as stubs.
+// ---------------------------------------------------------------------
+
+enum PaymentProvider {
+  COD
+  BKASH
+  NAGAD
+  SSLCOMMERZ
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id             Int             @id @default(autoincrement())
+  orderId        Int             @map("order_id")
+  provider       PaymentProvider
+  status         PaymentStatus   @default(PENDING)
+  amount         Decimal         @db.Decimal(10, 2)
+  currency       String          @default("BDT")
+  transactionRef String?         @map("transaction_ref")
+  refundedAmount Decimal?        @map("refunded_amount") @db.Decimal(10, 2)
+  rawResponse    Json?           @map("raw_response")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
 
 // ---------------------------------------------------------------------
