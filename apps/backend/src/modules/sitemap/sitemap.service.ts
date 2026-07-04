@@ -1,5 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  blogCategoryPath,
+  blogPostPath,
+  blogTagPath,
+  brandPath,
+  categoryPath,
+  pagePath,
+  productBundlePath,
+  productPath,
+  tagPath,
+} from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface SitemapUrl {
@@ -95,32 +106,32 @@ export class SitemapService {
     return [
       { path: '/', lastmod: new Date() },
       ...products.map((p) => ({
-        path: `/products/${p.slug}`,
+        path: productPath(p.slug),
         lastmod: p.updatedAt,
       })),
       ...categories.map((c) => ({
-        path: `/categories/${c.slug}`,
+        path: categoryPath(c.slug),
         lastmod: c.updatedAt,
       })),
-      ...brands.map((b) => ({
-        path: `/brands/${b.slug}`,
-        lastmod: b.updatedAt,
-      })),
-      ...tags.map((t) => ({ path: `/tags/${t.slug}`, lastmod: t.updatedAt })),
+      ...brands.map((b) => ({ path: brandPath(b.slug), lastmod: b.updatedAt })),
+      ...tags.map((t) => ({ path: tagPath(t.slug), lastmod: t.updatedAt })),
       ...bundles.map((b) => ({
-        path: `/product-bundles/${b.slug}`,
+        path: productBundlePath(b.slug),
         lastmod: b.updatedAt,
       })),
-      ...posts.map((p) => ({ path: `/blog/${p.slug}`, lastmod: p.updatedAt })),
+      ...posts.map((p) => ({
+        path: blogPostPath(p.slug),
+        lastmod: p.updatedAt,
+      })),
       ...blogCategories.map((c) => ({
-        path: `/blog/category/${c.slug}`,
+        path: blogCategoryPath(c.slug),
         lastmod: c.updatedAt,
       })),
       ...blogTags.map((t) => ({
-        path: `/blog/tag/${t.slug}`,
+        path: blogTagPath(t.slug),
         lastmod: t.createdAt,
       })),
-      ...pages.map((p) => ({ path: `/${p.slug}`, lastmod: p.updatedAt })),
+      ...pages.map((p) => ({ path: pagePath(p.slug), lastmod: p.updatedAt })),
     ];
   }
 }

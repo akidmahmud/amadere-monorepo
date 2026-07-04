@@ -15,6 +15,8 @@ export interface ApiErrorResponse {
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 export * from './permission-catalog';
+export * from './url-paths';
+export * from './courier-status';
 
 export interface PaginatedResult<T> {
   items: T[];

@@ -11,5 +11,21 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # B12 migration source only — loads the old Botble/Laravel dump so the ETL
+  # can query it with real SQL instead of regex-parsing a 34MB .sql file.
+  # Matches the dump's own server version (see its header) to avoid dialect
+  # surprises. Not used by the running app; safe to remove after B12 ships.
+  mysql_source:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: amader
+      MARIADB_DATABASE: amader_legacy
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_source_data:/var/lib/mysql
+
 volumes:
   postgres_data:
+  mysql_source_data:

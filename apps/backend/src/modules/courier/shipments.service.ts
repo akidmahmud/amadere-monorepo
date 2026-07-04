@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CourierProviderName, Prisma, ShipmentStatus } from '@amader/db';
+import { mapRawCourierStatus } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -27,19 +28,10 @@ const ACTIVE_STATUSES = new Set<ShipmentStatus>([
   'IN_TRANSIT',
 ]);
 
-// Maps a courier's raw status string to our generic ShipmentStatus. Unknown
-// values fall back to DISPATCHED (safe middle ground) rather than guessing.
+// Shared with the B12 migration script (packages/db/scripts/migrate/orders.ts)
+// so the legacy-status mapping is defined once, not duplicated.
 function mapRawStatus(raw: string): ShipmentStatus {
-  const normalized = raw.trim().toLowerCase();
-  if (['pending', 'in_review', 'hold'].includes(normalized)) return 'PENDING';
-  if (['delivered'].includes(normalized)) return 'DELIVERED';
-  if (['partial_delivered', 'partially_delivered'].includes(normalized))
-    return 'PARTIALLY_DELIVERED';
-  if (['cancelled', 'canceled'].includes(normalized)) return 'CANCELED';
-  if (['returned', 'return'].includes(normalized)) return 'RETURNED';
-  if (['in_transit', 'on_the_way', 'picked'].includes(normalized))
-    return 'IN_TRANSIT';
-  return 'DISPATCHED';
+  return mapRawCourierStatus(raw);
 }
 
 @Injectable()

@@ -5,3 +5,4 @@ dist/
 *.log
 generated/
 backups/
+migrate-report.json
