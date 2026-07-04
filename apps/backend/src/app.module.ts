@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import * as path from 'node:path';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -34,6 +36,7 @@ import { PagesModule } from './modules/pages/pages.module';
 import { SeoModule } from './modules/seo/seo.module';
 import { RedirectsModule } from './modules/redirects/redirects.module';
 import { SitemapModule } from './modules/sitemap/sitemap.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -67,8 +70,17 @@ import { SitemapModule } from './modules/sitemap/sitemap.module';
         // URLs (e.g. https://amadere.com). Without it, URLs are relative —
         // fine for local dev, must be set before this hits production.
         STOREFRONT_BASE_URL: Joi.string().optional(),
+        // Optional: server-side analytics forwarding (AGENTS.md §6) — app
+        // must boot without any of these, each provider just no-ops.
+        GA4_MEASUREMENT_ID: Joi.string().optional(),
+        GA4_API_SECRET: Joi.string().optional(),
+        META_PIXEL_ID: Joi.string().optional(),
+        META_ACCESS_TOKEN: Joi.string().optional(),
+        TIKTOK_PIXEL_CODE: Joi.string().optional(),
+        TIKTOK_ACCESS_TOKEN: Joi.string().optional(),
       }),
     }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     EventEmitterModule.forRoot(),
     PrismaModule,
     CoreAuthModule,
@@ -101,6 +113,8 @@ import { SitemapModule } from './modules/sitemap/sitemap.module';
     SeoModule,
     RedirectsModule,
     SitemapModule,
+    AnalyticsModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

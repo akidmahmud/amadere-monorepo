@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { AdminUsersService } from './admin-users.service';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
@@ -37,6 +39,15 @@ export class AdminUsersController {
   @RequirePermission('staff.view')
   get(@Param('id', ParseIntPipe) id: number) {
     return this.adminUsers.get(id);
+  }
+
+  @Get(':id/login-history')
+  @RequirePermission('staff.view')
+  loginHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() { page, pageSize }: PaginationQueryDto,
+  ) {
+    return this.adminUsers.loginHistory(id, page ?? 1, pageSize ?? 20);
   }
 
   @Post()

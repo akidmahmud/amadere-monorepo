@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CustomerJwtGuard } from '../../common/auth/customer-jwt.guard';
 import { CurrentCustomer } from '../../common/auth/current-customer.decorator';
@@ -17,21 +18,25 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 export class AuthController {
   constructor(private readonly customerAuth: CustomerAuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.customerAuth.register(dto);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.customerAuth.login(dto);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('otp/request')
   requestOtp(@Body() dto: OtpRequestDto) {
     return this.customerAuth.requestOtp(dto);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('otp/verify')
   verifyOtp(@Body() dto: OtpVerifyDto) {
     return this.customerAuth.verifyOtp(dto);
@@ -47,11 +52,13 @@ export class AuthController {
     return this.customerAuth.refresh(dto.refreshToken);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('password/forgot')
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.customerAuth.forgotPassword(dto);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('password/reset')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.customerAuth.resetPassword(dto);

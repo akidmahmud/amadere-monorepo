@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hashPassword } from '../../common/auth/password.util';
+import {
+  paginationArgs,
+  toPaginatedResult,
+} from '../../common/pagination.util';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { AdminUserDto, toAdminUserDto } from './admin-users.mapper';
@@ -76,5 +80,33 @@ export class AdminUsersService {
       where: { id },
       data: { deletedAt: new Date(), status: 'DISABLED' },
     });
+  }
+
+  // Recorded on every login attempt since B2 (admin-auth.service.ts) but
+  // never previously readable — closing that gap here (AGENTS.md §6 "login
+  // history").
+  async loginHistory(id: number, page: number, pageSize: number) {
+    await this.get(id);
+    const where = { adminUserId: id };
+    const [items, total] = await Promise.all([
+      this.prisma.client.adminLoginHistory.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        ...paginationArgs(page, pageSize),
+      }),
+      this.prisma.client.adminLoginHistory.count({ where }),
+    ]);
+    return toPaginatedResult(
+      items.map((h) => ({
+        id: h.id,
+        ipAddress: h.ipAddress,
+        userAgent: h.userAgent,
+        success: h.success,
+        createdAt: h.createdAt,
+      })),
+      total,
+      page,
+      pageSize,
+    );
   }
 }

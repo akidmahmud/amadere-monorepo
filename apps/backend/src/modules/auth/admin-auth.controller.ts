@@ -7,6 +7,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
@@ -24,11 +25,13 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 export class AdminAuthController {
   constructor(private readonly adminAuth: AdminAuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: AdminLoginDto, @Req() req: Request) {
     return this.adminAuth.login(dto, req.ip, req.headers['user-agent']);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('2fa/verify')
   verifyTwoFactor(@Body() dto: TwoFactorVerifyDto) {
     return this.adminAuth.verifyTwoFactor(dto);
