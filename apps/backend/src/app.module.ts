@@ -27,6 +27,10 @@ import { CourierModule } from './modules/courier/courier.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
+import { BlogCategoriesModule } from './modules/blog-categories/blog-categories.module';
+import { BlogTagsModule } from './modules/blog-tags/blog-tags.module';
+import { BlogPostsModule } from './modules/blog-posts/blog-posts.module';
+import { PagesModule } from './modules/pages/pages.module';
 
 @Module({
   imports: [
@@ -83,6 +87,10 @@ import { NewsletterModule } from './modules/newsletter/newsletter.module';
     CustomersModule,
     ReviewsModule,
     NewsletterModule,
+    BlogCategoriesModule,
+    BlogTagsModule,
+    BlogPostsModule,
+    PagesModule,
   ],
 })
 export class AppModule {}

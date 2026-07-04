@@ -1280,9 +1280,24 @@ model BlogPostTranslation {
   seoScore        Int?    @map("seo_score")
 
   post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  faqs BlogPostFaq[]
 
   @@unique([postId, locale])
   @@map("blog_post_translations")
+}
+
+// Per-article FAQ (AGENTS.md §6) — hangs off the translation, not the post,
+// since Q&A text is locale-specific; backs the FAQPage structured data in B10.
+model BlogPostFaq {
+  id            Int    @id @default(autoincrement())
+  translationId Int    @map("translation_id")
+  question      String
+  answer        String
+  sortOrder     Int    @default(0) @map("sort_order")
+
+  translation BlogPostTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@map("blog_post_faqs")
 }
 
 model BlogCategory {

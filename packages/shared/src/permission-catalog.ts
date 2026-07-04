@@ -85,4 +85,25 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('review', 'reply'),
 
   perm('newsletter', 'view'),
+
+  perm('blog_category', 'view'),
+  perm('blog_category', 'create'),
+  perm('blog_category', 'update'),
+  perm('blog_category', 'delete'),
+
+  perm('blog_tag', 'view'),
+  perm('blog_tag', 'create'),
+  perm('blog_tag', 'update'),
+  perm('blog_tag', 'delete'),
+
+  perm('blog_post', 'view'),
+  perm('blog_post', 'create'),
+  perm('blog_post', 'update'),
+  perm('blog_post', 'delete'),
+  perm('blog_post', 'publish'),
+
+  perm('page', 'view'),
+  perm('page', 'create'),
+  perm('page', 'update'),
+  perm('page', 'delete'),
 ];
