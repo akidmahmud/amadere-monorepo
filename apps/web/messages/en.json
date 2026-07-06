@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "allProducts": "All Products",
+    "shopByCategory": "Shop By Category",
+    "shopByCondition": "Shop By Condition",
+    "superSaverCombos": "Super Saver Combos",
+    "shopByGoal": "Shop By Goal"
+  },
+  "header": {
+    "searchPlaceholder": "Search",
+    "searchAria": "Search",
+    "trackOrder": "Track order",
+    "cart": "Cart",
+    "localeSwitch": "বাংলা"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": "Your cart is empty.",
+    "checkout": "Checkout",
+    "subtotal": "Subtotal",
+    "close": "Close cart"
+  },
+  "footer": {
+    "newsletterHeading": "Subscribe to our newsletter",
+    "newsletterPlaceholder": "Your email address",
+    "subscribe": "Subscribe",
+    "aboutHeading": "About",
+    "about": "About Us",
+    "blog": "Blog",
+    "certifications": "Certifications",
+    "farmers": "Meet the Farmers",
+    "helpHeading": "Help",
+    "consult": "Consult an Expert",
+    "faqs": "FAQs",
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "contactHeading": "Contact",
+    "rights": "All rights reserved."
+  },
+  "breadcrumb": {
+    "home": "Home"
+  }
+}

@@ -15,13 +15,18 @@ import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import {
   AdminBlogPostDto,
   BLOG_POST_INCLUDE,
+  BlogAuthorProfileDto,
   BlogPostWithRelations,
   PublicBlogPostDetailDto,
   toAdminBlogPostDto,
   toPublicBlogPostSummaryDto,
 } from './blog-posts.mapper';
 import { computeSeoScore, extractToc } from './content.util';
-import { LinkCandidate, suggestInternalLinks } from './internal-links.util';
+import {
+  LinkCandidate,
+  LinkSuggestion,
+  suggestInternalLinks,
+} from './internal-links.util';
 import { SeoService } from '../seo/seo.service';
 import {
   buildArticleJsonLd,
@@ -297,7 +302,10 @@ export class BlogPostsService {
     };
   }
 
-  async internalLinkSuggestions(id: number, locale: Locale) {
+  async internalLinkSuggestions(
+    id: number,
+    locale: Locale,
+  ): Promise<LinkSuggestion[]> {
     const post = await this.loadOrThrow(id);
     const translation =
       post.translations.find((t) => t.locale === locale) ??
@@ -345,7 +353,7 @@ export class BlogPostsService {
     locale: Locale,
     page: number,
     pageSize: number,
-  ) {
+  ): Promise<BlogAuthorProfileDto> {
     const author = await this.prisma.client.adminUser.findUnique({
       where: { id: authorId },
       select: { id: true, firstName: true, lastName: true, avatarUrl: true },

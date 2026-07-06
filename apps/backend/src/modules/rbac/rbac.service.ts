@@ -7,7 +7,12 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { RoleDto, toPermissionDto, toRoleDto } from './rbac.mapper';
+import {
+  PermissionDto,
+  RoleDto,
+  toPermissionDto,
+  toRoleDto,
+} from './rbac.mapper';
 
 const ROLE_INCLUDE = {
   permissions: { include: { permission: true } },
@@ -17,7 +22,7 @@ const ROLE_INCLUDE = {
 export class RbacService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listPermissions() {
+  async listPermissions(): Promise<PermissionDto[]> {
     const permissions = await this.prisma.client.permission.findMany({
       orderBy: { key: 'asc' },
     });

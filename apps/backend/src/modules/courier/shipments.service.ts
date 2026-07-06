@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { CourierProviderName, Prisma, ShipmentStatus } from '@amader/db';
 import { mapRawCourierStatus } from '@amader/shared';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -18,7 +19,12 @@ import { UnconfiguredCourierProvider } from './providers/unconfigured-courier.pr
 import { ShippingChargeCalculator } from './shipping-charge.calculator';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
-import { SHIPMENT_INCLUDE, toShipmentDto } from './shipments.mapper';
+import {
+  ShipmentDto,
+  ShipmentPerformanceDto,
+  SHIPMENT_INCLUDE,
+  toShipmentDto,
+} from './shipments.mapper';
 
 const Decimal = Prisma.Decimal;
 
@@ -52,7 +58,10 @@ export class ShipmentsService {
     };
   }
 
-  async dispatch(dto: DispatchShipmentDto, adminUserId: number) {
+  async dispatch(
+    dto: DispatchShipmentDto,
+    adminUserId: number,
+  ): Promise<ShipmentDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { id: dto.orderId },
       include: { items: true, addresses: true, payments: true },
@@ -146,7 +155,7 @@ export class ShipmentsService {
     );
   }
 
-  async track(id: number) {
+  async track(id: number): Promise<ShipmentDto> {
     const shipment = await this.prisma.client.shipment.findUnique({
       where: { id },
     });
@@ -178,7 +187,10 @@ export class ShipmentsService {
     return toShipmentDto(updated);
   }
 
-  async cancelOrReturn(id: number, dto: CancelShipmentDto) {
+  async cancelOrReturn(
+    id: number,
+    dto: CancelShipmentDto,
+  ): Promise<ShipmentDto> {
     const shipment = await this.prisma.client.shipment.findUnique({
       where: { id },
     });
@@ -210,7 +222,7 @@ export class ShipmentsService {
     page: number,
     pageSize: number,
     provider?: CourierProviderName,
-  ) {
+  ): Promise<PaginatedResult<ShipmentDto>> {
     const where = provider ? { provider } : {};
     const [items, total] = await Promise.all([
       this.prisma.client.shipment.findMany({
@@ -224,7 +236,7 @@ export class ShipmentsService {
     return toPaginatedResult(items.map(toShipmentDto), total, page, pageSize);
   }
 
-  async adminGet(id: number) {
+  async adminGet(id: number): Promise<ShipmentDto> {
     const shipment = await this.prisma.client.shipment.findUnique({
       where: { id },
       include: SHIPMENT_INCLUDE,
@@ -234,7 +246,9 @@ export class ShipmentsService {
   }
 
   // Courier performance data (AGENTS.md §6): success/return rate, avg delivery time.
-  async performance(provider?: CourierProviderName) {
+  async performance(
+    provider?: CourierProviderName,
+  ): Promise<ShipmentPerformanceDto> {
     const where = provider ? { provider } : {};
     const [total, delivered, returned, canceled, deliveredShipments] =
       await Promise.all([

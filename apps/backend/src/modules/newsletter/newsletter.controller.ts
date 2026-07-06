@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { NewsletterService } from './newsletter.service';
 import { SubscribeNewsletterDto } from './dto/subscribe-newsletter.dto';
 
@@ -9,12 +10,16 @@ export class NewsletterController {
   constructor(private readonly newsletter: NewsletterService) {}
 
   @Post('subscribe')
-  subscribe(@Body() dto: SubscribeNewsletterDto) {
+  @ApiOkResponse({ type: SuccessResponseDto })
+  subscribe(@Body() dto: SubscribeNewsletterDto): Promise<SuccessResponseDto> {
     return this.newsletter.subscribe(dto);
   }
 
   @Post('unsubscribe')
-  unsubscribe(@Body() dto: SubscribeNewsletterDto) {
+  @ApiOkResponse({ type: SuccessResponseDto })
+  unsubscribe(
+    @Body() dto: SubscribeNewsletterDto,
+  ): Promise<SuccessResponseDto> {
     return this.newsletter.unsubscribe(dto);
   }
 }

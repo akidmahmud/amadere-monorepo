@@ -23,32 +23,42 @@ function resolveTranslation<T extends { locale: Locale }>(
   return translations.find((t) => t.locale === locale) ?? translations[0];
 }
 
-export interface AdminBlogPostDto {
-  id: number;
-  slug: string;
-  status: ContentStatus;
-  isFeatured: boolean;
-  imageUrl: string | null;
-  publishedAt: Date | null;
-  viewCount: number;
-  author: {
-    id: number;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-  };
-  categoryIds: number[];
-  tagIds: number[];
-  translations: {
-    locale: Locale;
-    title: string;
-    excerpt: string | null;
-    content: string;
-    metaDescription: string | null;
-    seoScore: number | null;
-    faqs: { question: string; answer: string; sortOrder: number }[];
-  }[];
-  createdAt: Date;
+export class BlogPostAuthorDto {
+  id!: number;
+  firstName!: string | null;
+  lastName!: string | null;
+  avatarUrl!: string | null;
+}
+
+export class BlogPostFaqDto {
+  question!: string;
+  answer!: string;
+  sortOrder!: number;
+}
+
+export class AdminBlogPostTranslationDto {
+  locale!: Locale;
+  title!: string;
+  excerpt!: string | null;
+  content!: string;
+  metaDescription!: string | null;
+  seoScore!: number | null;
+  faqs!: BlogPostFaqDto[];
+}
+
+export class AdminBlogPostDto {
+  id!: number;
+  slug!: string;
+  status!: ContentStatus;
+  isFeatured!: boolean;
+  imageUrl!: string | null;
+  publishedAt!: Date | null;
+  viewCount!: number;
+  author!: BlogPostAuthorDto;
+  categoryIds!: number[];
+  tagIds!: number[];
+  translations!: AdminBlogPostTranslationDto[];
+  createdAt!: Date;
 }
 
 export function toAdminBlogPostDto(
@@ -82,20 +92,32 @@ export function toAdminBlogPostDto(
   };
 }
 
-export interface PublicBlogPostSummaryDto {
-  id: number;
-  slug: string;
-  title: string;
-  excerpt: string | null;
-  imageUrl: string | null;
-  publishedAt: Date | null;
-  author: {
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-  };
-  categories: { slug: string; name: string }[];
-  tags: { slug: string; name: string }[];
+export class PublicBlogPostAuthorDto {
+  firstName!: string | null;
+  lastName!: string | null;
+  avatarUrl!: string | null;
+}
+
+export class BlogPostCategorySummaryDto {
+  slug!: string;
+  name!: string;
+}
+
+export class BlogPostTagSummaryDto {
+  slug!: string;
+  name!: string;
+}
+
+export class PublicBlogPostSummaryDto {
+  id!: number;
+  slug!: string;
+  title!: string;
+  excerpt!: string | null;
+  imageUrl!: string | null;
+  publishedAt!: Date | null;
+  author!: PublicBlogPostAuthorDto;
+  categories!: BlogPostCategorySummaryDto[];
+  tags!: BlogPostTagSummaryDto[];
 }
 
 export function toPublicBlogPostSummaryDto(
@@ -126,12 +148,42 @@ export function toPublicBlogPostSummaryDto(
   };
 }
 
-export interface PublicBlogPostDetailDto extends PublicBlogPostSummaryDto {
-  content: string;
-  metaDescription: string | null;
-  toc: { level: number; text: string; anchor: string }[];
-  faqs: { question: string; answer: string }[];
-  relatedPosts: PublicBlogPostSummaryDto[];
-  seo: ResolvedSeoDto;
-  structuredData: Record<string, unknown>[];
+export class BlogPostTocEntryDto {
+  level!: number;
+  text!: string;
+  anchor!: string;
+}
+
+export class BlogPostFaqPublicDto {
+  question!: string;
+  answer!: string;
+}
+
+export class PublicBlogPostDetailDto extends PublicBlogPostSummaryDto {
+  content!: string;
+  metaDescription!: string | null;
+  toc!: BlogPostTocEntryDto[];
+  faqs!: BlogPostFaqPublicDto[];
+  relatedPosts!: PublicBlogPostSummaryDto[];
+  seo!: ResolvedSeoDto;
+  structuredData!: Record<string, unknown>[];
+}
+
+export class BlogAuthorSummaryDto {
+  id!: number;
+  firstName!: string | null;
+  lastName!: string | null;
+  avatarUrl!: string | null;
+}
+
+export class BlogAuthorPostsPageDto {
+  items!: PublicBlogPostSummaryDto[];
+  total!: number;
+  page!: number;
+  pageSize!: number;
+}
+
+export class BlogAuthorProfileDto {
+  author!: BlogAuthorSummaryDto;
+  posts!: BlogAuthorPostsPageDto;
 }

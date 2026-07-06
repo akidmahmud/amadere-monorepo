@@ -1,11 +1,11 @@
 import { Permission, Role, RolePermission } from '@amader/db';
 
-export interface RoleDto {
-  id: number;
-  name: string;
-  description: string | null;
-  isSystem: boolean;
-  permissionKeys: string[];
+export class RoleDto {
+  id!: number;
+  name!: string;
+  description!: string | null;
+  isSystem!: boolean;
+  permissionKeys!: string[];
 }
 
 type RoleWithPermissions = Role & {
@@ -22,7 +22,14 @@ export function toRoleDto(role: RoleWithPermissions): RoleDto {
   };
 }
 
-export function toPermissionDto(permission: Permission) {
+export class PermissionDto {
+  id!: number;
+  resource!: string;
+  action!: string;
+  key!: string;
+}
+
+export function toPermissionDto(permission: Permission): PermissionDto {
   return {
     id: permission.id,
     resource: permission.resource,

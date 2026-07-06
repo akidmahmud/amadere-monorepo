@@ -11,6 +11,7 @@ import { PricingService } from './pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { BuyNowDto } from './dto/buy-now.dto';
 import { CART_UPDATED_EVENT, CartUpdatedEvent } from './cart.events';
+import { CartViewDto, PricingSummaryDto } from './dto/cart-response.dto';
 
 export interface CartIdentity {
   customerId?: number;
@@ -50,13 +51,17 @@ export class CartService {
     private readonly events: EventEmitter2,
   ) {}
 
-  async getView(identity: CartIdentity, locale: Locale) {
+  async getView(identity: CartIdentity, locale: Locale): Promise<CartViewDto> {
     const cart = await this.findCart(identity);
     if (!cart) return this.emptyView(identity);
     return this.buildView(cart.id, locale, identity.customerId);
   }
 
-  async addItem(identity: CartIdentity, dto: AddCartItemDto, locale: Locale) {
+  async addItem(
+    identity: CartIdentity,
+    dto: AddCartItemDto,
+    locale: Locale,
+  ): Promise<CartViewDto> {
     const { productId, variantId, quantity } = await this.validateLine(dto);
     const cart =
       (await this.findCart(identity)) ?? (await this.createCart(identity));
@@ -95,7 +100,7 @@ export class CartService {
     itemId: number,
     quantity: number,
     locale: Locale,
-  ) {
+  ): Promise<CartViewDto> {
     const cart = await this.requireCart(identity);
     const item = await this.prisma.client.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
@@ -110,7 +115,11 @@ export class CartService {
     return this.buildView(cart.id, locale, identity.customerId);
   }
 
-  async removeItem(identity: CartIdentity, itemId: number, locale: Locale) {
+  async removeItem(
+    identity: CartIdentity,
+    itemId: number,
+    locale: Locale,
+  ): Promise<CartViewDto> {
     const cart = await this.requireCart(identity);
     const item = await this.prisma.client.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
@@ -122,7 +131,11 @@ export class CartService {
     return this.buildView(cart.id, locale, identity.customerId);
   }
 
-  async applyCoupon(identity: CartIdentity, code: string, locale: Locale) {
+  async applyCoupon(
+    identity: CartIdentity,
+    code: string,
+    locale: Locale,
+  ): Promise<CartViewDto> {
     const cart = await this.requireCart(identity);
     await this.prisma.client.cart.update({
       where: { id: cart.id },
@@ -141,7 +154,10 @@ export class CartService {
     return view;
   }
 
-  async removeCoupon(identity: CartIdentity, locale: Locale) {
+  async removeCoupon(
+    identity: CartIdentity,
+    locale: Locale,
+  ): Promise<CartViewDto> {
     const cart = await this.requireCart(identity);
     await this.prisma.client.cart.update({
       where: { id: cart.id },
@@ -151,7 +167,11 @@ export class CartService {
   }
 
   // Called after login: fold the guest cart into the customer's cart.
-  async merge(customerId: number, guestToken: string, locale: Locale) {
+  async merge(
+    customerId: number,
+    guestToken: string,
+    locale: Locale,
+  ): Promise<CartViewDto> {
     const guestCart = await this.prisma.client.cart.findUnique({
       where: { guestToken },
       include: { items: true },
@@ -202,7 +222,11 @@ export class CartService {
   }
 
   // "Buy Now" express path: a priced quote for a single line, no cart touched.
-  async buyNowQuote(dto: BuyNowDto, locale: Locale, customerId?: number) {
+  async buyNowQuote(
+    dto: BuyNowDto,
+    locale: Locale,
+    customerId?: number,
+  ): Promise<PricingSummaryDto> {
     const { productId, variantId, quantity } = await this.validateLine(dto);
     const pricing = await this.pricing.price(
       [{ productId, variantId, quantity: quantity ?? 1 }],

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReviewStatus } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -14,7 +15,10 @@ import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
 import { ReplyReviewDto } from './dto/reply-review.dto';
 import {
+  AggregateRatingDto,
+  ProductReviewsPageDto,
   REVIEW_INCLUDE,
+  ReviewDto,
   toPublicReviewDto,
   toReviewDto,
 } from './reviews.mapper';
@@ -23,7 +27,7 @@ import {
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(customerId: number, dto: CreateReviewDto) {
+  async create(customerId: number, dto: CreateReviewDto): Promise<ReviewDto> {
     const existing = await this.prisma.client.review.findUnique({
       where: { productId_customerId: { productId: dto.productId, customerId } },
     });
@@ -64,7 +68,7 @@ export class ReviewsService {
   // fetches/maps a page of review rows nothing needs here.
   async getAggregateRating(
     productId: number,
-  ): Promise<{ average: number; count: number } | null> {
+  ): Promise<AggregateRatingDto | null> {
     const where = { productId, status: 'APPROVED' as ReviewStatus };
     const [count, aggregate] = await Promise.all([
       this.prisma.client.review.count({ where }),
@@ -78,7 +82,7 @@ export class ReviewsService {
     productId: number,
     page: number,
     pageSize: number,
-  ) {
+  ): Promise<ProductReviewsPageDto> {
     const where = { productId, status: 'APPROVED' as ReviewStatus };
     const [items, total, aggregate] = await Promise.all([
       this.prisma.client.review.findMany({
@@ -99,7 +103,11 @@ export class ReviewsService {
     };
   }
 
-  async myReviews(customerId: number, page: number, pageSize: number) {
+  async myReviews(
+    customerId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<ReviewDto>> {
     const where = { customerId };
     const [items, total] = await Promise.all([
       this.prisma.client.review.findMany({
@@ -118,7 +126,11 @@ export class ReviewsService {
     );
   }
 
-  async adminList(page: number, pageSize: number, status?: ReviewStatus) {
+  async adminList(
+    page: number,
+    pageSize: number,
+    status?: ReviewStatus,
+  ): Promise<PaginatedResult<ReviewDto>> {
     const where = status ? { status } : {};
     const [items, total] = await Promise.all([
       this.prisma.client.review.findMany({
@@ -137,7 +149,10 @@ export class ReviewsService {
     );
   }
 
-  async updateStatus(id: number, dto: UpdateReviewStatusDto) {
+  async updateStatus(
+    id: number,
+    dto: UpdateReviewStatusDto,
+  ): Promise<ReviewDto> {
     await this.assertExists(id);
     const review = await this.prisma.client.review.update({
       where: { id },
@@ -147,7 +162,11 @@ export class ReviewsService {
     return toReviewDto(review, 'EN');
   }
 
-  async reply(id: number, dto: ReplyReviewDto, adminUserId: number) {
+  async reply(
+    id: number,
+    dto: ReplyReviewDto,
+    adminUserId: number,
+  ): Promise<ReviewDto> {
     await this.assertExists(id);
     await this.prisma.client.reviewReply.upsert({
       where: { reviewId: id },

@@ -1,15 +1,20 @@
 import { AdminUser, AdminUserRole, AdminUserStatus, Role } from '@amader/db';
 
-export interface AdminUserDto {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  status: AdminUserStatus;
-  isSuperAdmin: boolean;
-  twoFactorEnabled: boolean;
-  roles: { id: number; name: string }[];
+export class AdminUserRoleSummaryDto {
+  id!: number;
+  name!: string;
+}
+
+export class AdminUserDto {
+  id!: number;
+  email!: string;
+  firstName!: string;
+  lastName!: string;
+  phone!: string | null;
+  status!: AdminUserStatus;
+  isSuperAdmin!: boolean;
+  twoFactorEnabled!: boolean;
+  roles!: AdminUserRoleSummaryDto[];
 }
 
 type AdminUserWithRoles = AdminUser & {
@@ -28,4 +33,12 @@ export function toAdminUserDto(admin: AdminUserWithRoles): AdminUserDto {
     twoFactorEnabled: admin.twoFactorEnabled,
     roles: admin.roles.map((r) => ({ id: r.role.id, name: r.role.name })),
   };
+}
+
+export class AdminLoginHistoryEntryDto {
+  id!: number;
+  ipAddress!: string | null;
+  userAgent!: string | null;
+  success!: boolean;
+  createdAt!: Date;
 }

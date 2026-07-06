@@ -11,15 +11,18 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { PagesService } from './pages.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
+import { AdminPageDto } from './pages.mapper';
 
 @ApiTags('admin/pages')
 @ApiBearerAuth()
@@ -31,31 +34,40 @@ export class AdminPagesController {
 
   @Get()
   @RequirePermission('page.view')
-  list(@Query() { page, pageSize }: PaginationQueryDto) {
+  @ApiPaginatedResponse(AdminPageDto)
+  list(
+    @Query() { page, pageSize }: PaginationQueryDto,
+  ): Promise<PaginatedResult<AdminPageDto>> {
     return this.pages.adminList(page ?? 1, pageSize ?? 20);
   }
 
   @Get(':id')
   @RequirePermission('page.view')
-  get(@Param('id', ParseIntPipe) id: number) {
+  @ApiOkResponse({ type: AdminPageDto })
+  get(@Param('id', ParseIntPipe) id: number): Promise<AdminPageDto> {
     return this.pages.adminGet(id);
   }
 
   @Post()
   @RequirePermission('page.create')
-  create(@Body() dto: CreatePageDto) {
+  @ApiOkResponse({ type: AdminPageDto })
+  create(@Body() dto: CreatePageDto): Promise<AdminPageDto> {
     return this.pages.create(dto);
   }
 
   @Patch(':id')
   @RequirePermission('page.update')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePageDto) {
+  @ApiOkResponse({ type: AdminPageDto })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePageDto,
+  ): Promise<AdminPageDto> {
     return this.pages.update(id, dto);
   }
 
   @Delete(':id')
   @RequirePermission('page.delete')
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.pages.delete(id);
   }
 }

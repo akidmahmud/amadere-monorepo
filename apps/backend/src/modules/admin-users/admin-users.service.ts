@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hashPassword } from '../../common/auth/password.util';
 import {
@@ -7,7 +8,11 @@ import {
 } from '../../common/pagination.util';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
-import { AdminUserDto, toAdminUserDto } from './admin-users.mapper';
+import {
+  AdminLoginHistoryEntryDto,
+  AdminUserDto,
+  toAdminUserDto,
+} from './admin-users.mapper';
 
 const ADMIN_USER_INCLUDE = { roles: { include: { role: true } } } as const;
 
@@ -85,7 +90,11 @@ export class AdminUsersService {
   // Recorded on every login attempt since B2 (admin-auth.service.ts) but
   // never previously readable — closing that gap here (AGENTS.md §6 "login
   // history").
-  async loginHistory(id: number, page: number, pageSize: number) {
+  async loginHistory(
+    id: number,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<AdminLoginHistoryEntryDto>> {
     await this.get(id);
     const where = { adminUserId: id };
     const [items, total] = await Promise.all([

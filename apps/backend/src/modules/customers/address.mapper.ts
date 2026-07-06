@@ -1,6 +1,20 @@
 import { CustomerAddress } from '@amader/db';
 
-export function toAddressDto(address: CustomerAddress) {
+export class AddressDto {
+  id!: number;
+  label!: string | null;
+  recipientName!: string;
+  phone!: string;
+  division!: string;
+  district!: string;
+  area!: string | null;
+  landmark!: string | null;
+  addressLine!: string;
+  postCode!: string | null;
+  isDefault!: boolean;
+}
+
+export function toAddressDto(address: CustomerAddress): AddressDto {
   return {
     id: address.id,
     label: address.label,

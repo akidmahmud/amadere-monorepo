@@ -1,13 +1,13 @@
 import { Customer } from '@amader/db';
 
-export interface CustomerProfileDto {
-  id: number;
-  email: string | null;
-  phone: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  emailVerifiedAt: Date | null;
-  phoneVerifiedAt: Date | null;
+export class CustomerProfileDto {
+  id!: number;
+  email!: string | null;
+  phone!: string | null;
+  firstName!: string | null;
+  lastName!: string | null;
+  emailVerifiedAt!: Date | null;
+  phoneVerifiedAt!: Date | null;
 }
 
 export function toCustomerProfileDto(customer: Customer): CustomerProfileDto {

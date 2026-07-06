@@ -115,4 +115,22 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('redirect', 'create'),
   perm('redirect', 'update'),
   perm('redirect', 'delete'),
+
+  perm('setting', 'view'),
+  perm('setting', 'update'),
+
+  perm('menu_item', 'view'),
+  perm('menu_item', 'create'),
+  perm('menu_item', 'update'),
+  perm('menu_item', 'delete'),
+
+  perm('collection', 'view'),
+  perm('collection', 'create'),
+  perm('collection', 'update'),
+  perm('collection', 'delete'),
+
+  perm('homepage_section', 'view'),
+  perm('homepage_section', 'create'),
+  perm('homepage_section', 'update'),
+  perm('homepage_section', 'delete'),
 ];

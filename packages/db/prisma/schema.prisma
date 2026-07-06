@@ -41,6 +41,7 @@ enum SeoEntityType {
   BLOG_POST
   BLOG_CATEGORY
   PAGE
+  COLLECTION
 }
 
 // Uniform SEO surface for every public entity (AGENTS.md §5/§9) so new
@@ -575,6 +576,7 @@ model Product {
   reviews        Review[]
   discountScopes DiscountProduct[]
   wishlistItems  WishlistItem[]
+  collections    CollectionProduct[]
 
   @@index([status])
   @@map("products")
@@ -1458,4 +1460,136 @@ model SynonymTerm {
   @@unique([term, locale])
   @@index([groupId])
   @@map("synonym_terms")
+}
+
+// ---------------------------------------------------------------------
+// Site content / theme system (B13) — admin-editable homepage composition,
+// so section content (hero image/video, which products/posts feature) is
+// data, not a frontend code change. New section TYPES still need frontend
+// code to render them; instances of existing types are admin-managed.
+// ---------------------------------------------------------------------
+
+enum HomepageSectionType {
+  HERO_BANNER
+  PRODUCT_COLLECTION
+  BANNER_STRIP
+  CATEGORY_SHOWCASE
+  BLOG_TEASER
+  CERTIFICATION_ROW
+  TESTIMONIAL_BENTO
+  FEATURE_TILES
+  CIRCLE_BADGE_BAR
+}
+
+model HomepageSection {
+  id        Int                 @id @default(autoincrement())
+  type      HomepageSectionType
+  sortOrder Int                 @default(0) @map("sort_order")
+  isActive  Boolean             @default(true) @map("is_active")
+  // Shape depends on `type` (e.g. HERO_BANNER: { slides: [{ mediaId, linkUrl? }] }) —
+  // validated in the service per-type, not by the DB. See homepage-sections.service.ts.
+  config Json
+
+  // Only meaningful when type = PRODUCT_COLLECTION. A real FK (not JSON) so a
+  // deleted collection can't silently orphan a section.
+  collectionId Int? @map("collection_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  collection   Collection?                  @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  translations HomepageSectionTranslation[]
+
+  @@map("homepage_sections")
+}
+
+// Only the heading/subheading are translatable; everything else (media,
+// links, which collection) is locale-independent.
+model HomepageSectionTranslation {
+  id         Int     @id @default(autoincrement())
+  sectionId  Int     @map("section_id")
+  locale     Locale
+  heading    String?
+  subheading String? @map("sub_heading")
+
+  section HomepageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, locale])
+  @@map("homepage_section_translations")
+}
+
+// Admin-curated product groupings for merchandising display (e.g. "Diwali
+// Specials" on the homepage) — distinct from ProductBundle, which is a
+// pricing/discount mechanic, not a display grouping.
+model Collection {
+  id        Int           @id @default(autoincrement())
+  slug      String        @unique
+  status    ContentStatus @default(DRAFT)
+  sortOrder Int           @default(0) @map("sort_order")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  deletedAt DateTime?     @map("deleted_at")
+
+  translations     CollectionTranslation[]
+  products         CollectionProduct[]
+  homepageSections HomepageSection[]
+
+  @@map("collections")
+}
+
+model CollectionTranslation {
+  id           Int     @id @default(autoincrement())
+  collectionId Int     @map("collection_id")
+  locale       Locale
+  name         String
+  description  String?
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, locale])
+  @@map("collection_translations")
+}
+
+model CollectionProduct {
+  id           Int @id @default(autoincrement())
+  collectionId Int @map("collection_id")
+  productId    Int @map("product_id")
+  sortOrder    Int @default(0) @map("sort_order")
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, productId])
+  @@map("collection_products")
+}
+
+// Admin-managed nav menu (AGENTS.web.md §11 open item: "Nav/menu source" —
+// resolved here instead of a frontend-only static config).
+model MenuItem {
+  id        Int      @id @default(autoincrement())
+  parentId  Int?     @map("parent_id")
+  href      String
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent   MenuItem?  @relation("MenuItemTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children MenuItem[] @relation("MenuItemTree")
+
+  translations MenuItemTranslation[]
+
+  @@map("menu_items")
+}
+
+model MenuItemTranslation {
+  id         Int    @id @default(autoincrement())
+  menuItemId Int    @map("menu_item_id")
+  locale     Locale
+  label      String
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, locale])
+  @@map("menu_item_translations")
 }

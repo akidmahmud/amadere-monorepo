@@ -1,12 +1,12 @@
 import { AdminUser } from '@amader/db';
 
-export interface AdminProfileDto {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  isSuperAdmin: boolean;
-  twoFactorEnabled: boolean;
+export class AdminProfileDto {
+  id!: number;
+  email!: string;
+  firstName!: string;
+  lastName!: string;
+  isSuperAdmin!: boolean;
+  twoFactorEnabled!: boolean;
 }
 
 export function toAdminProfileDto(admin: AdminUser): AdminProfileDto {
@@ -18,4 +18,14 @@ export function toAdminProfileDto(admin: AdminUser): AdminProfileDto {
     isSuperAdmin: admin.isSuperAdmin,
     twoFactorEnabled: admin.twoFactorEnabled,
   };
+}
+
+export class AdminTwoFactorRequiredDto {
+  requiresTwoFactor!: boolean;
+  twoFactorToken!: string;
+}
+
+export class TwoFactorSetupDto {
+  secret!: string;
+  otpauthUrl!: string;
 }

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -11,13 +12,16 @@ import {
 } from '../../common/pagination.util';
 import { CreateDiscountDto } from './dto/create-discount.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
-import { DISCOUNT_INCLUDE, toDiscountDto } from './discounts.mapper';
+import { DISCOUNT_INCLUDE, DiscountDto, toDiscountDto } from './discounts.mapper';
 
 @Injectable()
 export class DiscountsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(page: number, pageSize: number) {
+  async list(
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<DiscountDto>> {
     const [items, total] = await Promise.all([
       this.prisma.client.discount.findMany({
         include: DISCOUNT_INCLUDE,
@@ -29,7 +33,7 @@ export class DiscountsService {
     return toPaginatedResult(items.map(toDiscountDto), total, page, pageSize);
   }
 
-  async get(id: number) {
+  async get(id: number): Promise<DiscountDto> {
     const discount = await this.prisma.client.discount.findUnique({
       where: { id },
       include: DISCOUNT_INCLUDE,
@@ -38,7 +42,7 @@ export class DiscountsService {
     return toDiscountDto(discount);
   }
 
-  async create(dto: CreateDiscountDto) {
+  async create(dto: CreateDiscountDto): Promise<DiscountDto> {
     this.validateShape(dto);
     if (dto.code) await this.assertCodeAvailable(dto.code);
 
@@ -69,7 +73,7 @@ export class DiscountsService {
     return toDiscountDto(discount);
   }
 
-  async update(id: number, dto: UpdateDiscountDto) {
+  async update(id: number, dto: UpdateDiscountDto): Promise<DiscountDto> {
     await this.get(id);
     if (dto.code) await this.assertCodeAvailable(dto.code, id);
 

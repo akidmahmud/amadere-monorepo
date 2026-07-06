@@ -4,18 +4,25 @@ import {
   ContentStatus,
   Locale,
 } from '@amader/db';
+import { ResolvedSeoDto } from '../seo/seo.mapper';
 
 type BlogCategoryWithTranslations = BlogCategory & {
   translations: BlogCategoryTranslation[];
 };
 
-export interface AdminBlogCategoryDto {
-  id: number;
-  slug: string;
-  parentId: number | null;
-  sortOrder: number;
-  status: ContentStatus;
-  translations: { locale: Locale; name: string; description: string | null }[];
+export class AdminBlogCategoryTranslationDto {
+  locale!: Locale;
+  name!: string;
+  description!: string | null;
+}
+
+export class AdminBlogCategoryDto {
+  id!: number;
+  slug!: string;
+  parentId!: number | null;
+  sortOrder!: number;
+  status!: ContentStatus;
+  translations!: AdminBlogCategoryTranslationDto[];
 }
 
 export function toAdminBlogCategoryDto(
@@ -35,12 +42,12 @@ export function toAdminBlogCategoryDto(
   };
 }
 
-export interface PublicBlogCategoryDto {
-  id: number;
-  slug: string;
-  parentId: number | null;
-  name: string;
-  description: string | null;
+export class PublicBlogCategoryDto {
+  id!: number;
+  slug!: string;
+  parentId!: number | null;
+  name!: string;
+  description!: string | null;
 }
 
 export function toPublicBlogCategoryDto(
@@ -57,4 +64,8 @@ export function toPublicBlogCategoryDto(
     name: translation?.name ?? category.slug,
     description: translation?.description ?? null,
   };
+}
+
+export class PublicBlogCategoryDetailDto extends PublicBlogCategoryDto {
+  seo!: ResolvedSeoDto;
 }

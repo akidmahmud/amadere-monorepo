@@ -1,4 +1,9 @@
-import { Prisma } from '@amader/db';
+import {
+  ContentStatus,
+  DiscountType,
+  DiscountValueType,
+  Prisma,
+} from '@amader/db';
 
 export const DISCOUNT_INCLUDE = {
   products: true,
@@ -10,7 +15,25 @@ export type DiscountWithScopes = Prisma.DiscountGetPayload<{
   include: typeof DISCOUNT_INCLUDE;
 }>;
 
-export function toDiscountDto(discount: DiscountWithScopes) {
+export class DiscountDto {
+  id!: number;
+  code!: string | null;
+  type!: DiscountType;
+  valueType!: DiscountValueType;
+  value!: string;
+  minOrderAmount!: string | null;
+  maxUsesTotal!: number | null;
+  maxUsesPerCustomer!: number | null;
+  usedCount!: number;
+  startsAt!: Date | null;
+  endsAt!: Date | null;
+  status!: ContentStatus;
+  productIds!: number[];
+  categoryIds!: number[];
+  customerIds!: number[];
+}
+
+export function toDiscountDto(discount: DiscountWithScopes): DiscountDto {
   return {
     id: discount.id,
     code: discount.code,

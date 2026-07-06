@@ -2,11 +2,16 @@ import { BlogTag, BlogTagTranslation, ContentStatus, Locale } from '@amader/db';
 
 type BlogTagWithTranslations = BlogTag & { translations: BlogTagTranslation[] };
 
-export interface AdminBlogTagDto {
-  id: number;
-  slug: string;
-  status: ContentStatus;
-  translations: { locale: Locale; name: string }[];
+export class AdminBlogTagTranslationDto {
+  locale!: Locale;
+  name!: string;
+}
+
+export class AdminBlogTagDto {
+  id!: number;
+  slug!: string;
+  status!: ContentStatus;
+  translations!: AdminBlogTagTranslationDto[];
 }
 
 export function toAdminBlogTagDto(
@@ -23,10 +28,10 @@ export function toAdminBlogTagDto(
   };
 }
 
-export interface PublicBlogTagDto {
-  id: number;
-  slug: string;
-  name: string;
+export class PublicBlogTagDto {
+  id!: number;
+  slug!: string;
+  name!: string;
 }
 
 export function toPublicBlogTagDto(

@@ -14,12 +14,17 @@ type AttributeWithRelations = Attribute & {
   values: AttributeValueWithTranslations[];
 };
 
-export interface AttributeValueDto {
-  id: number;
-  colorHex: string | null;
-  imageUrl: string | null;
-  sortOrder: number;
-  translations: { locale: Locale; value: string }[];
+export class AttributeValueTranslationDto {
+  locale!: Locale;
+  value!: string;
+}
+
+export class AttributeValueDto {
+  id!: number;
+  colorHex!: string | null;
+  imageUrl!: string | null;
+  sortOrder!: number;
+  translations!: AttributeValueTranslationDto[];
 }
 
 export function toAttributeValueDto(
@@ -37,12 +42,17 @@ export function toAttributeValueDto(
   };
 }
 
-export interface AttributeDto {
-  id: number;
-  slug: string;
-  sortOrder: number;
-  translations: { locale: Locale; name: string }[];
-  values: AttributeValueDto[];
+export class AttributeTranslationDto {
+  locale!: Locale;
+  name!: string;
+}
+
+export class AttributeDto {
+  id!: number;
+  slug!: string;
+  sortOrder!: number;
+  translations!: AttributeTranslationDto[];
+  values!: AttributeValueDto[];
 }
 
 export function toAttributeDto(

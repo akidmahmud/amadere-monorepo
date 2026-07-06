@@ -14,7 +14,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
-import { ORDER_INCLUDE, toOrderDto } from './orders.mapper';
+import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 
 const Decimal = Prisma.Decimal;
@@ -54,7 +54,11 @@ export class CheckoutService {
     console.log(`[COD OTP] ${dto.phone}: ${code}`);
   }
 
-  async checkout(identity: CartIdentity, dto: CheckoutDto, locale: Locale) {
+  async checkout(
+    identity: CartIdentity,
+    dto: CheckoutDto,
+    locale: Locale,
+  ): Promise<OrderDto> {
     const cart = await this.findCart(identity, locale);
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');

@@ -1,4 +1,4 @@
-import { Locale, Prisma } from '@amader/db';
+import { Locale, Prisma, StockStatus } from '@amader/db';
 
 export const WISHLIST_PRODUCT_INCLUDE = {
   product: {
@@ -19,10 +19,21 @@ function decimalToString(
   return value ? value.toString() : null;
 }
 
+export class WishlistItemDto {
+  productId!: number;
+  slug!: string;
+  name!: string;
+  price!: string | null;
+  salePrice!: string | null;
+  stockStatus!: StockStatus;
+  image!: string | null;
+  addedAt!: Date;
+}
+
 export function toWishlistItemDto(
   item: WishlistItemWithProduct,
   locale: Locale,
-) {
+): WishlistItemDto {
   const translation =
     item.product.translations.find((t) => t.locale === locale) ??
     item.product.translations[0];

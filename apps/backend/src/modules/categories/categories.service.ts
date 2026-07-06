@@ -15,11 +15,24 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import {
   AdminCategoryDto,
+  PublicCategoryDetailDto,
   toAdminCategoryDto,
   toPublicCategoryDto,
 } from './categories.mapper';
 
 const WITH_TRANSLATIONS = { translations: true } as const;
+
+// Public-only: the PLP filter sidebar shows a product count per category
+// (prototype's "(16)" badges) — a filtered relation count, not exposed to
+// admin (which has no use for it).
+const WITH_TRANSLATIONS_AND_PRODUCT_COUNT = {
+  translations: true,
+  _count: {
+    select: {
+      products: { where: { product: { status: 'PUBLISHED', deletedAt: null } } },
+    },
+  },
+} as const;
 
 @Injectable()
 export class CategoriesService {
@@ -138,7 +151,7 @@ export class CategoriesService {
     const [items, total] = await Promise.all([
       this.prisma.client.category.findMany({
         where,
-        include: WITH_TRANSLATIONS,
+        include: WITH_TRANSLATIONS_AND_PRODUCT_COUNT,
         orderBy: { sortOrder: 'asc' },
         ...paginationArgs(page, pageSize),
       }),
@@ -152,10 +165,13 @@ export class CategoriesService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicCategoryDetailDto> {
     const category = await this.prisma.client.category.findFirst({
       where: { slug, deletedAt: null, status: 'PUBLISHED' },
-      include: WITH_TRANSLATIONS,
+      include: WITH_TRANSLATIONS_AND_PRODUCT_COUNT,
     });
     if (!category) throw new NotFoundException('Category not found');
     const dto = toPublicCategoryDto(category, locale);

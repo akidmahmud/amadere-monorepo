@@ -1,4 +1,4 @@
-import { Locale, Prisma } from '@amader/db';
+import { Locale, Prisma, ReviewStatus } from '@amader/db';
 
 export const REVIEW_INCLUDE = {
   reply: true,
@@ -34,8 +34,23 @@ function customerDisplayName(customer: ReviewWithRelations['customer']) {
   return `${first}${lastInitial}`;
 }
 
+export class ReviewReplyDto {
+  message!: string;
+  createdAt!: Date;
+}
+
+export class PublicReviewDto {
+  id!: number;
+  rating!: number;
+  comment!: string | null;
+  images!: string[];
+  customerName!: string;
+  reply!: ReviewReplyDto | null;
+  createdAt!: Date;
+}
+
 // Public: no customer contact details, no moderation status noise.
-export function toPublicReviewDto(review: ReviewWithRelations) {
+export function toPublicReviewDto(review: ReviewWithRelations): PublicReviewDto {
   return {
     id: review.id,
     rating: review.rating,
@@ -49,8 +64,27 @@ export function toPublicReviewDto(review: ReviewWithRelations) {
   };
 }
 
+export class ReviewDto {
+  id!: number;
+  productId!: number;
+  productSlug!: string;
+  productName!: string;
+  customerId!: number;
+  customerName!: string;
+  customerEmail!: string | null;
+  rating!: number;
+  comment!: string | null;
+  images!: string[];
+  status!: ReviewStatus;
+  reply!: ReviewReplyDto | null;
+  createdAt!: Date;
+}
+
 // Owner/admin: full context needed to identify and moderate.
-export function toReviewDto(review: ReviewWithRelations, locale: Locale) {
+export function toReviewDto(
+  review: ReviewWithRelations,
+  locale: Locale,
+): ReviewDto {
   return {
     id: review.id,
     productId: review.product.id,
@@ -68,4 +102,18 @@ export function toReviewDto(review: ReviewWithRelations, locale: Locale) {
       : null,
     createdAt: review.createdAt,
   };
+}
+
+export class AggregateRatingDto {
+  average!: number;
+  count!: number;
+}
+
+export class ProductReviewsPageDto {
+  items!: PublicReviewDto[];
+  total!: number;
+  page!: number;
+  pageSize!: number;
+  averageRating!: number | null;
+  reviewCount!: number;
 }

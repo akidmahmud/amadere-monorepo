@@ -1,7 +1,11 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { TrackEventDto } from './dto/track-event.dto';
+
+class AnalyticsAckDto {
+  accepted!: boolean;
+}
 
 @ApiTags('analytics')
 @Controller('analytics')
@@ -13,7 +17,8 @@ export class AnalyticsController {
   // add-to-cart clicks), the same way a GA/GTM snippet would.
   @Post('events')
   @HttpCode(202)
-  async track(@Body() dto: TrackEventDto) {
+  @ApiOkResponse({ type: AnalyticsAckDto })
+  async track(@Body() dto: TrackEventDto): Promise<AnalyticsAckDto> {
     await this.analytics.track({
       name: dto.name,
       params: dto.params ?? {},

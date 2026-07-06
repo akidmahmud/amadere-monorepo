@@ -1,16 +1,23 @@
 import { Brand, BrandTranslation, ContentStatus, Locale } from '@amader/db';
+import { ResolvedSeoDto } from '../seo/seo.mapper';
 
 type BrandWithTranslations = Brand & { translations: BrandTranslation[] };
 
-export interface AdminBrandDto {
-  id: number;
-  slug: string;
-  logoUrl: string | null;
-  websiteUrl: string | null;
-  isFeatured: boolean;
-  sortOrder: number;
-  status: ContentStatus;
-  translations: { locale: Locale; name: string; description: string | null }[];
+export class AdminBrandTranslationDto {
+  locale!: Locale;
+  name!: string;
+  description!: string | null;
+}
+
+export class AdminBrandDto {
+  id!: number;
+  slug!: string;
+  logoUrl!: string | null;
+  websiteUrl!: string | null;
+  isFeatured!: boolean;
+  sortOrder!: number;
+  status!: ContentStatus;
+  translations!: AdminBrandTranslationDto[];
 }
 
 export function toAdminBrandDto(brand: BrandWithTranslations): AdminBrandDto {
@@ -30,14 +37,14 @@ export function toAdminBrandDto(brand: BrandWithTranslations): AdminBrandDto {
   };
 }
 
-export interface PublicBrandDto {
-  id: number;
-  slug: string;
-  logoUrl: string | null;
-  websiteUrl: string | null;
-  isFeatured: boolean;
-  name: string;
-  description: string | null;
+export class PublicBrandDto {
+  id!: number;
+  slug!: string;
+  logoUrl!: string | null;
+  websiteUrl!: string | null;
+  isFeatured!: boolean;
+  name!: string;
+  description!: string | null;
 }
 
 export function toPublicBrandDto(
@@ -56,4 +63,8 @@ export function toPublicBrandDto(
     name: translation?.name ?? brand.slug,
     description: translation?.description ?? null,
   };
+}
+
+export class PublicBrandDetailDto extends PublicBrandDto {
+  seo!: ResolvedSeoDto;
 }

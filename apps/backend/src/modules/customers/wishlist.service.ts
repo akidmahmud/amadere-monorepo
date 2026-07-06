@@ -4,14 +4,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Locale } from '@amader/db';
+import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { WISHLIST_PRODUCT_INCLUDE, toWishlistItemDto } from './wishlist.mapper';
+import {
+  WISHLIST_PRODUCT_INCLUDE,
+  WishlistItemDto,
+  toWishlistItemDto,
+} from './wishlist.mapper';
 
 @Injectable()
 export class WishlistService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(customerId: number, locale: Locale) {
+  async list(customerId: number, locale: Locale): Promise<WishlistItemDto[]> {
     const items = await this.prisma.client.wishlistItem.findMany({
       where: { customerId },
       include: WISHLIST_PRODUCT_INCLUDE,
@@ -20,7 +25,10 @@ export class WishlistService {
     return items.map((item) => toWishlistItemDto(item, locale));
   }
 
-  async add(customerId: number, productId: number) {
+  async add(
+    customerId: number,
+    productId: number,
+  ): Promise<SuccessResponseDto> {
     const product = await this.prisma.client.product.findUnique({
       where: { id: productId },
     });
@@ -37,7 +45,10 @@ export class WishlistService {
     return { success: true };
   }
 
-  async remove(customerId: number, productId: number) {
+  async remove(
+    customerId: number,
+    productId: number,
+  ): Promise<SuccessResponseDto> {
     await this.prisma.client.wishlistItem
       .delete({ where: { customerId_productId: { customerId, productId } } })
       .catch(() => {

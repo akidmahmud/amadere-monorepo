@@ -37,6 +37,10 @@ import { SeoModule } from './modules/seo/seo.module';
 import { RedirectsModule } from './modules/redirects/redirects.module';
 import { SitemapModule } from './modules/sitemap/sitemap.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { MenusModule } from './modules/menus/menus.module';
+import { CollectionsModule } from './modules/collections/collections.module';
+import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
 
 @Module({
   imports: [
@@ -114,6 +118,10 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     RedirectsModule,
     SitemapModule,
     AnalyticsModule,
+    SettingsModule,
+    MenusModule,
+    CollectionsModule,
+    HomepageSectionsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

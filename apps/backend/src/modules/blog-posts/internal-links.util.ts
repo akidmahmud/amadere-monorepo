@@ -4,14 +4,14 @@
 // real opportunities; upgrade to stemming/fuzzy matching if editors report
 // it missing obvious matches.
 
-export interface LinkCandidate {
-  type: 'post' | 'product';
-  title: string;
-  url: string;
+export class LinkCandidate {
+  type!: 'post' | 'product';
+  title!: string;
+  url!: string;
 }
 
-export interface LinkSuggestion extends LinkCandidate {
-  occurrences: number;
+export class LinkSuggestion extends LinkCandidate {
+  occurrences!: number;
 }
 
 const MAX_SUGGESTIONS = 10;

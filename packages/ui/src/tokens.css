@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Design tokens extracted from amader-prototype.html :root — single source of
+   truth for every app (apps/web, Storybook, future apps/admin). */
+:root {
+  --color-green: #1f703c;
+  --color-green-dark: #175a2f;
+  --color-green-deep: #12492a;
+  --color-gold: #e7c22d;
+  --color-gold-dark: #d0ac1a;
+  --color-cream: #fbf7f1;
+  --color-beige: #f5e8d4;
+  --color-gray: #d9d9d9;
+  --color-line: #eae2d5;
+  --color-ink: #233127;
+  --color-muted: #7a8579;
+  --color-delete: #ff383c;
+
+  --radius-brand: 14px;
+  --shadow-brand: 0 4px 16px rgba(32, 112, 60, 0.08);
+
+  --background: var(--color-cream);
+  --foreground: var(--color-ink);
+}
+
+@theme inline {
+  --color-green: var(--color-green);
+  --color-green-dark: var(--color-green-dark);
+  --color-green-deep: var(--color-green-deep);
+  --color-gold: var(--color-gold);
+  --color-gold-dark: var(--color-gold-dark);
+  --color-cream: var(--color-cream);
+  --color-beige: var(--color-beige);
+  --color-gray: var(--color-gray);
+  --color-line: var(--color-line);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --color-delete: var(--color-delete);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --radius-brand: var(--radius-brand);
+  --shadow-brand: var(--shadow-brand);
+
+  --font-serif: var(--font-fraunces);
+  --font-ui: var(--font-poppins);
+  --font-body: var(--font-inter);
+  --font-bengali: var(--font-hind-siliguri);
+}

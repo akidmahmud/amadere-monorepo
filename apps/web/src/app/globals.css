@@ -1,0 +1,11 @@
+@import "@amader/ui/tokens.css";
+
+/* Tailwind's default content scan doesn't reach into workspace packages —
+   point it at the shared component library explicitly. */
+@source "../../../../packages/ui/src";
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+}

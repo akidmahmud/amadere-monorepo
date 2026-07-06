@@ -9,6 +9,7 @@ import {
   CreateSynonymGroupDto,
   UpdateSynonymGroupDto,
 } from './dto/synonym-group.dto';
+import { SynonymGroupDto } from './synonyms.mapper';
 
 const WITH_TERMS = { terms: true } as const;
 
@@ -16,7 +17,7 @@ const WITH_TERMS = { terms: true } as const;
 export class SynonymsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list() {
+  async list(): Promise<SynonymGroupDto[]> {
     const groups = await this.prisma.client.synonymGroup.findMany({
       include: WITH_TERMS,
       orderBy: { id: 'asc' },
@@ -27,7 +28,7 @@ export class SynonymsService {
     }));
   }
 
-  async create(dto: CreateSynonymGroupDto) {
+  async create(dto: CreateSynonymGroupDto): Promise<SynonymGroupDto> {
     await this.assertTermsAvailable(dto.terms);
     const group = await this.prisma.client.synonymGroup.create({
       data: { terms: { create: dto.terms } },
@@ -39,7 +40,10 @@ export class SynonymsService {
     };
   }
 
-  async update(id: number, dto: UpdateSynonymGroupDto) {
+  async update(
+    id: number,
+    dto: UpdateSynonymGroupDto,
+  ): Promise<SynonymGroupDto> {
     await this.assertExists(id);
     await this.assertTermsAvailable(dto.terms, id);
 

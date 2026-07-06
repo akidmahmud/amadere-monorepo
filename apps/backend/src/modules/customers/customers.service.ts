@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hashPassword, verifyPassword } from '../../common/auth/password.util';
 import {
@@ -13,7 +14,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from '../auth/dto/change-password.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
-import { toAddressDto } from './address.mapper';
+import { AddressDto, toAddressDto } from './address.mapper';
 
 @Injectable()
 export class CustomersService {
@@ -27,7 +28,10 @@ export class CustomersService {
     return toCustomerProfileDto(customer);
   }
 
-  async updateProfile(customerId: number, dto: UpdateProfileDto) {
+  async updateProfile(
+    customerId: number,
+    dto: UpdateProfileDto,
+  ): Promise<CustomerProfileDto> {
     const customer = await this.prisma.client.customer.update({
       where: { id: customerId },
       data: {
@@ -40,7 +44,10 @@ export class CustomersService {
     return toCustomerProfileDto(customer);
   }
 
-  async changePassword(customerId: number, dto: ChangePasswordDto) {
+  async changePassword(
+    customerId: number,
+    dto: ChangePasswordDto,
+  ): Promise<SuccessResponseDto> {
     const customer = await this.prisma.client.customer.findUnique({
       where: { id: customerId },
     });
@@ -63,7 +70,7 @@ export class CustomersService {
     return { success: true };
   }
 
-  async listAddresses(customerId: number) {
+  async listAddresses(customerId: number): Promise<AddressDto[]> {
     const addresses = await this.prisma.client.customerAddress.findMany({
       where: { customerId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
@@ -71,7 +78,10 @@ export class CustomersService {
     return addresses.map(toAddressDto);
   }
 
-  async createAddress(customerId: number, dto: CreateAddressDto) {
+  async createAddress(
+    customerId: number,
+    dto: CreateAddressDto,
+  ): Promise<AddressDto> {
     return this.prisma.client.$transaction(async (tx) => {
       if (dto.isDefault) {
         await tx.customerAddress.updateMany({
@@ -86,7 +96,11 @@ export class CustomersService {
     });
   }
 
-  async updateAddress(customerId: number, id: number, dto: UpdateAddressDto) {
+  async updateAddress(
+    customerId: number,
+    id: number,
+    dto: UpdateAddressDto,
+  ): Promise<AddressDto> {
     await this.assertOwnsAddress(customerId, id);
     return this.prisma.client.$transaction(async (tx) => {
       if (dto.isDefault) {
@@ -103,7 +117,10 @@ export class CustomersService {
     });
   }
 
-  async deleteAddress(customerId: number, id: number) {
+  async deleteAddress(
+    customerId: number,
+    id: number,
+  ): Promise<SuccessResponseDto> {
     await this.assertOwnsAddress(customerId, id);
     await this.prisma.client.customerAddress.delete({ where: { id } });
     return { success: true };

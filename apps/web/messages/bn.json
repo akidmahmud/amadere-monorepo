@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "allProducts": "সকল পণ্য",
+    "shopByCategory": "ক্যাটাগরি অনুযায়ী কিনুন",
+    "shopByCondition": "সমস্যা অনুযায়ী কিনুন",
+    "superSaverCombos": "সুপার সেভার কম্বো",
+    "shopByGoal": "লক্ষ্য অনুযায়ী কিনুন"
+  },
+  "header": {
+    "searchPlaceholder": "খুঁজুন",
+    "searchAria": "খুঁজুন",
+    "trackOrder": "অর্ডার ট্র্যাক করুন",
+    "cart": "কার্ট",
+    "localeSwitch": "English"
+  },
+  "cart": {
+    "title": "শপিং কার্ট",
+    "empty": "আপনার কার্ট খালি।",
+    "checkout": "চেকআউট",
+    "subtotal": "সাবটোটাল",
+    "close": "কার্ট বন্ধ করুন"
+  },
+  "footer": {
+    "newsletterHeading": "আমাদের নিউজলেটার সাবস্ক্রাইব করুন",
+    "newsletterPlaceholder": "আপনার ইমেইল ঠিকানা",
+    "subscribe": "সাবস্ক্রাইব",
+    "aboutHeading": "আমাদের সম্পর্কে",
+    "about": "আমাদের সম্পর্কে",
+    "blog": "ব্লগ",
+    "certifications": "সার্টিফিকেশন",
+    "farmers": "কৃষকদের সাথে পরিচিত হন",
+    "helpHeading": "সহায়তা",
+    "consult": "বিশেষজ্ঞের পরামর্শ নিন",
+    "faqs": "সচরাচর জিজ্ঞাসা",
+    "terms": "শর্তাবলী",
+    "privacy": "গোপনীয়তা নীতি",
+    "contactHeading": "যোগাযোগ",
+    "rights": "সর্বস্বত্ব সংরক্ষিত।"
+  },
+  "breadcrumb": {
+    "home": "হোম"
+  }
+}

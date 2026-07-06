@@ -12,11 +12,15 @@ import { hashPassword, verifyPassword } from '../../common/auth/password.util';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { TwoFactorVerifyDto } from './dto/two-factor-verify.dto';
 import { TwoFactorEnableDto } from './dto/two-factor-enable.dto';
-import { AdminProfileDto, toAdminProfileDto } from './admin.mapper';
+import {
+  AdminProfileDto,
+  AdminTwoFactorRequiredDto,
+  TwoFactorSetupDto,
+  toAdminProfileDto,
+} from './admin.mapper';
 import { ADMIN_LOGGED_IN_EVENT, AdminLoggedInEvent } from './auth.events';
 
-export type AdminLoginResult =
-  TokenPair | { requiresTwoFactor: true; twoFactorToken: string };
+export type AdminLoginResult = TokenPair | AdminTwoFactorRequiredDto;
 
 @Injectable()
 export class AdminAuthService {
@@ -129,7 +133,7 @@ export class AdminAuthService {
   async setupTwoFactor(
     adminUserId: number,
     email: string,
-  ): Promise<{ secret: string; otpauthUrl: string }> {
+  ): Promise<TwoFactorSetupDto> {
     const secret = authenticator.generateSecret();
     await this.prisma.client.adminUser.update({
       where: { id: adminUserId },

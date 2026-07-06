@@ -1,5 +1,6 @@
 import { Locale, Prisma } from '@amader/db';
 import { PRODUCT_INCLUDE } from './product-includes';
+import { AdminProductDto, PublicProductDto } from './dto/product-response.dto';
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof PRODUCT_INCLUDE;
@@ -13,7 +14,9 @@ function decimalToString(
 
 // --- Admin shape: every translation, raw ids, nothing resolved ---
 
-export function toAdminProductDto(product: ProductWithRelations) {
+export function toAdminProductDto(
+  product: ProductWithRelations,
+): AdminProductDto {
   return {
     id: product.id,
     slug: product.slug,
@@ -80,7 +83,7 @@ function resolveTranslation<T extends { locale: Locale }>(
 export function toPublicProductDto(
   product: ProductWithRelations,
   locale: Locale,
-) {
+): PublicProductDto {
   const translation = resolveTranslation(product.translations, locale);
   const brandTranslation = product.brand
     ? resolveTranslation(product.brand.translations, locale)

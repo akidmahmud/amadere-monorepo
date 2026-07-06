@@ -4,21 +4,29 @@ import {
   ContentStatus,
   Locale,
 } from '@amader/db';
+import { ResolvedSeoDto } from '../seo/seo.mapper';
 
 type CategoryWithTranslations = Category & {
   translations: CategoryTranslation[];
+  _count?: { products: number };
 };
 
-export interface AdminCategoryDto {
-  id: number;
-  slug: string;
-  parentId: number | null;
-  imageUrl: string | null;
-  iconUrl: string | null;
-  isFeatured: boolean;
-  sortOrder: number;
-  status: ContentStatus;
-  translations: { locale: Locale; name: string; description: string | null }[];
+export class AdminCategoryTranslationDto {
+  locale!: Locale;
+  name!: string;
+  description!: string | null;
+}
+
+export class AdminCategoryDto {
+  id!: number;
+  slug!: string;
+  parentId!: number | null;
+  imageUrl!: string | null;
+  iconUrl!: string | null;
+  isFeatured!: boolean;
+  sortOrder!: number;
+  status!: ContentStatus;
+  translations!: AdminCategoryTranslationDto[];
 }
 
 export function toAdminCategoryDto(
@@ -41,15 +49,16 @@ export function toAdminCategoryDto(
   };
 }
 
-export interface PublicCategoryDto {
-  id: number;
-  slug: string;
-  parentId: number | null;
-  imageUrl: string | null;
-  iconUrl: string | null;
-  isFeatured: boolean;
-  name: string;
-  description: string | null;
+export class PublicCategoryDto {
+  id!: number;
+  slug!: string;
+  parentId!: number | null;
+  imageUrl!: string | null;
+  iconUrl!: string | null;
+  isFeatured!: boolean;
+  name!: string;
+  description!: string | null;
+  productCount!: number;
 }
 
 export function toPublicCategoryDto(
@@ -68,5 +77,10 @@ export function toPublicCategoryDto(
     isFeatured: category.isFeatured,
     name: translation?.name ?? category.slug,
     description: translation?.description ?? null,
+    productCount: category._count?.products ?? 0,
   };
+}
+
+export class PublicCategoryDetailDto extends PublicCategoryDto {
+  seo!: ResolvedSeoDto;
 }

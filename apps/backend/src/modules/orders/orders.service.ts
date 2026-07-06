@@ -6,13 +6,14 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { PaymentsService } from '../payments/payments.service';
-import { ORDER_INCLUDE, toOrderDto } from './orders.mapper';
+import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { TrackOrderDto } from './dto/track-order.dto';
@@ -33,7 +34,11 @@ export class OrdersService {
     private readonly events: EventEmitter2,
   ) {}
 
-  async adminList(page: number, pageSize: number, status?: string) {
+  async adminList(
+    page: number,
+    pageSize: number,
+    status?: string,
+  ): Promise<PaginatedResult<OrderDto>> {
     const where = status ? { status: status as never } : {};
     const [items, total] = await Promise.all([
       this.prisma.client.order.findMany({
@@ -47,7 +52,7 @@ export class OrdersService {
     return toPaginatedResult(items.map(toOrderDto), total, page, pageSize);
   }
 
-  async adminGet(id: number) {
+  async adminGet(id: number): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { id },
       include: ORDER_INCLUDE,
@@ -60,7 +65,7 @@ export class OrdersService {
     id: number,
     dto: UpdateOrderStatusDto,
     adminUserId: number,
-  ) {
+  ): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { id },
       include: { items: true },
@@ -99,7 +104,11 @@ export class OrdersService {
     return this.reload(id);
   }
 
-  async refund(id: number, dto: RefundOrderDto, adminUserId: number) {
+  async refund(
+    id: number,
+    dto: RefundOrderDto,
+    adminUserId: number,
+  ): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({ where: { id } });
     if (!order) throw new NotFoundException('Order not found');
     if (dto.amount > Number(order.totalAmount)) {
@@ -120,7 +129,11 @@ export class OrdersService {
     return this.reload(id);
   }
 
-  async myList(customerId: number, page: number, pageSize: number) {
+  async myList(
+    customerId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<OrderDto>> {
     const where = { customerId };
     const [items, total] = await Promise.all([
       this.prisma.client.order.findMany({
@@ -134,7 +147,7 @@ export class OrdersService {
     return toPaginatedResult(items.map(toOrderDto), total, page, pageSize);
   }
 
-  async myGet(customerId: number, orderNumber: string) {
+  async myGet(customerId: number, orderNumber: string): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { orderNumber },
       include: ORDER_INCLUDE,
@@ -146,7 +159,7 @@ export class OrdersService {
   }
 
   // Guest tracking: orderNumber + shipping phone, no account required.
-  async track(dto: TrackOrderDto) {
+  async track(dto: TrackOrderDto): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { orderNumber: dto.orderNumber },
       include: { ...ORDER_INCLUDE, addresses: true },

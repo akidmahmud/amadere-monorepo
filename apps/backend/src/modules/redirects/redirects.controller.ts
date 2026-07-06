@@ -1,6 +1,17 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { RedirectsService } from './redirects.service';
+import {
+  RedirectFoundDto,
+  RedirectNotFoundDto,
+  RedirectResolveResult,
+} from './redirects.mapper';
 
 @ApiTags('redirects')
 @Controller('redirects')
@@ -9,7 +20,16 @@ export class RedirectsController {
 
   @Get('resolve')
   @ApiQuery({ name: 'path', description: 'e.g. /old-product-slug' })
-  resolve(@Query('path') path: string) {
+  @ApiExtraModels(RedirectFoundDto, RedirectNotFoundDto)
+  @ApiOkResponse({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(RedirectFoundDto) },
+        { $ref: getSchemaPath(RedirectNotFoundDto) },
+      ],
+    },
+  })
+  resolve(@Query('path') path: string): Promise<RedirectResolveResult> {
     return this.redirects.resolve(path);
   }
 }

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -11,13 +12,20 @@ import {
 } from '../../common/pagination.util';
 import { CreateRedirectDto } from './dto/create-redirect.dto';
 import { UpdateRedirectDto } from './dto/update-redirect.dto';
-import { toRedirectDto } from './redirects.mapper';
+import {
+  RedirectDto,
+  RedirectResolveResult,
+  toRedirectDto,
+} from './redirects.mapper';
 
 @Injectable()
 export class RedirectsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async adminList(page: number, pageSize: number) {
+  async adminList(
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<RedirectDto>> {
     const [items, total] = await Promise.all([
       this.prisma.client.redirect.findMany({
         orderBy: { createdAt: 'desc' },
@@ -28,7 +36,7 @@ export class RedirectsService {
     return toPaginatedResult(items.map(toRedirectDto), total, page, pageSize);
   }
 
-  async adminGet(id: number) {
+  async adminGet(id: number): Promise<RedirectDto> {
     const redirect = await this.prisma.client.redirect.findUnique({
       where: { id },
     });
@@ -36,7 +44,7 @@ export class RedirectsService {
     return toRedirectDto(redirect);
   }
 
-  async create(dto: CreateRedirectDto) {
+  async create(dto: CreateRedirectDto): Promise<RedirectDto> {
     this.assertNotSelfLoop(dto.fromPath, dto.toPath);
     await this.assertFromPathAvailable(dto.fromPath);
     await this.assertNoTwoHopLoop(dto.fromPath, dto.toPath);
@@ -52,7 +60,7 @@ export class RedirectsService {
     return toRedirectDto(redirect);
   }
 
-  async update(id: number, dto: UpdateRedirectDto) {
+  async update(id: number, dto: UpdateRedirectDto): Promise<RedirectDto> {
     const existing = await this.adminGet(id);
     const fromPath = dto.fromPath ?? existing.fromPath;
     const toPath = dto.toPath ?? existing.toPath;
@@ -81,7 +89,7 @@ export class RedirectsService {
   // a 404 (AGENTS.md §9: "zero critical 404s"). Single-hop only — resolve()
   // does not chase multi-step redirect chains, so the create/update guards
   // below are what actually keep the data loop-free.
-  async resolve(path: string) {
+  async resolve(path: string): Promise<RedirectResolveResult> {
     const redirect = await this.prisma.client.redirect.findFirst({
       where: { fromPath: path, isActive: true },
     });

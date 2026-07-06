@@ -15,6 +15,7 @@ import { CreateBlogCategoryDto } from './dto/create-blog-category.dto';
 import { UpdateBlogCategoryDto } from './dto/update-blog-category.dto';
 import {
   AdminBlogCategoryDto,
+  PublicBlogCategoryDetailDto,
   toAdminBlogCategoryDto,
   toPublicBlogCategoryDto,
 } from './blog-categories.mapper';
@@ -146,7 +147,10 @@ export class BlogCategoriesService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicBlogCategoryDetailDto> {
     const category = await this.prisma.client.blogCategory.findFirst({
       where: { slug, status: 'PUBLISHED' },
       include: WITH_TRANSLATIONS,

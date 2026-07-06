@@ -12,7 +12,12 @@ import {
 import { SeoService } from '../seo/seo.service';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { UpdateTagDto } from './dto/update-tag.dto';
-import { AdminTagDto, toAdminTagDto, toPublicTagDto } from './tags.mapper';
+import {
+  AdminTagDto,
+  PublicTagDetailDto,
+  toAdminTagDto,
+  toPublicTagDto,
+} from './tags.mapper';
 
 const WITH_TRANSLATIONS = { translations: true } as const;
 
@@ -109,7 +114,10 @@ export class TagsService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicTagDetailDto> {
     const tag = await this.prisma.client.tag.findFirst({
       where: { slug, deletedAt: null, status: 'PUBLISHED' },
       include: WITH_TRANSLATIONS,

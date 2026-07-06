@@ -1,12 +1,19 @@
 import { ContentStatus, Locale, Page, PageTranslation } from '@amader/db';
+import { ResolvedSeoDto } from '../seo/seo.mapper';
 
 type PageWithTranslations = Page & { translations: PageTranslation[] };
 
-export interface AdminPageDto {
-  id: number;
-  slug: string;
-  status: ContentStatus;
-  translations: { locale: Locale; title: string; content: string }[];
+export class AdminPageTranslationDto {
+  locale!: Locale;
+  title!: string;
+  content!: string;
+}
+
+export class AdminPageDto {
+  id!: number;
+  slug!: string;
+  status!: ContentStatus;
+  translations!: AdminPageTranslationDto[];
 }
 
 export function toAdminPageDto(page: PageWithTranslations): AdminPageDto {
@@ -22,11 +29,11 @@ export function toAdminPageDto(page: PageWithTranslations): AdminPageDto {
   };
 }
 
-export interface PublicPageDto {
-  id: number;
-  slug: string;
-  title: string;
-  content: string;
+export class PublicPageDto {
+  id!: number;
+  slug!: string;
+  title!: string;
+  content!: string;
 }
 
 export function toPublicPageDto(
@@ -41,4 +48,8 @@ export function toPublicPageDto(
     title: translation?.title ?? page.slug,
     content: translation?.content ?? '',
   };
+}
+
+export class PublicPageDetailDto extends PublicPageDto {
+  seo!: ResolvedSeoDto;
 }

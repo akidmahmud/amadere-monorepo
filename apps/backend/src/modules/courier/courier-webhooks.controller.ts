@@ -5,7 +5,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ShipmentsService } from './shipments.service';
 
@@ -13,6 +13,10 @@ interface SteadfastWebhookPayload {
   consignment_id: string;
   status: string;
   updated_at?: string;
+}
+
+class WebhookAckDto {
+  status!: boolean;
 }
 
 @ApiTags('webhooks')
@@ -24,10 +28,11 @@ export class CourierWebhooksController {
   ) {}
 
   @Post('steadfast')
+  @ApiOkResponse({ type: WebhookAckDto })
   async steadfast(
     @Headers('authorization') authorization: string | undefined,
     @Body() payload: SteadfastWebhookPayload,
-  ) {
+  ): Promise<WebhookAckDto> {
     const setting = await this.prisma.client.setting.findUnique({
       where: { key: 'steadfast_webhook_token' },
     });

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Locale } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -12,7 +13,10 @@ import {
 } from '../../common/pagination.util';
 import { SeoService } from '../seo/seo.service';
 import {
+  AdminBundleDto,
   BUNDLE_INCLUDE,
+  PublicBundleDetailDto,
+  PublicBundleDto,
   toAdminBundleDto,
   toPublicBundleDto,
 } from './product-bundles.mapper';
@@ -26,7 +30,10 @@ export class ProductBundlesService {
     private readonly seo: SeoService,
   ) {}
 
-  async adminList(page: number, pageSize: number) {
+  async adminList(
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<AdminBundleDto>> {
     const [items, total] = await Promise.all([
       this.prisma.client.productBundle.findMany({
         include: BUNDLE_INCLUDE,
@@ -43,7 +50,7 @@ export class ProductBundlesService {
     );
   }
 
-  async adminGet(id: number) {
+  async adminGet(id: number): Promise<AdminBundleDto> {
     const bundle = await this.prisma.client.productBundle.findUnique({
       where: { id },
       include: BUNDLE_INCLUDE,
@@ -52,7 +59,7 @@ export class ProductBundlesService {
     return toAdminBundleDto(bundle);
   }
 
-  async create(dto: CreateProductBundleDto) {
+  async create(dto: CreateProductBundleDto): Promise<AdminBundleDto> {
     await this.assertSlugAvailable(dto.slug);
     await this.assertProductsExist(dto.items.map((i) => i.productId));
 
@@ -76,7 +83,10 @@ export class ProductBundlesService {
     return toAdminBundleDto(bundle);
   }
 
-  async update(id: number, dto: UpdateProductBundleDto) {
+  async update(
+    id: number,
+    dto: UpdateProductBundleDto,
+  ): Promise<AdminBundleDto> {
     await this.adminGet(id);
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
     if (dto.items)
@@ -123,8 +133,16 @@ export class ProductBundlesService {
     await this.prisma.client.productBundle.delete({ where: { id } });
   }
 
-  async publicList(locale: Locale, page: number, pageSize: number) {
-    const where = { status: 'PUBLISHED' as const };
+  async publicList(
+    locale: Locale,
+    page: number,
+    pageSize: number,
+    productId?: number,
+  ): Promise<PaginatedResult<PublicBundleDto>> {
+    const where = {
+      status: 'PUBLISHED' as const,
+      ...(productId !== undefined ? { items: { some: { productId } } } : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.client.productBundle.findMany({
         where,
@@ -142,7 +160,10 @@ export class ProductBundlesService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicBundleDetailDto> {
     const bundle = await this.prisma.client.productBundle.findFirst({
       where: { slug, status: 'PUBLISHED' },
       include: BUNDLE_INCLUDE,

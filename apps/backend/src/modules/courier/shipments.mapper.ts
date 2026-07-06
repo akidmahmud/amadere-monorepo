@@ -1,4 +1,4 @@
-import { Prisma } from '@amader/db';
+import { CourierProviderName, Prisma, ShipmentStatus } from '@amader/db';
 
 export const SHIPMENT_INCLUDE = {
   events: { orderBy: { occurredAt: 'asc' as const } },
@@ -14,7 +14,33 @@ function decimalToString(
   return value ? value.toString() : null;
 }
 
-export function toShipmentDto(shipment: ShipmentWithEvents) {
+export class ShipmentEventDto {
+  status!: ShipmentStatus;
+  note!: string | null;
+  occurredAt!: Date;
+}
+
+export class ShipmentDto {
+  id!: number;
+  orderId!: number;
+  provider!: CourierProviderName;
+  status!: ShipmentStatus;
+  consignmentId!: string | null;
+  trackingCode!: string | null;
+  cost!: string | null;
+  weight!: string | null;
+  codAmount!: string | null;
+  returnReason!: string | null;
+  errorMessage!: string | null;
+  requestPayload!: unknown;
+  rawResponse!: unknown;
+  dispatchedAt!: Date | null;
+  deliveredAt!: Date | null;
+  createdAt!: Date;
+  events!: ShipmentEventDto[];
+}
+
+export function toShipmentDto(shipment: ShipmentWithEvents): ShipmentDto {
   return {
     id: shipment.id,
     orderId: shipment.orderId,
@@ -38,4 +64,14 @@ export function toShipmentDto(shipment: ShipmentWithEvents) {
       occurredAt: e.occurredAt,
     })),
   };
+}
+
+export class ShipmentPerformanceDto {
+  total!: number;
+  delivered!: number;
+  returned!: number;
+  canceled!: number;
+  successRate!: number | null;
+  returnRate!: string | null;
+  avgDeliveryHours!: number | null;
 }

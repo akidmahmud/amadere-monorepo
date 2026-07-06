@@ -3,14 +3,14 @@ import { PaginatedResult } from '@amader/shared';
 
 export const SEARCH_PROVIDER = Symbol('SEARCH_PROVIDER');
 
-export interface ProductSearchHit {
-  id: number;
-  slug: string;
-  name: string;
-  price: string | null;
-  salePrice: string | null;
-  primaryImageUrl: string | null;
-  score: number;
+export class ProductSearchHit {
+  id!: number;
+  slug!: string;
+  name!: string;
+  price!: string | null;
+  salePrice!: string | null;
+  primaryImageUrl!: string | null;
+  score!: number;
 }
 
 // Behind an interface so the engine can be swapped (Postgres now,

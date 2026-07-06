@@ -1,12 +1,19 @@
 import { ContentStatus, Locale, Tag, TagTranslation } from '@amader/db';
+import { ResolvedSeoDto } from '../seo/seo.mapper';
 
 type TagWithTranslations = Tag & { translations: TagTranslation[] };
 
-export interface AdminTagDto {
-  id: number;
-  slug: string;
-  status: ContentStatus;
-  translations: { locale: Locale; name: string; description: string | null }[];
+export class AdminTagTranslationDto {
+  locale!: Locale;
+  name!: string;
+  description!: string | null;
+}
+
+export class AdminTagDto {
+  id!: number;
+  slug!: string;
+  status!: ContentStatus;
+  translations!: AdminTagTranslationDto[];
 }
 
 export function toAdminTagDto(tag: TagWithTranslations): AdminTagDto {
@@ -22,11 +29,11 @@ export function toAdminTagDto(tag: TagWithTranslations): AdminTagDto {
   };
 }
 
-export interface PublicTagDto {
-  id: number;
-  slug: string;
-  name: string;
-  description: string | null;
+export class PublicTagDto {
+  id!: number;
+  slug!: string;
+  name!: string;
+  description!: string | null;
 }
 
 export function toPublicTagDto(
@@ -41,4 +48,8 @@ export function toPublicTagDto(
     name: translation?.name ?? tag.slug,
     description: translation?.description ?? null,
   };
+}
+
+export class PublicTagDetailDto extends PublicTagDto {
+  seo!: ResolvedSeoDto;
 }

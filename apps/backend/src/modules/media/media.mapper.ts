@@ -1,12 +1,12 @@
 import { Media } from '@amader/db';
 
-export interface MediaDto {
-  id: number;
-  url: string;
-  type: string;
-  altText: string | null;
-  width: number | null;
-  height: number | null;
+export class MediaDto {
+  id!: number;
+  url!: string;
+  type!: string;
+  altText!: string | null;
+  width!: number | null;
+  height!: number | null;
 }
 
 export function toMediaDto(media: Media): MediaDto {

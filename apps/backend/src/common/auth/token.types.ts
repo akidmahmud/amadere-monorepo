@@ -23,7 +23,7 @@ export interface CustomerRefreshPayload {
   tokenType: 'refresh';
 }
 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
+export class TokenPair {
+  accessToken!: string;
+  refreshToken!: string;
 }

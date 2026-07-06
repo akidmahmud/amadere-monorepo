@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale } from '@amader/db';
+import { Locale, Prisma } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -15,7 +16,12 @@ import { toAdminProductDto, toPublicProductDto } from './products.mapper';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
-import { ProductFilterQueryDto } from './dto/product-filter-query.dto';
+import { ProductFilterQueryDto, ProductSort } from './dto/product-filter-query.dto';
+import {
+  AdminProductDto,
+  PublicProductDetailDto,
+  PublicProductDto,
+} from './dto/product-response.dto';
 import { SeoService } from '../seo/seo.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import {
@@ -36,7 +42,7 @@ export class ProductsService {
     page: number,
     pageSize: number,
     filters: ProductFilterQueryDto,
-  ) {
+  ): Promise<PaginatedResult<AdminProductDto>> {
     const where = this.buildWhere(filters, { deletedAt: null });
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
@@ -55,7 +61,7 @@ export class ProductsService {
     );
   }
 
-  async adminGet(id: number) {
+  async adminGet(id: number): Promise<AdminProductDto> {
     const product = await this.prisma.client.product.findFirst({
       where: { id, deletedAt: null },
       include: PRODUCT_INCLUDE,
@@ -64,7 +70,7 @@ export class ProductsService {
     return toAdminProductDto(product);
   }
 
-  async create(dto: CreateProductDto) {
+  async create(dto: CreateProductDto): Promise<AdminProductDto> {
     await this.assertSlugAvailable(dto.slug);
     await this.validateReferences(dto);
     this.validatePricingShape(dto);
@@ -139,7 +145,7 @@ export class ProductsService {
     return toAdminProductDto(product);
   }
 
-  async update(id: number, dto: UpdateProductDto) {
+  async update(id: number, dto: UpdateProductDto): Promise<AdminProductDto> {
     await this.adminGet(id);
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
     await this.validateReferences(dto);
@@ -230,7 +236,10 @@ export class ProductsService {
   // Variants are managed one at a time (not wholesale-replaced on product
   // update) so existing CartItem/OrderItem references never get silently
   // orphaned by a bulk delete+recreate.
-  async addVariant(productId: number, dto: CreateProductVariantDto) {
+  async addVariant(
+    productId: number,
+    dto: CreateProductVariantDto,
+  ): Promise<AdminProductDto> {
     const product = await this.prisma.client.product.findFirst({
       where: { id: productId, deletedAt: null },
       include: { attributes: true },
@@ -289,7 +298,7 @@ export class ProductsService {
     page: number,
     pageSize: number,
     filters: ProductFilterQueryDto,
-  ) {
+  ): Promise<PaginatedResult<PublicProductDto>> {
     const where = this.buildWhere(filters, {
       deletedAt: null,
       status: 'PUBLISHED' as const,
@@ -298,7 +307,7 @@ export class ProductsService {
       this.prisma.client.product.findMany({
         where,
         include: PRODUCT_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        orderBy: this.buildOrderBy(filters.sort),
         ...paginationArgs(page, pageSize),
       }),
       this.prisma.client.product.count({ where }),
@@ -311,7 +320,10 @@ export class ProductsService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicProductDetailDto> {
     const product = await this.prisma.client.product.findFirst({
       where: { slug, deletedAt: null, status: 'PUBLISHED' },
       include: PRODUCT_INCLUDE,
@@ -394,7 +406,31 @@ export class ProductsService {
       ...(filters.tagId !== undefined
         ? { tags: { some: { tagId: filters.tagId } } }
         : {}),
+      ...(filters.minPrice !== undefined || filters.maxPrice !== undefined
+        ? {
+            price: {
+              ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
+              ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
+            },
+          }
+        : {}),
     };
+  }
+
+  private buildOrderBy(
+    sort: ProductSort | undefined,
+  ): Prisma.ProductOrderByWithRelationInput {
+    switch (sort) {
+      case ProductSort.PRICE_ASC:
+        return { price: 'asc' };
+      case ProductSort.PRICE_DESC:
+        return { price: 'desc' };
+      case ProductSort.BEST_SELLING:
+        return { viewCount: 'desc' };
+      case ProductSort.NEWEST:
+      default:
+        return { createdAt: 'desc' };
+    }
   }
 
   private validatePricingShape(dto: CreateProductDto): void {

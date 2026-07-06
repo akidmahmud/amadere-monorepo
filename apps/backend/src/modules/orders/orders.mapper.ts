@@ -1,4 +1,10 @@
-import { Prisma } from '@amader/db';
+import {
+  OrderAddressType,
+  OrderStatus,
+  PaymentProvider,
+  PaymentStatus,
+  Prisma,
+} from '@amader/db';
 
 export const ORDER_INCLUDE = {
   items: true,
@@ -17,7 +23,71 @@ function decimalToString(
   return value ? value.toString() : null;
 }
 
-export function toOrderDto(order: OrderWithRelations) {
+export class OrderItemDto {
+  id!: number;
+  productId!: number | null;
+  variantId!: number | null;
+  name!: string;
+  sku!: string | null;
+  unitPrice!: string;
+  quantity!: number;
+  taxAmount!: string;
+}
+
+export class OrderAddressDto {
+  type!: OrderAddressType;
+  recipientName!: string;
+  phone!: string;
+  email!: string | null;
+  division!: string;
+  district!: string;
+  area!: string | null;
+  landmark!: string | null;
+  addressLine!: string;
+  postCode!: string | null;
+}
+
+export class OrderStatusHistoryEntryDto {
+  status!: OrderStatus;
+  note!: string | null;
+  createdAt!: Date;
+}
+
+export class OrderPaymentDto {
+  provider!: PaymentProvider;
+  status!: PaymentStatus;
+  amount!: string;
+  refundedAmount!: string | null;
+  createdAt!: Date;
+}
+
+export class OrderDto {
+  id!: number;
+  orderNumber!: string;
+  customerId!: number | null;
+  status!: OrderStatus;
+  subTotal!: string;
+  discountAmount!: string;
+  taxAmount!: string;
+  shippingAmount!: string;
+  totalAmount!: string;
+  currency!: string;
+  couponCode!: string | null;
+  shippingMethod!: string | null;
+  customerNote!: string | null;
+  cancelReason!: string | null;
+  codVerifiedAt!: Date | null;
+  confirmedAt!: Date | null;
+  completedAt!: Date | null;
+  canceledAt!: Date | null;
+  createdAt!: Date;
+  items!: OrderItemDto[];
+  addresses!: OrderAddressDto[];
+  statusHistory!: OrderStatusHistoryEntryDto[];
+  payments!: OrderPaymentDto[];
+}
+
+export function toOrderDto(order: OrderWithRelations): OrderDto {
   return {
     id: order.id,
     orderNumber: order.orderNumber,

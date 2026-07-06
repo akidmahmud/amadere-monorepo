@@ -12,7 +12,12 @@ import {
 import { SeoService } from '../seo/seo.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
-import { AdminPageDto, toAdminPageDto, toPublicPageDto } from './pages.mapper';
+import {
+  AdminPageDto,
+  PublicPageDetailDto,
+  toAdminPageDto,
+  toPublicPageDto,
+} from './pages.mapper';
 
 const WITH_TRANSLATIONS = { translations: true } as const;
 
@@ -91,7 +96,10 @@ export class PagesService {
     });
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicPageDetailDto> {
     const page = await this.prisma.client.page.findFirst({
       where: { slug, deletedAt: null, status: 'PUBLISHED' },
       include: WITH_TRANSLATIONS,

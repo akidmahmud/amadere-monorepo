@@ -1,4 +1,5 @@
-import { Locale, Prisma } from '@amader/db';
+import { ContentStatus, Locale, Prisma } from '@amader/db';
+import { ResolvedSeoDto } from '../seo/seo.mapper';
 
 export const BUNDLE_INCLUDE = {
   translations: true,
@@ -15,7 +16,30 @@ function decimalToString(
   return value ? value.toString() : null;
 }
 
-export function toAdminBundleDto(bundle: BundleWithRelations) {
+export class AdminBundleTranslationDto {
+  locale!: Locale;
+  name!: string;
+  description!: string | null;
+}
+
+export class AdminBundleItemDto {
+  id!: number;
+  productId!: number;
+  variantId!: number | null;
+  quantity!: number;
+}
+
+export class AdminBundleDto {
+  id!: number;
+  slug!: string;
+  bundlePrice!: string | null;
+  discountPct!: string | null;
+  status!: ContentStatus;
+  translations!: AdminBundleTranslationDto[];
+  items!: AdminBundleItemDto[];
+}
+
+export function toAdminBundleDto(bundle: BundleWithRelations): AdminBundleDto {
   return {
     id: bundle.id,
     slug: bundle.slug,
@@ -36,7 +60,28 @@ export function toAdminBundleDto(bundle: BundleWithRelations) {
   };
 }
 
-export function toPublicBundleDto(bundle: BundleWithRelations, locale: Locale) {
+export class PublicBundleItemDto {
+  productId!: number;
+  variantId!: number | null;
+  quantity!: number;
+  productSlug!: string;
+  productName!: string;
+}
+
+export class PublicBundleDto {
+  id!: number;
+  slug!: string;
+  bundlePrice!: string | null;
+  discountPct!: string | null;
+  name!: string;
+  description!: string | null;
+  items!: PublicBundleItemDto[];
+}
+
+export function toPublicBundleDto(
+  bundle: BundleWithRelations,
+  locale: Locale,
+): PublicBundleDto {
   const translation =
     bundle.translations.find((t) => t.locale === locale) ??
     bundle.translations[0];
@@ -60,4 +105,8 @@ export function toPublicBundleDto(bundle: BundleWithRelations, locale: Locale) {
       };
     }),
   };
+}
+
+export class PublicBundleDetailDto extends PublicBundleDto {
+  seo!: ResolvedSeoDto;
 }

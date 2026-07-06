@@ -8,17 +8,29 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
+import { TokenPair } from '../../common/auth/token.types';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
-import { AdminAuthService } from './admin-auth.service';
+import { AdminAuthService, AdminLoginResult } from './admin-auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { TwoFactorVerifyDto } from './dto/two-factor-verify.dto';
 import { TwoFactorEnableDto } from './dto/two-factor-enable.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import {
+  AdminProfileDto,
+  AdminTwoFactorRequiredDto,
+  TwoFactorSetupDto,
+} from './admin.mapper';
 
 @ApiTags('admin/auth')
 @Controller('admin/auth')
@@ -27,25 +39,40 @@ export class AdminAuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
-  login(@Body() dto: AdminLoginDto, @Req() req: Request) {
+  @ApiExtraModels(TokenPair, AdminTwoFactorRequiredDto)
+  @ApiOkResponse({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(TokenPair) },
+        { $ref: getSchemaPath(AdminTwoFactorRequiredDto) },
+      ],
+    },
+  })
+  login(
+    @Body() dto: AdminLoginDto,
+    @Req() req: Request,
+  ): Promise<AdminLoginResult> {
     return this.adminAuth.login(dto, req.ip, req.headers['user-agent']);
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('2fa/verify')
-  verifyTwoFactor(@Body() dto: TwoFactorVerifyDto) {
+  @ApiOkResponse({ type: TokenPair })
+  verifyTwoFactor(@Body() dto: TwoFactorVerifyDto): Promise<TokenPair> {
     return this.adminAuth.verifyTwoFactor(dto);
   }
 
   @Post('refresh')
-  refresh(@Body() dto: RefreshTokenDto) {
+  @ApiOkResponse({ type: TokenPair })
+  refresh(@Body() dto: RefreshTokenDto): Promise<TokenPair> {
     return this.adminAuth.refresh(dto.refreshToken);
   }
 
   @ApiBearerAuth()
   @UseGuards(AdminJwtGuard)
   @Get('me')
-  me(@CurrentAdmin() admin: { id: number }) {
+  @ApiOkResponse({ type: AdminProfileDto })
+  me(@CurrentAdmin() admin: { id: number }): Promise<AdminProfileDto> {
     return this.adminAuth.me(admin.id);
   }
 
@@ -56,7 +83,7 @@ export class AdminAuthController {
   changePassword(
     @CurrentAdmin() admin: { id: number },
     @Body() dto: ChangePasswordDto,
-  ) {
+  ): Promise<void> {
     return this.adminAuth.changeOwnPassword(
       admin.id,
       dto.currentPassword,
@@ -68,7 +95,10 @@ export class AdminAuthController {
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(AuditLogInterceptor)
   @Post('2fa/setup')
-  async setupTwoFactor(@CurrentAdmin() admin: { id: number }) {
+  @ApiOkResponse({ type: TwoFactorSetupDto })
+  async setupTwoFactor(
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<TwoFactorSetupDto> {
     const profile = await this.adminAuth.me(admin.id);
     return this.adminAuth.setupTwoFactor(admin.id, profile.email);
   }
@@ -80,7 +110,7 @@ export class AdminAuthController {
   enableTwoFactor(
     @CurrentAdmin() admin: { id: number },
     @Body() dto: TwoFactorEnableDto,
-  ) {
+  ): Promise<void> {
     return this.adminAuth.enableTwoFactor(admin.id, dto);
   }
 
@@ -88,7 +118,7 @@ export class AdminAuthController {
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(AuditLogInterceptor)
   @Post('2fa/disable')
-  disableTwoFactor(@CurrentAdmin() admin: { id: number }) {
+  disableTwoFactor(@CurrentAdmin() admin: { id: number }): Promise<void> {
     return this.adminAuth.disableTwoFactor(admin.id);
   }
 }

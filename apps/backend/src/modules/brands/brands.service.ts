@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Locale } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -14,6 +15,7 @@ import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
 import {
   AdminBrandDto,
+  PublicBrandDetailDto,
   PublicBrandDto,
   toAdminBrandDto,
   toPublicBrandDto,
@@ -107,12 +109,7 @@ export class BrandsService {
     locale: Locale,
     page: number,
     pageSize: number,
-  ): Promise<{
-    items: PublicBrandDto[];
-    total: number;
-    page: number;
-    pageSize: number;
-  }> {
+  ): Promise<PaginatedResult<PublicBrandDto>> {
     const where = { deletedAt: null, status: 'PUBLISHED' } as const;
     const [items, total] = await Promise.all([
       this.prisma.client.brand.findMany({
@@ -131,7 +128,10 @@ export class BrandsService {
     );
   }
 
-  async publicGetBySlug(slug: string, locale: Locale) {
+  async publicGetBySlug(
+    slug: string,
+    locale: Locale,
+  ): Promise<PublicBrandDetailDto> {
     const brand = await this.prisma.client.brand.findFirst({
       where: { slug, deletedAt: null, status: 'PUBLISHED' },
       include: WITH_TRANSLATIONS,
