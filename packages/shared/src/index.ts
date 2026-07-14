@@ -17,6 +17,8 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 export * from './permission-catalog';
 export * from './url-paths';
 export * from './courier-status';
+export * from './bd-geo';
+export * from './phone';
 
 export interface PaginatedResult<T> {
   items: T[];

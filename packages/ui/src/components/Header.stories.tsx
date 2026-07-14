@@ -11,6 +11,8 @@ const meta: Meta<typeof Header> = {
     searchAriaLabel: "Search",
     trackOrderHref: "/track",
     trackOrderLabel: "Track order",
+    accountHref: "/account",
+    accountLabel: "My Account",
     cartLabel: "Cart",
     localeSwitchLabel: "বাংলা",
     onLocaleSwitch: () => {},

@@ -133,4 +133,23 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('homepage_section', 'create'),
   perm('homepage_section', 'update'),
   perm('homepage_section', 'delete'),
+
+  perm('dashboard', 'view'),
+
+  perm('net_profit_overview', 'view'),
+  perm('net_profit_fraud', 'view'),
+  perm('net_profit_fraud', 'manage'),
+  perm('net_profit_courier', 'manage'),
+  perm('net_profit_sms', 'view'),
+  perm('net_profit_sms', 'manage'),
+  perm('net_profit_advance', 'manage'),
+  perm('net_profit_blocker', 'manage'),
+  perm('net_profit_recovery', 'manage'),
+  perm('net_profit_orders', 'view'),
+  perm('net_profit_orders', 'manage'),
+  perm('net_profit_reports', 'view'),
+  perm('net_profit_profit', 'view'),
+  perm('net_profit_profit', 'manage'),
+  perm('net_profit_payments', 'verify'),
+  perm('net_profit_settings', 'manage'),
 ];

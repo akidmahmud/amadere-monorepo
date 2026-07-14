@@ -11,6 +11,7 @@ export interface FooterLinkColumn {
 
 export interface FooterProps {
   brandMark: string;
+  bottomImageUrl?: string;
   newsletterHeading: string;
   newsletterPlaceholder: string;
   subscribeLabel: string;
@@ -23,6 +24,7 @@ export interface FooterProps {
 
 export function Footer({
   brandMark,
+  bottomImageUrl,
   newsletterHeading,
   newsletterPlaceholder,
   subscribeLabel,
@@ -82,10 +84,15 @@ export function Footer({
         {rightsLabel}
       </div>
 
-      <div
-        className="mt-[-10px] h-[80px] bg-gradient-to-b from-[#c6a373] to-[#b48a55]"
-        aria-hidden
-      />
+      {bottomImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={bottomImageUrl} alt="" aria-hidden="true" className="mt-[-10px] h-[80px] w-full object-cover" />
+      ) : (
+        <div
+          className="mt-[-10px] h-[80px] bg-gradient-to-b from-[#c6a373] to-[#b48a55]"
+          aria-hidden
+        />
+      )}
     </footer>
   );
 }

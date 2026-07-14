@@ -1,14 +1,18 @@
 import type { components } from "./api/schema";
 import { toDisplayImageUrl } from "./media";
+import { buildPackSizeOptions, defaultVariantId } from "./pdp";
 
 type PublicProductDto = components["schemas"]["PublicProductDto"];
 
 export interface ProductCardData {
   href: string;
+  productId: number;
   name: string;
   imageUrl?: string;
   price: string;
   originalPrice?: string;
+  packOptions?: { value: string; label: string; price: string; originalPrice?: string }[];
+  defaultPackValue?: string;
 }
 
 // Variant-only products (hasVariants: true) carry no price on the product
@@ -24,11 +28,27 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
   const primaryMedia =
     product.media.find((m) => m.isPrimary) ?? product.media[0];
 
+  // Shown even for a single pack size — disabled in that case (ProductCard
+  // handles the disabling) rather than hidden, so the card layout doesn't
+  // shift between variant and non-variant products.
+  const packOptions =
+    product.hasVariants && product.variants.length >= 1
+      ? buildPackSizeOptions(product).map((p) => ({
+          value: p.value,
+          label: p.label,
+          price: p.price,
+          originalPrice: p.originalPrice ?? undefined,
+        }))
+      : undefined;
+
   return {
     href: `/products/${product.slug}`,
+    productId: product.id,
     name: product.name,
     imageUrl: toDisplayImageUrl(primaryMedia?.url),
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
+    packOptions,
+    defaultPackValue: packOptions ? defaultVariantId(product) : undefined,
   };
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import * as path from 'node:path';
@@ -29,6 +30,7 @@ import { CourierModule } from './modules/courier/courier.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BlogCategoriesModule } from './modules/blog-categories/blog-categories.module';
 import { BlogTagsModule } from './modules/blog-tags/blog-tags.module';
 import { BlogPostsModule } from './modules/blog-posts/blog-posts.module';
@@ -41,6 +43,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { MenusModule } from './modules/menus/menus.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
+import { NetProfitModule } from './modules/net-profit/net-profit.module';
 
 @Module({
   imports: [
@@ -86,6 +89,7 @@ import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sec
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     PrismaModule,
     CoreAuthModule,
     AuditLogModule,
@@ -110,6 +114,7 @@ import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sec
     CustomersModule,
     ReviewsModule,
     NewsletterModule,
+    DashboardModule,
     BlogCategoriesModule,
     BlogTagsModule,
     BlogPostsModule,
@@ -122,6 +127,7 @@ import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sec
     MenusModule,
     CollectionsModule,
     HomepageSectionsModule,
+    NetProfitModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

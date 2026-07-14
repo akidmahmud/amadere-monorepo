@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,6 +12,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from '../cart/pricing.service';
 import type { CartIdentity } from '../cart/cart.service';
 import { PaymentsService } from '../payments/payments.service';
+import { FraudService } from '../net-profit/fraud/fraud.service';
+import { BlockerService } from '../net-profit/blocker/blocker.service';
+import { AdvancePaymentService } from '../net-profit/advance-payment/advance-payment.service';
+import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -32,9 +37,18 @@ export class CheckoutService {
     private readonly pricing: PricingService,
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
+    private readonly fraud: FraudService,
+    private readonly blocker: BlockerService,
+    private readonly advancePayment: AdvancePaymentService,
+    private readonly otpSecurity: OtpSecurityService,
   ) {}
 
-  async requestCodOtp(dto: RequestCodOtpDto): Promise<void> {
+  async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
+    // ADDENDUM §I — evaluates the caller's IP for VPN/proxy; throws a
+    // ForbiddenException itself when policy=block, so a blocked request
+    // never even gets a real OTP row created.
+    const vpnResult = await this.otpSecurity.evaluate(ip);
+
     const code = randomBytes(3)
       .readUIntBE(0, 3)
       .toString()
@@ -45,6 +59,8 @@ export class CheckoutService {
         identifier: dto.phone,
         purpose: 'COD_VERIFICATION',
         code,
+        ipAddress: ip,
+        isVpn: vpnResult.isVpn,
         expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       },
     });
@@ -58,7 +74,20 @@ export class CheckoutService {
     identity: CartIdentity,
     dto: CheckoutDto,
     locale: Locale,
+    ip?: string,
   ): Promise<OrderDto> {
+    // Net Profit Order Blocker (§7.6) — applies to every payment method, not
+    // just COD, since a blocked customer shouldn't be able to order at all.
+    const blockCheck = await this.blocker.check({
+      phone: dto.shippingAddress.phone,
+      email: dto.shippingAddress.email,
+      ip,
+      deviceId: dto.deviceId,
+    });
+    if (blockCheck.blocked) {
+      throw new ForbiddenException('This order could not be placed. Please contact support.');
+    }
+
     const cart = await this.findCart(identity, locale);
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');
@@ -76,8 +105,33 @@ export class CheckoutService {
       throw new BadRequestException(pricing.couponError);
     }
 
+    // Set below when the fraud gate's action is "advance" (M4) — applied to
+    // the real order only after it's actually created.
+    let requireAdvancePercent: number | undefined;
+
     if (dto.paymentProvider === 'COD') {
       await this.verifyCodOtp(dto.shippingAddress.phone, dto.codOtpCode);
+
+      // Net Profit courier fraud gate (CLAUDE.net-profit.md §7.2) — only
+      // applies to COD, since a prepaid order carries no delivery-refusal
+      // risk. No-ops entirely when the feature is disabled/set to "off".
+      const gate = await this.fraud.evaluateCheckoutGate(dto.shippingAddress.phone);
+      if (!gate.allowed) {
+        await this.fraud.recordSaving(
+          dto.shippingAddress.phone,
+          pricing.total,
+          'auto_block',
+        );
+        await this.blocker.maybeAutoBlockFraud(dto.shippingAddress.phone);
+        throw new ForbiddenException(
+          gate.blockMessage
+            ? `${gate.blockMessage.en} / ${gate.blockMessage.bn}`
+            : 'This order could not be placed.',
+        );
+      }
+      if (gate.requireAdvancePercent) {
+        requireAdvancePercent = gate.requireAdvancePercent;
+      }
     }
 
     const voucher = dto.giftVoucherCode
@@ -211,6 +265,12 @@ export class CheckoutService {
       orderId: order.id,
       customerId: identity.customerId ?? null,
     } satisfies OrderCreatedEvent);
+
+    if (requireAdvancePercent) {
+      const required = totalAmount.times(requireAdvancePercent).dividedBy(100);
+      await this.advancePayment.require(order.id, required, 'high_risk');
+      await this.fraud.recordSaving(dto.shippingAddress.phone, required, 'advance_required', order.id);
+    }
 
     return this.getByIdInternal(order.id);
   }

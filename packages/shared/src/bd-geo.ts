@@ -1,0 +1,72 @@
+// Canonical Bangladesh division/district reference data for address forms —
+// the 8 official divisions, each with its official districts (deduplicated,
+// no aliases/abbreviations, unlike the free-text matcher in
+// packages/db/scripts/migrate/bd-geo.ts, which intentionally includes those
+// for guessing a division out of messy legacy address text).
+export const BD_DISTRICTS_BY_DIVISION: Record<string, string[]> = {
+  Dhaka: [
+    'Dhaka',
+    'Gazipur',
+    'Narayanganj',
+    'Narsingdi',
+    'Tangail',
+    'Kishoreganj',
+    'Manikganj',
+    'Munshiganj',
+    'Rajbari',
+    'Madaripur',
+    'Gopalganj',
+    'Faridpur',
+    'Shariatpur',
+  ],
+  Chattogram: [
+    'Chattogram',
+    "Cox's Bazar",
+    'Cumilla',
+    'Feni',
+    'Brahmanbaria',
+    'Rangamati',
+    'Noakhali',
+    'Chandpur',
+    'Lakshmipur',
+    'Khagrachari',
+    'Bandarban',
+  ],
+  Rajshahi: [
+    'Rajshahi',
+    'Bogura',
+    'Pabna',
+    'Sirajganj',
+    'Natore',
+    'Naogaon',
+    'Chapainawabganj',
+    'Joypurhat',
+  ],
+  Khulna: [
+    'Khulna',
+    'Jashore',
+    'Satkhira',
+    'Bagerhat',
+    'Narail',
+    'Chuadanga',
+    'Kushtia',
+    'Magura',
+    'Meherpur',
+    'Jhenaidah',
+  ],
+  Barishal: ['Barishal', 'Bhola', 'Patuakhali', 'Pirojpur', 'Barguna', 'Jhalokati'],
+  Sylhet: ['Sylhet', 'Moulvibazar', 'Habiganj', 'Sunamganj'],
+  Rangpur: [
+    'Rangpur',
+    'Dinajpur',
+    'Kurigram',
+    'Gaibandha',
+    'Nilphamari',
+    'Lalmonirhat',
+    'Panchagarh',
+    'Thakurgaon',
+  ],
+  Mymensingh: ['Mymensingh', 'Jamalpur', 'Sherpur', 'Netrokona'],
+};
+
+export const BD_DIVISIONS = Object.keys(BD_DISTRICTS_BY_DIVISION);

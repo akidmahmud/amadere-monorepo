@@ -12,7 +12,7 @@ export interface PlaceholderBannerProps {
 }
 
 const heightClasses: Record<PlaceholderBannerVariant, string> = {
-  hero: "h-[300px]",
+  hero: "aspect-[1882/500]",
   strip: "h-[150px]",
   tall: "h-[360px]",
   mid: "h-[300px]",

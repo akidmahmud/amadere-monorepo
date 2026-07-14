@@ -11,12 +11,19 @@ import {
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
+import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toDisplayImageUrl, toEmbeddableVideoUrl } from "@/lib/media";
 import { toProductCardData } from "@/lib/product-card-mapper";
+import { redirectIfMapped } from "@/lib/redirects";
+
+// ISR per §7 — ISR + on-demand revalidation (src/app/api/revalidate) once the
+// backend calls it on `product.updated` (see AGENTS.web.md §14 for what's
+// still missing on that side).
+export const revalidate = 3600;
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 type PublicBundleDto = components["schemas"]["PublicBundleDto"];
@@ -51,7 +58,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const product = await getProduct(slug, toApiLocale(locale));
-  if (!product) notFound();
+  if (!product) {
+    await redirectIfMapped(`/products/${slug}`, locale);
+    notFound();
+  }
 
   const path = `/products/${slug}`;
   return {
@@ -76,7 +86,10 @@ export default async function ProductPage({
   const localeParam = toApiLocale(locale);
 
   const product = await getProduct(slug, localeParam);
-  if (!product) notFound();
+  if (!product) {
+    await redirectIfMapped(`/products/${slug}`, locale);
+    notFound();
+  }
 
   const category = product.categories[0];
 
@@ -190,11 +203,7 @@ export default async function ProductPage({
         </div>
       )}
 
-      <ProductCarouselSection
-        heading="Related Products"
-        products={relatedProducts}
-        linkComponent={AppLink}
-      />
+      <ProductCarouselSectionClient heading="Related Products" products={relatedProducts} />
 
       <ProductCarouselSection
         heading="Frequently Bought Together"

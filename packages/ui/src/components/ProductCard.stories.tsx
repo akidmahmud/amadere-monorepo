@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
 import { ProductCard } from "./ProductCard";
 
 const meta: Meta<typeof ProductCard> = {
@@ -36,21 +35,16 @@ export const OnSaleWithBadge: Story = {
 };
 
 export const WithPackSelector: Story = {
-  render: (args) => {
-    const [pack, setPack] = useState("100g");
-    return (
-      <div className="w-52">
-        <ProductCard
-          {...args}
-          packOptions={[
-            { value: "100g", label: "100g" },
-            { value: "200g", label: "200g" },
-            { value: "2x100g", label: "100g × 2" },
-          ]}
-          selectedPack={pack}
-          onPackChange={setPack}
-        />
-      </div>
-    );
-  },
+  render: (args) => (
+    <div className="w-52">
+      <ProductCard
+        {...args}
+        packOptions={[
+          { value: "100g", label: "100g", price: "550.00" },
+          { value: "200g", label: "200g", price: "1000.00" },
+          { value: "2x100g", label: "100g × 2", price: "1050.00" },
+        ]}
+      />
+    </div>
+  ),
 };

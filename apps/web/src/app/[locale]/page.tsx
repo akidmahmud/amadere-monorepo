@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import {
+  AdBannerSection,
   BentoBlogs,
   CategoryCard,
   CertificationRow,
   CircleBadgeBar,
   Carousel,
-  FeatureTileRow,
   HeroCarousel,
   ProductCarouselSection,
+  PromoVideoSection,
   SectionHeading,
   TestimonialsBento,
   ViewAllLink,
@@ -23,10 +24,18 @@ import type { components } from "@/lib/api/schema";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { toDisplayImageUrl } from "@/lib/media";
 import { HealthConcernSection } from "@/components/HealthConcernSection";
+import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
+import { TabbedCollectionCarouselSection } from "@/components/TabbedCollectionCarouselSection";
+
+// Shorter window than catalog/blog on purpose — admin-edited HomepageSections
+// (B13) are meant to show up without a deploy; on-demand revalidation
+// (src/app/api/revalidate) closes the gap for the interim minutes, once the
+// backend actually calls it (see AGENTS.web.md §14 — that side doesn't exist yet).
+export const revalidate = 300;
 
 export function generateMetadata(): Metadata {
   return {
-    alternates: { languages: getLanguageAlternates("/") },
+    alternates: { canonical: "/", languages: getLanguageAlternates("/") },
   };
 }
 
@@ -52,21 +61,41 @@ type HomepageSectionType =
   | "BLOG_TEASER"
   | "CERTIFICATION_ROW"
   | "TESTIMONIAL_BENTO"
-  | "FEATURE_TILES"
-  | "CIRCLE_BADGE_BAR";
+  | "CIRCLE_BADGE_BAR"
+  | "PROMO_VIDEO"
+  | "TABBED_COLLECTION_CAROUSEL"
+  | "AD_BANNER";
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
-  "type" | "config"
-> & { type: HomepageSectionType; config: Record<string, unknown> };
+  "type" | "config" | "tabCollections"
+> & {
+  type: HomepageSectionType;
+  config: Record<string, unknown>;
+  tabCollections: (components["schemas"]["PublicCollectionDto"] | null)[] | null;
+};
 
-const WRAPPER = "mx-auto max-w-[1180px] px-5";
+interface TabbedCarouselTabConfig {
+  collectionId?: number;
+  tabLabel?: { EN: string; BN: string };
+  promoImageUrl?: string;
+  promoHeading?: { EN: string; BN: string };
+  promoBlurb?: { EN: string; BN: string };
+  viewAllUrl?: string;
+}
+
+// Full window width on real desktop screens (only caps on very wide/ultra-wide
+// monitors) instead of the 1180px content box used elsewhere on the site —
+// homepage sections are meant to fill the window, not float in a narrow
+// column with big empty gutters either side.
+const WRAPPER = "mx-auto w-full max-w-[1920px] px-5 sm:px-8 lg:px-12";
 
 function renderSection(
   section: HomepageSection,
   ctx: {
     categories: components["schemas"]["PublicCategoryDto"][];
     blogPosts: components["schemas"]["PublicBlogPostSummaryDto"][];
+    locale: "EN" | "BN";
   },
 ): ReactNode {
   const { config } = section;
@@ -89,14 +118,16 @@ function renderSection(
     case "PRODUCT_COLLECTION": {
       if (!section.collection || section.collection.products.length === 0) return null;
       return (
-        <ProductCarouselSection
-          key={section.id}
-          heading={section.heading ?? section.collection.name}
-          products={section.collection.products.map(toProductCardData)}
-          viewAllHref={`/collections/${section.collection.slug}`}
-          viewAllLabel="View All"
-          linkComponent={AppLink}
-        />
+        <div className={WRAPPER} key={section.id}>
+          <ProductCarouselSectionClient
+            heading={section.heading ?? section.collection.name}
+            products={section.collection.products.map(toProductCardData)}
+            viewAllHref={`/collections/${section.collection.slug}`}
+            viewAllLabel="View All"
+            visibleCount={5}
+            autoplayMs={4000}
+          />
+        </div>
       );
     }
 
@@ -104,7 +135,22 @@ function renderSection(
       const imageUrl = config.imageUrl as string | undefined;
       if (!imageUrl) return null;
       const linkUrl = config.linkUrl as string | undefined;
-      const image = <img src={imageUrl} alt="" className="h-[300px] w-full rounded-2xl object-cover" />;
+      // Source images are ideally 1690×195 — aspect-ratio instead of a flat
+      // height keeps the full image visible at that ratio on any viewport
+      // width. Same blurred-fill treatment as HeroCarousel: any off-ratio
+      // image still shows in full, uncropped, with a softly blurred copy of
+      // itself filling the rest instead of empty gaps.
+      const image = (
+        <div className="relative aspect-[1690/195] w-full overflow-hidden rounded-2xl bg-gray">
+          <img
+            src={imageUrl}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
+          />
+          <img src={imageUrl} alt="" className="relative h-full w-full object-contain" />
+        </div>
+      );
       return (
         <div className={`${WRAPPER} py-5`} key={section.id}>
           {linkUrl ? <AppLink href={linkUrl}>{image}</AppLink> : image}
@@ -185,21 +231,65 @@ function renderSection(
       );
     }
 
-    case "FEATURE_TILES": {
-      const tiles = config.tiles as { imageUrl?: string; title?: string; linkUrl?: string }[] | undefined;
-      return (
-        <div className={`${WRAPPER} pb-2.5`} key={section.id}>
-          <FeatureTileRow tiles={tiles} linkComponent={AppLink} />
-        </div>
-      );
-    }
-
     case "CIRCLE_BADGE_BAR": {
       const items = config.items as { imageUrl?: string; label: string }[] | undefined;
       if (!items || items.length === 0) return null;
       return (
         <div className={WRAPPER} key={section.id}>
           <CircleBadgeBar items={items} />
+        </div>
+      );
+    }
+
+    case "PROMO_VIDEO": {
+      const items = config.videos as
+        | { source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "R2" | "GIF"; url: string; thumbnailUrl?: string; linkUrl?: string }[]
+        | undefined;
+      if (!items || items.length === 0) return null;
+      return (
+        <div className={WRAPPER} key={section.id}>
+          <PromoVideoSection heading={section.heading ?? undefined} items={items} linkComponent={AppLink} />
+        </div>
+      );
+    }
+
+    case "AD_BANNER": {
+      const images = config.images as { imageUrl: string; linkUrl?: string }[] | undefined;
+      if (!images || images.length === 0) return null;
+      return (
+        <div className={`${WRAPPER} py-5`} key={section.id}>
+          <AdBannerSection images={images} linkComponent={AppLink} />
+        </div>
+      );
+    }
+
+    case "TABBED_COLLECTION_CAROUSEL": {
+      const tabConfigs = (config.tabs as TabbedCarouselTabConfig[] | undefined) ?? [];
+      const resolved = section.tabCollections ?? [];
+      const tabs = tabConfigs
+        .map((tabConfig, i) => {
+          const collection = resolved[i];
+          if (!collection) return null;
+          const products = collection.products.map(toProductCardData);
+          return {
+            key: String(i),
+            label: tabConfig.tabLabel?.[ctx.locale] || collection.name,
+            promoImageUrl: tabConfig.promoImageUrl || products[0]?.imageUrl,
+            promoHeading: tabConfig.promoHeading?.[ctx.locale] || collection.name,
+            promoBlurb: tabConfig.promoBlurb?.[ctx.locale] || collection.description || undefined,
+            viewAllHref: tabConfig.viewAllUrl || `/collections/${collection.slug}`,
+            products,
+          };
+        })
+        .filter((tab): tab is NonNullable<typeof tab> => tab !== null);
+      if (tabs.length === 0) return null;
+      return (
+        <div className={WRAPPER} key={section.id}>
+          <TabbedCollectionCarouselSection
+            heading={section.heading ?? undefined}
+            tabs={tabs}
+            defaultActiveIndex={(config.defaultActiveTab as number | undefined) ?? 0}
+          />
         </div>
       );
     }
@@ -248,7 +338,7 @@ export default async function Home({
     ? ((
         await safeGet("/api/v1/products", {
           params: {
-            query: { locale: localeParam, tagId: firstTag.id, pageSize: 8 },
+            query: { locale: localeParam, tagIds: [firstTag.id], pageSize: 8 },
           },
         })
       ).data?.items ?? [])
@@ -256,16 +346,18 @@ export default async function Home({
 
   return (
     <main className="flex-1">
-      {sections.map((section) => renderSection(section, { categories, blogPosts }))}
+      {sections.map((section) => renderSection(section, { categories, blogPosts, locale: localeParam }))}
 
       {bundles.length > 0 && (
-        <ProductCarouselSection
-          heading="Super Saver Combos"
-          products={bundles}
-          viewAllHref="/combos"
-          viewAllLabel="View All"
-          linkComponent={AppLink}
-        />
+        <div className={WRAPPER}>
+          <ProductCarouselSection
+            heading="Super Saver Combos"
+            products={bundles}
+            viewAllHref="/combos"
+            viewAllLabel="View All"
+            linkComponent={AppLink}
+          />
+        </div>
       )}
 
       {firstTag && (

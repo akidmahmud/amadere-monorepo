@@ -4,6 +4,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { PaymentProvider } from './payment-provider.interface';
 import { CodPaymentProvider } from './providers/cod-payment.provider';
 import { UnconfiguredPaymentProvider } from './providers/unconfigured-payment.provider';
+import { ManualPaymentProvider } from './providers/manual-payment.provider';
 
 @Injectable()
 export class PaymentsService {
@@ -12,11 +13,19 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     cod: CodPaymentProvider,
+    manual: ManualPaymentProvider,
   ) {
     this.providers = {
       COD: cod,
-      BKASH: new UnconfiguredPaymentProvider('bKash'),
-      NAGAD: new UnconfiguredPaymentProvider('Nagad'),
+      // bKash/Nagad/Rocket/Upay route to the real Net Profit manual-payment
+      // flow (customer pays to a merchant number, submits the trx id, staff
+      // verifies) rather than an unconfigured-gateway stub — this *is* the
+      // real Phase-1 implementation for these four now, not a placeholder;
+      // a true online-gateway integration is a separate future upgrade.
+      BKASH: manual,
+      NAGAD: manual,
+      ROCKET: manual,
+      UPAY: manual,
       SSLCOMMERZ: new UnconfiguredPaymentProvider('SSLCommerz'),
       BANK_TRANSFER: new UnconfiguredPaymentProvider('Bank Transfer'),
     };

@@ -40,4 +40,9 @@ export class CheckoutDto {
   @IsOptional()
   @IsString()
   customerNote?: string;
+
+  @ApiPropertyOptional({ description: 'Stable client-side device fingerprint (ADDENDUM §E) — used by the blocker device-block path' })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }

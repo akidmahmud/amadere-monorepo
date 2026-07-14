@@ -1,11 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { PriceTag } from "./PriceTag";
-import { Select, type SelectOption } from "./Select";
+import { Select } from "./Select";
+
+export interface ProductCardPackOption {
+  value: string;
+  label: string;
+  price: string;
+  originalPrice?: string;
+}
 
 export interface ProductCardProps {
   href: string;
@@ -14,11 +22,12 @@ export interface ProductCardProps {
   price: string;
   originalPrice?: string | null;
   discountLabel?: string;
-  packOptions?: SelectOption[];
-  selectedPack?: string;
-  onPackChange?: (value: string) => void;
-  onAddToCart?: () => void;
+  /** When a product has more than one pack size, selecting one updates the displayed price and is passed to onAddToCart. */
+  packOptions?: ProductCardPackOption[];
+  defaultPackValue?: string;
+  onAddToCart?: (packValue?: string) => void;
   addToCartLabel?: string;
+  addToCartPending?: boolean;
   linkComponent?: LinkComponent;
   className?: string;
 }
@@ -31,17 +40,22 @@ export function ProductCard({
   originalPrice,
   discountLabel,
   packOptions,
-  selectedPack,
-  onPackChange,
+  defaultPackValue,
   onAddToCart,
   addToCartLabel = "Add to Cart",
+  addToCartPending,
   linkComponent: Link = DefaultLink,
   className,
 }: ProductCardProps) {
+  const [selectedPack, setSelectedPack] = useState(defaultPackValue ?? packOptions?.[0]?.value);
+  const selectedOption = packOptions?.find((o) => o.value === selectedPack);
+  const displayPrice = selectedOption?.price ?? price;
+  const displayOriginalPrice = selectedOption ? selectedOption.originalPrice : (originalPrice ?? undefined);
+
   return (
     <div
       className={cn(
-        "flex flex-col rounded-brand border border-line bg-white p-2.5 shadow-brand transition-transform duration-150 hover:-translate-y-[3px]",
+        "flex h-full flex-col rounded-brand border border-line bg-white p-2.5 shadow-brand transition-transform duration-150 hover:-translate-y-[3px]",
         className,
       )}
     >
@@ -67,22 +81,24 @@ export function ProductCard({
         >
           {name}
         </Link>
-        <PriceTag price={price} originalPrice={originalPrice} />
+        <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} />
         {packOptions && packOptions.length > 0 && (
           <Select
             options={packOptions}
             value={selectedPack}
-            onValueChange={onPackChange}
+            onValueChange={setSelectedPack}
+            disabled={packOptions.length === 1}
             aria-label="Pack size"
           />
         )}
         <Button
           variant="green"
           block
+          disabled={addToCartPending}
           className="mt-auto rounded-[8px] py-2.5"
-          onClick={onAddToCart}
+          onClick={() => onAddToCart?.(selectedPack)}
         >
-          {addToCartLabel}
+          {addToCartPending ? "Adding…" : addToCartLabel}
         </Button>
       </div>
     </div>

@@ -23,9 +23,9 @@ const checkIcon = (
   </svg>
 );
 
-// The API only supports one categoryId/tagId at a time, so these render as
-// single-select links styled as checkboxes (clicking toggles the filter on/
-// off by navigating), not a real multi-select form.
+// Multi-select: each option's `href` is computed by the caller as the
+// resulting filter set with this one toggled on/off (see ProductListing's
+// toggleId), so clicking any number of these composes rather than replaces.
 export function FilterCheckboxGroup({ heading, options, linkComponent: Link = DefaultLink }: FilterCheckboxGroupProps) {
   return (
     <div>

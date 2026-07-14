@@ -1,0 +1,13 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsOptional } from 'class-validator';
+
+export class RecomputeDailyProfitDto {
+  @ApiProperty()
+  @IsDateString()
+  from!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}

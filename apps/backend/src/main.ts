@@ -10,6 +10,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  // Storefront search is client-driven (fetches this API directly from the
+  // browser, unlike everything else which is server-rendered or proxied) —
+  // without CORS the browser silently drops the response and search looks
+  // broken with no server-side error at all.
+  const corsOrigins = (config.get<string>('CORS_ORIGINS') ?? 'http://localhost:3001,http://localhost:3002').split(',');
+  app.enableCors({ origin: corsOrigins, credentials: true });
+
   app.setGlobalPrefix('api/v1', {
     exclude: ['health', 'sitemap.xml', 'robots.txt'],
   });

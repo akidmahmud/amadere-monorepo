@@ -16,6 +16,7 @@ export interface SelectProps {
   onValueChange?: (value: string) => void;
   placeholder?: string;
   variant?: "bordered" | "plain";
+  disabled?: boolean;
   "aria-label"?: string;
   className?: string;
 }
@@ -33,6 +34,7 @@ export function Select({
   onValueChange,
   placeholder,
   variant = "bordered",
+  disabled,
   className,
   ...aria
 }: SelectProps): ReactNode {
@@ -41,6 +43,7 @@ export function Select({
       value={value}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
+      disabled={disabled}
     >
       <RadixSelect.Trigger
         aria-label={aria["aria-label"]}
@@ -49,6 +52,7 @@ export function Select({
           variant === "bordered"
             ? "w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 focus:border-green"
             : "cursor-pointer border-none bg-transparent font-serif text-sm text-ink",
+          disabled && "cursor-not-allowed opacity-50",
           className,
         )}
       >

@@ -1,13 +1,15 @@
-import {
-  FilterCheckboxGroup,
-  Pager,
-  PlaceholderBanner,
-  ProductCard,
-  type ProductCardProps,
-} from "@amader/ui";
+"use client";
+
+import { FilterCheckboxGroup, PlaceholderBanner, ProductCard, type ProductCardProps } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
+import { PlpPager } from "@/components/PlpPager";
 import { SortSelect } from "@/components/SortSelect";
+import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import { buildPlpHref, type PlpFilters } from "@/lib/plp";
+
+function toggleId(ids: number[], id: number): number[] {
+  return ids.includes(id) ? ids.filter((existing) => existing !== id) : [...ids, id];
+}
 
 export interface ProductListingCategory {
   id: number;
@@ -26,7 +28,10 @@ export interface ProductListingProps {
   filters: PlpFilters;
   total: number;
   pageSize: number;
-  products: Pick<ProductCardProps, "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel">[];
+  products: (Pick<
+    ProductCardProps,
+    "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "packOptions" | "defaultPackValue"
+  > & { productId: number })[];
   categories?: ProductListingCategory[];
   tags: ProductListingTag[];
 }
@@ -40,6 +45,7 @@ export function ProductListing({
   categories,
   tags,
 }: ProductListingProps) {
+  const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (filters.page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, filters.page * pageSize);
@@ -52,10 +58,7 @@ export function ProductListing({
         <span>Filter</span>
         <span className="flex items-center gap-2">
           Sort by :
-          <SortSelect
-            value={filters.sort}
-            buildHref={(sort) => buildPlpHref(basePath, { ...filters, sort, page: 1 })}
-          />
+          <SortSelect basePath={basePath} filters={filters} />
         </span>
       </div>
 
@@ -72,10 +75,10 @@ export function ProductListing({
               options={categories.map((category) => ({
                 label: category.name,
                 count: category.productCount,
-                active: filters.categoryId === category.id,
+                active: filters.categoryIds.includes(category.id),
                 href: buildPlpHref(basePath, {
                   ...filters,
-                  categoryId: filters.categoryId === category.id ? undefined : category.id,
+                  categoryIds: toggleId(filters.categoryIds, category.id),
                   page: 1,
                 }),
               }))}
@@ -87,10 +90,10 @@ export function ProductListing({
               linkComponent={AppLink}
               options={tags.map((tag) => ({
                 label: tag.name,
-                active: filters.tagId === tag.id,
+                active: filters.tagIds.includes(tag.id),
                 href: buildPlpHref(basePath, {
                   ...filters,
-                  tagId: filters.tagId === tag.id ? undefined : tag.id,
+                  tagIds: toggleId(filters.tagIds, tag.id),
                   page: 1,
                 }),
               }))}
@@ -104,16 +107,17 @@ export function ProductListing({
           ) : (
             <div className="grid grid-cols-4 gap-4.5 max-lg:grid-cols-3 max-sm:grid-cols-2">
               {products.map((product) => (
-                <ProductCard key={product.href} {...product} linkComponent={AppLink} />
+                <ProductCard
+                  key={product.href}
+                  {...product}
+                  addToCartPending={isPending && pendingProductId === product.productId}
+                  onAddToCart={(packValue) => handleAddToCart(product.productId, packValue)}
+                  linkComponent={AppLink}
+                />
               ))}
             </div>
           )}
-          <Pager
-            page={filters.page}
-            totalPages={totalPages}
-            linkComponent={AppLink}
-            buildHref={(page) => buildPlpHref(basePath, { ...filters, page })}
-          />
+          <PlpPager basePath={basePath} filters={filters} totalPages={totalPages} />
         </div>
       </div>
     </div>

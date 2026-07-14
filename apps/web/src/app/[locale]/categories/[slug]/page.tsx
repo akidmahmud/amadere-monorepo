@@ -8,7 +8,11 @@ import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { isFilteredView, parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
+import { redirectIfMapped } from "@/lib/redirects";
 import { ProductListing } from "@/components/ProductListing";
+
+// ISR per §7 (on-demand revalidation still needs the backend side — §14).
+export const revalidate = 3600;
 
 const PAGE_SIZE = 24;
 
@@ -29,7 +33,10 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const filters = parsePlpSearchParams(await searchParams);
   const category = await getCategory(slug, toApiLocale(locale));
-  if (!category) notFound();
+  if (!category) {
+    await redirectIfMapped(`/categories/${slug}`, locale);
+    notFound();
+  }
 
   const path = `/categories/${slug}`;
   return {
@@ -58,7 +65,10 @@ export default async function CategoryPage({
   const filters = parsePlpSearchParams(await searchParams);
 
   const category = await getCategory(slug, localeParam);
-  if (!category) notFound();
+  if (!category) {
+    await redirectIfMapped(`/categories/${slug}`, locale);
+    notFound();
+  }
 
   const [productsRes, tagsRes] = await Promise.all([
     safeGet("/api/v1/products", {
@@ -67,8 +77,8 @@ export default async function CategoryPage({
           locale: localeParam,
           page: filters.page,
           pageSize: PAGE_SIZE,
-          categoryId: category.id,
-          tagId: filters.tagId,
+          categoryIds: [category.id],
+          tagIds: filters.tagIds,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
           sort: filters.sort,

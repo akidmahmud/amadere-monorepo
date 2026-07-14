@@ -1,0 +1,5 @@
+@import "@amader/admin-ui/globals.css";
+
+/* Tailwind's default content scan doesn't reach into workspace packages —
+   point it at the shared admin component library explicitly. */
+@source "../../../../packages/admin-ui/src";

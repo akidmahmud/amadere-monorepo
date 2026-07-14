@@ -3,7 +3,8 @@ import { Locale, Prisma } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SynonymsService } from './synonyms.service';
-import { ProductSearchHit, SearchProvider } from './search-provider.interface';
+import { SearchProvider } from './search-provider.interface';
+import { ProductSearchHit } from './search.mapper';
 
 interface MatchRow {
   id: number;

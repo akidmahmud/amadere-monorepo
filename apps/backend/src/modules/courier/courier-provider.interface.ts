@@ -34,6 +34,16 @@ export interface CancelReturnResult {
   rawResponse: unknown;
 }
 
+export interface FraudCheckResult {
+  total: number;
+  delivered: number;
+  cancelled: number;
+}
+
+export type FraudCheckOutcome =
+  | ({ unavailable?: false } & FraudCheckResult)
+  | { unavailable: true };
+
 // One interface, one implementation per courier — Steadfast is real
 // (proven against the reference codebase's working integration); Pathao/
 // RedX/eCourier plug in behind it the same way once credentials arrive
@@ -47,4 +57,9 @@ export interface CourierProvider {
     consignmentId: string,
     reasonCode: string,
   ): Promise<CancelReturnResult>;
+  // Net Profit fraud detection (CLAUDE.net-profit.md §7.2): per-courier
+  // delivered/cancelled history for a phone. Optional — a courier without a
+  // fraud-check endpoint simply omits this method; callers must check for
+  // its presence and never assume every provider implements it.
+  fraudCheck?(phoneMsisdn: string): Promise<FraudCheckOutcome>;
 }

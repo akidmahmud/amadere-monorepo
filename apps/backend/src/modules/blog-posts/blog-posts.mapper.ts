@@ -93,6 +93,7 @@ export function toAdminBlogPostDto(
 }
 
 export class PublicBlogPostAuthorDto {
+  id!: number;
   firstName!: string | null;
   lastName!: string | null;
   avatarUrl!: string | null;
@@ -133,6 +134,7 @@ export function toPublicBlogPostSummaryDto(
     imageUrl: post.imageUrl,
     publishedAt: post.publishedAt,
     author: {
+      id: post.author.id,
       firstName: post.author.firstName,
       lastName: post.author.lastName,
       avatarUrl: post.author.avatarUrl,

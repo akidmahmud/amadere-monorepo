@@ -4,11 +4,9 @@ import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
-import {
-  ProductSearchHit,
-  SEARCH_PROVIDER,
-} from './search-provider.interface';
+import { SEARCH_PROVIDER } from './search-provider.interface';
 import type { SearchProvider } from './search-provider.interface';
+import { ProductSearchHit } from './search.mapper';
 import { SearchQueryDto } from './dto/search-query.dto';
 
 @ApiTags('search')

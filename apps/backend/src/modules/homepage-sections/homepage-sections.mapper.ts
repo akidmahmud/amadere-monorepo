@@ -53,12 +53,18 @@ export class PublicHomepageSectionDto {
   subheading!: string | null;
   config!: Prisma.JsonValue;
   collection!: PublicCollectionDto | null;
+  /** TABBED_COLLECTION_CAROUSEL only — one resolved collection (with real
+   * products, already sliced to config.productsPerTab) per config.tabs
+   * entry, same order, null for a tab whose collectionId no longer
+   * resolves (deleted/unpublished) rather than dropping the tab silently. */
+  tabCollections!: (PublicCollectionDto | null)[] | null;
 }
 
 export function toPublicHomepageSectionDto(
   section: HomepageSectionWithTranslations,
   collection: PublicCollectionDto | null,
   locale: Locale,
+  tabCollections: (PublicCollectionDto | null)[] | null = null,
 ): PublicHomepageSectionDto {
   const translation =
     section.translations.find((t) => t.locale === locale) ??
@@ -71,5 +77,6 @@ export function toPublicHomepageSectionDto(
     subheading: translation?.subheading ?? null,
     config: section.config,
     collection,
+    tabCollections,
   };
 }

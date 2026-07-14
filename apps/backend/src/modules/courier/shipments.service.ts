@@ -303,16 +303,28 @@ export class ShipmentsService {
     status: string;
     updated_at?: string;
   }) {
+    return this.handleCourierWebhook('STEADFAST', String(payload.consignment_id), payload.status, payload);
+  }
+
+  // ADDENDUM §F — generic inbound-webhook handler shared by Steadfast
+  // (above, unchanged path/behavior) and the new Pathao/RedX receivers in
+  // CourierWebhooksController. Same shape either way: find the shipment by
+  // provider+consignmentId, map the courier's raw status string through the
+  // one shared mapping table, update the shipment, and log a real
+  // ShipmentEvent with the raw payload attached for debugging.
+  async handleCourierWebhook(
+    provider: CourierProviderName,
+    consignmentId: string,
+    rawStatus: string,
+    rawPayload: unknown,
+  ): Promise<void> {
     const shipment = await this.prisma.client.shipment.findFirst({
-      where: {
-        provider: 'STEADFAST',
-        consignmentId: String(payload.consignment_id),
-      },
+      where: { provider, consignmentId },
     });
     if (!shipment)
       throw new NotFoundException('Shipment not found for this consignment');
 
-    const status = mapRawStatus(payload.status);
+    const status = mapRawStatus(rawStatus);
     await this.prisma.client.shipment.update({
       where: { id: shipment.id },
       data: {
@@ -321,8 +333,8 @@ export class ShipmentsService {
         events: {
           create: {
             status,
-            note: `Webhook: ${payload.status}`,
-            rawPayload: payload,
+            note: `Webhook: ${rawStatus}`,
+            rawPayload: rawPayload as object,
           },
         },
       },

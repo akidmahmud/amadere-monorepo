@@ -293,6 +293,23 @@ export class ProductsService {
     });
   }
 
+  // ADDENDUM §B1 — the Inventory view needs to edit variant stock inline;
+  // simple (non-variant) products already go through the general update().
+  async updateVariantStock(
+    productId: number,
+    variantId: number,
+    stock: number,
+  ): Promise<void> {
+    const variant = await this.prisma.client.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+    if (!variant) throw new NotFoundException('Variant not found');
+    await this.prisma.client.productVariant.update({
+      where: { id: variantId },
+      data: { stock },
+    });
+  }
+
   async publicList(
     locale: Locale,
     page: number,
@@ -400,11 +417,11 @@ export class ProductsService {
       ...(filters.isFeatured !== undefined
         ? { isFeatured: filters.isFeatured }
         : {}),
-      ...(filters.categoryId !== undefined
-        ? { categories: { some: { categoryId: filters.categoryId } } }
+      ...(filters.categoryIds?.length
+        ? { categories: { some: { categoryId: { in: filters.categoryIds } } } }
         : {}),
-      ...(filters.tagId !== undefined
-        ? { tags: { some: { tagId: filters.tagId } } }
+      ...(filters.tagIds?.length
+        ? { tags: { some: { tagId: { in: filters.tagIds } } } }
         : {}),
       ...(filters.minPrice !== undefined || filters.maxPrice !== undefined
         ? {

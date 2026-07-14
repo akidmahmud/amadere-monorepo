@@ -14,5 +14,8 @@ import { SteadfastCourierProvider } from './providers/steadfast-courier.provider
     ShippingChargeCalculator,
     SteadfastCourierProvider,
   ],
+  // Net Profit Order Manager (§7.8/M2) bulk-consigns through the real
+  // ShipmentsService rather than a second courier client.
+  exports: [ShipmentsService],
 })
 export class CourierModule {}

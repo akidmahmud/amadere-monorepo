@@ -25,6 +25,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { ProductFilterQueryDto } from './dto/product-filter-query.dto';
 import { AdminProductDto } from './dto/product-response.dto';
+import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 
 @ApiTags('admin/products')
 @ApiBearerAuth()
@@ -91,5 +92,15 @@ export class AdminProductsController {
     @Param('variantId', ParseIntPipe) variantId: number,
   ): Promise<void> {
     return this.products.removeVariant(id, variantId);
+  }
+
+  @Patch(':id/variants/:variantId/stock')
+  @RequirePermission('product.update')
+  updateVariantStock(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+    @Body() dto: UpdateVariantStockDto,
+  ): Promise<void> {
+    return this.products.updateVariantStock(id, variantId, dto.stock);
   }
 }

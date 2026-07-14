@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Ip, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
 import { CartIdentityGuard } from '../cart/cart-identity.guard';
@@ -17,8 +17,8 @@ export class CheckoutController {
   constructor(private readonly checkout: CheckoutService) {}
 
   @Post('cod-otp/request')
-  requestCodOtp(@Body() dto: RequestCodOtpDto): Promise<void> {
-    return this.checkout.requestCodOtp(dto);
+  requestCodOtp(@Body() dto: RequestCodOtpDto, @Ip() ip: string): Promise<void> {
+    return this.checkout.requestCodOtp(dto, ip);
   }
 
   @Post()
@@ -28,6 +28,6 @@ export class CheckoutController {
     @Body() dto: CheckoutDto,
     @Query() { locale }: LocaleQueryDto,
   ): Promise<OrderDto> {
-    return this.checkout.checkout(req.cartIdentity, dto, locale ?? 'EN');
+    return this.checkout.checkout(req.cartIdentity, dto, locale ?? 'EN', req.ip);
   }
 }

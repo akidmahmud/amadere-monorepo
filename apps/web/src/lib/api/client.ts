@@ -21,8 +21,16 @@ export class ApiError extends Error {
 // call sites just get `data`, never the envelope.
 const unwrapEnvelope: Middleware = {
   async onResponse({ response }) {
-    const body = (await response.clone().json()) as
-      { success: true; data: unknown } | ApiErrorResponse;
+    let body: { success: true; data: unknown } | ApiErrorResponse;
+    try {
+      body = (await response.clone().json()) as typeof body;
+    } catch {
+      // Non-JSON/empty body — the response didn't come from this app's own
+      // ResponseInterceptor at all (wrong baseUrl, proxy in the way, dev
+      // server overload). Surface a clean ApiError instead of a raw
+      // SyntaxError so every call site's existing error handling still works.
+      throw new ApiError(response.status, "invalid_response", "Response body was not valid JSON");
+    }
 
     if (!body.success) {
       throw new ApiError(response.status, body.error.code, body.error.message);

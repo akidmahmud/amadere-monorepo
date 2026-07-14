@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "backup": "tsx scripts/backup.ts",
-    "migrate:legacy": "tsx scripts/migrate.ts"
+    "migrate:legacy": "tsx scripts/migrate.ts",
+    "backfill:r2-media": "tsx scripts/backfill-r2-media.ts"
   },
   "dependencies": {
     "@amader/shared": "workspace:*",

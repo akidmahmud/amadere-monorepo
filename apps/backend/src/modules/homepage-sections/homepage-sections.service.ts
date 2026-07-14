@@ -39,6 +39,7 @@ export class HomepageSectionsService {
 
   async create(dto: CreateHomepageSectionDto): Promise<AdminHomepageSectionDto> {
     await this.assertValidCollectionRef(dto.type, dto.collectionId);
+    await this.assertValidTabCollectionRefs(dto.type, dto.config);
 
     const section = await this.prisma.client.homepageSection.create({
       data: {
@@ -62,6 +63,10 @@ export class HomepageSectionsService {
     await this.assertValidCollectionRef(
       dto.type ?? existing.type,
       dto.collectionId !== undefined ? dto.collectionId : (existing.collectionId ?? undefined),
+    );
+    await this.assertValidTabCollectionRefs(
+      dto.type ?? existing.type,
+      dto.config !== undefined ? dto.config : existing.config,
     );
 
     if (dto.translations) {
@@ -114,7 +119,26 @@ export class HomepageSectionsService {
           section.type === 'PRODUCT_COLLECTION' && section.collectionId
             ? await this.collections.getResolvedById(section.collectionId, locale)
             : null;
-        return toPublicHomepageSectionDto(section, collection, locale);
+        const tabCollections =
+          section.type === 'TABBED_COLLECTION_CAROUSEL'
+            ? await this.resolveTabCollections(section.config, locale)
+            : null;
+        return toPublicHomepageSectionDto(section, collection, locale, tabCollections);
+      }),
+    );
+  }
+
+  private async resolveTabCollections(
+    config: unknown,
+    locale: Locale,
+  ) {
+    const tabs = extractTabs(config);
+    const productsPerTab = extractProductsPerTab(config);
+    return Promise.all(
+      tabs.map(async (tab) => {
+        const collection = await this.collections.getResolvedById(tab.collectionId, locale);
+        if (!collection) return null;
+        return { ...collection, products: collection.products.slice(0, productsPerTab) };
       }),
     );
   }
@@ -134,4 +158,36 @@ export class HomepageSectionsService {
     });
     if (!collection) throw new BadRequestException('Collection not found');
   }
+
+  private async assertValidTabCollectionRefs(
+    type: HomepageSectionType,
+    config: unknown,
+  ): Promise<void> {
+    if (type !== 'TABBED_COLLECTION_CAROUSEL') return;
+    const tabs = extractTabs(config);
+    if (tabs.length === 0) return;
+    const ids = tabs.map((t) => t.collectionId);
+    const count = await this.prisma.client.collection.count({
+      where: { id: { in: ids }, deletedAt: null },
+    });
+    if (count !== new Set(ids).size) {
+      throw new BadRequestException('One or more tab collectionId values do not exist');
+    }
+  }
+}
+
+function extractTabs(config: unknown): { collectionId: number }[] {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return [];
+  const tabs = (config as Record<string, unknown>).tabs;
+  if (!Array.isArray(tabs)) return [];
+  return tabs
+    .map((t) => (t && typeof t === 'object' ? (t as Record<string, unknown>).collectionId : undefined))
+    .filter((id): id is number => typeof id === 'number')
+    .map((collectionId) => ({ collectionId }));
+}
+
+function extractProductsPerTab(config: unknown): number {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return 10;
+  const value = (config as Record<string, unknown>).productsPerTab;
+  return typeof value === 'number' && value > 0 ? value : 10;
 }

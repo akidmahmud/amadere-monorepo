@@ -3,16 +3,23 @@
 import { Footer } from "@amader/ui";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useSubscribeNewsletter } from "@/hooks/useNewsletter";
+
+const FOOTER_BOTTOM_IMAGE_URL =
+  "https://pub-51174804638049198acba5bbf211435e.r2.dev/image/8ba98d02-41d1-4d55-b9d4-e992a7fa5449-footer-bottom.png";
 
 export function SiteFooter() {
   const t = useTranslations("footer");
+  const subscribe = useSubscribeNewsletter();
 
   return (
     <Footer
       brandMark="আমাদের"
+      bottomImageUrl={FOOTER_BOTTOM_IMAGE_URL}
       newsletterHeading={t("newsletterHeading")}
       newsletterPlaceholder={t("newsletterPlaceholder")}
-      subscribeLabel={t("subscribe")}
+      subscribeLabel={subscribe.isSuccess ? "Subscribed!" : t("subscribe")}
+      onSubscribe={(email) => subscribe.mutate(email)}
       columns={[
         {
           heading: t("aboutHeading"),

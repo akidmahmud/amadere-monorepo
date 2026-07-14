@@ -7,6 +7,8 @@ import { routing } from "@/i18n/routing";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteCartDrawer } from "@/components/SiteCartDrawer";
+import { QueryProvider } from "@/components/QueryProvider";
+import { safeGet } from "@/lib/api/client";
 import "../globals.css";
 
 const fraunces = Fraunces({
@@ -58,6 +60,8 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
 
+  const { data: siteInfo } = await safeGet("/api/v1/settings/site");
+
   return (
     <html
       lang={locale}
@@ -65,10 +69,12 @@ export default async function LocaleLayout({
     >
       <body className="min-h-full flex flex-col font-body">
         <NextIntlClientProvider>
-          <SiteHeader />
-          <div className="flex flex-1 flex-col">{children}</div>
-          <SiteFooter />
-          <SiteCartDrawer />
+          <QueryProvider>
+            <SiteHeader initialLogoUrl={siteInfo?.logoUrl} />
+            <div className="flex flex-1 flex-col">{children}</div>
+            <SiteFooter />
+            <SiteCartDrawer />
+          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -299,6 +299,9 @@ model Otp {
   identifier String
   purpose    OtpPurpose
   code       String
+  ipAddress  String?    @map("ip_address") // ADDENDUM §I
+  isVpn      Boolean    @default(false) @map("is_vpn") // ADDENDUM §I — VPN/proxy detected at request time
+  attempts   Int        @default(0) // ADDENDUM §I — verify attempts against this row
   expiresAt  DateTime   @map("expires_at")
   consumedAt DateTime?  @map("consumed_at")
   createdAt  DateTime   @default(now()) @map("created_at")
@@ -850,11 +853,14 @@ model WishlistItem {
 
 enum OrderStatus {
   PENDING
+  CONFIRMED // Net Profit Order Manager (§7.8): staff has reviewed/confirmed before packing
   PROCESSING
   COMPLETED
   CANCELED
   PARTIALLY_RETURNED
   RETURNED
+  HOLD // Net Profit fraud/advance-payment hold — courier-stage detail (packed/consigned/
+  // in_transit/delivered) already lives on Shipment.status; not duplicated here.
 }
 
 model Order {
@@ -896,6 +902,10 @@ model Order {
   voucherUses   GiftVoucherRedemption[]
   payments      Payment[]
   shipments     Shipment[]
+  fraudSavings  FraudSaving[]
+  advancePayment AdvancePayment?
+  manualPayments ManualPayment[]
+  profit         OrderProfit?
 
   @@index([status])
   @@map("orders")
@@ -974,6 +984,8 @@ enum PaymentProvider {
   COD
   BKASH
   NAGAD
+  ROCKET // added for Net Profit Manual Payment (§7.12, M4) — bKash/Nagad already existed, Rocket didn't
+  UPAY // ADDENDUM §J
   SSLCOMMERZ
   BANK_TRANSFER
 }
@@ -1477,8 +1489,10 @@ enum HomepageSectionType {
   BLOG_TEASER
   CERTIFICATION_ROW
   TESTIMONIAL_BENTO
-  FEATURE_TILES
   CIRCLE_BADGE_BAR
+  PROMO_VIDEO
+  TABBED_COLLECTION_CAROUSEL
+  AD_BANNER
 }
 
 model HomepageSection {
@@ -1592,4 +1606,370 @@ model MenuItemTranslation {
 
   @@unique([menuItemId, locale])
   @@map("menu_item_translations")
+}
+
+// --- Net Profit (CLAUDE.net-profit.md) --------------------------------
+// Ops + intelligence layer over existing Order/Customer/Shipment data, not
+// a parallel commerce system. §5.2 Fraud: aggregate courier delivery
+// history per phone into a cached risk verdict; FraudSaving logs the ৳
+// value protected when a risky COD order is held/blocked.
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  UNKNOWN
+}
+
+model FraudCheck {
+  id          Int       @id @default(autoincrement())
+  phone       String    @unique // normalized BD MSISDN, +8801XXXXXXXXX
+  totalOrders Int       @default(0) @map("total_orders")
+  delivered   Int       @default(0)
+  cancelled   Int       @default(0) // cancelled + returned, across couriers
+  successRate Float?    @map("success_rate") // delivered / totalOrders, null if totalOrders = 0
+  riskLevel   RiskLevel @default(UNKNOWN) @map("risk_level")
+  breakdown   Json // per-courier raw: { STEADFAST: {...}, PATHAO: {...}, ... }
+  source      String // "live" | "cache"
+  checkedAt   DateTime  @default(now()) @map("checked_at")
+  expiresAt   DateTime  @map("expires_at") // TTL; re-check after this
+
+  @@index([riskLevel])
+  @@map("fraud_checks")
+}
+
+model FraudSaving {
+  id        Int      @id @default(autoincrement())
+  orderId   Int?     @map("order_id")
+  phone     String
+  amount    Decimal  @db.Decimal(10, 2)
+  reason    String // "auto_block" | "manual_hold" | "advance_required"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("fraud_savings")
+}
+
+// --- Net Profit: Blocker (§7.6, M2; extended ADDENDUM §E) ---------------
+enum BlockType {
+  PHONE
+  EMAIL
+  IP
+  DEVICE
+}
+
+enum BlockSource {
+  MANUAL
+  AUTO
+}
+
+model BlockRule {
+  id           Int         @id @default(autoincrement())
+  type         BlockType
+  value        String
+  source       BlockSource @default(MANUAL) @map("source")
+  category     String? // ADDENDUM §E "blockType": "fraud" | "fake_order" | "repeated_return" — free text,
+  // named `category` here since `type` already means "identifier kind" (phone/email/ip/device) in this schema
+  customerName String?     @map("customer_name")
+  addressText  String?     @map("address_text") // block by delivery address text
+  reason       String?
+  note         String?
+  isActive     Boolean     @default(true) @map("is_active")
+  expiresAt    DateTime?   @map("expires_at") // null = permanent
+  metadata     Json?
+  createdBy    Int?        @map("created_by") // AdminUser.id, no hard relation (matches AuditLog.adminUserId)
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@unique([type, value])
+  @@index([isActive])
+  @@index([source])
+  @@index([expiresAt])
+  @@map("block_rules")
+}
+
+// --- Net Profit: SMS (§7.4, M3) ----------------------------------------
+// OTP reuses the existing Otp/OtpPurpose model (already used by B2 auth and
+// B6 COD-verification checkout) — no new OTP table.
+
+enum SmsStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model SmsTemplate {
+  id      Int     @id @default(autoincrement())
+  key     String  @unique // "order_placed" | "order_shipped" | "recovery" | ...
+  bodyEn  String  @map("body_en")
+  bodyBn  String  @map("body_bn")
+  enabled Boolean @default(true)
+
+  @@map("sms_templates")
+}
+
+model SmsLog {
+  id          Int       @id @default(autoincrement())
+  to          String
+  body        String
+  templateKey String?   @map("template_key")
+  status      SmsStatus @default(QUEUED)
+  provider    String
+  cost        Decimal?  @db.Decimal(10, 4)
+  meta        Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@map("sms_logs")
+}
+
+// --- Net Profit: Advance Payment & Manual Payment (§7.5/§7.12, M4) -----
+enum AdvanceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  WAIVED
+}
+
+model AdvancePayment {
+  id        Int           @id @default(autoincrement())
+  orderId   Int           @unique @map("order_id")
+  required  Decimal       @db.Decimal(10, 2)
+  paid      Decimal       @default(0) @db.Decimal(10, 2)
+  status    AdvanceStatus @default(PENDING)
+  reason    String? // "high_risk" | "manual" | "rule"
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("advance_payments")
+}
+
+enum ManualPayStatus {
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+model ManualPayment {
+  id           Int             @id @default(autoincrement())
+  orderId      Int             @map("order_id")
+  method       String // "bkash" | "nagad" | "rocket"
+  senderMsisdn String          @map("sender_msisdn")
+  trxId        String          @map("trx_id")
+  amount       Decimal         @db.Decimal(10, 2)
+  status       ManualPayStatus @default(SUBMITTED)
+  verifiedBy   Int?            @map("verified_by") // AdminUser.id
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([method, trxId])
+  @@map("manual_payments")
+}
+
+// ADDENDUM §J — configuration of each manual method (merchant number,
+// account type, EN/BN instructions), deliberately its own surface: distinct
+// from the checkout-time gateway selection (PaymentProvider enum) and from
+// the verification queue (ManualPayment above).
+enum PaymentAccountType {
+  PERSONAL
+  AGENT
+  MERCHANT
+}
+
+model PaymentMethodConfig {
+  id             Int                @id @default(autoincrement())
+  provider       PaymentProvider    @unique // BKASH | NAGAD | ROCKET | UPAY
+  accountType    PaymentAccountType @default(PERSONAL) @map("account_type")
+  number         String
+  instructionsEn String?            @map("instructions_en")
+  instructionsBn String?            @map("instructions_bn")
+  isActive       Boolean            @default(true) @map("is_active")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@map("payment_method_configs")
+}
+
+// ADDENDUM §K — a labeling/color layer over the existing, real
+// `OrderStatus` enum (not a parallel arbitrary-status system a Postgres
+// enum can't support without a migration per new value). "Custom order
+// statuses with colors" is delivered as: every one of the fixed enum
+// values gets an admin-editable EN/BN label, color, and sort order, which
+// the order board renders — the achievable, honest reading of "reusing
+// Amader's status system underneath."
+model OrderStatusConfig {
+  id        Int         @id @default(autoincrement())
+  status    OrderStatus @unique
+  labelEn   String      @map("label_en")
+  labelBn   String      @map("label_bn")
+  color     String // hex, e.g. "#22b07d"
+  sortOrder Int         @default(0) @map("sort_order")
+
+  @@map("order_status_configs")
+}
+
+// --- Net Profit: Incomplete/Abandoned Order Recovery (§7.7, M5) --------
+model IncompleteOrder {
+  id               Int       @id @default(autoincrement())
+  cartId           Int?      @unique @map("cart_id") // lets the cart.updated listener upsert idempotently per cart
+  customerId       Int?      @map("customer_id")
+  phone            String?
+  email            String?
+  cart             Json // snapshot of items
+  subtotal         Decimal   @db.Decimal(10, 2)
+  stage            String // "cart" | "checkout" | "payment"
+  recovered        Boolean   @default(false)
+  recoveredOrderId Int?      @map("recovered_order_id") // soft reference, no relation (order created independently)
+  recoveryAttempts Int       @default(0) @map("recovery_attempts")
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  campaignQueue CartCampaignQueue[]
+
+  @@index([recovered, lastSeenAt])
+  @@map("incomplete_orders")
+}
+
+// --- Net Profit: Cart Abandonment campaign engine (ADDENDUM §C) --------
+// A separate, automated, multi-channel, multi-step, scheduled win-back
+// engine — distinct from the manual Incomplete Orders recovery above.
+// `CartCampaignQueue` is the scheduler/worker table.
+enum CampaignChannel {
+  EMAIL
+  SMS
+}
+
+enum DelayUnit {
+  MINUTE
+  HOUR
+  DAY
+}
+
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum QueueStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model CartCampaignTemplate {
+  id         Int            @id @default(autoincrement())
+  channel    CampaignChannel
+  name       String
+  subject    String? // email only
+  bodyEn     String         @map("body_en")
+  bodyBn     String         @map("body_bn")
+  delayValue Int            @default(30) @map("delay_value") // fire this long after abandonment
+  delayUnit  DelayUnit      @default(MINUTE) @map("delay_unit")
+  status     CampaignStatus @default(ACTIVE)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  queue CartCampaignQueue[]
+
+  @@map("cart_campaign_templates")
+}
+
+model CartCampaignQueue {
+  id           Int             @id @default(autoincrement())
+  incompleteId Int             @map("incomplete_id")
+  templateId   Int             @map("template_id")
+  channel      CampaignChannel
+  recipient    String?
+  status       QueueStatus     @default(PENDING)
+  attempts     Int             @default(0)
+  scheduledAt  DateTime        @map("scheduled_at") // when it becomes due
+  lockedAt     DateTime?       @map("locked_at") // worker claim lock (prevents double-send)
+  processedAt  DateTime?       @map("processed_at")
+  lastError    String?         @map("last_error")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  incompleteOrder IncompleteOrder       @relation(fields: [incompleteId], references: [id], onDelete: Cascade)
+  template        CartCampaignTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([incompleteId, templateId, channel]) // never enqueue the same step twice
+  @@index([status, scheduledAt])
+  @@map("cart_campaign_queue")
+}
+
+model CartCampaignLog {
+  id           Int             @id @default(autoincrement())
+  incompleteId Int             @map("incomplete_id")
+  templateId   Int?            @map("template_id")
+  channel      CampaignChannel
+  recipient    String?
+  subject      String?
+  message      String
+  status       String
+  responseCode String?         @map("response_code")
+  responseMsg  String?         @map("response_msg")
+  sentAt       DateTime        @default(now()) @map("sent_at")
+
+  @@index([incompleteId])
+  @@map("cart_campaign_logs")
+}
+
+// --- Net Profit: Profit Manager (§7.10, M6) -----------------------------
+// Landed cost input reuses the existing Product.costPerItem column — no new
+// ProductCost table needed (confirmed by reading the real B1 schema before
+// building this).
+model OrderProfit {
+  id         Int      @id @default(autoincrement())
+  orderId    Int      @unique @map("order_id")
+  revenue    Decimal  @db.Decimal(10, 2)
+  cogs       Decimal  @db.Decimal(10, 2)
+  shipping   Decimal  @default(0) @db.Decimal(10, 2)
+  fees       Decimal  @default(0) @db.Decimal(10, 2) // gateway/courier fees
+  adSpend    Decimal  @default(0) @db.Decimal(10, 2) @map("ad_spend") // optional manual attribution
+  netProfit  Decimal  @db.Decimal(10, 2) @map("net_profit")
+  computedAt DateTime @default(now()) @map("computed_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([computedAt])
+  @@map("order_profits")
+}
+
+// ADDENDUM §D — a day-level marketing-cost ledger, separate from
+// OrderProfit's per-order manual `adSpend` field above. The carry-forward
+// cron copies yesterday's row into today when the admin forgets to enter one.
+model MarketingCost {
+  id          Int      @id @default(autoincrement())
+  costDate    DateTime @unique @db.Date @map("cost_date")
+  adsCost     Decimal  @default(0) @db.Decimal(12, 2) @map("ads_cost")
+  otherCost   Decimal  @default(0) @db.Decimal(12, 2) @map("other_cost")
+  note        String?
+  autoCarried Boolean  @default(false) @map("auto_carried")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("marketing_costs")
+}
+
+// ADDENDUM §D — day-level roll-up the dashboards (Overview KPI, Profit
+// report) actually read, rebuilt by a daily cron from completed orders'
+// OrderProfit rows plus MarketingCost.
+model DailyProfitCache {
+  id            Int      @id @default(autoincrement())
+  reportDate    DateTime @unique @db.Date @map("report_date")
+  totalRevenue  Decimal  @default(0) @db.Decimal(12, 2) @map("total_revenue")
+  totalBuyCost  Decimal  @default(0) @db.Decimal(12, 2) @map("total_buy_cost")
+  totalAdsCost  Decimal  @default(0) @db.Decimal(12, 2) @map("total_ads_cost")
+  totalOther    Decimal  @default(0) @db.Decimal(12, 2) @map("total_other")
+  totalShipping Decimal  @default(0) @db.Decimal(12, 2) @map("total_shipping")
+  netProfit     Decimal  @default(0) @db.Decimal(12, 2) @map("net_profit")
+  orderCount    Int      @default(0) @map("order_count")
+  computedAt    DateTime @default(now()) @map("computed_at")
+
+  @@index([reportDate])
+  @@map("daily_profit_cache")
 }

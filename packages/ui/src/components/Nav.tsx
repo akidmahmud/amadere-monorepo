@@ -26,7 +26,7 @@ const chevron = (
 export function Nav({ items, activeHref, linkComponent: Link = DefaultLink, className }: NavProps) {
   return (
     <nav className={cn("border-b border-line bg-white", className)}>
-      <div className="mx-auto flex h-[46px] max-w-[1180px] items-center justify-center gap-[34px] overflow-x-auto px-5">
+      <div className="mx-auto flex h-[46px] max-w-[1180px] items-center justify-start gap-[34px] overflow-x-auto px-5 lg:justify-center">
         {items.map((item) => (
           <Link
             key={item.key}
