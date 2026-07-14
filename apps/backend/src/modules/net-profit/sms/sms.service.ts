@@ -2,9 +2,10 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Locale } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
+import { CredentialsService } from '../../../common/credentials/credentials.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
-import { BulkSmsBdProvider } from './providers/bulk-sms-bd.provider';
+import { BulkSmsBdProvider, SMS_API_KEY_CREDENTIAL } from './providers/bulk-sms-bd.provider';
 import { UpdateSmsTemplateDto } from './dto/update-sms-template.dto';
 import { SmsLogDto, SmsTemplateDto, toSmsLogDto, toSmsTemplateDto } from './sms.mapper';
 
@@ -13,16 +14,28 @@ const SETTINGS_NAMESPACE = 'sms';
 export interface SmsSettings {
   enabled: boolean;
   // ADDENDUM §H — sender ID lives here (not just env) since it isn't a
-  // secret and an admin may want to change it without a redeploy; the API
-  // key stays in env, matching the base spec's "secrets never plaintext in
-  // Settings" rule (§7.13). `senderIdMasked` is informational only — BD
-  // gateways decide masked-vs-non-masked billing/routing server-side from
-  // the sender ID string itself, there's no separate API flag for it.
+  // secret and an admin may want to change it without a redeploy.
+  // `senderIdMasked` is informational only — BD gateways decide masked-vs-
+  // non-masked billing/routing server-side from the sender ID string
+  // itself, there's no separate API flag for it. The API key is NOT part
+  // of this namespace — it's a secret, stored via CredentialsService
+  // instead (see getSettings/updateSettings below).
   senderId: string;
   senderIdMasked: boolean;
+  // Which order-status transitions fire a template SMS (parity with the
+  // plugin's per-status trigger toggles) — SmsEventListener reads this
+  // instead of hardcoding which transitions matter. Only statuses with a
+  // matching named template are offered; ours has no cancelled/refunded/
+  // failed template yet, so those aren't configurable here.
+  statusTriggers: { CONFIRMED: boolean; PROCESSING: boolean; COMPLETED: boolean };
 }
 
-const SMS_SETTINGS_DEFAULTS: SmsSettings = { enabled: false, senderId: '', senderIdMasked: false };
+const SMS_SETTINGS_DEFAULTS: SmsSettings = {
+  enabled: false,
+  senderId: '',
+  senderIdMasked: false,
+  statusTriggers: { CONFIRMED: true, PROCESSING: false, COMPLETED: true },
+};
 
 // Seed: otp, order_placed, order_confirmed, order_shipped, order_delivered,
 // recovery, advance_request (spec §7.4's exact list).
@@ -43,6 +56,7 @@ export class SmsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: NetProfitSettingsService,
+    private readonly credentials: CredentialsService,
     private readonly provider: BulkSmsBdProvider,
   ) {}
 
@@ -59,12 +73,31 @@ export class SmsService implements OnModuleInit {
     }
   }
 
-  async getSettings(): Promise<SmsSettings> {
-    return this.settings.getNamespace(SETTINGS_NAMESPACE, SMS_SETTINGS_DEFAULTS);
+  async getSettings(): Promise<SmsSettings & { hasApiKey: boolean }> {
+    const [settings, hasApiKey] = await Promise.all([
+      this.settings.getNamespace(SETTINGS_NAMESPACE, SMS_SETTINGS_DEFAULTS),
+      this.credentials.hasCredential(SMS_API_KEY_CREDENTIAL),
+    ]);
+    return { ...settings, hasApiKey };
   }
 
-  async updateSettings(dto: Partial<SmsSettings>): Promise<SmsSettings> {
-    await this.settings.setNamespace(SETTINGS_NAMESPACE, dto);
+  async updateSettings(dto: Partial<SmsSettings> & { apiKey?: string }): Promise<SmsSettings & { hasApiKey: boolean }> {
+    const { apiKey, ...rest } = dto;
+    const merged: Partial<SmsSettings> = { ...rest };
+    if (dto.statusTriggers) {
+      const current = await this.getSettings();
+      merged.statusTriggers = { ...current.statusTriggers, ...dto.statusTriggers };
+    }
+    await this.settings.setNamespace(SETTINGS_NAMESPACE, merged);
+    // Blank/undefined never overwrites an existing key (CredentialsService's
+    // own guard) — matches the masked "leave blank to keep" UX everywhere
+    // else credentials are edited.
+    await this.credentials.saveCredential(SMS_API_KEY_CREDENTIAL, apiKey);
+    return this.getSettings();
+  }
+
+  async clearApiKey(): Promise<SmsSettings & { hasApiKey: boolean }> {
+    await this.credentials.deleteCredential(SMS_API_KEY_CREDENTIAL);
     return this.getSettings();
   }
 
@@ -108,7 +141,9 @@ export class SmsService implements OnModuleInit {
         status: result.failed ? 'FAILED' : 'SENT',
         provider: this.provider.name,
         cost: result.cost,
-        meta: result.failed ? { error: result.error } : { id: result.id },
+        meta: result.failed
+          ? { error: result.error, code: result.code, codeMessage: result.codeMessage }
+          : { id: result.id, code: result.code, codeMessage: result.codeMessage },
       },
     });
     if (result.failed) this.logger.warn(`SMS to ${to} failed: ${result.error}`);

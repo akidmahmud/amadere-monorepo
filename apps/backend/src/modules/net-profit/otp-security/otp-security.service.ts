@@ -6,9 +6,22 @@ export type VpnPolicy = 'allow' | 'challenge' | 'block';
 
 export interface OtpSecuritySettings {
   vpnPolicy: VpnPolicy;
+  // COD checkout OTP (ADDENDUM Fraud/OTP parity — the plugin's
+  // wpfok_otp_enabled/_length/_expiry settings). `codOtpEnabled=false`
+  // skips OTP verification for COD entirely, matching a merchant who wants
+  // the old no-OTP checkout back. Length/expiry only affect *new* codes —
+  // codes already issued keep their original expiry.
+  codOtpEnabled: boolean;
+  codOtpLength: number;
+  codOtpExpiryMinutes: number;
 }
 
-const DEFAULTS: OtpSecuritySettings = { vpnPolicy: 'allow' };
+const DEFAULTS: OtpSecuritySettings = {
+  vpnPolicy: 'allow',
+  codOtpEnabled: true,
+  codOtpLength: 6,
+  codOtpExpiryMinutes: 5,
+};
 
 export interface VpnEvaluation {
   isVpn: boolean;

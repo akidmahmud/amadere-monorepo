@@ -243,13 +243,6 @@ const recoveryIcon = (
   </svg>
 );
 
-const profitIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M3 3v18h18" />
-    <path d="m7 14 4-4 3 3 5-6" />
-  </svg>
-);
-
 const reportsIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
     <rect x="4" y="10" width="4" height="10" />
@@ -316,7 +309,6 @@ export const adminNav: AppNavItem[] = [
       { key: "net-profit-sms", label: "SMS", href: "/net-profit/sms", icon: smsIcon },
       { key: "net-profit-payments", label: "Payments", href: "/net-profit/payments", icon: paymentsIcon },
       { key: "net-profit-recovery", label: "Recovery", href: "/net-profit/recovery", icon: recoveryIcon },
-      { key: "net-profit-profit", label: "Profit Manager", href: "/net-profit/profit", icon: profitIcon },
       { key: "net-profit-reports", label: "Sales Report", href: "/net-profit/reports", icon: reportsIcon },
     ],
   },

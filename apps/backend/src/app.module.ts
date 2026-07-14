@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { CoreAuthModule } from './common/auth/core-auth.module';
 import { AuditLogModule } from './common/audit-log/audit-log.module';
+import { CredentialsModule } from './common/credentials/credentials.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RbacModule } from './modules/rbac/rbac.module';
@@ -60,6 +61,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
         ADMIN_JWT_REFRESH_SECRET: Joi.string().min(16).required(),
         CUSTOMER_JWT_ACCESS_SECRET: Joi.string().min(16).required(),
         CUSTOMER_JWT_REFRESH_SECRET: Joi.string().min(16).required(),
+        CREDENTIALS_ENCRYPTION_KEY: Joi.string().min(16).required(),
         SUPER_ADMIN_EMAIL: Joi.string().email().required(),
         SUPER_ADMIN_PASSWORD: Joi.string().min(8).required(),
         // Optional: R2 credentials arrive later (AGENTS.md §6), app must boot
@@ -93,6 +95,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     PrismaModule,
     CoreAuthModule,
     AuditLogModule,
+    CredentialsModule,
     HealthModule,
     AuthModule,
     RbacModule,

@@ -4,6 +4,8 @@ import { proxyFetch } from "@/lib/api/proxy-client";
 export type PaymentMethodProvider = "BKASH" | "NAGAD" | "ROCKET" | "UPAY";
 export type PaymentAccountType = "PERSONAL" | "AGENT" | "MERCHANT";
 
+export type AssignableOrderStatus = "PENDING" | "CONFIRMED" | "PROCESSING" | "COMPLETED" | "CANCELED" | "PARTIALLY_RETURNED" | "RETURNED" | "HOLD";
+
 export interface PaymentMethodConfig {
   id: number;
   provider: PaymentMethodProvider;
@@ -11,6 +13,9 @@ export interface PaymentMethodConfig {
   number: string;
   instructionsEn: string | null;
   instructionsBn: string | null;
+  iconUrl: string | null;
+  showIcon: boolean;
+  orderStatusAfterVerify: AssignableOrderStatus;
   isActive: boolean;
 }
 
@@ -29,6 +34,9 @@ export function useUpsertPaymentMethodConfig() {
       number: string;
       instructionsEn?: string;
       instructionsBn?: string;
+      iconUrl?: string;
+      showIcon?: boolean;
+      orderStatusAfterVerify?: AssignableOrderStatus;
       isActive?: boolean;
     }) => proxyFetch<PaymentMethodConfig>("/admin/net-profit/payment-methods", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),

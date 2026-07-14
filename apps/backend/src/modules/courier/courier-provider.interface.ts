@@ -11,6 +11,12 @@ export interface CreateConsignmentInput {
   weightKg?: Prisma.Decimal;
   note?: string;
   itemDescription?: string;
+  // Pathao/RedX both require a location selection at consignment-create
+  // time (Pathao: store + city/zone/area; RedX: delivery area + pickup
+  // store) that has no equivalent on Steadfast — optional here so the
+  // shared interface stays simple for the provider that doesn't need them.
+  pathao?: { storeId: number; recipientCity?: number; recipientZone?: number; recipientArea?: number };
+  redx?: { deliveryAreaId: number; pickupStoreId?: number };
 }
 
 export interface CreateConsignmentResult {

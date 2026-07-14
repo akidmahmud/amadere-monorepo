@@ -35,7 +35,6 @@ const SECTIONS: { base: string; label: string }[] = [
   { base: "/net-profit/sms", label: "SMS" },
   { base: "/net-profit/payments", label: "Payments" },
   { base: "/net-profit/recovery", label: "Recovery" },
-  { base: "/net-profit/profit", label: "Profit Manager" },
   { base: "/net-profit/reports", label: "Sales Report" },
   { base: "/net-profit", label: "Net Profit" },
 ];

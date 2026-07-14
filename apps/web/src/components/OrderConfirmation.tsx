@@ -1,7 +1,10 @@
 import { formatMoney } from "@amader/ui";
+import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
 import type { components } from "@/lib/api/schema";
 
 type OrderDto = components["schemas"]["OrderDto"];
+
+const MANUAL_PROVIDERS = ["BKASH", "NAGAD", "ROCKET", "UPAY"];
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Pending",
@@ -74,6 +77,12 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
           </p>
         )}
       </div>
+
+      {latestPayment &&
+        MANUAL_PROVIDERS.includes(latestPayment.provider as unknown as string) &&
+        (latestPayment.status as unknown as string) === "PENDING" && (
+          <ManualPaymentSubmission orderId={order.id} provider={latestPayment.provider as unknown as string} amount={order.totalAmount} />
+        )}
 
       {shipping && (
         <div className="mb-4 rounded-brand border border-line bg-white p-5">

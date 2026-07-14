@@ -7,6 +7,9 @@ export class PaymentMethodConfigDto {
   number!: string;
   instructionsEn!: string | null;
   instructionsBn!: string | null;
+  iconUrl!: string | null;
+  showIcon!: boolean;
+  orderStatusAfterVerify!: string;
   isActive!: boolean;
 }
 
@@ -18,6 +21,9 @@ export function toPaymentMethodConfigDto(row: PaymentMethodConfig): PaymentMetho
     number: row.number,
     instructionsEn: row.instructionsEn,
     instructionsBn: row.instructionsBn,
+    iconUrl: row.iconUrl,
+    showIcon: row.showIcon,
+    orderStatusAfterVerify: row.orderStatusAfterVerify,
     isActive: row.isActive,
   };
 }

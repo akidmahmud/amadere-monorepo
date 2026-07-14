@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 
-export type SalesGroupBy = "day" | "week" | "month" | "courier" | "area" | "payment";
+export type SalesGroupBy = "day" | "week" | "month" | "hour" | "courier" | "area" | "payment";
 
 export interface SalesReportRow {
   label: string;
@@ -14,6 +14,7 @@ export interface TopProductRow {
   name: string;
   quantity: number;
   revenue: string;
+  profitPerUnit: string | null;
 }
 
 export function useSalesReport(groupBy: SalesGroupBy, from?: string, to?: string) {

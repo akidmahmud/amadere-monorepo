@@ -30,12 +30,22 @@ export function useShipment(id: number) {
   });
 }
 
+export interface DispatchShipmentInput {
+  orderId: number;
+  provider: ShipmentProvider;
+  pathao?: { storeId: number; recipientCity?: number; recipientZone?: number; recipientArea?: number };
+  redx?: { deliveryAreaId: number; pickupStoreId?: number };
+}
+
 export function useDispatchShipment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { orderId: number; provider: ShipmentProvider }) =>
+    mutationFn: (input: DispatchShipmentInput) =>
       proxyFetch<Shipment>("/admin/shipments/dispatch", { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["net-profit-order-manager"] });
+    },
   });
 }
 

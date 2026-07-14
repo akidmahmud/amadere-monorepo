@@ -5,6 +5,7 @@ import {
   PaymentProvider,
   Prisma,
   RiskLevel,
+  ShipmentStatus,
 } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
@@ -14,7 +15,7 @@ import { ShipmentsService } from '../../courier/shipments.service';
 import { BlockerService } from '../blocker/blocker.service';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
-import { OrderManagerRowDto } from './order-manager.mapper';
+import { OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
 
 interface RawOrderManagerRow {
   id: number;
@@ -22,10 +23,18 @@ interface RawOrderManagerRow {
   status: OrderStatus;
   total_amount: Prisma.Decimal;
   created_at: Date;
+  recipient_name: string | null;
   phone: string | null;
+  address_line: string | null;
+  district: string | null;
   division: string | null;
+  post_code: string | null;
+  thumbnail_url: string | null;
   payment_provider: PaymentProvider | null;
   courier_provider: CourierProviderName | null;
+  shipment_id: number | null;
+  courier_status: ShipmentStatus | null;
+  courier_attempts: OrderManagerCourierAttempt[] | null;
   risk_level: RiskLevel;
 }
 
@@ -45,25 +54,31 @@ export class OrderManagerService {
     private readonly blocker: BlockerService,
   ) {}
 
-  async list(query: OrderManagerQueryDto): Promise<PaginatedResult<OrderManagerRowDto>> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-
+  // Shared by list() and statusCounts() — every filter except `status`
+  // itself, so the counts reflect "how many would show for each status tab
+  // given the other active filters" rather than an unfiltered global count.
+  private buildConditions(query: OrderManagerQueryDto, includeStatus: boolean): Prisma.Sql[] {
     const conditions: Prisma.Sql[] = [];
-    if (query.status) conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
+    if (includeStatus && query.status) conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
     if (query.paymentProvider) conditions.push(Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`);
     if (query.courierProvider) conditions.push(Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`);
     if (query.division) conditions.push(Prisma.sql`oa.division = ${query.division}`);
     if (query.risk) conditions.push(Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`);
+    if (query.q) {
+      const like = `%${query.q}%`;
+      conditions.push(Prisma.sql`(o.order_number ILIKE ${like} OR oa.phone ILIKE ${like} OR oa.recipient_name ILIKE ${like})`);
+    }
+    if (query.from) conditions.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
+    if (query.to) conditions.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
+    return conditions;
+  }
 
+  async statusCounts(query: OrderManagerQueryDto): Promise<Record<string, number>> {
+    const conditions = this.buildConditions(query, false);
     const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
 
-    const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
-      SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at,
-             oa.phone, oa.division,
-             p.provider AS payment_provider,
-             s.provider AS courier_provider,
-             COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level
+    const rows = await this.prisma.client.$queryRaw<{ status: OrderStatus; count: bigint }[]>`
+      SELECT o.status, count(*)::bigint AS count
       FROM orders o
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
       LEFT JOIN LATERAL (
@@ -72,6 +87,57 @@ export class OrderManagerService {
       LEFT JOIN LATERAL (
         SELECT provider FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) s ON true
+      LEFT JOIN fraud_checks fc ON fc.phone = '+88' || oa.phone
+      ${where}
+      GROUP BY o.status
+    `;
+    const counts: Record<string, number> = {};
+    for (const r of rows) counts[r.status] = Number(r.count);
+    return counts;
+  }
+
+  async list(query: OrderManagerQueryDto): Promise<PaginatedResult<OrderManagerRowDto>> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+
+    const conditions = this.buildConditions(query, true);
+    const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
+
+    const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
+      SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at,
+             oa.recipient_name, oa.phone, oa.address_line, oa.district, oa.division, oa.post_code,
+             thumb.url AS thumbnail_url,
+             p.provider AS payment_provider,
+             s.provider AS courier_provider,
+             s.id AS shipment_id,
+             s.status AS courier_status,
+             ca.attempts AS courier_attempts,
+             COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level
+      FROM orders o
+      LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
+      LEFT JOIN LATERAL (
+        SELECT provider FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
+      ) p ON true
+      LEFT JOIN LATERAL (
+        SELECT id, provider, status FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
+      ) s ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object('provider', provider, 'status', status, 'shipmentId', id)) AS attempts
+        FROM (
+          SELECT DISTINCT ON (provider) provider, status, id
+          FROM shipments WHERE order_id = o.id
+          ORDER BY provider, created_at DESC
+        ) latest
+      ) ca ON true
+      LEFT JOIN LATERAL (
+        SELECT m.url
+        FROM order_items oi
+        JOIN product_media pm ON pm.product_id = oi.product_id AND pm.is_primary = true
+        JOIN media m ON m.id = pm.media_id
+        WHERE oi.order_id = o.id
+        ORDER BY oi.id ASC
+        LIMIT 1
+      ) thumb ON true
       LEFT JOIN fraud_checks fc ON fc.phone = '+88' || oa.phone
       ${where}
       ORDER BY o.created_at DESC
@@ -98,10 +164,22 @@ export class OrderManagerService {
       status: r.status,
       totalAmount: r.total_amount.toString(),
       createdAt: r.created_at,
+      recipientName: r.recipient_name,
       shippingPhone: r.phone,
+      addressLine: r.address_line,
+      district: r.district,
       division: r.division,
+      postCode: r.post_code,
+      thumbnailUrl: r.thumbnail_url,
+      // ponytail: every order today comes through the storefront checkout —
+      // no admin manual-order-creation flow exists yet, so this is a
+      // constant rather than a real column. Revisit if that flow gets built.
+      origin: 'Web',
       paymentProvider: r.payment_provider,
       courierProvider: r.courier_provider,
+      shipmentId: r.shipment_id,
+      courierStatus: r.courier_status,
+      courierAttempts: r.courier_attempts ?? [],
       riskLevel: r.risk_level,
     }));
 

@@ -112,6 +112,108 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Net Profit violet scope — design-parity with the WPFOK plugin, an
+   approved exception to DESIGN_SYSTEM.md section 1's "one brand color"
+   rule, scoped ONLY to the ".wpfok-scope" class (wraps the net-profit
+   route tree, see apps/admin/src/app/(shell)/net-profit/layout.tsx).
+   Overrides the SAME brand, success, warning and danger variable names
+   so every existing admin-ui component (Button, Card, StatCard, Tabs,
+   Modal, ...) automatically recolors when rendered inside this scope —
+   no component fork needed for the base recolor. New net-profit-only
+   components (PageHeader, ToggleSwitch, RangeSlider, SettingsCard) use
+   the extra wpfok tokens below for shapes the base design system has no
+   equivalent for (dark gradient hero, glow shadows, an info hue).
+   ═══════════════════════════════════════════════════════════════════════ */
+.wpfok-scope {
+  --brand-500: #8f00ff;
+  --brand-600: #7200cc;
+  --brand-700: #5c0099;
+  --brand-400: #a733ff;
+  --brand-50: rgba(143, 0, 255, 0.06);
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --wpfok-black: #0b0412;
+  --wpfok-glow: rgba(143, 0, 255, 0.15);
+  --wpfok-info: #6366f1;
+  --wpfok-info-bg: rgba(99, 102, 241, 0.08);
+  --wpfok-warning-bg: rgba(245, 158, 11, 0.08);
+  --wpfok-success-bg: rgba(16, 185, 129, 0.08);
+  --wpfok-danger-bg: rgba(239, 68, 68, 0.08);
+  --wpfok-recovery: #06b6d4;
+  --wpfok-recovery-bg: rgba(6, 182, 212, 0.08);
+}
+
+/* Data table (WPFOK parity) — plain semantic <table>/<thead>/<tbody> markup
+   picks this up automatically via element selectors once wrapped in the
+   admin-ui <Table> component below; no Thead/Tr/Td wrapper components
+   needed. Header gradient/hover tint are one-off literals (not reusable
+   tokens) matching the plugin's own hardcoded values. */
+.wpfok-scope .wpfok-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wpfok-scope .wpfok-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.wpfok-scope .wpfok-table thead {
+  background: linear-gradient(180deg, #f8f5fd 0%, #f3eef9 100%);
+}
+
+.wpfok-scope .wpfok-table thead th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+
+.wpfok-scope .wpfok-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.wpfok-scope .wpfok-table tbody tr:nth-child(even) {
+  background: var(--brand-50);
+}
+
+.wpfok-scope .wpfok-table tbody tr:hover {
+  background: rgba(143, 0, 255, 0.04);
+}
+
+.wpfok-scope .wpfok-table tbody td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.wpfok-scope .wpfok-table .wpfok-no-data td {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.wpfok-scope .wpfok-id-badge {
+  display: inline-block;
+  background: var(--wpfok-glow);
+  color: var(--brand-500);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
 /* Amounts/stats/tabular columns (§2.5) */
 .num {
   font-variant-numeric: tabular-nums;

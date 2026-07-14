@@ -54,6 +54,16 @@ export class MediaService {
     return toMediaDto(media);
   }
 
+  // Uploads to storage without creating a `Media` library row — for
+  // customer-submitted files (e.g. manual-payment screenshots) that
+  // shouldn't clutter the admin's product-image picker.
+  async uploadTransient(file: Express.Multer.File): Promise<string> {
+    const type = mediaTypeFromMime(file.mimetype);
+    const key = `${type.toLowerCase()}/${randomUUID()}-${file.originalname}`;
+    const { url } = await this.storage.upload(key, file.buffer, file.mimetype);
+    return url;
+  }
+
   async list(page: number, pageSize: number) {
     const [items, total] = await Promise.all([
       this.prisma.client.media.findMany({

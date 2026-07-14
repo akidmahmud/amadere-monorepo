@@ -48,6 +48,25 @@ export interface CartCampaignSettings {
   quietHoursEnd: number;
 }
 
+// The 13 merge tags MergeTagsService understands, for the template editor's
+// legend — same list used by both cart campaigns and the manual recovery
+// SMS template.
+export const MERGE_TAGS: { token: string; label: string }[] = [
+  { token: "customerName", label: "Full customer name" },
+  { token: "firstName", label: "Customer first name" },
+  { token: "customerEmail", label: "Customer email" },
+  { token: "customerPhone", label: "Customer phone" },
+  { token: "amount", label: "Cart total as number only" },
+  { token: "amountWithCurrency", label: "Cart total with ৳ symbol" },
+  { token: "productNames", label: "Comma-separated product names" },
+  { token: "productLinks", label: "Email-ready linked product list" },
+  { token: "productUrls", label: "Comma-separated product URLs" },
+  { token: "cartLink", label: "Cart page URL" },
+  { token: "checkoutLink", label: "Checkout page URL" },
+  { token: "siteName", label: "Website name" },
+  { token: "siteUrl", label: "Website URL" },
+];
+
 const TEMPLATES_KEY = ["net-profit-cart-campaign-templates"];
 const QUEUE_KEY = ["net-profit-cart-campaign-queue"];
 const LOGS_KEY = ["net-profit-cart-campaign-logs"];

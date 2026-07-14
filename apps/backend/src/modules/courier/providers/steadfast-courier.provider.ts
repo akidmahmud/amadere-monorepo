@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CancelReturnResult,
@@ -8,6 +8,7 @@ import {
   FraudCheckOutcome,
   TrackResult,
 } from '../courier-provider.interface';
+import { CourierSettingsService } from '../courier-settings.service';
 
 interface SteadfastConsignment {
   consignment_id?: number | string;
@@ -45,7 +46,10 @@ const BASE_URL = 'https://portal.packzy.com/api/v1';
 export class SteadfastCourierProvider implements CourierProvider {
   private readonly logger = new Logger(SteadfastCourierProvider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly settings: CourierSettingsService,
+  ) {}
 
   async createConsignment(
     input: CreateConsignmentInput,
@@ -147,16 +151,29 @@ export class SteadfastCourierProvider implements CourierProvider {
     }
   }
 
+  // Admin-configured credentials (Couriers settings page, §Phase 2) win
+  // when present; falls back to the original `.env` vars so an existing
+  // working deployment never breaks just because nobody's opened the new
+  // settings UI yet.
+  private async credentials(): Promise<{ apiKey: string; secretKey: string }> {
+    const stored = await this.settings.getSteadfastCredentials();
+    const apiKey = stored.apiKey ?? this.config.get<string>('STEADFAST_API_KEY');
+    const secretKey = stored.secretKey ?? this.config.get<string>('STEADFAST_SECRET_KEY');
+    if (!apiKey || !secretKey) throw new ServiceUnavailableException('Steadfast credentials are not configured');
+    return { apiKey, secretKey };
+  }
+
   private async request<T>(
     path: string,
     method: string,
     body?: unknown,
   ): Promise<{ httpStatus: number; body: T }> {
+    const { apiKey, secretKey } = await this.credentials();
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: {
-        'Api-Key': this.config.getOrThrow<string>('STEADFAST_API_KEY'),
-        'Secret-Key': this.config.getOrThrow<string>('STEADFAST_SECRET_KEY'),
+        'Api-Key': apiKey,
+        'Secret-Key': secretKey,
         'Content-Type': 'application/json',
       },
       body: body ? JSON.stringify(body) : undefined,

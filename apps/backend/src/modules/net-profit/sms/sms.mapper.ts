@@ -20,10 +20,13 @@ export class SmsLogDto {
   status!: string;
   provider!: string;
   cost!: string | null;
+  code!: number | null;
+  codeMessage!: string | null;
   createdAt!: Date;
 }
 
 export function toSmsLogDto(row: SmsLog): SmsLogDto {
+  const meta = (row.meta as { code?: number; codeMessage?: string } | null) ?? null;
   return {
     id: row.id,
     to: row.to,
@@ -32,6 +35,8 @@ export function toSmsLogDto(row: SmsLog): SmsLogDto {
     status: row.status,
     provider: row.provider,
     cost: row.cost ? row.cost.toString() : null,
+    code: meta?.code ?? null,
+    codeMessage: meta?.codeMessage ?? null,
     createdAt: row.createdAt,
   };
 }

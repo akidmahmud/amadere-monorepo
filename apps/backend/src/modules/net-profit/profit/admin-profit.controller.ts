@@ -6,9 +6,10 @@ import { PermissionGuard } from '../../../common/auth/permission.guard';
 import { RequirePermission } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
-import { ProfitService } from './profit.service';
+import { ProfitService, FallbackProfitSettings } from './profit.service';
 import { SetAdSpendDto } from './dto/set-ad-spend.dto';
 import { SetProductCostDto } from './dto/set-product-cost.dto';
+import { BulkSetProductCostDto } from './dto/bulk-set-product-cost.dto';
 
 @ApiTags('admin/net-profit/profit')
 @ApiBearerAuth()
@@ -48,15 +49,46 @@ export class AdminProfitController {
     return this.profit.setAdSpend(orderId, new Prisma.Decimal(dto.adSpend));
   }
 
+  @Get('fallback-settings')
+  @RequirePermission('net_profit_profit.view')
+  getFallbackSettings() {
+    return this.profit.getFallbackSettings();
+  }
+
+  @Put('fallback-settings')
+  @RequirePermission('net_profit_profit.manage')
+  updateFallbackSettings(@Body() dto: Partial<FallbackProfitSettings>) {
+    return this.profit.updateFallbackSettings(dto);
+  }
+
   @Get('product-cost')
   @RequirePermission('net_profit_profit.view')
-  productCosts(@Query() { page, pageSize }: PaginationQueryDto) {
-    return this.profit.listProductCosts(page ?? 1, pageSize ?? 20);
+  productCosts(@Query() { page, pageSize }: PaginationQueryDto, @Query('search') search?: string) {
+    return this.profit.listProductCosts(page ?? 1, pageSize ?? 20, search);
   }
 
   @Put('product-cost/:productId')
   @RequirePermission('net_profit_profit.manage')
   setProductCost(@Param('productId', ParseIntPipe) productId: number, @Body() dto: SetProductCostDto) {
     return this.profit.setProductCost(productId, new Prisma.Decimal(dto.buyPrice));
+  }
+
+  @Post('product-cost/bulk')
+  @RequirePermission('net_profit_profit.manage')
+  async bulkSetProductCost(@Body() dto: BulkSetProductCostDto) {
+    const updated = await this.profit.bulkSetProductCost(dto.rows);
+    return { updated };
+  }
+
+  @Get('product-cost/:productId/variants')
+  @RequirePermission('net_profit_profit.view')
+  variantCosts(@Param('productId', ParseIntPipe) productId: number) {
+    return this.profit.listVariantCosts(productId);
+  }
+
+  @Put('variant-cost/:variantId')
+  @RequirePermission('net_profit_profit.manage')
+  setVariantCost(@Param('variantId', ParseIntPipe) variantId: number, @Body() dto: SetProductCostDto) {
+    return this.profit.setVariantCost(variantId, new Prisma.Decimal(dto.buyPrice));
   }
 }

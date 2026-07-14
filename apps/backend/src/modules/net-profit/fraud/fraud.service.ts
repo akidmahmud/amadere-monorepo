@@ -24,6 +24,7 @@ const FRAUD_SETTINGS_DEFAULTS: FraudSettingsDto = {
     "Sorry, we couldn't confirm this order automatically. Please contact support or choose a different payment method.",
   blockMessageBn:
     'দুঃখিত, আমরা এই অর্ডারটি স্বয়ংক্রিয়ভাবে নিশ্চিত করতে পারিনি। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন অথবা ভিন্ন পেমেন্ট পদ্ধতি বেছে নিন।',
+  deliveryFallback: 0,
 };
 
 export type FraudVerdict = 'pass' | 'needs_advance' | 'block';
@@ -208,10 +209,28 @@ export class FraudService {
     return { allowed: true, riskLevel: check.riskLevel as RiskLevel, verdict: 'pass' };
   }
 
+  // Read-only, never-throws peek at whatever evaluateCheckoutGate() just
+  // computed/cached for this phone — used by the public pre-flight endpoint
+  // to attach successRate/totalOrders without a second live source call.
+  async peekCached(rawPhone: string): Promise<{ totalOrders: number; successRate: number | null } | null> {
+    const phone = normalizeBdPhone(rawPhone);
+    if (!phone) return null;
+    const row = await this.prisma.client.fraudCheck.findUnique({ where: { phone } });
+    return row ? { totalOrders: row.totalOrders, successRate: row.successRate } : null;
+  }
+
   async recordSaving(phone: string, amount: Prisma.Decimal, reason: string, orderId?: number): Promise<void> {
     await this.prisma.client.fraudSaving.create({
       data: { phone: normalizeBdPhone(phone) ?? phone, amount, reason, orderId },
     });
+  }
+
+  // A blocked/gated order never reaches a real courier quote, so "amount
+  // saved" needs an assumed delivery charge on top of the order total —
+  // the admin-configurable deliveryFallback setting fills that gap.
+  async savingAmountFor(orderTotal: Prisma.Decimal | number): Promise<Prisma.Decimal> {
+    const settings = await this.getSettings();
+    return new Prisma.Decimal(orderTotal).plus(settings.deliveryFallback);
   }
 
   async adminList(query: { page: number; pageSize: number; risk?: RiskLevel }): Promise<PaginatedResult<FraudCheckDto>> {

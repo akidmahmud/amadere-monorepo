@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdvanceStatus, Prisma } from '@amader/db';
 import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
@@ -6,7 +6,7 @@ import { PermissionGuard } from '../../../common/auth/permission.guard';
 import { RequirePermission } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
-import { AdvancePaymentService } from './advance-payment.service';
+import { AdvancePaymentService, AdvancePaymentSettings } from './advance-payment.service';
 import { RequireAdvanceDto } from './dto/require-advance.dto';
 import { RecordAdvanceDto } from './dto/record-advance.dto';
 
@@ -17,6 +17,20 @@ import { RecordAdvanceDto } from './dto/record-advance.dto';
 @Controller('admin/net-profit/advance')
 export class AdminAdvancePaymentController {
   constructor(private readonly advance: AdvancePaymentService) {}
+
+  // Static routes registered before the ':orderId' dynamic ones below —
+  // otherwise Nest would try to match "settings" as an orderId.
+  @Get('settings')
+  @RequirePermission('net_profit_advance.manage')
+  getSettings() {
+    return this.advance.getSettings();
+  }
+
+  @Put('settings')
+  @RequirePermission('net_profit_advance.manage')
+  updateSettings(@Body() dto: Partial<AdvancePaymentSettings>) {
+    return this.advance.updateSettings(dto);
+  }
 
   @Get()
   @RequirePermission('net_profit_advance.manage')

@@ -4,7 +4,7 @@ import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../../common/auth/permission.guard';
 import { RequirePermission } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
-import { OtpSecurityService, VpnPolicy } from './otp-security.service';
+import { OtpSecurityService, OtpSecuritySettings } from './otp-security.service';
 
 @ApiTags('admin/net-profit/otp-security')
 @ApiBearerAuth()
@@ -22,7 +22,7 @@ export class AdminOtpSecurityController {
 
   @Put('settings')
   @RequirePermission('net_profit_settings.manage')
-  updateSettings(@Body() dto: { vpnPolicy?: VpnPolicy }) {
+  updateSettings(@Body() dto: Partial<OtpSecuritySettings>) {
     return this.otpSecurity.updateSettings(dto);
   }
 }

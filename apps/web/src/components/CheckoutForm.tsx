@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, FormProvider, useForm } from "react-hook-form";
@@ -16,18 +16,25 @@ import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
 import { AddressFields } from "@/components/AddressFields";
 import { OrderConfirmation } from "@/components/OrderConfirmation";
+import { BlockPopup, type BlockPopupDetails } from "@/components/BlockPopup";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { getDeviceId } from "@/lib/device-id";
+import { ApiError } from "@/lib/api/client";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useCartQuery, useRemoveCartItem, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder, useRequestCodOtp } from "@/hooks/useCheckout";
+import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
+import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 import type { components } from "@/lib/api/schema";
 
-const PAYMENT_OPTIONS = [
+function isBlockDetails(details: unknown): details is BlockPopupDetails {
+  return !!details && typeof details === "object" && (details as { blocked?: unknown }).blocked === true;
+}
+
+const MANUAL_METHOD_LABELS: Record<string, string> = { BKASH: "bKash", NAGAD: "Nagad", ROCKET: "Rocket", UPAY: "Upay" };
+const STATIC_PAYMENT_OPTIONS = [
   { value: "COD", label: "Cash On Delivery" },
-  { value: "BKASH", label: "bKash", disabledLabel: "Coming soon" },
-  { value: "NAGAD", label: "Nagad", disabledLabel: "Coming soon" },
   { value: "SSLCOMMERZ", label: "Card / Online Payment", disabledLabel: "Coming soon" },
   { value: "BANK_TRANSFER", label: "Bank Transfer", disabledLabel: "Coming soon" },
 ];
@@ -48,6 +55,10 @@ export function CheckoutForm() {
   const [placedOrder, setPlacedOrder] = useState<components["schemas"]["OrderDto"] | null>(null);
   const [codOtpSent, setCodOtpSent] = useState(false);
   const [voucherInput, setVoucherInput] = useState("");
+  const [blockPopupDismissed, setBlockPopupDismissed] = useState(false);
+  const [fraudResult, setFraudResult] = useState<FraudPreflightResult | null>(null);
+  const [preflightBlock, setPreflightBlock] = useState<BlockPopupDetails | null>(null);
+  const checkoutStartedAtRef = useRef(Math.floor(Date.now() / 1000));
 
   const { data: cart } = useCartQuery(locale);
   const updateItem = useUpdateCartItem(locale);
@@ -55,6 +66,8 @@ export function CheckoutForm() {
   const requestCodOtp = useRequestCodOtp();
   const placeOrder = usePlaceOrder(locale);
   const voucherCheck = useGiftVoucherCheck(voucherInput);
+  const { data: methodConfigs } = usePaymentMethodConfigs();
+  const [copied, setCopied] = useState(false);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -84,6 +97,12 @@ export function CheckoutForm() {
   const billingSameAsShipping = watch("billingSameAsShipping");
   const shippingPhone = watch("shippingAddress.phone");
 
+  const manualOptions = (methodConfigs ?? [])
+    .filter((c) => c.isActive)
+    .map((c) => ({ value: c.provider, label: `${MANUAL_METHOD_LABELS[c.provider] ?? c.provider} — pay to ${c.number}` }));
+  const paymentOptions = [STATIC_PAYMENT_OPTIONS[0], ...manualOptions, ...STATIC_PAYMENT_OPTIONS.slice(1)];
+  const selectedMethodConfig = methodConfigs?.find((c) => c.provider === paymentProvider);
+
   if (placedOrder) {
     return (
       <div className="mx-auto max-w-[1180px] px-5 py-12">
@@ -104,6 +123,18 @@ export function CheckoutForm() {
 
   async function onSubmit(values: CheckoutFormValues) {
     if (!hasItems) return;
+
+    if (fraudResult?.verdict === "block") {
+      setPreflightBlock({
+        blocked: true,
+        heading: "We could not accept this order",
+        sub: "Don't worry, we can sort this out",
+        reason: fraudResult.blockMessage?.en,
+      });
+      return;
+    }
+
+    setBlockPopupDismissed(false);
     placeOrder.mutate(
       {
         shippingAddress: cleanAddress(values.shippingAddress),
@@ -113,10 +144,16 @@ export function CheckoutForm() {
         giftVoucherCode: values.giftVoucherCode?.trim() || undefined,
         customerNote: values.customerNote?.trim() || undefined,
         deviceId: getDeviceId(),
+        checkoutStartedAt: checkoutStartedAtRef.current,
       },
       { onSuccess: (order) => setPlacedOrder(order) },
     );
   }
+
+  const blockDetails =
+    placeOrder.error instanceof ApiError && !blockPopupDismissed && isBlockDetails(placeOrder.error.details)
+      ? placeOrder.error.details
+      : null;
 
   return (
     <FormProvider {...form}>
@@ -148,7 +185,7 @@ export function CheckoutForm() {
 
             <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
-              <AddressFields prefix="shippingAddress" />
+              <AddressFields prefix="shippingAddress" onFraudResult={setFraudResult} />
             </div>
 
             <div className="rounded-brand border border-line bg-white p-5">
@@ -175,9 +212,48 @@ export function CheckoutForm() {
                 name="paymentProvider"
                 control={control}
                 render={({ field }) => (
-                  <PaymentMethodSelector options={PAYMENT_OPTIONS} value={field.value} onChange={field.onChange} />
+                  <PaymentMethodSelector
+                    options={paymentOptions}
+                    value={field.value}
+                    onChange={(v) => {
+                      field.onChange(v);
+                      setCopied(false);
+                    }}
+                  />
                 )}
               />
+
+              {selectedMethodConfig && (
+                <div className="mt-4 border-t border-line pt-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body text-sm text-ink">
+                      Send {cart ? formatMoney(cart.total) : ""} to{" "}
+                      <span className="num font-semibold">{selectedMethodConfig.number}</span>
+                      <span className="ml-1 text-xs text-muted">({selectedMethodConfig.accountType.toLowerCase()})</span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedMethodConfig.number).then(() => {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        });
+                      }}
+                    >
+                      {copied ? "Copied ✓" : "Copy number"}
+                    </Button>
+                  </div>
+                  {(locale === "BN" ? selectedMethodConfig.instructionsBn : selectedMethodConfig.instructionsEn) && (
+                    <p className="mt-2 font-body text-xs text-muted">
+                      {locale === "BN" ? selectedMethodConfig.instructionsBn : selectedMethodConfig.instructionsEn}
+                    </p>
+                  )}
+                  <p className="mt-2 font-body text-xs text-muted">
+                    You&apos;ll enter your transaction ID on the confirmation page after placing this order.
+                  </p>
+                </div>
+              )}
 
               {paymentProvider === "COD" && (
                 <div className="mt-4 border-t border-line pt-4">
@@ -264,7 +340,7 @@ export function CheckoutForm() {
               <p className="mb-3 font-body text-xs text-red-600">{formState.errors.agreedToTerms.message}</p>
             )}
 
-            {placeOrder.isError && (
+            {placeOrder.isError && !blockDetails && (
               <p className="mb-3 font-body text-sm text-red-600">
                 {placeOrder.error instanceof Error ? placeOrder.error.message : "Couldn't place your order"}
               </p>
@@ -276,6 +352,8 @@ export function CheckoutForm() {
           </div>
         </div>
       </form>
+      {blockDetails && <BlockPopup details={blockDetails} onClose={() => setBlockPopupDismissed(true)} />}
+      {!blockDetails && preflightBlock && <BlockPopup details={preflightBlock} onClose={() => setPreflightBlock(null)} />}
     </FormProvider>
   );
 }

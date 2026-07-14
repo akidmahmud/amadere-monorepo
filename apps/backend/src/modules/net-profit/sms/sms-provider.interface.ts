@@ -3,6 +3,12 @@ export interface SmsSendResult {
   cost?: number;
   failed?: boolean;
   error?: string;
+  // Raw gateway response code (e.g. Bulk SMS BD's 202/1001/1007/...) plus
+  // the decoded human-readable reason, when the provider exposes one —
+  // surfaced in SmsLog.meta so the admin log table can explain a failure
+  // instead of showing a bare numeric code.
+  code?: number;
+  codeMessage?: string;
 }
 
 export type SmsBalanceResult = { balance: number } | { unavailable: true };

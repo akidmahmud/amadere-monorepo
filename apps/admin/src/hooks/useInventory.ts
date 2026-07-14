@@ -15,20 +15,47 @@ export interface InventoryRow {
   stockStatus: string;
 }
 
+export interface InventoryCounts {
+  all: number;
+  low: number;
+  out: number;
+}
+
 export interface InventoryList {
   items: InventoryRow[];
   total: number;
   page: number;
   pageSize: number;
   lowStockThreshold: number;
+  counts: InventoryCounts;
+}
+
+export interface InventoryParams {
+  filter: InventoryFilter;
+  search?: string;
+  stockMin?: number;
+  stockMax?: number;
+  page?: number;
+  pageSize?: number;
 }
 
 const KEY = ["net-profit-inventory"];
 
-export function useInventory(filter: InventoryFilter) {
+function toQuery(params: InventoryParams): string {
+  const q = new URLSearchParams();
+  q.set("filter", params.filter);
+  if (params.search) q.set("search", params.search);
+  if (params.stockMin !== undefined) q.set("stockMin", String(params.stockMin));
+  if (params.stockMax !== undefined) q.set("stockMax", String(params.stockMax));
+  q.set("page", String(params.page ?? 1));
+  q.set("pageSize", String(params.pageSize ?? 25));
+  return q.toString();
+}
+
+export function useInventory(params: InventoryParams) {
   return useQuery({
-    queryKey: [...KEY, filter],
-    queryFn: () => proxyFetch<InventoryList>(`/admin/net-profit/overview/inventory?filter=${filter}&pageSize=100`),
+    queryKey: [...KEY, params],
+    queryFn: () => proxyFetch<InventoryList>(`/admin/net-profit/overview/inventory?${toQuery(params)}`),
   });
 }
 

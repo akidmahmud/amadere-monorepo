@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PaymentAccountType, PaymentProvider } from '@amader/db';
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import { OrderStatus, PaymentAccountType, PaymentProvider } from '@amader/db';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class UpsertPaymentMethodConfigDto {
   @ApiProperty({ enum: PaymentProvider })
@@ -24,6 +24,21 @@ export class UpsertPaymentMethodConfigDto {
   @IsOptional()
   @IsString()
   instructionsBn?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUrl()
+  iconUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  showIcon?: boolean;
+
+  @ApiPropertyOptional({ enum: OrderStatus })
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  orderStatusAfterVerify?: OrderStatus;
 
   @ApiPropertyOptional()
   @IsOptional()

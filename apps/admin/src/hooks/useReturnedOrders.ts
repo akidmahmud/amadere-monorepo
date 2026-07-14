@@ -7,6 +7,8 @@ export interface ReturnedSummary {
   returned: number;
   returnRate: number;
   returnedValue: string;
+  deliveryChargeEarned: string;
+  returnedQuantity: number;
 }
 
 export interface ReturnTrendPoint {
@@ -28,6 +30,8 @@ export interface ReturnsByProduct {
   productId: number;
   name: string;
   returnedQty: number;
+  avgUnitPrice: string;
+  amount: string;
 }
 
 export interface ReturnsByArea {
@@ -47,10 +51,35 @@ export interface ReturnedOrdersReport {
   byArea: ReturnsByArea[];
 }
 
+export interface ReturnedOrderRow {
+  orderId: number;
+  orderNumber: string;
+  recipientName: string;
+  phone: string;
+  totalAmount: string;
+  quantity: number;
+  returnedAt: string;
+}
+
+interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export function useReturnedOrders(range: OverviewRange) {
   return useQuery({
     queryKey: ["net-profit-returned-orders", range],
     queryFn: () => proxyFetch<ReturnedOrdersReport>(`/admin/net-profit/overview/returned?range=${range}`),
+  });
+}
+
+export function useReturnedOrdersList(range: OverviewRange, page: number, pageSize: number) {
+  return useQuery({
+    queryKey: ["net-profit-returned-orders-list", range, page, pageSize],
+    queryFn: () =>
+      proxyFetch<Paginated<ReturnedOrderRow>>(`/admin/net-profit/overview/returned/orders?range=${range}&page=${page}&pageSize=${pageSize}`),
   });
 }
 

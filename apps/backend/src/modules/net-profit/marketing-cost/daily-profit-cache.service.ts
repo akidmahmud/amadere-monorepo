@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { DailyProfitCacheDto, toDailyProfitCacheDto } from './marketing-cost.mapper';
-import { dayKey } from './marketing-cost.service';
+import { dayKey, MarketingCostService } from './marketing-cost.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -17,18 +17,22 @@ const Decimal = Prisma.Decimal;
 export class DailyProfitCacheService {
   private readonly logger = new Logger(DailyProfitCacheService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly marketingCost: MarketingCostService,
+  ) {}
 
   async recomputeForDate(date: Date): Promise<DailyProfitCacheDto> {
     const reportDate = dayKey(date);
     const nextDay = new Date(reportDate.getTime() + 86_400_000);
 
-    const [orders, marketingCost] = await Promise.all([
+    const [orders, costRow, settings] = await Promise.all([
       this.prisma.client.order.findMany({
         where: { status: 'COMPLETED', completedAt: { gte: reportDate, lt: nextDay } },
         include: { profit: true },
       }),
       this.prisma.client.marketingCost.findUnique({ where: { costDate: reportDate } }),
+      this.marketingCost.getSettings(),
     ]);
 
     let totalRevenue = new Decimal(0);
@@ -39,8 +43,11 @@ export class DailyProfitCacheService {
       totalBuyCost = totalBuyCost.plus(order.profit?.cogs ?? 0);
       totalShipping = totalShipping.plus(order.profit?.shipping ?? order.shippingAmount);
     }
-    const totalAdsCost = marketingCost?.adsCost ?? new Decimal(0);
-    const totalOther = marketingCost?.otherCost ?? new Decimal(0);
+    // No entry for this day at all (not even a carried-forward one) — fall
+    // back to the admin-configured default rather than silently assuming
+    // ৳0 ad spend for the day.
+    const totalAdsCost = costRow?.adsCost ?? new Decimal(settings.defaultMarketingCost);
+    const totalOther = costRow?.otherCost ?? new Decimal(0);
     const netProfit = totalRevenue.minus(totalBuyCost).minus(totalAdsCost).minus(totalOther).minus(totalShipping);
 
     const row = await this.prisma.client.dailyProfitCache.upsert({

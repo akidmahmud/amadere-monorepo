@@ -28,4 +28,19 @@ export class OrderManagerQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   division?: string;
+
+  @ApiPropertyOptional({ description: 'Free-text search — order number, recipient name, or phone' })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional({ description: 'ISO date — orders created on/after this instant' })
+  @IsOptional()
+  @IsString()
+  from?: string;
+
+  @ApiPropertyOptional({ description: 'ISO date — orders created on/before this instant' })
+  @IsOptional()
+  @IsString()
+  to?: string;
 }

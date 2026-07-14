@@ -15,8 +15,11 @@ import {
 import { OrdersService } from '../orders/orders.service';
 import { CourierProvider } from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
+import { PathaoCourierProvider } from './providers/pathao-courier.provider';
+import { RedxCourierProvider } from './providers/redx-courier.provider';
 import { UnconfiguredCourierProvider } from './providers/unconfigured-courier.provider';
 import { ShippingChargeCalculator } from './shipping-charge.calculator';
+import { CourierSettingsService } from './courier-settings.service';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import {
@@ -48,12 +51,15 @@ export class ShipmentsService {
     private readonly prisma: PrismaService,
     private readonly charges: ShippingChargeCalculator,
     private readonly orders: OrdersService,
+    private readonly courierSettings: CourierSettingsService,
     steadfast: SteadfastCourierProvider,
+    pathao: PathaoCourierProvider,
+    redx: RedxCourierProvider,
   ) {
     this.providers = {
       STEADFAST: steadfast,
-      PATHAO: new UnconfiguredCourierProvider('Pathao'),
-      REDX: new UnconfiguredCourierProvider('RedX'),
+      PATHAO: pathao,
+      REDX: redx,
       ECOURIER: new UnconfiguredCourierProvider('eCourier'),
     };
   }
@@ -98,6 +104,18 @@ export class ShipmentsService {
       .map((i) => `${i.skuSnapshot ?? i.productNameSnapshot} x${i.quantity}`)
       .join(', ');
 
+    // Pathao's store doesn't vary per order — fall back to the configured
+    // default (matches the plugin's own bulk-send fallback) so bulk-consign
+    // from the Order Manager works without opening the per-order modal.
+    // RedX's delivery area is genuinely recipient-dependent with no sane
+    // default, so no fallback exists for it — a bulk RedX consign without
+    // an explicit area just fails per-order with a clear message.
+    let pathaoOptions = dto.pathao;
+    if (dto.provider === 'PATHAO' && !pathaoOptions?.storeId) {
+      const pathaoConfig = await this.courierSettings.getPathaoConfig();
+      if (pathaoConfig.storeId) pathaoOptions = { ...pathaoOptions, storeId: pathaoConfig.storeId };
+    }
+
     const result = await this.providers[dto.provider].createConsignment({
       invoiceNumber: order.orderNumber,
       recipientName: shippingAddress.recipientName,
@@ -107,6 +125,8 @@ export class ShipmentsService {
       weightKg: weight,
       note: order.customerNote ?? undefined,
       itemDescription,
+      pathao: pathaoOptions,
+      redx: dto.redx,
     });
 
     const shipment = await this.prisma.client.shipment.create({

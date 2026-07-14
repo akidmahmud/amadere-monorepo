@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from '../cart/pricing.service';
@@ -16,6 +16,7 @@ import { FraudService } from '../net-profit/fraud/fraud.service';
 import { BlockerService } from '../net-profit/blocker/blocker.service';
 import { AdvancePaymentService } from '../net-profit/advance-payment/advance-payment.service';
 import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
+import { SmsService } from '../net-profit/sms/sms.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -41,19 +42,29 @@ export class CheckoutService {
     private readonly blocker: BlockerService,
     private readonly advancePayment: AdvancePaymentService,
     private readonly otpSecurity: OtpSecurityService,
+    private readonly sms: SmsService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
+    const otpSettings = await this.otpSecurity.getSettings();
+    if (!otpSettings.codOtpEnabled) {
+      throw new BadRequestException('COD OTP verification is currently disabled');
+    }
+
     // ADDENDUM §I — evaluates the caller's IP for VPN/proxy; throws a
     // ForbiddenException itself when policy=block, so a blocked request
     // never even gets a real OTP row created.
     const vpnResult = await this.otpSecurity.evaluate(ip);
 
-    const code = randomBytes(3)
-      .readUIntBE(0, 3)
-      .toString()
-      .padStart(6, '0')
-      .slice(-6);
+    const recentCount = await this.prisma.client.otp.count({
+      where: { identifier: dto.phone, purpose: 'COD_VERIFICATION', createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } },
+    });
+    if (recentCount >= 5) {
+      throw new BadRequestException('Too many OTP requests — please try again later');
+    }
+
+    const length = Math.min(8, Math.max(4, otpSettings.codOtpLength));
+    const code = randomInt(10 ** (length - 1), 10 ** length).toString();
     await this.prisma.client.otp.create({
       data: {
         identifier: dto.phone,
@@ -61,13 +72,10 @@ export class CheckoutService {
         code,
         ipAddress: ip,
         isVpn: vpnResult.isVpn,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        expiresAt: new Date(Date.now() + otpSettings.codOtpExpiryMinutes * 60 * 1000),
       },
     });
-    // Delivery is the same ConsoleOtpNotifier stub used by customer auth —
-    // real SMS gateway plugs in there once credentials arrive.
-
-    console.log(`[COD OTP] ${dto.phone}: ${code}`);
+    await this.sms.sendTemplate('otp', dto.phone, 'EN', { code });
   }
 
   async checkout(
@@ -76,18 +84,6 @@ export class CheckoutService {
     locale: Locale,
     ip?: string,
   ): Promise<OrderDto> {
-    // Net Profit Order Blocker (§7.6) — applies to every payment method, not
-    // just COD, since a blocked customer shouldn't be able to order at all.
-    const blockCheck = await this.blocker.check({
-      phone: dto.shippingAddress.phone,
-      email: dto.shippingAddress.email,
-      ip,
-      deviceId: dto.deviceId,
-    });
-    if (blockCheck.blocked) {
-      throw new ForbiddenException('This order could not be placed. Please contact support.');
-    }
-
     const cart = await this.findCart(identity, locale);
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');
@@ -105,21 +101,55 @@ export class CheckoutService {
       throw new BadRequestException(pricing.couponError);
     }
 
+    // Net Profit Blocker Manager (§7.6, ADDENDUM 12-rule auto engine) —
+    // applies to every payment method, not just COD. Runs after pricing
+    // since several rules (minimum order amount, new-customer high value,
+    // duplicate order) need the real cart total/product set.
+    const blockResult = await this.blocker.evaluateCheckout({
+      phone: dto.shippingAddress.phone,
+      email: dto.shippingAddress.email ?? '',
+      ip: ip ?? '',
+      deviceId: dto.deviceId ?? '',
+      name: dto.shippingAddress.recipientName,
+      address: this.compactAddress(dto.shippingAddress),
+      orderTotal: pricing.total.toNumber(),
+      productIds: cart.items.map((i) => i.productId),
+      checkoutStartedAt: dto.checkoutStartedAt,
+    });
+    if (blockResult.blocked) {
+      throw new ForbiddenException({
+        message: blockResult.reason ?? 'This order could not be placed. Please contact support.',
+        details: {
+          blocked: true,
+          heading: blockResult.heading,
+          sub: blockResult.sub,
+          reason: blockResult.reason,
+          contacts: blockResult.contacts,
+        },
+      });
+    }
+
     // Set below when the fraud gate's action is "advance" (M4) — applied to
     // the real order only after it's actually created.
     let requireAdvancePercent: number | undefined;
+    let codOtpVerified = false;
 
     if (dto.paymentProvider === 'COD') {
-      await this.verifyCodOtp(dto.shippingAddress.phone, dto.codOtpCode);
+      const otpSettings = await this.otpSecurity.getSettings();
+      if (otpSettings.codOtpEnabled) {
+        await this.verifyCodOtp(dto.shippingAddress.phone, dto.codOtpCode);
+        codOtpVerified = true;
+      }
 
       // Net Profit courier fraud gate (CLAUDE.net-profit.md §7.2) — only
       // applies to COD, since a prepaid order carries no delivery-refusal
       // risk. No-ops entirely when the feature is disabled/set to "off".
       const gate = await this.fraud.evaluateCheckoutGate(dto.shippingAddress.phone);
       if (!gate.allowed) {
+        const savingAmount = await this.fraud.savingAmountFor(pricing.total);
         await this.fraud.recordSaving(
           dto.shippingAddress.phone,
-          pricing.total,
+          savingAmount,
           'auto_block',
         );
         await this.blocker.maybeAutoBlockFraud(dto.shippingAddress.phone);
@@ -165,7 +195,9 @@ export class CheckoutService {
           totalAmount,
           couponCode: cart.couponCode,
           customerNote: dto.customerNote,
-          codVerifiedAt: dto.paymentProvider === 'COD' ? new Date() : undefined,
+          codVerifiedAt: codOtpVerified ? new Date() : undefined,
+          ipAddress: ip,
+          deviceId: dto.deviceId,
           items: {
             create: cart.items.map((item) => {
               const priced = pricing.lines.find(
@@ -266,10 +298,27 @@ export class CheckoutService {
       customerId: identity.customerId ?? null,
     } satisfies OrderCreatedEvent);
 
-    if (requireAdvancePercent) {
-      const required = totalAmount.times(requireAdvancePercent).dividedBy(100);
-      await this.advancePayment.require(order.id, required, 'high_risk');
-      await this.fraud.recordSaving(dto.shippingAddress.phone, required, 'advance_required', order.id);
+    // Two independent advance-payment sources — the fraud gate's risk-based
+    // trigger and the store-wide "always on" toggle (ADDENDUM Payments
+    // parity), combined by taking whichever requires more. Both are
+    // COD-specific — a bKash/Nagad/Rocket/Upay order is already a
+    // prepayment channel, so there's nothing to require in advance of.
+    const fraudRequired = requireAdvancePercent ? totalAmount.times(requireAdvancePercent).dividedBy(100) : null;
+    const alwaysOnRequired =
+      dto.paymentProvider === 'COD' ? await this.advancePayment.alwaysOnRequiredAmount(totalAmount) : null;
+    const required =
+      fraudRequired && alwaysOnRequired
+        ? Decimal.max(fraudRequired, alwaysOnRequired)
+        : (fraudRequired ?? alwaysOnRequired);
+
+    if (required) {
+      await this.advancePayment.require(order.id, required, fraudRequired ? 'high_risk' : 'store_wide');
+      // Only a real risk-based trigger counts as a "fraud saving" — the
+      // store-wide toggle applies to every order regardless of risk, so
+      // crediting it here would inflate the ledger with non-fraud entries.
+      if (fraudRequired) {
+        await this.fraud.recordSaving(dto.shippingAddress.phone, required, 'advance_required', order.id);
+      }
     }
 
     return this.getByIdInternal(order.id);
@@ -281,6 +330,12 @@ export class CheckoutService {
       include: ORDER_INCLUDE,
     });
     return toOrderDto(order);
+  }
+
+  private compactAddress(address: CheckoutAddressDto): string {
+    return [address.addressLine, address.area, address.district, address.division, address.postCode]
+      .filter((part): part is string => !!part?.trim())
+      .join(', ');
   }
 
   private toAddressCreate(address: CheckoutAddressDto, type: OrderAddressType) {
@@ -310,13 +365,16 @@ export class CheckoutService {
       where: {
         identifier: phone,
         purpose: 'COD_VERIFICATION',
-        code,
         consumedAt: null,
         expiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: 'desc' },
     });
-    if (!otp) throw new BadRequestException('Invalid or expired OTP');
+    if (!otp || otp.attempts >= 5) throw new BadRequestException('Invalid or expired OTP');
+    if (otp.code !== code) {
+      await this.prisma.client.otp.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
+      throw new BadRequestException('Invalid or expired OTP');
+    }
     await this.prisma.client.otp.update({
       where: { id: otp.id },
       data: { consumedAt: new Date() },
@@ -395,4 +453,5 @@ export class CheckoutService {
       },
     });
   }
+
 }

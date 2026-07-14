@@ -10,6 +10,8 @@ export interface ModalProps {
   title?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** "dark" is a Net Profit / WPFOK-parity header variant — omit for the default light header used elsewhere. */
+  tone?: "light" | "dark";
 }
 
 const closeIcon = (
@@ -22,7 +24,7 @@ const closeIcon = (
 // "Browse library" grid, but it's a plain admin-ui primitive (like Card/
 // Button) so any future confirm-dialog/picker can reuse it instead of each
 // building its own backdrop+escape-key+scroll-lock handling.
-export function Modal({ open, onClose, title, children, className }: ModalProps) {
+export function Modal({ open, onClose, title, children, className, tone = "light" }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -50,13 +52,26 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-ui text-base font-semibold text-text">{title}</h2>
+        <div
+          className={cn(
+            "flex items-center justify-between border-b border-border px-5 py-4",
+            tone === "dark" && "border-transparent text-white",
+          )}
+          style={
+            tone === "dark"
+              ? { background: "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, #1a0d2e 100%)" }
+              : undefined
+          }
+        >
+          <h2 className={cn("font-ui text-base font-semibold", tone === "dark" ? "text-white" : "text-text")}>{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-sm text-secondary hover:bg-surface-2"
+            className={cn(
+              "grid h-8 w-8 place-items-center rounded-sm transition-colors duration-150",
+              tone === "dark" ? "bg-white/10 text-white hover:bg-danger/60" : "text-secondary hover:bg-surface-2",
+            )}
           >
             {closeIcon}
           </button>

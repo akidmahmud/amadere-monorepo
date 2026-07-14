@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentProvider } from '@amader/db';
 import { Type } from 'class-transformer';
-import { IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { CheckoutAddressDto } from './checkout-address.dto';
 
 export class CheckoutDto {
@@ -45,4 +45,9 @@ export class CheckoutDto {
   @IsOptional()
   @IsString()
   deviceId?: string;
+
+  @ApiPropertyOptional({ description: 'Unix seconds when the checkout page loaded — used by the blocker speed/bot-detection rule' })
+  @IsOptional()
+  @IsInt()
+  checkoutStartedAt?: number;
 }

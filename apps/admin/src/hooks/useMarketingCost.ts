@@ -22,8 +22,16 @@ export interface DailyProfitCache {
   computedAt: string;
 }
 
+export interface MarketingCostSettings {
+  autoCarryEnabled: boolean;
+  defaultMarketingCost: number;
+  autoReportEnabled: boolean;
+  reportEmail: string;
+}
+
 const MARKETING_COST_KEY = ["net-profit-marketing-cost"];
 const DAILY_PROFIT_KEY = ["net-profit-daily-profit"];
+const SETTINGS_KEY = ["net-profit-marketing-cost-settings"];
 
 function last30DaysRange() {
   const to = new Date();
@@ -51,10 +59,28 @@ export function useSetMarketingCost() {
   });
 }
 
-export function useDailyProfitCache() {
-  const { from, to } = last30DaysRange();
+export function useDailyProfitCache(fromDate?: string, toDate?: string) {
+  const fallback = last30DaysRange();
+  const from = fromDate ?? fallback.from;
+  const to = toDate ?? fallback.to;
   return useQuery({
     queryKey: [...DAILY_PROFIT_KEY, from, to],
     queryFn: () => proxyFetch<DailyProfitCache[]>(`/admin/net-profit/daily-profit?from=${from}&to=${to}`),
+  });
+}
+
+export function useMarketingCostSettings() {
+  return useQuery({
+    queryKey: SETTINGS_KEY,
+    queryFn: () => proxyFetch<MarketingCostSettings>("/admin/net-profit/marketing-cost/settings"),
+  });
+}
+
+export function useUpdateMarketingCostSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<MarketingCostSettings>) =>
+      proxyFetch<MarketingCostSettings>("/admin/net-profit/marketing-cost/settings", { method: "PUT", body: JSON.stringify(input) }),
+    onSuccess: (data) => qc.setQueryData(SETTINGS_KEY, data),
   });
 }

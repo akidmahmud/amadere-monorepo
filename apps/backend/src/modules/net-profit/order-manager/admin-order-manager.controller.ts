@@ -23,6 +23,12 @@ export class AdminOrderManagerController {
     return this.orderManager.list(query);
   }
 
+  @Get('status-counts')
+  @RequirePermission('net_profit_orders.view')
+  statusCounts(@Query() query: OrderManagerQueryDto) {
+    return this.orderManager.statusCounts(query);
+  }
+
   @Post('bulk')
   @RequirePermission('net_profit_orders.manage')
   bulk(@Body() dto: BulkOrderActionDto, @CurrentAdmin() admin: { id: number }) {

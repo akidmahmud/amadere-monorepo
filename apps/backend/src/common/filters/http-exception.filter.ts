@@ -33,6 +33,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
           ? exception.message
           : 'Internal server error';
 
+    // Carries structured, non-secret extras (e.g. the Blocker Manager's
+    // popup heading/sub/contacts) through to the client alongside the flat
+    // message — every existing caller that only reads `.message` keeps
+    // working unchanged.
+    const details =
+      isHttp && typeof httpResponse === 'object' && httpResponse && 'details' in httpResponse
+        ? (httpResponse as { details?: unknown }).details
+        : undefined;
+
     if (!isHttp) {
       this.logger.error(
         exception instanceof Error ? exception.stack : exception,
@@ -44,6 +53,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error: {
         code: HttpStatus[status] ?? String(status),
         message: Array.isArray(message) ? message.join(', ') : message,
+        ...(details !== undefined ? { details } : {}),
       },
     };
 

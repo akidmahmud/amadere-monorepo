@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ConfigService } from '@nestjs/config';
-import { DelayUnit } from '@amader/db';
+import { DelayUnit, Locale } from '@amader/db';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
 import { SmsService } from '../sms/sms.service';
+import { MergeTagsService } from '../merge-tags/merge-tags.service';
 import { SmtpEmailProvider } from './providers/smtp-email.provider';
 import { UpsertCampaignTemplateDto } from './dto/upsert-campaign-template.dto';
 import {
@@ -30,10 +30,6 @@ function delayToMs(value: number, unit: DelayUnit): number {
   return value * perUnit[unit];
 }
 
-function renderBody(raw: string, resumeUrl: string): string {
-  return raw.replace(/\{\{resumeUrl\}\}/g, resumeUrl);
-}
-
 // ADDENDUM §C — a separate, automated, multi-channel, scheduled win-back
 // engine, distinct from RecoveryService's manual/on-demand single-SMS send
 // (base §7.7). `CartCampaignQueue` is the scheduler table this class both
@@ -47,7 +43,7 @@ export class CartCampaignsService {
     private readonly settings: NetProfitSettingsService,
     private readonly sms: SmsService,
     private readonly email: SmtpEmailProvider,
-    private readonly config: ConfigService,
+    private readonly mergeTags: MergeTagsService,
   ) {}
 
   async getSettings(): Promise<CampaignSettings> {
@@ -133,12 +129,12 @@ export class CartCampaignsService {
   // Admin "retry" — sends immediately rather than just re-queuing for the
   // next cron tick, since an admin retrying a failed step wants to know
   // right away whether it worked.
-  async retryQueueItem(id: number): Promise<void> {
+  async retryQueueItem(id: number, locale?: Locale): Promise<void> {
     await this.prisma.client.cartCampaignQueue.update({
       where: { id },
       data: { status: 'PENDING', scheduledAt: new Date() },
     });
-    await this.sendQueueItem(id);
+    await this.sendQueueItem(id, locale);
   }
 
   // The worker (§G cron 1). ponytail: fixed 5-minute tick via @Cron, not a
@@ -174,7 +170,12 @@ export class CartCampaignsService {
     if (due.length > 0) this.logger.log(`Cart campaign worker processed ${due.length} due step(s)`);
   }
 
-  async sendQueueItem(id: number): Promise<void> {
+  // `locale` has no real customer-preference source yet (Customer has no
+  // stored language column, same disclosed gap as the base SMS module) —
+  // defaults to EN like every other template send in this codebase, but
+  // now actually reachable (via admin retry) instead of bodyBn being
+  // permanently dead data.
+  async sendQueueItem(id: number, locale: Locale = 'EN'): Promise<void> {
     const row = await this.prisma.client.cartCampaignQueue.findUniqueOrThrow({
       where: { id },
       include: { template: true },
@@ -183,8 +184,14 @@ export class CartCampaignsService {
 
     await this.prisma.client.cartCampaignQueue.update({ where: { id }, data: { lockedAt: new Date() } });
 
-    const resumeUrl = `${this.config.get<string>('STOREFRONT_BASE_URL') ?? ''}/cart`;
-    const body = renderBody(row.template.bodyEn, resumeUrl);
+    const incomplete = await this.prisma.client.incompleteOrder.findUnique({ where: { id: row.incompleteId } });
+    const body = await this.mergeTags.render(locale === 'BN' ? row.template.bodyBn : row.template.bodyEn, {
+      customerId: incomplete?.customerId,
+      phone: incomplete?.phone,
+      email: incomplete?.email,
+      amount: incomplete?.subtotal.toString() ?? '0',
+      cart: (incomplete?.cart as unknown as { name: string; slug: string }[]) ?? [],
+    });
 
     let failed = false;
     let responseMsg: string | undefined;

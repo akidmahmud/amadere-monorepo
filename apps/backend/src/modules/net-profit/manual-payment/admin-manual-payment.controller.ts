@@ -19,8 +19,12 @@ export class AdminManualPaymentController {
 
   @Get()
   @RequirePermission('net_profit_payments.verify')
-  list(@Query() { page, pageSize }: PaginationQueryDto, @Query('status') status?: ManualPayStatus) {
-    return this.manualPayment.list(page ?? 1, pageSize ?? 20, status);
+  list(
+    @Query() { page, pageSize }: PaginationQueryDto,
+    @Query('status') status?: ManualPayStatus,
+    @Query('orderId') orderId?: string,
+  ) {
+    return this.manualPayment.list(page ?? 1, pageSize ?? 20, status, orderId ? Number(orderId) : undefined);
   }
 
   @Post(':id/verify')

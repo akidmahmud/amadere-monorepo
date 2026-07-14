@@ -7,6 +7,7 @@ export class ManualPaymentDto {
   senderMsisdn!: string;
   trxId!: string;
   amount!: string;
+  screenshotUrl!: string | null;
   status!: string;
   verifiedBy!: number | null;
   createdAt!: Date;
@@ -20,6 +21,7 @@ export function toManualPaymentDto(row: ManualPayment): ManualPaymentDto {
     senderMsisdn: row.senderMsisdn,
     trxId: row.trxId,
     amount: row.amount.toString(),
+    screenshotUrl: row.screenshotUrl,
     status: row.status,
     verifiedBy: row.verifiedBy,
     createdAt: row.createdAt,

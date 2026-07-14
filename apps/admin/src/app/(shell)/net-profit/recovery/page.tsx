@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Card, Tabs } from "@amader/admin-ui";
+import { useRef, useState } from "react";
+import { Button, Card, Modal, PageHeader, Table, TableEmptyRow, Tabs } from "@amader/admin-ui";
 import {
+  useClearAllIncomplete,
+  useCreateOrderFromIncomplete,
+  useDeleteIncompleteOrder,
+  useImportRecoveryCsv,
   useIncompleteOrders,
   useRecoveryRate,
   useRecoverySettings,
   useSendRecovery,
   useUpdateRecoverySettings,
+  recoveryExportUrl,
+  type CreateOrderInput,
+  type IncompleteOrder,
+  type RecoveryFilters,
 } from "@/hooks/useRecovery";
 import {
+  MERGE_TAGS,
   useCampaignLogs,
   useCampaignQueue,
   useCampaignSettings,
@@ -23,10 +32,145 @@ import {
   type DelayUnit,
 } from "@/hooks/useCartCampaigns";
 
+const cartIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+    <circle cx="9" cy="21" r="1" />
+    <circle cx="20" cy="21" r="1" />
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () => void }) {
+  const createOrder = useCreateOrderFromIncomplete();
+  const [form, setForm] = useState<CreateOrderInput>({
+    recipientName: "",
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    division: "",
+    district: "",
+    area: "",
+    landmark: "",
+    addressLine: "",
+    postCode: "",
+  });
+
+  return (
+    <Modal open onClose={onClose} title="Create order from abandoned cart" tone="dark">
+      <div className="mb-4 flex flex-col gap-1.5 rounded-inner bg-surface-2 p-3">
+        <p className="text-xs font-semibold text-secondary">Cart contents</p>
+        {row.cart.map((item) => (
+          <p key={item.productId} className="text-xs text-text">
+            {item.quantity} × {item.name} — ৳{item.unitPrice}
+          </p>
+        ))}
+        <p className="text-xs font-semibold text-text">Subtotal: ৳{Number(row.subtotal).toLocaleString()}</p>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          createOrder.mutate(
+            { id: row.id, ...form },
+            {
+              onSuccess: (r) => {
+                alert(`Order ${r.orderNumber} created.`);
+                onClose();
+              },
+            },
+          );
+        }}
+        className="grid grid-cols-2 gap-3"
+      >
+        <input
+          placeholder="Recipient name *"
+          required
+          value={form.recipientName}
+          onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Phone *"
+          required
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Email (optional)"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          className="col-span-2 h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Division *"
+          required
+          value={form.division}
+          onChange={(e) => setForm({ ...form, division: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="District *"
+          required
+          value={form.district}
+          onChange={(e) => setForm({ ...form, district: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Area (optional)"
+          value={form.area}
+          onChange={(e) => setForm({ ...form, area: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Landmark (optional)"
+          value={form.landmark}
+          onChange={(e) => setForm({ ...form, landmark: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Address line *"
+          required
+          value={form.addressLine}
+          onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
+          className="col-span-2 h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <input
+          placeholder="Postcode (optional)"
+          value={form.postCode}
+          onChange={(e) => setForm({ ...form, postCode: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        {createOrder.isError && (
+          <p className="col-span-2 text-xs text-danger">
+            {createOrder.error instanceof Error ? createOrder.error.message : "Couldn't create the order"}
+          </p>
+        )}
+        <Button type="submit" variant="primary" className="col-span-2" disabled={createOrder.isPending}>
+          {createOrder.isPending ? "Creating…" : "Create order"}
+        </Button>
+      </form>
+    </Modal>
+  );
+}
+
 function FunnelTab() {
   const { data: rate } = useRecoveryRate();
-  const { data, isLoading } = useIncompleteOrders();
+  const [q, setQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [recovered, setRecovered] = useState<string>("");
+  const filters: RecoveryFilters = {
+    q: q || undefined,
+    from: from || undefined,
+    to: to || undefined,
+    recovered: recovered === "" ? undefined : recovered === "true",
+  };
+  const { data, isLoading } = useIncompleteOrders(filters);
   const send = useSendRecovery();
+  const del = useDeleteIncompleteOrder();
+  const clearAll = useClearAllIncomplete();
+  const importCsv = useImportRecoveryCsv();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [orderRow, setOrderRow] = useState<IncompleteOrder | null>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,34 +189,153 @@ function FunnelTab() {
         </Card>
       </div>
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {data && data.items.length === 0 && <p className="text-sm text-muted">No abandoned carts captured yet.</p>}
+      <Card className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Search</span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Phone, email, name…"
+            className="h-10 w-52 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">From</span>
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">To</span>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Status</span>
+          <select
+            value={recovered}
+            onChange={(e) => setRecovered(e.target.value)}
+            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          >
+            <option value="">All</option>
+            <option value="false">Not recovered</option>
+            <option value="true">Recovered</option>
+          </select>
+        </label>
+      </Card>
 
-      <div className="flex flex-col gap-2">
-        {data?.items.map((row) => (
-          <Card key={row.id} className="flex items-center gap-3">
-            <span className="num text-sm text-text">{row.phone ?? "no phone (guest)"}</span>
-            <span className="rounded-pill bg-surface-2 px-2.5 py-1 text-xs font-semibold text-secondary">{row.stage}</span>
-            <span className="text-sm font-semibold text-text">৳{Number(row.subtotal).toLocaleString()}</span>
-            <span className="text-xs text-muted">{new Date(row.lastSeenAt).toLocaleString()}</span>
-            <span className="text-xs text-muted">{row.recoveryAttempts} attempt(s)</span>
-            {row.recovered ? (
-              <span className="rounded-pill bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
-                Recovered (order #{row.recoveredOrderId})
-              </span>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={send.isPending || !row.phone}
-                onClick={() => send.mutate(row.id)}
-              >
-                Send recovery SMS
-              </Button>
-            )}
-          </Card>
-        ))}
+      <div className="flex flex-wrap gap-2.5">
+        <a href={recoveryExportUrl(filters)} className="inline-flex">
+          <Button type="button" variant="ghost">
+            Export CSV
+          </Button>
+        </a>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) importCsv.mutate(file, { onSuccess: (r) => alert(`Imported ${r.imported}, skipped ${r.skipped}`) });
+            e.target.value = "";
+          }}
+        />
+        <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} disabled={importCsv.isPending}>
+          {importCsv.isPending ? "Importing…" : "Import CSV"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={clearAll.isPending}
+          onClick={() => {
+            if (confirm("Delete all non-recovered abandoned-cart rows matching the current filters?")) {
+              clearAll.mutate(filters.recovered);
+            }
+          }}
+        >
+          Clear all (not recovered)
+        </Button>
       </div>
+
+      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Cart</th>
+              <th>Stage</th>
+              <th>Subtotal</th>
+              <th>Last seen</th>
+              <th>Attempts</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {data && data.items.length === 0 && <TableEmptyRow colSpan={7}>No abandoned carts captured yet.</TableEmptyRow>}
+            {data?.items.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="num text-sm font-semibold text-text">{row.phone ?? "no phone (guest)"}</span>
+                    {row.email && <span className="text-xs text-secondary">{row.email}</span>}
+                  </div>
+                </td>
+                <td>
+                  {row.cart.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {row.cart.map((item) => (
+                        <div key={item.productId} className="flex items-center gap-1.5" title={item.name}>
+                          {item.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.imageUrl} alt={item.name} className="h-8 w-8 rounded-inner border border-border object-cover" />
+                          ) : (
+                            <span className="grid h-8 w-8 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
+                          )}
+                          <span className="text-xs text-secondary">×{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted">—</span>
+                  )}
+                </td>
+                <td>
+                  <span className="rounded-pill bg-surface-2 px-2.5 py-1 text-xs font-semibold text-secondary">{row.stage}</span>
+                </td>
+                <td className="font-semibold text-text">৳{Number(row.subtotal).toLocaleString()}</td>
+                <td className="text-muted">{new Date(row.lastSeenAt).toLocaleString()}</td>
+                <td className="text-muted">{row.recoveryAttempts}</td>
+                <td className="text-right">
+                  {row.recovered ? (
+                    <span className="rounded-pill bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
+                      Recovered (order #{row.recoveredOrderId})
+                    </span>
+                  ) : (
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="ghost" disabled={send.isPending || !row.phone} onClick={() => send.mutate(row.id)}>
+                        Send SMS
+                      </Button>
+                      <Button type="button" variant="primary" onClick={() => setOrderRow(row)}>
+                        Create order
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={del.isPending}
+                        onClick={() => confirm("Delete this abandoned-cart row?") && del.mutate(row.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
+
+      {orderRow && <CreateOrderModal row={orderRow} onClose={() => setOrderRow(null)} />}
     </div>
   );
 }
@@ -163,6 +426,17 @@ function CampaignsTab() {
       </Card>
 
       <Card className="flex flex-col gap-3">
+        <p className="text-xs font-semibold text-secondary">Merge tags — usable in any template body</p>
+        <div className="flex flex-wrap gap-2">
+          {MERGE_TAGS.map((t) => (
+            <span key={t.token} className="num rounded-pill bg-surface-2 px-2.5 py-1 text-[11px] text-secondary" title={t.label}>
+              {`{{${t.token}}}`}
+            </span>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
         <p className="text-xs font-semibold text-secondary">New template</p>
         <div className="flex flex-wrap gap-3">
           <label className="flex flex-col gap-1.5">
@@ -189,7 +463,7 @@ function CampaignsTab() {
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Body (English) — use {"{{resumeUrl}}"}</span>
+          <span className="text-xs font-semibold text-secondary">Body (English)</span>
           <textarea value={bodyEn} onChange={(e) => setBodyEn(e.target.value)} rows={2} className="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500" />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -302,7 +576,9 @@ export default function RecoveryPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageHeader icon={cartIcon} title="Recovery & Cart Abandonment" subtitle="Abandoned-cart funnel, automated win-back campaigns, and manual recovery." />
       <Tabs
+        variant="pill"
         options={[
           { value: "funnel", label: "Funnel" },
           { value: "campaigns", label: "Campaigns" },

@@ -4,8 +4,16 @@ import { Controller, useFormContext } from "react-hook-form";
 import { Input, Select } from "@amader/ui";
 import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
 import type { CheckoutFormValues } from "@/lib/checkout-schema";
+import { CheckoutFraudBadge } from "@/components/CheckoutFraudBadge";
+import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 
-export function AddressFields({ prefix }: { prefix: "shippingAddress" | "billingAddress" }) {
+export function AddressFields({
+  prefix,
+  onFraudResult,
+}: {
+  prefix: "shippingAddress" | "billingAddress";
+  onFraudResult?: (result: FraudPreflightResult | null) => void;
+}) {
   const {
     register,
     control,
@@ -34,6 +42,7 @@ export function AddressFields({ prefix }: { prefix: "shippingAddress" | "billing
           {fieldErrors?.phone && (
             <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.phone.message}</p>
           )}
+          {onFraudResult && <CheckoutFraudBadge phone={watch(`${prefix}.phone`) ?? ""} onResult={onFraudResult} />}
         </div>
       </div>
 

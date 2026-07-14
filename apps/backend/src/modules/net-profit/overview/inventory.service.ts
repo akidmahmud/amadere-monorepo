@@ -18,6 +18,21 @@ export interface InventoryRow {
 
 export type InventoryFilter = 'all' | 'low' | 'out';
 
+export interface InventoryCounts {
+  all: number;
+  low: number;
+  out: number;
+}
+
+export interface InventoryListParams {
+  filter: InventoryFilter;
+  search?: string;
+  stockMin?: number;
+  stockMax?: number;
+  page: number;
+  pageSize: number;
+}
+
 const OVERVIEW_DEFAULTS = { lowStockThreshold: 10 };
 
 // ADDENDUM §B1 — reads the existing Product/ProductVariant stock columns
@@ -57,22 +72,26 @@ export class InventoryService {
     `;
   }
 
-  private filterClause(filter: InventoryFilter, threshold: number): Prisma.Sql {
-    if (filter === 'out') return Prisma.sql`WHERE available <= 0`;
-    if (filter === 'low') return Prisma.sql`WHERE available > 0 AND available <= ${threshold}`;
-    return Prisma.empty;
+  private filterClause(params: Pick<InventoryListParams, 'filter' | 'search' | 'stockMin' | 'stockMax'>, threshold: number): Prisma.Sql {
+    const conditions: Prisma.Sql[] = [];
+    if (params.filter === 'out') conditions.push(Prisma.sql`available <= 0`);
+    else if (params.filter === 'low') conditions.push(Prisma.sql`available > 0 AND available <= ${threshold}`);
+    if (params.search) conditions.push(Prisma.sql`(name ILIKE ${`%${params.search}%`} OR sku ILIKE ${`%${params.search}%`})`);
+    if (params.stockMin !== undefined) conditions.push(Prisma.sql`available >= ${params.stockMin}`);
+    if (params.stockMax !== undefined) conditions.push(Prisma.sql`available <= ${params.stockMax}`);
+    return conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
   }
 
-  async list(filter: InventoryFilter, page: number, pageSize: number): Promise<PaginatedResult<InventoryRow>> {
+  async list(params: InventoryListParams): Promise<PaginatedResult<InventoryRow>> {
     const threshold = await this.getThreshold();
     const base = this.baseQuery();
-    const where = this.filterClause(filter, threshold);
-    const offset = (page - 1) * pageSize;
+    const where = this.filterClause(params, threshold);
+    const offset = (params.page - 1) * params.pageSize;
 
     const [rows, countRows] = await Promise.all([
       this.prisma.client.$queryRaw<
         { product_id: number; variant_id: number | null; slug: string; name: string; sku: string | null; stock: number; reserved_stock: number; available: number; stock_status: string }[]
-      >`SELECT * FROM (${base}) inv ${where} ORDER BY available ASC LIMIT ${pageSize} OFFSET ${offset}`,
+      >`SELECT * FROM (${base}) inv ${where} ORDER BY available ASC LIMIT ${params.pageSize} OFFSET ${offset}`,
       this.prisma.client.$queryRaw<{ count: bigint }[]>`SELECT count(*)::bigint AS count FROM (${base}) inv ${where}`,
     ]);
 
@@ -87,11 +106,25 @@ export class InventoryService {
       available: r.available,
       stockStatus: r.stock_status,
     }));
-    return { items, total: Number(countRows[0]?.count ?? 0), page, pageSize };
+    return { items, total: Number(countRows[0]?.count ?? 0), page: params.page, pageSize: params.pageSize };
+  }
+
+  // Whole-catalog counts regardless of the active filter — powers the
+  // Inventory tab's always-visible summary cards (plugin parity).
+  async counts(): Promise<InventoryCounts> {
+    const threshold = await this.getThreshold();
+    const base = this.baseQuery();
+    const rows = await this.prisma.client.$queryRaw<{ all: bigint; low: bigint; out: bigint }[]>`
+      SELECT count(*)::bigint AS all,
+             count(*) FILTER (WHERE available > 0 AND available <= ${threshold})::bigint AS low,
+             count(*) FILTER (WHERE available <= 0)::bigint AS out
+      FROM (${base}) inv
+    `;
+    return { all: Number(rows[0]?.all ?? 0), low: Number(rows[0]?.low ?? 0), out: Number(rows[0]?.out ?? 0) };
   }
 
   async exportCsv(filter: InventoryFilter): Promise<string> {
-    const { items } = await this.list(filter, 1, 10_000);
+    const { items } = await this.list({ filter, page: 1, pageSize: 10_000 });
     const header = 'Product,Variant ID,SKU,Stock,Reserved,Available,Status';
     const lines = items.map((r) => `"${r.name}",${r.variantId ?? ''},${r.sku ?? ''},${r.stock},${r.reservedStock},${r.available},${r.stockStatus}`);
     return [header, ...lines].join('\n');

@@ -4,11 +4,32 @@ import { AdvanceStatus, Prisma } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
+import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
 import { ORDER_STATUS_CHANGED_EVENT } from '../../orders/orders.events';
 import type { OrderStatusChangedEvent } from '../../orders/orders.events';
 import { AdvancePaymentDto, toAdvancePaymentDto } from './advance-payment.mapper';
 
 const Decimal = Prisma.Decimal;
+
+// Store-wide "always on" advance payment (parity with the plugin's
+// wpfok_adv_pay_enabled) — independent of the Fraud module's risk-triggered
+// advance (CheckoutService's own requireAdvancePercent branch). When
+// enabled, every COD order requires this advance regardless of risk score;
+// checkout.service.ts combines both sources and takes whichever requires
+// more, so an already-risky order isn't under-charged by this one alone.
+export interface AdvancePaymentSettings {
+  alwaysOnEnabled: boolean;
+  type: 'fixed' | 'percent';
+  value: number;
+  label: string;
+}
+
+const ADVANCE_SETTINGS_DEFAULTS: AdvancePaymentSettings = {
+  alwaysOnEnabled: false,
+  type: 'percent',
+  value: 20,
+  label: 'Advance Payment',
+};
 
 // Updates Order.status directly via Prisma rather than injecting
 // OrdersService, which would create OrdersModule -> AdvancePaymentModule ->
@@ -21,7 +42,27 @@ export class AdvancePaymentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly settings: NetProfitSettingsService,
   ) {}
+
+  async getSettings(): Promise<AdvancePaymentSettings> {
+    return this.settings.getNamespace('advance_payment', ADVANCE_SETTINGS_DEFAULTS);
+  }
+
+  async updateSettings(dto: Partial<AdvancePaymentSettings>): Promise<AdvancePaymentSettings> {
+    await this.settings.setNamespace('advance_payment', dto);
+    return this.getSettings();
+  }
+
+  // Store-wide always-on requirement for a given order total — null when
+  // disabled or the computed amount is zero. checkout.service.ts calls this
+  // alongside the fraud-gate's own requireAdvancePercent and takes the max.
+  async alwaysOnRequiredAmount(orderTotal: Prisma.Decimal): Promise<Prisma.Decimal | null> {
+    const settings = await this.getSettings();
+    if (!settings.alwaysOnEnabled || settings.value <= 0) return null;
+    const amount = settings.type === 'percent' ? orderTotal.times(settings.value).dividedBy(100) : new Decimal(settings.value);
+    return amount.greaterThan(0) ? amount : null;
+  }
 
   async require(orderId: number, required: Prisma.Decimal, reason?: string): Promise<AdvancePaymentDto> {
     if (required.lessThanOrEqualTo(0)) throw new BadRequestException('Required amount must be greater than zero');

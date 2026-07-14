@@ -17,8 +17,23 @@ export interface SmsLog {
   status: "QUEUED" | "SENT" | "FAILED";
   provider: string;
   cost: string | null;
+  code: number | null;
+  codeMessage: string | null;
   createdAt: string;
 }
+
+// Every {{token}} referenced by that template's real send call site
+// (SmsEventListener / checkout.service.ts / recovery.service.ts) — shown
+// as a legend next to the editor so an admin doesn't have to guess.
+export const TEMPLATE_PLACEHOLDERS: Record<string, string[]> = {
+  otp: ["code"],
+  order_placed: ["orderNumber", "amount"],
+  order_confirmed: ["orderNumber"],
+  order_shipped: ["orderNumber", "courier", "trackingUrl"],
+  order_delivered: ["orderNumber"],
+  recovery: ["resumeUrl"],
+  advance_request: ["orderNumber", "amount", "payUrl"],
+};
 
 interface Paginated<T> {
   items: T[];
@@ -61,6 +76,8 @@ export interface SmsSettings {
   enabled: boolean;
   senderId: string;
   senderIdMasked: boolean;
+  statusTriggers: { CONFIRMED: boolean; PROCESSING: boolean; COMPLETED: boolean };
+  hasApiKey: boolean;
 }
 
 export function useSmsSettings() {
@@ -70,16 +87,27 @@ export function useSmsSettings() {
 export function useUpdateSmsSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<SmsSettings>) =>
+    mutationFn: (input: Partial<SmsSettings> & { apiKey?: string }) =>
       proxyFetch<SmsSettings>("/admin/net-profit/sms/settings", { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
   });
 }
 
+export function useClearSmsApiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => proxyFetch<SmsSettings>("/admin/net-profit/sms/settings/api-key", { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
+  });
+}
+
+// Manual trigger (a "Check Balance" button), not an auto-load-on-mount
+// query — a live gateway call shouldn't fire just from opening the tab.
 export function useSmsBalance() {
   return useQuery({
     queryKey: ["net-profit-sms-balance"],
     queryFn: () => proxyFetch<{ balance: number | null }>("/admin/net-profit/sms/balance"),
+    enabled: false,
   });
 }
 

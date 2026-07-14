@@ -37,6 +37,7 @@ export interface FraudSettings {
   cacheTtlHours: number;
   blockMessageEn: string;
   blockMessageBn: string;
+  deliveryFallback: number;
 }
 
 interface Paginated<T> {

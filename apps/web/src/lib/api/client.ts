@@ -10,6 +10,7 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly code: string,
     message: string,
+    public readonly details?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,7 +34,7 @@ const unwrapEnvelope: Middleware = {
     }
 
     if (!body.success) {
-      throw new ApiError(response.status, body.error.code, body.error.message);
+      throw new ApiError(response.status, body.error.code, body.error.message, body.error.details);
     }
 
     return new Response(JSON.stringify(body.data), {

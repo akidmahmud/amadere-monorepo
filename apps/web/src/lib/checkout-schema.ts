@@ -17,7 +17,7 @@ export const checkoutFormSchema = z
     shippingAddress: addressSchema,
     billingSameAsShipping: z.boolean(),
     billingAddress: addressSchema.optional(),
-    paymentProvider: z.enum(["COD", "BKASH", "NAGAD", "SSLCOMMERZ", "BANK_TRANSFER"]),
+    paymentProvider: z.enum(["COD", "BKASH", "NAGAD", "ROCKET", "UPAY", "SSLCOMMERZ", "BANK_TRANSFER"]),
     codOtpCode: z.string().optional(),
     giftVoucherCode: z.string().optional(),
     customerNote: z.string().optional(),

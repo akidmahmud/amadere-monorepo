@@ -2,14 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 
-export type OrderStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELED" | "PARTIALLY_RETURNED" | "RETURNED";
+export type OrderStatus = "PENDING" | "CONFIRMED" | "PROCESSING" | "COMPLETED" | "CANCELED" | "PARTIALLY_RETURNED" | "RETURNED" | "HOLD";
 export const ORDER_STATUSES: OrderStatus[] = [
   "PENDING",
+  "CONFIRMED",
   "PROCESSING",
   "COMPLETED",
   "CANCELED",
   "PARTIALLY_RETURNED",
   "RETURNED",
+  "HOLD",
 ];
 
 // status/type/provider fields on nested DTOs are also erased by the same
@@ -33,11 +35,11 @@ export function useOrders(status?: OrderStatus) {
   });
 }
 
-export function useOrder(id: number) {
+export function useOrder(id: number | null) {
   return useQuery({
     queryKey: [...KEY, "detail", id],
     queryFn: () => proxyFetch<AdminOrder>(`/admin/orders/${id}`),
-    enabled: Number.isFinite(id),
+    enabled: id !== null && Number.isFinite(id),
   });
 }
 

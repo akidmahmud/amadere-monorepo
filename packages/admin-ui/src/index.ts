@@ -15,5 +15,11 @@ export * from "./components/CategoryCard";
 export * from "./components/AppShell";
 export * from "./components/Modal";
 export * from "./components/RiskBadge";
+export * from "./components/PageHeader";
+export * from "./components/ToggleSwitch";
+export * from "./components/RangeSlider";
+export * from "./components/SettingsCard";
+export * from "./components/Table";
+export * from "./components/DoughnutChart";
 
 export * from "./lib/link-component";

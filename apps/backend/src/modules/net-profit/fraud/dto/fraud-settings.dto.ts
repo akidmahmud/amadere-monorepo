@@ -36,6 +36,9 @@ export class FraudSettingsDto {
 
   @ApiProperty()
   blockMessageBn!: string;
+
+  @ApiProperty({ description: 'Assumed delivery charge (৳) added on top of order total when estimating "amount saved" for a blocked order — blocked orders never reach a real courier quote, so this fills the gap.' })
+  deliveryFallback!: number;
 }
 
 export class UpdateFraudSettingsDto {
@@ -95,4 +98,10 @@ export class UpdateFraudSettingsDto {
   @IsOptional()
   @IsString()
   blockMessageBn?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  deliveryFallback?: number;
 }

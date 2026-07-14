@@ -48,4 +48,17 @@ export class AdminSalesReportController {
     res.setHeader('Content-Disposition', 'attachment; filename="sales-report.csv"');
     res.send(csv);
   }
+
+  @Get('export.html')
+  @RequirePermission('net_profit_reports.view')
+  async exportHtml(@Query() query: SalesReportQueryDto, @Res() res: Response) {
+    const html = await this.report.exportHtml(
+      query.groupBy ?? 'day',
+      query.from ? new Date(query.from) : undefined,
+      query.to ? new Date(query.to) : undefined,
+    );
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="sales-report.html"');
+    res.send(html);
+  }
 }

@@ -9,6 +9,7 @@ export class OrderProfitDto {
   fees!: string;
   adSpend!: string;
   netProfit!: string;
+  hasEstimatedCost!: boolean;
   computedAt!: Date;
 }
 
@@ -22,6 +23,7 @@ export function toOrderProfitDto(row: OrderProfit): OrderProfitDto {
     fees: row.fees.toString(),
     adSpend: row.adSpend.toString(),
     netProfit: row.netProfit.toString(),
+    hasEstimatedCost: row.hasEstimatedCost,
     computedAt: row.computedAt,
   };
 }

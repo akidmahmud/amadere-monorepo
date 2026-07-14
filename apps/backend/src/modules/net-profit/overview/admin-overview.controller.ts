@@ -10,6 +10,7 @@ import type { InventoryFilter } from './inventory.service';
 import { ReturnedOrdersService } from './returned-orders.service';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { SetLowStockThresholdDto } from './dto/set-low-stock-threshold.dto';
+import { SetHourlySlotDto } from './dto/set-hourly-slot.dto';
 
 const RANGE_DAYS: Record<string, number> = { today: 1, '7d': 7, '30d': 30 };
 
@@ -28,22 +29,50 @@ export class AdminOverviewController {
   @RequirePermission('net_profit_overview.view')
   async get(@Query('range') range?: string, @Query('from') fromParam?: string, @Query('to') toParam?: string) {
     const { from, to } = this.resolveRange(range, fromParam, toParam);
-    const [kpis, revenueVsProfit, ordersByRisk] = await Promise.all([
+    const [kpis, revenueVsProfit, ordersByRisk, orderStatusBreakdown, hourlyPerformance] = await Promise.all([
       this.overview.kpis(from, to),
       this.overview.revenueVsProfit(from, to),
       this.overview.ordersByRisk(from, to),
+      this.overview.orderStatusBreakdown(from, to),
+      this.overview.hourlyPerformance(from, to),
     ]);
-    return { from, to, kpis, revenueVsProfit, ordersByRisk };
+    return { from, to, kpis, revenueVsProfit, ordersByRisk, orderStatusBreakdown, hourlyPerformance };
+  }
+
+  @Get('hourly-slot')
+  @RequirePermission('net_profit_overview.view')
+  async getHourlySlot() {
+    return { hourlySlotHours: await this.overview.getHourlySlotHours() };
+  }
+
+  @Patch('hourly-slot')
+  @RequirePermission('net_profit_settings.manage')
+  setHourlySlot(@Body() dto: SetHourlySlotDto) {
+    return this.overview.setHourlySlotHours(dto.hourlySlotHours);
   }
 
   @Get('inventory')
   @RequirePermission('net_profit_overview.view')
-  async inventoryList(@Query('filter') filter: InventoryFilter = 'all', @Query() { page, pageSize }: PaginationQueryDto) {
-    const [list, threshold] = await Promise.all([
-      this.inventory.list(filter, page ?? 1, pageSize ?? 50),
+  async inventoryList(
+    @Query('filter') filter: InventoryFilter = 'all',
+    @Query('search') search: string | undefined,
+    @Query('stockMin') stockMin: string | undefined,
+    @Query('stockMax') stockMax: string | undefined,
+    @Query() { page, pageSize }: PaginationQueryDto,
+  ) {
+    const [list, threshold, counts] = await Promise.all([
+      this.inventory.list({
+        filter,
+        search,
+        stockMin: stockMin !== undefined ? Number(stockMin) : undefined,
+        stockMax: stockMax !== undefined ? Number(stockMax) : undefined,
+        page: page ?? 1,
+        pageSize: pageSize ?? 50,
+      }),
       this.inventory.getThreshold(),
+      this.inventory.counts(),
     ]);
-    return { ...list, lowStockThreshold: threshold };
+    return { ...list, lowStockThreshold: threshold, counts };
   }
 
   @Get('inventory/export')
@@ -74,6 +103,18 @@ export class AdminOverviewController {
       this.returnedOrders.byArea(from, to),
     ]);
     return { from, to, summary, trend, byCourier, topReasons, byProduct, byArea };
+  }
+
+  @Get('returned/orders')
+  @RequirePermission('net_profit_overview.view')
+  async returnedOrdersList(
+    @Query('range') range: string | undefined,
+    @Query('from') fromParam: string | undefined,
+    @Query('to') toParam: string | undefined,
+    @Query() { page, pageSize }: PaginationQueryDto,
+  ) {
+    const { from, to } = this.resolveRange(range, fromParam, toParam);
+    return this.returnedOrders.returnedOrdersList(from, to, page ?? 1, pageSize ?? 20);
   }
 
   @Get('returned/export')

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 
 const Decimal = Prisma.Decimal;
@@ -9,6 +10,8 @@ export interface ReturnedSummary {
   returned: number;
   returnRate: number; // percent, 0-100
   returnedValue: string;
+  deliveryChargeEarned: string;
+  returnedQuantity: number;
 }
 
 export interface ReturnTrendPoint {
@@ -30,6 +33,18 @@ export interface ReturnsByProduct {
   productId: number;
   name: string;
   returnedQty: number;
+  avgUnitPrice: string;
+  amount: string;
+}
+
+export interface ReturnedOrderRow {
+  orderId: number;
+  orderNumber: string;
+  recipientName: string;
+  phone: string;
+  totalAmount: string;
+  quantity: number;
+  returnedAt: string;
 }
 
 export interface ReturnsByArea {
@@ -46,7 +61,7 @@ export class ReturnedOrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async summary(from: Date, to: Date): Promise<ReturnedSummary> {
-    const [counts, valueAgg] = await Promise.all([
+    const [counts, valueAgg, qtyAgg] = await Promise.all([
       this.prisma.client.$queryRaw<{ shipped: bigint; returned: bigint }[]>`
         SELECT
           count(*) FILTER (WHERE s.dispatched_at IS NOT NULL) AS shipped,
@@ -54,10 +69,16 @@ export class ReturnedOrdersService {
         FROM shipments s
         WHERE s.created_at BETWEEN ${from} AND ${to}
       `,
-      this.prisma.client.$queryRaw<{ total: Prisma.Decimal | null }[]>`
-        SELECT sum(o.total_amount) AS total
+      this.prisma.client.$queryRaw<{ total: Prisma.Decimal | null; delivery: Prisma.Decimal | null }[]>`
+        SELECT sum(o.total_amount) AS total, sum(o.shipping_amount) AS delivery
         FROM shipments s
         JOIN orders o ON o.id = s.order_id
+        WHERE s.status = 'RETURNED' AND s.created_at BETWEEN ${from} AND ${to}
+      `,
+      this.prisma.client.$queryRaw<{ qty: bigint | null }[]>`
+        SELECT sum(oi.quantity)::bigint AS qty
+        FROM shipments s
+        JOIN order_items oi ON oi.order_id = s.order_id
         WHERE s.status = 'RETURNED' AND s.created_at BETWEEN ${from} AND ${to}
       `,
     ]);
@@ -68,6 +89,8 @@ export class ReturnedOrdersService {
       returned,
       returnRate: shipped > 0 ? Math.round((returned / shipped) * 10000) / 100 : 0,
       returnedValue: (valueAgg[0]?.total ?? new Decimal(0)).toString(),
+      deliveryChargeEarned: (valueAgg[0]?.delivery ?? new Decimal(0)).toString(),
+      returnedQuantity: Number(qtyAgg[0]?.qty ?? 0),
     };
   }
 
@@ -106,8 +129,11 @@ export class ReturnedOrdersService {
   }
 
   async byProduct(from: Date, to: Date, limit = 10): Promise<ReturnsByProduct[]> {
-    const rows = await this.prisma.client.$queryRaw<{ product_id: number; name: string; returned_qty: bigint }[]>`
-      SELECT oi.product_id, oi.product_name_snapshot AS name, sum(oi.quantity)::bigint AS returned_qty
+    const rows = await this.prisma.client.$queryRaw<
+      { product_id: number; name: string; returned_qty: bigint; avg_unit_price: Prisma.Decimal | null; amount: Prisma.Decimal | null }[]
+    >`
+      SELECT oi.product_id, oi.product_name_snapshot AS name, sum(oi.quantity)::bigint AS returned_qty,
+             avg(oi.unit_price) AS avg_unit_price, sum(oi.unit_price * oi.quantity) AS amount
       FROM shipments s
       JOIN order_items oi ON oi.order_id = s.order_id
       WHERE s.status = 'RETURNED' AND oi.product_id IS NOT NULL AND s.updated_at BETWEEN ${from} AND ${to}
@@ -115,7 +141,49 @@ export class ReturnedOrdersService {
       ORDER BY returned_qty DESC
       LIMIT ${limit}
     `;
-    return rows.map((r) => ({ productId: r.product_id, name: r.name, returnedQty: Number(r.returned_qty) }));
+    return rows.map((r) => ({
+      productId: r.product_id,
+      name: r.name,
+      returnedQty: Number(r.returned_qty),
+      avgUnitPrice: (r.avg_unit_price ?? new Decimal(0)).toString(),
+      amount: (r.amount ?? new Decimal(0)).toString(),
+    }));
+  }
+
+  // Order-level table (plugin's "Returned Orders" list) — distinct from the
+  // aggregate byProduct/byCourier/topReasons/byArea breakdowns above.
+  async returnedOrdersList(from: Date, to: Date, page: number, pageSize: number): Promise<PaginatedResult<ReturnedOrderRow>> {
+    const offset = (page - 1) * pageSize;
+    const [rows, countRows] = await Promise.all([
+      this.prisma.client.$queryRaw<
+        { order_id: number; order_number: string; recipient_name: string | null; phone: string | null; total_amount: Prisma.Decimal; quantity: bigint; returned_at: Date }[]
+      >`
+        SELECT o.id AS order_id, o.order_number, oa.recipient_name, oa.phone, o.total_amount,
+               COALESCE(qty.quantity, 0)::bigint AS quantity, s.updated_at AS returned_at
+        FROM shipments s
+        JOIN orders o ON o.id = s.order_id
+        LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
+        LEFT JOIN (
+          SELECT order_id, sum(quantity) AS quantity FROM order_items GROUP BY order_id
+        ) qty ON qty.order_id = o.id
+        WHERE s.status = 'RETURNED' AND s.updated_at BETWEEN ${from} AND ${to}
+        ORDER BY s.updated_at DESC
+        LIMIT ${pageSize} OFFSET ${offset}
+      `,
+      this.prisma.client.$queryRaw<{ count: bigint }[]>`
+        SELECT count(*)::bigint AS count FROM shipments s WHERE s.status = 'RETURNED' AND s.updated_at BETWEEN ${from} AND ${to}
+      `,
+    ]);
+    const items: ReturnedOrderRow[] = rows.map((r) => ({
+      orderId: r.order_id,
+      orderNumber: r.order_number,
+      recipientName: r.recipient_name ?? '—',
+      phone: r.phone ?? '—',
+      totalAmount: r.total_amount.toString(),
+      quantity: Number(r.quantity),
+      returnedAt: r.returned_at.toISOString(),
+    }));
+    return { items, total: Number(countRows[0]?.count ?? 0), page, pageSize };
   }
 
   async byArea(from: Date, to: Date): Promise<ReturnsByArea[]> {
