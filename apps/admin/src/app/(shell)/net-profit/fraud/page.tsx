@@ -1,16 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, PageHeader, RangeSlider, RiskBadge, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
+import { Button, Card, Icon, PageHeader, RangeSlider, RiskBadge, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import type { RiskLevel as RiskBadgeLevel } from "@amader/admin-ui";
 import { FraudDetailModal } from "@/components/FraudDetailModal";
 import { useFraudChecks, useFraudSavings, useFraudSettings, useUpdateFraudSettings, type RiskLevel } from "@/hooks/useFraud";
 
-const shieldIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6l-8-3Z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const shieldIcon = <Icon name="gpp_maybe" />;
 
 const RISK_FILTERS: { value: RiskLevel | "ALL"; label: string }[] = [
   { value: "ALL", label: "All" },

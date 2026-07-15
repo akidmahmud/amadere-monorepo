@@ -19,7 +19,7 @@ export function NavItem({ icon, label, href, active, linkComponent: Link = Defau
     <Link
       href={href}
       className={cn(
-        "flex h-11 items-center gap-3 rounded-sm px-3 font-ui text-sm font-medium text-sidebar-text transition-colors duration-150 hover:bg-sidebar-hover [&>svg]:h-5 [&>svg]:w-5 [&>svg]:flex-none",
+        "flex h-11 items-center gap-3 rounded-sm px-3 font-ui text-sm font-medium text-sidebar-text transition-colors duration-150 hover:bg-sidebar-hover [&>svg]:h-5 [&>svg]:w-5 [&>svg]:flex-none [&_.material-symbols-outlined]:!text-[20px]",
         active && "bg-brand-500 font-semibold text-sidebar-text-active hover:bg-brand-500",
       )}
     >

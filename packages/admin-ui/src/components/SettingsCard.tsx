@@ -18,7 +18,7 @@ export function SettingsCard({ icon, title, badge, disabled, children, className
     <div className={cn("overflow-hidden rounded-card border border-border bg-surface shadow-card", className)}>
       <div className="flex items-center justify-between border-b border-border bg-surface-2 px-6 py-4">
         <div className="flex items-center gap-2.5">
-          {icon && <span className="text-brand-500 [&>svg]:h-5 [&>svg]:w-5">{icon}</span>}
+          {icon && <span className="text-brand-500 [&>svg]:h-5 [&>svg]:w-5 [&_.material-symbols-outlined]:!text-[20px]">{icon}</span>}
           <h2 className="font-ui text-[15px] font-bold text-text">{title}</h2>
         </div>
         {badge && (

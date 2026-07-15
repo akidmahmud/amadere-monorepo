@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BarChart, Button, Card, DoughnutChart, PageHeader, RiskBadge, StatCard, Tabs } from "@amader/admin-ui";
+import { BarChart, Button, Card, DoughnutChart, Icon, PageHeader, RiskBadge, StatCard, Tabs } from "@amader/admin-ui";
 import type { RiskLevel } from "@amader/admin-ui";
 import { useNetProfitOverview, type OverviewRange } from "@/hooks/useNetProfitOverview";
 import {
@@ -15,47 +15,14 @@ import {
 } from "@/hooks/useInventory";
 import { returnedOrdersExportUrl, useReturnedOrders, useReturnedOrdersList } from "@/hooks/useReturnedOrders";
 
-const chartIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M4 19V9m6 10V5m6 14v-7" strokeLinecap="round" />
-  </svg>
-);
-const takaIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M8 4v16M8 4c3 0 5 1.5 5 4M6 10h6M6 14h8l-4 6" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const boxIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M21 8 12 3 3 8l9 5 9-5Z M3 8v8l9 5m0-13v13m9-13v8l-9 5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const shieldIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M12 3 4 6v6c0 4.5 3.4 7.7 8 9 4.6-1.3 8-4.5 8-9V6l-8-3Z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const savingsIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H7" strokeLinecap="round" />
-  </svg>
-);
-const recoveryIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const clockIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5l3.5 2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const smsIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const chartIcon = <Icon name="monitoring" />;
+const takaIcon = <Icon name="payments" />;
+const boxIcon = <Icon name="inventory_2" />;
+const shieldIcon = <Icon name="shield" />;
+const savingsIcon = <Icon name="savings" />;
+const recoveryIcon = <Icon name="restart_alt" />;
+const clockIcon = <Icon name="schedule" />;
+const smsIcon = <Icon name="sms" />;
 
 const RANGES: { value: OverviewRange; label: string }[] = [
   { value: "today", label: "Today" },

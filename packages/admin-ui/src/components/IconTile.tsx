@@ -12,7 +12,7 @@ export function IconTile({ children, className }: IconTileProps) {
   return (
     <div
       className={cn(
-        "grid h-10 w-10 flex-none place-items-center rounded-inner bg-surface-2 text-secondary [&>svg]:h-5 [&>svg]:w-5",
+        "grid h-10 w-10 flex-none place-items-center rounded-inner bg-surface-2 text-secondary [&>svg]:h-5 [&>svg]:w-5 [&_.material-symbols-outlined]:!text-[20px]",
         className,
       )}
     >

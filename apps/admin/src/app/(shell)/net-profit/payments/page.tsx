@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, PageHeader, RangeSlider, SettingsCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
+import { Button, Card, Icon, PageHeader, RangeSlider, SettingsCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import {
   useAdvancePaymentSettings,
   useAdvancePayments,
@@ -19,12 +19,7 @@ import {
   type PaymentMethodProvider,
 } from "@/hooks/usePaymentMethods";
 
-const paymentIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <rect x="2" y="5" width="20" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M2 10h20" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const paymentIcon = <Icon name="payments" />;
 
 const METHOD_PROVIDERS: PaymentMethodProvider[] = ["BKASH", "NAGAD", "ROCKET", "UPAY"];
 const ACCOUNT_TYPES: PaymentAccountType[] = ["PERSONAL", "AGENT", "MERCHANT"];

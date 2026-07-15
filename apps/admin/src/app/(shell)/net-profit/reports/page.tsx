@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart, Button, Card, PageHeader, RangeSlider, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
+import { BarChart, Button, Card, Icon, PageHeader, RangeSlider, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import {
   useBulkSetProductCost,
   useFallbackProfitSettings,
@@ -24,73 +24,17 @@ import { useFraudSettings, useUpdateFraudSettings } from "@/hooks/useFraud";
 import { useHourlySlot, useNetProfitOverviewRange, useSetHourlySlot } from "@/hooks/useNetProfitOverview";
 import { useTopProducts } from "@/hooks/useSalesReport";
 
-const reportIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M3 3v18h18" strokeLinecap="round" strokeLinejoin="round" />
-    <rect x="7" y="12" width="3" height="6" />
-    <rect x="12" y="8" width="3" height="10" />
-    <rect x="17" y="5" width="3" height="13" />
-  </svg>
-);
-const dollarIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v10M9.5 9.5c0-1.2 1.1-2 2.5-2s2.5.9 2.5 2c0 3-5 2-5 5 0 1.1 1.1 2 2.5 2s2.5-.8 2.5-2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const barIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M4 19V9m6 10V5m6 14v-7" strokeLinecap="round" />
-  </svg>
-);
-const clockIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5l3.5 2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const starIcon = (
-  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <path d="m12 2 2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9L5.7 21l1.7-7L2 9.2l7.1-.6L12 2Z" />
-  </svg>
-);
-const calendarIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <rect x="3" y="5" width="18" height="16" rx="2" />
-    <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
-  </svg>
-);
-const bagIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M6 8h12l1 12H5L6 8Z" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M9 8a3 3 0 0 1 6 0" strokeLinecap="round" />
-  </svg>
-);
-const gridIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <rect x="3" y="3" width="7" height="7" rx="1" />
-    <rect x="14" y="3" width="7" height="7" rx="1" />
-    <rect x="3" y="14" width="7" height="7" rx="1" />
-    <rect x="14" y="14" width="7" height="7" rx="1" />
-  </svg>
-);
-const mailIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <rect x="3" y="5" width="18" height="14" rx="2" />
-    <path d="m3 7 9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const megaphoneIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M3 11v2a2 2 0 0 0 2 2h1l3 5V6L6 9H5a2 2 0 0 0-2 2Z" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M14 8a10 10 0 0 1 0 8M17 5a14 14 0 0 1 0 14" strokeLinecap="round" />
-  </svg>
-);
-const filterIcon = (
-  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <path d="M3 4h18l-7 8v6l-4 2v-8L3 4Z" />
-  </svg>
-);
+const reportIcon = <Icon name="bar_chart" />;
+const dollarIcon = <Icon name="attach_money" />;
+const barIcon = <Icon name="bar_chart" />;
+const clockIcon = <Icon name="schedule" />;
+const starIcon = <Icon name="star" fill />;
+const calendarIcon = <Icon name="calendar_month" />;
+const bagIcon = <Icon name="shopping_bag" />;
+const gridIcon = <Icon name="grid_view" />;
+const mailIcon = <Icon name="mail" />;
+const megaphoneIcon = <Icon name="campaign" />;
+const filterIcon = <Icon name="filter_alt" fill />;
 
 function SectionHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle?: string }) {
   return (
@@ -177,10 +121,10 @@ function FilterBar({
         </div>
         <div className="flex items-center gap-2">
           <a href={`/api/backend/admin/net-profit/reports/sales/export?${exportParams.toString()}`} download>
-            <Button type="button" variant="ghost">📄 CSV</Button>
+            <Button type="button" variant="ghost"><Icon name="description" size={16} /> CSV</Button>
           </a>
           <a href={`/api/backend/admin/net-profit/reports/sales/export.html?${exportParams.toString()}`} download>
-            <Button type="button" variant="ghost">📃 HTML</Button>
+            <Button type="button" variant="ghost"><Icon name="code" size={16} /> HTML</Button>
           </a>
         </div>
       </div>
@@ -206,11 +150,11 @@ function FilterBar({
             setRangeKey("custom");
             setShowCustom((v) => !v);
           }}
-          className={`ml-auto rounded-pill px-3 py-1.5 text-xs font-semibold ${
+          className={`ml-auto inline-flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-semibold ${
             rangeKey === "custom" ? "bg-brand-500 text-white" : "bg-surface-2 text-secondary"
           }`}
         >
-          📅 Custom
+          <Icon name="calendar_month" size={16} /> Custom
         </button>
       </div>
       {showCustom && (
@@ -459,7 +403,13 @@ function ProductsTab() {
               )
             }
           >
-            {bulkSet.isPending ? "Saving…" : `✓ Save All${dirtyRows.length > 0 ? ` (${dirtyRows.length})` : ""}`}
+            {bulkSet.isPending ? (
+              "Saving…"
+            ) : (
+              <>
+                <Icon name="check" size={16} /> Save All{dirtyRows.length > 0 ? ` (${dirtyRows.length})` : ""}
+              </>
+            )}
           </Button>
         </div>
 
@@ -507,7 +457,7 @@ function ProductsTab() {
                     <td>
                       {p.variantCount > 0 ? (
                         <Button type="button" variant="ghost" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
-                          ⚙ Variations
+                          <Icon name="tune" size={16} /> Variations
                         </Button>
                       ) : (
                         <input
@@ -662,7 +612,7 @@ function SettingsTab() {
               )
             }
           >
-            {setCost.isPending ? "Saving…" : "✓ Save Today"}
+            {setCost.isPending ? "Saving…" : (<><Icon name="check" size={16} /> Save Today</>)}
           </Button>
         </div>
         {todayCost?.autoCarried && <p className="mt-2 text-xs text-warning">Auto-carried forward from the previous day.</p>}
@@ -775,9 +725,9 @@ export default function SalesReportPage() {
       <Tabs
         variant="pill"
         options={[
-          { value: "dashboard", label: "☁ Dashboard" },
-          { value: "products", label: "🛍 Products" },
-          { value: "settings", label: "⚙ Settings" },
+          { value: "dashboard", label: "Dashboard" },
+          { value: "products", label: "Products" },
+          { value: "settings", label: "Settings" },
         ]}
         value={tab}
         onChange={setTab}

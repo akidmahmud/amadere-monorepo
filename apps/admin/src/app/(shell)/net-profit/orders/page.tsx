@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Card, Modal, PageHeader, Table, TableEmptyRow, TableIdBadge } from "@amader/admin-ui";
+import { Button, Card, Icon, Modal, PageHeader, Table, TableEmptyRow, TableIdBadge } from "@amader/admin-ui";
 import type { RiskLevel as RiskBadgeLevel } from "@amader/admin-ui";
 import { ConsignModal } from "@/components/ConsignModal";
 import { FraudDetailModal } from "@/components/FraudDetailModal";
@@ -293,7 +293,7 @@ export default function OrderManagerPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        icon="📋"
+        icon={<Icon name="assignment" />}
         title="Orders Manager"
         actions={
           <div className="flex items-center gap-2">
@@ -301,13 +301,13 @@ export default function OrderManagerPage() {
               Order Statuses
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowScreenOptions(true)}>
-              ⚙ Screen Options
+              <Icon name="settings" size={16} /> Screen Options
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowSymbology(true)}>
-              📁 Symbology
+              <Icon name="key" size={16} /> Symbology
             </Button>
             <Button type="button" variant="primary" onClick={() => alert("Manual order creation isn't built yet.")}>
-              + Add New Order
+              <Icon name="add" size={16} /> Add New Order
             </Button>
           </div>
         }

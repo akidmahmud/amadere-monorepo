@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, PageHeader, SettingsCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
+import { Button, Card, Icon, PageHeader, SettingsCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import {
   TEMPLATE_PLACEHOLDERS,
   useBulkSendSms,
@@ -16,11 +16,7 @@ import {
 } from "@/hooks/useSms";
 import { useOtpSecuritySettings, useUpdateOtpSecuritySettings, type VpnPolicy } from "@/hooks/useOtpSecurity";
 
-const smsIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const smsIcon = <Icon name="sms" />;
 
 const STATUS_TRIGGER_LABELS: { key: "CONFIRMED" | "PROCESSING" | "COMPLETED"; template: string; label: string }[] = [
   { key: "CONFIRMED", template: "order_confirmed", label: "Order confirmed" },
@@ -148,7 +144,7 @@ function TestSendInline() {
         disabled={testSend.isPending || !to.trim() || !body.trim()}
         onClick={() => testSend.mutate({ to: to.trim(), body: body.trim() }, { onSuccess: () => setBody("") })}
       >
-        {testSend.isPending ? "Sending…" : "✉ Send Test SMS"}
+        {testSend.isPending ? "Sending…" : (<><Icon name="mail" size={16} /> Send Test SMS</>)}
       </Button>
     </div>
   );
@@ -269,7 +265,7 @@ function SettingsTab() {
             <p className="mb-2 text-xs text-muted">Check your current SMS credit balance.</p>
             <div className="flex items-center gap-3">
               <Button type="button" variant="ghost" disabled={checkingBalance} onClick={() => checkBalance()}>
-                💲 {checkingBalance ? "Checking…" : "Check Balance"}
+                <Icon name="account_balance_wallet" size={16} /> {checkingBalance ? "Checking…" : "Check Balance"}
               </Button>
               {balance !== undefined && (
                 <span className="text-sm font-semibold text-text">

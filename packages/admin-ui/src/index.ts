@@ -21,5 +21,6 @@ export * from "./components/RangeSlider";
 export * from "./components/SettingsCard";
 export * from "./components/Table";
 export * from "./components/DoughnutChart";
+export * from "./components/Icon";
 
 export * from "./lib/link-component";
