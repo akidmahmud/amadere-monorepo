@@ -337,6 +337,18 @@ export class ProductsService {
     );
   }
 
+  async getManyByIds(
+    ids: number[],
+    locale: Locale,
+  ): Promise<Map<number, PublicProductDto>> {
+    if (ids.length === 0) return new Map();
+    const products = await this.prisma.client.product.findMany({
+      where: { id: { in: ids }, deletedAt: null, status: 'PUBLISHED' },
+      include: PRODUCT_INCLUDE,
+    });
+    return new Map(products.map((p) => [p.id, toPublicProductDto(p, locale)]));
+  }
+
   async publicGetBySlug(
     slug: string,
     locale: Locale,

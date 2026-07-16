@@ -29,6 +29,7 @@ export default function CollectionsPage() {
               </div>
               <div className="text-xs text-muted">
                 {collection.slug} · {collection.status} · {collection.products.length} products
+                {collection.showInNav && " · in navbar"}
               </div>
             </div>
             <Link href={`/collections/${collection.id}`}>

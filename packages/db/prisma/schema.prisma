@@ -1547,6 +1547,10 @@ model Collection {
   slug      String        @unique
   status    ContentStatus @default(DRAFT)
   sortOrder Int           @default(0) @map("sort_order")
+  // Distinct from `status`: a collection can be PUBLISHED (viewable via its
+  // own page / a homepage section) without cluttering the top navbar, or vice
+  // versa. Admin-controlled opt-in per collection.
+  showInNav Boolean       @default(false) @map("show_in_nav")
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
   deletedAt DateTime?     @map("deleted_at")

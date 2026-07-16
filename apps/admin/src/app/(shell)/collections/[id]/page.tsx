@@ -21,6 +21,7 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
+  const [showInNav, setShowInNav] = useState(false);
   const [productIds, setProductIds] = useState<number[]>([]);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
     setName(collection.translations[0]?.name ?? "");
     setDescription(collection.translations[0]?.description ?? "");
     setStatus(collection.status);
+    setShowInNav(collection.showInNav);
     setProductIds([...collection.products].sort((a, b) => a.sortOrder - b.sortOrder).map((p) => p.productId));
   }, [collection]);
 
@@ -41,6 +43,7 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
     await update.mutateAsync({
       slug,
       status,
+      showInNav,
       translations: [
         { locale: "EN", name, description: description || undefined },
         { locale: "BN", name, description: description || undefined },
@@ -83,6 +86,11 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
           />
         </label>
         <StatusSelect value={status} onChange={setStatus} />
+
+        <label className="flex items-center gap-2 text-sm text-text">
+          <input type="checkbox" checked={showInNav} onChange={(e) => setShowInNav(e.target.checked)} />
+          Show in navbar
+        </label>
 
         <div>
           <span className="mb-2 block text-xs font-semibold text-secondary">

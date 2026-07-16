@@ -21,8 +21,10 @@ import {
   PublicCollectionDetailDto,
   PublicCollectionDto,
   PublicCollectionSummaryDto,
+  PublicNavCollectionDto,
   toAdminCollectionDto,
   toPublicCollectionDto,
+  toPublicNavCollectionDto,
 } from './collections.mapper';
 
 const WITH_TRANSLATIONS_AND_PRODUCTS = {
@@ -76,6 +78,7 @@ export class CollectionsService {
         slug: dto.slug,
         status: dto.status,
         sortOrder: dto.sortOrder,
+        showInNav: dto.showInNav,
         translations: { create: dto.translations },
         products: dto.products
           ? {
@@ -115,6 +118,7 @@ export class CollectionsService {
         slug: dto.slug,
         status: dto.status,
         sortOrder: dto.sortOrder,
+        showInNav: dto.showInNav,
         translations: dto.translations
           ? { create: dto.translations }
           : undefined,
@@ -138,6 +142,15 @@ export class CollectionsService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  async publicNavList(locale: Locale): Promise<PublicNavCollectionDto[]> {
+    const items = await this.prisma.client.collection.findMany({
+      where: { deletedAt: null, status: 'PUBLISHED', showInNav: true },
+      include: { translations: true, products: { orderBy: { sortOrder: 'asc' as const } } },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return items.map((c) => toPublicNavCollectionDto(c, locale));
   }
 
   async publicList(

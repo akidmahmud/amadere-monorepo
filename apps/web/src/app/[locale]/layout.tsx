@@ -67,6 +67,14 @@ export default async function LocaleLayout({
       lang={locale}
       className={`${fraunces.variable} ${poppins.variable} ${inter.variable} ${hindSiliguri.variable} h-full antialiased`}
     >
+      {/* Opens the connection (DNS + TLS) to promo-video embed platforms
+          ahead of time, before any specific iframe actually needs one — the
+          handshake itself is often a big chunk of the perceived "video takes
+          a while to start" delay, and it's the same three origins regardless
+          of which video loads. */}
+      <link rel="preconnect" href="https://www.youtube.com" />
+      <link rel="preconnect" href="https://www.tiktok.com" />
+      <link rel="preconnect" href="https://www.instagram.com" />
       <body className="min-h-full flex flex-col font-body">
         <NextIntlClientProvider>
           <QueryProvider>

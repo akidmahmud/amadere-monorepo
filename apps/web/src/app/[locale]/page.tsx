@@ -10,7 +10,6 @@ import {
   Carousel,
   HeroCarousel,
   ProductCarouselSection,
-  PromoVideoSection,
   SectionHeading,
   TestimonialsBento,
   ViewAllLink,
@@ -21,10 +20,11 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
-import { toProductCardData } from "@/lib/product-card-mapper";
+import { toProductCardData, toPromoVideoProductData } from "@/lib/product-card-mapper";
 import { toDisplayImageUrl } from "@/lib/media";
 import { HealthConcernSection } from "@/components/HealthConcernSection";
 import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
+import { PromoVideoSectionClient } from "@/components/PromoVideoSectionClient";
 import { TabbedCollectionCarouselSection } from "@/components/TabbedCollectionCarouselSection";
 
 // Shorter window than catalog/blog on purpose — admin-edited HomepageSections
@@ -68,11 +68,12 @@ type HomepageSectionType =
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
-  "type" | "config" | "tabCollections"
+  "type" | "config" | "tabCollections" | "promoVideoProducts"
 > & {
   type: HomepageSectionType;
   config: Record<string, unknown>;
   tabCollections: (components["schemas"]["PublicCollectionDto"] | null)[] | null;
+  promoVideoProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
 };
 
 interface TabbedCarouselTabConfig {
@@ -243,12 +244,15 @@ function renderSection(
 
     case "PROMO_VIDEO": {
       const items = config.videos as
-        | { source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "R2" | "GIF"; url: string; thumbnailUrl?: string; linkUrl?: string }[]
+        | { source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "R2" | "GIF"; url: string; thumbnailUrl?: string }[]
         | undefined;
       if (!items || items.length === 0) return null;
+      const products = (section.promoVideoProducts ?? items.map(() => null)).map((p) =>
+        p ? toPromoVideoProductData(p) : null,
+      );
       return (
         <div className={WRAPPER} key={section.id}>
-          <PromoVideoSection heading={section.heading ?? undefined} items={items} linkComponent={AppLink} />
+          <PromoVideoSectionClient heading={section.heading ?? undefined} items={items} products={products} />
         </div>
       );
     }

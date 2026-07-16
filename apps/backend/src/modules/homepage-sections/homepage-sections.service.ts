@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { HomepageSectionType, Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CollectionsService } from '../collections/collections.service';
+import { ProductsService } from '../products/products.service';
+import { PublicProductDto } from '../products/dto/product-response.dto';
 import { CreateHomepageSectionDto } from './dto/create-homepage-section.dto';
 import { UpdateHomepageSectionDto } from './dto/update-homepage-section.dto';
 import {
@@ -18,6 +20,7 @@ export class HomepageSectionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly collections: CollectionsService,
+    private readonly products: ProductsService,
   ) {}
 
   async adminList(): Promise<AdminHomepageSectionDto[]> {
@@ -123,9 +126,29 @@ export class HomepageSectionsService {
           section.type === 'TABBED_COLLECTION_CAROUSEL'
             ? await this.resolveTabCollections(section.config, locale)
             : null;
-        return toPublicHomepageSectionDto(section, collection, locale, tabCollections);
+        const promoVideoProducts =
+          section.type === 'PROMO_VIDEO'
+            ? await this.resolvePromoVideoProducts(section.config, locale)
+            : null;
+        return toPublicHomepageSectionDto(
+          section,
+          collection,
+          locale,
+          tabCollections,
+          promoVideoProducts,
+        );
       }),
     );
+  }
+
+  private async resolvePromoVideoProducts(
+    config: unknown,
+    locale: Locale,
+  ): Promise<(PublicProductDto | null)[]> {
+    const productIds = extractPromoVideoProductIds(config);
+    const uniqueIds = [...new Set(productIds.filter((id): id is number => id !== null))];
+    const resolved = await this.products.getManyByIds(uniqueIds, locale);
+    return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
   }
 
   private async resolveTabCollections(
@@ -190,4 +213,14 @@ function extractProductsPerTab(config: unknown): number {
   if (!config || typeof config !== 'object' || Array.isArray(config)) return 10;
   const value = (config as Record<string, unknown>).productsPerTab;
   return typeof value === 'number' && value > 0 ? value : 10;
+}
+
+function extractPromoVideoProductIds(config: unknown): (number | null)[] {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return [];
+  const videos = (config as Record<string, unknown>).videos;
+  if (!Array.isArray(videos)) return [];
+  return videos.map((v) => {
+    const id = v && typeof v === 'object' ? (v as Record<string, unknown>).productId : undefined;
+    return typeof id === 'number' ? id : null;
+  });
 }

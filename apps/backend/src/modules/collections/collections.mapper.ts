@@ -23,6 +23,7 @@ export class AdminCollectionDto {
   slug!: string;
   status!: ContentStatus;
   sortOrder!: number;
+  showInNav!: boolean;
   translations!: AdminCollectionTranslationDto[];
   products!: AdminCollectionProductDto[];
 }
@@ -35,6 +36,7 @@ export function toAdminCollectionDto(
     slug: collection.slug,
     status: collection.status,
     sortOrder: collection.sortOrder,
+    showInNav: collection.showInNav,
     translations: collection.translations.map((t) => ({
       locale: t.locale,
       name: t.name,
@@ -83,4 +85,19 @@ export function toPublicCollectionDto(
 
 export class PublicCollectionDetailDto extends PublicCollectionDto {
   seo!: ResolvedSeoDto;
+}
+
+export class PublicNavCollectionDto {
+  slug!: string;
+  name!: string;
+}
+
+export function toPublicNavCollectionDto(
+  collection: CollectionWithTranslations,
+  locale: Locale,
+): PublicNavCollectionDto {
+  const translation =
+    collection.translations.find((t) => t.locale === locale) ??
+    collection.translations[0];
+  return { slug: collection.slug, name: translation?.name ?? collection.slug };
 }

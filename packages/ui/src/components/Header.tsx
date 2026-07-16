@@ -95,8 +95,16 @@ export function Header({
 
   return (
     <header className={cn("sticky top-0 z-40 bg-white", className)}>
-      <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 sm:h-32 sm:flex-nowrap sm:py-0">
-        <Link href={brandHref} className="flex items-center gap-1.5">
+      {/* 3-zone header: logo pinned left, search truly centered (CSS grid,
+          not flex auto-margins — those drift off-center whenever the logo
+          and icons zones differ in width), icons pinned right. Each zone
+          carries an id so it's directly identifiable in devtools (Elements
+          panel shows the id on the tag; "Copy selector" yields "#site-header-…"). */}
+      <div
+        id="site-header-row"
+        className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:flex-nowrap sm:h-32 sm:py-0"
+      >
+        <Link id="site-header-logo" href={brandHref} className="flex shrink-0 items-center gap-1.5">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={brandMark} className="mt-2 h-28 w-auto" />
@@ -111,38 +119,10 @@ export function Header({
           )}
         </Link>
 
-        <div className="order-2 ml-auto flex items-center gap-4 sm:order-none">
-          <button
-            type="button"
-            onClick={onLocaleSwitch}
-            className="font-ui text-[13px] font-medium text-ink hover:text-green"
-          >
-            {localeSwitchLabel}
-          </button>
-          {accountHref && accountLabel && (
-            <Link href={accountHref} aria-label={accountLabel} className="grid place-items-center text-green">
-              {accountIcon}
-            </Link>
-          )}
-          <Link href={trackOrderHref} aria-label={trackOrderLabel} className="grid place-items-center text-green">
-            {trackIcon}
-          </Link>
-          <button
-            type="button"
-            aria-label={cartLabel}
-            onClick={openCart}
-            className="relative grid place-items-center text-green"
-          >
-            {cartIcon}
-            {cartCount !== undefined && cartCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-gold text-[10px] font-bold text-green-deep">
-                {cartCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        <div className="relative order-3 w-full sm:order-none sm:mx-auto sm:w-auto sm:max-w-[440px] sm:flex-1">
+        <div
+          id="site-header-search"
+          className="relative order-3 w-full sm:order-none sm:w-full sm:max-w-[440px] sm:justify-self-center"
+        >
           <form
             onSubmit={handleSubmit}
             className="flex h-10 w-full items-center rounded-[30px] bg-beige pl-5 pr-2"
@@ -175,6 +155,40 @@ export function Header({
               {searchSuggestions}
             </div>
           )}
+        </div>
+
+        <div
+          id="site-header-icons"
+          className="order-2 ml-auto flex shrink-0 items-center gap-4 sm:order-none sm:ml-0 sm:justify-self-end"
+        >
+          <button
+            type="button"
+            onClick={onLocaleSwitch}
+            className="font-ui text-[13px] font-medium text-ink hover:text-green"
+          >
+            {localeSwitchLabel}
+          </button>
+          {accountHref && accountLabel && (
+            <Link href={accountHref} aria-label={accountLabel} className="grid place-items-center text-green">
+              {accountIcon}
+            </Link>
+          )}
+          <Link href={trackOrderHref} aria-label={trackOrderLabel} className="grid place-items-center text-green">
+            {trackIcon}
+          </Link>
+          <button
+            type="button"
+            aria-label={cartLabel}
+            onClick={openCart}
+            className="relative grid place-items-center text-green"
+          >
+            {cartIcon}
+            {cartCount !== undefined && cartCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-gold text-[10px] font-bold text-green-deep">
+                {cartCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
     </header>

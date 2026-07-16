@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { CollectionsModule } from '../collections/collections.module';
+import { ProductsModule } from '../products/products.module';
 import { AdminHomepageSectionsController } from './admin-homepage-sections.controller';
 import { HomepageSectionsController } from './homepage-sections.controller';
 import { HomepageSectionsService } from './homepage-sections.service';
 
 @Module({
-  imports: [CollectionsModule],
+  imports: [CollectionsModule, ProductsModule],
   controllers: [HomepageSectionsController, AdminHomepageSectionsController],
   providers: [HomepageSectionsService],
 })

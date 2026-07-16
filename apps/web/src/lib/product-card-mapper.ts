@@ -52,3 +52,38 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
     defaultPackValue: packOptions ? defaultVariantId(product) : undefined,
   };
 }
+
+export interface PromoVideoProductData {
+  productId: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  price: string;
+  originalPrice?: string;
+  imageUrl?: string;
+}
+
+// Same price/sale/thumbnail logic as toProductCardData above, plus the
+// description text the promo video modal's product panel needs (which the
+// plain card grid doesn't show).
+export function toPromoVideoProductData(product: PublicProductDto): PromoVideoProductData {
+  const defaultVariant =
+    product.variants.find((v) => v.isDefault) ?? product.variants[0];
+
+  const price = product.price ?? defaultVariant?.price ?? "0";
+  const salePrice = product.salePrice ?? defaultVariant?.salePrice ?? null;
+  const onSale = salePrice != null && Number(salePrice) < Number(price);
+
+  const primaryMedia =
+    product.media.find((m) => m.isPrimary) ?? product.media[0];
+
+  return {
+    productId: product.id,
+    slug: product.slug,
+    name: product.name,
+    description: product.description,
+    price: onSale ? salePrice! : price,
+    originalPrice: onSale ? price : undefined,
+    imageUrl: toDisplayImageUrl(primaryMedia?.url),
+  };
+}

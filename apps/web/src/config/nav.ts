@@ -3,8 +3,4 @@
 // rewrite (AGENTS.web.md §5/§11).
 export const navConfig = [
   { key: "allProducts", href: "/products" },
-  { key: "shopByCategory", href: "/categories", hasChildren: true },
-  { key: "shopByCondition", href: "/health-concerns", hasChildren: true },
-  { key: "superSaverCombos", href: "/combos" },
-  { key: "shopByGoal", href: "/goals" },
 ] as const;

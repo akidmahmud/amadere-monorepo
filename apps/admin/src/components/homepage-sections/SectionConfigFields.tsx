@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@amader/admin-ui";
 import { MediaPicker } from "@/components/MediaPicker";
-import { usePickerBlogPosts, usePickerCategories, usePickerCollections } from "@/hooks/usePickers";
+import { usePickerBlogPosts, usePickerCategories, usePickerCollections, usePickerProducts } from "@/hooks/usePickers";
 import type { HomepageSectionType } from "@/hooks/useHomepageSections";
 
 export interface SectionConfigFieldsProps {
@@ -202,7 +202,7 @@ interface PromoVideoCard {
   source: PromoVideoSource;
   url: string;
   thumbnailUrl?: string;
-  linkUrl?: string;
+  productId?: number;
 }
 
 // Card size on the storefront is fixed at 377×600 (reel/shorts shape).
@@ -217,6 +217,7 @@ function PromoVideoFields({
   onConfigChange: (config: Record<string, unknown>) => void;
 }) {
   const videos = (config.videos as PromoVideoCard[] | undefined) ?? [];
+  const { data: products } = usePickerProducts();
 
   function updateVideos(next: PromoVideoCard[]) {
     onConfigChange({ ...config, videos: next });
@@ -228,7 +229,10 @@ function PromoVideoFields({
   return (
     <div className="flex flex-col gap-4">
       <span className="text-xs font-semibold text-secondary">
-        Videos <span className="font-normal text-muted">— cards render at 377 × 600px, hover to autoplay</span>
+        Videos{" "}
+        <span className="font-normal text-muted">
+          — cards render at 377 × 600px, autoplay when scrolled into view, click opens a product modal
+        </span>
       </span>
       <div className="flex flex-col gap-4">
         {videos.map((card, i) => (
@@ -289,12 +293,21 @@ function PromoVideoFields({
             />
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-secondary">Link URL (optional)</span>
-              <input
-                value={card.linkUrl ?? ""}
-                onChange={(e) => updateCard(i, { linkUrl: e.target.value })}
+              <span className="text-xs font-semibold text-secondary">Linked product (optional)</span>
+              <select
+                value={card.productId ?? ""}
+                onChange={(e) =>
+                  updateCard(i, { productId: e.target.value ? Number(e.target.value) : undefined })
+                }
                 className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-              />
+              >
+                <option value="">— None —</option>
+                {products?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
         ))}

@@ -388,6 +388,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/sms/settings/api-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminSmsController_clearApiKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/sms/balance": {
         parameters: {
             query?: never;
@@ -2788,6 +2804,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/collections/nav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CollectionsController_getNavList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/collections/{slug}": {
         parameters: {
             query?: never;
@@ -2908,6 +2940,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminOrderManagerController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/orders/status-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminOrderManagerController_statusCounts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3044,6 +3092,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/recovery/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminRecoveryController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_clearAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminRecoveryController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/recovery/{id}/send": {
         parameters: {
             query?: never;
@@ -3054,6 +3166,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminRecoveryController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/create-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_createOrder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3268,6 +3396,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/profit/fallback-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProfitController_getFallbackSettings"];
+        put: operations["AdminProfitController_updateFallbackSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/profit/product-cost": {
         parameters: {
             query?: never;
@@ -3293,6 +3437,54 @@ export interface paths {
         };
         get?: never;
         put: operations["AdminProfitController_setProductCost"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/profit/product-cost/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProfitController_bulkSetProductCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/profit/product-cost/{productId}/variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProfitController_variantCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/profit/variant-cost/{variantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminProfitController_setVariantCost"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3348,6 +3540,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/reports/sales/export.html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportController_exportHtml"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/overview": {
         parameters: {
             query?: never;
@@ -3362,6 +3570,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/overview/hourly-slot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminOverviewController_getHourlySlot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOverviewController_setHourlySlot"];
         trace?: never;
     };
     "/api/v1/admin/net-profit/overview/inventory": {
@@ -3420,6 +3644,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminOverviewController_returned"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/overview/returned/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminOverviewController_returnedOrdersList"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3517,6 +3757,22 @@ export interface paths {
         };
         get: operations["AdminMarketingCostController_list"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/marketing-cost/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminMarketingCostController_getSettings"];
+        put: operations["AdminMarketingCostController_updateSettings"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4836,6 +5092,8 @@ export interface components {
             cacheTtlHours: number;
             blockMessageEn: string;
             blockMessageBn: string;
+            /** @description Assumed delivery charge (৳) added on top of order total when estimating "amount saved" for a blocked order — blocked orders never reach a real courier quote, so this fills the gap. */
+            deliveryFallback: number;
         };
         UpdateFraudSettingsDto: {
             enabled?: boolean;
@@ -4848,6 +5106,7 @@ export interface components {
             cacheTtlHours?: number;
             blockMessageEn?: string;
             blockMessageBn?: string;
+            deliveryFallback?: number;
         };
         EvaluateFraudDto: {
             phone: string;
@@ -5492,6 +5751,10 @@ export interface components {
             name: string;
             description: string | null;
         };
+        PublicNavCollectionDto: {
+            slug: string;
+            name: string;
+        };
         PublicCollectionDetailDto: {
             id: number;
             slug: string;
@@ -5514,6 +5777,7 @@ export interface components {
             slug: string;
             status: Record<string, never>;
             sortOrder: number;
+            showInNav: boolean;
             translations: components["schemas"]["AdminCollectionTranslationDto"][];
             products: components["schemas"]["AdminCollectionProductDto"][];
         };
@@ -5531,6 +5795,11 @@ export interface components {
             status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
             /** @default 0 */
             sortOrder: number;
+            /**
+             * @description Show this collection as a top-level navbar link.
+             * @default false
+             */
+            showInNav: boolean;
             translations: components["schemas"]["NameDescriptionTranslationDto"][];
             products?: components["schemas"]["CreateCollectionProductDto"][];
         };
@@ -5543,6 +5812,11 @@ export interface components {
             status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
             /** @default 0 */
             sortOrder: number;
+            /**
+             * @description Show this collection as a top-level navbar link.
+             * @default false
+             */
+            showInNav: boolean;
             translations?: components["schemas"]["NameDescriptionTranslationDto"][];
             products?: components["schemas"]["CreateCollectionProductDto"][];
         };
@@ -5562,6 +5836,7 @@ export interface components {
             config: Record<string, never>;
             collection: components["schemas"]["PublicCollectionDto"] | null;
             tabCollections: Record<string, never>[] | null;
+            promoVideoProducts: Record<string, never>[] | null;
         };
         AdminHomepageSectionTranslationDto: {
             locale: Record<string, never>;
@@ -5704,6 +5979,7 @@ export interface components {
             fees: string;
             adSpend: string;
             netProfit: string;
+            hasEstimatedCost: boolean;
             /** Format: date-time */
             computedAt: string;
         };
@@ -5712,6 +5988,16 @@ export interface components {
         };
         SetProductCostDto: {
             buyPrice: number;
+        };
+        BulkProductCostRowDto: {
+            productId: number;
+            costPerItem: number;
+        };
+        BulkSetProductCostDto: {
+            rows: components["schemas"]["BulkProductCostRowDto"][];
+        };
+        SetHourlySlotDto: {
+            hourlySlotHours: number;
         };
         SetLowStockThresholdDto: {
             lowStockThreshold: number;
@@ -5757,6 +6043,16 @@ export interface components {
             otherCost: string;
             note: string | null;
             autoCarried: boolean;
+        };
+        UpdateMarketingCostSettingsDto: {
+            /** @description Copy the previous day's marketing cost forward when a new day has no entry yet */
+            autoCarryEnabled?: boolean;
+            /** @description Ads cost (৳) assumed for a day with no marketing cost entry and no prior day to carry forward */
+            defaultMarketingCost?: number;
+            /** @description Email a CSV sales report for the previous day, every day at midnight */
+            autoReportEnabled?: boolean;
+            /** @description Leave blank to skip sending even when autoReportEnabled is on */
+            reportEmail?: string;
         };
         SetMarketingCostDto: {
             adsCost: number;
@@ -6471,6 +6767,25 @@ export interface operations {
         };
     };
     AdminSmsController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSmsController_clearApiKey: {
         parameters: {
             query?: never;
             header?: never;
@@ -11790,6 +12105,27 @@ export interface operations {
             };
         };
     };
+    CollectionsController_getNavList: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicNavCollectionDto"][];
+                };
+            };
+        };
+    };
     CollectionsController_getBySlug: {
         parameters: {
             query?: {
@@ -12104,6 +12440,12 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Free-text search — order number, recipient name, or phone */
+                q?: string;
+                /** @description ISO date — orders created on/after this instant */
+                from?: string;
+                /** @description ISO date — orders created on/before this instant */
+                to?: string;
             };
             header?: never;
             path?: never;
@@ -12116,6 +12458,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminOrderManagerController_statusCounts: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "COMPLETED" | "CANCELED" | "PARTIALLY_RETURNED" | "RETURNED" | "HOLD";
+                paymentProvider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+                courierProvider?: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+                risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+                /** @description Shipping address division, e.g. "Dhaka" */
+                division?: string;
+                /** @description Free-text search — order number, recipient name, or phone */
+                q?: string;
+                /** @description ISO date — orders created on/after this instant */
+                from?: string;
+                /** @description ISO date — orders created on/before this instant */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -12146,6 +12522,7 @@ export interface operations {
                 page?: number;
                 pageSize?: number;
                 status: string;
+                orderId: string;
             };
             header?: never;
             path?: never;
@@ -12249,6 +12626,9 @@ export interface operations {
                 page?: number;
                 pageSize?: number;
                 recovered: boolean;
+                q: string;
+                from: string;
+                to: string;
             };
             header?: never;
             path?: never;
@@ -12281,6 +12661,83 @@ export interface operations {
             };
         };
     };
+    AdminRecoveryController_export: {
+        parameters: {
+            query: {
+                recovered: boolean;
+                q: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_clearAll: {
+        parameters: {
+            query: {
+                recovered: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminRecoveryController_send: {
         parameters: {
             query?: never;
@@ -12291,6 +12748,29 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_createOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutAddressDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -12645,11 +13125,50 @@ export interface operations {
             };
         };
     };
+    AdminProfitController_getFallbackSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminProfitController_updateFallbackSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminProfitController_productCosts: {
         parameters: {
-            query?: {
+            query: {
                 page?: number;
                 pageSize?: number;
+                search: string;
             };
             header?: never;
             path?: never;
@@ -12690,10 +13209,77 @@ export interface operations {
             };
         };
     };
+    AdminProfitController_bulkSetProductCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkSetProductCostDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProfitController_variantCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
+    AdminProfitController_setVariantCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetProductCostDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminSalesReportController_sales: {
         parameters: {
             query?: {
-                groupBy?: "day" | "week" | "month" | "courier" | "area" | "payment";
+                groupBy?: "day" | "week" | "month" | "hour" | "courier" | "area" | "payment";
                 from?: string;
                 to?: string;
             };
@@ -12716,7 +13302,7 @@ export interface operations {
     AdminSalesReportController_topProducts: {
         parameters: {
             query: {
-                groupBy?: "day" | "week" | "month" | "courier" | "area" | "payment";
+                groupBy?: "day" | "week" | "month" | "hour" | "courier" | "area" | "payment";
                 from?: string;
                 to?: string;
                 limit: string;
@@ -12740,7 +13326,28 @@ export interface operations {
     AdminSalesReportController_export: {
         parameters: {
             query?: {
-                groupBy?: "day" | "week" | "month" | "courier" | "area" | "payment";
+                groupBy?: "day" | "week" | "month" | "hour" | "courier" | "area" | "payment";
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportController_exportHtml: {
+        parameters: {
+            query?: {
+                groupBy?: "day" | "week" | "month" | "hour" | "courier" | "area" | "payment";
                 from?: string;
                 to?: string;
             };
@@ -12770,6 +13377,44 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOverviewController_getHourlySlot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOverviewController_setHourlySlot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHourlySlotDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -12846,6 +13491,26 @@ export interface operations {
                 range: string;
                 from: string;
                 to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOverviewController_returnedOrdersList: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
             };
             header?: never;
             path?: never;
@@ -12997,6 +13662,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MarketingCostDto"][];
+                };
+            };
+        };
+    };
+    AdminMarketingCostController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminMarketingCostController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMarketingCostSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
         };

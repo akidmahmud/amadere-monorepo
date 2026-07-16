@@ -8,6 +8,7 @@ import { CollectionsService } from './collections.service';
 import {
   PublicCollectionDetailDto,
   PublicCollectionSummaryDto,
+  PublicNavCollectionDto,
 } from './collections.mapper';
 
 @ApiTags('collections')
@@ -22,6 +23,17 @@ export class CollectionsController {
     @Query() { page, pageSize }: PaginationQueryDto,
   ): Promise<PaginatedResult<PublicCollectionSummaryDto>> {
     return this.collections.publicList(locale ?? 'EN', page ?? 1, pageSize ?? 20);
+  }
+
+  // Declared before ":slug" — Express/Nest match routes in registration
+  // order, so a static "nav" segment must come first or it gets swallowed
+  // as a slug param.
+  @Get('nav')
+  @ApiOkResponse({ type: PublicNavCollectionDto, isArray: true })
+  getNavList(
+    @Query() { locale }: LocaleQueryDto,
+  ): Promise<PublicNavCollectionDto[]> {
+    return this.collections.publicNavList(locale ?? 'EN');
   }
 
   @Get(':slug')

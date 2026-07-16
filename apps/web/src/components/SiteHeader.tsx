@@ -10,6 +10,7 @@ import { useCartQuery } from "@/hooks/useCart";
 import { useMe } from "@/hooks/useAuth";
 import { useSearchSuggestions } from "@/hooks/useSearch";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
+import { useNavCollections } from "@/hooks/useNavCollections";
 import { toDisplayImageUrl } from "@/lib/media";
 
 function useDebounced<T>(value: T, delayMs: number): T {
@@ -36,6 +37,7 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
   const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const { data: me } = useMe();
   const { data: siteInfo } = useSiteInfo();
+  const { data: navCollections } = useNavCollections(toApiLocale(locale));
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,12 +46,20 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
 
   const otherLocale = locale === "en" ? "bn" : "en";
 
-  const items = navConfig.map((item) => ({
-    key: item.key,
-    href: item.href,
-    hasChildren: "hasChildren" in item ? item.hasChildren : undefined,
-    label: t(`nav.${item.key}`),
-  }));
+  const items = [
+    ...navConfig.map((item) => ({
+      key: item.key,
+      href: item.href,
+      hasChildren: undefined as boolean | undefined,
+      label: t(`nav.${item.key}`),
+    })),
+    ...(navCollections ?? []).map((collection) => ({
+      key: `collection-${collection.slug}`,
+      href: `/collections/${collection.slug}`,
+      hasChildren: undefined,
+      label: collection.name,
+    })),
+  ];
 
   return (
     <>

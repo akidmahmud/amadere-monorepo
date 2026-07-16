@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -42,6 +43,11 @@ export class CreateCollectionDto {
   @Type(() => Number)
   @IsInt()
   sortOrder?: number;
+
+  @ApiPropertyOptional({ default: false, description: 'Show this collection as a top-level navbar link.' })
+  @IsOptional()
+  @IsBoolean()
+  showInNav?: boolean;
 
   @ApiProperty({ type: [NameDescriptionTranslationDto] })
   @IsArray()

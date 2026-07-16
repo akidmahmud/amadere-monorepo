@@ -6,6 +6,7 @@ import {
   Prisma,
 } from '@amader/db';
 import { PublicCollectionDto } from '../collections/collections.mapper';
+import { PublicProductDto } from '../products/dto/product-response.dto';
 
 type HomepageSectionWithTranslations = HomepageSection & {
   translations: HomepageSectionTranslation[];
@@ -58,6 +59,10 @@ export class PublicHomepageSectionDto {
    * entry, same order, null for a tab whose collectionId no longer
    * resolves (deleted/unpublished) rather than dropping the tab silently. */
   tabCollections!: (PublicCollectionDto | null)[] | null;
+  /** PROMO_VIDEO only — one resolved product per config.videos entry, same
+   * order/length, null for a video with no productId or whose product no
+   * longer resolves (deleted/unpublished) rather than dropping the video. */
+  promoVideoProducts!: (PublicProductDto | null)[] | null;
 }
 
 export function toPublicHomepageSectionDto(
@@ -65,6 +70,7 @@ export function toPublicHomepageSectionDto(
   collection: PublicCollectionDto | null,
   locale: Locale,
   tabCollections: (PublicCollectionDto | null)[] | null = null,
+  promoVideoProducts: (PublicProductDto | null)[] | null = null,
 ): PublicHomepageSectionDto {
   const translation =
     section.translations.find((t) => t.locale === locale) ??
@@ -78,5 +84,6 @@ export function toPublicHomepageSectionDto(
     config: section.config,
     collection,
     tabCollections,
+    promoVideoProducts,
   };
 }
