@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
@@ -46,7 +46,7 @@ function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; o
   );
 }
 
-export default function NewOrderPage() {
+function NewOrderForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedId = searchParams.get("customerId");
@@ -325,5 +325,17 @@ export default function NewOrderPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+// useSearchParams() (for the ?customerId= preselect) opts this page out of
+// static rendering unless it's wrapped in Suspense — Next.js fails the
+// production build otherwise ("useSearchParams() should be wrapped in a
+// suspense boundary").
+export default function NewOrderPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>
+      <NewOrderForm />
+    </Suspense>
   );
 }
