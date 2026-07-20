@@ -1,6 +1,7 @@
 import type { components } from "./api/schema";
 import { toDisplayImageUrl } from "./media";
 import { buildPackSizeOptions, defaultVariantId } from "./pdp";
+import { sanitizeHtml } from "./sanitize-html";
 
 type PublicProductDto = components["schemas"]["PublicProductDto"];
 
@@ -81,7 +82,10 @@ export function toPromoVideoProductData(product: PublicProductDto): PromoVideoPr
     productId: product.id,
     slug: product.slug,
     name: product.name,
-    description: product.description,
+    // Sanitized HTML, not plain text — PromoVideoModal renders it via
+    // dangerouslySetInnerHTML (was previously rendered as plain text,
+    // showing raw `<p><strong>` tags in the modal).
+    description: product.description ? sanitizeHtml(product.description) : null,
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
     imageUrl: toDisplayImageUrl(primaryMedia?.url),

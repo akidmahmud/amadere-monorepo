@@ -16,6 +16,7 @@ import { toAdminProductDto, toPublicProductDto } from './products.mapper';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
+import { ProductTranslationDto } from './dto/product-translation.dto';
 import { ProductFilterQueryDto, ProductSort } from './dto/product-filter-query.dto';
 import {
   AdminProductDto,
@@ -29,6 +30,24 @@ import {
   buildProductJsonLd,
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
+
+// class-transformer produces real ProductInfoVisualContentDto/
+// ProductComparisonContentDto instances (via @Type on the corresponding
+// ProductTranslationDto fields), but Prisma's Json input type wants a plain
+// object with a string index signature — this round-trips through
+// plain-object spread so the shape matches structurally without changing
+// any actual values.
+function toTranslationCreateInput(translations: ProductTranslationDto[]) {
+  return translations.map((t) => ({
+    ...t,
+    infoVisualContent: t.infoVisualContent
+      ? ({ ...t.infoVisualContent } as Prisma.InputJsonValue)
+      : undefined,
+    comparisonContent: t.comparisonContent
+      ? ({ ...t.comparisonContent } as Prisma.InputJsonValue)
+      : undefined,
+  }));
+}
 
 @Injectable()
 export class ProductsService {
@@ -102,7 +121,9 @@ export class ProductsService {
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
-        translations: { create: dto.translations },
+        infoVisualImages: dto.infoVisualImages as unknown as Prisma.InputJsonValue,
+        comparisonImages: dto.comparisonImages as unknown as Prisma.InputJsonValue,
+        translations: { create: toTranslationCreateInput(dto.translations) },
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
           : undefined,
@@ -198,8 +219,14 @@ export class ProductsService {
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
+        infoVisualImages: dto.infoVisualImages
+          ? (dto.infoVisualImages as unknown as Prisma.InputJsonValue)
+          : undefined,
+        comparisonImages: dto.comparisonImages
+          ? (dto.comparisonImages as unknown as Prisma.InputJsonValue)
+          : undefined,
         translations: dto.translations
-          ? { create: dto.translations }
+          ? { create: toTranslationCreateInput(dto.translations) }
           : undefined,
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
@@ -308,6 +335,57 @@ export class ProductsService {
       where: { id: variantId },
       data: { stock },
     });
+  }
+
+  async updateVariantPrice(
+    productId: number,
+    variantId: number,
+    dto: { price?: number; salePrice?: number },
+  ): Promise<void> {
+    const variant = await this.prisma.client.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+    if (!variant) throw new NotFoundException('Variant not found');
+    await this.prisma.client.productVariant.update({
+      where: { id: variantId },
+      data: {
+        ...(dto.price !== undefined ? { price: dto.price } : {}),
+        ...(dto.salePrice !== undefined ? { salePrice: dto.salePrice } : {}),
+      },
+    });
+  }
+
+  // Cross-sell ("You May Also Like" in the cart drawer) — ProductRelation is
+  // a generic table (RELATED/CROSS_SELL/UP_SELL/FREQUENTLY_BOUGHT_TOGETHER)
+  // but only CROSS_SELL has a real consumer today (cart.service.ts), so this
+  // admin surface is scoped to that one type rather than exposing all four.
+  async getCrossSell(productId: number): Promise<number[]> {
+    const rows = await this.prisma.client.productRelation.findMany({
+      where: { fromProductId: productId, type: 'CROSS_SELL' },
+      select: { toProductId: true },
+    });
+    return rows.map((r) => r.toProductId);
+  }
+
+  async updateCrossSell(productId: number, productIds: number[]): Promise<number[]> {
+    await this.adminGet(productId);
+    const targetIds = productIds.filter((id) => id !== productId);
+    if (targetIds.length) {
+      const count = await this.prisma.client.product.count({
+        where: { id: { in: targetIds }, deletedAt: null },
+      });
+      if (count !== targetIds.length) throw new BadRequestException('One or more products not found');
+    }
+
+    await this.prisma.client.productRelation.deleteMany({
+      where: { fromProductId: productId, type: 'CROSS_SELL' },
+    });
+    if (targetIds.length) {
+      await this.prisma.client.productRelation.createMany({
+        data: targetIds.map((toProductId) => ({ fromProductId: productId, toProductId, type: 'CROSS_SELL' })),
+      });
+    }
+    return this.getCrossSell(productId);
   }
 
   async publicList(
@@ -441,6 +519,15 @@ export class ProductsService {
               ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
               ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
             },
+          }
+        : {}),
+      ...(filters.q?.trim()
+        ? {
+            OR: [
+              { translations: { some: { name: { contains: filters.q.trim(), mode: 'insensitive' as const } } } },
+              { sku: { contains: filters.q.trim(), mode: 'insensitive' as const } },
+              { slug: { contains: filters.q.trim(), mode: 'insensitive' as const } },
+            ],
           }
         : {}),
     };

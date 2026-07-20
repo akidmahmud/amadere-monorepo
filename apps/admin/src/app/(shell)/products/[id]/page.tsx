@@ -9,6 +9,8 @@ import { useProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { ProductFormFields } from "@/components/products/ProductFormFields";
 import { useProductFormState } from "@/components/products/useProductFormState";
 import { ExistingVariantsManager } from "@/components/products/ExistingVariantsManager";
+import { SeoMetaCard } from "@/components/SeoMetaCard";
+import { CrossSellFields } from "@/components/products/CrossSellFields";
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -35,25 +37,42 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   if (isLoading || !product) return <p className="text-sm text-muted">Loading…</p>;
 
   return (
-    <Card className="max-w-2xl">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <ProductFormFields form={form} />
-
-        {form.hasVariants && (
-          <ExistingVariantsManager productId={productId} attributes={selectedAttributes} variants={product.variants} />
-        )}
-
-        <div className="flex gap-3">
-          <Button type="submit" variant="primary" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save changes"}
-          </Button>
-          <Link href="/products">
-            <Button type="button" variant="ghost">
-              Cancel
-            </Button>
+    <div className="flex flex-col gap-6">
+      <Card className="max-w-2xl">
+        <div className="mb-2 flex justify-end gap-4">
+          <Link href={`/products/${productId}/info-visual`} className="text-xs font-semibold text-brand-500 hover:underline">
+            Edit Product Info Visual →
+          </Link>
+          <Link href={`/products/${productId}/comparison`} className="text-xs font-semibold text-brand-500 hover:underline">
+            Edit Comparison Section →
+          </Link>
+          <Link href="/products/marketing-review" className="text-xs font-semibold text-brand-500 hover:underline">
+            Manage Marketing Review Cards →
           </Link>
         </div>
-      </form>
-    </Card>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <ProductFormFields form={form} />
+
+          {form.hasVariants && (
+            <ExistingVariantsManager productId={productId} attributes={selectedAttributes} variants={product.variants} />
+          )}
+
+          <div className="flex gap-3">
+            <Button type="submit" variant="primary" disabled={update.isPending}>
+              {update.isPending ? "Saving…" : "Save changes"}
+            </Button>
+            <Link href="/products">
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </Link>
+          </div>
+        </form>
+      </Card>
+
+      <CrossSellFields productId={productId} />
+
+      <SeoMetaCard entityType="PRODUCT" entityId={productId} />
+    </div>
   );
 }

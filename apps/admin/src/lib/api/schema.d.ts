@@ -964,6 +964,38 @@ export interface paths {
         patch: operations["AdminProductsController_updateVariantStock"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/{variantId}/price": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateVariantPrice"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/cross-sell": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_getCrossSell"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateCrossSell"];
+        trace?: never;
+    };
     "/api/v1/products/{productId}/reviews": {
         parameters: {
             query?: never;
@@ -974,6 +1006,22 @@ export interface paths {
         get: operations["ReviewsController_publicList"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reviews/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewsController_uploadImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1437,7 +1485,7 @@ export interface paths {
         };
         get: operations["AdminOrdersController_list"];
         put?: never;
-        post?: never;
+        post: operations["AdminOrdersController_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1828,6 +1876,230 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customers/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomersController_getProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CustomersController_updateProfile"];
+        trace?: never;
+    };
+    "/api/v1/customers/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CustomersController_changePassword"];
+        trace?: never;
+    };
+    "/api/v1/customers/me/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerAddressesController_list"];
+        put?: never;
+        post: operations["CustomerAddressesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/me/addresses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["CustomerAddressesController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["CustomerAddressesController_update"];
+        trace?: never;
+    };
+    "/api/v1/customers/me/wishlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WishlistController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/me/wishlist/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["WishlistController_add"];
+        delete: operations["WishlistController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customer-tiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomerTiersController_list"];
+        put: operations["AdminCustomerTiersController_replace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customer-tiers/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomerTiersController_counts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCustomersController_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminCustomersController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/customers/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_listNotes"];
+        put?: never;
+        post: operations["AdminCustomersController_addNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/{id}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_listCalls"];
+        put?: never;
+        post: operations["AdminCustomersController_logCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/{id}/calls/dial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCustomersController_dial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/shipments": {
         parameters: {
             query?: never;
@@ -2143,102 +2415,6 @@ export interface paths {
         put?: never;
         post: operations["CourierWebhooksController_redx"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/customers/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["CustomersController_getProfile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["CustomersController_updateProfile"];
-        trace?: never;
-    };
-    "/api/v1/customers/me/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["CustomersController_changePassword"];
-        trace?: never;
-    };
-    "/api/v1/customers/me/addresses": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["CustomerAddressesController_list"];
-        put?: never;
-        post: operations["CustomerAddressesController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/customers/me/addresses/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["CustomerAddressesController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["CustomerAddressesController_update"];
-        trace?: never;
-    };
-    "/api/v1/customers/me/wishlist": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["WishlistController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/customers/me/wishlist/{productId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["WishlistController_add"];
-        delete: operations["WishlistController_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2692,6 +2868,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnalyticsController_getConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/ga4": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getGa4"];
+        put: operations["AdminAnalyticsSettingsController_updateGa4"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/gtm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getGtm"];
+        put: operations["AdminAnalyticsSettingsController_updateGtm"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getMeta"];
+        put: operations["AdminAnalyticsSettingsController_updateMeta"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/google-ads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getGoogleAds"];
+        put: operations["AdminAnalyticsSettingsController_updateGoogleAds"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/tiktok": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getTiktok"];
+        put: operations["AdminAnalyticsSettingsController_updateTiktok"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/clarity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getClarity"];
+        put: operations["AdminAnalyticsSettingsController_updateClarity"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/utm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getUtm"];
+        put: operations["AdminAnalyticsSettingsController_updateUtm"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/whatsapp/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWhatsappController_get"];
+        put: operations["AdminWhatsappController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/whatsapp/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WhatsappController_getConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/settings": {
         parameters: {
             query?: never;
@@ -2786,6 +3122,102 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnnouncementsController_list"];
+        put?: never;
+        post: operations["AdminAnnouncementsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/announcements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnnouncementsController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminAnnouncementsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminAnnouncementsController_update"];
+        trace?: never;
+    };
+    "/api/v1/marketing-review-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MarketingReviewController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/marketing-review-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminMarketingReviewController_list"];
+        put?: never;
+        post: operations["AdminMarketingReviewController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/marketing-review-cards/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminMarketingReviewController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminMarketingReviewController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminMarketingReviewController_update"];
         trace?: never;
     };
     "/api/v1/collections": {
@@ -2978,6 +3410,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/orders/{id}/note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrderManagerController_updateNote"];
         trace?: never;
     };
     "/api/v1/admin/net-profit/payments/manual": {
@@ -3860,6 +4308,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/accounts/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_listExpenses"];
+        put?: never;
+        post: operations["AdminAccountsController_createExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/expenses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminAccountsController_updateExpense"];
+        post?: never;
+        delete: operations["AdminAccountsController_deleteExpense"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_listDues"];
+        put?: never;
+        post: operations["AdminAccountsController_createDue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/dues/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminAccountsController_recordDuePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/dues/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminAccountsController_deleteDue"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/vat-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_getVatSettings"];
+        put: operations["AdminAccountsController_updateVatSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/vat-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_vatSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/cash-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_cashFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/export/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3943,10 +4551,6 @@ export interface components {
         ChangePasswordDto: {
             currentPassword: string;
             newPassword: string;
-        };
-        TwoFactorSetupDto: {
-            secret: string;
-            otpauthUrl: string;
         };
         TwoFactorEnableDto: {
             code: string;
@@ -4335,6 +4939,43 @@ export interface components {
             sortOrder: number;
             translations?: components["schemas"]["AttributeValueTranslationDto"][];
         };
+        ProductInfoVisualImagesDto: {
+            /** @description Center product image */
+            main?: string;
+            /** @description Exactly 3 circular ingredient images */
+            circles?: string[];
+        };
+        ProductInfoVisualArrowDto: {
+            /** @description Admin-authored HTML, same trust level as description/content */
+            heading?: string;
+            /** @description Admin-authored HTML, same trust level as description/content */
+            subheading?: string;
+        };
+        ProductInfoVisualContentDto: {
+            /** @description Admin-authored HTML, same trust level as description/content */
+            topHeading?: string;
+            /** @description Admin-authored HTML, same trust level as description/content */
+            bottomHeading?: string;
+            /** @description Exactly 4, in fixed position order */
+            arrows?: components["schemas"]["ProductInfoVisualArrowDto"][];
+            /** @description Exactly 3, matching Product.infoVisualImages.circles order */
+            circleLabels?: string[];
+        };
+        ProductComparisonImagesDto: {
+            card1?: string;
+            card2?: string;
+        };
+        ProductComparisonCardContentDto: {
+            title?: string;
+            /** @description One bullet line per line of text, same convention as keyBenefits. */
+            items?: string;
+        };
+        ProductComparisonContentDto: {
+            /** @description Admin-authored HTML, same trust level as description/content */
+            heading?: string;
+            card1?: components["schemas"]["ProductComparisonCardContentDto"];
+            card2?: components["schemas"]["ProductComparisonCardContentDto"];
+        };
         PublicProductBrandDto: {
             id: number;
             slug: string;
@@ -4391,6 +5032,11 @@ export interface components {
             content: string | null;
             nutrition: string | null;
             ingredients: string | null;
+            keyBenefits: string | null;
+            infoVisualImages: components["schemas"]["ProductInfoVisualImagesDto"] | null;
+            infoVisualContent: components["schemas"]["ProductInfoVisualContentDto"] | null;
+            comparisonImages: components["schemas"]["ProductComparisonImagesDto"] | null;
+            comparisonContent: components["schemas"]["ProductComparisonContentDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -4417,6 +5063,11 @@ export interface components {
             content: string | null;
             nutrition: string | null;
             ingredients: string | null;
+            keyBenefits: string | null;
+            infoVisualImages: components["schemas"]["ProductInfoVisualImagesDto"] | null;
+            infoVisualContent: components["schemas"]["ProductInfoVisualContentDto"] | null;
+            comparisonImages: components["schemas"]["ProductComparisonImagesDto"] | null;
+            comparisonContent: components["schemas"]["ProductComparisonContentDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -4432,6 +5083,9 @@ export interface components {
             content: string | null;
             nutrition: string | null;
             ingredients: string | null;
+            keyBenefits: string | null;
+            infoVisualContent: components["schemas"]["ProductInfoVisualContentDto"] | null;
+            comparisonContent: components["schemas"]["ProductComparisonContentDto"] | null;
         };
         AdminProductMediaDto: {
             id: number;
@@ -4475,6 +5129,8 @@ export interface components {
             shippableWeight: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
+            infoVisualImages: components["schemas"]["ProductInfoVisualImagesDto"] | null;
+            comparisonImages: components["schemas"]["ProductComparisonImagesDto"] | null;
             translations: components["schemas"]["AdminProductTranslationDto"][];
             categoryIds: number[];
             tagIds: number[];
@@ -4490,6 +5146,10 @@ export interface components {
             content?: string;
             nutrition?: string;
             ingredients?: string;
+            /** @description Short benefit lines, one per line — rendered as the PDP's "Key Benefits" grid. */
+            keyBenefits?: string;
+            infoVisualContent?: components["schemas"]["ProductInfoVisualContentDto"];
+            comparisonContent?: components["schemas"]["ProductComparisonContentDto"];
         };
         CreateProductVariantDto: {
             sku?: string;
@@ -4560,6 +5220,8 @@ export interface components {
             mediaIds?: number[];
             /** @description Required when hasVariants is true */
             variants?: components["schemas"]["CreateProductVariantDto"][];
+            infoVisualImages?: components["schemas"]["ProductInfoVisualImagesDto"];
+            comparisonImages?: components["schemas"]["ProductComparisonImagesDto"];
         };
         UpdateProductDto: {
             slug?: string;
@@ -4617,9 +5279,18 @@ export interface components {
             mediaIds?: number[];
             /** @description Required when hasVariants is true */
             variants?: components["schemas"]["CreateProductVariantDto"][];
+            infoVisualImages?: components["schemas"]["ProductInfoVisualImagesDto"];
+            comparisonImages?: components["schemas"]["ProductComparisonImagesDto"];
         };
         UpdateVariantStockDto: {
             stock: number;
+        };
+        UpdateVariantPriceDto: {
+            price?: number;
+            salePrice?: number;
+        };
+        UpdateCrossSellDto: {
+            productIds: number[];
         };
         ReviewReplyDto: {
             message: string;
@@ -4979,6 +5650,12 @@ export interface components {
             deviceId?: string;
             /** @description Unix seconds when the checkout page loaded — used by the blocker speed/bot-detection rule */
             checkoutStartedAt?: number;
+            /** @description Campaign attribution — read from the utm_* landing-page cookie (apps/web utm.ts) */
+            utmSource?: string;
+            utmMedium?: string;
+            utmCampaign?: string;
+            utmTerm?: string;
+            utmContent?: string;
         };
         OrderItemDto: {
             id: number;
@@ -5016,6 +5693,22 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        OrderShipmentEventDto: {
+            status: Record<string, never>;
+            note: string | null;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        OrderShipmentDto: {
+            provider: Record<string, never>;
+            status: Record<string, never>;
+            trackingCode: string | null;
+            /** Format: date-time */
+            dispatchedAt: string | null;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            events: components["schemas"]["OrderShipmentEventDto"][];
+        };
         OrderDto: {
             id: number;
             orderNumber: string;
@@ -5045,11 +5738,30 @@ export interface components {
             addresses: components["schemas"]["OrderAddressDto"][];
             statusHistory: components["schemas"]["OrderStatusHistoryEntryDto"][];
             payments: components["schemas"]["OrderPaymentDto"][];
+            shipment: components["schemas"]["OrderShipmentDto"] | null;
         };
         TrackOrderDto: {
             orderNumber: string;
             /** @description Phone number used on the shipping address */
             phone: string;
+        };
+        ManualOrderItemDto: {
+            productId: number;
+            variantId?: number;
+            quantity: number;
+            /** @description Overrides the product's real price for this line if set */
+            unitPrice?: number;
+        };
+        CreateManualOrderDto: {
+            /** @description Set when staff selected an existing customer; omit to auto-match/create by shippingAddress.phone */
+            customerId?: number;
+            shippingAddress: components["schemas"]["CheckoutAddressDto"];
+            /** @description Defaults to shippingAddress if omitted */
+            billingAddress?: components["schemas"]["CheckoutAddressDto"];
+            items: components["schemas"]["ManualOrderItemDto"][];
+            /** @enum {string} */
+            paymentProvider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+            customerNote?: string;
         };
         UpdateOrderStatusDto: {
             /** @enum {string} */
@@ -5169,6 +5881,150 @@ export interface components {
         RecordAdvanceDto: {
             amount: number;
         };
+        UpdateProfileDto: {
+            firstName?: string;
+            lastName?: string;
+            /** Format: uri */
+            avatarUrl?: string;
+            /** @description YYYY-MM-DD */
+            dob?: string;
+        };
+        SuccessResponseDto: {
+            success: boolean;
+        };
+        AddressDto: {
+            id: number;
+            label: string | null;
+            recipientName: string;
+            phone: string;
+            division: string;
+            district: string;
+            area: string | null;
+            landmark: string | null;
+            addressLine: string;
+            postCode: string | null;
+            isDefault: boolean;
+        };
+        CreateAddressDto: {
+            /** @description e.g. "Home", "Office" */
+            label?: string;
+            recipientName: string;
+            phone: string;
+            division: string;
+            district: string;
+            /** @description Thana/upazila */
+            area?: string;
+            landmark?: string;
+            addressLine: string;
+            postCode?: string;
+            /** @default false */
+            isDefault: boolean;
+        };
+        UpdateAddressDto: {
+            /** @description e.g. "Home", "Office" */
+            label?: string;
+            recipientName?: string;
+            phone?: string;
+            division?: string;
+            district?: string;
+            /** @description Thana/upazila */
+            area?: string;
+            landmark?: string;
+            addressLine?: string;
+            postCode?: string;
+            /** @default false */
+            isDefault: boolean;
+        };
+        WishlistItemDto: {
+            productId: number;
+            slug: string;
+            name: string;
+            price: string | null;
+            salePrice: string | null;
+            stockStatus: Record<string, never>;
+            image: string | null;
+            /** Format: date-time */
+            addedAt: string;
+        };
+        CustomerTierDto: Record<string, never>;
+        CustomerTierCountDto: Record<string, never>;
+        CustomerTierItemDto: {
+            label: string;
+            minCompletedOrders: number;
+            sortOrder: number;
+        };
+        UpdateCustomerTiersDto: {
+            tiers: components["schemas"]["CustomerTierItemDto"][];
+        };
+        AdminCustomerListItemDto: {
+            id: number;
+            name: string;
+            phone: string | null;
+            email: string | null;
+            tier: string | null;
+            completedOrderCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminCustomerOrderSummaryDto: {
+            id: number;
+            orderNumber: string;
+            status: string;
+            totalAmount: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminCustomerNoteDto: {
+            id: number;
+            type: string;
+            body: string;
+            authorAdminId: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminCustomerCallLogDto: {
+            id: number;
+            phoneCalled: string;
+            outcome: string;
+            notes: string | null;
+            authorAdminId: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminCustomerDto: {
+            activity: {
+                [key: string]: unknown;
+            }[];
+            id: number;
+            name: string;
+            phone: string | null;
+            email: string | null;
+            /** Format: date-time */
+            dob: string | null;
+            tier: string | null;
+            completedOrderCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
+            notes: components["schemas"]["AdminCustomerNoteDto"][];
+            callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
+        };
+        UpdateCustomerDto: {
+            firstName?: string;
+            lastName?: string;
+            /** @description Birthday, ISO date */
+            dob?: string;
+        };
+        CreateCustomerNoteDto: {
+            /** @enum {string} */
+            type: "CUSTOMER_FEEDBACK" | "INTERNAL_NOTE" | "REMARK";
+            body: string;
+        };
+        CreateCustomerCallLogDto: {
+            /** @enum {string} */
+            outcome: "CONNECTED" | "NO_ANSWER" | "VOICEMAIL" | "WRONG_NUMBER" | "DECLINED";
+            notes?: string;
+        };
         ShipmentEventDto: {
             status: Record<string, never>;
             note: string | null;
@@ -5257,71 +6113,6 @@ export interface components {
             pickupStoreId?: number;
         };
         WebhookAckDto: Record<string, never>;
-        UpdateProfileDto: {
-            firstName?: string;
-            lastName?: string;
-            /** Format: uri */
-            avatarUrl?: string;
-            /** @description YYYY-MM-DD */
-            dob?: string;
-        };
-        SuccessResponseDto: {
-            success: boolean;
-        };
-        AddressDto: {
-            id: number;
-            label: string | null;
-            recipientName: string;
-            phone: string;
-            division: string;
-            district: string;
-            area: string | null;
-            landmark: string | null;
-            addressLine: string;
-            postCode: string | null;
-            isDefault: boolean;
-        };
-        CreateAddressDto: {
-            /** @description e.g. "Home", "Office" */
-            label?: string;
-            recipientName: string;
-            phone: string;
-            division: string;
-            district: string;
-            /** @description Thana/upazila */
-            area?: string;
-            landmark?: string;
-            addressLine: string;
-            postCode?: string;
-            /** @default false */
-            isDefault: boolean;
-        };
-        UpdateAddressDto: {
-            /** @description e.g. "Home", "Office" */
-            label?: string;
-            recipientName?: string;
-            phone?: string;
-            division?: string;
-            district?: string;
-            /** @description Thana/upazila */
-            area?: string;
-            landmark?: string;
-            addressLine?: string;
-            postCode?: string;
-            /** @default false */
-            isDefault: boolean;
-        };
-        WishlistItemDto: {
-            productId: number;
-            slug: string;
-            name: string;
-            price: string | null;
-            salePrice: string | null;
-            stockStatus: Record<string, never>;
-            image: string | null;
-            /** Format: date-time */
-            addedAt: string;
-        };
         SubscribeNewsletterDto: {
             /** Format: email */
             email: string;
@@ -5688,6 +6479,59 @@ export interface components {
             clientId?: string;
         };
         AnalyticsAckDto: Record<string, never>;
+        UpdateGa4SettingsDto: {
+            enabled?: boolean;
+            /** @description e.g. G-XXXXXXXXXX */
+            measurementId?: string;
+            /** @description Leave blank to keep the existing stored secret */
+            apiSecret?: string;
+        };
+        UpdateGtmSettingsDto: {
+            enabled?: boolean;
+            /** @description e.g. GTM-XXXXXXX */
+            containerId?: string;
+        };
+        UpdateMetaSettingsDto: {
+            enabled?: boolean;
+            /** @description Meta Pixel ID */
+            pixelId?: string;
+            /** @description Optional — tags CAPI events as test events in Events Manager */
+            testEventCode?: string;
+            /** @description Leave blank to keep the existing stored token */
+            accessToken?: string;
+        };
+        UpdateGoogleAdsSettingsDto: {
+            enabled?: boolean;
+            /** @description e.g. AW-XXXXXXXXX */
+            conversionId?: string;
+            /** @description Conversion label for the purchase conversion action */
+            conversionLabel?: string;
+        };
+        UpdateTiktokSettingsDto: {
+            enabled?: boolean;
+            /** @description TikTok Pixel Code */
+            pixelCode?: string;
+            /** @description Leave blank to keep the existing stored token */
+            accessToken?: string;
+        };
+        UpdateClaritySettingsDto: {
+            enabled?: boolean;
+            /** @description Microsoft Clarity Project ID */
+            projectId?: string;
+        };
+        UpdateUtmSettingsDto: {
+            /** @description Capture utm_source/medium/campaign/term/content from landing URLs */
+            enabled?: boolean;
+        };
+        UpdateWhatsappSettingsDto: {
+            enabled?: boolean;
+            /** @description International format without a leading +, e.g. 8801XXXXXXXXX */
+            phoneNumber?: string;
+            /** @description Sent from the product page WhatsApp button — supports {{productName}} */
+            productMessageTemplate?: string;
+            /** @description Sent from the site-wide floating WhatsApp button */
+            floatingMessageTemplate?: string;
+        };
         SettingDto: {
             key: string;
             value: Record<string, never>;
@@ -5744,6 +6588,80 @@ export interface components {
             label: string;
             href: string;
             children: components["schemas"]["PublicMenuItemDto"][];
+        };
+        PublicAnnouncementDto: {
+            id: number;
+            message: string;
+            linkUrl: string | null;
+        };
+        AdminAnnouncementTranslationDto: {
+            locale: Record<string, never>;
+            message: string;
+        };
+        AdminAnnouncementDto: {
+            id: number;
+            linkUrl: string | null;
+            sortOrder: number;
+            isActive: boolean;
+            translations: components["schemas"]["AdminAnnouncementTranslationDto"][];
+        };
+        AnnouncementTranslationDto: {
+            /** @enum {string} */
+            locale: "EN" | "BN";
+            message: string;
+        };
+        CreateAnnouncementDto: {
+            linkUrl?: string;
+            /** @default 0 */
+            sortOrder: number;
+            /** @default true */
+            isActive: boolean;
+            translations: components["schemas"]["AnnouncementTranslationDto"][];
+        };
+        UpdateAnnouncementDto: {
+            linkUrl?: string;
+            /** @default 0 */
+            sortOrder: number;
+            /** @default true */
+            isActive: boolean;
+            translations?: components["schemas"]["AnnouncementTranslationDto"][];
+        };
+        PublicMarketingReviewCardDto: {
+            id: number;
+            imageUrl: string;
+            caption: string | null;
+        };
+        AdminMarketingReviewCardTranslationDto: {
+            locale: Record<string, never>;
+            caption: string | null;
+        };
+        AdminMarketingReviewCardDto: {
+            id: number;
+            imageUrl: string;
+            sortOrder: number;
+            isActive: boolean;
+            translations: components["schemas"]["AdminMarketingReviewCardTranslationDto"][];
+        };
+        MarketingReviewCardTranslationDto: {
+            /** @enum {string} */
+            locale: "EN" | "BN";
+            caption?: string;
+        };
+        CreateMarketingReviewCardDto: {
+            imageUrl: string;
+            /** @default 0 */
+            sortOrder: number;
+            /** @default true */
+            isActive: boolean;
+            translations: components["schemas"]["MarketingReviewCardTranslationDto"][];
+        };
+        UpdateMarketingReviewCardDto: {
+            imageUrl?: string;
+            /** @default 0 */
+            sortOrder: number;
+            /** @default true */
+            isActive: boolean;
+            translations?: components["schemas"]["MarketingReviewCardTranslationDto"][];
         };
         PublicCollectionSummaryDto: {
             id: number;
@@ -5896,6 +6814,9 @@ export interface components {
              * @enum {string}
              */
             courierProvider?: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+        };
+        UpdateOrderNoteDto: {
+            note: string;
         };
         ManualPaymentDto: {
             id: number;
@@ -6074,6 +6995,72 @@ export interface components {
         RecomputeDailyProfitDto: {
             from: string;
             to?: string;
+        };
+        CreateExpenseDto: {
+            expenseDate: string;
+            /** @description Free text — e.g. Rent, Salaries, Packaging, Courier, Software */
+            category: string;
+            amount: number;
+            /**
+             * @description Counts as input VAT in the VAT summary
+             * @default false
+             */
+            isVatInput: boolean;
+            note?: string;
+        };
+        ExpenseDto: {
+            id: number;
+            /** Format: date-time */
+            expenseDate: string;
+            category: string;
+            amount: string;
+            isVatInput: boolean;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UpdateExpenseDto: {
+            expenseDate?: string;
+            /** @description Free text — e.g. Rent, Salaries, Packaging, Courier, Software */
+            category?: string;
+            amount?: number;
+            /**
+             * @description Counts as input VAT in the VAT summary
+             * @default false
+             */
+            isVatInput: boolean;
+            note?: string;
+        };
+        CreateDueDto: {
+            /** @enum {string} */
+            partyType: "CUSTOMER" | "SUPPLIER";
+            partyName: string;
+            /** @description Link to a real Customer record when partyType=CUSTOMER */
+            customerId?: number;
+            amount: number;
+            dueDate?: string;
+            note?: string;
+        };
+        DueDto: {
+            id: number;
+            partyType: Record<string, never>;
+            partyName: string;
+            customerId: number | null;
+            amount: string;
+            paidAmount: string;
+            remaining: string;
+            status: Record<string, never>;
+            /** Format: date-time */
+            dueDate: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RecordDuePaymentDto: {
+            /** @description Amount received/paid just now — added to paidAmount */
+            amount: number;
         };
     };
     responses: never;
@@ -6604,21 +7591,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TwoFactorSetupDto"];
-                };
-            };
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["TwoFactorSetupDto"];
-                };
+                content?: never;
             };
         };
     };
@@ -8016,6 +8993,8 @@ export interface operations {
                 maxPrice?: number;
                 /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
                 sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                /** @description Free-text search across product name, SKU, and slug. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -8077,6 +9056,8 @@ export interface operations {
                 maxPrice?: number;
                 /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
                 sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                /** @description Free-text search across product name, SKU, and slug. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -8272,6 +9253,76 @@ export interface operations {
             };
         };
     };
+    AdminProductsController_updateVariantPrice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariantPriceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_getCrossSell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    AdminProductsController_updateCrossSell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCrossSellDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
     ReviewsController_publicList: {
         parameters: {
             query?: {
@@ -8293,6 +9344,23 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProductReviewsPageDto"];
                 };
+            };
+        };
+    };
+    ReviewsController_uploadImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9381,6 +10449,37 @@ export interface operations {
             };
         };
     };
+    AdminOrdersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateManualOrderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
     AdminOrdersController_get: {
         parameters: {
             query?: never;
@@ -10010,6 +11109,502 @@ export interface operations {
             };
         };
     };
+    CustomersController_getProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+        };
+    };
+    CustomersController_updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+        };
+    };
+    CustomersController_changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerAddressesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressDto"][];
+                };
+            };
+        };
+    };
+    CustomerAddressesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAddressDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressDto"];
+                };
+            };
+        };
+    };
+    CustomerAddressesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+        };
+    };
+    CustomerAddressesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAddressDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressDto"];
+                };
+            };
+        };
+    };
+    WishlistController_list: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WishlistItemDto"][];
+                };
+            };
+        };
+    };
+    WishlistController_add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+        };
+    };
+    WishlistController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+        };
+    };
+    AdminCustomerTiersController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerTierDto"][];
+                };
+            };
+        };
+    };
+    AdminCustomerTiersController_replace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerTiersDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerTierDto"][];
+                };
+            };
+        };
+    };
+    AdminCustomerTiersController_counts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerTierCountDto"][];
+                };
+            };
+        };
+    };
+    AdminCustomersController_list: {
+        parameters: {
+            query?: {
+                q?: string;
+                tierId?: number;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminCustomerListItemDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminCustomersController_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomersController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_listNotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerNoteDto"][];
+                };
+            };
+        };
+    };
+    AdminCustomersController_addNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerNoteDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerNoteDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_listCalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerCallLogDto"][];
+                };
+            };
+        };
+    };
+    AdminCustomersController_logCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerCallLogDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerCallLogDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_dial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminShipmentsController_list: {
         parameters: {
             query?: {
@@ -10528,238 +12123,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookAckDto"];
-                };
-            };
-        };
-    };
-    CustomersController_getProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CustomerProfileDto"];
-                };
-            };
-        };
-    };
-    CustomersController_updateProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateProfileDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CustomerProfileDto"];
-                };
-            };
-        };
-    };
-    CustomersController_changePassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangePasswordDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResponseDto"];
-                };
-            };
-        };
-    };
-    CustomerAddressesController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AddressDto"][];
-                };
-            };
-        };
-    };
-    CustomerAddressesController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAddressDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AddressDto"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AddressDto"];
-                };
-            };
-        };
-    };
-    CustomerAddressesController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResponseDto"];
-                };
-            };
-        };
-    };
-    CustomerAddressesController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAddressDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AddressDto"];
-                };
-            };
-        };
-    };
-    WishlistController_list: {
-        parameters: {
-            query?: {
-                locale?: "EN" | "BN";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WishlistItemDto"][];
-                };
-            };
-        };
-    };
-    WishlistController_add: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResponseDto"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResponseDto"];
-                };
-            };
-        };
-    };
-    WishlistController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                productId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResponseDto"];
                 };
             };
         };
@@ -11857,6 +13220,380 @@ export interface operations {
             };
         };
     };
+    AnalyticsController_getConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getGa4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateGa4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGa4SettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getGtm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateGtm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGtmSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getMeta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateMeta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMetaSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getGoogleAds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateGoogleAds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGoogleAdsSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getTiktok: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateTiktok: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTiktokSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getClarity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateClarity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClaritySettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getUtm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateUtm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUtmSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminWhatsappController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminWhatsappController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWhatsappSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    WhatsappController_getConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminSettingsController_list: {
         parameters: {
             query?: never;
@@ -12073,6 +13810,278 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicMenuItemDto"][];
+                };
+            };
+        };
+    };
+    AnnouncementsController_list: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAnnouncementDto"][];
+                };
+            };
+        };
+    };
+    AdminAnnouncementsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnnouncementDto"][];
+                };
+            };
+        };
+    };
+    AdminAnnouncementsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnnouncementDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnnouncementDto"];
+                };
+            };
+        };
+    };
+    AdminAnnouncementsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnnouncementDto"];
+                };
+            };
+        };
+    };
+    AdminAnnouncementsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAnnouncementsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnnouncementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnnouncementDto"];
+                };
+            };
+        };
+    };
+    MarketingReviewController_list: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicMarketingReviewCardDto"][];
+                };
+            };
+        };
+    };
+    AdminMarketingReviewController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"][];
+                };
+            };
+        };
+    };
+    AdminMarketingReviewController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMarketingReviewCardDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
+                };
+            };
+        };
+    };
+    AdminMarketingReviewController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
+                };
+            };
+        };
+    };
+    AdminMarketingReviewController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminMarketingReviewController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMarketingReviewCardDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
                 };
             };
         };
@@ -12509,6 +14518,29 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOrderManagerController_updateNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderNoteDto"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13832,6 +15864,310 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    AdminAccountsController_overview: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_listExpenses: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description ISO date — expenses on/after this date */
+                from?: string;
+                /** @description ISO date — expenses on/before this date */
+                to?: string;
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAccountsController_createExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExpenseDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_updateExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExpenseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_deleteExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAccountsController_listDues: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                partyType?: "CUSTOMER" | "SUPPLIER";
+                status?: "PENDING" | "PARTIALLY_PAID" | "PAID";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAccountsController_createDue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDueDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_recordDuePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordDuePaymentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_deleteDue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAccountsController_getVatSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_updateVatSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_vatSummary: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_cashFlow: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

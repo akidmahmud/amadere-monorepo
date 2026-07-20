@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart, Button, Card, Icon, PageHeader, RangeSlider, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
+import { BarChart, Button, Card, Icon, Modal, PageHeader, RangeSlider, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import {
   useBulkSetProductCost,
   useFallbackProfitSettings,
@@ -10,9 +10,14 @@ import {
   useProfitReport,
   useSetVariantCost,
   useUpdateFallbackProfitSettings,
+  useUpdateVariantPrice,
   useVariantCosts,
+  PRODUCT_COST_KEY,
   type FallbackProfitSettings,
+  type ProductCostRow,
 } from "@/hooks/useProfit";
+import { useUpdateProduct } from "@/hooks/useProducts";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useDailyProfitCache,
   useMarketingCostSettings,
@@ -221,10 +226,7 @@ function DashboardTab() {
 
       <div>
         <SectionHeader icon={barIcon} title="Revenue & Profit Trend" />
-        <div className="relative overflow-hidden rounded-card">
-          <div className="absolute inset-x-0 top-0 z-10 h-[3px]" style={{ background: "linear-gradient(90deg, var(--brand-500), var(--brand-400))" }} />
-          <BarChart title="" currentLabel="Revenue" compareLabel="Net profit" className="pt-5" data={chartData.length > 0 ? chartData : [{ label: "—", current: 0, compare: 0 }]} />
-        </div>
+        <BarChart title="" currentLabel="Revenue" compareLabel="Profit" data={chartData.length > 0 ? chartData : [{ label: "—", current: 0, compare: 0 }]} />
       </div>
 
       <div>
@@ -312,56 +314,235 @@ function DashboardTab() {
   );
 }
 
-function VariantCostRows({ productId, onClose }: { productId: number; onClose: () => void }) {
-  const { data, isLoading } = useVariantCosts(productId);
-  const setVariantCost = useSetVariantCost();
-  const [drafts, setDrafts] = useState<Record<number, string>>({});
+const editIcon = <Icon name="edit" size={13} />;
 
-  if (isLoading) return null;
-  if (data && data.length === 0) {
+// Click the pencil (or the value) to edit in place; blur/Enter saves,
+// Escape cancels. Shared by all three editable columns in the Variations
+// modal — they differ only in what onSave does with the number.
+function EditableAmount({ value, onSave }: { value: string | null; onSave: (n: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+
+  if (editing) {
     return (
-      <tr>
-        <td colSpan={6} className="text-xs text-muted">
-          This product has no variants.{" "}
-          <button type="button" className="underline" onClick={onClose}>
-            Close
-          </button>
-        </td>
-      </tr>
+      <input
+        autoFocus
+        type="number"
+        min={0}
+        step="0.01"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          const n = Number(draft);
+          if (draft !== "" && !Number.isNaN(n) && n !== Number(value ?? 0)) onSave(n);
+          setEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") setEditing(false);
+        }}
+        className="num h-8 w-24 rounded-sm border border-brand-500 bg-surface px-2 text-sm text-text outline-none"
+      />
     );
   }
 
   return (
-    <>
-      {data?.map((v) => (
-        <tr key={v.id} className="bg-surface-2/60">
-          <td />
-          <td className="pl-6 text-xs text-secondary">↳ {v.sku ?? `Variant #${v.id}`}</td>
-          <td className="text-xs text-muted">৳{v.price}</td>
-          <td />
-          <td colSpan={2}>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                placeholder="Buy price"
-                value={drafts[v.id] ?? v.costPerItem ?? ""}
-                onChange={(e) => setDrafts({ ...drafts, [v.id]: e.target.value })}
-                className="h-8 w-24 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={setVariantCost.isPending || !drafts[v.id]}
-                onClick={() => setVariantCost.mutate({ variantId: v.id, buyPrice: Number(drafts[v.id]) })}
-              >
-                Save
-              </Button>
-            </div>
-          </td>
-        </tr>
-      ))}
-    </>
+    <button
+      type="button"
+      onClick={() => {
+        setDraft(value ?? "");
+        setEditing(true);
+      }}
+      className="group/edit flex items-center gap-1.5"
+    >
+      <span className="num font-semibold text-text">{value === null ? "—" : `৳${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</span>
+      <span className="text-brand-500 opacity-60 group-hover/edit:opacity-100">{editIcon}</span>
+    </button>
+  );
+}
+
+function VariantsModal({ productId, productName, onClose }: { productId: number; productName: string; onClose: () => void }) {
+  const { data, isLoading } = useVariantCosts(productId);
+  const setVariantCost = useSetVariantCost();
+  const updatePrice = useUpdateVariantPrice(productId);
+
+  return (
+    <Modal open onClose={onClose} title={`${productName} — Variations`} className="max-w-3xl">
+      {isLoading ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : data && data.length === 0 ? (
+        <p className="text-sm text-muted">This product has no variants.</p>
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <th>Variation</th>
+              <th>Regular Price</th>
+              <th>Sale Price</th>
+              <th>Buy Price</th>
+              <th>Profit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.map((v) => {
+              const sale = v.salePrice !== null ? Number(v.salePrice) : Number(v.price);
+              const cost = v.costPerItem !== null ? Number(v.costPerItem) : null;
+              const profit = cost === null ? null : sale - cost;
+              return (
+                <tr key={v.id}>
+                  <td className="font-semibold text-text">
+                    <div className="flex items-center gap-2">
+                      {v.swatchImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={v.swatchImageUrl} alt="" className="h-6 w-6 shrink-0 rounded-inner border border-border object-cover" />
+                      ) : v.swatchColorHex ? (
+                        <span className="h-6 w-6 shrink-0 rounded-inner border border-border" style={{ background: v.swatchColorHex }} />
+                      ) : null}
+                      {v.sku ?? `Variant #${v.id}`}
+                    </div>
+                  </td>
+                  <td><EditableAmount value={v.price} onSave={(n) => updatePrice.mutate({ variantId: v.id, price: n })} /></td>
+                  <td><EditableAmount value={v.salePrice} onSave={(n) => updatePrice.mutate({ variantId: v.id, salePrice: n })} /></td>
+                  <td>
+                    <EditableAmount
+                      value={v.costPerItem}
+                      onSave={(n) => setVariantCost.mutate({ variantId: v.id, buyPrice: n })}
+                    />
+                  </td>
+                  <td className={profit === null ? "text-muted" : profit >= 0 ? "text-success" : "text-danger"}>
+                    {profit === null ? "—" : `৳${profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      )}
+    </Modal>
+  );
+}
+
+// Regular/Sale price edit here saves straight through the same product-edit
+// endpoint the Catalog page uses (`PATCH /admin/products/:id`) — this table
+// doesn't own pricing, it's just another place to edit it quickly.
+function PriceCell({ productId, value }: { productId: number; value: number }) {
+  const [draft, setDraft] = useState(String(value));
+  const update = useUpdateProduct(productId);
+  const qc = useQueryClient();
+
+  useEffect(() => setDraft(String(value)), [value]);
+
+  return (
+    <input
+      type="number"
+      min={0}
+      step="0.01"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        const n = Number(draft);
+        if (draft !== "" && !Number.isNaN(n) && n !== value) {
+          // useUpdateProduct only invalidates the Catalog page's own cache
+          // (admin-products) — this table reads from the net-profit
+          // product-cost endpoint instead, so Single Profit needs its own
+          // invalidation or it'd keep showing stale price/salePrice.
+          update.mutate({ price: n }, { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCT_COST_KEY }) });
+        }
+      }}
+      className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
+    />
+  );
+}
+
+function SalePriceCell({ productId, value }: { productId: number; value: number | null }) {
+  const [draft, setDraft] = useState(value === null ? "" : String(value));
+  const update = useUpdateProduct(productId);
+  const qc = useQueryClient();
+
+  useEffect(() => setDraft(value === null ? "" : String(value)), [value]);
+
+  return (
+    <input
+      type="number"
+      min={0}
+      step="0.01"
+      placeholder="—"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        // The backend's UpdateProductDto validates salePrice as a plain
+        // number (no null) — clearing a sale back to "no sale" isn't
+        // something this quick editor can express, only setting a new one.
+        if (draft === "") return;
+        const n = Number(draft);
+        if (!Number.isNaN(n) && n !== value) {
+          update.mutate({ salePrice: n }, { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCT_COST_KEY }) });
+        }
+      }}
+      className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
+    />
+  );
+}
+
+function ProductRow({
+  product: p,
+  index: i,
+  costDraft,
+  onCostDraftChange,
+  onOpenVariants,
+}: {
+  product: ProductCostRow;
+  index: number;
+  costDraft: string | undefined;
+  onCostDraftChange: (v: string) => void;
+  onOpenVariants: () => void;
+}) {
+  const salePrice = Number(p.salePrice ?? p.price ?? 0);
+  const cost = costDraft !== undefined ? Number(costDraft) : p.costPerItem !== null ? Number(p.costPerItem) : null;
+  const singleProfit = p.variantCount > 0 || cost === null ? null : salePrice - cost;
+
+  return (
+    <Fragment>
+      <tr>
+        <td className="text-secondary">{i + 1}</td>
+        <td className="min-w-0 max-w-[300px]">
+          <div className="flex items-center gap-2.5">
+            {p.thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-inner border border-border object-cover" />
+            ) : (
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
+            )}
+            <span className="min-w-0 truncate text-text">{p.name}</span>
+            {p.variantCount > 0 && (
+              <span className="shrink-0 rounded-pill bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-500">
+                Variable ({p.variantCount})
+              </span>
+            )}
+          </div>
+        </td>
+        <td><PriceCell productId={p.id} value={Number(p.price ?? 0)} /></td>
+        <td><SalePriceCell productId={p.id} value={p.salePrice === null ? null : Number(p.salePrice)} /></td>
+        <td>
+          {p.variantCount > 0 ? (
+            <Button type="button" variant="ghost" onClick={onOpenVariants}>
+              <Icon name="tune" size={16} /> Variations
+            </Button>
+          ) : (
+            <input
+              type="number"
+              min={0}
+              value={costDraft ?? p.costPerItem ?? "0"}
+              onChange={(e) => onCostDraftChange(e.target.value)}
+              className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
+            />
+          )}
+        </td>
+        <td className={singleProfit === null ? "text-muted" : singleProfit >= 0 ? "text-success" : "text-danger"}>
+          {singleProfit === null ? "—" : `৳${singleProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+        </td>
+      </tr>
+    </Fragment>
   );
 }
 
@@ -428,58 +609,27 @@ function ProductsTab() {
           </thead>
           <tbody>
             {data && data.items.length === 0 && <TableEmptyRow colSpan={6}>No products found.</TableEmptyRow>}
-            {data?.items.map((p, i) => {
-              const salePrice = Number(p.salePrice ?? p.price ?? 0);
-              const cost = drafts[p.id] !== undefined ? Number(drafts[p.id]) : p.costPerItem !== null ? Number(p.costPerItem) : null;
-              const singleProfit = p.variantCount > 0 || cost === null ? null : salePrice - cost;
-              return (
-                <Fragment key={p.id}>
-                  <tr>
-                    <td className="text-secondary">{i + 1}</td>
-                    <td className="min-w-0 max-w-[300px]">
-                      <div className="flex items-center gap-2.5">
-                        {p.thumbnailUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-inner border border-border object-cover" />
-                        ) : (
-                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
-                        )}
-                        <span className="min-w-0 truncate text-text">{p.name}</span>
-                        {p.variantCount > 0 && (
-                          <span className="shrink-0 rounded-pill bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-500">
-                            Variable ({p.variantCount})
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="num text-secondary">৳{Number(p.price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td className="num text-text">৳{salePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    <td>
-                      {p.variantCount > 0 ? (
-                        <Button type="button" variant="ghost" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
-                          <Icon name="tune" size={16} /> Variations
-                        </Button>
-                      ) : (
-                        <input
-                          type="number"
-                          min={0}
-                          value={drafts[p.id] ?? p.costPerItem ?? "0"}
-                          onChange={(e) => setDrafts({ ...drafts, [p.id]: e.target.value })}
-                          className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
-                        />
-                      )}
-                    </td>
-                    <td className={singleProfit === null ? "text-muted" : singleProfit >= 0 ? "text-success" : "text-danger"}>
-                      {singleProfit === null ? "—" : `৳${singleProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                    </td>
-                  </tr>
-                  {expanded === p.id && <VariantCostRows productId={p.id} onClose={() => setExpanded(null)} />}
-                </Fragment>
-              );
-            })}
+            {data?.items.map((p, i) => (
+              <ProductRow
+                key={p.id}
+                product={p}
+                index={i}
+                costDraft={drafts[p.id]}
+                onCostDraftChange={(v) => setDrafts({ ...drafts, [p.id]: v })}
+                onOpenVariants={() => setExpanded(p.id)}
+              />
+            ))}
           </tbody>
         </Table>
       </Card>
+
+      {expanded !== null && (
+        <VariantsModal
+          productId={expanded}
+          productName={data?.items.find((p) => p.id === expanded)?.name ?? ""}
+          onClose={() => setExpanded(null)}
+        />
+      )}
     </div>
   );
 }

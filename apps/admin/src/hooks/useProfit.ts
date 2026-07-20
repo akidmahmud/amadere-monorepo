@@ -42,7 +42,10 @@ export interface ProductVariantCostRow {
   productName: string;
   sku: string | null;
   price: string;
+  salePrice: string | null;
   costPerItem: string | null;
+  swatchImageUrl: string | null;
+  swatchColorHex: string | null;
 }
 
 export interface FallbackProfitSettings {
@@ -60,7 +63,7 @@ interface Paginated<T> {
 
 const ORDERS_KEY = ["net-profit-profit-orders"];
 const REPORT_KEY = ["net-profit-profit-report"];
-const PRODUCT_COST_KEY = ["net-profit-product-cost"];
+export const PRODUCT_COST_KEY = ["net-profit-product-cost"];
 const FALLBACK_SETTINGS_KEY = ["net-profit-fallback-profit-settings"];
 
 export function useProfitOrders() {
@@ -120,6 +123,23 @@ export function useSetVariantCost() {
     mutationFn: ({ variantId, buyPrice }: { variantId: number; buyPrice: number }) =>
       proxyFetch<ProductVariantCostRow>(`/admin/net-profit/profit/variant-cost/${variantId}`, { method: "PUT", body: JSON.stringify({ buyPrice }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["net-profit-variant-cost"] }),
+  });
+}
+
+// Variant price/sale-price live on the product record itself (Catalog's
+// own field), unlike cost-per-item which is a Net Profit concept — this
+// hits the products module's endpoint, but invalidates the same
+// net-profit-variant-cost cache this modal reads from, plus the product-cost
+// table (its "Regular/Sale Price" columns show the *default* variant here).
+export function useUpdateVariantPrice(productId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ variantId, ...input }: { variantId: number; price?: number; salePrice?: number }) =>
+      proxyFetch(`/admin/products/${productId}/variants/${variantId}/price`, { method: 'PATCH', body: JSON.stringify(input) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['net-profit-variant-cost', productId] });
+      qc.invalidateQueries({ queryKey: PRODUCT_COST_KEY });
+    },
   });
 }
 

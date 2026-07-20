@@ -75,11 +75,18 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('order', 'view'),
   perm('order', 'update'),
   perm('order', 'refund'),
+  perm('order', 'create'),
 
   perm('shipment', 'view'),
   perm('shipment', 'dispatch'),
   perm('shipment', 'update'),
   perm('shipment', 'manage'),
+
+  perm('analytics', 'view'),
+  perm('analytics', 'manage'),
+
+  perm('whatsapp', 'view'),
+  perm('whatsapp', 'manage'),
 
   perm('review', 'view'),
   perm('review', 'moderate'),
@@ -125,6 +132,16 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('menu_item', 'update'),
   perm('menu_item', 'delete'),
 
+  perm('announcement', 'view'),
+  perm('announcement', 'create'),
+  perm('announcement', 'update'),
+  perm('announcement', 'delete'),
+
+  perm('marketing_review', 'view'),
+  perm('marketing_review', 'create'),
+  perm('marketing_review', 'update'),
+  perm('marketing_review', 'delete'),
+
   perm('collection', 'view'),
   perm('collection', 'create'),
   perm('collection', 'update'),
@@ -153,4 +170,9 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('net_profit_profit', 'manage'),
   perm('net_profit_payments', 'verify'),
   perm('net_profit_settings', 'manage'),
+  perm('net_profit_accounts', 'view'),
+  perm('net_profit_accounts', 'manage'),
+
+  perm('customer', 'view'),
+  perm('customer', 'manage'),
 ];

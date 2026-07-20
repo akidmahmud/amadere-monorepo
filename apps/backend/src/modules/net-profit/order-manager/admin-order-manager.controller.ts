@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../../common/auth/permission.guard';
@@ -8,6 +8,7 @@ import { CurrentAdmin } from '../../../common/auth/current-admin.decorator';
 import { OrderManagerService } from './order-manager.service';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
+import { UpdateOrderNoteDto } from './dto/update-order-note.dto';
 
 @ApiTags('admin/net-profit/orders')
 @ApiBearerAuth()
@@ -33,5 +34,11 @@ export class AdminOrderManagerController {
   @RequirePermission('net_profit_orders.manage')
   bulk(@Body() dto: BulkOrderActionDto, @CurrentAdmin() admin: { id: number }) {
     return this.orderManager.bulkAction(dto, admin.id);
+  }
+
+  @Patch(':id/note')
+  @RequirePermission('net_profit_orders.manage')
+  updateNote(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrderNoteDto) {
+    return this.orderManager.updateNote(id, dto.note);
   }
 }

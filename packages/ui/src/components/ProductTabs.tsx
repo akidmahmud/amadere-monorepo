@@ -38,7 +38,7 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
           </button>
         ))}
       </div>
-      <div className="font-body text-sm leading-relaxed whitespace-pre-line text-ink">
+      <div className="font-body text-sm leading-relaxed text-ink">
         {activeTab.content}
       </div>
     </div>

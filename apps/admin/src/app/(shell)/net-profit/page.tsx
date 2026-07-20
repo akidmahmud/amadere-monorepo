@@ -130,7 +130,7 @@ function DashboardTab() {
       <BarChart
         title="Revenue vs Net Profit"
         currentLabel="Revenue"
-        compareLabel="Net Profit"
+        compareLabel="Profit"
         data={chartData.length > 0 ? chartData : [{ label: "—", current: 0, compare: 0 }]}
       />
 
@@ -495,7 +495,13 @@ export default function NetProfitOverviewPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader icon={chartIcon} title="Net Profit" subtitle="Order intelligence, fraud protection, and profit tracking for Amader." badge="Overview" />
+      <PageHeader
+        icon={chartIcon}
+        title="Net Profit"
+        subtitle="Order intelligence, fraud protection, and profit tracking for Amader."
+        badge="Overview"
+        style={{ background: "linear-gradient(135deg, #540497 0%, #0D0515 100%)" }}
+      />
       <Tabs
         variant="pill"
         options={[

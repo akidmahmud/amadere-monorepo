@@ -95,7 +95,7 @@ export function ProductCard({
           variant="green"
           block
           disabled={addToCartPending}
-          className="mt-auto rounded-[8px] py-2.5"
+          className="mt-auto rounded-[30px] py-2.5"
           onClick={() => onAddToCart?.(selectedPack)}
         >
           {addToCartPending ? "Adding…" : addToCartLabel}

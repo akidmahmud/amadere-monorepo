@@ -2,7 +2,6 @@
 // route — a small lookup here beats threading a title prop through every
 // page/layout in the tree.
 const SECTIONS: { base: string; label: string }[] = [
-  { base: "/orders", label: "Orders" },
   { base: "/shipments", label: "Shipments" },
   { base: "/products", label: "Products" },
   { base: "/homepage-sections", label: "Homepage Sections" },

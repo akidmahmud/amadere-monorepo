@@ -76,6 +76,17 @@ export function ProductFormFields({ form }: { form: ProductFormState }) {
           />
         </label>
       </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">
+          Key Benefits (optional, one per line — shown as the storefront's "Key Benefits" grid, up to 4)
+        </span>
+        <textarea
+          value={form.keyBenefits}
+          onChange={(e) => form.setKeyBenefits(e.target.value)}
+          rows={4}
+          className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+      </label>
 
       <ProductMediaGallery images={form.images} onChange={form.setImages} />
 

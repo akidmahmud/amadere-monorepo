@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   AnalyticsEvent,
   AnalyticsProvider,
 } from '../analytics-provider.interface';
+import { AnalyticsSettingsService } from '../analytics-settings.service';
 
 const API_VERSION = 'v19.0';
 
@@ -12,12 +12,11 @@ export class MetaCapiProvider implements AnalyticsProvider {
   readonly name = 'META_CAPI';
   private readonly logger = new Logger(MetaCapiProvider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly settings: AnalyticsSettingsService) {}
 
   async send(event: AnalyticsEvent): Promise<void> {
-    const pixelId = this.config.get<string>('META_PIXEL_ID');
-    const accessToken = this.config.get<string>('META_ACCESS_TOKEN');
-    if (!pixelId || !accessToken) return;
+    const { enabled, pixelId, accessToken } = await this.settings.getMetaCredentials();
+    if (!enabled || !pixelId || !accessToken) return;
 
     try {
       const res = await fetch(

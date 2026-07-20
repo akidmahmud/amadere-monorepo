@@ -16,6 +16,7 @@ import { OrderStatusesModule } from './order-statuses/order-statuses.module';
 import { CartCampaignsModule } from './cart-campaigns/cart-campaigns.module';
 import { MarketingCostModule } from './marketing-cost/marketing-cost.module';
 import { CleanupModule } from './cleanup/cleanup.module';
+import { AccountsModule } from './accounts/accounts.module';
 
 // One module for the whole Net Profit section (CLAUDE.net-profit.md §2) —
 // imports one sub-module per feature (fraud, sms, advance-payment, ...) as
@@ -41,6 +42,7 @@ import { CleanupModule } from './cleanup/cleanup.module';
     CartCampaignsModule,
     MarketingCostModule,
     CleanupModule,
+    AccountsModule,
   ],
 })
 export class NetProfitModule {}

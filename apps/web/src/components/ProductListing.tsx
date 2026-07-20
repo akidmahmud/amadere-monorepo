@@ -1,11 +1,18 @@
 "use client";
 
-import { FilterCheckboxGroup, PlaceholderBanner, ProductCard, type ProductCardProps } from "@amader/ui";
+import { useState } from "react";
+import { FilterCheckboxGroup, FilterDrawer, PlaceholderBanner, ProductCard, type ProductCardProps } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { PlpPager } from "@/components/PlpPager";
 import { SortSelect } from "@/components/SortSelect";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import { buildPlpHref, type PlpFilters } from "@/lib/plp";
+
+const hamburgerIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+    <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+  </svg>
+);
 
 function toggleId(ids: number[], id: number): number[] {
   return ids.includes(id) ? ids.filter((existing) => existing !== id) : [...ids, id];
@@ -46,16 +53,61 @@ export function ProductListing({
   tags,
 }: ProductListingProps) {
   const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
+  const [filterOpen, setFilterOpen] = useState(false);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (filters.page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, filters.page * pageSize);
+
+  const filterGroups = (
+    <>
+      {categories && categories.length > 0 && (
+        <FilterCheckboxGroup
+          heading="Category"
+          linkComponent={AppLink}
+          options={categories.map((category) => ({
+            label: category.name,
+            count: category.productCount,
+            active: filters.categoryIds.includes(category.id),
+            href: buildPlpHref(basePath, {
+              ...filters,
+              categoryIds: toggleId(filters.categoryIds, category.id),
+              page: 1,
+            }),
+          }))}
+        />
+      )}
+      {tags.length > 0 && (
+        <FilterCheckboxGroup
+          heading="Health Concern"
+          linkComponent={AppLink}
+          options={tags.map((tag) => ({
+            label: tag.name,
+            active: filters.tagIds.includes(tag.id),
+            href: buildPlpHref(basePath, {
+              ...filters,
+              tagIds: toggleId(filters.tagIds, tag.id),
+              page: 1,
+            }),
+          }))}
+        />
+      )}
+    </>
+  );
 
   return (
     <div className="mx-auto max-w-[1180px] px-5">
       <PlaceholderBanner variant="shopban" className="my-5.5" />
 
       <div className="flex items-center gap-9 py-2 font-ui text-sm font-medium">
-        <span>Filter</span>
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          className="flex items-center gap-1.5 lg:hidden"
+        >
+          {hamburgerIcon}
+          Filter
+        </button>
+        <span className="max-lg:hidden">Filter</span>
         <span className="flex items-center gap-2">
           Sort by :
           <SortSelect basePath={basePath} filters={filters} />
@@ -66,39 +118,15 @@ export function ProductListing({
         {total === 0 ? "No Products Found" : `Showing ${rangeStart} - ${rangeEnd} of ${total} Products`}
       </h3>
 
+      <FilterDrawer open={filterOpen} onOpenChange={setFilterOpen} title="Filter" closeLabel="Close filters">
+        <div onClick={() => setFilterOpen(false)} className="flex flex-col gap-5">
+          {filterGroups}
+        </div>
+      </FilterDrawer>
+
       <div className="grid grid-cols-[250px_1fr] gap-7 pb-16 max-lg:grid-cols-1">
-        <aside className="sticky top-[130px] self-start rounded-brand bg-beige p-5 max-lg:static">
-          {categories && categories.length > 0 && (
-            <FilterCheckboxGroup
-              heading="Category"
-              linkComponent={AppLink}
-              options={categories.map((category) => ({
-                label: category.name,
-                count: category.productCount,
-                active: filters.categoryIds.includes(category.id),
-                href: buildPlpHref(basePath, {
-                  ...filters,
-                  categoryIds: toggleId(filters.categoryIds, category.id),
-                  page: 1,
-                }),
-              }))}
-            />
-          )}
-          {tags.length > 0 && (
-            <FilterCheckboxGroup
-              heading="Health Concern"
-              linkComponent={AppLink}
-              options={tags.map((tag) => ({
-                label: tag.name,
-                active: filters.tagIds.includes(tag.id),
-                href: buildPlpHref(basePath, {
-                  ...filters,
-                  tagIds: toggleId(filters.tagIds, tag.id),
-                  page: 1,
-                }),
-              }))}
-            />
-          )}
+        <aside className="sticky top-[130px] self-start rounded-brand bg-beige p-5 max-lg:hidden">
+          {filterGroups}
         </aside>
 
         <div>

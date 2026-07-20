@@ -27,12 +27,18 @@ export interface TabbedCollectionCarouselProps {
   heading?: string;
   tabs: TabbedCollectionCarouselTab[];
   defaultActiveIndex?: number;
-  viewAllLabel?: string;
   addToCartLabel?: string;
   addToCartPendingHref?: string;
   onAddToCart?: (href: string, packValue?: string) => void;
   linkComponent?: LinkComponent;
+  /** How many tiles (promo tile + product cards) fit per view — same
+   * responsive sizing ProductCarouselSection uses for the homepage's other
+   * product carousels, so this row's cards render at the same normal size
+   * instead of the smaller fixed-200px default. */
+  visibleCount?: number;
 }
+
+const CARD_GAP_PX = 18; // matches Carousel's `gap-4.5`
 
 // "Shop by Category / Shop by Concern" tabbed product carousel — each tab is
 // a real Collection (see FEATURE_tabbed-collection-carousel.md). All tabs'
@@ -42,11 +48,11 @@ export function TabbedCollectionCarousel({
   heading,
   tabs,
   defaultActiveIndex = 0,
-  viewAllLabel = "View All",
   addToCartLabel,
   addToCartPendingHref,
   onAddToCart,
   linkComponent,
+  visibleCount = 5,
 }: TabbedCollectionCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(
     Math.min(Math.max(defaultActiveIndex, 0), Math.max(tabs.length - 1, 0)),
@@ -54,6 +60,11 @@ export function TabbedCollectionCarousel({
 
   if (tabs.length === 0) return null;
   const active = tabs[activeIndex];
+  const cardWidthExpr = `(100% - ${(visibleCount - 1) * CARD_GAP_PX}px) / ${visibleCount}`;
+  // Mobile always shows 2 cards per row — see ProductCarouselSection's
+  // matching comment for why the desktop width goes through a CSS custom
+  // property instead of an interpolated Tailwind arbitrary-value class.
+  const desktopWidthStyle = { "--desktop-card-width": `calc(${cardWidthExpr})` } as React.CSSProperties;
 
   return (
     <div className="py-9">
@@ -64,35 +75,32 @@ export function TabbedCollectionCarousel({
         onChange={(key) => setActiveIndex(Number(key))}
         className="mb-6"
       />
-      <div className="grid grid-cols-[320px_1fr] gap-6 max-lg:grid-cols-1">
-        <PromoTile
-          imageUrl={active.promoImageUrl}
-          heading={active.promoHeading}
-          blurb={active.promoBlurb}
-          viewAllHref={active.viewAllHref}
-          viewAllLabel={viewAllLabel}
-          linkComponent={linkComponent}
-        />
-        {active.products.length > 0 ? (
-          <Carousel centerWhenFits={false}>
-            {active.products.map((product) => (
-              <div key={product.href} className="w-[200px] shrink-0">
-                <ProductCard
-                  {...product}
-                  addToCartLabel={addToCartLabel}
-                  addToCartPending={addToCartPendingHref === product.href}
-                  onAddToCart={(packValue) => onAddToCart?.(product.href, packValue)}
-                  linkComponent={linkComponent}
-                />
-              </div>
-            ))}
-          </Carousel>
-        ) : (
-          <div className="grid min-h-[200px] place-items-center rounded-2xl bg-beige font-body text-sm text-muted">
-            No products in this collection yet.
+      <Carousel centerWhenFits={false}>
+        {/* Promo tile is desktop-only on mobile — not needed there. */}
+        <div className="hidden min-w-0 shrink-0 sm:block sm:w-[var(--desktop-card-width)]" style={desktopWidthStyle}>
+          <PromoTile imageUrl={active.promoImageUrl} />
+        </div>
+        {active.products.map((product) => (
+          <div
+            key={product.href}
+            className="min-w-0 shrink-0 w-[calc((100%-18px)/2)] sm:w-[var(--desktop-card-width)]"
+            style={desktopWidthStyle}
+          >
+            <ProductCard
+              {...product}
+              addToCartLabel={addToCartLabel}
+              addToCartPending={addToCartPendingHref === product.href}
+              onAddToCart={(packValue) => onAddToCart?.(product.href, packValue)}
+              linkComponent={linkComponent}
+            />
           </div>
-        )}
-      </div>
+        ))}
+      </Carousel>
+      {active.products.length === 0 && (
+        <div className="mt-4 grid min-h-[200px] place-items-center rounded-2xl bg-beige font-body text-sm text-muted">
+          No products in this collection yet.
+        </div>
+      )}
     </div>
   );
 }

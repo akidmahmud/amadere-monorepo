@@ -10,6 +10,7 @@ import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { formatBlogDate, toBlogCardData } from "@/lib/blog-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
@@ -107,11 +108,11 @@ export default async function BlogPostPage({
               />
             )}
 
-            {/* Admin-authored WYSIWYG HTML, not user-generated — safe per backend's own content.util.ts docs */}
+            {/* Admin-authored WYSIWYG HTML, not user-generated — still sanitized before render */}
             {/* eslint-disable-next-line react/no-danger */}
             <div
               className="prose max-w-none font-body text-sm leading-relaxed text-ink [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:font-serif [&_h3]:text-lg [&_h3]:font-semibold [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_a]:text-green [&_a]:underline"
-              dangerouslySetInnerHTML={{ __html: post.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
             />
 
             {post.tags.length > 0 && (
@@ -136,23 +137,43 @@ export default async function BlogPostPage({
             )}
           </article>
 
-          {post.toc.length > 0 && (
+          {(post.toc.length > 0 || post.relatedPosts.length > 0) && (
             <aside className="max-lg:hidden">
-              <div className="sticky top-[100px] rounded-brand border border-line bg-white p-4">
-                <p className="mb-3 font-ui text-xs font-semibold uppercase tracking-wide text-muted">
-                  On this page
-                </p>
-                <nav className="space-y-2">
-                  {post.toc.map((entry) => (
-                    <a
-                      key={entry.anchor}
-                      href={`#${entry.anchor}`}
-                      className={`block font-body text-sm text-ink hover:text-green ${entry.level === 3 ? "pl-3" : ""}`}
-                    >
-                      {entry.text}
-                    </a>
-                  ))}
-                </nav>
+              <div className="sticky top-[100px] space-y-6">
+                {post.toc.length > 0 && (
+                  <div className="rounded-brand border border-line bg-white p-4">
+                    <p className="mb-3 font-ui text-xs font-semibold uppercase tracking-wide text-muted">
+                      On this page
+                    </p>
+                    <nav className="space-y-2">
+                      {post.toc.map((entry) => (
+                        <a
+                          key={entry.anchor}
+                          href={`#${entry.anchor}`}
+                          className={`block font-body text-sm text-ink hover:text-green ${entry.level === 3 ? "pl-3" : ""}`}
+                        >
+                          {entry.text}
+                        </a>
+                      ))}
+                    </nav>
+                  </div>
+                )}
+
+                {/* Desktop-only: same related posts as the mobile block
+                    below (lg:hidden there), just placed in this sidebar
+                    column instead of full-width beneath the article. */}
+                {post.relatedPosts.length > 0 && (
+                  <div>
+                    <p className="mb-3 font-ui text-xs font-semibold uppercase tracking-wide text-muted">
+                      Related Posts
+                    </p>
+                    <div className="space-y-4">
+                      {post.relatedPosts.map((related) => (
+                        <BlogCard key={related.id} post={toBlogCardData(related)} linkComponent={AppLink} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </aside>
           )}
@@ -160,7 +181,7 @@ export default async function BlogPostPage({
       </div>
 
       {post.relatedPosts.length > 0 && (
-        <div className="mx-auto max-w-[1180px] px-5 py-9">
+        <div className="mx-auto max-w-[1180px] px-5 py-9 lg:hidden">
           <SectionHeading>Related Posts</SectionHeading>
           <div className="grid grid-cols-3 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {post.relatedPosts.map((related) => (

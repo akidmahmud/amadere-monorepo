@@ -26,4 +26,7 @@ export class OrderManagerRowDto {
   courierStatus!: string | null;
   courierAttempts!: OrderManagerCourierAttempt[];
   riskLevel!: RiskLevel;
+  staffNote!: string | null;
+  utmSource!: string | null;
+  utmCampaign!: string | null;
 }

@@ -26,11 +26,7 @@ import { TwoFactorVerifyDto } from './dto/two-factor-verify.dto';
 import { TwoFactorEnableDto } from './dto/two-factor-enable.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import {
-  AdminProfileDto,
-  AdminTwoFactorRequiredDto,
-  TwoFactorSetupDto,
-} from './admin.mapper';
+import { AdminProfileDto, AdminTwoFactorRequiredDto } from './admin.mapper';
 
 @ApiTags('admin/auth')
 @Controller('admin/auth')
@@ -91,16 +87,16 @@ export class AdminAuthController {
     );
   }
 
+  // Sends a verification code to the admin's own account email — "setup"
+  // for email-OTP 2FA just means proving you can receive it (no secret/QR
+  // code involved, unlike TOTP).
   @ApiBearerAuth()
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(AuditLogInterceptor)
   @Post('2fa/setup')
-  @ApiOkResponse({ type: TwoFactorSetupDto })
-  async setupTwoFactor(
-    @CurrentAdmin() admin: { id: number },
-  ): Promise<TwoFactorSetupDto> {
+  async setupTwoFactor(@CurrentAdmin() admin: { id: number }): Promise<void> {
     const profile = await this.adminAuth.me(admin.id);
-    return this.adminAuth.setupTwoFactor(admin.id, profile.email);
+    return this.adminAuth.setupTwoFactor(profile.email);
   }
 
   @ApiBearerAuth()

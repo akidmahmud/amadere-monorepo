@@ -38,6 +38,8 @@ export function SectionConfigFields({
   if (type === "CATEGORY_SHOWCASE") return <CategoryShowcaseFields config={config} onConfigChange={onConfigChange} />;
   if (type === "BLOG_TEASER") return <BlogTeaserFields config={config} onConfigChange={onConfigChange} />;
   if (type === "PROMO_VIDEO") return <PromoVideoFields config={config} onConfigChange={onConfigChange} />;
+  if (type === "TESTIMONIAL_BENTO") return <TestimonialBentoFields config={config} onConfigChange={onConfigChange} />;
+  if (type === "CERTIFICATION_ROW") return <CertificationRowFields config={config} onConfigChange={onConfigChange} />;
   if (type === "TABBED_COLLECTION_CAROUSEL") {
     return <TabbedCollectionCarouselFields config={config} onConfigChange={onConfigChange} />;
   }
@@ -324,6 +326,180 @@ function PromoVideoFields({
   );
 }
 
+interface TestimonialVideo {
+  url: string;
+  thumbnailUrl?: string;
+}
+interface TestimonialReview {
+  quote: string;
+  name: string;
+}
+
+// Left column: a small set of short clips customers cycle through with the
+// prev/next arrows on the storefront. Right column: the actual review
+// quotes shown in the bento grid — order here is the same left/right,
+// top-to-bottom reading order the storefront renders them in.
+function TestimonialBentoFields({
+  config,
+  onConfigChange,
+}: {
+  config: Record<string, unknown>;
+  onConfigChange: (config: Record<string, unknown>) => void;
+}) {
+  const videos = (config.videos as TestimonialVideo[] | undefined) ?? [];
+  const reviews = (config.reviews as TestimonialReview[] | undefined) ?? [];
+
+  function updateVideos(next: TestimonialVideo[]) {
+    onConfigChange({ ...config, videos: next });
+  }
+  function updateReviews(next: TestimonialReview[]) {
+    onConfigChange({ ...config, reviews: next });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <span className="mb-2 block text-xs font-semibold text-secondary">
+          Videos <span className="font-normal text-muted">— shown on the left, cycle with prev/next arrows</span>
+        </span>
+        <div className="flex flex-col gap-3">
+          {videos.map((video, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
+              <MediaPicker
+                value={video.thumbnailUrl}
+                onChange={(url) => updateVideos(videos.map((v, j) => (j === i ? { ...v, thumbnailUrl: url } : v)))}
+                label="Thumbnail"
+              />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-secondary">Video URL</span>
+                <input
+                  value={video.url}
+                  onChange={(e) => updateVideos(videos.map((v, j) => (j === i ? { ...v, url: e.target.value } : v)))}
+                  placeholder="https://..."
+                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+                />
+                <Button
+                  type="button"
+                  variant="link"
+                  className="self-start text-danger"
+                  onClick={() => updateVideos(videos.filter((_, j) => j !== i))}
+                >
+                  Remove video
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button type="button" variant="ghost" className="mt-2" onClick={() => updateVideos([...videos, { url: "" }])}>
+          Add video
+        </Button>
+      </div>
+
+      <div>
+        <span className="mb-2 block text-xs font-semibold text-secondary">
+          Reviews <span className="font-normal text-muted">— shown on the right in a two-column grid</span>
+        </span>
+        <div className="flex flex-col gap-3">
+          {reviews.map((review, i) => (
+            <div key={i} className="flex flex-col gap-2 rounded-inner bg-surface-2 p-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-secondary">Quote</span>
+                <textarea
+                  value={review.quote}
+                  onChange={(e) => updateReviews(reviews.map((r, j) => (j === i ? { ...r, quote: e.target.value } : r)))}
+                  rows={2}
+                  className="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-secondary">Name — e.g. "Rahul, Gurugram - Tulsi Green Tea"</span>
+                <input
+                  value={review.name}
+                  onChange={(e) => updateReviews(reviews.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))}
+                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+                />
+              </label>
+              <Button
+                type="button"
+                variant="link"
+                className="self-start text-danger"
+                onClick={() => updateReviews(reviews.filter((_, j) => j !== i))}
+              >
+                Remove review
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-2"
+          onClick={() => updateReviews([...reviews, { quote: "", name: "" }])}
+        >
+          Add review
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface CertificationBadge {
+  imageUrl?: string;
+  label?: string;
+}
+
+function CertificationRowFields({
+  config,
+  onConfigChange,
+}: {
+  config: Record<string, unknown>;
+  onConfigChange: (config: Record<string, unknown>) => void;
+}) {
+  const items = (config.items as CertificationBadge[] | undefined) ?? [];
+
+  function updateItems(next: CertificationBadge[]) {
+    onConfigChange({ ...config, items: next });
+  }
+
+  return (
+    <div>
+      <span className="mb-2 block text-xs font-semibold text-secondary">
+        Badges <span className="font-normal text-muted">— small square logos, e.g. certification/award marks</span>
+      </span>
+      <div className="flex flex-col gap-3">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
+            <MediaPicker
+              value={item.imageUrl}
+              onChange={(url) => updateItems(items.map((it, j) => (j === i ? { ...it, imageUrl: url } : it)))}
+              label={`Badge ${i + 1}`}
+            />
+            <div className="flex flex-1 flex-col gap-1.5">
+              <span className="text-xs font-semibold text-secondary">Label (optional — alt text / tooltip)</span>
+              <input
+                value={item.label ?? ""}
+                onChange={(e) => updateItems(items.map((it, j) => (j === i ? { ...it, label: e.target.value } : it)))}
+                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+              />
+              <Button
+                type="button"
+                variant="link"
+                className="self-start text-danger"
+                onClick={() => updateItems(items.filter((_, j) => j !== i))}
+              >
+                Remove badge
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button type="button" variant="ghost" className="mt-2" onClick={() => updateItems([...items, { imageUrl: "" }])}>
+        Add badge
+      </Button>
+    </div>
+  );
+}
+
 interface LocalizedText {
   EN: string;
   BN: string;
@@ -452,7 +628,7 @@ function TabbedCollectionCarouselFields({
             <MediaPicker
               value={tab.promoImageUrl}
               onChange={(url) => updateTab(i, { promoImageUrl: url })}
-              label="Promo tile image — recommended size: 392 × 660px (falls back to collection image if empty)"
+              label="Promo tile image — portrait, fills the tile fully (falls back to collection image if empty)"
             />
 
             <LocalizedInput label="Promo heading" value={tab.promoHeading} onChange={(v) => updateTab(i, { promoHeading: v })} />

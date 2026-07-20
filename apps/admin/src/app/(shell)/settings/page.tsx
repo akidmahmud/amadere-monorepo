@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Card } from "@amader/admin-ui";
 import { useSettings, useUpsertSetting, type Setting } from "@/hooks/useSettings";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 
 function SettingRow({ setting }: { setting: Setting }) {
   const [editing, setEditing] = useState(false);
@@ -104,6 +105,8 @@ export default function SettingsPage() {
 
   return (
     <>
+      <TwoFactorSettings />
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-secondary">{settings?.length ?? 0} settings</p>
         {!creating && <Button variant="primary" onClick={() => setCreating(true)}>Add setting</Button>}

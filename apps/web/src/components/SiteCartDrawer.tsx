@@ -10,6 +10,7 @@ import {
   Button,
   Input,
   formatMoney,
+  useCartDrawerStore,
 } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
@@ -38,6 +39,7 @@ export function SiteCartDrawer() {
   const addToCart = useAddToCart(locale);
 
   const hasItems = (cart?.items.length ?? 0) > 0;
+  const closeDrawer = useCartDrawerStore((s) => s.close);
 
   return (
     <CartDrawer
@@ -49,6 +51,21 @@ export function SiteCartDrawer() {
       subtotal={hasItems && cart ? formatMoney(cart.total) : undefined}
       onCheckout={() => router.push("/checkout")}
     >
+      {!hasItems && (
+        <div className="flex flex-col items-center gap-4 py-10 text-center">
+          <p className="font-body text-sm text-muted">{t("empty")}</p>
+          <Button
+            variant="green"
+            onClick={() => {
+              closeDrawer();
+              router.push("/products");
+            }}
+          >
+            Continue Shopping
+          </Button>
+        </div>
+      )}
+
       {hasItems && cart && (
         <div>
           {cart.freeShipping && (
@@ -118,7 +135,7 @@ export function SiteCartDrawer() {
           </div>
 
           <CartCrossSellRow
-            heading="Frequently Added Together"
+            heading="You May Also Like"
             items={cart.crossSell.map((c) => ({ ...c, href: `/products/${c.slug}`, imageUrl: toDisplayImageUrl(c.imageUrl) }))}
             onAdd={(productId) => addToCart.mutate({ productId })}
             linkComponent={AppLink}

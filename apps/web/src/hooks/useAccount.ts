@@ -95,3 +95,41 @@ export function useMyReviews(page: number) {
     queryFn: () => proxyFetch<PaginatedResult<ReviewDto>>(`/reviews/mine?page=${page}&pageSize=10`),
   });
 }
+
+export interface CreateReviewInput {
+  productId: number;
+  rating: number;
+  comment?: string;
+  images?: string[];
+}
+
+// Customer-authenticated (goes through proxyFetch, JSON body) — the actual
+// verified-purchase check happens backend-side (ForbiddenException if no
+// completed order for this product, ConflictException if already reviewed).
+export function useCreateReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateReviewInput) =>
+      proxyFetch<ReviewDto>("/reviews", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-reviews"] }),
+  });
+}
+
+const backendBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+
+// Public/unauthenticated upload (no Review row created here, see
+// reviews.controller.ts) — plain fetch straight to the backend, same reason
+// as useUploadPaymentScreenshot: multipart bodies aren't modeled by the
+// typed api client, and this proxy route only forwards JSON anyway.
+export function useUploadReviewImage() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`${backendBaseUrl}/api/v1/reviews/upload`, { method: "POST", body: form });
+      const body = await res.json();
+      if (!body.success) throw new Error(body.error?.message ?? "Upload failed");
+      return body.data as { url: string };
+    },
+  });
+}

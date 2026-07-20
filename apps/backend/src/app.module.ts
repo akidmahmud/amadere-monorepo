@@ -40,8 +40,11 @@ import { SeoModule } from './modules/seo/seo.module';
 import { RedirectsModule } from './modules/redirects/redirects.module';
 import { SitemapModule } from './modules/sitemap/sitemap.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { MenusModule } from './modules/menus/menus.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { MarketingReviewModule } from './modules/marketing-review/marketing-review.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
@@ -126,8 +129,11 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     RedirectsModule,
     SitemapModule,
     AnalyticsModule,
+    WhatsappModule,
     SettingsModule,
     MenusModule,
+    AnnouncementsModule,
+    MarketingReviewModule,
     CollectionsModule,
     HomepageSectionsModule,
     NetProfitModule,

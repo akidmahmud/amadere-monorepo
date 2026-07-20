@@ -20,20 +20,7 @@ export const ORDER_STATUSES: OrderStatus[] = [
 // this app, so a full re-type isn't needed for those).
 export type AdminOrder = Omit<components["schemas"]["OrderDto"], "status"> & { status: OrderStatus };
 
-type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-orders"];
-
-export function useOrders(status?: OrderStatus) {
-  return useQuery({
-    queryKey: [...KEY, status ?? "all"],
-    queryFn: async () => {
-      const qs = new URLSearchParams({ pageSize: "100" });
-      if (status) qs.set("status", status);
-      const res = await proxyFetch<Paginated<AdminOrder>>(`/admin/orders?${qs}`);
-      return res.items ?? [];
-    },
-  });
-}
 
 export function useOrder(id: number | null) {
   return useQuery({
@@ -57,6 +44,36 @@ export function useRefundOrder(id: number) {
   return useMutation({
     mutationFn: (input: { amount: number; reason?: string }) =>
       proxyFetch<AdminOrder>(`/admin/orders/${id}/refund`, { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export interface CreateManualOrderAddress {
+  recipientName: string;
+  phone: string;
+  email?: string;
+  division: string;
+  district: string;
+  area?: string;
+  landmark?: string;
+  addressLine: string;
+  postCode?: string;
+}
+
+export interface CreateManualOrderInput {
+  customerId?: number;
+  shippingAddress: CreateManualOrderAddress;
+  billingAddress?: CreateManualOrderAddress;
+  items: { productId: number; variantId?: number; quantity: number; unitPrice?: number }[];
+  paymentProvider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY";
+  customerNote?: string;
+}
+
+export function useCreateManualOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateManualOrderInput) =>
+      proxyFetch<AdminOrder>("/admin/orders", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

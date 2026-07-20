@@ -21,10 +21,12 @@
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
 
-  /* Sidebar — same dark chrome in BOTH themes (§2.3) */
-  --sidebar-bg: #191919;
-  --sidebar-hover: #232323;
-  --sidebar-text: #c7c7cc;
+  /* Sidebar — light "inset panel" chrome (shadcn dashboard-01 parity).
+     Was dark chrome in both themes; now a neutral panel matching --surface,
+     just a shade off it so it reads as a distinct floating panel. */
+  --sidebar-bg: #fafafa;
+  --sidebar-hover: #f0f0f2;
+  --sidebar-text: #52525b;
   --sidebar-text-active: #ffffff;
 
   /* Semantic / accent */
@@ -35,14 +37,15 @@
   --chart-current: #299d91;
   --chart-compare: #e4e4e7;
 
-  /* Radius (§2.6) */
-  --r-card: 16px;
-  --r-inner: 12px;
-  --r-sm: 10px;
+  /* Radius (§2.6) — shadcn/New York parity: tighter than the old 16px */
+  --r-card: 12px;
+  --r-inner: 10px;
+  --r-sm: 8px;
   --r-pill: 999px;
 
-  /* Shadow — light theme only (§2.8) */
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  /* Shadow — light theme only (§2.8). shadcn leans on a 1px border for
+     definition rather than a heavy shadow, so this is now just a hairline. */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
   --shadow-pop: 0 4px 16px rgba(16, 24, 40, 0.1);
 }
 
@@ -64,6 +67,11 @@
   /* Dark theme uses borders instead of shadows (§2.8, §6). */
   --shadow-card: none;
   --shadow-pop: none;
+
+  --sidebar-bg: #171717;
+  --sidebar-hover: #232323;
+  --sidebar-text: #a1a1aa;
+  --sidebar-text-active: #ffffff;
 }
 
 @theme inline {
@@ -126,6 +134,13 @@ body {
    equivalent for (dark gradient hero, glow shadows, an info hue).
    ═══════════════════════════════════════════════════════════════════════ */
 .wpfok-scope {
+  /* Pin structural tokens (radius/shadow) to their pre-dashboard-01-reskin
+     values — the base admin-ui redesign below is deliberately NOT meant to
+     touch Net Profit's existing look, only the rest of the app's chrome. */
+  --r-card: 16px;
+  --r-inner: 12px;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+
   --brand-500: #8f00ff;
   --brand-600: #7200cc;
   --brand-700: #5c0099;

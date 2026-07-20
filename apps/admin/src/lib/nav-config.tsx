@@ -13,7 +13,7 @@ const tagsIcon = <Icon name="sell" />;
 const attributesIcon = <Icon name="tune" />;
 const collectionsIcon = <Icon name="collections_bookmark" />;
 const bundlesIcon = <Icon name="inventory" />;
-const ordersIcon = <Icon name="receipt_long" />;
+const newOrderIcon = <Icon name="add_shopping_cart" />;
 const shipmentsIcon = <Icon name="local_shipping" />;
 const discountsIcon = <Icon name="local_offer" />;
 const giftVouchersIcon = <Icon name="card_giftcard" />;
@@ -23,6 +23,7 @@ const blogCategoriesIcon = <Icon name="topic" />;
 const blogTagsIcon = <Icon name="label" />;
 const pagesIcon = <Icon name="description" />;
 const menuItemsIcon = <Icon name="menu" />;
+const announcementsIcon = <Icon name="campaign" />;
 const redirectsIcon = <Icon name="alt_route" />;
 const seoIcon = <Icon name="search" />;
 const synonymsIcon = <Icon name="sync_alt" />;
@@ -39,7 +40,13 @@ const smsIcon = <Icon name="sms" />;
 const paymentsIcon = <Icon name="payments" />;
 const recoveryIcon = <Icon name="shopping_cart_checkout" />;
 const reportsIcon = <Icon name="bar_chart" />;
+const accountsIcon = <Icon name="account_balance" />;
 const newsletterIcon = <Icon name="mail" />;
+const customersIcon = <Icon name="people" />;
+const customerTiersIcon = <Icon name="military_tech" />;
+const customerImportIcon = <Icon name="upload_file" />;
+const analyticsIcon = <Icon name="monitoring" />;
+const whatsappIcon = <Icon name="chat" />;
 
 // Data-driven sidebar nav (per DESIGN_SYSTEM.md §4) — real Amader admin
 // sections get added here as they're built (see AGENTS.admin.md §10 for the
@@ -53,7 +60,7 @@ const newsletterIcon = <Icon name="mail" />;
 // auto-opens when one of its own pages is active.
 export const adminNav: AppNavItem[] = [
   { key: "overview", label: "Overview", href: "/", icon: overviewIcon },
-  { key: "orders", label: "Orders", href: "/orders", icon: ordersIcon },
+  { key: "new-order", label: "New Order", href: "/orders/new", icon: newOrderIcon },
   { key: "shipments", label: "Shipments", href: "/shipments", icon: shipmentsIcon },
   {
     key: "catalog",
@@ -77,6 +84,7 @@ export const adminNav: AppNavItem[] = [
       { key: "homepage-sections", label: "Homepage Sections", href: "/homepage-sections", icon: homepageSectionsIcon },
       { key: "discounts", label: "Discounts", href: "/discounts", icon: discountsIcon },
       { key: "gift-vouchers", label: "Gift Vouchers", href: "/gift-vouchers", icon: giftVouchersIcon },
+      { key: "whatsapp", label: "WhatsApp", href: "/whatsapp", icon: whatsappIcon },
     ],
   },
   { key: "reviews", label: "Reviews", href: "/reviews", icon: reviewsIcon },
@@ -93,6 +101,17 @@ export const adminNav: AppNavItem[] = [
       { key: "net-profit-payments", label: "Payments", href: "/net-profit/payments", icon: paymentsIcon },
       { key: "net-profit-recovery", label: "Recovery", href: "/net-profit/recovery", icon: recoveryIcon },
       { key: "net-profit-reports", label: "Sales Report", href: "/net-profit/reports", icon: reportsIcon },
+      { key: "net-profit-accounts", label: "Accounts", href: "/net-profit/accounts", icon: accountsIcon },
+    ],
+  },
+  {
+    key: "customers",
+    label: "Customers",
+    icon: customersIcon,
+    children: [
+      { key: "customers-list", label: "All Customers", href: "/customers", icon: customersIcon },
+      { key: "customers-tiers", label: "Tiers", href: "/customers/tiers", icon: customerTiersIcon },
+      { key: "customers-import", label: "Import CSV", href: "/customers/import", icon: customerImportIcon },
     ],
   },
   {
@@ -105,6 +124,7 @@ export const adminNav: AppNavItem[] = [
       { key: "blog-tags", label: "Blog Tags", href: "/blog-tags", icon: blogTagsIcon },
       { key: "pages", label: "Pages", href: "/pages", icon: pagesIcon },
       { key: "menu-items", label: "Menu Items", href: "/menu-items", icon: menuItemsIcon },
+      { key: "announcements", label: "Announcements", href: "/announcements", icon: announcementsIcon },
     ],
   },
   {
@@ -117,6 +137,7 @@ export const adminNav: AppNavItem[] = [
       { key: "search-synonyms", label: "Search Synonyms", href: "/search-synonyms", icon: synonymsIcon },
     ],
   },
+  { key: "analytics", label: "Analytics", href: "/analytics", icon: analyticsIcon },
   { key: "media", label: "Media Library", href: "/media", icon: mediaIcon },
   { key: "newsletter", label: "Newsletter", href: "/newsletter", icon: newsletterIcon },
   {

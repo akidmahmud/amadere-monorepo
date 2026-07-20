@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export enum ProductSort {
   BEST_SELLING = 'BEST_SELLING',
@@ -68,4 +68,9 @@ export class ProductFilterQueryDto {
   @IsOptional()
   @IsEnum(ProductSort)
   sort?: ProductSort;
+
+  @ApiPropertyOptional({ description: 'Free-text search across product name, SKU, and slug.' })
+  @IsOptional()
+  @IsString()
+  q?: string;
 }

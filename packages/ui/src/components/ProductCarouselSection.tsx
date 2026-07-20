@@ -49,8 +49,15 @@ export function ProductCarouselSection({
 }: ProductCarouselSectionProps) {
   if (products.length === 0) return null;
 
+  // Mobile always shows 2 cards per row regardless of the desktop
+  // `visibleCount` — the desktop width is computed the same way as before
+  // and handed to the `sm:` breakpoint via a CSS custom property, since
+  // Tailwind's arbitrary-value classes must be static strings (a
+  // dynamically-interpolated calc() wouldn't be picked up by the JIT
+  // scanner in production), but `var(--desktop-card-width)` itself is a
+  // fixed string — only the value assigned to it at runtime changes.
   const cardStyle = visibleCount
-    ? { width: `calc((100% - ${(visibleCount - 1) * CARD_GAP_PX}px) / ${visibleCount})` }
+    ? ({ "--desktop-card-width": `calc((100% - ${(visibleCount - 1) * CARD_GAP_PX}px) / ${visibleCount})` } as React.CSSProperties)
     : undefined;
 
   return (
@@ -63,7 +70,11 @@ export function ProductCarouselSection({
         {products.map((product) => (
           <div
             key={product.href}
-            className={visibleCount ? "min-w-0 shrink-0" : "w-[200px] shrink-0"}
+            className={
+              visibleCount
+                ? "min-w-0 shrink-0 w-[calc((100%-18px)/2)] sm:w-[var(--desktop-card-width)]"
+                : "w-[200px] shrink-0"
+            }
             style={cardStyle}
           >
             <ProductCard

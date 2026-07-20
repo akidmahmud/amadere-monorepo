@@ -36,6 +36,9 @@ interface RawOrderManagerRow {
   courier_status: ShipmentStatus | null;
   courier_attempts: OrderManagerCourierAttempt[] | null;
   risk_level: RiskLevel;
+  staff_note: string | null;
+  utm_source: string | null;
+  utm_campaign: string | null;
 }
 
 // A raw join (Order ⋈ latest Payment ⋈ latest Shipment ⋈ FraudCheck-by-phone)
@@ -104,7 +107,8 @@ export class OrderManagerService {
     const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
 
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
-      SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at,
+      SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
+             o.utm_source, o.utm_campaign,
              oa.recipient_name, oa.phone, oa.address_line, oa.district, oa.division, oa.post_code,
              thumb.url AS thumbnail_url,
              p.provider AS payment_provider,
@@ -181,9 +185,19 @@ export class OrderManagerService {
       courierStatus: r.courier_status,
       courierAttempts: r.courier_attempts ?? [],
       riskLevel: r.risk_level,
+      staffNote: r.staff_note,
+      utmSource: r.utm_source,
+      utmCampaign: r.utm_campaign,
     }));
 
     return toPaginatedResult(items, Number(countRows[0]?.count ?? 0), page, pageSize);
+  }
+
+  async updateNote(orderId: number, note: string): Promise<void> {
+    await this.prisma.client.order.update({
+      where: { id: orderId },
+      data: { staffNote: note || null },
+    });
   }
 
   async bulkAction(

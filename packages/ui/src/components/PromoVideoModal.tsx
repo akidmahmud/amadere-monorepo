@@ -93,9 +93,14 @@ function ProductPanel({
       </div>
       {product.description && (
         <div>
-          <p className={cn("font-body text-sm text-ink/80", !expanded && "line-clamp-3")}>
-            {product.description}
-          </p>
+          {/* Sanitized server-side before this ever reaches the component
+              (see apps/web's product-card-mapper.ts) — rendered as HTML,
+              not plain text, so it doesn't show raw `<p><strong>` tags. */}
+          {/* eslint-disable-next-line react/no-danger */}
+          <div
+            className={cn("font-body text-sm text-ink/80 [&_strong]:font-semibold [&_strong]:text-ink", !expanded && "line-clamp-3")}
+            dangerouslySetInnerHTML={{ __html: product.description }}
+          />
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -114,7 +119,7 @@ function ProductPanel({
         </Link>
         <Button
           variant="green"
-          className="flex-1"
+          className="flex-1 rounded-[30px]"
           disabled={isPending}
           onClick={() => onAddToCart?.(product.productId)}
         >

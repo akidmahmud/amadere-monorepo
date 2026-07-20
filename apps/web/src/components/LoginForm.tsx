@@ -7,15 +7,7 @@ import { Button, Input } from "@amader/ui";
 import { useRouter, Link } from "@/i18n/navigation";
 import { toApiLocale } from "@/lib/api-locale";
 import { useLogin, useRequestOtp, useVerifyOtp } from "@/hooks/useAuth";
-
-const googleIcon = (
-  <svg viewBox="0 0 24 24" width="22" height="22">
-    <path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.1a4.4 4.4 0 0 1-1.9 2.9v2.4h3.1c1.8-1.7 2.7-4.1 2.7-7.1z" />
-    <path fill="#34A853" d="M12 22c2.4 0 4.5-.8 6-2.2l-3.1-2.4c-.8.6-2 .9-2.9.9-2.3 0-4.2-1.5-4.9-3.6H3.9v2.5A9 9 0 0 0 12 22z" />
-    <path fill="#FBBC05" d="M7.1 14.7a5.4 5.4 0 0 1 0-3.4V8.8H3.9a9 9 0 0 0 0 8.4z" />
-    <path fill="#EA4335" d="M12 7.6c1.3 0 2.5.5 3.4 1.3l2.6-2.6A9 9 0 0 0 3.9 8.8l3.2 2.5C7.8 9.1 9.7 7.6 12 7.6z" />
-  </svg>
-);
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export function LoginForm() {
   const locale = toApiLocale(useLocale());
@@ -142,14 +134,7 @@ export function LoginForm() {
           or sign in with
           <span className="h-px flex-1 bg-line" />
         </div>
-        <button
-          type="button"
-          disabled
-          title="Google sign-in isn't configured yet"
-          className="grid h-11 w-11 cursor-not-allowed place-items-center rounded-full border border-line bg-white opacity-50"
-        >
-          {googleIcon}
-        </button>
+        <GoogleSignInButton locale={locale} onSuccess={goToRedirect} />
         <p className="mt-4 font-body text-sm text-ink">
           Don&apos;t have any account? <Link href="/register" className="text-green underline">Register account</Link>
         </p>

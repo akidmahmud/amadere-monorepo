@@ -15,6 +15,8 @@ import { toApiLocale } from "@/lib/api-locale";
 import { useAddToCart } from "@/hooks/useCart";
 import { useMe } from "@/hooks/useAuth";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from "@/hooks/useAccount";
+import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
+import type { WhatsappConfig } from "@/lib/whatsapp";
 import type { components } from "@/lib/api/schema";
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
@@ -31,7 +33,13 @@ const heartIcon = (filled: boolean) => (
   </svg>
 );
 
-export function PdpPurchasePanel({ product }: { product: PublicProductDetailDto }) {
+export function PdpPurchasePanel({
+  product,
+  whatsappConfig,
+}: {
+  product: PublicProductDetailDto;
+  whatsappConfig: WhatsappConfig | null;
+}) {
   const packOptions = useMemo(() => buildPackSizeOptions(product), [product]);
   const [selectedVariantId, setSelectedVariantId] = useState(() => defaultVariantId(product));
   const [qty, setQty] = useState(product.minOrderQuantity || 1);
@@ -60,7 +68,14 @@ export function PdpPurchasePanel({ product }: { product: PublicProductDetailDto 
       : undefined;
 
   const stockStatus = selectedVariant ? selectedVariant.stockStatus : product.stockStatus;
-  const outOfStock = (stockStatus as unknown as string) === "OUT_OF_STOCK";
+  const stockCount = selectedVariant ? selectedVariant.stock : product.stock;
+  const isBackorder = (stockStatus as unknown as string) === "ON_BACKORDER";
+  // The real stock count, not the `stockStatus` label — that field is a
+  // manually-set admin column (products.mapper.ts passes it through as-is)
+  // that nothing recomputes when `stock` actually hits 0, so it can go
+  // stale. ON_BACKORDER stays an explicit admin override that keeps buying
+  // open even at 0 stock (unchanged pre-existing behavior).
+  const outOfStock = stockCount < 1 && !isBackorder;
 
   function addItem(onSuccess: () => void) {
     addToCart.mutate(
@@ -129,7 +144,7 @@ export function PdpPurchasePanel({ product }: { product: PublicProductDetailDto 
           min={product.minOrderQuantity || 1}
           max={product.maxOrderQuantity ?? undefined}
         />
-        <Button variant="ghost" disabled={outOfStock || addToCart.isPending} onClick={handleAddToCart}>
+        <Button variant="gold" disabled={outOfStock || addToCart.isPending} onClick={handleAddToCart}>
           Add to Cart
         </Button>
         <Button variant="green" disabled={outOfStock || addToCart.isPending} onClick={handleBuyNow}>
@@ -144,7 +159,10 @@ export function PdpPurchasePanel({ product }: { product: PublicProductDetailDto 
         >
           {heartIcon(isWishlisted)}
         </button>
+        {!outOfStock && <WhatsappOrderButton config={whatsappConfig} productName={product.name} />}
       </div>
+
+      {outOfStock && <WhatsappOrderButton config={whatsappConfig} productName={product.name} variant="block" />}
     </div>
   );
 }

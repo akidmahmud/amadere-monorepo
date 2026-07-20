@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Header, Nav } from "@amader/ui";
+import { AnnouncementBar, Header, MobileNavDrawer, Nav } from "@amader/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname, Link } from "@/i18n/navigation";
 import { navConfig } from "@/config/nav";
+import { NAV_ICONS, allProductsIcon, defaultNavIcon } from "@/config/navIcons";
 import { toApiLocale } from "@/lib/api-locale";
 import { useCartQuery } from "@/hooks/useCart";
 import { useMe } from "@/hooks/useAuth";
 import { useSearchSuggestions } from "@/hooks/useSearch";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { useNavCollections } from "@/hooks/useNavCollections";
+import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { toDisplayImageUrl } from "@/lib/media";
 
 function useDebounced<T>(value: T, delayMs: number): T {
@@ -38,6 +40,7 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
   const { data: me } = useMe();
   const { data: siteInfo } = useSiteInfo();
   const { data: navCollections } = useNavCollections(toApiLocale(locale));
+  const { data: announcements } = useAnnouncements(toApiLocale(locale));
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +48,7 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
   const { data: suggestions, isLoading: suggestionsLoading } = useSearchSuggestions(debouncedQuery, toApiLocale(locale));
 
   const otherLocale = locale === "en" ? "bn" : "en";
+  const switchLocale = () => router.replace(pathname, { locale: otherLocale });
 
   const items = [
     ...navConfig.map((item) => ({
@@ -52,17 +56,20 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
       href: item.href,
       hasChildren: undefined as boolean | undefined,
       label: t(`nav.${item.key}`),
+      icon: item.key === "allProducts" ? allProductsIcon : undefined,
     })),
     ...(navCollections ?? []).map((collection) => ({
       key: `collection-${collection.slug}`,
       href: `/collections/${collection.slug}`,
       hasChildren: undefined,
       label: collection.name,
+      icon: NAV_ICONS[collection.slug] ?? defaultNavIcon,
     })),
   ];
 
   return (
     <>
+      <AnnouncementBar items={announcements ?? []} linkComponent={Link} />
       <Header
         brandHref="/"
         brandMark="আমাদের"
@@ -120,10 +127,23 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
         cartLabel={t("header.cart")}
         cartCount={cartCount}
         localeSwitchLabel={t("header.localeSwitch")}
-        onLocaleSwitch={() => router.replace(pathname, { locale: otherLocale })}
+        onLocaleSwitch={switchLocale}
+        mobileMenuLabel={t("header.menu")}
         linkComponent={Link}
       />
       <Nav items={items} activeHref={pathname} linkComponent={Link} />
+      <MobileNavDrawer
+        title={t("header.menu")}
+        closeLabel={t("header.close")}
+        navItems={items}
+        accountHref={me ? "/account" : "/login"}
+        accountLabel={t("header.account")}
+        trackOrderHref="/track"
+        trackOrderLabel={t("header.trackOrder")}
+        localeSwitchLabel={t("header.localeSwitch")}
+        onLocaleSwitch={switchLocale}
+        linkComponent={Link}
+      />
     </>
   );
 }

@@ -12,9 +12,14 @@ export default function ProductsPage() {
     <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-secondary">{products?.length ?? 0} products</p>
-        <Link href="/products/new">
-          <Button variant="primary">Add product</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/products/marketing-review">
+            <Button type="button" variant="ghost">Marketing Review Cards</Button>
+          </Link>
+          <Link href="/products/new">
+            <Button variant="primary">Add product</Button>
+          </Link>
+        </div>
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading…</p>}

@@ -53,3 +53,29 @@ export function useAdminLogout() {
     onSuccess: () => queryClient.clear(),
   });
 }
+
+// Email-OTP 2FA enrollment for the signed-in admin's own account — a
+// regular authenticated call (proxyFetch), unlike login/2fa-verify above
+// which need the special cookie-setting Next.js route since there's no
+// session yet at that point.
+export function useSetupTwoFactor() {
+  return useMutation({
+    mutationFn: () => proxyFetch<void>("/admin/auth/2fa/setup", { method: "POST" }),
+  });
+}
+
+export function useEnableTwoFactor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => proxyFetch<void>("/admin/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-me"] }),
+  });
+}
+
+export function useDisableTwoFactor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => proxyFetch<void>("/admin/auth/2fa/disable", { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-me"] }),
+  });
+}

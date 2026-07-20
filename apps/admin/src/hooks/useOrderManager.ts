@@ -28,6 +28,9 @@ export interface OrderManagerRow {
   courierStatus: string | null;
   courierAttempts: OrderManagerCourierAttempt[];
   riskLevel: RiskLevel;
+  staffNote: string | null;
+  utmSource: string | null;
+  utmCampaign: string | null;
 }
 
 interface Paginated<T> {
@@ -81,6 +84,15 @@ export interface BulkActionResult {
   succeeded: number[];
   failed: { orderId: number; error: string }[];
   csv?: string;
+}
+
+export function useUpdateOrderNote(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (note: string) =>
+      proxyFetch(`/admin/net-profit/orders/${id}/note`, { method: "PATCH", body: JSON.stringify({ note }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
 }
 
 export function useBulkOrderAction() {

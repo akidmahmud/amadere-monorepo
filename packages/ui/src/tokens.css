@@ -47,4 +47,18 @@
   --font-ui: var(--font-poppins);
   --font-body: var(--font-inter);
   --font-bengali: var(--font-hind-siliguri);
+
+  /* CertificationRow's mobile auto-scroll — content is duplicated exactly
+     once, so -50% is precisely one full set's width, giving a seamless loop
+     with no JS and no library. */
+  --animate-marquee: marquee 18s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }

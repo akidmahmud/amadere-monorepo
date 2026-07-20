@@ -7,8 +7,9 @@ import { OtpService } from './otp.service';
 import { OTP_NOTIFIER } from './notification/otp-notifier.interface';
 import { SmsOtpNotifier } from './notification/sms-otp-notifier';
 import { SOCIAL_LOGIN_VERIFIER } from './notification/social-login-verifier.interface';
-import { UnconfiguredSocialLoginVerifier } from './notification/unconfigured-social-login-verifier';
+import { GoogleSocialLoginVerifier } from './notification/google-social-login-verifier';
 import { SmsModule } from '../net-profit/sms/sms.module';
+import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
 
 @Module({
   imports: [SmsModule],
@@ -17,10 +18,11 @@ import { SmsModule } from '../net-profit/sms/sms.module';
     CustomerAuthService,
     AdminAuthService,
     OtpService,
+    SmtpEmailProvider,
     { provide: OTP_NOTIFIER, useClass: SmsOtpNotifier },
     {
       provide: SOCIAL_LOGIN_VERIFIER,
-      useClass: UnconfiguredSocialLoginVerifier,
+      useClass: GoogleSocialLoginVerifier,
     },
   ],
 })

@@ -37,6 +37,15 @@ export function useLogin(locale: string) {
   });
 }
 
+export function useSocialLogin(locale: string) {
+  const onAuthed = useAfterAuthSuccess(locale);
+  return useMutation({
+    mutationFn: (args: { provider: "GOOGLE" | "FACEBOOK"; accessToken: string }) =>
+      localAuthCall("/auth/social-login", args),
+    onSuccess: onAuthed,
+  });
+}
+
 export function useRegister(locale: string) {
   const onAuthed = useAfterAuthSuccess(locale);
   return useMutation({

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
 export interface PageHeaderProps {
@@ -8,12 +8,16 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   badge?: string;
   className?: string;
+  /** Overrides the default WPFOK-scope gradient — for pages outside /net-profit that still want this hero but can't rely on `.wpfok-scope`'s CSS vars (which are deliberately scoped to that route tree only). */
+  style?: CSSProperties;
 }
 
 // Net Profit / WPFOK-parity dark gradient hero — see globals.css's
 // `.wpfok-scope` for why this exists as a scoped exception rather than a
-// base admin-ui component. Not used outside /net-profit pages.
-export function PageHeader({ icon, title, subtitle, actions, badge, className }: PageHeaderProps) {
+// base admin-ui component. Used outside /net-profit too, but only via an
+// explicit `style` override (never the CSS-var default, which only resolves
+// inside `.wpfok-scope`).
+export function PageHeader({ icon, title, subtitle, actions, badge, className, style }: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -22,6 +26,7 @@ export function PageHeader({ icon, title, subtitle, actions, badge, className }:
       )}
       style={{
         background: "linear-gradient(135deg, var(--wpfok-black) 0%, #1a0d2e 50%, var(--brand-600) 100%)",
+        ...style,
       }}
     >
       <div

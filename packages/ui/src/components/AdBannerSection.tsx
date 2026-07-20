@@ -32,17 +32,16 @@ export function AdBannerSection({ images, autoplayMs = 4000, linkComponent: Link
   if (valid.length === 0) return null;
 
   const current = valid[Math.min(index, valid.length - 1)];
-  // Source images are ideally 1686×759 — same blurred-fill treatment as
-  // Hero Banner/Banner Strip so any off-ratio ad image still shows in full.
+  // Fixed 1686x759 box per design spec on desktop — crops to fill
+  // (object-cover), never distorts. A literal 759px height at every
+  // breakpoint would force that same height on a ~375px-wide phone screen
+  // too, cropping down to a thin vertical sliver of the image — mobile uses
+  // the same 1686:759 aspect ratio responsively instead, so the banner
+  // scales proportionally with viewport width until the desktop breakpoint
+  // switches to the exact fixed-height spec.
   const image = (
-    <div className="relative aspect-[1686/759] w-full overflow-hidden rounded-2xl bg-gray">
-      <img
-        src={current.imageUrl}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
-      />
-      <img src={current.imageUrl} alt="" className="relative h-full w-full object-contain" />
+    <div className="relative mx-auto aspect-[1686/759] w-full max-w-[1686px] overflow-hidden rounded-[20px] bg-gray sm:aspect-auto sm:h-[759px]">
+      <img src={current.imageUrl} alt="" className="h-full w-full object-cover" />
     </div>
   );
 

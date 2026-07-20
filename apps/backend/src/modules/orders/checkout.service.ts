@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { randomBytes, randomInt } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from '../cart/pricing.service';
@@ -22,14 +22,11 @@ import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
+import { generateOrderNumber } from './order-number.util';
+import { reserveStock } from './stock-reservation.util';
+import { toOrderAddressCreate } from './order-address.util';
 
 const Decimal = Prisma.Decimal;
-
-function generateOrderNumber(): string {
-  const now = new Date();
-  const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  return `ORD-${ymd}-${randomBytes(3).toString('hex').toUpperCase()}`;
-}
 
 @Injectable()
 export class CheckoutService {
@@ -177,7 +174,7 @@ export class CheckoutService {
 
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of cart.items) {
-        await this.reserveStock(
+        await reserveStock(
           tx,
           item.productId,
           item.variantId,
@@ -198,6 +195,11 @@ export class CheckoutService {
           codVerifiedAt: codOtpVerified ? new Date() : undefined,
           ipAddress: ip,
           deviceId: dto.deviceId,
+          utmSource: dto.utmSource,
+          utmMedium: dto.utmMedium,
+          utmCampaign: dto.utmCampaign,
+          utmTerm: dto.utmTerm,
+          utmContent: dto.utmContent,
           items: {
             create: cart.items.map((item) => {
               const priced = pricing.lines.find(
@@ -218,11 +220,11 @@ export class CheckoutService {
           },
           addresses: {
             create: [
-              this.toAddressCreate(
+              toOrderAddressCreate(
                 dto.shippingAddress,
                 OrderAddressType.SHIPPING,
               ),
-              this.toAddressCreate(
+              toOrderAddressCreate(
                 dto.billingAddress ?? dto.shippingAddress,
                 OrderAddressType.BILLING,
               ),
@@ -338,21 +340,6 @@ export class CheckoutService {
       .join(', ');
   }
 
-  private toAddressCreate(address: CheckoutAddressDto, type: OrderAddressType) {
-    return {
-      type,
-      recipientName: address.recipientName,
-      phone: address.phone,
-      email: address.email,
-      division: address.division,
-      district: address.district,
-      area: address.area,
-      landmark: address.landmark,
-      addressLine: address.addressLine,
-      postCode: address.postCode,
-    };
-  }
-
   private async verifyCodOtp(
     phone: string,
     code: string | undefined,
@@ -395,42 +382,6 @@ export class CheckoutService {
     return voucher;
   }
 
-  // Atomic hold: only succeeds if enough stock is actually available, so
-  // concurrent checkouts can never oversell (AGENTS.md §6 — a gap the old
-  // app never closed, see B1 review notes).
-  private async reserveStock(
-    tx: Prisma.TransactionClient,
-    productId: number,
-    variantId: number | null,
-    quantity: number,
-  ): Promise<void> {
-    if (quantity <= 0) return;
-
-    if (variantId) {
-      const affected = await tx.$executeRaw`
-        UPDATE product_variants SET reserved_stock = reserved_stock + ${quantity}
-        WHERE id = ${variantId} AND stock - reserved_stock >= ${quantity}
-      `;
-      if (affected === 0)
-        throw new ConflictException(
-          `Insufficient stock for variant #${variantId}`,
-        );
-      return;
-    }
-
-    const product = await tx.product.findUniqueOrThrow({
-      where: { id: productId },
-    });
-    if (!product.trackInventory) return;
-
-    const affected = await tx.$executeRaw`
-      UPDATE products SET reserved_stock = reserved_stock + ${quantity}
-      WHERE id = ${productId} AND (allow_backorder OR stock - reserved_stock >= ${quantity})
-    `;
-    if (affected === 0)
-      throw new ConflictException(`Insufficient stock for "${product.slug}"`);
-  }
-
   private async findCart(identity: CartIdentity, locale: Locale) {
     const where = identity.customerId
       ? { customerId: identity.customerId }
@@ -453,5 +404,4 @@ export class CheckoutService {
       },
     });
   }
-
 }

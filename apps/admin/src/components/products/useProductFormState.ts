@@ -3,6 +3,50 @@ import type { ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts
 import type { PublishStatus } from "@/hooks/useBrands";
 import type { GalleryImage } from "./ProductMediaGallery";
 
+export interface InfoVisualArrowState {
+  heading: string;
+  subheading: string;
+}
+
+export interface InfoVisualCircleState {
+  imageUrl: string;
+  label: string;
+}
+
+export interface ComparisonCardState {
+  imageUrl: string;
+  title: string;
+  items: string;
+}
+
+const EMPTY_ARROW: InfoVisualArrowState = { heading: "", subheading: "" };
+const EMPTY_CIRCLE: InfoVisualCircleState = { imageUrl: "", label: "" };
+
+function arrowsFrom(product?: AdminProduct): InfoVisualArrowState[] {
+  const arrows = product?.translations[0]?.infoVisualContent?.arrows ?? [];
+  return [0, 1, 2, 3].map((i) => ({
+    heading: arrows[i]?.heading ?? "",
+    subheading: arrows[i]?.subheading ?? "",
+  }));
+}
+
+function circlesFrom(product?: AdminProduct): InfoVisualCircleState[] {
+  const images = product?.infoVisualImages?.circles ?? [];
+  const labels = product?.translations[0]?.infoVisualContent?.circleLabels ?? [];
+  return [0, 1, 2].map((i) => ({
+    imageUrl: images[i] ?? "",
+    label: labels[i] ?? "",
+  }));
+}
+
+function comparisonCardFrom(product: AdminProduct | undefined, card: "card1" | "card2"): ComparisonCardState {
+  return {
+    imageUrl: product?.comparisonImages?.[card] ?? "",
+    title: product?.translations[0]?.comparisonContent?.[card]?.title ?? "",
+    items: product?.translations[0]?.comparisonContent?.[card]?.items ?? "",
+  };
+}
+
 export function useProductFormState(initial?: AdminProduct) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
@@ -31,12 +75,43 @@ export function useProductFormState(initial?: AdminProduct) {
   const [content, setContent] = useState(initial?.translations[0]?.content ?? "");
   const [nutrition, setNutrition] = useState(initial?.translations[0]?.nutrition ?? "");
   const [ingredients, setIngredients] = useState(initial?.translations[0]?.ingredients ?? "");
+  const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
   const [categoryIds, setCategoryIds] = useState<number[]>(initial?.categoryIds ?? []);
   const [tagIds, setTagIds] = useState<number[]>(initial?.tagIds ?? []);
   const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
   const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url })) ?? []);
 
+  // "Product Info Visual" PDP section — per-product, optional.
+  const [infoVisualImage, setInfoVisualImage] = useState(initial?.infoVisualImages?.main ?? "");
+  const [infoVisualTopHeading, setInfoVisualTopHeading] = useState(
+    initial?.translations[0]?.infoVisualContent?.topHeading ?? "",
+  );
+  const [infoVisualBottomHeading, setInfoVisualBottomHeading] = useState(
+    initial?.translations[0]?.infoVisualContent?.bottomHeading ?? "",
+  );
+  const [infoVisualArrows, setInfoVisualArrows] = useState<InfoVisualArrowState[]>(arrowsFrom(initial));
+  const [infoVisualCircles, setInfoVisualCircles] = useState<InfoVisualCircleState[]>(circlesFrom(initial));
+
+  // "Comparison" PDP section — per-product, optional. card1 = "us"
+  // (checkmarks), card2 = "them" (X marks), fixed by position.
+  const [comparisonHeading, setComparisonHeading] = useState(
+    initial?.translations[0]?.comparisonContent?.heading ?? "",
+  );
+  const [comparisonCard1, setComparisonCard1] = useState<ComparisonCardState>(comparisonCardFrom(initial, "card1"));
+  const [comparisonCard2, setComparisonCard2] = useState<ComparisonCardState>(comparisonCardFrom(initial, "card2"));
+
   function toBasePayload() {
+    const infoVisualContent = {
+      topHeading: infoVisualTopHeading || undefined,
+      bottomHeading: infoVisualBottomHeading || undefined,
+      arrows: infoVisualArrows.map((a) => ({ heading: a.heading || undefined, subheading: a.subheading || undefined })),
+      circleLabels: infoVisualCircles.map((c) => c.label || ""),
+    };
+    const comparisonContent = {
+      heading: comparisonHeading || undefined,
+      card1: { title: comparisonCard1.title || undefined, items: comparisonCard1.items || undefined },
+      card2: { title: comparisonCard2.title || undefined, items: comparisonCard2.items || undefined },
+    };
     return {
       slug,
       sku: sku || undefined,
@@ -58,9 +133,37 @@ export function useProductFormState(initial?: AdminProduct) {
       shippableWeight: shippableWeight ? Number(shippableWeight) : undefined,
       minOrderQuantity: Number(minOrderQuantity),
       maxOrderQuantity: maxOrderQuantity ? Number(maxOrderQuantity) : undefined,
+      infoVisualImages: {
+        main: infoVisualImage || undefined,
+        circles: infoVisualCircles.map((c) => c.imageUrl || ""),
+      },
+      comparisonImages: {
+        card1: comparisonCard1.imageUrl || undefined,
+        card2: comparisonCard2.imageUrl || undefined,
+      },
       translations: [
-        { locale: "EN" as const, name, description: description || undefined, content: content || undefined, nutrition: nutrition || undefined, ingredients: ingredients || undefined },
-        { locale: "BN" as const, name, description: description || undefined, content: content || undefined, nutrition: nutrition || undefined, ingredients: ingredients || undefined },
+        {
+          locale: "EN" as const,
+          name,
+          description: description || undefined,
+          content: content || undefined,
+          nutrition: nutrition || undefined,
+          ingredients: ingredients || undefined,
+          keyBenefits: keyBenefits || undefined,
+          infoVisualContent,
+          comparisonContent,
+        },
+        {
+          locale: "BN" as const,
+          name,
+          description: description || undefined,
+          content: content || undefined,
+          nutrition: nutrition || undefined,
+          ingredients: ingredients || undefined,
+          keyBenefits: keyBenefits || undefined,
+          infoVisualContent,
+          comparisonContent,
+        },
       ],
       categoryIds,
       tagIds,
@@ -100,10 +203,19 @@ export function useProductFormState(initial?: AdminProduct) {
     setContent(product.translations[0]?.content ?? "");
     setNutrition(product.translations[0]?.nutrition ?? "");
     setIngredients(product.translations[0]?.ingredients ?? "");
+    setKeyBenefits(product.translations[0]?.keyBenefits ?? "");
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
     setImages(product.media.map((m) => ({ id: m.id, url: m.url })));
+    setInfoVisualImage(product.infoVisualImages?.main ?? "");
+    setInfoVisualTopHeading(product.translations[0]?.infoVisualContent?.topHeading ?? "");
+    setInfoVisualBottomHeading(product.translations[0]?.infoVisualContent?.bottomHeading ?? "");
+    setInfoVisualArrows(arrowsFrom(product));
+    setInfoVisualCircles(circlesFrom(product));
+    setComparisonHeading(product.translations[0]?.comparisonContent?.heading ?? "");
+    setComparisonCard1(comparisonCardFrom(product, "card1"));
+    setComparisonCard2(comparisonCardFrom(product, "card2"));
   }
 
   return {
@@ -132,10 +244,19 @@ export function useProductFormState(initial?: AdminProduct) {
     content, setContent,
     nutrition, setNutrition,
     ingredients, setIngredients,
+    keyBenefits, setKeyBenefits,
     categoryIds, setCategoryIds,
     tagIds, setTagIds,
     attributeIds, setAttributeIds,
     images, setImages,
+    infoVisualImage, setInfoVisualImage,
+    infoVisualTopHeading, setInfoVisualTopHeading,
+    infoVisualBottomHeading, setInfoVisualBottomHeading,
+    infoVisualArrows, setInfoVisualArrows,
+    infoVisualCircles, setInfoVisualCircles,
+    comparisonHeading, setComparisonHeading,
+    comparisonCard1, setComparisonCard1,
+    comparisonCard2, setComparisonCard2,
     toBasePayload,
     seedFrom,
   };

@@ -4,30 +4,35 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { authenticator } from 'otplib';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TokenService } from '../../common/auth/token.service';
 import { TokenPair } from '../../common/auth/token.types';
 import { hashPassword, verifyPassword } from '../../common/auth/password.util';
+import { OtpService } from './otp.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { TwoFactorVerifyDto } from './dto/two-factor-verify.dto';
 import { TwoFactorEnableDto } from './dto/two-factor-enable.dto';
 import {
   AdminProfileDto,
   AdminTwoFactorRequiredDto,
-  TwoFactorSetupDto,
   toAdminProfileDto,
 } from './admin.mapper';
 import { ADMIN_LOGGED_IN_EVENT, AdminLoggedInEvent } from './auth.events';
 
 export type AdminLoginResult = TokenPair | AdminTwoFactorRequiredDto;
 
+// 2FA is email-OTP based (reuses the same Otp table/OtpService every other
+// OTP flow in this app uses, under the ADMIN_LOGIN purpose) — not an
+// authenticator-app/TOTP scheme, so there's no secret to generate or QR
+// code to scan; "setting up" 2FA just means proving you can receive a code
+// at your own account email.
 @Injectable()
 export class AdminAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokens: TokenService,
     private readonly events: EventEmitter2,
+    private readonly otp: OtpService,
   ) {}
 
   async login(
@@ -60,6 +65,7 @@ export class AdminAuthService {
     }
 
     if (admin.twoFactorEnabled) {
+      await this.otp.request(admin.email, 'ADMIN_LOGIN');
       const twoFactorToken = await this.tokens.signAdminTwoFactorPendingToken(
         admin.id,
       );
@@ -83,12 +89,7 @@ export class AdminAuthService {
       where: { id: adminUserId },
     });
 
-    if (
-      !admin.twoFactorSecret ||
-      !authenticator.check(dto.code, admin.twoFactorSecret)
-    ) {
-      throw new UnauthorizedException('Invalid 2FA code');
-    }
+    await this.otp.verify(admin.email, dto.code, 'ADMIN_LOGIN');
 
     await this.prisma.client.adminUser.update({
       where: { id: admin.id },
@@ -130,17 +131,8 @@ export class AdminAuthService {
     });
   }
 
-  async setupTwoFactor(
-    adminUserId: number,
-    email: string,
-  ): Promise<TwoFactorSetupDto> {
-    const secret = authenticator.generateSecret();
-    await this.prisma.client.adminUser.update({
-      where: { id: adminUserId },
-      data: { twoFactorSecret: secret },
-    });
-    const otpauthUrl = authenticator.keyuri(email, 'Amader Admin', secret);
-    return { secret, otpauthUrl };
+  async setupTwoFactor(email: string): Promise<void> {
+    await this.otp.request(email, 'ADMIN_LOGIN');
   }
 
   async enableTwoFactor(
@@ -150,12 +142,7 @@ export class AdminAuthService {
     const admin = await this.prisma.client.adminUser.findUniqueOrThrow({
       where: { id: adminUserId },
     });
-    if (
-      !admin.twoFactorSecret ||
-      !authenticator.check(dto.code, admin.twoFactorSecret)
-    ) {
-      throw new UnauthorizedException('Invalid 2FA code');
-    }
+    await this.otp.verify(admin.email, dto.code, 'ADMIN_LOGIN');
     await this.prisma.client.adminUser.update({
       where: { id: adminUserId },
       data: { twoFactorEnabled: true },
@@ -165,7 +152,7 @@ export class AdminAuthService {
   async disableTwoFactor(adminUserId: number): Promise<void> {
     await this.prisma.client.adminUser.update({
       where: { id: adminUserId },
-      data: { twoFactorEnabled: false, twoFactorSecret: null },
+      data: { twoFactorEnabled: false },
     });
   }
 }

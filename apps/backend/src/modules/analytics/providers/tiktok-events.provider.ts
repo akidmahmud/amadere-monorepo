@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   AnalyticsEvent,
   AnalyticsProvider,
 } from '../analytics-provider.interface';
+import { AnalyticsSettingsService } from '../analytics-settings.service';
 
 const ENDPOINT = 'https://business-api.tiktok.com/open_api/v1.3/event/track/';
 
@@ -12,12 +12,11 @@ export class TiktokEventsProvider implements AnalyticsProvider {
   readonly name = 'TIKTOK';
   private readonly logger = new Logger(TiktokEventsProvider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly settings: AnalyticsSettingsService) {}
 
   async send(event: AnalyticsEvent): Promise<void> {
-    const pixelCode = this.config.get<string>('TIKTOK_PIXEL_CODE');
-    const accessToken = this.config.get<string>('TIKTOK_ACCESS_TOKEN');
-    if (!pixelCode || !accessToken) return;
+    const { enabled, pixelCode, accessToken } = await this.settings.getTiktokCredentials();
+    if (!enabled || !pixelCode || !accessToken) return;
 
     try {
       const res = await fetch(ENDPOINT, {

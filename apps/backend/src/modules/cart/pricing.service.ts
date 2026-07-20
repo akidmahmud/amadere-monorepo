@@ -30,7 +30,7 @@ export interface PricingResult {
   freeShipping: { threshold: string; remaining: string } | null;
 }
 
-interface CartLineInput {
+export interface CartLineInput {
   productId: number;
   variantId: number | null;
   quantity: number;
@@ -101,7 +101,10 @@ export class PricingService {
     };
   }
 
-  private async priceLines(lines: CartLineInput[]): Promise<PricedLine[]> {
+  // Public so AdminOrderCreationService (manual orders) can reuse the same
+  // sale-window-aware price resolution real checkout uses, instead of
+  // reimplementing effectivePrice() a second time.
+  async priceLines(lines: CartLineInput[]): Promise<PricedLine[]> {
     if (lines.length === 0) return [];
 
     const products = await this.prisma.client.product.findMany({

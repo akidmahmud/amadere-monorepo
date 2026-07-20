@@ -4,7 +4,9 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
+import { HtmlImportButton } from "@/components/HtmlImportModal";
 import { MediaPicker } from "@/components/MediaPicker";
+import { SeoMetaCard } from "@/components/SeoMetaCard";
 import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { useBlogTags } from "@/hooks/useBlogTags";
 import { useArchiveBlogPost, useBlogPost, usePublishBlogPost, useSubmitBlogPost, useUpdateBlogPost } from "@/hooks/useBlogPosts";
@@ -109,7 +111,10 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
             <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Content</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-secondary">Content</span>
+              <HtmlImportButton onImport={setContent} />
+            </div>
             <textarea required value={content} onChange={(e) => setContent(e.target.value)} rows={8} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -155,6 +160,8 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           </div>
         </form>
       </Card>
+
+      <SeoMetaCard entityType="BLOG_POST" entityId={postId} />
     </div>
   );
 }

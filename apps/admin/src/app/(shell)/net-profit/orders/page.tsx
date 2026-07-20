@@ -6,7 +6,7 @@ import type { RiskLevel as RiskBadgeLevel } from "@amader/admin-ui";
 import { ConsignModal } from "@/components/ConsignModal";
 import { FraudDetailModal } from "@/components/FraudDetailModal";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
-import { useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
+import { useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, useUpdateOrderNote, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { ORDER_STATUSES, useUpdateOrderStatus, type OrderStatus } from "@/hooks/useOrders";
 import { OrderStatusesTab } from "./OrderStatusesTab";
@@ -28,11 +28,13 @@ const COURIER_STATUS_COLOR: Record<string, string> = {
   FAILED: "#e5484d",
 };
 
-const OPTIONAL_COLUMNS = ["payment", "division"] as const;
+const OPTIONAL_COLUMNS = ["payment", "division", "internalNote", "source"] as const;
 type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number];
 const COLUMN_LABELS: Record<OptionalColumn, string> = {
   payment: "Payment",
   division: "Division",
+  internalNote: "Internal Note",
+  source: "Source",
 };
 
 const DATE_RANGES = [
@@ -168,6 +170,22 @@ const SEND_PROVIDERS: { provider: "STEADFAST" | "REDX"; label: string; letter: s
   { provider: "STEADFAST", label: "Steadfast", letter: "S" },
   { provider: "REDX", label: "RedX", letter: "R" },
 ];
+
+function InternalNoteCell({ order }: { order: OrderManagerRow }) {
+  const [value, setValue] = useState(order.staffNote ?? "");
+  const updateNote = useUpdateOrderNote(order.id);
+
+  return (
+    <input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => value !== (order.staffNote ?? "") && updateNote.mutate(value)}
+      onClick={(e) => e.stopPropagation()}
+      placeholder="Add a note…"
+      className="h-9 w-40 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500"
+    />
+  );
+}
 
 function CourierSendCell({ order, onConsign }: { order: OrderManagerRow; onConsign: (provider: "STEADFAST" | "REDX") => void }) {
   return (
@@ -454,14 +472,16 @@ export default function OrderManagerPage() {
                 <th>Origin</th>
                 {columns.has("payment") && <th>Payment</th>}
                 {columns.has("division") && <th>Division</th>}
+                {columns.has("internalNote") && <th>Internal Note</th>}
+                {columns.has("source") && <th>Source</th>}
                 <th>Score</th>
                 <th>Courier Send</th>
                 <th>Courier Status</th>
               </tr>
             </thead>
             <tbody>
-              {isLoading && <TableEmptyRow colSpan={13}>Loading…</TableEmptyRow>}
-              {data && data.items.length === 0 && <TableEmptyRow colSpan={13}>No orders match these filters.</TableEmptyRow>}
+              {isLoading && <TableEmptyRow colSpan={14}>Loading…</TableEmptyRow>}
+              {data && data.items.length === 0 && <TableEmptyRow colSpan={14}>No orders match these filters.</TableEmptyRow>}
               {data?.items.map((o) => {
                 const created = new Date(o.createdAt);
                 return (
@@ -501,6 +521,23 @@ export default function OrderManagerPage() {
                     <td className="text-xs text-secondary">{o.origin}</td>
                     {columns.has("payment") && <td className="text-secondary">{o.paymentProvider ?? "—"}</td>}
                     {columns.has("division") && <td className="text-secondary">{o.division ?? "—"}</td>}
+                    {columns.has("internalNote") && (
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <InternalNoteCell order={o} />
+                      </td>
+                    )}
+                    {columns.has("source") && (
+                      <td className="text-xs text-secondary">
+                        {o.utmSource ? (
+                          <>
+                            <div className="font-semibold text-text">{o.utmSource}</div>
+                            {o.utmCampaign && <div className="text-muted">{o.utmCampaign}</div>}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    )}
                     <td onClick={(e) => e.stopPropagation()}>
                       <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && setRiskPhone(o.shippingPhone)}>
                         Check

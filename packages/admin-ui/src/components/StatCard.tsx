@@ -4,6 +4,11 @@ import { Card } from "./Card";
 
 export type StatCardVariant = "primary" | "warning" | "info" | "success" | "dark" | "recovery" | "danger";
 
+export interface StatCardTrend {
+  direction: "up" | "down";
+  value: string;
+}
+
 export interface StatCardProps {
   label: string;
   value: string;
@@ -14,7 +19,15 @@ export interface StatCardProps {
   variant?: StatCardVariant;
   icon?: ReactNode;
   footer?: ReactNode;
+  /** Outlined trend pill in the top-right corner (dashboard-01 SectionCards parity). */
+  trend?: StatCardTrend;
 }
+
+const trendArrow = (
+  <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.5}>
+    <path d="m6 18 12-12M18 6H9m9 0v9" />
+  </svg>
+);
 
 const VARIANT_BAR: Record<StatCardVariant, string> = {
   primary: "linear-gradient(90deg, var(--brand-500), var(--brand-400))",
@@ -41,7 +54,7 @@ const VARIANT_ICON: Record<StatCardVariant, string> = {
 // `variant`/`icon`/`footer` are additive, Net-Profit-only extensions (a top
 // accent bar + colored icon tile) — omitted, the card renders exactly as
 // before everywhere else in the app.
-export function StatCard({ label, value, action, children, className, variant, icon, footer }: StatCardProps) {
+export function StatCard({ label, value, action, children, className, variant, icon, footer, trend }: StatCardProps) {
   return (
     <Card className={cn("relative flex flex-col overflow-hidden", variant && "pt-6", className)}>
       {variant && <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: VARIANT_BAR[variant] }} />}
@@ -51,10 +64,24 @@ export function StatCard({ label, value, action, children, className, variant, i
         </div>
       )}
       <div className="flex items-center justify-between">
-        <h3 className="font-ui text-base font-semibold text-text">{label}</h3>
-        {action}
+        <h3 className={cn("font-ui", variant ? "text-base font-semibold text-text" : "text-sm text-muted")}>{label}</h3>
+        {trend ? (
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded-pill border border-border px-2 py-0.5 text-xs font-medium",
+              trend.direction === "up" ? "text-success" : "text-danger",
+            )}
+          >
+            <span className={trend.direction === "down" ? "rotate-90" : undefined}>{trendArrow}</span>
+            {trend.value}
+          </span>
+        ) : (
+          action
+        )}
       </div>
-      <div className="num mt-2 text-[28px] leading-[1.15] font-bold text-text">{value}</div>
+      <div className={cn("num text-text", variant ? "mt-2 text-[28px] leading-[1.15] font-bold" : "mt-1 text-2xl leading-[1.15] font-semibold")}>
+        {value}
+      </div>
       {children}
       {footer && <div className="mt-3 border-t border-border pt-3 text-xs text-muted">{footer}</div>}
     </Card>

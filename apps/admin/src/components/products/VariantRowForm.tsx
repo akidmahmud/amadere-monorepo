@@ -26,8 +26,7 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending }: V
 
   const canSubmit = attributes.length > 0 && attributes.every((a) => valueByAttribute[a.id]) && price;
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit() {
     if (!canSubmit) return;
     onSubmit({
       sku: sku || undefined,
@@ -45,8 +44,18 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending }: V
     setIsDefault(false);
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    submit();
+  }
+
+  // A plain <div>, not a <form> — this row is embedded inside the product
+  // edit page's own <form> (ExistingVariantsManager), and nested <form>
+  // elements are invalid HTML / trigger a hydration mismatch. Enter-to-submit
+  // is preserved via onKeyDown instead of native form submission.
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2 rounded-inner bg-surface-2 p-2.5">
+    <div onKeyDown={handleKeyDown} className="flex flex-wrap items-end gap-2 rounded-inner bg-surface-2 p-2.5">
       {attributes.map((attr) => (
         <label key={attr.id} className="flex flex-col gap-1">
           <span className="text-[11px] font-semibold text-secondary">{attr.translations[0]?.name}</span>
@@ -104,9 +113,9 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending }: V
         <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
         Default
       </label>
-      <Button type="submit" variant="ghost" disabled={!canSubmit || pending}>
+      <Button type="button" variant="ghost" disabled={!canSubmit || pending} onClick={submit}>
         {submitLabel}
       </Button>
-    </form>
+    </div>
   );
 }

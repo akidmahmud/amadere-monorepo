@@ -4,6 +4,7 @@ import { FormEvent, ReactNode, useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { useCartDrawerStore } from "../stores/cartDrawerStore";
+import { useMobileNavDrawerStore } from "../stores/mobileNavDrawerStore";
 
 const leaf = (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-green">
@@ -35,6 +36,11 @@ const accountIcon = (
     <path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" />
   </svg>
 );
+const hamburgerIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-6 w-6">
+    <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+  </svg>
+);
 
 export interface HeaderProps {
   brandHref: string;
@@ -53,6 +59,8 @@ export interface HeaderProps {
   cartCount?: number;
   localeSwitchLabel: string;
   onLocaleSwitch: () => void;
+  /** aria-label for the mobile-only hamburger button that opens MobileNavDrawer. */
+  mobileMenuLabel: string;
   linkComponent?: LinkComponent;
   className?: string;
 }
@@ -74,12 +82,14 @@ export function Header({
   cartCount,
   localeSwitchLabel,
   onLocaleSwitch,
+  mobileMenuLabel,
   linkComponent: Link = DefaultLink,
   className,
 }: HeaderProps) {
   const [query, setQuery] = useState("");
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
   const openCart = useCartDrawerStore((s) => s.open);
+  const openMobileNav = useMobileNavDrawerStore((s) => s.open);
 
   function handleQueryChange(value: string) {
     setQuery(value);
@@ -102,12 +112,31 @@ export function Header({
           panel shows the id on the tag; "Copy selector" yields "#site-header-…"). */}
       <div
         id="site-header-row"
-        className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:flex-nowrap sm:h-32 sm:py-0"
+        className="relative flex w-full flex-wrap items-start gap-x-6 gap-y-3 px-5 py-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:flex-nowrap sm:items-center sm:h-32 sm:py-0"
       >
-        <Link id="site-header-logo" href={brandHref} className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          aria-label={mobileMenuLabel}
+          onClick={openMobileNav}
+          className="grid h-8 w-8 shrink-0 place-items-center text-ink sm:hidden"
+        >
+          {hamburgerIcon}
+        </button>
+        {/* Mobile only: pinned to the row's top edge and horizontally
+            centered so it lines up with the hamburger/cart icons instead of
+            floating at whatever height its own (much taller, desktop-sized)
+            content pushes it to. Sized down for mobile so it doesn't
+            overlap the search bar below. Reverts to a plain in-flow grid
+            item (column 1, original size, no margin) at sm+, untouched from
+            the original desktop layout. */}
+        <Link
+          id="site-header-logo"
+          href={brandHref}
+          className="absolute left-1/2 top-0 mb-2 flex shrink-0 -translate-x-1/2 items-center gap-1.5 sm:static sm:left-auto sm:top-auto sm:mb-0 sm:ml-30 sm:translate-x-0"
+        >
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={brandMark} className="mt-2 h-28 w-auto" />
+            <img src={logoUrl} alt={brandMark} className="h-16 w-auto sm:mb-0 sm:h-40" />
           ) : (
             <>
               {leaf}
@@ -121,7 +150,7 @@ export function Header({
 
         <div
           id="site-header-search"
-          className="relative order-3 w-full sm:order-none sm:w-full sm:max-w-[440px] sm:justify-self-center"
+          className="relative order-3 mt-2 w-full sm:order-none sm:mb-5 sm:w-full sm:max-w-[650px] sm:justify-self-center"
         >
           <form
             onSubmit={handleSubmit}
@@ -159,28 +188,29 @@ export function Header({
 
         <div
           id="site-header-icons"
-          className="order-2 ml-auto flex shrink-0 items-center gap-4 sm:order-none sm:ml-0 sm:justify-self-end"
+          className="order-2 ml-auto flex shrink-0 items-center gap-8 sm:order-none sm:mr-20 sm:justify-self-end"
         >
           <button
             type="button"
             onClick={onLocaleSwitch}
-            className="font-ui text-[13px] font-medium text-ink hover:text-green"
+            className="hidden font-ui text-[13px] font-medium text-ink hover:text-green sm:block"
           >
             {localeSwitchLabel}
           </button>
           {accountHref && accountLabel && (
-            <Link href={accountHref} aria-label={accountLabel} className="grid place-items-center text-green">
+            <Link href={accountHref} className="hidden flex-col items-center gap-0.5 text-green sm:flex">
               {accountIcon}
+              <span className="font-ui text-[11px] font-medium text-ink">{accountLabel}</span>
             </Link>
           )}
-          <Link href={trackOrderHref} aria-label={trackOrderLabel} className="grid place-items-center text-green">
+          <Link href={trackOrderHref} className="hidden flex-col items-center gap-0.5 text-green sm:flex">
             {trackIcon}
+            <span className="font-ui text-[11px] font-medium text-ink">{trackOrderLabel}</span>
           </Link>
           <button
             type="button"
-            aria-label={cartLabel}
             onClick={openCart}
-            className="relative grid place-items-center text-green"
+            className="relative flex flex-col items-center gap-0.5 text-green"
           >
             {cartIcon}
             {cartCount !== undefined && cartCount > 0 && (
@@ -188,6 +218,7 @@ export function Header({
                 {cartCount}
               </span>
             )}
+            <span className="font-ui text-[11px] font-medium text-ink">{cartLabel}</span>
           </button>
         </div>
       </div>

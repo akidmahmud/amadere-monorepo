@@ -43,6 +43,17 @@ export function useProducts() {
   });
 }
 
+export function useProductSearch(q: string) {
+  return useQuery({
+    queryKey: [...KEY, "search", q],
+    queryFn: async () => {
+      const res = await proxyFetch<Paginated<AdminProduct>>(`/admin/products?pageSize=20&q=${encodeURIComponent(q)}`);
+      return res.items ?? [];
+    },
+    enabled: q.trim().length > 0,
+  });
+}
+
 export function useProduct(id: number) {
   return useQuery({
     queryKey: [...KEY, id],
@@ -99,3 +110,5 @@ export function useRemoveVariant(productId: number) {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+export { KEY as PRODUCTS_KEY };

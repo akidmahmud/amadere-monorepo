@@ -26,6 +26,8 @@ import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { ProductFilterQueryDto } from './dto/product-filter-query.dto';
 import { AdminProductDto } from './dto/product-response.dto';
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
+import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
+import { UpdateCrossSellDto } from './dto/update-cross-sell.dto';
 
 @ApiTags('admin/products')
 @ApiBearerAuth()
@@ -102,5 +104,30 @@ export class AdminProductsController {
     @Body() dto: UpdateVariantStockDto,
   ): Promise<void> {
     return this.products.updateVariantStock(id, variantId, dto.stock);
+  }
+
+  @Patch(':id/variants/:variantId/price')
+  @RequirePermission('product.update')
+  updateVariantPrice(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+    @Body() dto: UpdateVariantPriceDto,
+  ): Promise<void> {
+    return this.products.updateVariantPrice(id, variantId, dto);
+  }
+
+  @Get(':id/cross-sell')
+  @RequirePermission('product.view')
+  getCrossSell(@Param('id', ParseIntPipe) id: number): Promise<number[]> {
+    return this.products.getCrossSell(id);
+  }
+
+  @Patch(':id/cross-sell')
+  @RequirePermission('product.update')
+  updateCrossSell(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCrossSellDto,
+  ): Promise<number[]> {
+    return this.products.updateCrossSell(id, dto.productIds);
   }
 }

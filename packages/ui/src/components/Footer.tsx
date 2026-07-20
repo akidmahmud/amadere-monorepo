@@ -11,6 +11,7 @@ export interface FooterLinkColumn {
 
 export interface FooterProps {
   brandMark: string;
+  logoUrl?: string;
   bottomImageUrl?: string;
   newsletterHeading: string;
   newsletterPlaceholder: string;
@@ -24,6 +25,7 @@ export interface FooterProps {
 
 export function Footer({
   brandMark,
+  logoUrl,
   bottomImageUrl,
   newsletterHeading,
   newsletterPlaceholder,
@@ -65,7 +67,17 @@ export function Footer({
       <div className="mx-auto h-px max-w-[1180px] bg-gold/40" />
 
       <div className="relative z-[2] mx-auto grid max-w-[1180px] grid-cols-1 gap-8 px-5 py-9 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.5fr]">
-        <div className="font-bengali text-[34px] font-bold text-white">{brandMark}</div>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          // mix-blend-screen: the footer logo asset is white artwork baked
+          // onto a solid black background (no alpha channel) — screen blend
+          // makes black pixels transparent against the green footer bg
+          // while keeping the white mark solid, without needing a
+          // re-exported transparent PNG.
+          <img src={logoUrl} alt={brandMark} className="h-14 w-auto mix-blend-screen" />
+        ) : (
+          <div className="font-bengali text-[34px] font-bold text-white">{brandMark}</div>
+        )}
         {columns.map((column) => (
           <ul key={column.heading} className="flex flex-col gap-2">
             {column.links.map((link) => (
@@ -86,10 +98,16 @@ export function Footer({
 
       {bottomImageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={bottomImageUrl} alt="" aria-hidden="true" className="mt-[-10px] h-[80px] w-full object-cover" />
+        // Source art (1536x1024) is a green-to-torn-paper-to-fade scene, not
+        // a pre-cropped strip — a short height forces object-cover to scale
+        // the image way up to fill the (very wide) container's width, then
+        // crop nearly all of the height away, leaving only a razor-thin,
+        // unrecognizable sliver. This height keeps enough of the source
+        // visible to actually show the leaf + torn-paper band.
+        <img src={bottomImageUrl} alt="" aria-hidden="true" className="mt-[-10px] h-[220px] w-full object-cover" />
       ) : (
         <div
-          className="mt-[-10px] h-[80px] bg-gradient-to-b from-[#c6a373] to-[#b48a55]"
+          className="mt-[-10px] h-[220px] bg-gradient-to-b from-[#c6a373] to-[#b48a55]"
           aria-hidden
         />
       )}

@@ -20,6 +20,7 @@ import { BlockPopup, type BlockPopupDetails } from "@/components/BlockPopup";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { getDeviceId } from "@/lib/device-id";
+import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useCartQuery, useRemoveCartItem, useUpdateCartItem } from "@/hooks/useCart";
@@ -145,6 +146,7 @@ export function CheckoutForm() {
         customerNote: values.customerNote?.trim() || undefined,
         deviceId: getDeviceId(),
         checkoutStartedAt: checkoutStartedAtRef.current,
+        ...getUtmParamsForCheckout(),
       },
       { onSuccess: (order) => setPlacedOrder(order) },
     );

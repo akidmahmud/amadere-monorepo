@@ -12,5 +12,13 @@ export function sanitizeHomepageSectionConfig(
   if (type === "HERO_BANNER" && Array.isArray(config.slides)) {
     return { ...config, slides: config.slides.filter((slide) => slide?.imageUrl) };
   }
+  if (type === "TESTIMONIAL_BENTO") {
+    const videos = Array.isArray(config.videos) ? config.videos.filter((v) => v?.url) : config.videos;
+    const reviews = Array.isArray(config.reviews) ? config.reviews.filter((r) => r?.quote && r?.name) : config.reviews;
+    return { ...config, videos, reviews };
+  }
+  if (type === "CERTIFICATION_ROW" && Array.isArray(config.items)) {
+    return { ...config, items: config.items.filter((item) => item?.imageUrl) };
+  }
   return config;
 }

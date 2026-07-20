@@ -7,7 +7,11 @@ import { routing } from "@/i18n/routing";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteCartDrawer } from "@/components/SiteCartDrawer";
+import { WhatsappFloatingButton } from "@/components/WhatsappFloatingButton";
+import { CartSummaryWidget } from "@/components/CartSummaryWidget";
 import { QueryProvider } from "@/components/QueryProvider";
+import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/AnalyticsScripts";
+import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
 import "../globals.css";
 
@@ -61,6 +65,8 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const { data: siteInfo } = await safeGet("/api/v1/settings/site");
+  const { data: analyticsConfig } = await safeGet("/api/v1/analytics/config");
+  const { data: whatsappConfig } = await safeGet("/api/v1/whatsapp/config");
 
   return (
     <html
@@ -76,12 +82,27 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
       <body className="min-h-full flex flex-col font-body">
+        <AnalyticsScripts
+          config={
+            (analyticsConfig as PublicAnalyticsConfig | undefined) ?? {
+              ga4: null,
+              gtm: null,
+              meta: null,
+              googleAds: null,
+              tiktok: null,
+              clarity: null,
+              utmEnabled: false,
+            }
+          }
+        />
         <NextIntlClientProvider>
           <QueryProvider>
             <SiteHeader initialLogoUrl={siteInfo?.logoUrl} />
             <div className="flex flex-1 flex-col">{children}</div>
             <SiteFooter />
             <SiteCartDrawer />
+            <WhatsappFloatingButton config={(whatsappConfig as WhatsappConfig | undefined) ?? null} />
+            <CartSummaryWidget />
           </QueryProvider>
         </NextIntlClientProvider>
       </body>

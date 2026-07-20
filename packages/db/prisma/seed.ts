@@ -27,6 +27,21 @@ async function main() {
     });
   }
 
+  console.log('Seeding default customer tiers...');
+  const defaultTiers = [
+    { label: 'Group B', minCompletedOrders: 2, sortOrder: 1 },
+    { label: 'Group A', minCompletedOrders: 3, sortOrder: 2 },
+    { label: 'Gold', minCompletedOrders: 5, sortOrder: 3 },
+    { label: 'Platinum', minCompletedOrders: 7, sortOrder: 4 },
+  ];
+  for (const tier of defaultTiers) {
+    await prisma.customerTier.upsert({
+      where: { minCompletedOrders: tier.minCompletedOrders },
+      create: tier,
+      update: { label: tier.label, sortOrder: tier.sortOrder },
+    });
+  }
+
   console.log('Seeding Super Admin role...');
   const superAdminRole = await prisma.role.upsert({
     where: { name: 'Super Admin' },

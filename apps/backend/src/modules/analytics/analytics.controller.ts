@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
+import { AnalyticsSettingsService, PublicAnalyticsConfig } from './analytics-settings.service';
 import { TrackEventDto } from './dto/track-event.dto';
 
 class AnalyticsAckDto {
@@ -10,7 +11,10 @@ class AnalyticsAckDto {
 @ApiTags('analytics')
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private readonly analytics: AnalyticsService) {}
+  constructor(
+    private readonly analytics: AnalyticsService,
+    private readonly settings: AnalyticsSettingsService,
+  ) {}
 
   // Public and unauthenticated on purpose — this is what the frontend's
   // client-side tracking calls hit directly (page views, product views,
@@ -25,5 +29,14 @@ export class AnalyticsController {
       clientId: dto.clientId,
     });
     return { accepted: true };
+  }
+
+  // Client-safe subset of the admin-configured tracking IDs (never secrets)
+  // — the storefront's script loader (AnalyticsScripts) reads this to decide
+  // which pixels/tags to inject, so IDs live in one admin-editable place
+  // instead of being hardcoded into the frontend build.
+  @Get('config')
+  getConfig(): Promise<PublicAnalyticsConfig> {
+    return this.settings.getPublicConfig();
   }
 }

@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { formatMoney } from "@amader/ui";
 import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
+import { fireClientPurchase } from "@/lib/analytics-events";
 import type { components } from "@/lib/api/schema";
 
 type OrderDto = components["schemas"]["OrderDto"];
@@ -15,9 +17,40 @@ const STATUS_LABEL: Record<string, string> = {
   RETURNED: "Returned",
 };
 
+const SHIPMENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Pending Pickup",
+  DISPATCHED: "Dispatched",
+  IN_TRANSIT: "In Transit",
+  DELIVERED: "Delivered",
+  PARTIALLY_DELIVERED: "Partially Delivered",
+  RETURNED: "Returned",
+  CANCELED: "Canceled",
+  FAILED: "Failed",
+};
+
+const COURIER_LABEL: Record<string, string> = {
+  STEADFAST: "Steadfast",
+  PATHAO: "Pathao",
+  REDX: "RedX",
+  ECOURIER: "eCourier",
+};
+
 export function OrderConfirmation({ order }: { order: OrderDto }) {
   const shipping = order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
   const latestPayment = order.payments[order.payments.length - 1];
+
+  // Fires once per mount (this component only mounts when a fresh order was
+  // just placed — a page refresh loses the parent's `placedOrder` state
+  // entirely rather than re-rendering this, so there's no double-fire risk).
+  useEffect(() => {
+    fireClientPurchase({
+      orderNumber: order.orderNumber,
+      totalAmount: order.totalAmount,
+      currency: order.currency,
+      items: order.items.map((item) => ({ name: item.name, price: Number(item.unitPrice), quantity: item.quantity })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id]);
 
   return (
     <div className="mx-auto max-w-xl">
@@ -83,6 +116,32 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
         (latestPayment.status as unknown as string) === "PENDING" && (
           <ManualPaymentSubmission orderId={order.id} provider={latestPayment.provider as unknown as string} amount={order.totalAmount} />
         )}
+
+      {order.shipment && (
+        <div className="mb-4 rounded-brand border border-line bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-ui text-sm font-semibold text-ink">
+              Delivery Status — {COURIER_LABEL[order.shipment.provider as unknown as string] ?? order.shipment.provider}
+            </h3>
+            <span className="rounded-full bg-beige px-3 py-1 font-ui text-xs font-semibold text-ink">
+              {SHIPMENT_STATUS_LABEL[order.shipment.status as unknown as string] ?? order.shipment.status}
+            </span>
+          </div>
+          {order.shipment.trackingCode && (
+            <p className="mb-2 font-body text-xs text-muted">Tracking code: {order.shipment.trackingCode}</p>
+          )}
+          {order.shipment.events.length > 0 && (
+            <ul className="space-y-1.5 border-t border-line pt-3">
+              {order.shipment.events.map((event, i) => (
+                <li key={i} className="flex items-center justify-between font-body text-xs text-muted">
+                  <span>{SHIPMENT_STATUS_LABEL[event.status as unknown as string] ?? event.status}</span>
+                  <span>{new Date(event.occurredAt).toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {shipping && (
         <div className="mb-4 rounded-brand border border-line bg-white p-5">

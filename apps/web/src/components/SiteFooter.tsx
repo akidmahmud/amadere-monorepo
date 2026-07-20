@@ -7,6 +7,11 @@ import { useSubscribeNewsletter } from "@/hooks/useNewsletter";
 
 const FOOTER_BOTTOM_IMAGE_URL =
   "https://pub-51174804638049198acba5bbf211435e.r2.dev/image/8ba98d02-41d1-4d55-b9d4-e992a7fa5449-footer-bottom.png";
+// Dedicated white-on-black footer logo (distinct from the header's logo,
+// which is a green mark meant for a white background) — the green header
+// mark has very low contrast against this footer's dark green background.
+const FOOTER_LOGO_URL =
+  "https://pub-51174804638049198acba5bbf211435e.r2.dev/image/0fe76c74-57d4-4d60-bf44-3c2c8056d4d3-footer-logo-white.png";
 
 export function SiteFooter() {
   const t = useTranslations("footer");
@@ -15,6 +20,7 @@ export function SiteFooter() {
   return (
     <Footer
       brandMark="আমাদের"
+      logoUrl={FOOTER_LOGO_URL}
       bottomImageUrl={FOOTER_BOTTOM_IMAGE_URL}
       newsletterHeading={t("newsletterHeading")}
       newsletterPlaceholder={t("newsletterPlaceholder")}

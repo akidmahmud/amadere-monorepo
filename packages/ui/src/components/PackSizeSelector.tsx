@@ -31,8 +31,8 @@ export function PackSizeSelector({ options, value, onChange, className }: PackSi
             type="button"
             onClick={() => onChange(option.value)}
             className={cn(
-              "relative min-w-[120px] rounded-xl border-[1.5px] bg-white px-4 py-3.5 text-left",
-              active ? "border-green bg-cream" : "border-line",
+              "relative min-w-[120px] rounded-xl border-[1.5px] px-4 py-3.5 text-left",
+              active ? "border-green bg-green" : "border-line bg-white",
             )}
           >
             {option.badge && (
@@ -40,10 +40,14 @@ export function PackSizeSelector({ options, value, onChange, className }: PackSi
                 {option.badge}
               </span>
             )}
-            <div className="font-ui text-sm font-semibold text-ink">{option.label}</div>
-            <div className="mt-1 font-serif font-bold text-green">{formatMoney(option.price)}</div>
+            <div className={cn("font-ui text-sm font-semibold", active ? "text-white" : "text-ink")}>
+              {option.label}
+            </div>
+            <div className={cn("mt-1 font-serif font-bold", active ? "text-white" : "text-green")}>
+              {formatMoney(option.price)}
+            </div>
             {hasDiscount && (
-              <div className="font-ui text-[11px] font-semibold text-gold-dark">
+              <div className="mt-1.5 inline-block rounded-full bg-[#1a1a1a] px-2 py-0.5 font-ui text-[10px] font-semibold text-white">
                 Save {formatMoney(String(Number(option.originalPrice) - Number(option.price)))}
               </div>
             )}

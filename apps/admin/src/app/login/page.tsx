@@ -92,7 +92,7 @@ function LoginForm() {
           </form>
         ) : (
           <form onSubmit={handleVerify} className="flex flex-col gap-4">
-            <p className="text-sm text-secondary">Enter the 6-digit code from your authenticator app.</p>
+            <p className="text-sm text-secondary">Enter the 6-digit code we emailed to your account address.</p>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-secondary">Code</span>
               <input

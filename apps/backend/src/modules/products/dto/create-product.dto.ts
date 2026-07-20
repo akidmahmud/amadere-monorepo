@@ -16,6 +16,8 @@ import {
 } from 'class-validator';
 import { ProductTranslationDto } from './product-translation.dto';
 import { CreateProductVariantDto } from './create-product-variant.dto';
+import { ProductInfoVisualImagesDto } from './product-info-visual.dto';
+import { ProductComparisonImagesDto } from './product-comparison.dto';
 
 export class CreateProductDto {
   @ApiProperty()
@@ -185,4 +187,16 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateProductVariantDto)
   variants?: CreateProductVariantDto[];
+
+  @ApiPropertyOptional({ type: ProductInfoVisualImagesDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProductInfoVisualImagesDto)
+  infoVisualImages?: ProductInfoVisualImagesDto;
+
+  @ApiPropertyOptional({ type: ProductComparisonImagesDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProductComparisonImagesDto)
+  comparisonImages?: ProductComparisonImagesDto;
 }

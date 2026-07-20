@@ -24,8 +24,3 @@ export class AdminTwoFactorRequiredDto {
   requiresTwoFactor!: boolean;
   twoFactorToken!: string;
 }
-
-export class TwoFactorSetupDto {
-  secret!: string;
-  otpauthUrl!: string;
-}

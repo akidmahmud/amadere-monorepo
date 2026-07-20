@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   AnalyticsEvent,
   AnalyticsProvider,
 } from '../analytics-provider.interface';
+import { AnalyticsSettingsService } from '../analytics-settings.service';
 
 const ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 
@@ -12,12 +12,11 @@ export class Ga4Provider implements AnalyticsProvider {
   readonly name = 'GA4';
   private readonly logger = new Logger(Ga4Provider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly settings: AnalyticsSettingsService) {}
 
   async send(event: AnalyticsEvent): Promise<void> {
-    const measurementId = this.config.get<string>('GA4_MEASUREMENT_ID');
-    const apiSecret = this.config.get<string>('GA4_API_SECRET');
-    if (!measurementId || !apiSecret) return;
+    const { enabled, measurementId, apiSecret } = await this.settings.getGa4Credentials();
+    if (!enabled || !measurementId || !apiSecret) return;
 
     try {
       const res = await fetch(

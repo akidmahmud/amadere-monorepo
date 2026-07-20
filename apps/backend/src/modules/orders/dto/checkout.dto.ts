@@ -50,4 +50,29 @@ export class CheckoutDto {
   @IsOptional()
   @IsInt()
   checkoutStartedAt?: number;
+
+  @ApiPropertyOptional({ description: 'Campaign attribution — read from the utm_* landing-page cookie (apps/web utm.ts)' })
+  @IsOptional()
+  @IsString()
+  utmSource?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmMedium?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmCampaign?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmTerm?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmContent?: string;
 }

@@ -5,6 +5,7 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { redirectIfMapped } from "@/lib/redirects";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
 
 // The last-resort route at this segment level — Next.js always prefers a
@@ -67,11 +68,11 @@ export default async function CatchAllPage({
         <main className="flex-1">
           <div className="mx-auto max-w-3xl px-5 py-12">
             <h1 className="mb-6 text-center font-serif text-3xl font-semibold text-ink">{page.title}</h1>
-            {/* Admin-authored WYSIWYG HTML, not user-generated — safe per backend's own content.util.ts docs */}
+            {/* Admin-authored WYSIWYG HTML, not user-generated — still sanitized before render */}
             {/* eslint-disable-next-line react/no-danger */}
             <div
               className="prose max-w-none font-body text-sm leading-relaxed text-ink [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-xl [&_h2]:font-semibold [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_a]:text-green [&_a]:underline"
-              dangerouslySetInnerHTML={{ __html: page.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.content) }}
             />
           </div>
         </main>

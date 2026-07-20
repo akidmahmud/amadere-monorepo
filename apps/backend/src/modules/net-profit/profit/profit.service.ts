@@ -28,7 +28,10 @@ export interface ProductVariantCostRow {
   productName: string;
   sku: string | null;
   price: string;
+  salePrice: string | null;
   costPerItem: string | null;
+  swatchImageUrl: string | null;
+  swatchColorHex: string | null;
 }
 
 export interface ProfitReport {
@@ -257,32 +260,51 @@ export class ProfitService {
   async listVariantCosts(productId: number): Promise<ProductVariantCostRow[]> {
     const variants = await this.prisma.client.productVariant.findMany({
       where: { productId },
-      include: { product: { include: { translations: { where: { locale: 'EN' }, take: 1 } } } },
+      include: {
+        product: { include: { translations: { where: { locale: 'EN' }, take: 1 } } },
+        attributeValues: { include: { attributeValue: true } },
+      },
       orderBy: { id: 'asc' },
     });
-    return variants.map((v) => ({
-      id: v.id,
-      productId: v.productId,
-      productName: v.product.translations[0]?.name ?? v.product.slug,
-      sku: v.sku,
-      price: v.price.toString(),
-      costPerItem: v.costPerItem?.toString() ?? null,
-    }));
+    return variants.map((v) => {
+      // The variant's "image" is really its attribute value's swatch (e.g.
+      // Gold/Silver's own colorHex/imageUrl, set in Catalog → Attributes) —
+      // there's no separate per-variant image field in the schema.
+      const swatch = v.attributeValues.find((av) => av.attributeValue.imageUrl || av.attributeValue.colorHex)?.attributeValue;
+      return {
+        id: v.id,
+        productId: v.productId,
+        productName: v.product.translations[0]?.name ?? v.product.slug,
+        sku: v.sku,
+        price: v.price.toString(),
+        salePrice: v.salePrice?.toString() ?? null,
+        costPerItem: v.costPerItem?.toString() ?? null,
+        swatchImageUrl: swatch?.imageUrl ?? null,
+        swatchColorHex: swatch?.colorHex ?? null,
+      };
+    });
   }
 
   async setVariantCost(variantId: number, costPerItem: Prisma.Decimal): Promise<ProductVariantCostRow> {
     const v = await this.prisma.client.productVariant.update({
       where: { id: variantId },
       data: { costPerItem },
-      include: { product: { include: { translations: { where: { locale: 'EN' }, take: 1 } } } },
+      include: {
+        product: { include: { translations: { where: { locale: 'EN' }, take: 1 } } },
+        attributeValues: { include: { attributeValue: true } },
+      },
     });
+    const swatch = v.attributeValues.find((av) => av.attributeValue.imageUrl || av.attributeValue.colorHex)?.attributeValue;
     return {
       id: v.id,
       productId: v.productId,
       productName: v.product.translations[0]?.name ?? v.product.slug,
       sku: v.sku,
       price: v.price.toString(),
+      salePrice: v.salePrice?.toString() ?? null,
       costPerItem: v.costPerItem?.toString() ?? null,
+      swatchImageUrl: swatch?.imageUrl ?? null,
+      swatchColorHex: swatch?.colorHex ?? null,
     };
   }
 

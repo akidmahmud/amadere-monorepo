@@ -22,6 +22,7 @@ import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toProductCardData, toPromoVideoProductData } from "@/lib/product-card-mapper";
 import { toDisplayImageUrl } from "@/lib/media";
+import { toBlogCardData } from "@/lib/blog-mapper";
 import { HealthConcernSection } from "@/components/HealthConcernSection";
 import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
 import { PromoVideoSectionClient } from "@/components/PromoVideoSectionClient";
@@ -105,7 +106,10 @@ function renderSection(
     case "HERO_BANNER": {
       const slides = config.slides as { imageUrl: string; linkUrl?: string }[] | undefined;
       return (
-        <div className={`${WRAPPER} pt-5.5`} key={section.id}>
+        // Full-bleed edge-to-edge (no padding, no top gap), unlike every
+        // other section — kept only the max-width cap for ultra-wide
+        // monitors.
+        <div className="mx-auto w-full max-w-[1920px]" key={section.id}>
           <HeroCarousel
             slides={slides}
             stripImageUrl={config.stripImageUrl as string | undefined}
@@ -136,20 +140,11 @@ function renderSection(
       const imageUrl = config.imageUrl as string | undefined;
       if (!imageUrl) return null;
       const linkUrl = config.linkUrl as string | undefined;
-      // Source images are ideally 1690×195 — aspect-ratio instead of a flat
-      // height keeps the full image visible at that ratio on any viewport
-      // width. Same blurred-fill treatment as HeroCarousel: any off-ratio
-      // image still shows in full, uncropped, with a softly blurred copy of
-      // itself filling the rest instead of empty gaps.
+      // Fixed 1690x195 box per design spec — crops to fill (object-cover),
+      // never distorts, regardless of the uploaded image's real aspect ratio.
       const image = (
-        <div className="relative aspect-[1690/195] w-full overflow-hidden rounded-2xl bg-gray">
-          <img
-            src={imageUrl}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-70 blur-2xl"
-          />
-          <img src={imageUrl} alt="" className="relative h-full w-full object-contain" />
+        <div className="relative mx-auto h-[195px] w-full max-w-[1690px] overflow-hidden rounded-[20px] bg-gray">
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         </div>
       );
       return (
@@ -188,7 +183,10 @@ function renderSection(
 
     case "BLOG_TEASER": {
       const postIds = config.postIds as number[] | undefined;
-      const limit = (config.limit as number | undefined) ?? 5;
+      // When the admin explicitly picked posts (postIds), show all of them —
+      // `config.limit` is a leftover default for the "latest N posts" mode
+      // and shouldn't silently drop an explicitly-selected post.
+      const limit = postIds?.length ?? (config.limit as number | undefined) ?? 6;
       const selected = (postIds?.length ? ctx.blogPosts.filter((p) => postIds.includes(p.id)) : ctx.blogPosts).slice(
         0,
         limit,
@@ -196,13 +194,11 @@ function renderSection(
       if (selected.length === 0) return null;
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
-          <SectionHeading>{section.heading ?? "Blogs"}</SectionHeading>
+          <SectionHeading>{section.heading ?? "আমাদের ব্লগ"}</SectionHeading>
           <BentoBlogs
-            posts={selected.map((post) => ({
-              href: `/blog/${post.slug}`,
-              title: post.title,
-              imageUrl: toDisplayImageUrl(post.imageUrl),
-            }))}
+            posts={selected.map((post) => toBlogCardData(post))}
+            viewAllHref="/blog"
+            viewAllLabel="View All"
             linkComponent={AppLink}
           />
         </div>
@@ -210,7 +206,8 @@ function renderSection(
     }
 
     case "CERTIFICATION_ROW": {
-      const items = config.items as { imageUrl?: string; label?: string }[] | undefined;
+      const rawItems = config.items as { imageUrl?: string; label?: string }[] | undefined;
+      const items = rawItems?.map((item) => ({ imageUrl: toDisplayImageUrl(item.imageUrl), label: item.label }));
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "Our Certification"}</SectionHeading>
@@ -220,14 +217,13 @@ function renderSection(
     }
 
     case "TESTIMONIAL_BENTO": {
+      const rawVideos = config.videos as { url: string; thumbnailUrl?: string }[] | undefined;
+      const videos = rawVideos?.map((v) => ({ url: v.url, thumbnailUrl: toDisplayImageUrl(v.thumbnailUrl) }));
+      const reviews = config.reviews as { quote: string; name: string }[] | undefined;
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "500+ Happy Clients"}</SectionHeading>
-          <TestimonialsBento
-            mainImageUrl={config.mainImageUrl as string | undefined}
-            mainVideoUrl={config.mainVideoUrl as string | undefined}
-            photos={config.photos as string[] | undefined}
-          />
+          <TestimonialsBento videos={videos} reviews={reviews} />
         </div>
       );
     }
@@ -293,6 +289,7 @@ function renderSection(
             heading={section.heading ?? undefined}
             tabs={tabs}
             defaultActiveIndex={(config.defaultActiveTab as number | undefined) ?? 0}
+            visibleCount={5}
           />
         </div>
       );
@@ -324,7 +321,7 @@ export default async function Home({
       params: { query: { locale: localeParam, pageSize: 10 } },
     }),
     safeGet("/api/v1/blog-posts", {
-      params: { query: { locale: localeParam, pageSize: 5 } },
+      params: { query: { locale: localeParam, pageSize: 6 } },
     }),
   ]);
 
