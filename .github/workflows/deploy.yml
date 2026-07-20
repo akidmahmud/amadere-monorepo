@@ -1,0 +1,35 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/amadere-monorepo
+
+            # Always mirror origin/master exactly — no local changes should
+            # ever exist on the deploy target, so reset instead of pull.
+            git fetch origin master
+            git reset --hard origin/master
+
+            pnpm install --frozen-lockfile
+
+            # Apply any new DB migrations before rebuilding.
+            pnpm --filter @amader/db exec prisma migrate deploy
+
+            # turbo builds every app/package in the correct dependency order.
+            pnpm build
+
+            pm2 restart backend admin web
