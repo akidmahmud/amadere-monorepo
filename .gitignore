@@ -7,3 +7,5 @@ generated/
 backups/
 migrate-report.json
 storybook-static/
+*.dump
+*.sql.gz
