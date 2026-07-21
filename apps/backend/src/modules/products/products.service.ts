@@ -337,6 +337,33 @@ export class ProductsService {
     });
   }
 
+  // Editable in place (like price/stock) rather than requiring remove+re-add
+  // — unlike attribute-value combos/isDefault, SKU carries no relational
+  // structure that a bare update could leave inconsistent.
+  async updateVariantSku(
+    productId: number,
+    variantId: number,
+    sku?: string,
+  ): Promise<void> {
+    const variant = await this.prisma.client.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+    if (!variant) throw new NotFoundException('Variant not found');
+    const normalized = sku?.trim() || null;
+    if (normalized) {
+      const existing = await this.prisma.client.productVariant.findUnique({
+        where: { sku: normalized },
+      });
+      if (existing && existing.id !== variantId) {
+        throw new ConflictException(`SKU "${normalized}" is already in use`);
+      }
+    }
+    await this.prisma.client.productVariant.update({
+      where: { id: variantId },
+      data: { sku: normalized },
+    });
+  }
+
   async updateVariantPrice(
     productId: number,
     variantId: number,

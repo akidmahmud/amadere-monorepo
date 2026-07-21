@@ -111,4 +111,13 @@ export function useRemoveVariant(productId: number) {
   });
 }
 
+export function useUpdateVariantSku(productId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ variantId, sku }: { variantId: number; sku: string }) =>
+      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/sku`, { method: "PATCH", body: JSON.stringify({ sku }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export { KEY as PRODUCTS_KEY };

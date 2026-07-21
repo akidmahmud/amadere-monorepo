@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@amader/admin-ui";
 import type { Attribute } from "@/hooks/useAttributes";
-import { PRODUCTS_KEY, useAddVariant, useRemoveVariant, type AdminProductVariant } from "@/hooks/useProducts";
+import { PRODUCTS_KEY, useAddVariant, useRemoveVariant, useUpdateVariantSku, type AdminProductVariant } from "@/hooks/useProducts";
 import { useUpdateVariantPrice } from "@/hooks/useProfit";
 import { useUpdateInventoryStock } from "@/hooks/useInventory";
 import { useQueryClient } from "@tanstack/react-query";
@@ -46,12 +46,18 @@ function VariantEditRow({
   const qc = useQueryClient();
   const updatePrice = useUpdateVariantPrice(productId);
   const updateStock = useUpdateInventoryStock();
+  const updateSku = useUpdateVariantSku(productId);
   const [price, setPrice] = useState(String(variant.price));
   const [salePrice, setSalePrice] = useState(variant.salePrice != null ? String(variant.salePrice) : "");
   const [stock, setStock] = useState(String(variant.stock));
+  const [sku, setSku] = useState(variant.sku ?? "");
 
-  const dirty = price !== String(variant.price) || salePrice !== (variant.salePrice != null ? String(variant.salePrice) : "") || stock !== String(variant.stock);
-  const pending = updatePrice.isPending || updateStock.isPending;
+  const dirty =
+    price !== String(variant.price) ||
+    salePrice !== (variant.salePrice != null ? String(variant.salePrice) : "") ||
+    stock !== String(variant.stock) ||
+    sku !== (variant.sku ?? "");
+  const pending = updatePrice.isPending || updateStock.isPending || updateSku.isPending;
 
   function save() {
     const invalidate = () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY });
@@ -64,14 +70,25 @@ function VariantEditRow({
     if (stock !== String(variant.stock)) {
       updateStock.mutate({ productId, variantId: variant.id, stock: Number(stock) }, { onSuccess: invalidate });
     }
+    if (sku !== (variant.sku ?? "")) {
+      updateSku.mutate({ variantId: variant.id, sku }, { onSuccess: invalidate });
+    }
   }
 
   return (
     <div className="flex flex-wrap items-end gap-2 rounded-inner bg-surface-2 p-2.5">
       <span className="mb-1.5 min-w-0 flex-1 text-sm text-text">
-        {labelFor(attributes, variant.attributeValueIds) || variant.sku || `Variant #${variant.id}`}
+        {labelFor(attributes, variant.attributeValueIds) || `Variant #${variant.id}`}
         {variant.isDefault && " (default)"}
       </span>
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] font-semibold text-secondary">SKU</span>
+        <input
+          value={sku}
+          onChange={(e) => setSku(e.target.value)}
+          className="h-8 w-32 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500"
+        />
+      </label>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold text-secondary">Price</span>
         <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className={editInputClass} />
@@ -87,14 +104,19 @@ function VariantEditRow({
       <Button type="button" variant="ghost" disabled={!dirty || pending} onClick={save}>
         {pending ? "Saving…" : "Save"}
       </Button>
+      {updateSku.isError && (
+        <span className="w-full text-xs text-danger">
+          {updateSku.error instanceof Error ? updateSku.error.message : "Failed to save SKU"}
+        </span>
+      )}
     </div>
   );
 }
 
-// No update-variant endpoint exists for attribute-value combos, SKU, or
-// isDefault — changing those means removing the variant and adding it again
-// (both mutations fire immediately, same pattern already proven on the
-// Attributes page). Price and stock DO have real update endpoints (see
+// No update-variant endpoint exists for attribute-value combos or isDefault
+// — changing those means removing the variant and adding it again (both
+// mutations fire immediately, same pattern already proven on the Attributes
+// page). Price, stock, and SKU DO have real update endpoints (see
 // VariantEditRow above), so those are edited in place instead.
 export function ExistingVariantsManager({ productId, attributes, variants }: ExistingVariantsManagerProps) {
   const addVariant = useAddVariant(productId);

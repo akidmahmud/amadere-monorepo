@@ -27,6 +27,7 @@ import { ProductFilterQueryDto } from './dto/product-filter-query.dto';
 import { AdminProductDto } from './dto/product-response.dto';
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
+import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
 import { UpdateCrossSellDto } from './dto/update-cross-sell.dto';
 
 @ApiTags('admin/products')
@@ -114,6 +115,16 @@ export class AdminProductsController {
     @Body() dto: UpdateVariantPriceDto,
   ): Promise<void> {
     return this.products.updateVariantPrice(id, variantId, dto);
+  }
+
+  @Patch(':id/variants/:variantId/sku')
+  @RequirePermission('product.update')
+  updateVariantSku(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+    @Body() dto: UpdateVariantSkuDto,
+  ): Promise<void> {
+    return this.products.updateVariantSku(id, variantId, dto.sku);
   }
 
   @Get(':id/cross-sell')
