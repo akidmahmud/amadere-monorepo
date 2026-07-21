@@ -29,6 +29,17 @@ jobs:
             # Apply any new DB migrations before rebuilding.
             pnpm --filter @amader/db exec prisma migrate deploy
 
+            # Next.js writes a build lock into .next/ for the duration of
+            # `next build`; if a previous deploy got killed mid-build (runner
+            # timeout, cancelled workflow, OOM) that lock is never cleaned up
+            # and every following deploy fails immediately with "Another next
+            # build process is already running" even though nothing is
+            # actually running. Clearing .next before building removes any
+            # stale lock — turbo's own cache (separate from .next) still
+            # short-circuits the rebuild when nothing changed, so this doesn't
+            # cost a full rebuild on every deploy.
+            rm -rf apps/admin/.next apps/web/.next
+
             # turbo builds every app/package in the correct dependency order.
             pnpm build
 
