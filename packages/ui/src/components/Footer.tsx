@@ -69,12 +69,7 @@ export function Footer({
       <div className="relative z-[2] mx-auto grid max-w-[1180px] grid-cols-1 gap-8 px-5 py-9 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1.5fr]">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          // mix-blend-screen: the footer logo asset is white artwork baked
-          // onto a solid black background (no alpha channel) — screen blend
-          // makes black pixels transparent against the green footer bg
-          // while keeping the white mark solid, without needing a
-          // re-exported transparent PNG.
-          <img src={logoUrl} alt={brandMark} className="h-14 w-auto mix-blend-screen" />
+          <img src={logoUrl} alt={brandMark} className="h-20 w-auto" />
         ) : (
           <div className="font-bengali text-[34px] font-bold text-white">{brandMark}</div>
         )}

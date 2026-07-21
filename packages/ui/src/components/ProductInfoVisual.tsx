@@ -31,8 +31,8 @@ const RING_COLORS = ["border-gold", "border-[#3b6fd1]", "border-[#e05a5a]"];
 // — each has its own curve). Each one's "tail" (the plain end, no
 // arrowhead) sits at a specific corner of its own viewBox; that corner is
 // what gets anchored to the measured caption position below.
-const TopLeftArrow = () => (
-  <svg width="170" height="180" viewBox="0 0 170 180" fill="none">
+const TopLeftArrow = ({ scale = 1 }: { scale?: number }) => (
+  <svg width={170 * scale} height={180 * scale} viewBox="0 0 170 180" fill="none">
     <path
       d="M10 20 C60 5, 85 25, 90 70 C95 125, 120 145, 160 145"
       stroke="white"
@@ -45,8 +45,8 @@ const TopLeftArrow = () => (
   </svg>
 );
 
-const BottomLeftArrow = () => (
-  <svg width="180" height="160" viewBox="0 0 180 160" fill="none">
+const BottomLeftArrow = ({ scale = 1 }: { scale?: number }) => (
+  <svg width={180 * scale} height={160 * scale} viewBox="0 0 180 160" fill="none">
     <path
       d="M5 145 C55 150, 75 145, 90 115 C105 85, 100 40, 140 25 C155 20, 165 20, 175 20"
       stroke="white"
@@ -59,8 +59,8 @@ const BottomLeftArrow = () => (
   </svg>
 );
 
-const TopRightArrow = () => (
-  <svg width="140" height="180" viewBox="0 0 140 180" fill="none">
+const TopRightArrow = ({ scale = 1 }: { scale?: number }) => (
+  <svg width={140 * scale} height={180 * scale} viewBox="0 0 140 180" fill="none">
     <path
       d="M125 10 C95 30, 100 95, 75 145 C55 185, 20 160, 10 145"
       stroke="white"
@@ -73,8 +73,8 @@ const TopRightArrow = () => (
   </svg>
 );
 
-const BottomRightArrow = () => (
-  <svg width="180" height="209" viewBox="0 0 500 580" fill="none">
+const BottomRightArrow = ({ scale = 1 }: { scale?: number }) => (
+  <svg width={180 * scale} height={209 * scale} viewBox="0 0 500 580" fill="none">
     <path
       d="M455 75 C340 130 250 220 245 320 C242 385 270 450 205 455 C155 460 120 450 85 438"
       stroke="white"
@@ -105,6 +105,38 @@ const ARROW_META = [
   // same units as this rendered width/height, not the original viewBox.
   { Svg: BottomRightArrow, width: 180, height: 209, tailX: 164, tailY: 27, flipY: true },
 ];
+
+function MobileCaption({ arrow }: { arrow: ProductInfoVisualArrow }) {
+  if (!arrow.heading && !arrow.subheading) return null;
+  return (
+    <div className="text-center">
+      {arrow.heading && (
+        // eslint-disable-next-line react/no-danger
+        <p className="font-serif text-[22px] font-bold leading-tight text-green" dangerouslySetInnerHTML={{ __html: arrow.heading }} />
+      )}
+      {arrow.subheading && (
+        // eslint-disable-next-line react/no-danger
+        <p className="mt-1 font-body text-[15px] leading-relaxed text-ink/70" dangerouslySetInnerHTML={{ __html: arrow.subheading }} />
+      )}
+    </div>
+  );
+}
+
+// Smaller renders of the same hand-drawn arrows used on desktop (same paths,
+// same curve directions — topLeft/topRight already curve down into the
+// image, bottomLeft/bottomRight already curve up into it — so no separate
+// mobile artwork is needed, just a smaller fixed size sandwiched directly
+// around the image instead of desktop's runtime-measured anchor position.
+const MOBILE_ARROW_SCALE = 0.34;
+
+function MobileCornerArrow({ metaIndex }: { metaIndex: 0 | 1 | 2 | 3 }) {
+  const { Svg, flipY } = ARROW_META[metaIndex];
+  return (
+    <div style={flipY ? { transform: "scaleY(-1)" } : undefined}>
+      <Svg scale={MOBILE_ARROW_SCALE} />
+    </div>
+  );
+}
 
 function ArrowCaption({
   arrow,
@@ -213,13 +245,53 @@ export function ProductInfoVisual({
         <path fill="#FBF7F1" d="M0 1120 C250 1040 450 1060 700 1120 C1000 1190 1200 1230 1440 1080 L1440 1200 L0 1200 Z" />
       </svg>
 
-      <div className="relative z-[1] mx-auto max-w-[2200px] px-5 py-40">
+      <div className="relative z-[1] mx-auto max-w-[2200px] px-5 pb-16 pt-28 md:py-40">
         {topHeadingHtml && (
           // eslint-disable-next-line react/no-danger
-          <h2 className="mb-24 text-center font-serif text-[48px] font-bold leading-snug" dangerouslySetInnerHTML={{ __html: topHeadingHtml }} />
+          <h2 className="mb-10 text-center font-serif text-[28px] font-bold leading-snug md:mb-24 md:text-[48px]" dangerouslySetInnerHTML={{ __html: topHeadingHtml }} />
         )}
 
-        <div ref={gridRef} className="relative mx-auto grid max-w-[1800px] grid-cols-[1fr_auto_1fr] items-center gap-8">
+        {/* Mobile: same two-captions-per-side idea as desktop, laid out as
+            two-column rows above/below a centered image instead of desktop's
+            left/right flanking columns — with the same hand-drawn arrows
+            (shrunk, no runtime anchoring needed) sandwiched directly above
+            and below the image, curving in from each column toward it. */}
+        <div className="flex flex-col items-center gap-3 md:hidden">
+          {(topLeft?.heading || topLeft?.subheading || topRight?.heading || topRight?.subheading) && (
+            <>
+              <div className="grid w-full grid-cols-2 gap-3">
+                <MobileCaption arrow={topLeft ?? {}} />
+                <MobileCaption arrow={topRight ?? {}} />
+              </div>
+              <div className="flex w-full items-start justify-center gap-14">
+                <MobileCornerArrow metaIndex={0} />
+                <MobileCornerArrow metaIndex={2} />
+              </div>
+            </>
+          )}
+
+          {mainImageUrl && (
+            <div className="w-[62%] max-w-[280px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={mainImageUrl} alt="" className="h-auto w-full object-contain drop-shadow-lg" />
+            </div>
+          )}
+
+          {(bottomLeft?.heading || bottomLeft?.subheading || bottomRight?.heading || bottomRight?.subheading) && (
+            <>
+              <div className="flex w-full items-start justify-center gap-14">
+                <MobileCornerArrow metaIndex={1} />
+                <MobileCornerArrow metaIndex={3} />
+              </div>
+              <div className="grid w-full grid-cols-2 gap-3">
+                <MobileCaption arrow={bottomLeft ?? {}} />
+                <MobileCaption arrow={bottomRight ?? {}} />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div ref={gridRef} className="relative mx-auto hidden max-w-[1800px] grid-cols-[1fr_auto_1fr] items-center gap-8 md:grid">
           {positions.map((pos, i) => {
             if (!pos) return null;
             const { Svg, width, height, tailX, tailY, flipY } = ARROW_META[i];
@@ -263,7 +335,7 @@ export function ProductInfoVisual({
 
         {bottomHeadingHtml && (
           // eslint-disable-next-line react/no-danger
-          <h2 className="mb-16 mt-32 text-center font-serif text-[48px] font-bold leading-snug" dangerouslySetInnerHTML={{ __html: bottomHeadingHtml }} />
+          <h2 className="mb-8 mt-10 text-center font-serif text-[28px] font-bold leading-snug md:mb-16 md:mt-32 md:text-[48px]" dangerouslySetInnerHTML={{ __html: bottomHeadingHtml }} />
         )}
 
         {circles.some((c) => c.imageUrl) && (

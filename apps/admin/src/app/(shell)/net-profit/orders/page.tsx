@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button, Card, Icon, Modal, PageHeader, Table, TableEmptyRow, TableIdBadge } from "@amader/admin-ui";
 import type { RiskLevel as RiskBadgeLevel } from "@amader/admin-ui";
 import { ConsignModal } from "@/components/ConsignModal";
@@ -315,18 +316,25 @@ export default function OrderManagerPage() {
         title="Orders Manager"
         actions={
           <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" onClick={() => setSection(section === "statuses" ? "orders" : "statuses")}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="!text-white hover:!text-text"
+              onClick={() => setSection(section === "statuses" ? "orders" : "statuses")}
+            >
               Order Statuses
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setShowScreenOptions(true)}>
+            <Button type="button" variant="ghost" className="!text-white hover:!text-text" onClick={() => setShowScreenOptions(true)}>
               <Icon name="settings" size={16} /> Screen Options
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setShowSymbology(true)}>
+            <Button type="button" variant="ghost" className="!text-white hover:!text-text" onClick={() => setShowSymbology(true)}>
               <Icon name="key" size={16} /> Symbology
             </Button>
-            <Button type="button" variant="primary" onClick={() => alert("Manual order creation isn't built yet.")}>
-              <Icon name="add" size={16} /> Add New Order
-            </Button>
+            <Link href="/orders/new">
+              <Button type="button" variant="primary">
+                <Icon name="add" size={16} /> Add New Order
+              </Button>
+            </Link>
           </div>
         }
       />

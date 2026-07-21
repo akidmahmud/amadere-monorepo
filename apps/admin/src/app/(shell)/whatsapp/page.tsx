@@ -73,9 +73,13 @@ export default function WhatsappPage() {
             />
           </label>
 
-          <Button type="submit" variant="primary" className="self-start" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button type="submit" variant="primary" className="self-start" disabled={update.isPending}>
+              {update.isPending ? "Saving…" : "Save"}
+            </Button>
+            {update.isSuccess && !update.isPending && <span className="text-sm text-success">Saved</span>}
+            {update.isError && !update.isPending && <span className="text-sm text-danger">Failed to save</span>}
+          </div>
         </form>
       </Card>
     </div>

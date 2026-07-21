@@ -92,7 +92,7 @@ export function MarketingReviewSection({ cards, backgroundImageUrl, heading }: M
           {cards.map((card, i) => (
             <div
               key={i}
-              className="w-[70vw] shrink-0 overflow-hidden rounded-2xl bg-white shadow-brand mb-50 sm:w-[calc((100%-40px)/3)] mt-100"
+              className="w-[70vw] shrink-0 overflow-hidden rounded-2xl bg-white shadow-brand mb-50 mt-40 sm:mt-100 sm:w-[calc((100%-40px)/3)]"
             >
               <div className="p-3">
                 <div className="aspect-[4/3] overflow-hidden rounded-xl bg-beige">

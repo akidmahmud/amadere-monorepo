@@ -139,7 +139,12 @@ function NewOrderForm() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader icon={newOrderIcon} title="New Order" subtitle="Manually create an order for a phone/in-person sale." />
+      <PageHeader
+        icon={newOrderIcon}
+        title="New Order"
+        subtitle="Manually create an order for a phone/in-person sale."
+        style={{ background: "linear-gradient(135deg, #430477 0%, #1C0531 100%)" }}
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Card className="flex flex-col gap-3">
