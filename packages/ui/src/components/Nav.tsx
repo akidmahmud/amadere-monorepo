@@ -71,7 +71,7 @@ export function Nav({ items, activeHref, linkComponent: Link = DefaultLink, clas
       <div
         ref={rowRef}
         className={cn(
-          "flex w-full items-center gap-x-1.5 overflow-x-auto whitespace-nowrap px-3 py-3 [scrollbar-width:none] min-[1700px]:gap-x-6 min-[1700px]:px-10 min-[1700px]:py-5 [&::-webkit-scrollbar]:hidden",
+          "flex w-full items-center gap-x-2.5 overflow-x-auto whitespace-nowrap px-3 py-3 [scrollbar-width:none] min-[1700px]:gap-x-8 min-[1700px]:px-10 min-[1700px]:py-5 [&::-webkit-scrollbar]:hidden",
           hasOverflow ? "justify-start" : "justify-center",
         )}
       >

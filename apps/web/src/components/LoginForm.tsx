@@ -129,11 +129,6 @@ export function LoginForm() {
       </div>
 
       <div className="mt-6 text-center">
-        <div className="mx-auto mb-4 flex max-w-[280px] items-center gap-3 font-body text-xs text-muted">
-          <span className="h-px flex-1 bg-line" />
-          or sign in with
-          <span className="h-px flex-1 bg-line" />
-        </div>
         <GoogleSignInButton locale={locale} onSuccess={goToRedirect} />
         <p className="mt-4 font-body text-sm text-ink">
           Don&apos;t have any account? <Link href="/register" className="text-green underline">Register account</Link>

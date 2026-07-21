@@ -90,7 +90,7 @@ interface TabbedCarouselTabConfig {
 // monitors) instead of the 1180px content box used elsewhere on the site —
 // homepage sections are meant to fill the window, not float in a narrow
 // column with big empty gutters either side.
-const WRAPPER = "mx-auto w-full max-w-[1920px] px-5 sm:px-8 lg:px-12";
+const WRAPPER = "mx-auto w-full max-w-[1920px] px-12 sm:px-18 lg:px-28";
 
 function renderSection(
   section: HomepageSection,
