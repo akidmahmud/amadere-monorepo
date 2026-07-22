@@ -6,45 +6,60 @@
    generated from the @theme block below). */
 :root {
   /* Brand — the one accent color, used with restraint (§1.1) */
-  --brand-500: #299d91;
-  --brand-600: #21837a;
-  --brand-700: #1b6b64;
-  --brand-400: #44a99e;
-  --brand-50: #e9f5f3;
+  --brand-500: #2570eb;
+  --brand-600: #1e61d0;
+  --brand-700: #1a52ae;
+  --brand-400: #4e8cf0;
+  --brand-50: #e8f0fe;
 
   /* Neutrals — light theme (default) */
-  --bg: #f4f5f7;
+  --bg: #f3f6fb;
   --surface: #ffffff;
   --surface-2: #fafbfc;
-  --border: #ecedf0;
-  --text: #1b1b1f;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
+  --border: #e9eef5;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
 
-  /* Sidebar — light "inset panel" chrome (shadcn dashboard-01 parity).
-     Was dark chrome in both themes; now a neutral panel matching --surface,
-     just a shade off it so it reads as a distinct floating panel. */
-  --sidebar-bg: #fafafa;
-  --sidebar-hover: #f0f0f2;
-  --sidebar-text: #52525b;
+  /* Sidebar — pure white panel, matching the reference design's sidebar. */
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f2f6fd;
+  --sidebar-text: #64748b;
   --sidebar-text-active: #ffffff;
 
   /* Semantic / accent */
-  --accent-blue: #0c8ce9;
-  --success: #22b07d;
-  --danger: #e5484d;
+  --accent-blue: #2570eb;
+  --success: #22c087;
+  --danger: #ef3a3a;
   --warning: #f5a623;
-  --chart-current: #299d91;
+  --chart-current: #2570eb;
   --chart-compare: #e4e4e7;
 
-  /* Radius (§2.6) — shadcn/New York parity: tighter than the old 16px */
+  /* Stat-card icon tiles (Overview page, Task 8) */
+  --stat-green-bg: #e3f7ee;
+  --stat-green: #22c087;
+  --stat-blue-bg: #e8f0fe;
+  --stat-blue: #2570eb;
+  --stat-orange-bg: #fef0e2;
+  --stat-orange: #f7941d;
+  --stat-yellow-bg: #fdf3dd;
+  --stat-yellow: #e9a23b;
+  --stat-red-bg: #feeaec;
+  --stat-red: #ef4b62;
+  --stat-purple-bg: #f1eafe;
+  --stat-purple: #9b5cf6;
+  --stat-indigo-bg: #eaecfe;
+  --stat-indigo: #6366f1;
+  --stat-teal-bg: #e0f6f2;
+  --stat-teal: #14b89b;
+
+  /* Radius (§2.6) */
   --r-card: 12px;
   --r-inner: 10px;
   --r-sm: 8px;
   --r-pill: 999px;
 
-  /* Shadow — light theme only (§2.8). shadcn leans on a 1px border for
-     definition rather than a heavy shadow, so this is now just a hairline. */
+  /* Shadow — light theme only (§2.8) */
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
   --shadow-pop: 0 4px 16px rgba(16, 24, 40, 0.1);
 }
@@ -100,6 +115,22 @@
   --color-warning: var(--warning);
   --color-chart-current: var(--chart-current);
   --color-chart-compare: var(--chart-compare);
+  --color-stat-green-bg: var(--stat-green-bg);
+  --color-stat-green: var(--stat-green);
+  --color-stat-blue-bg: var(--stat-blue-bg);
+  --color-stat-blue: var(--stat-blue);
+  --color-stat-orange-bg: var(--stat-orange-bg);
+  --color-stat-orange: var(--stat-orange);
+  --color-stat-yellow-bg: var(--stat-yellow-bg);
+  --color-stat-yellow: var(--stat-yellow);
+  --color-stat-red-bg: var(--stat-red-bg);
+  --color-stat-red: var(--stat-red);
+  --color-stat-purple-bg: var(--stat-purple-bg);
+  --color-stat-purple: var(--stat-purple);
+  --color-stat-indigo-bg: var(--stat-indigo-bg);
+  --color-stat-indigo: var(--stat-indigo);
+  --color-stat-teal-bg: var(--stat-teal-bg);
+  --color-stat-teal: var(--stat-teal);
 
   --radius-card: var(--r-card);
   --radius-inner: var(--r-inner);
@@ -162,27 +193,26 @@ body {
   --wpfok-recovery-bg: rgba(6, 182, 212, 0.08);
 }
 
-/* Data table (WPFOK parity) — plain semantic <table>/<thead>/<tbody> markup
-   picks this up automatically via element selectors once wrapped in the
-   admin-ui <Table> component below; no Thead/Tr/Td wrapper components
-   needed. Header gradient/hover tint are one-off literals (not reusable
-   tokens) matching the plugin's own hardcoded values. */
-.wpfok-scope .wpfok-table-scroll {
+/* Data table — shared `<Table>` primitive, used by every admin page (base theme
+   and inside .wpfok-scope alike). Header gradient/hover tint are one-off literals
+   (not reusable tokens) originally matched to the Net Profit plugin's own hardcoded
+   values, but read fine against the base theme's tokens too. */
+.wpfok-table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.wpfok-scope .wpfok-table {
+.wpfok-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.wpfok-scope .wpfok-table thead {
+.wpfok-table thead {
   background: linear-gradient(180deg, #f8f5fd 0%, #f3eef9 100%);
 }
 
-.wpfok-scope .wpfok-table thead th {
+.wpfok-table thead th {
   padding: 14px 16px;
   text-align: left;
   font-size: 11px;
@@ -194,32 +224,32 @@ body {
   white-space: nowrap;
 }
 
-.wpfok-scope .wpfok-table tbody tr {
+.wpfok-table tbody tr {
   border-bottom: 1px solid var(--border);
   transition: background-color 0.15s ease;
 }
 
-.wpfok-scope .wpfok-table tbody tr:nth-child(even) {
+.wpfok-table tbody tr:nth-child(even) {
   background: var(--brand-50);
 }
 
-.wpfok-scope .wpfok-table tbody tr:hover {
+.wpfok-table tbody tr:hover {
   background: rgba(143, 0, 255, 0.04);
 }
 
-.wpfok-scope .wpfok-table tbody td {
+.wpfok-table tbody td {
   padding: 14px 16px;
   vertical-align: middle;
 }
 
-.wpfok-scope .wpfok-table .wpfok-no-data td {
+.wpfok-table .wpfok-no-data td {
   text-align: center;
   padding: 48px 16px;
   color: var(--text-muted);
   font-size: 14px;
 }
 
-.wpfok-scope .wpfok-id-badge {
+.wpfok-id-badge {
   display: inline-block;
   background: var(--wpfok-glow);
   color: var(--brand-500);
