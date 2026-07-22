@@ -980,6 +980,22 @@ export interface paths {
         patch: operations["AdminProductsController_updateVariantPrice"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/{variantId}/sku": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateVariantSku"];
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/cross-sell": {
         parameters: {
             query?: never;
@@ -2013,7 +2029,7 @@ export interface paths {
         };
         get: operations["AdminCustomersController_list"];
         put?: never;
-        post?: never;
+        post: operations["AdminCustomersController_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5289,6 +5305,9 @@ export interface components {
             price?: number;
             salePrice?: number;
         };
+        UpdateVariantSkuDto: {
+            sku?: string;
+        };
         UpdateCrossSellDto: {
             productIds: number[];
         };
@@ -5755,6 +5774,11 @@ export interface components {
         CreateManualOrderDto: {
             /** @description Set when staff selected an existing customer; omit to auto-match/create by shippingAddress.phone */
             customerId?: number;
+            /**
+             * @description How this order was taken — never WEBSITE for a staff-created order
+             * @enum {string}
+             */
+            channel: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
             shippingAddress: components["schemas"]["CheckoutAddressDto"];
             /** @description Defaults to shippingAddress if omitted */
             billingAddress?: components["schemas"]["CheckoutAddressDto"];
@@ -5956,15 +5980,12 @@ export interface components {
         UpdateCustomerTiersDto: {
             tiers: components["schemas"]["CustomerTierItemDto"][];
         };
-        AdminCustomerListItemDto: {
-            id: number;
-            name: string;
-            phone: string | null;
-            email: string | null;
-            tier: string | null;
-            completedOrderCount: number;
-            /** Format: date-time */
-            createdAt: string;
+        CreateCustomerDto: {
+            phone: string;
+            firstName?: string;
+            lastName?: string;
+            /** Format: email */
+            email?: string;
         };
         AdminCustomerOrderSummaryDto: {
             id: number;
@@ -6008,6 +6029,16 @@ export interface components {
             orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
             notes: components["schemas"]["AdminCustomerNoteDto"][];
             callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
+        };
+        AdminCustomerListItemDto: {
+            id: number;
+            name: string;
+            phone: string | null;
+            email: string | null;
+            tier: string | null;
+            completedOrderCount: number;
+            /** Format: date-time */
+            createdAt: string;
         };
         UpdateCustomerDto: {
             firstName?: string;
@@ -6126,8 +6157,16 @@ export interface components {
             /** Format: date-time */
             unsubscribedAt: string | null;
         };
+        PeriodStatsDto: {
+            orders: number;
+            revenue: string;
+        };
         OrderStatusCountDto: {
             status: string;
+            count: number;
+        };
+        OrderChannelCountDto: {
+            channel: string;
             count: number;
         };
         RecentOrderDto: {
@@ -6137,6 +6176,14 @@ export interface components {
             total: string;
             status: string;
             createdAt: string;
+            /** @enum {string} */
+            paymentMethod: "COD" | "PAID";
+        };
+        TopCustomerDto: {
+            id: number;
+            name: string;
+            orderCount: number;
+            totalSpend: string;
         };
         MonthlyRevenuePointDto: {
             label: string;
@@ -6154,9 +6201,16 @@ export interface components {
             totalRevenue: string;
             totalOrders: number;
             totalCustomers: number;
+            totalProducts: number;
             completedOrderRate: number;
+            avgOrderValue: string;
+            today: components["schemas"]["PeriodStatsDto"];
+            completed: components["schemas"]["PeriodStatsDto"];
+            pending: components["schemas"]["PeriodStatsDto"];
             statusBreakdown: components["schemas"]["OrderStatusCountDto"][];
+            ordersByChannel: components["schemas"]["OrderChannelCountDto"][];
             recentOrders: components["schemas"]["RecentOrderDto"][];
+            topCustomers: components["schemas"]["TopCustomerDto"][];
             monthlyRevenue: components["schemas"]["MonthlyRevenuePointDto"][];
             topProducts: components["schemas"]["TopProductDto"][];
         };
@@ -9277,6 +9331,30 @@ export interface operations {
             };
         };
     };
+    AdminProductsController_updateVariantSku: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariantSkuDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminProductsController_getCrossSell: {
         parameters: {
             query?: never;
@@ -11427,6 +11505,37 @@ export interface operations {
                         page?: number;
                         pageSize?: number;
                     };
+                };
+            };
+        };
+    };
+    AdminCustomersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDto"];
                 };
             };
         };
