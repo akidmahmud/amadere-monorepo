@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -23,6 +24,7 @@ import { toE164Bd } from '../../common/phone.util';
 import { CALL_PROVIDER } from './providers/call-provider.interface';
 import type { CallProvider } from './providers/call-provider.interface';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
@@ -192,6 +194,24 @@ export class CustomersService {
     });
     if (!customer) throw new NotFoundException('Customer not found');
     return toAdminCustomerDto(customer);
+  }
+
+  async createCustomer(dto: CreateCustomerDto): Promise<AdminCustomerDto> {
+    const existing = await this.prisma.client.customer.findUnique({
+      where: { phone: dto.phone },
+    });
+    if (existing) {
+      throw new ConflictException(`A customer with phone "${dto.phone}" already exists`);
+    }
+    const customer = await this.prisma.client.customer.create({
+      data: {
+        phone: dto.phone,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+      },
+    });
+    return this.adminGet(customer.id);
   }
 
   async adminUpdate(id: number, dto: UpdateCustomerDto): Promise<AdminCustomerDto> {

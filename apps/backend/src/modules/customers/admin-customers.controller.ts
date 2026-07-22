@@ -13,6 +13,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
+import { CreateCustomerDto } from './dto/create-customer.dto';
 import { AdminCustomerDto, AdminCustomerListItemDto } from './admin-customer.mapper';
 
 @ApiTags('admin/customers')
@@ -21,6 +22,13 @@ import { AdminCustomerDto, AdminCustomerListItemDto } from './admin-customer.map
 @Controller('admin/customers')
 export class AdminCustomersController {
   constructor(private readonly customers: CustomersService) {}
+
+  @Post()
+  @RequirePermission('customer.manage')
+  @ApiOkResponse({ type: AdminCustomerDto })
+  create(@Body() dto: CreateCustomerDto): Promise<AdminCustomerDto> {
+    return this.customers.createCustomer(dto);
+  }
 
   @Get()
   @RequirePermission('customer.view')
