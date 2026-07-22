@@ -37,6 +37,7 @@ export * from "./components/HeroCarousel";
 export * from "./components/Pager";
 export * from "./components/FilterCheckboxGroup";
 export * from "./components/FilterDrawer";
+export * from "./components/PriceRangeSlider";
 export * from "./components/ProductGallery";
 export * from "./components/WatchingNowBadge";
 export * from "./components/MarketingReviewSection";

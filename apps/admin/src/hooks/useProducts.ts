@@ -33,13 +33,53 @@ export type VariantInput = components["schemas"]["CreateProductVariantDto"];
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-products"];
 
-export function useProducts() {
+export interface AdminProductFilters {
+  q?: string;
+  categoryIds?: number[];
+  brandId?: number;
+  status?: PublishStatus;
+  stockStatus?: StockStatus;
+  minPrice?: number;
+  maxPrice?: number;
+  createdFrom?: string;
+  createdTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+function toQueryString(filters: AdminProductFilters): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === "") continue;
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, String(v));
+    } else {
+      params.set(key, String(value));
+    }
+  }
+  const s = params.toString();
+  return s ? `?${s}` : "";
+}
+
+export function useProducts(filters: AdminProductFilters = {}) {
   return useQuery({
-    queryKey: KEY,
-    queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminProduct>>("/admin/products?pageSize=100");
-      return res.items ?? [];
-    },
+    queryKey: [...KEY, filters],
+    queryFn: () => proxyFetch<Required<Paginated<AdminProduct>>>(`/admin/products${toQueryString(filters)}`),
+  });
+}
+
+export interface ProductStats {
+  total: number;
+  active: number;
+  draft: number;
+  outOfStock: number;
+  lowStock: number;
+}
+
+export function useProductStats() {
+  return useQuery({
+    queryKey: [...KEY, "stats"],
+    queryFn: () => proxyFetch<ProductStats>("/admin/products/stats"),
   });
 }
 

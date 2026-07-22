@@ -71,6 +71,10 @@ export class AdminProductDto {
   attributeIds!: number[];
   media!: AdminProductMediaDto[];
   variants!: AdminProductVariantDto[];
+  /** Populated by the list endpoint only — not needed by create/update/detail responses. */
+  createdAt?: Date;
+  /** Rule-based 0-100 score (see seo-score.util.ts) — not AI-generated. List endpoint only. */
+  seoScore?: number;
 }
 
 export class PublicProductBrandDto {

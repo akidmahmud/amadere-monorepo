@@ -27,6 +27,8 @@ export class AdminCategoryDto {
   sortOrder!: number;
   status!: ContentStatus;
   translations!: AdminCategoryTranslationDto[];
+  /** Only populated when the query requested it (see WITH_TRANSLATIONS_AND_ADMIN_PRODUCT_COUNT). */
+  productCount?: number;
 }
 
 export function toAdminCategoryDto(
@@ -46,6 +48,7 @@ export function toAdminCategoryDto(
       name: t.name,
       description: t.description,
     })),
+    productCount: category._count?.products,
   };
 }
 

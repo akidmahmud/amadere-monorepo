@@ -900,6 +900,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}": {
         parameters: {
             query?: never;
@@ -4832,6 +4864,7 @@ export interface components {
             sortOrder: number;
             status: Record<string, never>;
             translations: components["schemas"]["AdminCategoryTranslationDto"][];
+            productCount?: number;
         };
         CreateCategoryDto: {
             slug: string;
@@ -5153,6 +5186,9 @@ export interface components {
             attributeIds: number[];
             media: components["schemas"]["AdminProductMediaDto"][];
             variants: components["schemas"]["AdminProductVariantDto"][];
+            /** Format: date-time */
+            createdAt?: string;
+            seoScore?: number;
         };
         ProductTranslationDto: {
             /** @enum {string} */
@@ -9112,6 +9148,12 @@ export interface operations {
                 sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+                /** @description ISO date — products created on/after this date */
+                createdFrom?: string;
+                /** @description ISO date — products created on/before this date */
+                createdTo?: string;
             };
             header?: never;
             path?: never;
@@ -9162,6 +9204,60 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminProductDto"];
                 };
+            };
+        };
+    };
+    AdminProductsController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_export: {
+        parameters: {
+            query?: {
+                /** @description Matches products in ANY of the given categories. */
+                categoryIds?: number[];
+                brandId?: number;
+                /** @description Matches products tagged with ANY of the given tags. */
+                tagIds?: number[];
+                isFeatured?: boolean;
+                /** @description Filters on the simple-product price column only — hasVariants products (null price on the parent row) are excluded from a price-range filter, same known limitation as elsewhere in this module. */
+                minPrice?: number;
+                maxPrice?: number;
+                /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
+                sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                /** @description Free-text search across product name, SKU, and slug. */
+                q?: string;
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+                /** @description ISO date — products created on/after this date */
+                createdFrom?: string;
+                /** @description ISO date — products created on/before this date */
+                createdTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -64,7 +64,7 @@ export const adminNav: AppNavItem[] = [
   { key: "shipments", label: "Shipments", href: "/shipments", icon: shipmentsIcon },
   {
     key: "catalog",
-    label: "Catalog",
+    label: "Product Management",
     icon: productsIcon,
     children: [
       { key: "products", label: "Products", href: "/products", icon: productsIcon },

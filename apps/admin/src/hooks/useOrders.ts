@@ -62,6 +62,7 @@ export interface CreateManualOrderAddress {
 
 export interface CreateManualOrderInput {
   customerId?: number;
+  channel: "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS";
   shippingAddress: CreateManualOrderAddress;
   billingAddress?: CreateManualOrderAddress;
   items: { productId: number; variantId?: number; quantity: number; unitPrice?: number }[];

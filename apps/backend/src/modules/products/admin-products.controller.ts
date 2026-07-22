@@ -8,9 +8,11 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
@@ -23,7 +25,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
-import { ProductFilterQueryDto } from './dto/product-filter-query.dto';
+import { AdminProductQueryDto } from './dto/admin-product-query.dto';
 import { AdminProductDto } from './dto/product-response.dto';
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
@@ -43,9 +45,24 @@ export class AdminProductsController {
   @ApiPaginatedResponse(AdminProductDto)
   list(
     @Query() { page, pageSize }: PaginationQueryDto,
-    @Query() filters: ProductFilterQueryDto,
+    @Query() filters: AdminProductQueryDto,
   ): Promise<PaginatedResult<AdminProductDto>> {
     return this.products.adminList(page ?? 1, pageSize ?? 20, filters);
+  }
+
+  @Get('stats')
+  @RequirePermission('product.view')
+  stats() {
+    return this.products.adminStats();
+  }
+
+  @Get('export')
+  @RequirePermission('product.view')
+  async export(@Query() filters: AdminProductQueryDto, @Res() res: Response) {
+    const csv = await this.products.adminExportCsv(filters);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
   }
 
   @Get(':id')

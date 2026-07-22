@@ -1,69 +1,30 @@
 "use client";
 
-import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
-import { useDeleteProduct, useProducts } from "@/hooks/useProducts";
+import { useState } from "react";
+import { useProducts, useProductStats, type AdminProductFilters } from "@/hooks/useProducts";
+import { ProductStatsStrip } from "@/components/products/ProductStatsStrip";
+import { ProductFilters } from "@/components/products/ProductFilters";
+import { ProductsTable } from "@/components/products/ProductsTable";
+
+const DEFAULT_FILTERS: AdminProductFilters = { page: 1, pageSize: 10 };
 
 export default function ProductsPage() {
-  const { data: products, isLoading } = useProducts();
-  const deleteProduct = useDeleteProduct();
+  const [filters, setFilters] = useState<AdminProductFilters>(DEFAULT_FILTERS);
+  const { data: stats } = useProductStats();
+  const { data, isLoading } = useProducts(filters);
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">{products?.length ?? 0} products</p>
-        <div className="flex gap-2">
-          <Link href="/products/marketing-review">
-            <Button type="button" variant="ghost">Marketing Review Cards</Button>
-          </Link>
-          <Link href="/products/new">
-            <Button variant="primary">Add product</Button>
-          </Link>
-        </div>
-      </div>
+    <div className="flex flex-col gap-[18px]">
+      <ProductStatsStrip stats={stats} />
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {products && products.length === 0 && <p className="text-sm text-muted">No products yet.</p>}
-
-      <div className="flex flex-col gap-3">
-        {products?.map((product) => (
-          <Card key={product.id} className="flex items-center gap-3">
-            {product.media[0] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={product.media[0].url}
-                alt=""
-                className="h-10 w-10 rounded-inner border border-border object-cover"
-              />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-text">
-                {product.translations[0]?.name ?? product.slug}
-              </div>
-              <div className="text-xs text-muted">
-                {product.slug} · {product.status} ·{" "}
-                {product.hasVariants ? `${product.variants.length} variants` : `৳${product.price ?? "—"}`} · stock{" "}
-                {product.stock}
-              </div>
-            </div>
-            <Link href={`/products/${product.id}`}>
-              <Button type="button" variant="ghost">
-                Edit
-              </Button>
-            </Link>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                if (confirm(`Delete "${product.translations[0]?.name ?? product.slug}"?`))
-                  deleteProduct.mutate(product.id);
-              }}
-            >
-              Delete
-            </Button>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[210px_1fr] lg:items-start">
+        <ProductFilters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} />
+        {isLoading || !data ? (
+          <p className="text-sm text-muted">Loading…</p>
+        ) : (
+          <ProductsTable products={data.items ?? []} total={data.total ?? 0} filters={filters} onFiltersChange={setFilters} />
+        )}
       </div>
-    </>
+    </div>
   );
 }

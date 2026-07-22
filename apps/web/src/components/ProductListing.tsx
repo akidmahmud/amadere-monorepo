@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FilterCheckboxGroup, FilterDrawer, PlaceholderBanner, ProductCard, type ProductCardProps } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { PlpPager } from "@/components/PlpPager";
+import { PriceFilter } from "@/components/PriceFilter";
 import { SortSelect } from "@/components/SortSelect";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import { buildPlpHref, type PlpFilters } from "@/lib/plp";
@@ -41,6 +42,8 @@ export interface ProductListingProps {
   > & { productId: number })[];
   categories?: ProductListingCategory[];
   tags: ProductListingTag[];
+  /** Price bounds across this listing's full (unfiltered) product set — omitted (no slider) if there's nothing to range over. */
+  priceBounds?: { min: number; max: number };
 }
 
 export function ProductListing({
@@ -51,6 +54,7 @@ export function ProductListing({
   products,
   categories,
   tags,
+  priceBounds,
 }: ProductListingProps) {
   const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -60,6 +64,9 @@ export function ProductListing({
 
   const filterGroups = (
     <>
+      {priceBounds && (
+        <PriceFilter basePath={basePath} filters={filters} min={priceBounds.min} max={priceBounds.max} />
+      )}
       {categories && categories.length > 0 && (
         <FilterCheckboxGroup
           heading="Category"

@@ -75,6 +75,21 @@ const visitIcon = (
 
 const COLLAPSED_KEY = "admin-sidebar-collapsed";
 
+const menuIcon = (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="18" x2="20" y2="18" />
+  </svg>
+);
+
+const closeIcon = (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+    <line x1="6" y1="6" x2="18" y2="18" />
+    <line x1="18" y1="6" x2="6" y2="18" />
+  </svg>
+);
+
 // §4 — fixed 240px sidebar + content area, both rendered as floating inset
 // panels on a neutral page backdrop (shadcn dashboard-01 parity). Below
 // ~1024px the sidebar auto-collapses to icons-only via the media query;
@@ -97,8 +112,19 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [navFilter, setNavFilter] = useState("");
   const [cacheMessage, setCacheMessage] = useState<string | null>(null);
+
+  // Below ~768px (true phone widths, distinct from the icon-rail tablet
+  // breakpoint at 1024px above) the sidebar can't just shrink to icons —
+  // there's no hover to reveal labels on a touch device, and squeezing
+  // `main` into a sliver next to a permanent icon rail is unusable. Instead
+  // it becomes a full-label off-canvas drawer, closed by default and
+  // auto-closing on navigation.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [activeHref]);
 
   function handleClearCache() {
     setCacheMessage("Cache cleared");
@@ -124,19 +150,33 @@ export function AppShell({
     });
   }
 
-  const labelClass = collapsed ? "hidden group-hover/sidebar:inline" : "max-[1024px]:hidden";
+  // The `!inline`/`!flex` overrides force labels visible on the mobile
+  // drawer regardless of the desktop collapsed/icon-rail state — a
+  // temporary full-screen overlay has no use for an icon-only mode.
+  const labelClass = cn(collapsed ? "hidden group-hover/sidebar:inline" : "max-[1024px]:hidden", "max-[768px]:!inline");
 
   return (
     <div
       className={cn(
         "grid min-h-screen items-start gap-3 bg-bg p-3",
         collapsed ? "grid-cols-[72px_1fr]" : "grid-cols-[240px_1fr] max-[1024px]:grid-cols-[72px_1fr]",
+        "max-[768px]:grid-cols-1",
       )}
     >
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+          className="fixed inset-0 z-30 hidden bg-black/40 max-[768px]:block"
+        />
+      )}
+
       <aside
         className={cn(
           "group/sidebar sticky top-3 z-20 flex h-[calc(100vh-1.5rem)] flex-none flex-col overflow-hidden rounded-card border border-border bg-sidebar-bg px-3 py-4 transition-[width] duration-150",
           collapsed ? "w-[72px] hover:w-[288px] hover:overflow-visible hover:shadow-pop" : "w-[240px]",
+          "max-[768px]:fixed max-[768px]:inset-y-3 max-[768px]:left-3 max-[768px]:z-40 max-[768px]:!w-[260px] max-[768px]:!h-[calc(100vh-1.5rem)] max-[768px]:overflow-y-auto max-[768px]:transition-transform max-[768px]:duration-200",
+          mobileOpen ? "max-[768px]:translate-x-0 max-[768px]:shadow-pop" : "max-[768px]:-translate-x-[120%]",
         )}
       >
         <div className="flex items-center justify-between pb-[22px]">
@@ -145,9 +185,17 @@ export function AppShell({
             type="button"
             onClick={toggleCollapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="grid h-7 w-7 flex-none place-items-center rounded-sm text-sidebar-text hover:bg-sidebar-hover"
+            className="grid h-7 w-7 flex-none place-items-center rounded-sm text-sidebar-text hover:bg-sidebar-hover max-[768px]:hidden"
           >
             <span className={cn("transition-transform duration-150", collapsed && "rotate-180")}>{collapseIcon}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            className="hidden h-7 w-7 flex-none place-items-center rounded-sm text-sidebar-text hover:bg-sidebar-hover max-[768px]:grid"
+          >
+            {closeIcon}
           </button>
         </div>
         <label className={cn("mb-3 flex h-9 items-center gap-2 rounded-inner border border-border bg-surface px-2.5 text-secondary", collapsed && "hidden group-hover/sidebar:flex")}>
@@ -206,33 +254,43 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
-        <header className="flex h-16 flex-none items-center gap-5 border-b border-border px-6">
-          <div>
-            <div className="flex items-center gap-1.5 font-ui text-[11px] font-bold tracking-wide text-secondary uppercase">
+        <header className="flex h-16 flex-none items-center gap-3 border-b border-border px-6 max-[768px]:gap-3 max-[768px]:px-4">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className="hidden h-9 w-9 flex-none place-items-center rounded-inner border border-border text-text max-[768px]:grid"
+          >
+            {menuIcon}
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 font-ui text-[11px] font-bold tracking-wide text-secondary uppercase max-[768px]:hidden">
               <span className="text-brand-500">Home</span>
               <span className="text-muted">›</span>
               <span className="text-brand-500">{pageTitle}</span>
             </div>
             <h1 className="mt-0.5 font-ui text-lg font-extrabold text-text">{pageTitle}</h1>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            {cacheMessage && <span className="text-xs font-semibold text-success">{cacheMessage}</span>}
+          <div className="ml-auto flex items-center gap-3 max-[768px]:gap-2">
+            {cacheMessage && <span className="text-xs font-semibold text-success max-[768px]:hidden">{cacheMessage}</span>}
             <button
               type="button"
               onClick={handleClearCache}
-              className="inline-flex h-9 items-center gap-2 rounded-inner bg-[var(--stat-yellow,#e9a23b)] px-3.5 font-ui text-[13px] font-bold text-white transition-[filter] hover:brightness-95"
+              aria-label="Clear cache"
+              className="inline-flex h-9 items-center gap-2 rounded-inner bg-[var(--stat-yellow,#e9a23b)] px-3.5 font-ui text-[13px] font-bold text-white transition-[filter] hover:brightness-95 max-[768px]:w-9 max-[768px]:px-0 max-[768px]:justify-center"
             >
               {cacheIcon}
-              Clear cache
+              <span className="max-[768px]:hidden">Clear cache</span>
             </button>
             <a
               href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-9 items-center gap-2 rounded-inner bg-[#3a4356] px-3.5 font-ui text-[13px] font-bold text-white transition-[filter] hover:brightness-110"
+              aria-label="Visit website"
+              className="inline-flex h-9 items-center gap-2 rounded-inner bg-[#3a4356] px-3.5 font-ui text-[13px] font-bold text-white transition-[filter] hover:brightness-110 max-[768px]:w-9 max-[768px]:px-0 max-[768px]:justify-center"
             >
               {visitIcon}
-              Visit website
+              <span className="max-[768px]:hidden">Visit website</span>
             </a>
             <button
               type="button"

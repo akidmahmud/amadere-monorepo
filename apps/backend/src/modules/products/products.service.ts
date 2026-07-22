@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale, Prisma } from '@amader/db';
+import { Locale, Prisma, SeoEntityType } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -18,6 +18,8 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { ProductTranslationDto } from './dto/product-translation.dto';
 import { ProductFilterQueryDto, ProductSort } from './dto/product-filter-query.dto';
+import { AdminProductQueryDto } from './dto/admin-product-query.dto';
+import { computeSeoScore } from './seo-score.util';
 import {
   AdminProductDto,
   PublicProductDetailDto,
@@ -60,9 +62,9 @@ export class ProductsService {
   async adminList(
     page: number,
     pageSize: number,
-    filters: ProductFilterQueryDto,
+    filters: AdminProductQueryDto,
   ): Promise<PaginatedResult<AdminProductDto>> {
-    const where = this.buildWhere(filters, { deletedAt: null });
+    const where = this.buildAdminWhere(filters);
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
         where,
@@ -72,12 +74,95 @@ export class ProductsService {
       }),
       this.prisma.client.product.count({ where }),
     ]);
+    const seoMetaByProductId = await this.fetchSeoMetaMap(items.map((p) => p.id));
     return toPaginatedResult(
-      items.map(toAdminProductDto),
+      items.map((p) => ({
+        ...toAdminProductDto(p),
+        createdAt: p.createdAt,
+        seoScore: computeSeoScore({
+          metaTitle: seoMetaByProductId.get(p.id)?.title,
+          metaDescription: seoMetaByProductId.get(p.id)?.description,
+          slug: p.slug,
+          primaryImageAlt: p.media.find((m) => m.isPrimary)?.media.altText ?? p.media[0]?.media.altText,
+          description: p.translations[0]?.description,
+        }),
+      })),
       total,
       page,
       pageSize,
     );
+  }
+
+  // Every distinct SEO_META row for the given products in one query — avoids
+  // an N+1 (one lookup per row) on a list page that can show 20+ products.
+  private async fetchSeoMetaMap(
+    productIds: number[],
+  ): Promise<Map<number, { title: string | null; description: string | null }>> {
+    if (productIds.length === 0) return new Map();
+    const rows = await this.prisma.client.seoMeta.findMany({
+      where: { entityType: SeoEntityType.PRODUCT, entityId: { in: productIds }, locale: Locale.EN },
+      select: { entityId: true, title: true, description: true },
+    });
+    return new Map(rows.map((r) => [r.entityId, { title: r.title, description: r.description }]));
+  }
+
+  // Low-stock threshold: a fixed constant, not a configurable setting — no
+  // UI has asked to make this adjustable yet, and the only other
+  // low-stock-threshold concept in this codebase belongs to the optional
+  // Net Profit module, which core Products should not depend on.
+  private static readonly LOW_STOCK_THRESHOLD = 10;
+
+  async adminStats(): Promise<{
+    total: number;
+    active: number;
+    draft: number;
+    outOfStock: number;
+    lowStock: number;
+  }> {
+    const base = { deletedAt: null } as const;
+    const [total, active, draft, outOfStock, lowStock] = await Promise.all([
+      this.prisma.client.product.count({ where: base }),
+      this.prisma.client.product.count({ where: { ...base, status: 'PUBLISHED' } }),
+      this.prisma.client.product.count({ where: { ...base, status: 'DRAFT' } }),
+      this.prisma.client.product.count({ where: { ...base, stockStatus: 'OUT_OF_STOCK' } }),
+      this.prisma.client.product.count({
+        where: { ...base, stock: { gt: 0, lte: ProductsService.LOW_STOCK_THRESHOLD } },
+      }),
+    ]);
+    return { total, active, draft, outOfStock, lowStock };
+  }
+
+  async adminExportCsv(filters: AdminProductQueryDto): Promise<string> {
+    const where = this.buildAdminWhere(filters);
+    const items = await this.prisma.client.product.findMany({
+      where,
+      include: PRODUCT_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: 10_000,
+    });
+    const header = 'Name,Slug,SKU,Category,Stock,Price,Status,Created At';
+    const lines = items.map((p) => {
+      const name = p.translations[0]?.name ?? p.slug;
+      const category = p.categories[0]?.category.translations[0]?.name ?? '';
+      return `"${name}",${p.slug},${p.sku ?? ''},"${category}",${p.stock},${p.price ?? ''},${p.status},${p.createdAt.toISOString().slice(0, 10)}`;
+    });
+    return [header, ...lines].join('\n');
+  }
+
+  private buildAdminWhere(filters: AdminProductQueryDto) {
+    return {
+      ...this.buildWhere(filters, { deletedAt: null }),
+      ...(filters.status !== undefined ? { status: filters.status } : {}),
+      ...(filters.stockStatus !== undefined ? { stockStatus: filters.stockStatus } : {}),
+      ...(filters.createdFrom || filters.createdTo
+        ? {
+            createdAt: {
+              ...(filters.createdFrom ? { gte: new Date(filters.createdFrom) } : {}),
+              ...(filters.createdTo ? { lte: new Date(filters.createdTo) } : {}),
+            },
+          }
+        : {}),
+    };
   }
 
   async adminGet(id: number): Promise<AdminProductDto> {
@@ -285,6 +370,7 @@ export class ProductsService {
         price: dto.price,
         salePrice: dto.salePrice,
         stock: dto.stock,
+        stockStatus: (dto.stock ?? 0) > 0 ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK',
         weightOverride: dto.weightOverride,
         isDefault: dto.isDefault,
         attributeValues: {
@@ -300,6 +386,7 @@ export class ProductsService {
         data: { hasVariants: true },
       });
     }
+    await this.syncParentStockStatus(productId);
     return this.adminGet(productId);
   }
 
@@ -318,10 +405,16 @@ export class ProductsService {
     await this.prisma.client.productVariant.delete({
       where: { id: variantId },
     });
+    await this.syncParentStockStatus(productId);
   }
 
   // ADDENDUM §B1 — the Inventory view needs to edit variant stock inline;
   // simple (non-variant) products already go through the general update().
+  // Unlike update() (where staff set stock and stockStatus together as an
+  // explicit pair), this endpoint's callers only ever pass a number — so
+  // stockStatus must be derived here, or it silently goes stale (this was a
+  // real bug: stock could drop to 0 while a stale IN_STOCK pill stayed put,
+  // since nothing ever recomputed it after variant creation).
   async updateVariantStock(
     productId: number,
     variantId: number,
@@ -329,12 +422,30 @@ export class ProductsService {
   ): Promise<void> {
     const variant = await this.prisma.client.productVariant.findFirst({
       where: { id: variantId, productId },
+      include: { product: { select: { allowBackorder: true } } },
     });
     if (!variant) throw new NotFoundException('Variant not found');
+    const stockStatus =
+      stock > 0 ? 'IN_STOCK' : variant.product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK';
     await this.prisma.client.productVariant.update({
       where: { id: variantId },
-      data: { stock },
+      data: { stock, stockStatus },
     });
+    await this.syncParentStockStatus(productId);
+  }
+
+  // The parent Product row's own stockStatus represents "is any variant
+  // available" for a hasVariants product (its own `stock` column is a
+  // meaningless placeholder in that case, real stock lives per-variant) —
+  // recomputed after every variant stock change so the product-list pill
+  // never goes stale the way it silently did before this method existed.
+  private async syncParentStockStatus(productId: number): Promise<void> {
+    const [anyInStock, product] = await Promise.all([
+      this.prisma.client.productVariant.findFirst({ where: { productId, stock: { gt: 0 } } }),
+      this.prisma.client.product.findUniqueOrThrow({ where: { id: productId }, select: { allowBackorder: true } }),
+    ]);
+    const stockStatus = anyInStock ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK';
+    await this.prisma.client.product.update({ where: { id: productId }, data: { stockStatus } });
   }
 
   // Editable in place (like price/stock) rather than requiring remove+re-add

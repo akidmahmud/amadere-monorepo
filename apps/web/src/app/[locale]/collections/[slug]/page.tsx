@@ -9,6 +9,9 @@ import { toProductCardData } from "@/lib/product-card-mapper";
 import { parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
 import { ProductListing } from "@/components/ProductListing";
+import type { components } from "@/lib/api/schema";
+
+type PublicProductDto = components["schemas"]["PublicProductDto"];
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
 export const revalidate = 3600;
@@ -63,7 +66,28 @@ export default async function CollectionPage({
     notFound();
   }
 
-  const products = collection.products.map(toProductCardData);
+  // The collection endpoint returns every product in one shot (no
+  // server-side pagination or filtering, unlike /products, /categories,
+  // /tags, /brands) — so price filtering happens here against the full set
+  // instead. Same "base price, defaulting to the default variant's price"
+  // resolution as the backend's own minPrice/maxPrice filter and as
+  // toProductCardData's own price display use, so the slider and the price
+  // shown on each card never disagree.
+  const effectivePrice = (p: PublicProductDto) =>
+    Number(p.price ?? p.variants.find((v) => v.isDefault)?.price ?? p.variants[0]?.price ?? 0);
+
+  const allPrices = collection.products.map(effectivePrice);
+  const priceBounds =
+    allPrices.length > 0 ? { min: Math.min(...allPrices), max: Math.max(...allPrices) } : undefined;
+
+  const filteredProducts = collection.products.filter((p: PublicProductDto) => {
+    const price = effectivePrice(p);
+    if (filters.minPrice !== undefined && price < filters.minPrice) return false;
+    if (filters.maxPrice !== undefined && price > filters.maxPrice) return false;
+    return true;
+  });
+
+  const products = filteredProducts.map(toProductCardData);
 
   return (
     <main className="flex-1">
@@ -82,6 +106,7 @@ export default async function CollectionPage({
         pageSize={Math.max(products.length, 1)}
         products={products}
         tags={[]}
+        priceBounds={priceBounds}
       />
     </main>
   );

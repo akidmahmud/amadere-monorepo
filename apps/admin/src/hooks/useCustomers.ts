@@ -106,3 +106,12 @@ export function useUpdateCustomerTiers() {
     },
   });
 }
+
+export function useCreateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { phone: string; firstName?: string; lastName?: string; email?: string }) =>
+      proxyFetch<AdminCustomer>("/admin/customers", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
+  });
+}

@@ -34,6 +34,18 @@ const WITH_TRANSLATIONS_AND_PRODUCT_COUNT = {
   },
 } as const;
 
+// Admin-only: the products list filter sidebar shows a per-category product
+// count too, but admin's own view includes drafts — counts every
+// non-deleted product, not just PUBLISHED ones like the storefront count above.
+const WITH_TRANSLATIONS_AND_ADMIN_PRODUCT_COUNT = {
+  translations: true,
+  _count: {
+    select: {
+      products: { where: { product: { deletedAt: null } } },
+    },
+  },
+} as const;
+
 @Injectable()
 export class CategoriesService {
   constructor(
@@ -49,7 +61,7 @@ export class CategoriesService {
     const [items, total] = await Promise.all([
       this.prisma.client.category.findMany({
         where,
-        include: WITH_TRANSLATIONS,
+        include: WITH_TRANSLATIONS_AND_ADMIN_PRODUCT_COUNT,
         orderBy: { sortOrder: 'asc' },
         ...paginationArgs(page, pageSize),
       }),

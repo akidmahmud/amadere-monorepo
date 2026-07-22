@@ -26,6 +26,14 @@ type Line = { productId: number; variantId?: number; name: string; sku: string |
 
 const PAYMENT_PROVIDERS = ["COD", "BKASH", "NAGAD", "ROCKET", "UPAY"] as const;
 
+const CHANNELS = ["WHATSAPP", "PHONE", "MARKETPLACE", "POS"] as const;
+const CHANNEL_LABELS: Record<(typeof CHANNELS)[number], string> = {
+  WHATSAPP: "WhatsApp",
+  PHONE: "Phone (Telemarketing)",
+  MARKETPLACE: "Marketplace",
+  POS: "In-store (POS)",
+};
+
 function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; onChange: (a: CreateManualOrderAddress) => void }) {
   function set(key: keyof CreateManualOrderAddress, v: string) {
     onChange({ ...value, [key]: v });
@@ -65,6 +73,7 @@ function NewOrderForm() {
   const [lines, setLines] = useState<Line[]>([]);
 
   const [paymentProvider, setPaymentProvider] = useState<(typeof PAYMENT_PROVIDERS)[number]>("COD");
+  const [channel, setChannel] = useState<(typeof CHANNELS)[number]>("WHATSAPP");
   const [customerNote, setCustomerNote] = useState("");
 
   const create = useCreateManualOrder();
@@ -128,6 +137,7 @@ function NewOrderForm() {
     if (lines.length === 0) return;
     const order = await create.mutateAsync({
       customerId: customerId ?? undefined,
+      channel,
       shippingAddress: cleanAddress(address),
       billingAddress: sameBilling ? undefined : cleanAddress(billingAddress),
       items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity, unitPrice: l.unitPrice })),
@@ -195,6 +205,18 @@ function NewOrderForm() {
               <p className="text-xs text-muted">No match? Fill in the shipping address below — a new customer is created automatically.</p>
             </div>
           )}
+        </Card>
+
+        <Card className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-text">Channel</h3>
+          <div className="flex flex-wrap gap-4">
+            {CHANNELS.map((c) => (
+              <label key={c} className="flex items-center gap-2 text-sm text-text">
+                <input type="radio" name="channel" checked={channel === c} onChange={() => setChannel(c)} />
+                {CHANNEL_LABELS[c]}
+              </label>
+            ))}
+          </div>
         </Card>
 
         <Card className="flex flex-col gap-3">
