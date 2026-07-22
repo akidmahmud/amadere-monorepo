@@ -948,6 +948,22 @@ export interface paths {
         patch: operations["AdminProductsController_update"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_statsFor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/variants": {
         parameters: {
             query?: never;
@@ -9323,6 +9339,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminProductDto"];
                 };
+            };
+        };
+    };
+    AdminProductsController_statsFor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

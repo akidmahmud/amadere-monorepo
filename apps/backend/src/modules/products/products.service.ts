@@ -132,6 +132,21 @@ export class ProductsService {
     return { total, active, draft, outOfStock, lowStock };
   }
 
+  // Real per-product sales figures for the Add/Edit form's Analytics tab —
+  // no view/conversion tracking exists in this codebase, so this only
+  // surfaces what we actually have (units sold, revenue, order count),
+  // same NON_CANCELED convention as the dashboard endpoint.
+  async adminStatsFor(productId: number): Promise<{ unitsSold: number; revenue: string; orderCount: number }> {
+    const items = await this.prisma.client.orderItem.findMany({
+      where: { productId, order: { status: { not: 'CANCELED' } } },
+      select: { quantity: true, unitPrice: true, orderId: true },
+    });
+    const unitsSold = items.reduce((sum, i) => sum + i.quantity, 0);
+    const revenue = items.reduce((sum, i) => sum + Number(i.unitPrice) * i.quantity, 0);
+    const orderCount = new Set(items.map((i) => i.orderId)).size;
+    return { unitsSold, revenue: revenue.toFixed(2), orderCount };
+  }
+
   async adminExportCsv(filters: AdminProductQueryDto): Promise<string> {
     const where = this.buildAdminWhere(filters);
     const items = await this.prisma.client.product.findMany({

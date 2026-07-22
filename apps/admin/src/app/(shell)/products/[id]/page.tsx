@@ -3,21 +3,16 @@
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
-import { useAttributes } from "@/hooks/useAttributes";
+import { Button } from "@amader/admin-ui";
 import { useProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { ProductFormFields } from "@/components/products/ProductFormFields";
 import { useProductFormState } from "@/components/products/useProductFormState";
-import { ExistingVariantsManager } from "@/components/products/ExistingVariantsManager";
-import { SeoMetaCard } from "@/components/SeoMetaCard";
-import { CrossSellFields } from "@/components/products/CrossSellFields";
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const productId = Number(id);
   const router = useRouter();
   const { data: product, isLoading } = useProduct(productId);
-  const { data: attributes } = useAttributes();
   const form = useProductFormState();
   const update = useUpdateProduct(productId);
 
@@ -25,8 +20,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     if (product) form.seedFrom(product);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
-
-  const selectedAttributes = attributes?.filter((a) => form.attributeIds.includes(a.id)) ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,42 +30,39 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   if (isLoading || !product) return <p className="text-sm text-muted">Loading…</p>;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card className="max-w-2xl">
-        <div className="mb-2 flex justify-end gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/products" aria-label="Back to products" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </Link>
+          <h1 className="font-ui text-lg font-extrabold text-text">Edit Product</h1>
           <Link href={`/products/${productId}/info-visual`} className="text-xs font-semibold text-brand-500 hover:underline">
-            Edit Product Info Visual →
+            Info Visual →
           </Link>
           <Link href={`/products/${productId}/comparison`} className="text-xs font-semibold text-brand-500 hover:underline">
-            Edit Comparison Section →
+            Comparison →
           </Link>
           <Link href="/products/marketing-review" className="text-xs font-semibold text-brand-500 hover:underline">
-            Manage Marketing Review Cards →
+            Marketing Review Cards →
           </Link>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <ProductFormFields form={form} />
-
-          {form.hasVariants && (
-            <ExistingVariantsManager productId={productId} attributes={selectedAttributes} variants={product.variants} />
-          )}
-
-          <div className="flex gap-3">
-            <Button type="submit" variant="primary" disabled={update.isPending}>
-              {update.isPending ? "Saving…" : "Save changes"}
+        <div className="flex gap-3">
+          <Link href="/products">
+            <Button type="button" variant="ghost">
+              Cancel
             </Button>
-            <Link href="/products">
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </Link>
-          </div>
-        </form>
-      </Card>
+          </Link>
+          <Button type="submit" variant="primary" disabled={update.isPending}>
+            {update.isPending ? "Saving…" : "Save Product"}
+          </Button>
+        </div>
+      </div>
 
-      <CrossSellFields productId={productId} />
-
-      <SeoMetaCard entityType="PRODUCT" entityId={productId} />
-    </div>
+      <ProductFormFields form={form} productId={productId} variants={product.variants} />
+    </form>
   );
 }

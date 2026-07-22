@@ -68,6 +68,20 @@ export function useProducts(filters: AdminProductFilters = {}) {
   });
 }
 
+export interface ProductSalesStats {
+  unitsSold: number;
+  revenue: string;
+  orderCount: number;
+}
+
+export function useProductSalesStats(productId: number) {
+  return useQuery({
+    queryKey: [...KEY, productId, "stats"],
+    queryFn: () => proxyFetch<ProductSalesStats>(`/admin/products/${productId}/stats`),
+    enabled: Number.isFinite(productId),
+  });
+}
+
 export interface ProductStats {
   total: number;
   active: number;

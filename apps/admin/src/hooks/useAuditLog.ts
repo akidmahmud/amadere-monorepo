@@ -25,12 +25,13 @@ interface Paginated<T> {
   pageSize: number;
 }
 
-export function useAuditLog(filters: { entityType?: string; adminUserId?: number }) {
+export function useAuditLog(filters: { entityType?: string; entityId?: number; adminUserId?: number }) {
   return useQuery({
     queryKey: ["admin-audit-log", filters],
     queryFn: () => {
       const qs = new URLSearchParams({ pageSize: "50" });
       if (filters.entityType) qs.set("entityType", filters.entityType);
+      if (filters.entityId !== undefined) qs.set("entityId", String(filters.entityId));
       if (filters.adminUserId) qs.set("adminUserId", String(filters.adminUserId));
       return proxyFetch<Paginated<AuditLogEntry>>(`/admin/audit-log?${qs}`);
     },

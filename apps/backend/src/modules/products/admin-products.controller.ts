@@ -72,6 +72,12 @@ export class AdminProductsController {
     return this.products.adminGet(id);
   }
 
+  @Get(':id/stats')
+  @RequirePermission('product.view')
+  statsFor(@Param('id', ParseIntPipe) id: number) {
+    return this.products.adminStatsFor(id);
+  }
+
   @Post()
   @RequirePermission('product.create')
   @ApiOkResponse({ type: AdminProductDto })
