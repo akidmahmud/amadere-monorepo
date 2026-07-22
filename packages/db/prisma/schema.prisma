@@ -965,11 +965,21 @@ enum OrderStatus {
   // in_transit/delivered) already lives on Shipment.status; not duplicated here.
 }
 
+enum OrderChannel {
+  WEBSITE
+  WHATSAPP
+  PHONE
+  MARKETPLACE
+  POS
+  APP
+}
+
 model Order {
-  id          Int         @id @default(autoincrement())
-  orderNumber String      @unique @map("order_number")
-  customerId  Int?        @map("customer_id") // null = guest order
-  status      OrderStatus @default(PENDING)
+  id          Int          @id @default(autoincrement())
+  orderNumber String       @unique @map("order_number")
+  customerId  Int?         @map("customer_id") // null = guest order
+  status      OrderStatus  @default(PENDING)
+  channel     OrderChannel @default(WEBSITE) @map("channel")
 
   subTotal       Decimal @map("sub_total") @db.Decimal(10, 2)
   discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(10, 2)
