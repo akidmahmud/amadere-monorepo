@@ -40,18 +40,36 @@ export class AdminBlogPostsController {
   @RequirePermission('blog_post.view')
   @ApiQuery({ name: 'status', required: false, enum: ContentStatus })
   @ApiQuery({ name: 'authorId', required: false, type: Number })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiQuery({ name: 'categoryId', required: false, type: Number })
+  @ApiQuery({ name: 'tagId', required: false, type: Number })
+  @ApiQuery({ name: 'isFeatured', required: false, type: Boolean })
   @ApiPaginatedResponse(AdminBlogPostDto)
   list(
     @Query() { page, pageSize }: PaginationQueryDto,
     @Query('status') status?: ContentStatus,
     @Query('authorId') authorId?: string,
+    @Query('q') q?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('tagId') tagId?: string,
+    @Query('isFeatured') isFeatured?: string,
   ): Promise<PaginatedResult<AdminBlogPostDto>> {
     return this.posts.adminList(
       page ?? 1,
       pageSize ?? 20,
       status,
       authorId ? Number(authorId) : undefined,
+      q,
+      categoryId ? Number(categoryId) : undefined,
+      tagId ? Number(tagId) : undefined,
+      isFeatured !== undefined ? isFeatured === 'true' : undefined,
     );
+  }
+
+  @Get('stats')
+  @RequirePermission('blog_post.view')
+  stats() {
+    return this.posts.adminStats();
   }
 
   @Get(':id')

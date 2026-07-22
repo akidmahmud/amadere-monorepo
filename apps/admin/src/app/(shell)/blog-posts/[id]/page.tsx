@@ -3,30 +3,30 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
-import { HtmlImportButton } from "@/components/HtmlImportModal";
-import { MediaPicker } from "@/components/MediaPicker";
+import { Button } from "@amader/admin-ui";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
-import { useBlogCategories } from "@/hooks/useBlogCategories";
-import { useBlogTags } from "@/hooks/useBlogTags";
 import { useArchiveBlogPost, useBlogPost, usePublishBlogPost, useSubmitBlogPost, useUpdateBlogPost } from "@/hooks/useBlogPosts";
+import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
 
-const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+const STATUS_PILL: Record<string, string> = {
+  PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
+  DRAFT: "bg-[#f1eafe] text-[#8b5cf6]",
+  ARCHIVED: "bg-[#eef1f6] text-[#7a879b]",
+  PENDING: "bg-[#fdf1dc] text-[#e0821c]",
+};
 
 export default function EditBlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const postId = Number(id);
   const router = useRouter();
   const { data: post, isLoading } = useBlogPost(postId);
-  const { data: categories } = useBlogCategories();
-  const { data: tags } = useBlogTags();
   const update = useUpdateBlogPost(postId);
   const submit = useSubmitBlogPost();
   const publish = usePublishBlogPost();
   const archive = useArchiveBlogPost();
 
-  const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
@@ -48,10 +48,6 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     setTagIds(post.tagIds);
   }, [post]);
 
-  function toggle(list: number[], id: number, set: (ids: number[]) => void) {
-    set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     await update.mutateAsync({
@@ -71,95 +67,71 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   if (isLoading || !post) return <p className="text-sm text-muted">Loading…</p>;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card className="flex items-center justify-between">
-        <div>
-          <span className="text-xs font-semibold text-secondary">Status</span>
-          <p className="text-sm font-semibold text-text">{post.status}</p>
-        </div>
-        <div className="flex gap-2">
+    <div className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/blog-posts" aria-label="Back to blog posts" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+          </Link>
+          <h1 className="font-ui text-lg font-extrabold text-text">Edit Blog Post</h1>
           {post.status === "DRAFT" && (
             <Button type="button" variant="ghost" disabled={submit.isPending} onClick={() => submit.mutate(postId)}>
-              Submit for review
+              {submit.isPending ? "Submitting…" : "Submit for review"}
             </Button>
           )}
           {post.status === "PENDING" && (
             <Button type="button" variant="primary" disabled={publish.isPending} onClick={() => publish.mutate(postId)}>
-              Publish
+              {publish.isPending ? "Publishing…" : "Publish"}
             </Button>
           )}
           {post.status === "PUBLISHED" && (
             <Button type="button" variant="ghost" disabled={archive.isPending} onClick={() => archive.mutate(postId)}>
-              Archive
+              {archive.isPending ? "Archiving…" : "Archive"}
             </Button>
           )}
         </div>
-      </Card>
+        <div className="flex gap-3">
+          <a
+            href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center gap-2 rounded-sm border border-border px-[18px] font-ui text-sm font-semibold text-text hover:bg-surface-2"
+          >
+            Visit website
+          </a>
+          <Button type="submit" variant="primary" disabled={update.isPending}>
+            {update.isPending ? "Saving…" : "Save Post"}
+          </Button>
+        </div>
+      </div>
 
-      <Card className="max-w-2xl">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Title</span>
-            <input required value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Slug</span>
-            <input required value={slug} onChange={(e) => setSlug(e.target.value)} className={inputClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Excerpt (optional)</span>
-            <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-secondary">Content</span>
-              <HtmlImportButton onImport={setContent} />
-            </div>
-            <textarea required value={content} onChange={(e) => setContent(e.target.value)} rows={8} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Meta description (optional)</span>
-            <input value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} className={inputClass} />
-          </label>
-          <MediaPicker value={imageUrl} onChange={setImageUrl} label="Cover image" />
-          <label className="flex items-center gap-2 text-sm text-text">
-            <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
-            Featured
-          </label>
-
-          <div>
-            <span className="mb-2 block text-xs font-semibold text-secondary">Categories</span>
-            <div className="flex flex-wrap gap-2">
-              {categories?.map((c) => (
-                <label key={c.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-text">
-                  <input type="checkbox" checked={categoryIds.includes(c.id)} onChange={() => toggle(categoryIds, c.id, setCategoryIds)} />
-                  {c.translations[0]?.name}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span className="mb-2 block text-xs font-semibold text-secondary">Tags</span>
-            <div className="flex flex-wrap gap-2">
-              {tags?.map((t) => (
-                <label key={t.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-text">
-                  <input type="checkbox" checked={tagIds.includes(t.id)} onChange={() => toggle(tagIds, t.id, setTagIds)} />
-                  {t.translations[0]?.name}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button type="submit" variant="primary" disabled={update.isPending}>
-              {update.isPending ? "Saving…" : "Save changes"}
-            </Button>
-            <Link href="/blog-posts">
-              <Button type="button" variant="ghost">Cancel</Button>
-            </Link>
-          </div>
-        </form>
-      </Card>
+      <BlogPostFormFields
+        title={title}
+        setTitle={setTitle}
+        slug={slug}
+        setSlug={setSlug}
+        excerpt={excerpt}
+        setExcerpt={setExcerpt}
+        content={content}
+        setContent={setContent}
+        metaDescription={metaDescription}
+        setMetaDescription={setMetaDescription}
+        imageUrl={imageUrl}
+        setImageUrl={setImageUrl}
+        isFeatured={isFeatured}
+        setIsFeatured={setIsFeatured}
+        categoryIds={categoryIds}
+        setCategoryIds={setCategoryIds}
+        tagIds={tagIds}
+        setTagIds={setTagIds}
+        statusLabel={post.status.charAt(0) + post.status.slice(1).toLowerCase()}
+        statusPillClass={STATUS_PILL[post.status]}
+      />
+      </form>
 
       <SeoMetaCard entityType="BLOG_POST" entityId={postId} />
     </div>

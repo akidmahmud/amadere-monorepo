@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 import type { PublishStatus } from "@/hooks/useBrands";
@@ -65,6 +65,7 @@ export function useProducts(filters: AdminProductFilters = {}) {
   return useQuery({
     queryKey: [...KEY, filters],
     queryFn: () => proxyFetch<Required<Paginated<AdminProduct>>>(`/admin/products${toQueryString(filters)}`),
+    placeholderData: keepPreviousData,
   });
 }
 

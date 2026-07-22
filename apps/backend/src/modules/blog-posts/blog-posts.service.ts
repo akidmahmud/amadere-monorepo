@@ -48,11 +48,26 @@ export class BlogPostsService {
     pageSize: number,
     status?: ContentStatus,
     authorId?: number,
+    q?: string,
+    categoryId?: number,
+    tagId?: number,
+    isFeatured?: boolean,
   ) {
     const where = {
       deletedAt: null,
       ...(status ? { status } : {}),
       ...(authorId !== undefined ? { adminUserId: authorId } : {}),
+      ...(isFeatured !== undefined ? { isFeatured } : {}),
+      ...(categoryId !== undefined ? { categories: { some: { categoryId } } } : {}),
+      ...(tagId !== undefined ? { tags: { some: { tagId } } } : {}),
+      ...(q?.trim()
+        ? {
+            OR: [
+              { slug: { contains: q.trim(), mode: 'insensitive' as const } },
+              { translations: { some: { title: { contains: q.trim(), mode: 'insensitive' as const } } } },
+            ],
+          }
+        : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.client.blogPost.findMany({
@@ -69,6 +84,18 @@ export class BlogPostsService {
       page,
       pageSize,
     );
+  }
+
+  async adminStats(): Promise<{ total: number; published: number; draft: number; archived: number; featured: number }> {
+    const base = { deletedAt: null } as const;
+    const [total, published, draft, archived, featured] = await Promise.all([
+      this.prisma.client.blogPost.count({ where: base }),
+      this.prisma.client.blogPost.count({ where: { ...base, status: 'PUBLISHED' } }),
+      this.prisma.client.blogPost.count({ where: { ...base, status: 'DRAFT' } }),
+      this.prisma.client.blogPost.count({ where: { ...base, status: 'ARCHIVED' } }),
+      this.prisma.client.blogPost.count({ where: { ...base, isFeatured: true } }),
+    ]);
+    return { total, published, draft, archived, featured };
   }
 
   async adminGet(id: number): Promise<AdminBlogPostDto> {

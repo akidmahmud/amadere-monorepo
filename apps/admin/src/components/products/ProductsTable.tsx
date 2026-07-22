@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
@@ -77,6 +77,18 @@ export function ProductsTable({
   const [bulkAction, setBulkAction] = useState("");
   const deleteProduct = useDeleteProduct();
 
+  // Debounced search — typing updates local state instantly, but only pushes
+  // into `filters` (and triggers a refetch) 350ms after the user stops typing,
+  // so every keystroke doesn't re-run the query and flash the table to "Loading…".
+  const [searchInput, setSearchInput] = useState(filters.q ?? "");
+  useEffect(() => setSearchInput(filters.q ?? ""), [filters.q]);
+  useEffect(() => {
+    if (searchInput === (filters.q ?? "")) return;
+    const timeout = setTimeout(() => onFiltersChange({ ...filters, q: searchInput || undefined, page: 1 }), 350);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 10;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -126,8 +138,8 @@ export function ProductsTable({
         <input
           type="text"
           placeholder="Search products..."
-          defaultValue={filters.q ?? ""}
-          onChange={(e) => onFiltersChange({ ...filters, q: e.target.value || undefined, page: 1 })}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="h-[38px] w-[200px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
         />
         <Link

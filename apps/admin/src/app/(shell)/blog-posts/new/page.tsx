@@ -3,21 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
-import { HtmlImportButton } from "@/components/HtmlImportModal";
-import { MediaPicker } from "@/components/MediaPicker";
-import { useBlogCategories } from "@/hooks/useBlogCategories";
-import { useBlogTags } from "@/hooks/useBlogTags";
+import { Button } from "@amader/admin-ui";
 import { useCreateBlogPost } from "@/hooks/useBlogPosts";
-
-const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
 
 export default function NewBlogPostPage() {
   const router = useRouter();
-  const { data: categories } = useBlogCategories();
-  const { data: tags } = useBlogTags();
-  const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
@@ -26,10 +19,6 @@ export default function NewBlogPostPage() {
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const create = useCreateBlogPost();
-
-  function toggle(list: number[], id: number, set: (ids: number[]) => void) {
-    set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,73 +37,61 @@ export default function NewBlogPostPage() {
   }
 
   return (
-    <Card className="max-w-2xl">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Title</span>
-          <input required value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Slug</span>
-          <input required value={slug} onChange={(e) => setSlug(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Excerpt (optional)</span>
-          <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-secondary">Content</span>
-            <HtmlImportButton onImport={setContent} />
-          </div>
-          <textarea required value={content} onChange={(e) => setContent(e.target.value)} rows={8} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Meta description (optional)</span>
-          <input value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} className={inputClass} />
-        </label>
-        <MediaPicker value={imageUrl} onChange={setImageUrl} label="Cover image" />
-        <label className="flex items-center gap-2 text-sm text-text">
-          <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
-          Featured
-        </label>
-
-        <div>
-          <span className="mb-2 block text-xs font-semibold text-secondary">Categories</span>
-          <div className="flex flex-wrap gap-2">
-            {categories?.map((c) => (
-              <label key={c.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-text">
-                <input type="checkbox" checked={categoryIds.includes(c.id)} onChange={() => toggle(categoryIds, c.id, setCategoryIds)} />
-                {c.translations[0]?.name}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div>
-          <span className="mb-2 block text-xs font-semibold text-secondary">Tags</span>
-          <div className="flex flex-wrap gap-2">
-            {tags?.map((t) => (
-              <label key={t.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-text">
-                <input type="checkbox" checked={tagIds.includes(t.id)} onChange={() => toggle(tagIds, t.id, setTagIds)} />
-                {t.translations[0]?.name}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-xs text-muted">
-          New posts start as a draft — submit/publish/archive it from the edit page once created.
-        </p>
-
-        <div className="flex gap-3">
-          <Button type="submit" variant="primary" disabled={create.isPending}>
-            {create.isPending ? "Saving…" : "Create post"}
-          </Button>
-          <Link href="/blog-posts">
-            <Button type="button" variant="ghost">Cancel</Button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/blog-posts" aria-label="Back to blog posts" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
           </Link>
+          <h1 className="font-ui text-lg font-extrabold text-text">New Blog Post</h1>
         </div>
-      </form>
-    </Card>
+        <div className="flex gap-3">
+          <a
+            href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center gap-2 rounded-sm border border-border px-[18px] font-ui text-sm font-semibold text-text hover:bg-surface-2"
+          >
+            Visit website
+          </a>
+          <Button type="submit" variant="primary" disabled={create.isPending}>
+            {create.isPending ? "Saving…" : "Create Post"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2.5 rounded-inner border border-[#d8e6fc] bg-brand-50 px-3.5 py-2.5 text-[0.75rem] font-semibold text-brand-600">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="flex-none">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+        New posts start as a draft — submit, publish or archive it from the edit page once created.
+      </div>
+
+      <BlogPostFormFields
+        title={title}
+        setTitle={setTitle}
+        slug={slug}
+        setSlug={setSlug}
+        excerpt={excerpt}
+        setExcerpt={setExcerpt}
+        content={content}
+        setContent={setContent}
+        metaDescription={metaDescription}
+        setMetaDescription={setMetaDescription}
+        imageUrl={imageUrl}
+        setImageUrl={setImageUrl}
+        isFeatured={isFeatured}
+        setIsFeatured={setIsFeatured}
+        categoryIds={categoryIds}
+        setCategoryIds={setCategoryIds}
+        tagIds={tagIds}
+        setTagIds={setTagIds}
+      />
+    </form>
   );
 }

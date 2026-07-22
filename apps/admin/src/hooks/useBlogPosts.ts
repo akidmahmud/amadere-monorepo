@@ -9,15 +9,45 @@ export type BlogPostInput = components["schemas"]["CreateBlogPostDto"];
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-blog-posts"];
 
-export function useBlogPosts(status?: PublishStatus) {
+export interface BlogPostFilters {
+  status?: PublishStatus;
+  q?: string;
+  categoryId?: number;
+  tagId?: number;
+  isFeatured?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+function toQueryString(filters: BlogPostFilters): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === "") continue;
+    params.set(key, String(value));
+  }
+  const s = params.toString();
+  return s ? `?${s}` : "";
+}
+
+export function useBlogPosts(filters: BlogPostFilters = {}) {
   return useQuery({
-    queryKey: [...KEY, status ?? "all"],
-    queryFn: async () => {
-      const qs = new URLSearchParams({ pageSize: "100" });
-      if (status) qs.set("status", status);
-      const res = await proxyFetch<Paginated<AdminBlogPost>>(`/admin/blog-posts?${qs}`);
-      return res.items ?? [];
-    },
+    queryKey: [...KEY, filters],
+    queryFn: () => proxyFetch<Required<Paginated<AdminBlogPost>>>(`/admin/blog-posts${toQueryString(filters)}`),
+  });
+}
+
+export interface BlogPostStats {
+  total: number;
+  published: number;
+  draft: number;
+  archived: number;
+  featured: number;
+}
+
+export function useBlogPostStats() {
+  return useQuery({
+    queryKey: [...KEY, "stats"],
+    queryFn: () => proxyFetch<BlogPostStats>("/admin/blog-posts/stats"),
   });
 }
 

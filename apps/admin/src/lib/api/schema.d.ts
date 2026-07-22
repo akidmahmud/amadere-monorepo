@@ -2740,6 +2740,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/blog-posts/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/blog-posts/{id}": {
         parameters: {
             query?: never;
@@ -12910,6 +12926,10 @@ export interface operations {
                 pageSize?: number;
                 status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
                 authorId?: number;
+                q?: string;
+                categoryId?: number;
+                tagId?: number;
+                isFeatured?: boolean;
             };
             header?: never;
             path?: never;
@@ -12960,6 +12980,23 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminBlogPostDto"];
                 };
+            };
+        };
+    };
+    AdminBlogPostsController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
