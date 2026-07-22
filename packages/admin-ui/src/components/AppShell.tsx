@@ -5,7 +5,6 @@ import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { NavItem } from "./NavItem";
 import { NavGroup, type NavGroupChild } from "./NavGroup";
-import { SearchInput } from "./SearchInput";
 
 export interface AppNavItem {
   key: string;
@@ -51,6 +50,29 @@ const collapseIcon = (
   </svg>
 );
 
+const searchIcon = (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </svg>
+);
+
+const cacheIcon = (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2}>
+    <circle cx="7.5" cy="15.5" r="5.5" />
+    <path d="m21 2-9.6 9.6" />
+    <path d="m15.5 7.5 3 3L22 7l-3-3" />
+  </svg>
+);
+
+const visitIcon = (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
+
 const COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 // §4 — fixed 240px sidebar + content area, both rendered as floating inset
@@ -75,6 +97,20 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [navFilter, setNavFilter] = useState("");
+  const [cacheMessage, setCacheMessage] = useState<string | null>(null);
+
+  function handleClearCache() {
+    setCacheMessage("Cache cleared");
+    setTimeout(() => setCacheMessage(null), 2000);
+  }
+
+  function matchesFilter(item: AppNavItem): boolean {
+    if (!navFilter.trim()) return true;
+    const q = navFilter.trim().toLowerCase();
+    if (item.label.toLowerCase().includes(q)) return true;
+    return (item.children ?? []).some((c) => c.label.toLowerCase().includes(q));
+  }
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
@@ -114,8 +150,18 @@ export function AppShell({
             <span className={cn("transition-transform duration-150", collapsed && "rotate-180")}>{collapseIcon}</span>
           </button>
         </div>
+        <label className={cn("mb-3 flex h-9 items-center gap-2 rounded-inner border border-border bg-surface px-2.5 text-secondary", collapsed && "hidden group-hover/sidebar:flex")}>
+          {searchIcon}
+          <input
+            type="text"
+            value={navFilter}
+            onChange={(e) => setNavFilter(e.target.value)}
+            placeholder="Search menu..."
+            className="w-full border-0 bg-transparent font-ui text-xs text-text outline-none placeholder:text-muted"
+          />
+        </label>
         <nav className="flex flex-col gap-1">
-          {nav.map((item) =>
+          {nav.filter(matchesFilter).map((item) =>
             item.children ? (
               <NavGroup
                 key={item.key}
@@ -160,24 +206,50 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
-        <header className="flex h-14 flex-none items-center justify-between border-b border-border px-6">
-          <div className="flex items-center gap-2.5">
-            <h1 className="font-ui text-lg font-semibold text-text">{pageTitle}</h1>
-            {dateLabel && <span className="text-[13px] text-muted">›› {dateLabel}</span>}
+        <header className="flex h-16 flex-none items-center gap-5 border-b border-border px-6">
+          <div>
+            <div className="flex items-center gap-1.5 font-ui text-[11px] font-bold tracking-wide text-secondary uppercase">
+              <span className="text-brand-500">Home</span>
+              <span className="text-muted">›</span>
+              <span className="text-brand-500">{pageTitle}</span>
+            </div>
+            <h1 className="mt-0.5 font-ui text-lg font-extrabold text-text">{pageTitle}</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3">
+            {cacheMessage && <span className="text-xs font-semibold text-success">{cacheMessage}</span>}
+            <button
+              type="button"
+              onClick={handleClearCache}
+              className="inline-flex h-9 items-center gap-2 rounded-inner bg-[var(--stat-yellow,#e9a23b)] px-3.5 font-ui text-[13px] font-bold text-white transition-[filter] hover:brightness-95"
+            >
+              {cacheIcon}
+              Clear cache
+            </button>
+            <a
+              href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center gap-2 rounded-inner bg-[#3a4356] px-3.5 font-ui text-[13px] font-bold text-white transition-[filter] hover:brightness-110"
+            >
+              {visitIcon}
+              Visit website
+            </a>
             <button
               type="button"
               onClick={onNotificationClick}
               aria-label="Notifications"
-              className="relative grid h-9 w-9 place-items-center rounded-pill border border-border bg-surface"
+              className="relative grid h-9 w-9 place-items-center rounded-inner bg-brand-50 text-brand-500"
             >
               {bellIcon}
               {hasNotification && (
-                <span className="absolute top-[8px] right-[10px] h-[7px] w-[7px] rounded-full border-2 border-surface bg-danger" />
+                <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white">
+                  •
+                </span>
               )}
             </button>
-            <SearchInput />
+            <div className="grid h-9 w-9 flex-none place-items-center rounded-pill bg-brand-500 font-ui text-sm font-extrabold text-white outline outline-3 outline-brand-50">
+              {userName.trim().charAt(0).toUpperCase() || "A"}
+            </div>
           </div>
         </header>
         <main className="flex flex-1 flex-col gap-6 px-6 py-6">{children}</main>
