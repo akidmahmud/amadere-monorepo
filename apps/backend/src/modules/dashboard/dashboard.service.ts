@@ -9,15 +9,24 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async overview(): Promise<DashboardOverviewDto> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const [
       revenueAgg,
       totalOrders,
       totalCustomers,
+      totalProducts,
       completedOrders,
+      completedAgg,
+      pendingAgg,
+      todayAgg,
       statusGroups,
+      channelGroups,
       recentOrdersRaw,
       revenueOrders,
       itemsRaw,
+      customerSpendRaw,
     ] = await Promise.all([
       this.prisma.client.order.aggregate({
         where: { status: NON_CANCELED },
@@ -25,8 +34,24 @@ export class DashboardService {
       }),
       this.prisma.client.order.count(),
       this.prisma.client.customer.count(),
+      this.prisma.client.product.count(),
       this.prisma.client.order.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.client.order.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.client.order.aggregate({
+        where: { status: 'PENDING' },
+        _count: { _all: true },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.client.order.aggregate({
+        where: { createdAt: { gte: startOfToday } },
+        _count: { _all: true },
+        _sum: { totalAmount: true },
+      }),
       this.prisma.client.order.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.client.order.groupBy({ by: ['channel'], _count: { _all: true } }),
       this.prisma.client.order.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -37,6 +62,7 @@ export class DashboardService {
           status: true,
           createdAt: true,
           customer: { select: { firstName: true, lastName: true } },
+          payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { provider: true } },
         },
       }),
       this.prisma.client.order.findMany({
@@ -52,6 +78,14 @@ export class DashboardService {
           productNameSnapshot: true,
           product: { select: { slug: true } },
         },
+      }),
+      this.prisma.client.order.groupBy({
+        by: ['customerId'],
+        where: { status: NON_CANCELED, customerId: { not: null } },
+        _sum: { totalAmount: true },
+        _count: { _all: true },
+        orderBy: { _sum: { totalAmount: 'desc' } },
+        take: 5,
       }),
     ]);
 
@@ -109,12 +143,48 @@ export class DashboardService {
         unitsSold: p.unitsSold,
       }));
 
+    const customerIds = customerSpendRaw
+      .map((c) => c.customerId)
+      .filter((id): id is number => id !== null);
+    const customers = customerIds.length
+      ? await this.prisma.client.customer.findMany({
+          where: { id: { in: customerIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const customerNameById = new Map(
+      customers.map((c) => [c.id, [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Customer']),
+    );
+    const topCustomers = customerSpendRaw.map((c) => ({
+      id: c.customerId!,
+      name: customerNameById.get(c.customerId!) ?? 'Customer',
+      orderCount: c._count._all,
+      totalSpend: (c._sum.totalAmount ?? 0).toString(),
+    }));
+
+    const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
+
     return {
-      totalRevenue: (revenueAgg._sum.totalAmount ?? 0).toString(),
+      totalRevenue: totalRevenue.toString(),
       totalOrders,
       totalCustomers,
+      totalProducts,
       completedOrderRate: totalOrders > 0 ? completedOrders / totalOrders : 0,
+      avgOrderValue: totalOrders > 0 ? (Number(totalRevenue) / totalOrders).toFixed(2) : '0.00',
+      today: {
+        orders: todayAgg._count._all,
+        revenue: (todayAgg._sum.totalAmount ?? 0).toString(),
+      },
+      completed: {
+        orders: completedOrders,
+        revenue: (completedAgg._sum.totalAmount ?? 0).toString(),
+      },
+      pending: {
+        orders: pendingAgg._count._all,
+        revenue: (pendingAgg._sum.totalAmount ?? 0).toString(),
+      },
       statusBreakdown: statusGroups.map((g) => ({ status: g.status, count: g._count._all })),
+      ordersByChannel: channelGroups.map((g) => ({ channel: g.channel, count: g._count._all })),
       recentOrders: recentOrdersRaw.map((o) => ({
         id: o.id,
         orderNumber: o.orderNumber,
@@ -124,7 +194,9 @@ export class DashboardService {
         total: o.totalAmount.toString(),
         status: o.status,
         createdAt: o.createdAt.toISOString(),
+        paymentMethod: o.payments[0]?.provider && o.payments[0].provider !== 'COD' ? 'PAID' : 'COD',
       })),
+      topCustomers,
       monthlyRevenue,
       topProducts,
     };
