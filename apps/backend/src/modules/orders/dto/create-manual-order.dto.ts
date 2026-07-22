@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PaymentProvider } from '@amader/db';
+import { OrderChannel, PaymentProvider } from '@amader/db';
 import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsPositive,
@@ -34,6 +34,13 @@ export class CreateManualOrderDto {
   @IsOptional()
   @IsInt()
   customerId?: number;
+
+  @ApiProperty({
+    enum: OrderChannel,
+    description: 'How this order was taken — never WEBSITE for a staff-created order',
+  })
+  @IsEnum(OrderChannel)
+  channel!: OrderChannel;
 
   @ApiProperty({ type: CheckoutAddressDto })
   @ValidateNested()

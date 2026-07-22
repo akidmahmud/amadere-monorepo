@@ -77,6 +77,7 @@ export class AdminOrderCreationService {
       const created = await tx.order.create({
         data: {
           orderNumber: generateOrderNumber(),
+          channel: dto.channel,
           customerId: dto.customerId ?? null,
           subTotal,
           discountAmount,

@@ -186,6 +186,7 @@ export class CheckoutService {
       const created = await tx.order.create({
         data: {
           orderNumber,
+          channel: 'WEBSITE',
           customerId: identity.customerId ?? null,
           subTotal: pricing.subTotal,
           discountAmount: pricing.totalDiscount,
