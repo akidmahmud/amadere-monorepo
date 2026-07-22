@@ -2,7 +2,6 @@ export * from "./components/Button";
 export * from "./components/Card";
 export * from "./components/StatCard";
 export * from "./components/NavItem";
-export * from "./components/NavGroup";
 export * from "./components/ListRow";
 export * from "./components/IconTile";
 export * from "./components/DeltaBadge";
