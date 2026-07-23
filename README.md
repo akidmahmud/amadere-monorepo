@@ -129,4 +129,4 @@ manually against the production database.
 ## License
 
 Proprietary — all rights reserved by Amader Ltd. Not licensed for external use or
-redistribution.
+redistribution. See [LICENSE](./LICENSE).

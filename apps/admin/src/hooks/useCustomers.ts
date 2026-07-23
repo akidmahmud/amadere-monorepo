@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 
@@ -8,12 +8,44 @@ export type CustomerTier = components["schemas"]["CustomerTierDto"];
 export type CustomerTierCount = components["schemas"]["CustomerTierCountDto"];
 export type CustomerNote = components["schemas"]["AdminCustomerNoteDto"];
 export type CustomerCallLog = components["schemas"]["AdminCustomerCallLogDto"];
+export type AssignableStaff = { id: number; name: string };
+
+export type CustomerPriority = "HIGH" | "MEDIUM" | "LOW";
+export type CustomerCrmStatus = "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
+export type CustomerBehaviour = "LOYAL" | "PRICE_SENSITIVE" | "OCCASIONAL";
 
 export interface CustomerListFilters {
   q?: string;
   tierId?: number;
+  district?: string;
+  priority?: CustomerPriority;
+  crmStatus?: CustomerCrmStatus;
+  assignedAdminId?: number;
+  birthdayToday?: boolean;
   page?: number;
   pageSize?: number;
+}
+
+// Every field the CRM table's cells can PATCH inline — one at a time, same
+// pattern as the rest of the admin (e.g. ProductsTable's variant stock).
+export interface UpdateCustomerInput {
+  firstName?: string;
+  lastName?: string;
+  dob?: string | null;
+  isFavorite?: boolean;
+  assignedAdminId?: number | null;
+  nextCallTarget?: string | null;
+  followUpCadenceDays?: number | null;
+  hasNewOrder?: boolean;
+  newOrderAt?: string | null;
+  priority?: CustomerPriority | null;
+  crmStatus?: CustomerCrmStatus | null;
+  behaviour?: CustomerBehaviour | null;
+  customerFeedback?: string;
+  amaderFeedback?: string;
+  familyDetails?: string;
+  purchaseReason?: string;
+  facebookProfileUrl?: string;
 }
 
 const LIST_KEY = ["customers"];
@@ -33,6 +65,16 @@ export function useCustomers(filters: CustomerListFilters = {}) {
     queryKey: [...LIST_KEY, filters],
     queryFn: () =>
       proxyFetch<{ items: AdminCustomerListItem[]; total: number }>(`/admin/customers${toQueryString(filters)}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export type CustomerStats = components["schemas"]["AdminCustomerStatsDto"];
+
+export function useCustomerStats() {
+  return useQuery({
+    queryKey: [...LIST_KEY, "stats"],
+    queryFn: () => proxyFetch<CustomerStats>("/admin/customers/stats"),
   });
 }
 
@@ -47,12 +89,19 @@ export function useCustomer(id: number) {
 export function useUpdateCustomer(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { firstName?: string; lastName?: string; dob?: string }) =>
+    mutationFn: (input: UpdateCustomerInput) =>
       proxyFetch<AdminCustomer>(`/admin/customers/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
     onSuccess: (data) => {
       qc.setQueryData([...LIST_KEY, id], data);
       qc.invalidateQueries({ queryKey: LIST_KEY });
     },
+  });
+}
+
+export function useAssignableStaff() {
+  return useQuery({
+    queryKey: [...LIST_KEY, "assignable-staff"],
+    queryFn: () => proxyFetch<AssignableStaff[]>("/admin/customers/assignable-staff"),
   });
 }
 

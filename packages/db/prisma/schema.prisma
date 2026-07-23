@@ -153,6 +153,7 @@ model AdminUser {
   blogPosts        BlogPost[]
   customerNotes    CustomerNote[]
   customerCallLogs CustomerCallLog[]
+  assignedCustomers Customer[] @relation("CustomerAssignedAdmin")
 
   @@map("admin_users")
 }
@@ -252,6 +253,25 @@ model Customer {
   updatedAt           DateTime       @updatedAt @map("updated_at")
   deletedAt           DateTime?      @map("deleted_at")
 
+  // ---- Sales-team CRM fields (admin-only, manually maintained) ----
+  // "Start Date" in the CRM table reuses createdAt rather than duplicating
+  // it — there's no distinct concept of "when tracking began" vs. "when the
+  // customer record was created."
+  isFavorite           Boolean              @default(false) @map("is_favorite")
+  assignedAdminId      Int?                 @map("assigned_admin_id")
+  nextCallTarget       DateTime?            @db.Date @map("next_call_target")
+  followUpCadenceDays  Int?                 @map("follow_up_cadence_days") // 7 / 15 / 30 — null = no cadence set
+  hasNewOrder          Boolean              @default(false) @map("has_new_order")
+  newOrderAt           DateTime?            @db.Date @map("new_order_at")
+  priority             CustomerPriority?
+  crmStatus            CustomerCrmStatus?   @map("crm_status")
+  behaviour            CustomerBehaviour?
+  customerFeedback     String?              @map("customer_feedback")
+  amaderFeedback       String?              @map("amader_feedback")
+  familyDetails        String?              @map("family_details")
+  purchaseReason       String?              @map("purchase_reason")
+  facebookProfileUrl   String?              @map("facebook_profile_url")
+
   // PHASE 2 HOOK: reward-point ledger and referral-code program attach here.
   // Loyalty/Referral are not implemented — this is the seam only.
 
@@ -267,8 +287,30 @@ model Customer {
   notes          CustomerNote[]
   callLogs       CustomerCallLog[]
   dues           Due[]
+  assignedAdmin  AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
   @@map("customers")
+}
+
+enum CustomerPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// CRM pipeline status for the sales team's follow-up workflow — distinct
+// from CustomerStatus (ACTIVE/LOCKED), which is the account's login state.
+enum CustomerCrmStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  FOLLOW_UP
+  DONE
+}
+
+enum CustomerBehaviour {
+  LOYAL
+  PRICE_SENSITIVE
+  OCCASIONAL
 }
 
 // Admin-configurable loyalty tiers (thresholds and labels editable via

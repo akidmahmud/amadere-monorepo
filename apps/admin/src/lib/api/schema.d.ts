@@ -2084,6 +2084,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/customers/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/assignable-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_listAssignableStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/customers/import": {
         parameters: {
             query?: never;
@@ -6097,6 +6145,23 @@ export interface components {
             orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
             notes: components["schemas"]["AdminCustomerNoteDto"][];
             callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
+            isFavorite: boolean;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
+            /** Format: date-time */
+            nextCallTarget: string | null;
+            followUpCadenceDays: number | null;
+            hasNewOrder: boolean;
+            /** Format: date-time */
+            newOrderAt: string | null;
+            priority: string | null;
+            crmStatus: string | null;
+            behaviour: string | null;
+            customerFeedback: string | null;
+            amaderFeedback: string | null;
+            familyDetails: string | null;
+            purchaseReason: string | null;
+            facebookProfileUrl: string | null;
         };
         AdminCustomerListItemDto: {
             id: number;
@@ -6107,12 +6172,69 @@ export interface components {
             completedOrderCount: number;
             /** Format: date-time */
             createdAt: string;
+            isFavorite: boolean;
+            /** Format: date-time */
+            dob: string | null;
+            address: string | null;
+            topProduct: string | null;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
+            /** Format: date-time */
+            lastOrderDate: string | null;
+            /** Format: date-time */
+            nextCallTarget: string | null;
+            followUpCadenceDays: number | null;
+            hasNewOrder: boolean;
+            /** Format: date-time */
+            newOrderAt: string | null;
+            priority: string | null;
+            crmStatus: string | null;
+            behaviour: string | null;
+            customerFeedback: string | null;
+            amaderFeedback: string | null;
+            familyDetails: string | null;
+            purchaseReason: string | null;
+            facebookProfileUrl: string | null;
+            fScore: number;
+            mScore: number;
+            rfmScore: string;
+        };
+        AdminCustomerStatsDto: {
+            totalCustomers: number;
+            totalCustomersTrendPct: number | null;
+            newCustomersThisMonth: number;
+            newCustomersTrendPct: number | null;
+            activeCustomers: number;
+            repeatCustomers: number;
+            averageOrderValue: number;
         };
         UpdateCustomerDto: {
             firstName?: string;
             lastName?: string;
             /** @description Birthday, ISO date */
             dob?: string;
+            isFavorite?: boolean;
+            /** @description Admin staff user ID, or null to unassign */
+            assignedAdminId?: number | null;
+            /** @description ISO date, or null to clear */
+            nextCallTarget?: string | null;
+            /** @description Follow-up cadence in days (7/15/30), or null to clear */
+            followUpCadenceDays?: number | null;
+            hasNewOrder?: boolean;
+            /** @description ISO date, or null to clear */
+            newOrderAt?: string | null;
+            /** @enum {string|null} */
+            priority?: "HIGH" | "MEDIUM" | "LOW" | null;
+            /** @enum {string|null} */
+            crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE" | null;
+            /** @enum {string|null} */
+            behaviour?: "LOYAL" | "PRICE_SENSITIVE" | "OCCASIONAL" | null;
+            customerFeedback?: string;
+            amaderFeedback?: string;
+            familyDetails?: string;
+            purchaseReason?: string;
+            /** Format: uri */
+            facebookProfileUrl?: string;
         };
         CreateCustomerNoteDto: {
             /** @enum {string} */
@@ -11632,6 +11754,11 @@ export interface operations {
             query?: {
                 q?: string;
                 tierId?: number;
+                /** @description CustomerAddress.district of the customer's default (or first) address */
+                district?: string;
+                priority?: "HIGH" | "MEDIUM" | "LOW";
+                crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
+                assignedAdminId?: number;
                 page?: number;
                 pageSize?: number;
             };
@@ -11683,6 +11810,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerStatsDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_export: {
+        parameters: {
+            query?: {
+                q?: string;
+                tierId?: number;
+                /** @description CustomerAddress.district of the customer's default (or first) address */
+                district?: string;
+                priority?: "HIGH" | "MEDIUM" | "LOW";
+                crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
+                assignedAdminId?: number;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomersController_listAssignableStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
                 };
             };
         };

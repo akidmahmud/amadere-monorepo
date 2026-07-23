@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards, MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import type { Response } from 'express';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
@@ -14,7 +15,8 @@ import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
-import { AdminCustomerDto, AdminCustomerListItemDto } from './admin-customer.mapper';
+import { AdminCustomerDto, AdminCustomerListItemDto, AdminCustomerStatsDto } from './admin-customer.mapper';
+import { AssignableStaffDto } from './customers.service';
 
 @ApiTags('admin/customers')
 @ApiBearerAuth()
@@ -35,6 +37,28 @@ export class AdminCustomersController {
   @ApiPaginatedResponse(AdminCustomerListItemDto)
   list(@Query() query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
     return this.customers.adminList(query);
+  }
+
+  @Get('stats')
+  @RequirePermission('customer.view')
+  @ApiOkResponse({ type: AdminCustomerStatsDto })
+  stats(): Promise<AdminCustomerStatsDto> {
+    return this.customers.adminStats();
+  }
+
+  @Get('export')
+  @RequirePermission('customer.view')
+  async export(@Query() filters: AdminCustomerQueryDto, @Res() res: Response) {
+    const csv = await this.customers.adminExportCsv(filters);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="customers-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  }
+
+  @Get('assignable-staff')
+  @RequirePermission('customer.view')
+  listAssignableStaff(): Promise<AssignableStaffDto[]> {
+    return this.customers.listAssignableStaff();
   }
 
   @Post('import')

@@ -1,134 +1,135 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Icon, PageHeader, StatCard, Table, TableEmptyRow } from "@amader/admin-ui";
-import { useCustomers, useCustomerTierCounts } from "@/hooks/useCustomers";
+import Link from "next/link";
+import { useAssignableStaff, useCustomers, useCustomerStats, useCustomerTiers, type CustomerListFilters } from "@/hooks/useCustomers";
+import { CustomerStatsStrip } from "@/components/customers/CustomerStatsStrip";
+import { CustomerFilters, type CustomerFilterState } from "@/components/customers/CustomerFilters";
+import { CustomersTable } from "@/components/customers/CustomersTable";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
+import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 
-const customersIcon = <Icon name="people" />;
-const PAGE_SIZE = 50;
+const GREEN = "#2e7d43";
+const GREEN_DARK = "#1d5230";
+const LINE = "#e5ebe6";
+const INK = "#1e2b22";
+const MUTED = "#64766b";
+const TEXT = "#374840";
+
+const DEFAULT_FILTERS: CustomerFilterState = { q: "" };
 
 export default function CustomersPage() {
-  const [q, setQ] = useState("");
-  const [tierId, setTierId] = useState<number | undefined>(undefined);
+  const [uiFilters, setUiFilters] = useState<CustomerFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { data: tierCounts } = useCustomerTierCounts();
-  const { data } = useCustomers({ q: q || undefined, tierId, page, pageSize: PAGE_SIZE });
-  // pageSize:1 is enough to read the real total — a real DB count, not a
-  // fetch-and-filter over up to 1000 rows (which previously showed 0 for
-  // every tier stat card once tiered customers fell outside that window).
-  const { data: totalOnly } = useCustomers({ pageSize: 1 });
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
+  const [importOpen, setImportOpen] = useState(false);
 
-  function updateQ(value: string) {
-    setQ(value);
-    setPage(1);
+  const queryFilters: CustomerListFilters = { ...uiFilters, page, pageSize };
+  const { data: stats } = useCustomerStats();
+  const { data } = useCustomers(queryFilters);
+  const { data: tiers } = useCustomerTiers();
+  const { data: staff } = useAssignableStaff();
+
+  function exportHref() {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(uiFilters)) {
+      if (v !== undefined && v !== "") params.set(k, String(v));
+    }
+    const s = params.toString();
+    return `/api/backend/admin/customers/export${s ? `?${s}` : ""}`;
   }
 
-  function updateTierId(value: number | undefined) {
-    setTierId(value);
+  function handleFiltersChange(next: CustomerListFilters) {
+    if (next.page !== undefined || next.pageSize !== undefined) {
+      if (next.page !== undefined) setPage(next.page);
+      if (next.pageSize !== undefined) setPageSize(next.pageSize);
+      return;
+    }
+    setUiFilters(next as CustomerFilterState);
     setPage(1);
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader icon={customersIcon} title="Customers" subtitle="Every customer, auto-created from orders." />
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <StatCard variant="dark" icon={customersIcon} label="Total Customers" value={String(totalOnly?.total ?? 0)} />
-        {(tierCounts ?? []).map((tier) => (
-          <StatCard key={tier.id} variant="primary" icon={customersIcon} label={tier.label} value={String(tier.count)} />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Search</span>
-          <input
-            value={q}
-            onChange={(e) => updateQ(e.target.value)}
-            placeholder="Name, phone, or email…"
-            className="h-10 w-64 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Tier</span>
-          <select
-            value={tierId ?? ""}
-            onChange={(e) => updateTierId(e.target.value ? Number(e.target.value) : undefined)}
-            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+    <div className="flex flex-col gap-[18px]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[1.45rem] font-extrabold tracking-tight" style={{ color: INK }}>
+            Customer Management
+          </h1>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+            Dashboard <span style={{ color: "#94a69a" }}>›</span> <span style={{ color: GREEN }}>Customers</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <a
+            href={exportHref()}
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold"
+            style={{ borderColor: LINE, color: TEXT }}
           >
-            <option value="">All</option>
-            {(tierCounts ?? []).map((tier) => (
-              <option key={tier.id} value={tier.id}>
-                {tier.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <Table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Tier</th>
-            <th>Completed Orders</th>
-            <th>Joined</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(data?.items ?? []).length === 0 && <TableEmptyRow colSpan={6}>No customers found.</TableEmptyRow>}
-          {(data?.items ?? []).map((c) => (
-            <tr key={c.id}>
-              <td>
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(c.id)}
-                  className="font-semibold text-brand-500 hover:underline"
-                >
-                  {c.name}
-                </button>
-              </td>
-              <td className="num text-text">{c.phone ?? "—"}</td>
-              <td className="text-xs text-muted">{c.email ?? "—"}</td>
-              <td>
-                {c.tier ? (
-                  <span className="rounded-pill bg-surface-2 px-2.5 py-1 text-xs font-semibold text-secondary">{c.tier}</span>
-                ) : (
-                  "—"
-                )}
-              </td>
-              <td className="num text-text">{c.completedOrderCount}</td>
-              <td className="text-xs text-muted">{new Date(c.createdAt).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-secondary">
-          {data && data.total > 0
-            ? `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, data.total)} of ${data.total}`
-            : null}
-        </span>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-xs text-secondary">
-            Page {page} of {totalPages}
-          </span>
-          <Button type="button" variant="ghost" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export
+          </a>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold"
+            style={{ borderColor: LINE, color: TEXT }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Import
+          </button>
+          <Link
+            href="/customers/new"
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] px-4 text-[0.82rem] font-bold text-white"
+            style={{ background: GREEN }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = GREEN_DARK)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = GREEN)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Customer
+          </Link>
         </div>
       </div>
 
+      <CustomerStatsStrip stats={stats} />
+
+      <CustomerFilters
+        filters={uiFilters}
+        onChange={(next) => {
+          setUiFilters(next);
+          setPage(1);
+        }}
+        onReset={() => {
+          setUiFilters(DEFAULT_FILTERS);
+          setPage(1);
+        }}
+        tiers={tiers}
+        staff={staff}
+      />
+
+      <CustomersTable
+        customers={data?.items ?? []}
+        total={data?.total ?? 0}
+        filters={{ ...queryFilters }}
+        onFiltersChange={handleFiltersChange}
+        staff={staff}
+        onView={setSelectedId}
+      />
+
       {selectedId && <CustomerDetailModal customerId={selectedId} onClose={() => setSelectedId(null)} />}
+      {importOpen && <CustomerImportModal onClose={() => setImportOpen(false)} />}
     </div>
   );
 }

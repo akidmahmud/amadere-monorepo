@@ -1,8 +1,10 @@
 import { Prisma } from '@amader/db';
 import { ApiProperty } from '@nestjs/swagger';
+import { frequencyScore, monetaryScore, rfmScore } from './customer-score.util';
 
 export const ADMIN_CUSTOMER_LIST_INCLUDE = {
   tier: true,
+  assignedAdmin: true,
 } as const;
 
 export type CustomerWithTier = Prisma.CustomerGetPayload<{
@@ -11,6 +13,7 @@ export type CustomerWithTier = Prisma.CustomerGetPayload<{
 
 export const ADMIN_CUSTOMER_DETAIL_INCLUDE = {
   tier: true,
+  assignedAdmin: true,
   notes: { orderBy: { createdAt: 'desc' as const } },
   callLogs: { orderBy: { createdAt: 'desc' as const } },
   orders: {
@@ -23,6 +26,16 @@ export type CustomerWithDetail = Prisma.CustomerGetPayload<{
   include: typeof ADMIN_CUSTOMER_DETAIL_INCLUDE;
 }>;
 
+/** Per-customer data the list query can't get from the Customer row alone —
+ * assembled in CustomersService.adminList via a handful of grouped queries
+ * over the current page's customer IDs, not fetched per-row. */
+export interface AdminCustomerListExtras {
+  address: string | null;
+  lastOrderDate: Date | null;
+  topProduct: string | null;
+  lifetimeSpend: number;
+}
+
 export class AdminCustomerListItemDto {
   id!: number;
   name!: string;
@@ -31,13 +44,39 @@ export class AdminCustomerListItemDto {
   tier!: string | null;
   completedOrderCount!: number;
   createdAt!: Date;
+
+  // CRM fields
+  isFavorite!: boolean;
+  dob!: Date | null;
+  address!: string | null;
+  topProduct!: string | null;
+  assignedAdminId!: number | null;
+  assignedAdminName!: string | null;
+  lastOrderDate!: Date | null;
+  nextCallTarget!: Date | null;
+  followUpCadenceDays!: number | null;
+  hasNewOrder!: boolean;
+  newOrderAt!: Date | null;
+  priority!: string | null;
+  crmStatus!: string | null;
+  behaviour!: string | null;
+  customerFeedback!: string | null;
+  amaderFeedback!: string | null;
+  familyDetails!: string | null;
+  purchaseReason!: string | null;
+  facebookProfileUrl!: string | null;
+  fScore!: number;
+  mScore!: number;
+  rfmScore!: string;
 }
 
 function fullName(c: { firstName: string | null; lastName: string | null }): string {
   return [c.firstName, c.lastName].filter(Boolean).join(' ') || '(no name)';
 }
 
-export function toAdminCustomerListItemDto(c: CustomerWithTier): AdminCustomerListItemDto {
+export function toAdminCustomerListItemDto(c: CustomerWithTier, extras: AdminCustomerListExtras): AdminCustomerListItemDto {
+  const fScore = frequencyScore(c.completedOrderCount);
+  const mScore = monetaryScore(extras.lifetimeSpend);
   return {
     id: c.id,
     name: fullName(c),
@@ -46,7 +85,46 @@ export function toAdminCustomerListItemDto(c: CustomerWithTier): AdminCustomerLi
     tier: c.tier?.label ?? null,
     completedOrderCount: c.completedOrderCount,
     createdAt: c.createdAt,
+
+    isFavorite: c.isFavorite,
+    dob: c.dob,
+    address: extras.address,
+    topProduct: extras.topProduct,
+    assignedAdminId: c.assignedAdminId,
+    assignedAdminName: c.assignedAdmin ? `${c.assignedAdmin.firstName} ${c.assignedAdmin.lastName}`.trim() : null,
+    lastOrderDate: extras.lastOrderDate,
+    nextCallTarget: c.nextCallTarget,
+    followUpCadenceDays: c.followUpCadenceDays,
+    hasNewOrder: c.hasNewOrder,
+    newOrderAt: c.newOrderAt,
+    priority: c.priority,
+    crmStatus: c.crmStatus,
+    behaviour: c.behaviour,
+    customerFeedback: c.customerFeedback,
+    amaderFeedback: c.amaderFeedback,
+    familyDetails: c.familyDetails,
+    purchaseReason: c.purchaseReason,
+    facebookProfileUrl: c.facebookProfileUrl,
+    fScore,
+    mScore,
+    rfmScore: rfmScore(fScore, mScore),
   };
+}
+
+// Trend % is only computed for cohort-based metrics (created-this-month vs
+// created-last-month) — cleanly derivable from createdAt alone. Active/
+// Repeat/AOV are point-in-time STATE, not a creation cohort, so a month-
+// over-month trend for them would need a historical snapshot table this
+// phase doesn't have. Rather than fabricate a number, those trend fields
+// are always null and the frontend hides the trend line when null.
+export class AdminCustomerStatsDto {
+  totalCustomers!: number;
+  totalCustomersTrendPct!: number | null;
+  newCustomersThisMonth!: number;
+  newCustomersTrendPct!: number | null;
+  activeCustomers!: number;
+  repeatCustomers!: number;
+  averageOrderValue!: number;
 }
 
 export class AdminCustomerNoteDto {
@@ -102,6 +180,22 @@ export class AdminCustomerDto {
   callLogs!: AdminCustomerCallLogDto[];
   @ApiProperty({ type: 'array', items: { type: 'object', additionalProperties: true } })
   activity!: Record<string, unknown>[];
+
+  isFavorite!: boolean;
+  assignedAdminId!: number | null;
+  assignedAdminName!: string | null;
+  nextCallTarget!: Date | null;
+  followUpCadenceDays!: number | null;
+  hasNewOrder!: boolean;
+  newOrderAt!: Date | null;
+  priority!: string | null;
+  crmStatus!: string | null;
+  behaviour!: string | null;
+  customerFeedback!: string | null;
+  amaderFeedback!: string | null;
+  familyDetails!: string | null;
+  purchaseReason!: string | null;
+  facebookProfileUrl!: string | null;
 }
 
 export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
@@ -162,5 +256,21 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
       createdAt: call.createdAt,
     })),
     activity,
+
+    isFavorite: c.isFavorite,
+    assignedAdminId: c.assignedAdminId,
+    assignedAdminName: c.assignedAdmin ? `${c.assignedAdmin.firstName} ${c.assignedAdmin.lastName}`.trim() : null,
+    nextCallTarget: c.nextCallTarget,
+    followUpCadenceDays: c.followUpCadenceDays,
+    hasNewOrder: c.hasNewOrder,
+    newOrderAt: c.newOrderAt,
+    priority: c.priority,
+    crmStatus: c.crmStatus,
+    behaviour: c.behaviour,
+    customerFeedback: c.customerFeedback,
+    amaderFeedback: c.amaderFeedback,
+    familyDetails: c.familyDetails,
+    purchaseReason: c.purchaseReason,
+    facebookProfileUrl: c.facebookProfileUrl,
   };
 }

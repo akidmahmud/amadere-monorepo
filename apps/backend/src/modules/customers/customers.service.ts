@@ -32,12 +32,21 @@ import {
   ADMIN_CUSTOMER_LIST_INCLUDE,
   ADMIN_CUSTOMER_DETAIL_INCLUDE,
   AdminCustomerDto,
+  AdminCustomerListExtras,
   AdminCustomerListItemDto,
   AdminCustomerNoteDto,
   AdminCustomerCallLogDto,
+  AdminCustomerStatsDto,
   toAdminCustomerListItemDto,
   toAdminCustomerDto,
 } from './admin-customer.mapper';
+
+export interface AssignableStaffDto {
+  id: number;
+  name: string;
+}
+
+const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, lastOrderDate: null, topProduct: null, lifetimeSpend: 0 };
 
 @Injectable()
 export class CustomersService {
@@ -161,20 +170,55 @@ export class CustomersService {
     }
   }
 
-  async adminList(query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
-    const where: Prisma.CustomerWhereInput = {
+  // Each whitespace-separated word in `q` must match SOMEWHERE (name/phone/
+  // email) — not the whole query string against one field. A plain
+  // single-field `contains: query.q` search (the previous approach) fails
+  // for the completely normal case of typing a customer's full name, since
+  // "Import Test" is never a substring of firstName="Import" alone or
+  // lastName="Test One" alone; it only shows up once the two are
+  // concatenated, which nothing here does.
+  private async buildAdminWhere(query: AdminCustomerQueryDto): Promise<Prisma.CustomerWhereInput> {
+    let birthdayIds: number[] | undefined;
+    if (query.birthdayToday) {
+      // Bangladesh is a fixed UTC+6, no DST — "today" for this feature means
+      // today in Dhaka, not the server's (likely UTC) local date, which
+      // would be wrong for several hours around midnight BDT.
+      const dhakaNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
+      const rows = await this.prisma.client.$queryRaw<{ id: number }[]>`
+        SELECT id FROM customers
+        WHERE dob IS NOT NULL
+          AND EXTRACT(MONTH FROM dob) = ${dhakaNow.getUTCMonth() + 1}
+          AND EXTRACT(DAY FROM dob) = ${dhakaNow.getUTCDate()}
+      `;
+      birthdayIds = rows.map((r) => r.id);
+    }
+    return {
       ...(query.tierId ? { tierId: query.tierId } : {}),
+      ...(birthdayIds ? { id: { in: birthdayIds } } : {}),
+      ...(query.priority ? { priority: query.priority } : {}),
+      ...(query.crmStatus ? { crmStatus: query.crmStatus } : {}),
+      ...(query.assignedAdminId ? { assignedAdminId: query.assignedAdminId } : {}),
+      ...(query.district ? { addresses: { some: { district: { equals: query.district, mode: 'insensitive' } } } } : {}),
       ...(query.q
         ? {
-            OR: [
-              { firstName: { contains: query.q, mode: 'insensitive' } },
-              { lastName: { contains: query.q, mode: 'insensitive' } },
-              { phone: { contains: query.q } },
-              { email: { contains: query.q, mode: 'insensitive' } },
-            ],
+            AND: query.q
+              .trim()
+              .split(/\s+/)
+              .map((word) => ({
+                OR: [
+                  { firstName: { contains: word, mode: 'insensitive' as const } },
+                  { lastName: { contains: word, mode: 'insensitive' as const } },
+                  { phone: { contains: word } },
+                  { email: { contains: word, mode: 'insensitive' as const } },
+                ],
+              })),
           }
         : {}),
     };
+  }
+
+  async adminList(query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
+    const where = await this.buildAdminWhere(query);
     const [items, total] = await Promise.all([
       this.prisma.client.customer.findMany({
         where,
@@ -184,7 +228,144 @@ export class CustomersService {
       }),
       this.prisma.client.customer.count({ where }),
     ]);
-    return toPaginatedResult(items.map(toAdminCustomerListItemDto), total, query.page, query.pageSize);
+    const extras = await this.loadListExtras(items.map((c) => c.id));
+    return toPaginatedResult(
+      items.map((c) => toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS)),
+      total,
+      query.page,
+      query.pageSize,
+    );
+  }
+
+  // Default address, last order date, lifetime spend, and top-purchased
+  // product for the given customer IDs — computed via a few grouped queries
+  // over just this page's rows, not per-row (N+1) queries.
+  private async loadListExtras(customerIds: number[]): Promise<Map<number, AdminCustomerListExtras>> {
+    const extras = new Map<number, AdminCustomerListExtras>();
+    if (customerIds.length === 0) return extras;
+
+    const [addresses, orderAggregates, orders] = await Promise.all([
+      this.prisma.client.customerAddress.findMany({
+        where: { customerId: { in: customerIds } },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+      }),
+      this.prisma.client.order.groupBy({
+        by: ['customerId'],
+        where: { customerId: { in: customerIds } },
+        _sum: { totalAmount: true },
+        _max: { createdAt: true },
+      }),
+      this.prisma.client.order.findMany({
+        where: { customerId: { in: customerIds } },
+        select: { customerId: true, items: { select: { productNameSnapshot: true, quantity: true } } },
+      }),
+    ]);
+
+    const addressByCustomer = new Map<number, (typeof addresses)[number]>();
+    for (const a of addresses) {
+      if (!addressByCustomer.has(a.customerId)) addressByCustomer.set(a.customerId, a);
+    }
+
+    const quantityByCustomerProduct = new Map<number, Map<string, number>>();
+    for (const o of orders) {
+      if (o.customerId === null) continue;
+      let perProduct = quantityByCustomerProduct.get(o.customerId);
+      if (!perProduct) {
+        perProduct = new Map();
+        quantityByCustomerProduct.set(o.customerId, perProduct);
+      }
+      for (const item of o.items) {
+        perProduct.set(item.productNameSnapshot, (perProduct.get(item.productNameSnapshot) ?? 0) + item.quantity);
+      }
+    }
+
+    const aggByCustomer = new Map(orderAggregates.filter((a) => a.customerId !== null).map((a) => [a.customerId as number, a]));
+
+    for (const id of customerIds) {
+      const address = addressByCustomer.get(id);
+      const perProduct = quantityByCustomerProduct.get(id);
+      let topProduct: string | null = null;
+      if (perProduct) {
+        let topQty = 0;
+        for (const [name, qty] of perProduct) {
+          if (qty > topQty) {
+            topQty = qty;
+            topProduct = `${name} x${qty}`;
+          }
+        }
+      }
+      const agg = aggByCustomer.get(id);
+      extras.set(id, {
+        address: address ? (address.area ? `${address.area}, ${address.district}` : address.addressLine) : null,
+        lastOrderDate: agg?._max.createdAt ?? null,
+        lifetimeSpend: agg?._sum.totalAmount ? Number(agg._sum.totalAmount) : 0,
+        topProduct,
+      });
+    }
+    return extras;
+  }
+
+  async adminStats(): Promise<AdminCustomerStatsDto> {
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const [
+      totalCustomers,
+      totalAsOfLastMonth,
+      newThisMonth,
+      newLastMonth,
+      activeCustomers,
+      repeatCustomers,
+      aovAgg,
+    ] = await Promise.all([
+      this.prisma.client.customer.count({ where: { deletedAt: null } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { lt: startOfThisMonth } } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { gte: startOfThisMonth } } }),
+      this.prisma.client.customer.count({
+        where: { deletedAt: null, createdAt: { gte: startOfLastMonth, lt: startOfThisMonth } },
+      }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, completedOrderCount: { gte: 2 } } }),
+      this.prisma.client.order.aggregate({ _avg: { totalAmount: true } }),
+    ]);
+
+    return {
+      totalCustomers,
+      totalCustomersTrendPct: totalAsOfLastMonth > 0 ? ((totalCustomers - totalAsOfLastMonth) / totalAsOfLastMonth) * 100 : null,
+      newCustomersThisMonth: newThisMonth,
+      newCustomersTrendPct: newLastMonth > 0 ? ((newThisMonth - newLastMonth) / newLastMonth) * 100 : null,
+      activeCustomers,
+      repeatCustomers,
+      averageOrderValue: aovAgg._avg.totalAmount ? Number(aovAgg._avg.totalAmount) : 0,
+    };
+  }
+
+  async adminExportCsv(query: AdminCustomerQueryDto): Promise<string> {
+    const where = await this.buildAdminWhere(query);
+    const items = await this.prisma.client.customer.findMany({
+      where,
+      include: ADMIN_CUSTOMER_LIST_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: 10_000,
+    });
+    const extras = await this.loadListExtras(items.map((c) => c.id));
+    const rows = items.map((c) => toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS));
+    const header = 'Name,Phone,Email,Group,Completed Orders,Priority,Status,Assigned To,Joined';
+    const lines = rows.map(
+      (r) =>
+        `"${r.name}",${r.phone ?? ''},${r.email ?? ''},${r.tier ?? ''},${r.completedOrderCount},${r.priority ?? ''},${r.crmStatus ?? ''},"${r.assignedAdminName ?? ''}",${new Date(r.createdAt).toISOString().slice(0, 10)}`,
+    );
+    return [header, ...lines].join('\n');
+  }
+
+  async listAssignableStaff(): Promise<AssignableStaffDto[]> {
+    const staff = await this.prisma.client.adminUser.findMany({
+      where: { status: 'ACTIVE', deletedAt: null },
+      orderBy: { firstName: 'asc' },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    return staff.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}`.trim() }));
   }
 
   async adminGet(id: number): Promise<AdminCustomerDto> {
@@ -217,7 +398,25 @@ export class CustomersService {
   async adminUpdate(id: number, dto: UpdateCustomerDto): Promise<AdminCustomerDto> {
     await this.prisma.client.customer.update({
       where: { id },
-      data: { firstName: dto.firstName, lastName: dto.lastName, dob: dto.dob },
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        dob: dto.dob === undefined ? undefined : dto.dob ? new Date(dto.dob) : null,
+        isFavorite: dto.isFavorite,
+        assignedAdminId: dto.assignedAdminId,
+        nextCallTarget: dto.nextCallTarget === undefined ? undefined : dto.nextCallTarget ? new Date(dto.nextCallTarget) : null,
+        followUpCadenceDays: dto.followUpCadenceDays,
+        hasNewOrder: dto.hasNewOrder,
+        newOrderAt: dto.newOrderAt === undefined ? undefined : dto.newOrderAt ? new Date(dto.newOrderAt) : null,
+        priority: dto.priority,
+        crmStatus: dto.crmStatus,
+        behaviour: dto.behaviour,
+        customerFeedback: dto.customerFeedback,
+        amaderFeedback: dto.amaderFeedback,
+        familyDetails: dto.familyDetails,
+        purchaseReason: dto.purchaseReason,
+        facebookProfileUrl: dto.facebookProfileUrl,
+      },
     });
     return this.adminGet(id);
   }

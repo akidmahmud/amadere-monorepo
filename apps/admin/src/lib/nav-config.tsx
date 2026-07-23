@@ -44,7 +44,6 @@ const accountsIcon = <Icon name="account_balance" />;
 const newsletterIcon = <Icon name="mail" />;
 const customersIcon = <Icon name="people" />;
 const customerTiersIcon = <Icon name="military_tech" />;
-const customerImportIcon = <Icon name="upload_file" />;
 const analyticsIcon = <Icon name="monitoring" />;
 const whatsappIcon = <Icon name="chat" />;
 
@@ -98,7 +97,6 @@ export const adminNav: AppNavEntry[] = [
   label("customers-label", "Customers"),
   { key: "customers-list", label: "All Customers", href: "/customers", icon: customersIcon },
   { key: "customers-tiers", label: "Tiers", href: "/customers/tiers", icon: customerTiersIcon },
-  { key: "customers-import", label: "Import CSV", href: "/customers/import", icon: customerImportIcon },
 
   label("content-label", "Content"),
   { key: "blog-posts", label: "Blog Posts", href: "/blog-posts", icon: blogIcon },
