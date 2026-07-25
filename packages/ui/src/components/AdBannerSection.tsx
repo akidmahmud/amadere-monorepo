@@ -32,15 +32,13 @@ export function AdBannerSection({ images, autoplayMs = 4000, linkComponent: Link
   if (valid.length === 0) return null;
 
   const current = valid[Math.min(index, valid.length - 1)];
-  // Fixed 1686x759 box per design spec on desktop — crops to fill
-  // (object-cover), never distorts. A literal 759px height at every
-  // breakpoint would force that same height on a ~375px-wide phone screen
-  // too, cropping down to a thin vertical sliver of the image — mobile uses
-  // the same 1686:759 aspect ratio responsively instead, so the banner
-  // scales proportionally with viewport width until the desktop breakpoint
-  // switches to the exact fixed-height spec.
+  // Matches ghorerbazar.com's `.single-banner` exactly: a 50:13 (≈3.85:1)
+  // desktop crop and a shorter 5:2 mobile crop (that site serves two
+  // separately-cropped image files per breakpoint; here one image
+  // object-covers into each ratio instead of needing a second upload field
+  // for the same visual result). Radius 20px already matched their spec.
   const image = (
-    <div className="relative mx-auto aspect-[1686/759] w-full max-w-[1686px] overflow-hidden rounded-[20px] bg-gray sm:aspect-auto sm:h-[759px]">
+    <div className="relative mx-auto aspect-[5/2] w-full max-w-[1686px] overflow-hidden rounded-[20px] bg-gray sm:aspect-[50/13]">
       <img src={current.imageUrl} alt="" className="h-full w-full object-cover" />
     </div>
   );

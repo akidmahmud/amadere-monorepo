@@ -36,12 +36,22 @@ export function SectionConfigFields({
     return <ProductCollectionFields collectionId={collectionId} onCollectionIdChange={onCollectionIdChange} />;
   }
   if (type === "CATEGORY_SHOWCASE") return <CategoryShowcaseFields config={config} onConfigChange={onConfigChange} />;
+  // Same categoryIds shape as CATEGORY_SHOWCASE — only the storefront's
+  // rendering differs (150px tile-grid-with-scroll-arrows vs. a plain
+  // carousel), so the admin picker is identical.
+  if (type === "FEATURED_CATEGORIES") return <CategoryShowcaseFields config={config} onConfigChange={onConfigChange} />;
+  if (type === "TOP_SELLING_PRODUCTS") {
+    return <TopSellingProductsFields config={config} onConfigChange={onConfigChange} />;
+  }
   if (type === "BLOG_TEASER") return <BlogTeaserFields config={config} onConfigChange={onConfigChange} />;
   if (type === "PROMO_VIDEO") return <PromoVideoFields config={config} onConfigChange={onConfigChange} />;
   if (type === "TESTIMONIAL_BENTO") return <TestimonialBentoFields config={config} onConfigChange={onConfigChange} />;
   if (type === "CERTIFICATION_ROW") return <CertificationRowFields config={config} onConfigChange={onConfigChange} />;
+  // No longer tabbed — a single-collection product strip now (see
+  // TabbedCollectionCarouselSection's own doc comment), so it uses the same
+  // plain collection picker as PRODUCT_COLLECTION.
   if (type === "TABBED_COLLECTION_CAROUSEL") {
-    return <TabbedCollectionCarouselFields config={config} onConfigChange={onConfigChange} />;
+    return <ProductCollectionFields collectionId={collectionId} onCollectionIdChange={onCollectionIdChange} />;
   }
   if (type === "AD_BANNER") return <AdBannerFields config={config} onConfigChange={onConfigChange} />;
   return <JsonConfigFields config={config} onConfigChange={onConfigChange} />;
@@ -103,6 +113,27 @@ function HeroBannerFields({
         >
           Add slide
         </Button>
+      </div>
+
+      <div>
+        <span className="mb-2 block text-xs font-semibold text-secondary">
+          Side banner <span className="font-normal text-muted">— shown beside the slider on desktop, stacked below it on mobile; stretches to match the slider's height. Leave empty to hide it.</span>
+        </span>
+        <div className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
+          <MediaPicker
+            value={config.stripImageUrl as string | undefined}
+            onChange={(url) => onConfigChange({ ...config, stripImageUrl: url })}
+            label="Side banner image"
+          />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Link URL (optional)</span>
+            <input
+              value={(config.stripLinkUrl as string | undefined) ?? ""}
+              onChange={(e) => onConfigChange({ ...config, stripLinkUrl: e.target.value })}
+              className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -193,6 +224,76 @@ function AdBannerFields({
           Add image
         </Button>
       </div>
+    </div>
+  );
+}
+
+interface TopSellingItem {
+  productId?: number;
+  showBadge?: boolean;
+}
+
+// Real products (name/price/image) come from the product itself at render
+// time — this only stores which products are in the section, in what order,
+// and whether each shows the "Best Selling" badge (per the reference design,
+// only some cards do). No new "best seller" flag on Product itself: this
+// list is the curation, same convention as CATEGORY_SHOWCASE's categoryIds.
+function TopSellingProductsFields({
+  config,
+  onConfigChange,
+}: {
+  config: Record<string, unknown>;
+  onConfigChange: (config: Record<string, unknown>) => void;
+}) {
+  const items = (config.items as TopSellingItem[] | undefined) ?? [];
+  const { data: products, isLoading } = usePickerProducts();
+
+  function updateItems(next: TopSellingItem[]) {
+    onConfigChange({ ...config, items: next });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <span className="text-xs font-semibold text-secondary">
+        Products <span className="font-normal text-muted">— shown in a 2-column grid; "Best Selling" badge is optional per product</span>
+      </span>
+      <div className="flex flex-col gap-3">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-end gap-3 rounded-inner bg-surface-2 p-3">
+            <label className="flex flex-1 flex-col gap-1.5">
+              <span className="text-xs font-semibold text-secondary">Product</span>
+              <select
+                value={item.productId ?? ""}
+                onChange={(e) =>
+                  updateItems(items.map((it, j) => (j === i ? { ...it, productId: Number(e.target.value) } : it)))
+                }
+                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+              >
+                <option value="">{isLoading ? "Loading…" : "Select a product"}</option>
+                {products?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 pb-2.5 text-xs font-semibold text-secondary">
+              <input
+                type="checkbox"
+                checked={item.showBadge ?? false}
+                onChange={(e) => updateItems(items.map((it, j) => (j === i ? { ...it, showBadge: e.target.checked } : it)))}
+              />
+              Best Selling badge
+            </label>
+            <Button type="button" variant="link" className="pb-2.5 text-danger" onClick={() => updateItems(items.filter((_, j) => j !== i))}>
+              Remove
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button type="button" variant="ghost" className="self-start" onClick={() => updateItems([...items, {}])}>
+        Add product
+      </Button>
     </div>
   );
 }
@@ -291,7 +392,7 @@ function PromoVideoFields({
             <MediaPicker
               value={card.thumbnailUrl}
               onChange={(url) => updateCard(i, { thumbnailUrl: url })}
-              label="Thumbnail (shown before hover)"
+              label="Thumbnail (shown until scrolled into view, then autoplays muted)"
             />
 
             <label className="flex flex-col gap-1.5">
@@ -326,19 +427,17 @@ function PromoVideoFields({
   );
 }
 
-interface TestimonialVideo {
-  url: string;
-  thumbnailUrl?: string;
-}
 interface TestimonialReview {
   quote: string;
   name: string;
+  role?: string;
+  avatarUrl?: string;
+  rating?: number;
 }
 
-// Left column: a small set of short clips customers cycle through with the
-// prev/next arrows on the storefront. Right column: the actual review
-// quotes shown in the bento grid — order here is the same left/right,
-// top-to-bottom reading order the storefront renders them in.
+// A horizontal carousel of quote cards (quote, star rating, avatar/name/role)
+// — matches ghorerbazar.com's testimonial section. Rating defaults to 5 on
+// the storefront if left unset here.
 function TestimonialBentoFields({
   config,
   onConfigChange,
@@ -346,62 +445,26 @@ function TestimonialBentoFields({
   config: Record<string, unknown>;
   onConfigChange: (config: Record<string, unknown>) => void;
 }) {
-  const videos = (config.videos as TestimonialVideo[] | undefined) ?? [];
   const reviews = (config.reviews as TestimonialReview[] | undefined) ?? [];
 
-  function updateVideos(next: TestimonialVideo[]) {
-    onConfigChange({ ...config, videos: next });
-  }
   function updateReviews(next: TestimonialReview[]) {
     onConfigChange({ ...config, reviews: next });
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <span className="mb-2 block text-xs font-semibold text-secondary">
-          Videos <span className="font-normal text-muted">— shown on the left, cycle with prev/next arrows</span>
-        </span>
-        <div className="flex flex-col gap-3">
-          {videos.map((video, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
-              <MediaPicker
-                value={video.thumbnailUrl}
-                onChange={(url) => updateVideos(videos.map((v, j) => (j === i ? { ...v, thumbnailUrl: url } : v)))}
-                label="Thumbnail"
-              />
-              <div className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-semibold text-secondary">Video URL</span>
-                <input
-                  value={video.url}
-                  onChange={(e) => updateVideos(videos.map((v, j) => (j === i ? { ...v, url: e.target.value } : v)))}
-                  placeholder="https://..."
-                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-                />
-                <Button
-                  type="button"
-                  variant="link"
-                  className="self-start text-danger"
-                  onClick={() => updateVideos(videos.filter((_, j) => j !== i))}
-                >
-                  Remove video
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <Button type="button" variant="ghost" className="mt-2" onClick={() => updateVideos([...videos, { url: "" }])}>
-          Add video
-        </Button>
-      </div>
-
-      <div>
-        <span className="mb-2 block text-xs font-semibold text-secondary">
-          Reviews <span className="font-normal text-muted">— shown on the right in a two-column grid</span>
-        </span>
-        <div className="flex flex-col gap-3">
-          {reviews.map((review, i) => (
-            <div key={i} className="flex flex-col gap-2 rounded-inner bg-surface-2 p-3">
+    <div>
+      <span className="mb-2 block text-xs font-semibold text-secondary">
+        Reviews <span className="font-normal text-muted">— shown as a horizontal carousel of quote cards</span>
+      </span>
+      <div className="flex flex-col gap-3">
+        {reviews.map((review, i) => (
+          <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
+            <MediaPicker
+              value={review.avatarUrl}
+              onChange={(url) => updateReviews(reviews.map((r, j) => (j === i ? { ...r, avatarUrl: url } : r)))}
+              label="Avatar"
+            />
+            <div className="flex flex-1 flex-col gap-2">
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-secondary">Quote</span>
                 <textarea
@@ -411,14 +474,37 @@ function TestimonialBentoFields({
                   className="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-secondary">Name — e.g. "Rahul, Gurugram - Tulsi Green Tea"</span>
-                <input
-                  value={review.name}
-                  onChange={(e) => updateReviews(reviews.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))}
-                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-                />
-              </label>
+              <div className="flex gap-2">
+                <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-secondary">Name</span>
+                  <input
+                    value={review.name}
+                    onChange={(e) => updateReviews(reviews.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))}
+                    className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-secondary">Role — e.g. "Student"</span>
+                  <input
+                    value={review.role ?? ""}
+                    onChange={(e) => updateReviews(reviews.map((r, j) => (j === i ? { ...r, role: e.target.value } : r)))}
+                    className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+                  />
+                </label>
+                <label className="flex w-20 flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-secondary">Rating</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={review.rating ?? 5}
+                    onChange={(e) =>
+                      updateReviews(reviews.map((r, j) => (j === i ? { ...r, rating: Number(e.target.value) } : r)))
+                    }
+                    className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+                  />
+                </label>
+              </div>
               <Button
                 type="button"
                 variant="link"
@@ -428,17 +514,17 @@ function TestimonialBentoFields({
                 Remove review
               </Button>
             </div>
-          ))}
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          className="mt-2"
-          onClick={() => updateReviews([...reviews, { quote: "", name: "" }])}
-        >
-          Add review
-        </Button>
+          </div>
+        ))}
       </div>
+      <Button
+        type="button"
+        variant="ghost"
+        className="mt-2"
+        onClick={() => updateReviews([...reviews, { quote: "", name: "" }])}
+      >
+        Add review
+      </Button>
     </div>
   );
 }
@@ -495,165 +581,6 @@ function CertificationRowFields({
       </div>
       <Button type="button" variant="ghost" className="mt-2" onClick={() => updateItems([...items, { imageUrl: "" }])}>
         Add badge
-      </Button>
-    </div>
-  );
-}
-
-interface LocalizedText {
-  EN: string;
-  BN: string;
-}
-const EMPTY_TEXT: LocalizedText = { EN: "", BN: "" };
-
-interface TabConfig {
-  collectionId?: number;
-  tabLabel?: LocalizedText;
-  promoImageUrl?: string;
-  promoHeading?: LocalizedText;
-  promoBlurb?: LocalizedText;
-  viewAllUrl?: string;
-}
-
-function LocalizedInput({
-  label,
-  value,
-  onChange,
-  multiline,
-}: {
-  label: string;
-  value: LocalizedText | undefined;
-  onChange: (next: LocalizedText) => void;
-  multiline?: boolean;
-}) {
-  const v = value ?? EMPTY_TEXT;
-  const Field = multiline ? "textarea" : "input";
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {(["EN", "BN"] as const).map((locale) => (
-        <label key={locale} className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">
-            {label} ({locale})
-          </span>
-          <Field
-            value={v[locale]}
-            onChange={(e) => onChange({ ...v, [locale]: e.target.value })}
-            rows={multiline ? 2 : undefined}
-            className="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-      ))}
-    </div>
-  );
-}
-
-// Tabs reference real Collections by id — no new product-grouping model,
-// per the feature spec. Translatable per-tab text is stored inline in the
-// JSON config as {EN, BN} rather than via the section-level translations
-// table, since that table only holds one heading/subheading per section,
-// not per-tab — same "config is freeform JSON" convention every other
-// section type already uses, just with the locale split kept inside it.
-function TabbedCollectionCarouselFields({
-  config,
-  onConfigChange,
-}: {
-  config: Record<string, unknown>;
-  onConfigChange: (config: Record<string, unknown>) => void;
-}) {
-  const { data: collections, isLoading } = usePickerCollections();
-  const tabs = (config.tabs as TabConfig[] | undefined) ?? [];
-  const productsPerTab = (config.productsPerTab as number | undefined) ?? 10;
-  const defaultActiveTab = (config.defaultActiveTab as number | undefined) ?? 0;
-
-  function updateTabs(next: TabConfig[]) {
-    onConfigChange({ ...config, tabs: next });
-  }
-  function updateTab(i: number, patch: Partial<TabConfig>) {
-    updateTabs(tabs.map((t, j) => (j === i ? { ...t, ...patch } : t)));
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Products per tab</span>
-          <input
-            type="number"
-            min={1}
-            value={productsPerTab}
-            onChange={(e) => onConfigChange({ ...config, productsPerTab: Number(e.target.value) })}
-            className="num h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Default active tab (index)</span>
-          <input
-            type="number"
-            min={0}
-            max={Math.max(0, tabs.length - 1)}
-            value={defaultActiveTab}
-            onChange={(e) => onConfigChange({ ...config, defaultActiveTab: Number(e.target.value) })}
-            className="num h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-      </div>
-
-      <span className="text-xs font-semibold text-secondary">Tabs (each maps to one Collection)</span>
-      <div className="flex flex-col gap-4">
-        {tabs.map((tab, i) => (
-          <div key={i} className="flex flex-col gap-3 rounded-inner bg-surface-2 p-3">
-            <div className="flex items-end gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-semibold text-secondary">Collection</span>
-                <select
-                  value={tab.collectionId ?? ""}
-                  onChange={(e) => updateTab(i, { collectionId: e.target.value ? Number(e.target.value) : undefined })}
-                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-                >
-                  <option value="">{isLoading ? "Loading…" : "Select a collection"}</option>
-                  {collections?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button type="button" variant="link" className="text-danger" onClick={() => updateTabs(tabs.filter((_, j) => j !== i))}>
-                Remove tab
-              </Button>
-            </div>
-
-            <LocalizedInput label="Tab label" value={tab.tabLabel} onChange={(v) => updateTab(i, { tabLabel: v })} />
-
-            <MediaPicker
-              value={tab.promoImageUrl}
-              onChange={(url) => updateTab(i, { promoImageUrl: url })}
-              label="Promo tile image — portrait, fills the tile fully (falls back to collection image if empty)"
-            />
-
-            <LocalizedInput label="Promo heading" value={tab.promoHeading} onChange={(v) => updateTab(i, { promoHeading: v })} />
-            <LocalizedInput
-              label="Promo blurb"
-              value={tab.promoBlurb}
-              onChange={(v) => updateTab(i, { promoBlurb: v })}
-              multiline
-            />
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-secondary">
-                View All URL (optional — defaults to the collection's page)
-              </span>
-              <input
-                value={tab.viewAllUrl ?? ""}
-                onChange={(e) => updateTab(i, { viewAllUrl: e.target.value })}
-                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-              />
-            </label>
-          </div>
-        ))}
-      </div>
-      <Button type="button" variant="ghost" className="self-start" onClick={() => updateTabs([...tabs, {}])}>
-        Add tab
       </Button>
     </div>
   );

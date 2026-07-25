@@ -8,6 +8,7 @@ import {
   CertificationRow,
   CircleBadgeBar,
   Carousel,
+  FeaturedCategoriesSection,
   HeroCarousel,
   ProductCarouselSection,
   SectionHeading,
@@ -27,6 +28,7 @@ import { HealthConcernSection } from "@/components/HealthConcernSection";
 import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
 import { PromoVideoSectionClient } from "@/components/PromoVideoSectionClient";
 import { TabbedCollectionCarouselSection } from "@/components/TabbedCollectionCarouselSection";
+import { TopSellingProductsSectionClient } from "@/components/TopSellingProductsSectionClient";
 
 // Shorter window than catalog/blog on purpose — admin-edited HomepageSections
 // (B13) are meant to show up without a deploy; on-demand revalidation
@@ -65,39 +67,33 @@ type HomepageSectionType =
   | "CIRCLE_BADGE_BAR"
   | "PROMO_VIDEO"
   | "TABBED_COLLECTION_CAROUSEL"
-  | "AD_BANNER";
+  | "AD_BANNER"
+  | "FEATURED_CATEGORIES"
+  | "TOP_SELLING_PRODUCTS";
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
-  "type" | "config" | "tabCollections" | "promoVideoProducts"
+  "type" | "config" | "promoVideoProducts" | "topSellingProducts"
 > & {
   type: HomepageSectionType;
   config: Record<string, unknown>;
-  tabCollections: (components["schemas"]["PublicCollectionDto"] | null)[] | null;
   promoVideoProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
+  topSellingProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
 };
 
-interface TabbedCarouselTabConfig {
-  collectionId?: number;
-  tabLabel?: { EN: string; BN: string };
-  promoImageUrl?: string;
-  promoHeading?: { EN: string; BN: string };
-  promoBlurb?: { EN: string; BN: string };
-  viewAllUrl?: string;
-}
-
-// Full window width on real desktop screens (only caps on very wide/ultra-wide
-// monitors) instead of the 1180px content box used elsewhere on the site —
-// homepage sections are meant to fill the window, not float in a narrow
-// column with big empty gutters either side.
-const WRAPPER = "mx-auto w-full max-w-[1920px] px-12 sm:px-18 lg:px-28";
+// Same 1440px container / 16px-mobile-24px-desktop gutter as the header, nav,
+// hero, and every other section on this page (amader-header-spec.md §5) —
+// previously a much wider, differently-padded box (max-w-1920 + up to 112px
+// side padding), which made every section below the hero visibly narrower
+// and more inset than the header/hero/Featured-Categories/Top-Selling rows
+// above it. One container for the whole homepage now.
+const WRAPPER = "mx-auto w-full max-w-[1440px] px-4 md:px-6";
 
 function renderSection(
   section: HomepageSection,
   ctx: {
     categories: components["schemas"]["PublicCategoryDto"][];
     blogPosts: components["schemas"]["PublicBlogPostSummaryDto"][];
-    locale: "EN" | "BN";
   },
 ): ReactNode {
   const { config } = section;
@@ -181,6 +177,42 @@ function renderSection(
       );
     }
 
+    case "FEATURED_CATEGORIES": {
+      const categoryIds = config.categoryIds as number[] | undefined;
+      const selected = categoryIds?.length
+        ? ctx.categories.filter((c) => categoryIds.includes(c.id))
+        : ctx.categories;
+      if (selected.length === 0) return null;
+      return (
+        <FeaturedCategoriesSection
+          key={section.id}
+          heading={section.heading ?? undefined}
+          items={selected.map((category) => ({
+            href: `/categories/${category.slug}`,
+            name: category.name,
+            imageUrl: toDisplayImageUrl(category.imageUrl),
+          }))}
+          linkComponent={AppLink}
+        />
+      );
+    }
+
+    case "TOP_SELLING_PRODUCTS": {
+      const configItems = (config.items as { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
+      const resolvedProducts = section.topSellingProducts ?? [];
+      const items = configItems
+        .map((item, i) => {
+          const product = resolvedProducts[i];
+          if (!product) return null;
+          return { ...toProductCardData(product), showBadge: item.showBadge };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+      if (items.length === 0) return null;
+      return (
+        <TopSellingProductsSectionClient key={section.id} heading={section.heading ?? undefined} items={items} />
+      );
+    }
+
     case "BLOG_TEASER": {
       const postIds = config.postIds as number[] | undefined;
       // When the admin explicitly picked posts (postIds), show all of them —
@@ -217,13 +249,15 @@ function renderSection(
     }
 
     case "TESTIMONIAL_BENTO": {
-      const rawVideos = config.videos as { url: string; thumbnailUrl?: string }[] | undefined;
-      const videos = rawVideos?.map((v) => ({ url: v.url, thumbnailUrl: toDisplayImageUrl(v.thumbnailUrl) }));
-      const reviews = config.reviews as { quote: string; name: string }[] | undefined;
+      const rawReviews = config.reviews as
+        | { quote: string; name: string; role?: string; avatarUrl?: string; rating?: number }[]
+        | undefined;
+      const reviews = rawReviews?.map((r) => ({ ...r, avatarUrl: toDisplayImageUrl(r.avatarUrl) }));
+      if (!reviews || reviews.length === 0) return null;
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "500+ Happy Clients"}</SectionHeading>
-          <TestimonialsBento videos={videos} reviews={reviews} />
+          <TestimonialsBento reviews={reviews} />
         </div>
       );
     }
@@ -263,35 +297,23 @@ function renderSection(
       );
     }
 
+    // No longer tabbed — a single-collection product strip matching
+    // amader-home-top.html's "Amader Modhu — Natural Honey" design (dropped
+    // the pill-tab switcher + promo tile; resolves via the same
+    // collectionId FK as PRODUCT_COLLECTION now instead of config.tabs).
     case "TABBED_COLLECTION_CAROUSEL": {
-      const tabConfigs = (config.tabs as TabbedCarouselTabConfig[] | undefined) ?? [];
-      const resolved = section.tabCollections ?? [];
-      const tabs = tabConfigs
-        .map((tabConfig, i) => {
-          const collection = resolved[i];
-          if (!collection) return null;
-          const products = collection.products.map(toProductCardData);
-          return {
-            key: String(i),
-            label: tabConfig.tabLabel?.[ctx.locale] || collection.name,
-            promoImageUrl: tabConfig.promoImageUrl || products[0]?.imageUrl,
-            promoHeading: tabConfig.promoHeading?.[ctx.locale] || collection.name,
-            promoBlurb: tabConfig.promoBlurb?.[ctx.locale] || collection.description || undefined,
-            viewAllHref: tabConfig.viewAllUrl || `/collections/${collection.slug}`,
-            products,
-          };
-        })
-        .filter((tab): tab is NonNullable<typeof tab> => tab !== null);
-      if (tabs.length === 0) return null;
+      if (!section.collection || section.collection.products.length === 0) return null;
+      const items = section.collection.products.map((product) => ({
+        ...toProductCardData(product),
+        isFeatured: product.isFeatured,
+      }));
       return (
-        <div className={WRAPPER} key={section.id}>
-          <TabbedCollectionCarouselSection
-            heading={section.heading ?? undefined}
-            tabs={tabs}
-            defaultActiveIndex={(config.defaultActiveTab as number | undefined) ?? 0}
-            visibleCount={5}
-          />
-        </div>
+        <TabbedCollectionCarouselSection
+          key={section.id}
+          title={section.heading ?? section.collection.name}
+          viewAllHref={`/collections/${section.collection.slug}`}
+          items={items}
+        />
       );
     }
 
@@ -347,7 +369,7 @@ export default async function Home({
 
   return (
     <main className="flex-1">
-      {sections.map((section) => renderSection(section, { categories, blogPosts, locale: localeParam }))}
+      {sections.map((section) => renderSection(section, { categories, blogPosts }))}
 
       {bundles.length > 0 && (
         <div className={WRAPPER}>

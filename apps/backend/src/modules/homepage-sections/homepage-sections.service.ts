@@ -42,7 +42,6 @@ export class HomepageSectionsService {
 
   async create(dto: CreateHomepageSectionDto): Promise<AdminHomepageSectionDto> {
     await this.assertValidCollectionRef(dto.type, dto.collectionId);
-    await this.assertValidTabCollectionRefs(dto.type, dto.config);
 
     const section = await this.prisma.client.homepageSection.create({
       data: {
@@ -66,10 +65,6 @@ export class HomepageSectionsService {
     await this.assertValidCollectionRef(
       dto.type ?? existing.type,
       dto.collectionId !== undefined ? dto.collectionId : (existing.collectionId ?? undefined),
-    );
-    await this.assertValidTabCollectionRefs(
-      dto.type ?? existing.type,
-      dto.config !== undefined ? dto.config : existing.config,
     );
 
     if (dto.translations) {
@@ -118,25 +113,23 @@ export class HomepageSectionsService {
 
     return Promise.all(
       sections.map(async (section) => {
+        // TABBED_COLLECTION_CAROUSEL is now a single-collection product
+        // strip (no tabs — see the section's own component doc), so it
+        // resolves via the same collectionId FK as PRODUCT_COLLECTION.
         const collection =
-          section.type === 'PRODUCT_COLLECTION' && section.collectionId
+          (section.type === 'PRODUCT_COLLECTION' || section.type === 'TABBED_COLLECTION_CAROUSEL') &&
+          section.collectionId
             ? await this.collections.getResolvedById(section.collectionId, locale)
-            : null;
-        const tabCollections =
-          section.type === 'TABBED_COLLECTION_CAROUSEL'
-            ? await this.resolveTabCollections(section.config, locale)
             : null;
         const promoVideoProducts =
           section.type === 'PROMO_VIDEO'
             ? await this.resolvePromoVideoProducts(section.config, locale)
             : null;
-        return toPublicHomepageSectionDto(
-          section,
-          collection,
-          locale,
-          tabCollections,
-          promoVideoProducts,
-        );
+        const topSellingProducts =
+          section.type === 'TOP_SELLING_PRODUCTS'
+            ? await this.resolveTopSellingProducts(section.config, locale)
+            : null;
+        return toPublicHomepageSectionDto(section, collection, locale, promoVideoProducts, topSellingProducts);
       }),
     );
   }
@@ -151,68 +144,33 @@ export class HomepageSectionsService {
     return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
   }
 
-  private async resolveTabCollections(
+  private async resolveTopSellingProducts(
     config: unknown,
     locale: Locale,
-  ) {
-    const tabs = extractTabs(config);
-    const productsPerTab = extractProductsPerTab(config);
-    return Promise.all(
-      tabs.map(async (tab) => {
-        const collection = await this.collections.getResolvedById(tab.collectionId, locale);
-        if (!collection) return null;
-        return { ...collection, products: collection.products.slice(0, productsPerTab) };
-      }),
-    );
+  ): Promise<(PublicProductDto | null)[]> {
+    const productIds = extractTopSellingProductIds(config);
+    const uniqueIds = [...new Set(productIds.filter((id): id is number => id !== null))];
+    const resolved = await this.products.getManyByIds(uniqueIds, locale);
+    return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
   }
 
+  // Required for both PRODUCT_COLLECTION and TABBED_COLLECTION_CAROUSEL —
+  // the latter used to store per-tab collectionIds inside config.tabs, but
+  // is now a single-collection product strip (no tabs) using this same FK,
+  // same as PRODUCT_COLLECTION.
   private async assertValidCollectionRef(
     type: HomepageSectionType,
     collectionId: number | undefined,
   ): Promise<void> {
-    if (type !== 'PRODUCT_COLLECTION') return;
+    if (type !== 'PRODUCT_COLLECTION' && type !== 'TABBED_COLLECTION_CAROUSEL') return;
     if (!collectionId) {
-      throw new BadRequestException(
-        'collectionId is required when type = PRODUCT_COLLECTION',
-      );
+      throw new BadRequestException(`collectionId is required when type = ${type}`);
     }
     const collection = await this.prisma.client.collection.findFirst({
       where: { id: collectionId, deletedAt: null },
     });
     if (!collection) throw new BadRequestException('Collection not found');
   }
-
-  private async assertValidTabCollectionRefs(
-    type: HomepageSectionType,
-    config: unknown,
-  ): Promise<void> {
-    if (type !== 'TABBED_COLLECTION_CAROUSEL') return;
-    const tabs = extractTabs(config);
-    if (tabs.length === 0) return;
-    const ids = tabs.map((t) => t.collectionId);
-    const count = await this.prisma.client.collection.count({
-      where: { id: { in: ids }, deletedAt: null },
-    });
-    if (count !== new Set(ids).size) {
-      throw new BadRequestException('One or more tab collectionId values do not exist');
-    }
-  }
-}
-
-function extractTabs(config: unknown): { collectionId: number }[] {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) return [];
-  const tabs = (config as Record<string, unknown>).tabs;
-  if (!Array.isArray(tabs)) return [];
-  return tabs
-    .map((t) => (t && typeof t === 'object' ? (t as Record<string, unknown>).collectionId : undefined))
-    .filter((id): id is number => typeof id === 'number')
-    .map((collectionId) => ({ collectionId }));
-}
-
-function extractProductsPerTab(config: unknown): number {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) return 10;
-  const value = (config as Record<string, unknown>).productsPerTab;
-  return typeof value === 'number' && value > 0 ? value : 10;
 }
 
 function extractPromoVideoProductIds(config: unknown): (number | null)[] {
@@ -221,6 +179,16 @@ function extractPromoVideoProductIds(config: unknown): (number | null)[] {
   if (!Array.isArray(videos)) return [];
   return videos.map((v) => {
     const id = v && typeof v === 'object' ? (v as Record<string, unknown>).productId : undefined;
+    return typeof id === 'number' ? id : null;
+  });
+}
+
+function extractTopSellingProductIds(config: unknown): (number | null)[] {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return [];
+  const items = (config as Record<string, unknown>).items;
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => {
+    const id = item && typeof item === 'object' ? (item as Record<string, unknown>).productId : undefined;
     return typeof id === 'number' ? id : null;
   });
 }

@@ -19,7 +19,9 @@ export type HomepageSectionType =
   | "CIRCLE_BADGE_BAR"
   | "PROMO_VIDEO"
   | "TABBED_COLLECTION_CAROUSEL"
-  | "AD_BANNER";
+  | "AD_BANNER"
+  | "FEATURED_CATEGORIES"
+  | "TOP_SELLING_PRODUCTS";
 
 export const HOMEPAGE_SECTION_TYPES: HomepageSectionType[] = [
   "HERO_BANNER",
@@ -33,6 +35,8 @@ export const HOMEPAGE_SECTION_TYPES: HomepageSectionType[] = [
   "PROMO_VIDEO",
   "TABBED_COLLECTION_CAROUSEL",
   "AD_BANNER",
+  "FEATURED_CATEGORIES",
+  "TOP_SELLING_PRODUCTS",
 ];
 
 export type AdminHomepageSection = Omit<components["schemas"]["AdminHomepageSectionDto"], "type" | "config"> & {

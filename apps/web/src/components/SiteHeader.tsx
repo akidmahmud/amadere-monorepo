@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnnouncementBar, Header, MobileNavDrawer, Nav } from "@amader/ui";
+import { AnnouncementBar, Header, MobileDrawer, Nav, useMobileNavDrawerStore } from "@amader/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname, Link } from "@/i18n/navigation";
-import { navConfig } from "@/config/nav";
-import { NAV_ICONS, allProductsIcon, defaultNavIcon } from "@/config/navIcons";
 import { toApiLocale } from "@/lib/api-locale";
 import { useCartQuery } from "@/hooks/useCart";
 import { useMe } from "@/hooks/useAuth";
+import { useWishlist } from "@/hooks/useAccount";
 import { useSearchSuggestions } from "@/hooks/useSearch";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
-import { useNavCollections } from "@/hooks/useNavCollections";
+import { useCategoriesNav } from "@/hooks/useCategoriesNav";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { toDisplayImageUrl } from "@/lib/media";
 
@@ -28,9 +27,15 @@ export interface SiteHeaderProps {
   /** Server-fetched logo URL, so the real logo is in the first paint instead
    * of flashing the fallback mark while the client-side fetch is in flight. */
   initialLogoUrl?: string | null;
+  /** Server-fetched category nav, so the header/drawer's category list is in
+   * the first paint instead of appearing after a client-side fetch resolves. */
+  initialCategoriesNav?: Parameters<typeof useCategoriesNav>[1];
+  /** Server-fetched announcements, so the bar is in the first paint instead
+   * of flashing in after a client-side fetch resolves. */
+  initialAnnouncements?: Parameters<typeof useAnnouncements>[1];
 }
 
-export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
+export function SiteHeader({ initialLogoUrl, initialCategoriesNav, initialAnnouncements }: SiteHeaderProps = {}) {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -38,9 +43,10 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
   const { data: cart } = useCartQuery(toApiLocale(locale));
   const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const { data: me } = useMe();
+  const { data: wishlist } = useWishlist(toApiLocale(locale), !!me);
   const { data: siteInfo } = useSiteInfo();
-  const { data: navCollections } = useNavCollections(toApiLocale(locale));
-  const { data: announcements } = useAnnouncements(toApiLocale(locale));
+  const { data: categoriesNav } = useCategoriesNav(toApiLocale(locale), initialCategoriesNav);
+  const { data: announcements } = useAnnouncements(toApiLocale(locale), initialAnnouncements);
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,26 +56,29 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
   const otherLocale = locale === "en" ? "bn" : "en";
   const switchLocale = () => router.replace(pathname, { locale: otherLocale });
 
-  const items = [
-    ...navConfig.map((item) => ({
-      key: item.key,
-      href: item.href,
-      hasChildren: undefined as boolean | undefined,
-      label: t(`nav.${item.key}`),
-      icon: item.key === "allProducts" ? allProductsIcon : undefined,
+  // Spec 5.2: the drawer closes on route change, in addition to overlay
+  // tap/×/Escape (which Radix Dialog already handles inside MobileDrawer).
+  const closeDrawer = useMobileNavDrawerStore((s) => s.close);
+  useEffect(() => {
+    closeDrawer();
+  }, [pathname, closeDrawer]);
+
+  // Categories already come back sorted by sortOrder (ascending) from the
+  // backend — array order IS spec 6.1's "priority" order, no separate field needed.
+  const categories = (categoriesNav ?? []).map((category) => ({
+    key: `category-${category.slug}`,
+    href: `/categories/${category.slug}`,
+    label: category.name,
+    children: category.children.map((child) => ({
+      key: `category-${child.slug}`,
+      href: `/categories/${child.slug}`,
+      label: child.name,
     })),
-    ...(navCollections ?? []).map((collection) => ({
-      key: `collection-${collection.slug}`,
-      href: `/collections/${collection.slug}`,
-      hasChildren: undefined,
-      label: collection.name,
-      icon: NAV_ICONS[collection.slug] ?? defaultNavIcon,
-    })),
-  ];
+  }));
 
   return (
     <>
-      <AnnouncementBar items={announcements ?? []} linkComponent={Link} />
+      <AnnouncementBar items={announcements ?? []} dismissLabel={t("header.dismissAnnouncement")} linkComponent={Link} />
       <Header
         brandHref="/"
         brandMark="আমাদের"
@@ -124,6 +133,9 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
         trackOrderLabel={t("header.trackOrder")}
         accountHref={me ? "/account" : "/login"}
         accountLabel={t("header.account")}
+        wishlistHref={me ? "/account/wishlist" : "/login"}
+        wishlistLabel={t("header.wishlist")}
+        wishlistCount={wishlist?.length}
         cartLabel={t("header.cart")}
         cartCount={cartCount}
         localeSwitchLabel={t("header.localeSwitch")}
@@ -131,15 +143,27 @@ export function SiteHeader({ initialLogoUrl }: SiteHeaderProps = {}) {
         mobileMenuLabel={t("header.menu")}
         linkComponent={Link}
       />
-      <Nav items={items} activeHref={pathname} linkComponent={Link} />
-      <MobileNavDrawer
-        title={t("header.menu")}
+      <Nav
+        allProductsHref="/products"
+        allProductsLabel={t("nav.allProducts")}
+        items={categories}
+        activeHref={pathname}
+        linkComponent={Link}
+      />
+      <MobileDrawer
+        brandHref="/"
+        brandMark="আমাদের"
+        logoUrl={logoUrl}
         closeLabel={t("header.close")}
-        navItems={items}
-        accountHref={me ? "/account" : "/login"}
-        accountLabel={t("header.account")}
+        allProductsHref="/products"
+        allProductsLabel={t("nav.allProducts")}
+        categories={categories}
         trackOrderHref="/track"
         trackOrderLabel={t("header.trackOrder")}
+        accountHref={me ? "/account" : "/login"}
+        accountLabel={t("header.account")}
+        wishlistHref={me ? "/account/wishlist" : "/login"}
+        wishlistLabel={t("header.wishlist")}
         localeSwitchLabel={t("header.localeSwitch")}
         onLocaleSwitch={switchLocale}
         linkComponent={Link}

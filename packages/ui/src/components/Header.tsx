@@ -5,35 +5,49 @@ import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { useCartDrawerStore } from "../stores/cartDrawerStore";
 import { useMobileNavDrawerStore } from "../stores/mobileNavDrawerStore";
+import { MOBILE_DRAWER_ID } from "./MobileDrawer";
 
-const leaf = (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-green">
-    <path d="M17 8C8 10 5.9 16.2 3.8 21.5c-.4 1 .5 1.9 1.5 1.5C10.6 21 16.8 18.9 19 10c1-4 .4-6-1.5-8C15.6.2 12.6.6 10 3c-1.5 1.4-2 3.5-1 5 .5.8 1.5 1.2 2.3 1 1-.3 1.7-1.5 1.7-2.5" />
-  </svg>
-);
 const searchIcon = (
-  <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.2}>
-    <circle cx="11" cy="11" r="7" />
-    <path d="m21 21-4-4" />
+  <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
   </svg>
 );
 const trackIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[22px] w-[22px]">
-    <path d="M3 7h13v10H3zM16 10h3l2 3v4h-5" />
-    <circle cx="7" cy="18" r="1.6" />
-    <circle cx="18" cy="18" r="1.6" />
+    <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" />
+    <circle cx="12" cy="10" r="3" />
   </svg>
 );
 const cartIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[22px] w-[22px]">
-    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-    <path d="M3 6h18M16 10a4 4 0 0 1-8 0" />
+    <circle cx="8" cy="21" r="1" />
+    <circle cx="19" cy="21" r="1" />
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+  </svg>
+);
+const smallCartIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[18px] w-[18px]">
+    <circle cx="8" cy="21" r="1" />
+    <circle cx="19" cy="21" r="1" />
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
   </svg>
 );
 const accountIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[22px] w-[22px]">
-    <circle cx="12" cy="8" r="3.4" />
-    <path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" />
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+const wishlistIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[22px] w-[22px]">
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+  </svg>
+);
+const globeIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[22px] w-[22px]">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.5 2.5 4 5.7 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.7-4-9s1.5-6.5 4-9Z" />
   </svg>
 );
 const hamburgerIcon = (
@@ -55,14 +69,28 @@ export interface HeaderProps {
   trackOrderLabel: string;
   accountHref?: string;
   accountLabel?: string;
+  wishlistHref?: string;
+  wishlistLabel?: string;
+  wishlistCount?: number;
   cartLabel: string;
   cartCount?: number;
   localeSwitchLabel: string;
   onLocaleSwitch: () => void;
-  /** aria-label for the mobile-only hamburger button that opens MobileNavDrawer. */
+  /** aria-label for the mobile-only hamburger button that opens MobileDrawer. */
   mobileMenuLabel: string;
   linkComponent?: LinkComponent;
   className?: string;
+}
+
+// Spec 5.1's badge (remeasured from ghorerbazar.com): yellow pill, dark ink
+// text, 16px min, 2px white ring, top-right of the icon.
+function Badge({ count }: { count?: number }) {
+  if (count === undefined || count <= 0) return null;
+  return (
+    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-extrabold text-[#3d3410] ring-2 ring-white">
+      {count}
+    </span>
+  );
 }
 
 export function Header({
@@ -78,6 +106,9 @@ export function Header({
   trackOrderLabel,
   accountHref,
   accountLabel,
+  wishlistHref,
+  wishlistLabel,
+  wishlistCount,
   cartLabel,
   cartCount,
   localeSwitchLabel,
@@ -89,7 +120,8 @@ export function Header({
   const [query, setQuery] = useState("");
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
   const openCart = useCartDrawerStore((s) => s.open);
-  const openMobileNav = useMobileNavDrawerStore((s) => s.open);
+  const isDrawerOpen = useMobileNavDrawerStore((s) => s.isOpen);
+  const openDrawer = useMobileNavDrawerStore((s) => s.open);
 
   function handleQueryChange(value: string) {
     setQuery(value);
@@ -103,122 +135,150 @@ export function Header({
     onSearchSubmit?.(query);
   }
 
-  return (
-    <header className={cn("sticky top-0 z-40 bg-white", className)}>
-      {/* 3-zone header: logo pinned left, search truly centered (CSS grid,
-          not flex auto-margins — those drift off-center whenever the logo
-          and icons zones differ in width), icons pinned right. Each zone
-          carries an id so it's directly identifiable in devtools (Elements
-          panel shows the id on the tag; "Copy selector" yields "#site-header-…"). */}
-      <div
-        id="site-header-row"
-        className="relative flex w-full flex-wrap items-start gap-x-6 gap-y-3 px-5 py-3 sm:grid sm:grid-cols-[auto_1fr_auto] sm:flex-nowrap sm:items-center sm:h-32 sm:py-0"
+  // Shared between the mobile and desktop layouts (spec 5.1's 48/48/44px
+  // tiers and 5.2's 40px mobile row both use the same input+button markup) —
+  // only the wrapper's height/rounding differ per call site.
+  function searchForm(heightClass: string) {
+    return (
+      <form
+        onSubmit={handleSubmit}
+        className={cn(
+          "flex w-full items-center rounded-lg border border-transparent bg-beige pl-[18px] pr-1.5 transition-colors focus-within:border-header-green focus-within:bg-white focus-within:ring-2 focus-within:ring-header-green/20",
+          heightClass,
+        )}
       >
+        <input
+          value={query}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          onFocus={() => query.trim().length > 0 && setIsSuggestionsOpen(true)}
+          onBlur={() => setIsSuggestionsOpen(false)}
+          placeholder={searchPlaceholder}
+          className="w-0 flex-1 bg-transparent font-header text-sm text-header-ink outline-none placeholder:text-header-muted"
+        />
         <button
-          type="button"
-          aria-label={mobileMenuLabel}
-          onClick={openMobileNav}
-          className="grid h-8 w-8 shrink-0 place-items-center text-ink sm:hidden"
+          type="submit"
+          aria-label={searchAriaLabel}
+          className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-md text-header-ink hover:bg-white/70"
         >
-          {hamburgerIcon}
+          {searchIcon}
         </button>
-        {/* Mobile only: pinned to the row's top edge and horizontally
-            centered so it lines up with the hamburger/cart icons instead of
-            floating at whatever height its own (much taller, desktop-sized)
-            content pushes it to. Sized down for mobile so it doesn't
-            overlap the search bar below. Reverts to a plain in-flow grid
-            item (column 1, original size, no margin) at sm+, untouched from
-            the original desktop layout. */}
-        <Link
-          id="site-header-logo"
-          href={brandHref}
-          className="absolute left-1/2 top-0 mb-2 flex shrink-0 -translate-x-1/2 items-center gap-1.5 sm:static sm:left-auto sm:top-auto sm:mb-0 sm:ml-30 sm:translate-x-0"
-        >
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={brandMark} className="h-16 w-auto sm:mb-0 sm:h-40" />
-          ) : (
-            <>
-              {leaf}
-              <span className="font-bengali text-[25px] font-bold leading-none text-green">
-                {brandMark}
-                <span className="align-super text-[8px]">™</span>
-              </span>
-            </>
-          )}
-        </Link>
+      </form>
+    );
+  }
 
-        <div
-          id="site-header-search"
-          className="relative order-3 mt-2 w-full sm:order-none sm:mb-5 sm:w-full sm:max-w-[650px] sm:justify-self-center"
-        >
-          <form
-            onSubmit={handleSubmit}
-            className="flex h-10 w-full items-center rounded-[30px] bg-beige pl-5 pr-2"
-          >
-            <input
-              value={query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-              onFocus={() => query.trim().length > 0 && setIsSuggestionsOpen(true)}
-              onBlur={() => setIsSuggestionsOpen(false)}
-              placeholder={searchPlaceholder}
-              className="w-0 flex-1 bg-transparent font-body text-[13.5px] text-ink outline-none placeholder:text-[#9c9080]"
-            />
-            <button
-              type="submit"
-              aria-label={searchAriaLabel}
-              className="grid h-7 w-7 shrink-0 place-items-center text-green-deep"
-            >
-              {searchIcon}
-            </button>
-          </form>
-          {isSuggestionsOpen && searchSuggestions && (
-            // onMouseDown here fires before the input's onBlur, and
-            // preventDefault stops that mousedown from shifting focus away
-            // from the input at all — so blur never closes this before a
-            // click on a suggestion link gets to run.
-            <div
-              onMouseDown={(e) => e.preventDefault()}
-              className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[14px] border border-line bg-white shadow-brand"
-            >
-              {searchSuggestions}
-            </div>
-          )}
-        </div>
+  function suggestionsPanel() {
+    if (!isSuggestionsOpen || !searchSuggestions) return null;
+    return (
+      // onMouseDown fires before the input's onBlur, and preventDefault stops
+      // that mousedown from shifting focus away from the input at all — so
+      // blur never closes this before a click on a suggestion link runs.
+      <div
+        onMouseDown={(e) => e.preventDefault()}
+        className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-lg border border-header-line bg-white shadow-brand"
+      >
+        {searchSuggestions}
+      </div>
+    );
+  }
 
-        <div
-          id="site-header-icons"
-          className="order-2 ml-auto flex shrink-0 items-center gap-8 sm:order-none sm:mr-20 sm:justify-self-end"
-        >
+  // Remeasured from ghorerbazar.com: actions are icon-only ~22×22px at
+  // md/lg (no separate 44×44 "compact" tier, no padded hover box — just a
+  // bare icon that shifts color on hover), then auto-width icon+label
+  // stacks (~44px tall, no fixed min-width column) at xl. Replaces the
+  // earlier 44×44/74×64 padded-box tiers.
+  const desktopActionClass =
+    "relative flex h-[22px] w-[22px] items-center justify-center text-header-ink hover:text-header-green xl:h-11 xl:w-auto xl:flex-col xl:justify-center xl:gap-1";
+  const desktopActionLabelClass = "hidden font-header text-[11px] font-semibold xl:inline";
+
+  return (
+    <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header", className)}>
+      {/* ===== Mobile (<768px) — two rows + drawer, spec 5.2 ===== */}
+      <div className="md:hidden">
+        <div className="grid h-14 grid-cols-[44px_1fr_44px] items-center px-4">
           <button
             type="button"
-            onClick={onLocaleSwitch}
-            className="hidden font-ui text-[13px] font-medium text-ink hover:text-green sm:block"
+            aria-label={mobileMenuLabel}
+            aria-expanded={isDrawerOpen}
+            aria-controls={MOBILE_DRAWER_ID}
+            onClick={openDrawer}
+            className="grid h-11 w-11 place-items-center text-header-ink"
           >
-            {localeSwitchLabel}
+            {hamburgerIcon}
           </button>
-          {accountHref && accountLabel && (
-            <Link href={accountHref} className="hidden flex-col items-center gap-0.5 text-green sm:flex">
-              {accountIcon}
-              <span className="font-ui text-[11px] font-medium text-ink">{accountLabel}</span>
-            </Link>
-          )}
-          <Link href={trackOrderHref} className="hidden flex-col items-center gap-0.5 text-green sm:flex">
-            {trackIcon}
-            <span className="font-ui text-[11px] font-medium text-ink">{trackOrderLabel}</span>
+          <Link href={brandHref} className="col-start-2 flex items-center justify-self-center">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={brandMark} className="h-10 w-auto" />
+            ) : (
+              <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
+            )}
           </Link>
           <button
             type="button"
             onClick={openCart}
-            className="relative flex flex-col items-center gap-0.5 text-green"
+            aria-label={`${cartLabel}, ${cartCount ?? 0} items`}
+            className="relative col-start-3 flex h-full w-11 flex-col items-center justify-center justify-self-end gap-0.5 text-header-ink"
           >
+            {smallCartIcon}
+            <Badge count={cartCount} />
+            <span className="font-header text-[10px] font-semibold">{cartLabel}</span>
+          </button>
+        </div>
+        <div className="relative px-4 py-1.5">
+          {searchForm("h-10")}
+          {suggestionsPanel()}
+        </div>
+      </div>
+
+      {/* ===== Tablet/laptop/desktop (>=768px) — single row, spec 5.1 =====
+          Header height (81/87/87) and logo height (48px, uniform across all
+          three tiers) are also remeasured from ghorerbazar.com. */}
+      <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[81px] md:grid-cols-[auto_1fr_auto] lg:h-[87px] lg:gap-x-6 xl:gap-x-8">
+        <Link href={brandHref} className="flex h-12 shrink-0 items-center">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={brandMark} className="h-full w-auto" />
+          ) : (
+            <span className="font-bengali text-xl font-bold text-header-green">{brandMark}</span>
+          )}
+        </Link>
+
+        <div className="relative mx-auto w-full max-w-[446px]">
+          {searchForm("h-[47px]")}
+          {suggestionsPanel()}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-[23px]">
+          {/* Locale switch leads the group (not trailing after Cart) so Cart
+              stays the true rightmost action, its right edge flush with the
+              container's own right edge — per the exact position spec
+              (Cart 1342-1416 at a 1440px container, right edge = container
+              right = 1440-24 gutter = 1416). */}
+          <button type="button" onClick={onLocaleSwitch} className={desktopActionClass}>
+            {globeIcon}
+            <span className={desktopActionLabelClass}>{localeSwitchLabel}</span>
+          </button>
+          <Link href={trackOrderHref} className={desktopActionClass}>
+            {trackIcon}
+            <span className={desktopActionLabelClass}>{trackOrderLabel}</span>
+          </Link>
+          {accountHref && accountLabel && (
+            <Link href={accountHref} className={desktopActionClass}>
+              {accountIcon}
+              <span className={desktopActionLabelClass}>{accountLabel}</span>
+            </Link>
+          )}
+          {wishlistHref && wishlistLabel && (
+            <Link href={wishlistHref} className={desktopActionClass}>
+              {wishlistIcon}
+              <Badge count={wishlistCount} />
+              <span className={desktopActionLabelClass}>{wishlistLabel}</span>
+            </Link>
+          )}
+          <button type="button" onClick={openCart} aria-label={`${cartLabel}, ${cartCount ?? 0} items`} className={desktopActionClass}>
             {cartIcon}
-            {cartCount !== undefined && cartCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-gold text-[10px] font-bold text-green-deep">
-                {cartCount}
-              </span>
-            )}
-            <span className="font-ui text-[11px] font-medium text-ink">{cartLabel}</span>
+            <Badge count={cartCount} />
+            <span className={desktopActionLabelClass}>{cartLabel}</span>
           </button>
         </div>
       </div>

@@ -13,12 +13,14 @@ export function sanitizeHomepageSectionConfig(
     return { ...config, slides: config.slides.filter((slide) => slide?.imageUrl) };
   }
   if (type === "TESTIMONIAL_BENTO") {
-    const videos = Array.isArray(config.videos) ? config.videos.filter((v) => v?.url) : config.videos;
     const reviews = Array.isArray(config.reviews) ? config.reviews.filter((r) => r?.quote && r?.name) : config.reviews;
-    return { ...config, videos, reviews };
+    return { ...config, reviews };
   }
   if (type === "CERTIFICATION_ROW" && Array.isArray(config.items)) {
     return { ...config, items: config.items.filter((item) => item?.imageUrl) };
+  }
+  if (type === "TOP_SELLING_PRODUCTS" && Array.isArray(config.items)) {
+    return { ...config, items: config.items.filter((item) => item?.productId) };
   }
   return config;
 }

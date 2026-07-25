@@ -111,17 +111,21 @@ function EmbedFrame({ src, allow }: { src: string; allow: string }) {
   );
 }
 
-// Plays the card once it's ≥50% scrolled into view, pauses when it scrolls
-// back out of view — replaces the old hover-to-play behavior so a section
-// with many cards doesn't autoplay everything at once on page load.
-// rootMargin extends the "visible" zone outward on the sides (this is a
-// horizontally-scrolling row) so a card starts mounting/loading its video
-// ~400px before it's actually scrolled into view — by the time the user's
-// eyes reach it, YouTube/TikTok/Instagram's embed page and player JS (the
-// actual source of the load delay, not this app or its dev server — those
-// are third-party requests to youtube.com/tiktok.com/instagram.com) have
-// had a head start instead of starting from zero at the exact moment it
-// needs to play. Still bounded — a card way off-screen never loads.
+// Starts loading well before the card is actually scrolled into view, pauses
+// once it scrolls back out — replaces the old hover-to-play behavior so a
+// section with many cards doesn't autoplay everything at once on page load.
+// rootMargin extends the "visible" zone outward on all sides: 400px
+// horizontally (this is a horizontally-scrolling row) and a much larger
+// 1000px vertically, since the section itself typically sits well below the
+// fold — a small vertical margin meant the card only started loading once
+// the user had already scrolled it ~50% into view, so the YouTube/TikTok/
+// Instagram embed (third-party page + player JS, not this app) was still
+// booting right as the user's eyes arrived, showing the thumbnail for a
+// beat. threshold 0 (not 0.5) means it fires the instant any part of the
+// card enters that expanded zone, not once it's half-visible — by the time
+// the user actually scrolls to it, the video has had ~1000px of scroll
+// distance (roughly a full screen) to finish loading and be playing
+// already. Still bounded — a card way off-screen never loads.
 function useInView(threshold = 0.5, rootMargin = "0px"): [React.RefObject<HTMLDivElement | null>, boolean] {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
@@ -156,7 +160,7 @@ function useIsMobile(breakpointPx = 768): boolean {
 }
 
 function PromoVideoCardTile({ card, onClick }: { card: PromoVideoCard; onClick: () => void }) {
-  const [ref, isInView] = useInView(0.5, "0px 400px 0px 400px");
+  const [ref, isInView] = useInView(0, "1000px 400px 1000px 400px");
 
   return (
     <div

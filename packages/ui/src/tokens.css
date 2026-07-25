@@ -16,6 +16,18 @@
   --color-muted: #7a8579;
   --color-delete: #ff383c;
 
+  /* Header/nav/announcement-bar-scoped tokens — amader-header-spec.md is
+     their source of truth. Kept separate from the site-wide palette above
+     (which is close but not identical, e.g. --color-green #1f703c vs this
+     spec's #21713D) rather than overwriting it, since retuning the shared
+     palette would recolor the whole site as an unrequested side effect. */
+  --header-green: #21713d;
+  --header-green-dark: #1a5a31;
+  --header-ink: #1e2b22;
+  --header-text: #374840;
+  --header-muted: #6b7a70;
+  --header-line: #ece4d6;
+
   --radius-brand: 14px;
   --shadow-brand: 0 4px 16px rgba(32, 112, 60, 0.08);
 
@@ -37,6 +49,13 @@
   --color-muted: var(--color-muted);
   --color-delete: var(--color-delete);
 
+  --color-header-green: var(--header-green);
+  --color-header-green-dark: var(--header-green-dark);
+  --color-header-ink: var(--header-ink);
+  --color-header-text: var(--header-text);
+  --color-header-muted: var(--header-muted);
+  --color-header-line: var(--header-line);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -47,6 +66,7 @@
   --font-ui: var(--font-poppins);
   --font-body: var(--font-inter);
   --font-bengali: var(--font-hind-siliguri);
+  --font-header: var(--font-plus-jakarta), var(--font-noto-bengali);
 
   /* CertificationRow's mobile auto-scroll — content is duplicated exactly
      once, so -50% is precisely one full set's width, giving a seamless loop

@@ -1,12 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { Badge } from "./Badge";
-import { Button } from "./Button";
 import { PriceTag } from "./PriceTag";
-import { Select } from "./Select";
 
 export interface ProductCardPackOption {
   value: string;
@@ -22,7 +19,9 @@ export interface ProductCardProps {
   price: string;
   originalPrice?: string | null;
   discountLabel?: string;
-  /** When a product has more than one pack size, selecting one updates the displayed price and is passed to onAddToCart. */
+  /** Variant products: Add to Cart adds this pack directly, no inline
+   * picker — matches ghorerbazar.com's card (name/price/button only).
+   * Choosing a different pack size happens on the product detail page. */
   packOptions?: ProductCardPackOption[];
   defaultPackValue?: string;
   onAddToCart?: (packValue?: string) => void;
@@ -47,59 +46,48 @@ export function ProductCard({
   linkComponent: Link = DefaultLink,
   className,
 }: ProductCardProps) {
-  const [selectedPack, setSelectedPack] = useState(defaultPackValue ?? packOptions?.[0]?.value);
-  const selectedOption = packOptions?.find((o) => o.value === selectedPack);
-  const displayPrice = selectedOption?.price ?? price;
-  const displayOriginalPrice = selectedOption ? selectedOption.originalPrice : (originalPrice ?? undefined);
+  const defaultPack = defaultPackValue ?? packOptions?.[0]?.value;
+  const defaultOption = packOptions?.find((o) => o.value === defaultPack);
+  const displayPrice = defaultOption?.price ?? price;
+  const displayOriginalPrice = defaultOption ? defaultOption.originalPrice : (originalPrice ?? undefined);
 
   return (
-    <div
-      className={cn(
-        "flex h-full flex-col rounded-brand border border-line bg-white p-2.5 shadow-brand transition-transform duration-150 hover:-translate-y-[3px]",
-        className,
-      )}
-    >
-      <Link href={href} className="relative block aspect-square rounded-[10px] bg-beige">
+    // Size/layout matched to ghorerbazar.com's grid product card (4px
+    // radius, flat — no shadow/hover-lift, 8px padding, flush square image
+    // with no radius of its own, left-aligned text, outlined not solid-fill
+    // Add to Cart button) — colors are Amader's own (green/beige/ink), not
+    // copied from their orange.
+    <div className={cn("flex h-full flex-col rounded border border-line bg-white p-2", className)}>
+      <Link href={href} className="relative block aspect-square bg-beige">
         {imageUrl && (
           // Plain <img> keeps this library framework-agnostic; page-level
           // composition swaps in next/image once wired to real API media (F3+).
-          <img
-            src={imageUrl}
-            alt={name}
-            loading="lazy"
-            className="h-full w-full rounded-[10px] object-cover"
-          />
+          <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-cover" />
         )}
         {discountLabel && (
           <Badge className="absolute left-2 top-2">{discountLabel}</Badge>
         )}
       </Link>
-      <div className="flex flex-1 flex-col gap-2.5 px-1 pb-0.5 pt-2.5">
-        <Link
-          href={href}
-          className="truncate border-b border-line pb-1.5 font-ui text-[13px] font-medium text-ink"
-        >
+      <div className="flex flex-1 flex-col gap-2 pt-3">
+        <Link href={href} className="truncate font-ui text-base font-medium text-ink">
           {name}
         </Link>
-        <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} />
-        {packOptions && packOptions.length > 0 && (
-          <Select
-            options={packOptions}
-            value={selectedPack}
-            onValueChange={setSelectedPack}
-            disabled={packOptions.length === 1}
-            aria-label="Pack size"
-          />
-        )}
-        <Button
-          variant="green"
-          block
+        <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} align="left" />
+        {/* Plain <button>, not the shared Button component — Button's own
+            base classes hardcode a 9px radius, and this codebase's `cn()` is
+            plain clsx (no tailwind-merge), so a conflicting `rounded`
+            override here isn't guaranteed to win (confirmed live: it
+            didn't — same class of bug already hit once this session with
+            Header's own action-button sizing). A standalone button sidesteps
+            the conflict entirely instead of fighting it. */}
+        <button
+          type="button"
           disabled={addToCartPending}
-          className="mt-auto rounded-[30px] py-2.5"
-          onClick={() => onAddToCart?.(selectedPack)}
+          onClick={() => onAddToCart?.(defaultPack)}
+          className="mt-auto flex h-10 w-full items-center justify-center rounded border-[1.5px] border-green font-ui text-sm font-semibold text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
         >
           {addToCartPending ? "Adding…" : addToCartLabel}
-        </Button>
+        </button>
       </div>
     </div>
   );

@@ -1,54 +1,84 @@
 "use client";
 
 import { Footer } from "@amader/ui";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useSubscribeNewsletter } from "@/hooks/useNewsletter";
+import { useSiteInfo } from "@/hooks/useSiteInfo";
+import { useCategoriesNav } from "@/hooks/useCategoriesNav";
+import { toApiLocale } from "@/lib/api-locale";
 
-const FOOTER_BOTTOM_IMAGE_URL =
-  "https://pub-51174804638049198acba5bbf211435e.r2.dev/image/8ba98d02-41d1-4d55-b9d4-e992a7fa5449-footer-bottom.png";
-// Dedicated white-on-transparent footer logo (distinct from the header's
-// logo, which is a green mark meant for a white background) — the green
-// header mark has very low contrast against this footer's dark green
-// background.
-const FOOTER_LOGO_URL =
-  "https://pub-51174804638049198acba5bbf211435e.r2.dev/image/b6db0193-e4a3-4651-a473-243e5911dbd5-footer-logo-white.png";
+export interface SiteFooterProps {
+  /** Same server-fetched values SiteHeader already receives from layout.tsx
+   * — reused here so the footer's logo/Shop-By column don't wait on a
+   * second client-side fetch of data the layout already has. */
+  initialLogoUrl?: string | null;
+  initialCategoriesNav?: Parameters<typeof useCategoriesNav>[1];
+}
 
-export function SiteFooter() {
+export function SiteFooter({ initialLogoUrl, initialCategoriesNav }: SiteFooterProps = {}) {
   const t = useTranslations("footer");
-  const subscribe = useSubscribeNewsletter();
+  const locale = useLocale();
+  const { data: siteInfo } = useSiteInfo();
+  const { data: categoriesNav } = useCategoriesNav(toApiLocale(locale), initialCategoriesNav);
+  const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
+
+  const shopByLinks = (categoriesNav ?? [])
+    .slice(0, 6)
+    .map((category) => ({ label: category.name, href: `/categories/${category.slug}` }));
 
   return (
     <Footer
       brandMark="আমাদের"
-      logoUrl={FOOTER_LOGO_URL}
-      bottomImageUrl={FOOTER_BOTTOM_IMAGE_URL}
-      newsletterHeading={t("newsletterHeading")}
-      newsletterPlaceholder={t("newsletterPlaceholder")}
-      subscribeLabel={subscribe.isSuccess ? "Subscribed!" : t("subscribe")}
-      onSubscribe={(email) => subscribe.mutate(email)}
+      logoUrl={logoUrl}
+      description={t("description")}
+      address={t("address")}
+      phone={t("phone")}
+      email={t("email")}
+      facebookHref="#"
+      instagramHref="#"
+      youtubeHref="#"
+      googlePlayHref="#"
+      appStoreHref="#"
+      appDownloadLabel={t("appDownloadLabel")}
       columns={[
         {
-          heading: t("aboutHeading"),
+          heading: t("informationHeading"),
           links: [
-            { label: t("about"), href: "/about" },
+            { label: t("aboutUs"), href: "#" },
+            { label: t("contactUs"), href: "#" },
             { label: t("blog"), href: "/blog" },
-            { label: t("certifications"), href: "/certifications" },
-            { label: t("farmers"), href: "/farmers" },
+            { label: t("terms"), href: "#" },
+            { label: t("privacy"), href: "#" },
+            { label: t("careers"), href: "#" },
+          ],
+        },
+        { heading: t("shopByHeading"), links: shopByLinks },
+        {
+          heading: t("supportHeading"),
+          links: [
+            { label: t("supportCenter"), href: "#" },
+            { label: t("howToOrder"), href: "#" },
+            { label: t("orderTracking"), href: "/track" },
+            { label: t("payment"), href: "#" },
+            { label: t("shipping"), href: "#" },
+            { label: t("faq"), href: "#" },
           ],
         },
         {
-          heading: t("helpHeading"),
+          heading: t("consumerPolicyHeading"),
           links: [
-            { label: t("consult"), href: "/consult" },
-            { label: t("faqs"), href: "/faqs" },
-            { label: t("terms"), href: "/terms" },
-            { label: t("privacy"), href: "/privacy" },
+            { label: t("happyReturn"), href: "#" },
+            { label: t("refundPolicy"), href: "#" },
+            { label: t("exchange"), href: "#" },
+            { label: t("cancellation"), href: "#" },
+            { label: t("preOrder"), href: "#" },
           ],
         },
       ]}
-      contact={t("contactHeading")}
-      rightsLabel={`© ${new Date().getFullYear()} আমাদের — ${t("rights")}`}
+      copyrightLabel={t("copyright", { year: new Date().getFullYear() })}
+      payWithLabel={t("payWith")}
+      sslBadgeLine1={t("sslLine1")}
+      sslBadgeLine2={t("sslLine2")}
       linkComponent={Link}
     />
   );

@@ -17,11 +17,10 @@ export interface FilterDrawerProps {
   children: ReactNode;
 }
 
-// Mirrors MobileNavDrawer.tsx's exact Radix Dialog structure — same
-// overlay/slide-in-from-left panel, used for collection pages' mobile filter
-// panel instead of site nav. Kept controlled (open/onOpenChange) rather than
-// a global store like the nav drawer since this is page-local state, not
-// something other components need to trigger.
+// Mirrors CartDrawer.tsx's Radix Dialog structure, mirrored to the left —
+// used for collection pages' mobile filter panel. Kept controlled
+// (open/onOpenChange) rather than a global store since this is page-local
+// state, not something other components need to trigger.
 export function FilterDrawer({ open, onOpenChange, title, closeLabel, children }: FilterDrawerProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

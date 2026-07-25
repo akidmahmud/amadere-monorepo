@@ -660,6 +660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/categories/nav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CategoriesController_navList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/categories/{slug}": {
         parameters: {
             query?: never;
@@ -4917,6 +4933,17 @@ export interface components {
             description: string | null;
             productCount: number;
         };
+        PublicCategoryNavChildDto: {
+            id: number;
+            slug: string;
+            name: string;
+        };
+        PublicCategoryNavDto: {
+            id: number;
+            slug: string;
+            name: string;
+            children: components["schemas"]["PublicCategoryNavChildDto"][];
+        };
         PublicCategoryDetailDto: {
             id: number;
             slug: string;
@@ -6211,8 +6238,8 @@ export interface components {
         UpdateCustomerDto: {
             firstName?: string;
             lastName?: string;
-            /** @description Birthday, ISO date */
-            dob?: string;
+            /** @description Birthday, ISO date, or null to clear */
+            dob?: string | null;
             isFavorite?: boolean;
             /** @description Admin staff user ID, or null to unassign */
             assignedAdminId?: number | null;
@@ -6997,8 +7024,8 @@ export interface components {
             subheading: string | null;
             config: Record<string, never>;
             collection: components["schemas"]["PublicCollectionDto"] | null;
-            tabCollections: Record<string, never>[] | null;
             promoVideoProducts: Record<string, never>[] | null;
+            topSellingProducts: Record<string, never>[] | null;
         };
         AdminHomepageSectionTranslationDto: {
             locale: Record<string, never>;
@@ -7022,7 +7049,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -7038,7 +7065,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -8680,6 +8707,27 @@ export interface operations {
                         page?: number;
                         pageSize?: number;
                     };
+                };
+            };
+        };
+    };
+    CategoriesController_navList: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCategoryNavDto"][];
                 };
             };
         };
@@ -11759,6 +11807,8 @@ export interface operations {
                 priority?: "HIGH" | "MEDIUM" | "LOW";
                 crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
                 assignedAdminId?: number;
+                /** @description Only customers whose birthday (month+day, any year) is today */
+                birthdayToday?: boolean;
                 page?: number;
                 pageSize?: number;
             };
@@ -11843,6 +11893,8 @@ export interface operations {
                 priority?: "HIGH" | "MEDIUM" | "LOW";
                 crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
                 assignedAdminId?: number;
+                /** @description Only customers whose birthday (month+day, any year) is today */
+                birthdayToday?: boolean;
                 page?: number;
                 pageSize?: number;
             };

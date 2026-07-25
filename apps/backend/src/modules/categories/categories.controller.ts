@@ -8,6 +8,7 @@ import { CategoriesService } from './categories.service';
 import {
   PublicCategoryDetailDto,
   PublicCategoryDto,
+  PublicCategoryNavDto,
 } from './categories.mapper';
 
 @ApiTags('categories')
@@ -29,6 +30,12 @@ export class CategoriesController {
       pageSize ?? 20,
       parentId ? Number(parentId) : undefined,
     );
+  }
+
+  @Get('nav')
+  @ApiOkResponse({ type: PublicCategoryNavDto, isArray: true })
+  navList(@Query() { locale }: LocaleQueryDto): Promise<PublicCategoryNavDto[]> {
+    return this.categories.publicNavList(locale ?? 'EN');
   }
 
   @Get(':slug')

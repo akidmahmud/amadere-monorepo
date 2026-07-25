@@ -87,3 +87,43 @@ export function toPublicCategoryDto(
 export class PublicCategoryDetailDto extends PublicCategoryDto {
   seo!: ResolvedSeoDto;
 }
+
+export class PublicCategoryNavChildDto {
+  id!: number;
+  slug!: string;
+  name!: string;
+}
+
+export class PublicCategoryNavDto {
+  id!: number;
+  slug!: string;
+  name!: string;
+  children!: PublicCategoryNavChildDto[];
+}
+
+type CategoryWithTranslationsAndChildren = CategoryWithTranslations & {
+  children: CategoryWithTranslations[];
+};
+
+function nameFor(category: CategoryWithTranslations, locale: Locale): string {
+  const translation =
+    category.translations.find((t) => t.locale === locale) ??
+    category.translations[0];
+  return translation?.name ?? category.slug;
+}
+
+export function toPublicCategoryNavDto(
+  category: CategoryWithTranslationsAndChildren,
+  locale: Locale,
+): PublicCategoryNavDto {
+  return {
+    id: category.id,
+    slug: category.slug,
+    name: nameFor(category, locale),
+    children: category.children.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: nameFor(c, locale),
+    })),
+  };
+}

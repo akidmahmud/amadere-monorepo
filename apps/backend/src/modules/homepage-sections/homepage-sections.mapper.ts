@@ -53,24 +53,27 @@ export class PublicHomepageSectionDto {
   heading!: string | null;
   subheading!: string | null;
   config!: Prisma.JsonValue;
+  /** PRODUCT_COLLECTION and TABBED_COLLECTION_CAROUSEL only — resolved via
+   * the shared collectionId FK (TABBED_COLLECTION_CAROUSEL used to store
+   * per-tab collectionIds in config.tabs; it's now a single-collection
+   * strip, no tabs, using this same field). */
   collection!: PublicCollectionDto | null;
-  /** TABBED_COLLECTION_CAROUSEL only — one resolved collection (with real
-   * products, already sliced to config.productsPerTab) per config.tabs
-   * entry, same order, null for a tab whose collectionId no longer
-   * resolves (deleted/unpublished) rather than dropping the tab silently. */
-  tabCollections!: (PublicCollectionDto | null)[] | null;
   /** PROMO_VIDEO only — one resolved product per config.videos entry, same
    * order/length, null for a video with no productId or whose product no
    * longer resolves (deleted/unpublished) rather than dropping the video. */
   promoVideoProducts!: (PublicProductDto | null)[] | null;
+  /** TOP_SELLING_PRODUCTS only — one resolved product per config.items
+   * entry, same order/length, null for an item whose product no longer
+   * resolves (deleted/unpublished) rather than dropping the item silently. */
+  topSellingProducts!: (PublicProductDto | null)[] | null;
 }
 
 export function toPublicHomepageSectionDto(
   section: HomepageSectionWithTranslations,
   collection: PublicCollectionDto | null,
   locale: Locale,
-  tabCollections: (PublicCollectionDto | null)[] | null = null,
   promoVideoProducts: (PublicProductDto | null)[] | null = null,
+  topSellingProducts: (PublicProductDto | null)[] | null = null,
 ): PublicHomepageSectionDto {
   const translation =
     section.translations.find((t) => t.locale === locale) ??
@@ -83,7 +86,7 @@ export function toPublicHomepageSectionDto(
     subheading: translation?.subheading ?? null,
     config: section.config,
     collection,
-    tabCollections,
     promoVideoProducts,
+    topSellingProducts,
   };
 }

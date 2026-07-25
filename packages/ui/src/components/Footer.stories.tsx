@@ -6,29 +6,53 @@ const meta: Meta<typeof Footer> = {
   component: Footer,
   args: {
     brandMark: "আমাদের",
-    newsletterHeading: "Subscribe to our newsletter",
-    newsletterPlaceholder: "Your email address",
-    subscribeLabel: "Subscribe",
+    description:
+      "আমাদের™ is dedicated to bringing pure, natural food from trusted farms to every home in Bangladesh.",
+    address: "Dhaka, Bangladesh",
+    phone: "+880 1234 567890",
+    email: "support@amadere.com",
+    facebookHref: "#",
+    instagramHref: "#",
+    youtubeHref: "#",
+    googlePlayHref: "#",
+    appStoreHref: "#",
+    appDownloadLabel: "Download App on Mobile:",
     columns: [
       {
-        heading: "About",
+        heading: "Information",
         links: [
           { label: "About Us", href: "/about" },
           { label: "Blog", href: "/blog" },
-          { label: "Certifications", href: "/certifications" },
-        ],
-      },
-      {
-        heading: "Help",
-        links: [
-          { label: "FAQs", href: "/faqs" },
           { label: "Terms & Conditions", href: "/terms" },
           { label: "Privacy Policy", href: "/privacy" },
         ],
       },
+      {
+        heading: "Shop By",
+        links: [
+          { label: "Amader Oil", href: "/categories/amader-oil" },
+          { label: "Amader Modhu", href: "/categories/amader-modhu" },
+        ],
+      },
+      {
+        heading: "Support",
+        links: [
+          { label: "Support Center", href: "/support" },
+          { label: "FAQ", href: "/faq" },
+        ],
+      },
+      {
+        heading: "Consumer Policy",
+        links: [
+          { label: "Happy Return", href: "/happy-return" },
+          { label: "Refund Policy", href: "/refund-policy" },
+        ],
+      },
     ],
-    contact: "Dhaka, Bangladesh\nhello@amadere.com\n+880 1234 567890",
-    rightsLabel: "© 2026 Amader. All rights reserved.",
+    copyrightLabel: "Copyright © 2026 Amader Ltd. All rights reserved.",
+    payWithLabel: "Pay With",
+    sslBadgeLine1: "Verified by",
+    sslBadgeLine2: "SSLCOMMERZ",
   },
 };
 export default meta;

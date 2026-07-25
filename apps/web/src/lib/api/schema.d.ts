@@ -660,6 +660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/categories/nav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CategoriesController_navList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/categories/{slug}": {
         parameters: {
             query?: never;
@@ -900,6 +916,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}": {
         parameters: {
             query?: never;
@@ -914,6 +962,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminProductsController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_statsFor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/products/{id}/variants": {
@@ -978,6 +1042,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminProductsController_updateVariantPrice"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/variants/{variantId}/sku": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateVariantSku"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/cross-sell": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_getCrossSell"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateCrossSell"];
         trace?: never;
     };
     "/api/v1/products/{productId}/reviews": {
@@ -1997,6 +2093,54 @@ export interface paths {
         };
         get: operations["AdminCustomersController_list"];
         put?: never;
+        post: operations["AdminCustomersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/assignable-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_listAssignableStaff"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2654,6 +2798,22 @@ export interface paths {
         get: operations["AdminBlogPostsController_list"];
         put?: never;
         post: operations["AdminBlogPostsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/blog-posts/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_stats"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4536,10 +4696,6 @@ export interface components {
             currentPassword: string;
             newPassword: string;
         };
-        TwoFactorSetupDto: {
-            secret: string;
-            otpauthUrl: string;
-        };
         TwoFactorEnableDto: {
             code: string;
         };
@@ -4777,6 +4933,17 @@ export interface components {
             description: string | null;
             productCount: number;
         };
+        PublicCategoryNavChildDto: {
+            id: number;
+            slug: string;
+            name: string;
+        };
+        PublicCategoryNavDto: {
+            id: number;
+            slug: string;
+            name: string;
+            children: components["schemas"]["PublicCategoryNavChildDto"][];
+        };
         PublicCategoryDetailDto: {
             id: number;
             slug: string;
@@ -4804,6 +4971,7 @@ export interface components {
             sortOrder: number;
             status: Record<string, never>;
             translations: components["schemas"]["AdminCategoryTranslationDto"][];
+            productCount?: number;
         };
         CreateCategoryDto: {
             slug: string;
@@ -5125,6 +5293,9 @@ export interface components {
             attributeIds: number[];
             media: components["schemas"]["AdminProductMediaDto"][];
             variants: components["schemas"]["AdminProductVariantDto"][];
+            /** Format: date-time */
+            createdAt?: string;
+            seoScore?: number;
         };
         ProductTranslationDto: {
             /** @enum {string} */
@@ -5276,6 +5447,12 @@ export interface components {
         UpdateVariantPriceDto: {
             price?: number;
             salePrice?: number;
+        };
+        UpdateVariantSkuDto: {
+            sku?: string;
+        };
+        UpdateCrossSellDto: {
+            productIds: number[];
         };
         ReviewReplyDto: {
             message: string;
@@ -5740,6 +5917,11 @@ export interface components {
         CreateManualOrderDto: {
             /** @description Set when staff selected an existing customer; omit to auto-match/create by shippingAddress.phone */
             customerId?: number;
+            /**
+             * @description How this order was taken — never WEBSITE for a staff-created order
+             * @enum {string}
+             */
+            channel: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
             shippingAddress: components["schemas"]["CheckoutAddressDto"];
             /** @description Defaults to shippingAddress if omitted */
             billingAddress?: components["schemas"]["CheckoutAddressDto"];
@@ -5941,15 +6123,12 @@ export interface components {
         UpdateCustomerTiersDto: {
             tiers: components["schemas"]["CustomerTierItemDto"][];
         };
-        AdminCustomerListItemDto: {
-            id: number;
-            name: string;
-            phone: string | null;
-            email: string | null;
-            tier: string | null;
-            completedOrderCount: number;
-            /** Format: date-time */
-            createdAt: string;
+        CreateCustomerDto: {
+            phone: string;
+            firstName?: string;
+            lastName?: string;
+            /** Format: email */
+            email?: string;
         };
         AdminCustomerOrderSummaryDto: {
             id: number;
@@ -5993,12 +6172,96 @@ export interface components {
             orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
             notes: components["schemas"]["AdminCustomerNoteDto"][];
             callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
+            isFavorite: boolean;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
+            /** Format: date-time */
+            nextCallTarget: string | null;
+            followUpCadenceDays: number | null;
+            hasNewOrder: boolean;
+            /** Format: date-time */
+            newOrderAt: string | null;
+            priority: string | null;
+            crmStatus: string | null;
+            behaviour: string | null;
+            customerFeedback: string | null;
+            amaderFeedback: string | null;
+            familyDetails: string | null;
+            purchaseReason: string | null;
+            facebookProfileUrl: string | null;
+        };
+        AdminCustomerListItemDto: {
+            id: number;
+            name: string;
+            phone: string | null;
+            email: string | null;
+            tier: string | null;
+            completedOrderCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            isFavorite: boolean;
+            /** Format: date-time */
+            dob: string | null;
+            address: string | null;
+            topProduct: string | null;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
+            /** Format: date-time */
+            lastOrderDate: string | null;
+            /** Format: date-time */
+            nextCallTarget: string | null;
+            followUpCadenceDays: number | null;
+            hasNewOrder: boolean;
+            /** Format: date-time */
+            newOrderAt: string | null;
+            priority: string | null;
+            crmStatus: string | null;
+            behaviour: string | null;
+            customerFeedback: string | null;
+            amaderFeedback: string | null;
+            familyDetails: string | null;
+            purchaseReason: string | null;
+            facebookProfileUrl: string | null;
+            fScore: number;
+            mScore: number;
+            rfmScore: string;
+        };
+        AdminCustomerStatsDto: {
+            totalCustomers: number;
+            totalCustomersTrendPct: number | null;
+            newCustomersThisMonth: number;
+            newCustomersTrendPct: number | null;
+            activeCustomers: number;
+            repeatCustomers: number;
+            averageOrderValue: number;
         };
         UpdateCustomerDto: {
             firstName?: string;
             lastName?: string;
-            /** @description Birthday, ISO date */
-            dob?: string;
+            /** @description Birthday, ISO date, or null to clear */
+            dob?: string | null;
+            isFavorite?: boolean;
+            /** @description Admin staff user ID, or null to unassign */
+            assignedAdminId?: number | null;
+            /** @description ISO date, or null to clear */
+            nextCallTarget?: string | null;
+            /** @description Follow-up cadence in days (7/15/30), or null to clear */
+            followUpCadenceDays?: number | null;
+            hasNewOrder?: boolean;
+            /** @description ISO date, or null to clear */
+            newOrderAt?: string | null;
+            /** @enum {string|null} */
+            priority?: "HIGH" | "MEDIUM" | "LOW" | null;
+            /** @enum {string|null} */
+            crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE" | null;
+            /** @enum {string|null} */
+            behaviour?: "LOYAL" | "PRICE_SENSITIVE" | "OCCASIONAL" | null;
+            customerFeedback?: string;
+            amaderFeedback?: string;
+            familyDetails?: string;
+            purchaseReason?: string;
+            /** Format: uri */
+            facebookProfileUrl?: string;
         };
         CreateCustomerNoteDto: {
             /** @enum {string} */
@@ -6111,8 +6374,16 @@ export interface components {
             /** Format: date-time */
             unsubscribedAt: string | null;
         };
+        PeriodStatsDto: {
+            orders: number;
+            revenue: string;
+        };
         OrderStatusCountDto: {
             status: string;
+            count: number;
+        };
+        OrderChannelCountDto: {
+            channel: string;
             count: number;
         };
         RecentOrderDto: {
@@ -6122,6 +6393,14 @@ export interface components {
             total: string;
             status: string;
             createdAt: string;
+            /** @enum {string} */
+            paymentMethod: "COD" | "PAID";
+        };
+        TopCustomerDto: {
+            id: number;
+            name: string;
+            orderCount: number;
+            totalSpend: string;
         };
         MonthlyRevenuePointDto: {
             label: string;
@@ -6139,9 +6418,16 @@ export interface components {
             totalRevenue: string;
             totalOrders: number;
             totalCustomers: number;
+            totalProducts: number;
             completedOrderRate: number;
+            avgOrderValue: string;
+            today: components["schemas"]["PeriodStatsDto"];
+            completed: components["schemas"]["PeriodStatsDto"];
+            pending: components["schemas"]["PeriodStatsDto"];
             statusBreakdown: components["schemas"]["OrderStatusCountDto"][];
+            ordersByChannel: components["schemas"]["OrderChannelCountDto"][];
             recentOrders: components["schemas"]["RecentOrderDto"][];
+            topCustomers: components["schemas"]["TopCustomerDto"][];
             monthlyRevenue: components["schemas"]["MonthlyRevenuePointDto"][];
             topProducts: components["schemas"]["TopProductDto"][];
         };
@@ -6738,8 +7024,8 @@ export interface components {
             subheading: string | null;
             config: Record<string, never>;
             collection: components["schemas"]["PublicCollectionDto"] | null;
-            tabCollections: Record<string, never>[] | null;
             promoVideoProducts: Record<string, never>[] | null;
+            topSellingProducts: Record<string, never>[] | null;
         };
         AdminHomepageSectionTranslationDto: {
             locale: Record<string, never>;
@@ -6763,7 +7049,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -6779,7 +7065,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -7576,21 +7862,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TwoFactorSetupDto"];
-                };
-            };
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["TwoFactorSetupDto"];
-                };
+                content?: never;
             };
         };
     };
@@ -8435,6 +8711,27 @@ export interface operations {
             };
         };
     };
+    CategoriesController_navList: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCategoryNavDto"][];
+                };
+            };
+        };
+    };
     CategoriesController_getBySlug: {
         parameters: {
             query?: {
@@ -9053,6 +9350,12 @@ export interface operations {
                 sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+                /** @description ISO date — products created on/after this date */
+                createdFrom?: string;
+                /** @description ISO date — products created on/before this date */
+                createdTo?: string;
             };
             header?: never;
             path?: never;
@@ -9103,6 +9406,60 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminProductDto"];
                 };
+            };
+        };
+    };
+    AdminProductsController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_export: {
+        parameters: {
+            query?: {
+                /** @description Matches products in ANY of the given categories. */
+                categoryIds?: number[];
+                brandId?: number;
+                /** @description Matches products tagged with ANY of the given tags. */
+                tagIds?: number[];
+                isFeatured?: boolean;
+                /** @description Filters on the simple-product price column only — hasVariants products (null price on the parent row) are excluded from a price-range filter, same known limitation as elsewhere in this module. */
+                minPrice?: number;
+                maxPrice?: number;
+                /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
+                sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                /** @description Free-text search across product name, SKU, and slug. */
+                q?: string;
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+                /** @description ISO date — products created on/after this date */
+                createdFrom?: string;
+                /** @description ISO date — products created on/before this date */
+                createdTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9168,6 +9525,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminProductDto"];
                 };
+            };
+        };
+    };
+    AdminProductsController_statsFor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9269,6 +9645,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminProductsController_updateVariantSku: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariantSkuDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_getCrossSell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    AdminProductsController_updateCrossSell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCrossSellDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
             };
         };
     };
@@ -11356,6 +11802,13 @@ export interface operations {
             query?: {
                 q?: string;
                 tierId?: number;
+                /** @description CustomerAddress.district of the customer's default (or first) address */
+                district?: string;
+                priority?: "HIGH" | "MEDIUM" | "LOW";
+                crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
+                assignedAdminId?: number;
+                /** @description Only customers whose birthday (month+day, any year) is today */
+                birthdayToday?: boolean;
                 page?: number;
                 pageSize?: number;
             };
@@ -11376,6 +11829,104 @@ export interface operations {
                         page?: number;
                         pageSize?: number;
                     };
+                };
+            };
+        };
+    };
+    AdminCustomersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerStatsDto"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_export: {
+        parameters: {
+            query?: {
+                q?: string;
+                tierId?: number;
+                /** @description CustomerAddress.district of the customer's default (or first) address */
+                district?: string;
+                priority?: "HIGH" | "MEDIUM" | "LOW";
+                crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
+                assignedAdminId?: number;
+                /** @description Only customers whose birthday (month+day, any year) is today */
+                birthdayToday?: boolean;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomersController_listAssignableStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
                 };
             };
         };
@@ -12619,6 +13170,10 @@ export interface operations {
                 pageSize?: number;
                 status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
                 authorId?: number;
+                q?: string;
+                categoryId?: number;
+                tagId?: number;
+                isFeatured?: boolean;
             };
             header?: never;
             path?: never;
@@ -12669,6 +13224,23 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminBlogPostDto"];
                 };
+            };
+        };
+    };
+    AdminBlogPostsController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

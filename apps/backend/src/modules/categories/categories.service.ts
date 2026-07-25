@@ -16,8 +16,10 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import {
   AdminCategoryDto,
   PublicCategoryDetailDto,
+  PublicCategoryNavDto,
   toAdminCategoryDto,
   toPublicCategoryDto,
+  toPublicCategoryNavDto,
 } from './categories.mapper';
 
 const WITH_TRANSLATIONS = { translations: true } as const;
@@ -175,6 +177,26 @@ export class CategoriesService {
       page,
       pageSize,
     );
+  }
+
+  // Storefront main nav bar — top-level categories with their direct
+  // published children nested, so the nav can show a real dropdown only
+  // when a category actually has children (no children today = no dropdown,
+  // no placeholder chevron pointing at nothing).
+  async publicNavList(locale: Locale): Promise<PublicCategoryNavDto[]> {
+    const categories = await this.prisma.client.category.findMany({
+      where: { deletedAt: null, status: 'PUBLISHED', parentId: null },
+      include: {
+        translations: true,
+        children: {
+          where: { deletedAt: null, status: 'PUBLISHED' },
+          include: { translations: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return categories.map((c) => toPublicCategoryNavDto(c, locale));
   }
 
   async publicGetBySlug(

@@ -21,12 +21,14 @@ export * from "./components/Breadcrumb";
 export * from "./components/Header";
 export * from "./components/AnnouncementBar";
 export * from "./components/Nav";
+export * from "./components/MobileDrawer";
 export * from "./components/Footer";
 export * from "./components/CartDrawer";
-export * from "./components/MobileNavDrawer";
 
 export * from "./components/ProductCarouselSection";
 export * from "./components/CategoryCard";
+export * from "./components/FeaturedCategoriesSection";
+export * from "./components/TopSellingProductsSection";
 export * from "./components/CircleBadgeBar";
 export * from "./components/PromoVideoSection";
 export * from "./components/CertificationRow";
@@ -51,10 +53,9 @@ export * from "./components/CartCrossSellRow";
 export * from "./components/PaymentMethodSelector";
 export * from "./components/FaqAccordion";
 export * from "./components/BlogCard";
-export * from "./components/CollectionTabs";
-export * from "./components/PromoTile";
-export * from "./components/TabbedCollectionCarousel";
+export * from "./components/ProductStripSection";
 export * from "./components/AdBannerSection";
 
 export * from "./lib/link-component";
 export * from "./stores/cartDrawerStore";
+export * from "./stores/mobileNavDrawerStore";

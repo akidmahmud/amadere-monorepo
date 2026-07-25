@@ -15,8 +15,8 @@ const meta: Meta<typeof Header> = {
     accountLabel: "My Account",
     cartLabel: "Cart",
     localeSwitchLabel: "বাংলা",
-    mobileMenuLabel: "Menu",
     onLocaleSwitch: () => {},
+    mobileMenuLabel: "Menu",
   },
 };
 export default meta;
