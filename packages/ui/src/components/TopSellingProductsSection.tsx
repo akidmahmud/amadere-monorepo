@@ -3,6 +3,7 @@
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
 import { cn } from "../lib/cn";
+import { ProductCard } from "./ProductCard";
 
 export interface TopSellingProductItem {
   href: string;
@@ -53,9 +54,12 @@ const buyIcon = (
   </svg>
 );
 
-// Pixel-matched to amader-home-top.html's "Top Selling Products" section —
-// 2-col grid (1-col <=1024px), horizontal card (stacked <=768px), and all
-// spacing/radius/colors are literal values from that file.
+// Desktop/tablet (md+): pixel-matched to amader-home-top.html's "Top Selling
+// Products" section — 2-col grid (1-col <1024px) of the big horizontal card,
+// literal spacing/radius/colors from that file. Mobile (<768px): a deliberate
+// departure from the reference — a plain 2-column grid of the site's normal
+// ProductCard (image-top, compact) instead of the horizontal card, per
+// explicit user request rather than the reference's own single-column stack.
 export function TopSellingProductsSection({
   heading = "Top Selling Products",
   items,
@@ -74,11 +78,33 @@ export function TopSellingProductsSection({
   return (
     <section className="py-10 md:py-14">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <h2 className="mb-[22px] text-center font-header text-[1.3rem] font-extrabold tracking-[-0.01em] text-header-ink md:mb-[30px] md:text-[1.6rem]">
+        <h2 className="mb-[22px] text-center font-header text-[1.3rem] font-extrabold tracking-[-0.01em] text-[#227840] md:mb-[30px] md:text-[1.6rem]">
           {heading}
         </h2>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 md:hidden">
+          {items.map((item) => {
+            const hasDiscount = item.originalPrice != null && Number(item.originalPrice) > Number(item.price);
+            return (
+              <ProductCard
+                key={item.productId}
+                href={item.href}
+                name={item.name}
+                imageUrl={item.imageUrl}
+                price={item.price}
+                originalPrice={item.originalPrice}
+                discountLabel={hasDiscount ? saveLabel : item.showBadge ? bestBadgeLabel : undefined}
+                defaultPackValue={item.defaultPackValue}
+                onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
+                addToCartLabel={addToCartLabel}
+                addToCartPending={addToCartPendingId === item.productId}
+                linkComponent={Link}
+              />
+            );
+          })}
+        </div>
+
+        <div className="hidden grid-cols-1 gap-6 md:grid lg:grid-cols-2">
           {items.map((item) => {
             const hasDiscount = item.originalPrice != null && Number(item.originalPrice) > Number(item.price);
             const isAddingToCart = addToCartPendingId === item.productId;

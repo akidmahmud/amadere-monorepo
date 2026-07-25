@@ -48,7 +48,7 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
   return (
     <section className="pt-10 md:pt-14">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <h2 className="mb-[22px] text-center font-header text-[1.3rem] font-extrabold tracking-[-0.01em] text-header-ink md:mb-[30px] md:text-[1.6rem]">
+        <h2 className="mb-[22px] text-center font-header text-[1.3rem] font-extrabold tracking-[-0.01em] text-[#227840] md:mb-[30px] md:text-[1.6rem]">
           {heading}
         </h2>
 

@@ -194,7 +194,7 @@ export function Header({
     <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header", className)}>
       {/* ===== Mobile (<768px) — two rows + drawer, spec 5.2 ===== */}
       <div className="md:hidden">
-        <div className="grid h-14 grid-cols-[44px_1fr_44px] items-center px-4">
+        <div className="grid h-16 grid-cols-[44px_1fr_44px] items-center px-4">
           <button
             type="button"
             aria-label={mobileMenuLabel}
@@ -208,7 +208,7 @@ export function Header({
           <Link href={brandHref} className="col-start-2 flex items-center justify-self-center">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={brandMark} className="h-10 w-auto" />
+              <img src={logoUrl} alt={brandMark} className="h-12 w-auto" />
             ) : (
               <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
             )}
@@ -234,7 +234,7 @@ export function Header({
           Header height (81/87/87) and logo height (48px, uniform across all
           three tiers) are also remeasured from ghorerbazar.com. */}
       <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[81px] md:grid-cols-[auto_1fr_auto] lg:h-[87px] lg:gap-x-6 xl:gap-x-8">
-        <Link href={brandHref} className="flex h-12 shrink-0 items-center">
+        <Link href={brandHref} className="flex h-20 shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={brandMark} className="h-full w-auto" />

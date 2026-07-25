@@ -123,14 +123,14 @@ export function ProductStripSection({
     <section className="pt-10 md:pt-14">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
         <div className="mb-6 flex items-end justify-between gap-4 border-b border-header-line pb-3.5">
-          <h2 className="relative font-header text-[1.35rem] font-extrabold text-header-ink after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-['']">
+          <h2 className="relative font-header text-base font-extrabold text-[#227840] after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:text-[1.35rem]">
             {title}
           </h2>
           <Link
             href={viewAllHref}
-            className="inline-flex shrink-0 items-center gap-1.5 font-header text-[0.8rem] font-extrabold uppercase tracking-[0.04em] text-header-green hover:text-header-green-dark hover:underline"
+            className="inline-flex shrink-0 items-center gap-1.5 font-header text-[0.8rem] font-extrabold uppercase tracking-[0.04em] text-header-green hover:text-header-green-dark"
           >
-            {viewAllLabel}
+            <span className="underline">{viewAllLabel}</span>
             {viewAllIcon}
           </Link>
         </div>
@@ -171,7 +171,7 @@ export function ProductStripSection({
                     </span>
                   ) : null}
 
-                  <Link href={item.href} className="mb-3.5 flex h-40 items-center justify-center overflow-hidden md:h-[210px]">
+                  <Link href={item.href} className="mb-2.5 flex h-28 items-center justify-center overflow-hidden sm:mb-3.5 sm:h-40 md:h-[210px]">
                     {item.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.imageUrl} alt="" className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105" />
@@ -180,7 +180,12 @@ export function ProductStripSection({
                     )}
                   </Link>
 
-                  <h3 className="min-h-[2.6em] font-header text-[0.92rem] font-bold leading-[1.4] text-header-ink">
+                  {/* line-clamp-2 caps this regardless of length — these
+                      bilingual (Bangla + English) product names can run long
+                      enough to wrap 4+ lines in a narrow 2-per-row mobile
+                      card with nothing capping it, ballooning the whole card
+                      well past every other card in the row. */}
+                  <h3 className="line-clamp-2 min-h-[2.6em] overflow-hidden font-header text-[0.92rem] font-bold leading-[1.4] text-header-ink">
                     <Link href={item.href} className="hover:text-header-green">
                       {item.name}
                     </Link>

@@ -156,8 +156,10 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
             // ratio (height × 2.5 ≈ 972px, matching the slider's own width)
             // instead of stretching to the track, and grid doesn't clip an
             // item that's wider than its own column, so it visibly overflowed
-            // past the 400px track into the page's right margin.
-            const bannerClass = cn("relative block w-full overflow-hidden bg-[#dfe8d9] lg:h-full", sliderAspect, bannerRadius);
+            // past the 400px track into the page's right margin. Hidden below
+            // lg entirely (not just stacked) — per explicit user request, the
+            // side banner shouldn't show on mobile at all, not even below the slider.
+            const bannerClass = cn("relative hidden w-full overflow-hidden bg-[#dfe8d9] lg:block lg:h-full", sliderAspect, bannerRadius);
             return stripLinkUrl ? (
               <Link href={stripLinkUrl} className={bannerClass}>
                 {bannerImg}
@@ -167,7 +169,7 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
             );
           })()
         ) : (
-          <div className={cn("relative w-full overflow-hidden bg-[#dfe8d9] lg:h-full", sliderAspect, bannerRadius)}>
+          <div className={cn("relative hidden w-full overflow-hidden bg-[#dfe8d9] lg:block lg:h-full", sliderAspect, bannerRadius)}>
             <EmptySlot label="Add a side banner" />
           </div>
         )}
