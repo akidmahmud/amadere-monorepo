@@ -62,6 +62,7 @@ export function HealthConcernSection({
         }}
         addToCartPendingHref={isAdding ? products.find((p) => p.productId === pendingProductId)?.href : undefined}
         linkComponent={Link}
+        autoplayMs={4000}
       />
     </div>
   );

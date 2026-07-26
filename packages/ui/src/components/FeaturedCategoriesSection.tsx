@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 
 export interface FeaturedCategoryItem {
@@ -42,6 +42,20 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
   function scrollBy(delta: number) {
     trackRef.current?.scrollBy({ left: delta, behavior: "smooth" });
   }
+
+  // Auto-advances every 4s, looping back to the start once scrolled to the
+  // end — skips the tick entirely when everything already fits (no real
+  // overflow to scroll through).
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const track = trackRef.current;
+      if (!track || track.scrollWidth <= track.clientWidth + 4) return;
+      const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      if (atEnd) track.scrollTo({ left: 0, behavior: "smooth" });
+      else scrollBy(SCROLL_STEP);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (items.length === 0) return null;
 

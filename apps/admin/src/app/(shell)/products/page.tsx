@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TableSkeleton } from "@amader/admin-ui";
 import { useProducts, useProductStats, type AdminProductFilters } from "@/hooks/useProducts";
 import { ProductStatsStrip } from "@/components/products/ProductStatsStrip";
 import { ProductFilters } from "@/components/products/ProductFilters";
@@ -20,7 +21,7 @@ export default function ProductsPage() {
       <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[210px_1fr] lg:items-start">
         <ProductFilters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} />
         {!data ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <TableSkeleton />
         ) : (
           <ProductsTable products={data.items ?? []} total={data.total ?? 0} filters={filters} onFiltersChange={setFilters} />
         )}

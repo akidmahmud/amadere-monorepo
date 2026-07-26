@@ -117,6 +117,22 @@ export function ProductStripSection({
     trackRef.current?.scrollBy({ left: delta * (trackRef.current?.clientWidth ?? 0), behavior: "smooth" });
   }
 
+  // Auto-advances one page every 4.5s once there's more than one page,
+  // looping back to the start at the end — reads scrollLeft directly rather
+  // than the activePage state, so this doesn't need to re-subscribe on every
+  // page change.
+  useEffect(() => {
+    if (pageCount <= 1) return;
+    const timer = setInterval(() => {
+      const track = trackRef.current;
+      if (!track) return;
+      const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      if (atEnd) track.scrollTo({ left: 0, behavior: "smooth" });
+      else scrollByPage(1);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [pageCount]);
+
   if (items.length === 0) return null;
 
   return (
@@ -161,15 +177,16 @@ export function ProductStripSection({
                   key={item.productId}
                   className="relative flex min-w-[170px] flex-none basis-[calc((100%-20px)/2)] snap-start flex-col rounded-xl border border-header-line bg-white p-3.5 pb-4 transition-[box-shadow,border-color] duration-200 hover:border-header-green hover:shadow-[0_10px_24px_rgba(33,113,61,.13)] sm:basis-[calc((100%-40px)/3)] lg:basis-[calc((100%-60px)/4)] xl:basis-[calc((100%-80px)/5)]"
                 >
-                  {item.isFeatured ? (
-                    <span className="absolute left-3 top-3 z-[2] rounded-md bg-gold px-2.5 py-1.5 text-[0.66rem] font-extrabold text-[#3d3410]">
-                      {bestBadgeLabel}
-                    </span>
-                  ) : hasDiscount ? (
-                    <span className="absolute right-3 top-3 z-[2] rounded-md bg-header-green px-2.5 py-1.5 text-[0.66rem] font-extrabold text-white">
+                  {hasDiscount && (
+                    <span className="absolute left-3 top-3 z-[2] rounded-md bg-header-green px-2.5 py-1.5 text-[0.66rem] font-extrabold text-white">
                       Save {savePercent}%
                     </span>
-                  ) : null}
+                  )}
+                  {item.isFeatured && (
+                    <span className="absolute right-3 top-3 z-[2] rounded-md bg-[#e6342e] px-2.5 py-1.5 text-[0.66rem] font-extrabold text-white">
+                      {bestBadgeLabel}
+                    </span>
+                  )}
 
                   <Link href={item.href} className="mb-2.5 flex h-28 items-center justify-center overflow-hidden sm:mb-3.5 sm:h-40 md:h-[210px]">
                     {item.imageUrl ? (

@@ -18,6 +18,7 @@ export default function NewCategoryPage() {
   const [parentId, setParentId] = useState<number | undefined>();
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [iconUrl, setIconUrl] = useState<string | undefined>();
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | undefined>();
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [isFeatured, setIsFeatured] = useState(false);
   const create = useCreateCategory();
@@ -29,6 +30,7 @@ export default function NewCategoryPage() {
       parentId,
       imageUrl,
       iconUrl,
+      bannerImageUrl,
       isFeatured,
       sortOrder: 0,
       status,
@@ -87,6 +89,11 @@ export default function NewCategoryPage() {
         </label>
         <MediaPicker value={imageUrl} onChange={setImageUrl} label="Image" />
         <MediaPicker value={iconUrl} onChange={setIconUrl} label="Icon" />
+        <MediaPicker
+          value={bannerImageUrl}
+          onChange={setBannerImageUrl}
+          label="Banner image (shown at the top of this category's storefront page)"
+        />
         <StatusSelect value={status} onChange={setStatus} />
         <label className="flex items-center gap-2 text-sm text-text">
           <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />

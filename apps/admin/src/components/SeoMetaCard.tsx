@@ -11,7 +11,26 @@ const EMPTY_FORM = { title: "", description: "", canonicalUrl: "", robots: "inde
 // Same fields as the standalone /seo-meta lookup page, but scoped to a known
 // entity (dropped straight into the product/category/blog-post edit pages)
 // so nobody has to go find the entity's numeric ID and type it in by hand.
-export function SeoMetaCard({ entityType, entityId }: { entityType: SeoEntityType; entityId: number }) {
+//
+// `slug`/`previewPath`/`fallback*` are optional — the live Google-SERP-style
+// preview box (same pattern as ProductSeoTab's dedicated one) only renders
+// when a slug is passed, so the generic /seo-meta lookup page (which has no
+// single known entity to preview) is unaffected.
+export function SeoMetaCard({
+  entityType,
+  entityId,
+  slug,
+  previewPath,
+  fallbackTitle,
+  fallbackDescription,
+}: {
+  entityType: SeoEntityType;
+  entityId: number;
+  slug?: string;
+  previewPath?: string;
+  fallbackTitle?: string;
+  fallbackDescription?: string;
+}) {
   const [locale, setLocale] = useState<"EN" | "BN">("EN");
   const [form, setForm] = useState(EMPTY_FORM);
   // Tracked locally rather than read straight off query.data: react-query
@@ -60,8 +79,28 @@ export function SeoMetaCard({ entityType, entityId }: { entityType: SeoEntityTyp
     setExists(true);
   }
 
+  const effectiveTitle = form.title || fallbackTitle || "";
+  const effectiveDescription = form.description || fallbackDescription || "";
+  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
+
   return (
     <Card className="flex max-w-2xl flex-col gap-4">
+      {slug && previewPath && (
+        <div>
+          <h3 className="mb-3 font-ui text-sm font-bold text-text">SEO Preview</h3>
+          <div className="rounded-[10px] border border-border p-[14px_15px]">
+            <div className="text-[0.92rem] font-bold leading-snug text-[#1a5fd0]">{effectiveTitle || "Untitled"}</div>
+            <div className="mt-1.5 break-all text-[0.7rem] font-semibold text-[#1a8a4a]">
+              {storefrontUrl}
+              {previewPath}/{slug}
+            </div>
+            <div className="mt-1.5 text-[0.73rem] leading-relaxed text-muted">
+              {effectiveDescription || "No description set yet — the storefront will fall back to the page's own content."}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h3 className="font-ui text-sm font-bold text-text">SEO</h3>
         <select

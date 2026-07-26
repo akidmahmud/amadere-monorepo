@@ -191,7 +191,11 @@ export function Header({
   const desktopActionLabelClass = "hidden font-header text-[11px] font-semibold xl:inline";
 
   return (
-    <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header", className)}>
+    // Sticky only on mobile (no separate Nav bar exists there to take over
+    // the job) — at md+, Nav.tsx becomes the sticky element instead, so
+    // scrolling shows just the slim category bar, not this whole
+    // logo/search/actions row, per explicit user request.
+    <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header md:static", className)}>
       {/* ===== Mobile (<768px) — two rows + drawer, spec 5.2 ===== */}
       <div className="md:hidden">
         <div className="grid h-16 grid-cols-[44px_1fr_44px] items-center px-4">

@@ -18,20 +18,23 @@ export const revalidate = 3600;
 
 type PublicBlogPostDetailDto = components["schemas"]["PublicBlogPostDetailDto"];
 
-async function getPost(slug: string, locale: string) {
+async function getPost(slug: string, locale: string, previewToken?: string) {
   const res = await safeGet("/api/v1/blog-posts/{slug}", {
-    params: { path: { slug }, query: { locale } },
+    params: { path: { slug }, query: { locale, previewToken } },
   });
   return res.data as PublicBlogPostDetailDto | undefined;
 }
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; slug: string }>;
+  searchParams: Promise<{ previewToken?: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const post = await getPost(slug, toApiLocale(locale));
+  const { previewToken } = await searchParams;
+  const post = await getPost(slug, toApiLocale(locale), previewToken);
   if (!post) {
     // Not just future slug-rename hygiene: the old site's blog *category*
     // links were bare `/blog/{slug}` (same shape as this article route),
@@ -56,14 +59,17 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; slug: string }>;
+  searchParams: Promise<{ previewToken?: string }>;
 }) {
   const { locale, slug } = await params;
+  const { previewToken } = await searchParams;
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
 
-  const post = await getPost(slug, localeParam);
+  const post = await getPost(slug, localeParam, previewToken);
   if (!post) {
     await redirectIfMapped(`/blog/${slug}`, locale);
     notFound();
@@ -74,6 +80,11 @@ export default async function BlogPostPage({
 
   return (
     <main className="flex-1">
+      {previewToken && (
+        <div className="sticky top-0 z-50 bg-[#7c3aed] py-2 text-center font-ui text-xs font-bold text-white">
+          Preview mode — this post is not published yet
+        </div>
+      )}
       {post.structuredData.map((item, i) => (
         // eslint-disable-next-line react/no-danger
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }} />

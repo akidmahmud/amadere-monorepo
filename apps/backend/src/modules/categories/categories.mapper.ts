@@ -23,6 +23,7 @@ export class AdminCategoryDto {
   parentId!: number | null;
   imageUrl!: string | null;
   iconUrl!: string | null;
+  bannerImageUrl!: string | null;
   isFeatured!: boolean;
   sortOrder!: number;
   status!: ContentStatus;
@@ -40,6 +41,7 @@ export function toAdminCategoryDto(
     parentId: category.parentId,
     imageUrl: category.imageUrl,
     iconUrl: category.iconUrl,
+    bannerImageUrl: category.bannerImageUrl,
     isFeatured: category.isFeatured,
     sortOrder: category.sortOrder,
     status: category.status,
@@ -58,6 +60,7 @@ export class PublicCategoryDto {
   parentId!: number | null;
   imageUrl!: string | null;
   iconUrl!: string | null;
+  bannerImageUrl!: string | null;
   isFeatured!: boolean;
   name!: string;
   description!: string | null;
@@ -77,6 +80,7 @@ export function toPublicCategoryDto(
     parentId: category.parentId,
     imageUrl: category.imageUrl,
     iconUrl: category.iconUrl,
+    bannerImageUrl: category.bannerImageUrl,
     isFeatured: category.isFeatured,
     name: translation?.name ?? category.slug,
     description: translation?.description ?? null,

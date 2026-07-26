@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
-import { Cart, Locale } from '@amader/db';
+import { Cart, Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from './pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
@@ -429,23 +429,61 @@ export class CartService {
     });
 
     const seen = new Set<number>();
-    return relations
+    const mapped = relations
       .filter((r) => !productIds.includes(r.toProductId))
       .filter((r) =>
         seen.has(r.toProductId) ? false : (seen.add(r.toProductId), true),
       )
-      .map((r) => {
-        const translation =
-          r.toProduct.translations.find((t) => t.locale === locale) ??
-          r.toProduct.translations[0];
-        return {
-          id: r.toProduct.id,
-          slug: r.toProduct.slug,
-          name: translation?.name ?? r.toProduct.slug,
-          price: r.toProduct.price?.toString() ?? null,
-          imageUrl: r.toProduct.media[0]?.media.url ?? null,
-        };
-      });
+      .map((r) => this.toCrossSellCard(r.toProduct, locale));
+    if (mapped.length > 0) return mapped;
+
+    // No admin-configured CROSS_SELL relation for anything in the cart —
+    // rather than show nothing, fall back to other published products from
+    // the same category(ies) as what's already in the cart.
+    const categoryIds = (
+      await this.prisma.client.productCategory.findMany({
+        where: { productId: { in: productIds } },
+        select: { categoryId: true },
+      })
+    ).map((c) => c.categoryId);
+    if (categoryIds.length === 0) return [];
+
+    const categoryProducts = await this.prisma.client.product.findMany({
+      where: {
+        deletedAt: null,
+        status: 'PUBLISHED',
+        id: { notIn: productIds },
+        categories: { some: { categoryId: { in: categoryIds } } },
+      },
+      include: {
+        translations: true,
+        media: { where: { isPrimary: true }, include: { media: true }, take: 1 },
+      },
+      distinct: ['id'],
+      take: 8,
+    });
+    return categoryProducts.map((p) => this.toCrossSellCard(p, locale));
+  }
+
+  private toCrossSellCard(
+    product: {
+      id: number;
+      slug: string;
+      price: Prisma.Decimal | null;
+      translations: { locale: Locale; name: string }[];
+      media: { media: { url: string } }[];
+    },
+    locale: Locale,
+  ) {
+    const translation =
+      product.translations.find((t) => t.locale === locale) ?? product.translations[0];
+    return {
+      id: product.id,
+      slug: product.slug,
+      name: translation?.name ?? product.slug,
+      price: product.price?.toString() ?? null,
+      imageUrl: product.media[0]?.media.url ?? null,
+    };
   }
 
   private emptyView(identity: CartIdentity) {

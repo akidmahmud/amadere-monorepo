@@ -44,6 +44,10 @@ export interface ProductListingProps {
   tags: ProductListingTag[];
   /** Price bounds across this listing's full (unfiltered) product set — omitted (no slider) if there's nothing to range over. */
   priceBounds?: { min: number; max: number };
+  /** Category pages now show their own real banner (admin-uploaded) above
+   * this listing — skip the decorative placeholder there so the page
+   * doesn't show two gray boxes, one real and one dead. */
+  hidePlaceholderBanner?: boolean;
 }
 
 export function ProductListing({
@@ -55,6 +59,7 @@ export function ProductListing({
   categories,
   tags,
   priceBounds,
+  hidePlaceholderBanner,
 }: ProductListingProps) {
   const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -103,7 +108,7 @@ export function ProductListing({
 
   return (
     <div className="mx-auto max-w-[1180px] px-5">
-      <PlaceholderBanner variant="shopban" className="my-5.5" />
+      {!hidePlaceholderBanner && <PlaceholderBanner variant="shopban" className="my-5.5" />}
 
       <div className="flex items-center gap-9 py-2 font-ui text-sm font-medium">
         <button

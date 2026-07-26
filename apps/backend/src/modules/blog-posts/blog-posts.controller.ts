@@ -37,11 +37,13 @@ export class BlogPostsController {
 
   @Get('blog-posts/:slug')
   @ApiOkResponse({ type: PublicBlogPostDetailDto })
+  @ApiQuery({ name: 'previewToken', required: false })
   getBySlug(
     @Param('slug') slug: string,
     @Query() { locale }: LocaleQueryDto,
+    @Query('previewToken') previewToken?: string,
   ): Promise<PublicBlogPostDetailDto> {
-    return this.posts.publicGetBySlug(slug, locale ?? 'EN');
+    return this.posts.publicGetBySlug(slug, locale ?? 'EN', previewToken);
   }
 
   @Get('blog-authors/:id')

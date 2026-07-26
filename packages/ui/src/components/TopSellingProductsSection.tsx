@@ -116,7 +116,7 @@ export function TopSellingProductsSection({
                 className="group relative flex min-h-0 flex-col gap-4 rounded-[14px] border border-transparent bg-white p-6 shadow-[0_3px_14px_rgba(30,43,34,.06)] transition-[box-shadow,border-color] duration-200 hover:border-header-green hover:shadow-[0_10px_26px_rgba(33,113,61,.14)] md:min-h-[300px] md:flex-row md:items-center md:gap-6"
               >
                 {item.showBadge && (
-                  <span className="absolute right-3 top-3 z-[2] inline-flex items-center gap-1.5 rounded-full bg-gold px-[13px] py-1.5 text-[0.7rem] font-extrabold text-[#3d3410] md:right-3.5 md:top-3.5">
+                  <span className="absolute right-3 top-3 z-[2] inline-flex items-center gap-1.5 rounded-full bg-[#e6342e] px-[13px] py-1.5 text-[0.7rem] font-extrabold text-white md:right-3.5 md:top-3.5">
                     {badgeIcon}
                     {bestBadgeLabel}
                   </span>

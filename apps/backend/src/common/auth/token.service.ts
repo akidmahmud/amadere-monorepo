@@ -5,6 +5,7 @@ import {
   AdminAccessPayload,
   AdminRefreshPayload,
   AdminTwoFactorPendingPayload,
+  BlogPreviewPayload,
   CustomerAccessPayload,
   CustomerRefreshPayload,
   TokenPair,
@@ -13,6 +14,10 @@ import {
 const ACCESS_EXPIRES_IN = '15m';
 const REFRESH_EXPIRES_IN = '30d';
 const TWO_FACTOR_PENDING_EXPIRES_IN = '5m';
+// Long enough that an admin reviewing a draft over a day or two doesn't have
+// to keep re-generating the link, short enough that an old preview link
+// doesn't stay a permanent, unlisted way to view unpublished content.
+const BLOG_PREVIEW_EXPIRES_IN = '7d';
 
 @Injectable()
 export class TokenService {
@@ -126,6 +131,24 @@ export class TokenService {
       token,
       'CUSTOMER_JWT_REFRESH_SECRET',
       'refresh',
+    );
+  }
+
+  async signBlogPreviewToken(postId: number): Promise<string> {
+    return this.jwt.signAsync(
+      { postId, tokenType: 'blog_preview' } satisfies BlogPreviewPayload,
+      {
+        secret: this.config.getOrThrow('ADMIN_JWT_ACCESS_SECRET'),
+        expiresIn: BLOG_PREVIEW_EXPIRES_IN,
+      },
+    );
+  }
+
+  async verifyBlogPreviewToken(token: string): Promise<BlogPreviewPayload> {
+    return this.verify<BlogPreviewPayload>(
+      token,
+      'ADMIN_JWT_ACCESS_SECRET',
+      'blog_preview',
     );
   }
 

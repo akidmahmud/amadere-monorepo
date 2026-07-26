@@ -33,6 +33,11 @@ export class CreateCategoryDto {
   @IsString()
   iconUrl?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bannerImageUrl?: string;
+
   @ApiPropertyOptional({ default: false })
   @IsOptional()
   @IsBoolean()

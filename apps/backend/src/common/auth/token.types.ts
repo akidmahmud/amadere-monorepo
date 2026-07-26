@@ -23,6 +23,11 @@ export interface CustomerRefreshPayload {
   tokenType: 'refresh';
 }
 
+export interface BlogPreviewPayload {
+  postId: number;
+  tokenType: 'blog_preview';
+}
+
 export class TokenPair {
   accessToken!: string;
   refreshToken!: string;

@@ -3,10 +3,18 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@amader/admin-ui";
+import { Button, FormSkeleton, Tabs } from "@amader/admin-ui";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
-import { useArchiveBlogPost, useBlogPost, usePublishBlogPost, useSubmitBlogPost, useUpdateBlogPost } from "@/hooks/useBlogPosts";
+import {
+  useArchiveBlogPost,
+  useBlogPost,
+  useGenerateBlogPreviewToken,
+  usePublishBlogPost,
+  useSubmitBlogPost,
+  useUpdateBlogPost,
+} from "@/hooks/useBlogPosts";
 import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
+import { RevisionHistoryTable } from "@/components/blog/RevisionHistoryTable";
 
 const STATUS_PILL: Record<string, string> = {
   PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
@@ -24,6 +32,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const submit = useSubmitBlogPost();
   const publish = usePublishBlogPost();
   const archive = useArchiveBlogPost();
+  const previewToken = useGenerateBlogPreviewToken();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -34,6 +43,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const [isFeatured, setIsFeatured] = useState(false);
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<"detail" | "revisions">("detail");
 
   useEffect(() => {
     if (!post) return;
@@ -64,7 +74,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     router.push("/blog-posts");
   }
 
-  if (isLoading || !post) return <p className="text-sm text-muted">Loading…</p>;
+  if (isLoading || !post) return <FormSkeleton />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,6 +105,23 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           )}
         </div>
         <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={previewToken.isPending}
+            onClick={() => {
+              const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
+              previewToken.mutate(postId, {
+                onSuccess: ({ token }) => {
+                  // Uses the saved post's slug, not the (possibly unsaved)
+                  // form field — preview shows what's actually persisted.
+                  window.open(`${storefrontUrl}/blog/${post.slug}?previewToken=${token}`, "_blank", "noopener,noreferrer");
+                },
+              });
+            }}
+          >
+            {previewToken.isPending ? "Preparing…" : "Preview"}
+          </Button>
           <a
             href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
             target="_blank"
@@ -108,32 +135,54 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           </Button>
         </div>
       </div>
-
-      <BlogPostFormFields
-        title={title}
-        setTitle={setTitle}
-        slug={slug}
-        setSlug={setSlug}
-        excerpt={excerpt}
-        setExcerpt={setExcerpt}
-        content={content}
-        setContent={setContent}
-        metaDescription={metaDescription}
-        setMetaDescription={setMetaDescription}
-        imageUrl={imageUrl}
-        setImageUrl={setImageUrl}
-        isFeatured={isFeatured}
-        setIsFeatured={setIsFeatured}
-        categoryIds={categoryIds}
-        setCategoryIds={setCategoryIds}
-        tagIds={tagIds}
-        setTagIds={setTagIds}
-        statusLabel={post.status.charAt(0) + post.status.slice(1).toLowerCase()}
-        statusPillClass={STATUS_PILL[post.status]}
-      />
       </form>
 
-      <SeoMetaCard entityType="BLOG_POST" entityId={postId} />
+      <Tabs
+        options={[
+          { value: "detail", label: "Detail" },
+          { value: "revisions", label: "Revision History" },
+        ]}
+        value={activeTab}
+        onChange={(v) => setActiveTab(v as "detail" | "revisions")}
+      />
+
+      {activeTab === "detail" ? (
+        <>
+          <BlogPostFormFields
+            title={title}
+            setTitle={setTitle}
+            slug={slug}
+            setSlug={setSlug}
+            excerpt={excerpt}
+            setExcerpt={setExcerpt}
+            content={content}
+            setContent={setContent}
+            metaDescription={metaDescription}
+            setMetaDescription={setMetaDescription}
+            imageUrl={imageUrl}
+            setImageUrl={setImageUrl}
+            isFeatured={isFeatured}
+            setIsFeatured={setIsFeatured}
+            categoryIds={categoryIds}
+            setCategoryIds={setCategoryIds}
+            tagIds={tagIds}
+            setTagIds={setTagIds}
+            statusLabel={post.status.charAt(0) + post.status.slice(1).toLowerCase()}
+            statusPillClass={STATUS_PILL[post.status]}
+          />
+
+          <SeoMetaCard
+            entityType="BLOG_POST"
+            entityId={postId}
+            slug={slug}
+            previewPath="/blog"
+            fallbackTitle={title}
+            fallbackDescription={excerpt || metaDescription}
+          />
+        </>
+      ) : (
+        <RevisionHistoryTable postId={postId} />
+      )}
     </div>
   );
 }

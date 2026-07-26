@@ -22,7 +22,10 @@ export function WhatsappFloatingButton({ config }: { config: WhatsappConfig | nu
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105"
+      // Stacked above BackToTopButton (packages/ui's `bottom-[18px]/[26px]`,
+      // up to 46px tall) instead of sharing the same bottom-right corner —
+      // 92px clears its tallest (desktop) span with room to spare.
+      className="fixed bottom-[92px] right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105"
       aria-label="Chat with us on WhatsApp"
       title="Chat with us on WhatsApp"
     >

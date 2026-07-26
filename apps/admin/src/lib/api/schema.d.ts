@@ -2836,6 +2836,38 @@ export interface paths {
         patch: operations["AdminBlogPostsController_update"];
         trace?: never;
     };
+    "/api/v1/admin/blog-posts/{id}/preview-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminBlogPostsController_previewToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/blog-posts/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_revisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/blog-posts/{id}/submit": {
         parameters: {
             query?: never;
@@ -4928,6 +4960,7 @@ export interface components {
             parentId: number | null;
             imageUrl: string | null;
             iconUrl: string | null;
+            bannerImageUrl: string | null;
             isFeatured: boolean;
             name: string;
             description: string | null;
@@ -4950,6 +4983,7 @@ export interface components {
             parentId: number | null;
             imageUrl: string | null;
             iconUrl: string | null;
+            bannerImageUrl: string | null;
             isFeatured: boolean;
             name: string;
             description: string | null;
@@ -4967,6 +5001,7 @@ export interface components {
             parentId: number | null;
             imageUrl: string | null;
             iconUrl: string | null;
+            bannerImageUrl: string | null;
             isFeatured: boolean;
             sortOrder: number;
             status: Record<string, never>;
@@ -4978,6 +5013,7 @@ export interface components {
             parentId?: number;
             imageUrl?: string;
             iconUrl?: string;
+            bannerImageUrl?: string;
             /** @default false */
             isFeatured: boolean;
             /** @default 0 */
@@ -4994,6 +5030,7 @@ export interface components {
             parentId?: number;
             imageUrl?: string;
             iconUrl?: string;
+            bannerImageUrl?: string;
             /** @default false */
             isFeatured: boolean;
             /** @default 0 */
@@ -6653,6 +6690,15 @@ export interface components {
             categoryIds?: number[];
             tagIds?: number[];
             translations?: components["schemas"]["BlogPostTranslationDto"][];
+        };
+        BlogPostRevisionDto: {
+            id: number;
+            field: string;
+            before: string | null;
+            after: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            author: string | null;
         };
         LinkSuggestion: Record<string, never>;
         PublicPageDetailDto: {
@@ -13119,6 +13165,7 @@ export interface operations {
         parameters: {
             query?: {
                 locale?: "EN" | "BN";
+                previewToken?: string;
             };
             header?: never;
             path: {
@@ -13305,6 +13352,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminBlogPostDto"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_previewToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBlogPostsController_revisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPostRevisionDto"][];
                 };
             };
         };

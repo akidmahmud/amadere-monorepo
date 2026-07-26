@@ -9,6 +9,8 @@ import type { components } from "@/lib/api/schema";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { isFilteredView, parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
+import { sanitizeHtml } from "@/lib/sanitize-html";
+import { toDisplayImageUrl } from "@/lib/media";
 import { ProductListing } from "@/components/ProductListing";
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
@@ -99,10 +101,27 @@ export default async function CategoryPage({
     <main className="flex-1">
       <div className="mx-auto max-w-[1180px] px-5 pt-9">
         <SectionHeading>{category.name}</SectionHeading>
+
+        {toDisplayImageUrl(category.bannerImageUrl) && (
+          <img
+            src={toDisplayImageUrl(category.bannerImageUrl)}
+            alt={category.name}
+            className="-mt-4 mb-6 aspect-[1180/300] w-full rounded-brand object-cover"
+          />
+        )}
+
         {category.description && (
-          <p className="mx-auto -mt-4 mb-6 max-w-2xl text-center font-body text-sm text-muted">
-            {category.description}
-          </p>
+          // Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text —
+          // was rendering as literal "<p><strong>..." markup on the storefront
+          // because {category.description} let React escape it instead of
+          // parsing it. Sanitized the same way blog post content already is.
+          // Left-aligned (not centered) — natural paragraph reading, not a
+          // centered block of short justified-looking lines.
+          // eslint-disable-next-line react/no-danger
+          <div
+            className="prose prose-sm mb-6 max-w-2xl text-left font-body text-sm text-muted [&_a]:text-green [&_a]:underline [&_p]:mb-2"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(category.description) }}
+          />
         )}
       </div>
       <ProductListing
@@ -112,6 +131,7 @@ export default async function CategoryPage({
         pageSize={PAGE_SIZE}
         products={products}
         tags={tags}
+        hidePlaceholderBanner
       />
     </main>
   );

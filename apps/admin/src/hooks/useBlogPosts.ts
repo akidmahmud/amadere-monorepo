@@ -59,6 +59,16 @@ export function useBlogPost(id: number) {
   });
 }
 
+export type BlogPostRevision = components["schemas"]["BlogPostRevisionDto"];
+
+export function useBlogPostRevisions(id: number) {
+  return useQuery({
+    queryKey: [...KEY, "revisions", id],
+    queryFn: () => proxyFetch<BlogPostRevision[]>(`/admin/blog-posts/${id}/revisions`),
+    enabled: Number.isFinite(id),
+  });
+}
+
 export function useCreateBlogPost() {
   const qc = useQueryClient();
   return useMutation({
@@ -98,3 +108,9 @@ function useWorkflowAction(action: "submit" | "publish" | "archive") {
 export const useSubmitBlogPost = () => useWorkflowAction("submit");
 export const usePublishBlogPost = () => useWorkflowAction("publish");
 export const useArchiveBlogPost = () => useWorkflowAction("archive");
+
+export function useGenerateBlogPreviewToken() {
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<{ token: string }>(`/admin/blog-posts/${id}/preview-token`, { method: "POST" }),
+  });
+}

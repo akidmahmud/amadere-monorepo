@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Skeleton } from "@amader/admin-ui";
 import { useBlogPosts, useBlogPostStats, useDeleteBlogPost, type BlogPostFilters } from "@/hooks/useBlogPosts";
 import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
@@ -107,13 +108,14 @@ export default function BlogPostsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={7} className="px-2.5 py-8 text-center text-sm text-muted">
-                    Loading…
-                  </td>
-                </tr>
-              )}
+              {isLoading &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={7} className="px-2.5 py-2.5">
+                      <Skeleton className="h-8 w-full" />
+                    </td>
+                  </tr>
+                ))}
               {!isLoading && posts.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-2.5 py-8 text-center text-sm text-muted">

@@ -159,7 +159,7 @@ function renderSection(
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "Our Range of Categories"}</SectionHeading>
-          <Carousel>
+          <Carousel autoplayMs={4000}>
             {selected.map((category) => (
               <CategoryCard
                 key={category.id}
@@ -379,6 +379,7 @@ export default async function Home({
             viewAllHref="/combos"
             viewAllLabel="View All"
             linkComponent={AppLink}
+            autoplayMs={4000}
           />
         </div>
       )}

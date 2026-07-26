@@ -239,7 +239,7 @@ export function Nav({ allProductsHref, allProductsLabel, items, activeHref, link
   }
 
   return (
-    <nav className={cn("hidden bg-header-green md:block", className)}>
+    <nav className={cn("hidden bg-header-green md:sticky md:top-0 md:z-40 md:block", className)}>
       <div ref={containerRef} className="relative mx-auto flex h-[52px] w-full max-w-[1440px] items-stretch px-6">
         {visible.map((item) => renderItem(item))}
         {overflowed.length > 0 && (

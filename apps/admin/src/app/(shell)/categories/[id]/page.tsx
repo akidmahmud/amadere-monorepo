@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
+import { Button, Card, FormSkeleton } from "@amader/admin-ui";
 import { MediaPicker } from "@/components/MediaPicker";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
 import { StatusSelect } from "@/components/StatusSelect";
@@ -24,6 +24,7 @@ export default function EditCategoryPage({ params }: { params: Promise<{ id: str
   const [parentId, setParentId] = useState<number | undefined>();
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [iconUrl, setIconUrl] = useState<string | undefined>();
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | undefined>();
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [isFeatured, setIsFeatured] = useState(false);
 
@@ -35,6 +36,7 @@ export default function EditCategoryPage({ params }: { params: Promise<{ id: str
     setParentId(category.parentId ?? undefined);
     setImageUrl(category.imageUrl ?? undefined);
     setIconUrl(category.iconUrl ?? undefined);
+    setBannerImageUrl(category.bannerImageUrl ?? undefined);
     setStatus(category.status);
     setIsFeatured(category.isFeatured);
   }, [category]);
@@ -46,6 +48,7 @@ export default function EditCategoryPage({ params }: { params: Promise<{ id: str
       parentId,
       imageUrl,
       iconUrl,
+      bannerImageUrl,
       isFeatured,
       status,
       translations: [
@@ -56,7 +59,7 @@ export default function EditCategoryPage({ params }: { params: Promise<{ id: str
     router.push("/categories");
   }
 
-  if (isLoading || !category) return <p className="text-sm text-muted">Loading…</p>;
+  if (isLoading || !category) return <FormSkeleton />;
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,6 +111,11 @@ export default function EditCategoryPage({ params }: { params: Promise<{ id: str
           </label>
           <MediaPicker value={imageUrl} onChange={setImageUrl} label="Image" />
           <MediaPicker value={iconUrl} onChange={setIconUrl} label="Icon" />
+          <MediaPicker
+            value={bannerImageUrl}
+            onChange={setBannerImageUrl}
+            label="Banner image (shown at the top of this category's storefront page)"
+          />
           <StatusSelect value={status} onChange={setStatus} />
           <label className="flex items-center gap-2 text-sm text-text">
             <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />

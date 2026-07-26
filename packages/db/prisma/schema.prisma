@@ -151,6 +151,7 @@ model AdminUser {
   loginHistory     AdminLoginHistory[]
   auditLogs        AuditLog[]
   blogPosts        BlogPost[]
+  blogPostRevisions BlogPostRevision[]
   customerNotes    CustomerNote[]
   customerCallLogs CustomerCallLog[]
   assignedCustomers Customer[] @relation("CustomerAssignedAdmin")
@@ -499,6 +500,11 @@ model Category {
   parentId   Int?          @map("parent_id")
   imageUrl   String?       @map("image_url")
   iconUrl    String?       @map("icon_url")
+  // Wide banner shown at the top of this category's storefront page —
+  // deliberately separate from `imageUrl` (used elsewhere as a small square
+  // tile thumbnail, e.g. FeaturedCategoriesSection) since the two have very
+  // different aspect ratios and purposes.
+  bannerImageUrl String? @map("banner_image_url")
   isFeatured Boolean       @default(false) @map("is_featured")
   sortOrder  Int           @default(0) @map("sort_order")
   status     ContentStatus @default(DRAFT)
@@ -708,6 +714,11 @@ model Product {
   collections    CollectionProduct[]
 
   @@index([status])
+  // The admin list query always filters deletedAt (soft-delete) and always
+  // sorts by createdAt desc (plus an optional createdAt range filter) — this
+  // composite index lets Postgres satisfy the filter and the sort/range from
+  // the same index scan instead of a sequential scan + separate sort.
+  @@index([deletedAt, createdAt])
   @@map("products")
 }
 
@@ -1447,6 +1458,7 @@ model BlogPost {
   translations BlogPostTranslation[]
   categories   BlogPostCategory[]
   tags         BlogPostTag[]
+  revisions    BlogPostRevision[]
 
   @@map("blog_posts")
 }
@@ -1468,6 +1480,26 @@ model BlogPostTranslation {
 
   @@unique([postId, locale])
   @@map("blog_post_translations")
+}
+
+// One row per changed field per save (matches the reference CMS's revision
+// table: author, column, before/after, timestamp) — not a full snapshot per
+// save, since most saves only touch a couple of fields and a flat per-field
+// log is what the diff-table UI actually needs.
+model BlogPostRevision {
+  id          Int      @id @default(autoincrement())
+  postId      Int      @map("post_id")
+  adminUserId Int?     @map("admin_user_id")
+  field       String
+  before      String?
+  after       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  post      BlogPost   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+  @@map("blog_post_revisions")
 }
 
 // Per-article FAQ (AGENTS.md §6) — hangs off the translation, not the post,

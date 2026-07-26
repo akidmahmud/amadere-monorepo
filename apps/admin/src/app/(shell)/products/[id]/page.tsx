@@ -3,7 +3,7 @@
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@amader/admin-ui";
+import { Button, FormSkeleton } from "@amader/admin-ui";
 import { useProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { ProductFormFields } from "@/components/products/ProductFormFields";
 import { useProductFormState } from "@/components/products/useProductFormState";
@@ -27,7 +27,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     router.push("/products");
   }
 
-  if (isLoading || !product) return <p className="text-sm text-muted">Loading…</p>;
+  if (isLoading || !product) return <FormSkeleton />;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">

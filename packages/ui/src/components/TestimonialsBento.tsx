@@ -13,6 +13,9 @@ export interface TestimonialReview {
 
 export interface TestimonialsBentoProps {
   reviews?: TestimonialReview[];
+  /** Auto-advance one "page" every N ms — on by default (4500ms) so this
+   * carousel behaves like every other one on the homepage; pass 0 to disable. */
+  autoplayMs?: number;
 }
 
 const starIcon = (filled: boolean) => (
@@ -55,11 +58,11 @@ function ReviewCard({ review }: { review: TestimonialReview }) {
 // this codebase). Empty gray-avatar cards with no reviews just render
 // nothing (see the early return below), same as every other admin-driven
 // homepage section.
-export function TestimonialsBento({ reviews = [] }: TestimonialsBentoProps) {
+export function TestimonialsBento({ reviews = [], autoplayMs = 4500 }: TestimonialsBentoProps) {
   if (reviews.length === 0) return null;
 
   return (
-    <Carousel>
+    <Carousel autoplayMs={autoplayMs}>
       {reviews.map((review, i) => (
         <ReviewCard key={i} review={review} />
       ))}

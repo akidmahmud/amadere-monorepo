@@ -61,6 +61,15 @@ export class AdminBlogPostDto {
   createdAt!: Date;
 }
 
+export class BlogPostRevisionDto {
+  id!: number;
+  field!: string;
+  before!: string | null;
+  after!: string | null;
+  createdAt!: Date;
+  author!: string | null;
+}
+
 export function toAdminBlogPostDto(
   post: BlogPostWithRelations,
 ): AdminBlogPostDto {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
+import { Button, Card, TableSkeleton } from "@amader/admin-ui";
 import { useCategories, useDeleteCategory } from "@/hooks/useCategories";
 
 export default function CategoriesPage() {
@@ -21,7 +21,7 @@ export default function CategoriesPage() {
         </Link>
       </div>
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+      {isLoading && <TableSkeleton />}
       {categories && categories.length === 0 && <p className="text-sm text-muted">No categories yet.</p>}
 
       <div className="flex flex-col gap-3">

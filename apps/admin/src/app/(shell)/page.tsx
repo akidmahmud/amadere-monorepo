@@ -1,9 +1,56 @@
 "use client";
 
 import Link from "next/link";
+import { Skeleton } from "@amader/admin-ui";
 import { useDashboardOverview } from "@/hooks/useDashboard";
 import { OverviewCharts } from "@/components/overview/OverviewCharts";
 import { RecentOrdersTable, TopCustomersTable } from "@/components/overview/OverviewTables";
+
+// Mirrors the real grid below (9 stat cards + Quick Actions + charts + two
+// tables) rather than a generic placeholder, so the loading state doesn't
+// visually jump around once the real content replaces it.
+function StatCardSkeleton() {
+  return (
+    <div className="flex min-h-[118px] items-start justify-between gap-3.5 rounded-card border border-border bg-surface p-[22px] shadow-card">
+      <div className="flex flex-col gap-2.5">
+        <Skeleton className="h-2.5 w-20" />
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-2.5 w-16" />
+      </div>
+      <Skeleton className="h-[46px] w-[46px] shrink-0 rounded-inner" />
+    </div>
+  );
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-3">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+
+      <div className="rounded-card border border-border bg-surface p-5 lg:row-span-3">
+        <Skeleton className="mb-4 h-4 w-28" />
+        <div className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-[78px] rounded-inner" />
+          ))}
+        </div>
+      </div>
+
+      <div className="lg:col-span-4">
+        <Skeleton className="h-[300px] w-full rounded-card" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:col-span-4 lg:grid-cols-2">
+        <Skeleton className="h-[280px] rounded-card" />
+        <Skeleton className="h-[280px] rounded-card" />
+      </div>
+    </div>
+  );
+}
 
 function plusIcon() {
   return (
@@ -48,7 +95,7 @@ export default function OverviewPage() {
   const { data, isLoading, error } = useDashboardOverview();
 
   if (isLoading || !data) {
-    return <p className="text-sm text-muted">Loading…</p>;
+    return <OverviewSkeleton />;
   }
   if (error) {
     return <p className="text-sm text-danger">Failed to load dashboard.</p>;

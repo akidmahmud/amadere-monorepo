@@ -16,6 +16,7 @@ import {
   AdminBlogPostDto,
   BLOG_POST_INCLUDE,
   BlogAuthorProfileDto,
+  BlogPostRevisionDto,
   BlogPostWithRelations,
   PublicBlogPostDetailDto,
   toAdminBlogPostDto,
@@ -28,6 +29,7 @@ import {
   suggestInternalLinks,
 } from './internal-links.util';
 import { SeoService } from '../seo/seo.service';
+import { TokenService } from '../../common/auth/token.service';
 import {
   buildArticleJsonLd,
   buildBreadcrumbJsonLd,
@@ -41,6 +43,7 @@ export class BlogPostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly seo: SeoService,
+    private readonly tokens: TokenService,
   ) {}
 
   async adminList(
@@ -138,8 +141,12 @@ export class BlogPostsService {
     return toAdminBlogPostDto(post);
   }
 
-  async update(id: number, dto: UpdateBlogPostDto): Promise<AdminBlogPostDto> {
-    await this.loadOrThrow(id);
+  async update(
+    id: number,
+    dto: UpdateBlogPostDto,
+    adminUserId?: number,
+  ): Promise<AdminBlogPostDto> {
+    const before = await this.loadOrThrow(id);
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
 
     if (dto.translations) {
@@ -186,7 +193,74 @@ export class BlogPostsService {
       },
       include: BLOG_POST_INCLUDE,
     });
+    await this.recordRevisions(id, before, dto, adminUserId);
     return toAdminBlogPostDto(post);
+  }
+
+  // One row per changed field (matches the reference CMS's revision table),
+  // not a full snapshot — most saves only touch a couple of fields. Only
+  // compares fields actually present on the DTO (a PATCH is partial), so a
+  // save that doesn't touch `slug` never logs a false "slug changed" row.
+  private async recordRevisions(
+    postId: number,
+    before: BlogPostWithRelations,
+    dto: UpdateBlogPostDto,
+    adminUserId?: number,
+  ): Promise<void> {
+    const rows: { field: string; before: string | null; after: string | null }[] = [];
+    const push = (field: string, beforeValue: string | null, afterValue: string | null) => {
+      if (beforeValue !== afterValue) rows.push({ field, before: beforeValue, after: afterValue });
+    };
+
+    if (dto.slug !== undefined) push('slug', before.slug, dto.slug);
+    if (dto.imageUrl !== undefined) push('imageUrl', before.imageUrl, dto.imageUrl ?? null);
+    if (dto.isFeatured !== undefined) push('isFeatured', String(before.isFeatured), String(dto.isFeatured));
+
+    if (dto.categoryIds !== undefined) {
+      const beforeIds = before.categories.map((c) => c.categoryId).sort((a, b) => a - b);
+      push('categoryIds', JSON.stringify(beforeIds), JSON.stringify([...dto.categoryIds].sort((a, b) => a - b)));
+    }
+    if (dto.tagIds !== undefined) {
+      const beforeIds = before.tags.map((t) => t.tagId).sort((a, b) => a - b);
+      push('tagIds', JSON.stringify(beforeIds), JSON.stringify([...dto.tagIds].sort((a, b) => a - b)));
+    }
+
+    if (dto.translations) {
+      for (const t of dto.translations) {
+        const beforeTranslation = before.translations.find((bt) => bt.locale === t.locale);
+        push(`title (${t.locale})`, beforeTranslation?.title ?? null, t.title);
+        push(`excerpt (${t.locale})`, beforeTranslation?.excerpt ?? null, t.excerpt ?? null);
+        push(`content (${t.locale})`, beforeTranslation?.content ?? null, t.content);
+        push(`metaDescription (${t.locale})`, beforeTranslation?.metaDescription ?? null, t.metaDescription ?? null);
+      }
+    }
+
+    if (rows.length === 0) return;
+    await this.prisma.client.blogPostRevision.createMany({
+      data: rows.map((r) => ({ postId, adminUserId, ...r })),
+    });
+  }
+
+  async generatePreviewToken(id: number): Promise<{ token: string }> {
+    await this.loadOrThrow(id);
+    const token = await this.tokens.signBlogPreviewToken(id);
+    return { token };
+  }
+
+  async listRevisions(id: number): Promise<BlogPostRevisionDto[]> {
+    const revisions = await this.prisma.client.blogPostRevision.findMany({
+      where: { postId: id },
+      include: { adminUser: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return revisions.map((r) => ({
+      id: r.id,
+      field: r.field,
+      before: r.before,
+      after: r.after,
+      createdAt: r.createdAt,
+      author: r.adminUser ? `${r.adminUser.firstName} ${r.adminUser.lastName}`.trim() : null,
+    }));
   }
 
   async submitForReview(id: number): Promise<AdminBlogPostDto> {
@@ -267,17 +341,43 @@ export class BlogPostsService {
   async publicGetBySlug(
     slug: string,
     locale: Locale,
+    previewToken?: string,
   ): Promise<PublicBlogPostDetailDto> {
+    // A draft/pending post is only reachable here if the caller presents a
+    // valid preview token minted for THIS specific post — a valid token for
+    // post 5 doesn't unlock post 6. An invalid/expired token isn't a hard
+    // auth error; it just falls back to the normal published-only lookup
+    // (so an expired preview link 404s the same way a wrong slug would,
+    // instead of leaking "this post exists but you're unauthorized").
+    let allowUnpublished: number | null = null;
+    if (previewToken) {
+      try {
+        const payload = await this.tokens.verifyBlogPreviewToken(previewToken);
+        allowUnpublished = payload.postId;
+      } catch {
+        allowUnpublished = null;
+      }
+    }
+
     const post = await this.prisma.client.blogPost.findFirst({
-      where: { slug, deletedAt: null, status: 'PUBLISHED' },
+      where: {
+        slug,
+        deletedAt: null,
+        ...(allowUnpublished ? {} : { status: 'PUBLISHED' }),
+      },
       include: BLOG_POST_INCLUDE,
     });
     if (!post) throw new NotFoundException('Post not found');
+    if (allowUnpublished && post.id !== allowUnpublished) {
+      throw new NotFoundException('Post not found');
+    }
 
-    await this.prisma.client.blogPost.update({
-      where: { id: post.id },
-      data: { viewCount: { increment: 1 } },
-    });
+    if (post.status === 'PUBLISHED') {
+      await this.prisma.client.blogPost.update({
+        where: { id: post.id },
+        data: { viewCount: { increment: 1 } },
+      });
+    }
 
     const translation =
       post.translations.find((t) => t.locale === locale) ??

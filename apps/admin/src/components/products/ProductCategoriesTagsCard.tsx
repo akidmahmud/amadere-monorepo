@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePickerCategories, usePickerTags } from "@/hooks/usePickers";
 import { useBrands } from "@/hooks/useBrands";
 import type { ProductFormState } from "./useProductFormState";
@@ -14,6 +15,10 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
   const { data: categories } = usePickerCategories();
   const { data: tags } = usePickerTags();
   const { data: brands } = useBrands();
+  const [tagSearch, setTagSearch] = useState("");
+
+  const selectedTags = (tags ?? []).filter((t) => form.tagIds.includes(t.id));
+  const filteredTags = (tags ?? []).filter((t) => t.label.toLowerCase().includes(tagSearch.trim().toLowerCase()));
 
   return (
     <div className="rounded-card border border-border bg-surface p-[18px]">
@@ -47,15 +52,38 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
 
       <div>
         <span className="mb-2 block text-xs font-bold text-text">Tags</span>
-        <div className="flex flex-wrap gap-2">
-          {tags?.map((t) => (
-            <span key={t.id} className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1.5 text-[0.68rem] font-bold text-brand-500">
-              <label className="flex cursor-pointer items-center gap-1.5">
-                <input type="checkbox" checked={form.tagIds.includes(t.id)} onChange={() => toggle(form.tagIds, t.id, form.setTagIds)} className="accent-brand-500" />
+        {selectedTags.length > 0 && (
+          <div className="mb-2.5 flex flex-wrap gap-1.5">
+            {selectedTags.map((t) => (
+              <span key={t.id} className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1 text-[0.68rem] font-bold text-brand-500">
                 {t.label}
-              </label>
-            </span>
+                <button
+                  type="button"
+                  onClick={() => toggle(form.tagIds, t.id, form.setTagIds)}
+                  className="font-extrabold opacity-80 hover:opacity-100"
+                  aria-label={`Remove ${t.label}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <input
+          type="text"
+          value={tagSearch}
+          onChange={(e) => setTagSearch(e.target.value)}
+          placeholder="Search tags..."
+          className="mb-2.5 h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500"
+        />
+        <div className="flex max-h-[210px] flex-col gap-0.5 overflow-y-auto rounded-inner border border-border p-1.5">
+          {filteredTags.map((t) => (
+            <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
+              <input type="checkbox" checked={form.tagIds.includes(t.id)} onChange={() => toggle(form.tagIds, t.id, form.setTagIds)} className="h-3.5 w-3.5 accent-brand-500" />
+              {t.label}
+            </label>
           ))}
+          {filteredTags.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No tags match your search.</p>}
         </div>
       </div>
     </div>

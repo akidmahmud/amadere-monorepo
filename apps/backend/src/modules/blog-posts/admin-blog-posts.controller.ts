@@ -25,7 +25,7 @@ import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { BlogPostsService } from './blog-posts.service';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
-import { AdminBlogPostDto } from './blog-posts.mapper';
+import { AdminBlogPostDto, BlogPostRevisionDto } from './blog-posts.mapper';
 import { LinkSuggestion } from './internal-links.util';
 
 @ApiTags('admin/blog-posts')
@@ -95,8 +95,22 @@ export class AdminBlogPostsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateBlogPostDto,
+    @CurrentAdmin() admin: { id: number },
   ): Promise<AdminBlogPostDto> {
-    return this.posts.update(id, dto);
+    return this.posts.update(id, dto, admin.id);
+  }
+
+  @Post(':id/preview-token')
+  @RequirePermission('blog_post.view')
+  previewToken(@Param('id', ParseIntPipe) id: number): Promise<{ token: string }> {
+    return this.posts.generatePreviewToken(id);
+  }
+
+  @Get(':id/revisions')
+  @RequirePermission('blog_post.view')
+  @ApiOkResponse({ type: BlogPostRevisionDto, isArray: true })
+  revisions(@Param('id', ParseIntPipe) id: number): Promise<BlogPostRevisionDto[]> {
+    return this.posts.listRevisions(id);
   }
 
   @Delete(':id')

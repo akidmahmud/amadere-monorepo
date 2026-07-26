@@ -24,6 +24,10 @@ export interface PromoVideoSectionProps {
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
+  /** Auto-advance one "page" every N ms — longer than other carousels'
+   * default (7000ms) so a video actually gets a few seconds to play before
+   * sliding away; pass 0 to disable. */
+  autoplayMs?: number;
 }
 
 function youtubeId(url: string): string | null {
@@ -215,6 +219,7 @@ export function PromoVideoSection({
   addToCartPending,
   pendingProductId,
   linkComponent = DefaultLink,
+  autoplayMs = 7000,
 }: PromoVideoSectionProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const isMobile = useIsMobile();
@@ -224,7 +229,7 @@ export function PromoVideoSection({
   return (
     <div className="py-9">
       {heading && <SectionHeading>{heading}</SectionHeading>}
-      <Carousel>
+      <Carousel autoplayMs={autoplayMs}>
         {items.map((card, i) => (
           <PromoVideoCardTile key={`${card.url}-${i}`} card={card} onClick={() => setOpenIndex(i)} />
         ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
+import { Button, Card, TableSkeleton } from "@amader/admin-ui";
 import { useDeleteTag, useTags } from "@/hooks/useTags";
 
 export default function TagsPage() {
@@ -17,7 +17,7 @@ export default function TagsPage() {
         </Link>
       </div>
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+      {isLoading && <TableSkeleton />}
       {tags && tags.length === 0 && <p className="text-sm text-muted">No tags yet.</p>}
 
       <div className="flex flex-col gap-3">

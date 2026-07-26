@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Card } from "@amader/admin-ui";
+import { Button, Card, FormSkeleton } from "@amader/admin-ui";
 import { usePickerProducts } from "@/hooks/usePickers";
 import { useCrossSell, useUpdateCrossSell } from "@/hooks/useCrossSell";
 
@@ -16,10 +16,15 @@ export function CrossSellFields({ productId }: { productId: number }) {
   const { data: current, isLoading } = useCrossSell(productId);
   const update = useUpdateCrossSell(productId);
   const [selected, setSelected] = useState<number[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (current) setSelected(current);
   }, [current]);
+
+  const options = (products ?? []).filter((p) => p.id !== productId);
+  const selectedProducts = options.filter((p) => selected.includes(p.id));
+  const filteredProducts = options.filter((p) => p.label.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
     <Card className="flex max-w-2xl flex-col gap-4">
@@ -29,20 +34,41 @@ export function CrossSellFields({ productId }: { productId: number }) {
       </p>
 
       {isLoading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <FormSkeleton />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            {products?.filter((p) => p.id !== productId).map((p) => (
-              <label key={p.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs text-text">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(p.id)}
-                  onChange={() => toggle(selected, p.id, setSelected)}
-                />
+          {selectedProducts.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedProducts.map((p) => (
+                <span key={p.id} className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1 text-[0.68rem] font-bold text-brand-500">
+                  {p.label}
+                  <button
+                    type="button"
+                    onClick={() => toggle(selected, p.id, setSelected)}
+                    className="font-extrabold opacity-80 hover:opacity-100"
+                    aria-label={`Remove ${p.label}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search products..."
+            className="h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500"
+          />
+          <div className="flex max-h-[210px] flex-col gap-0.5 overflow-y-auto rounded-inner border border-border p-1.5">
+            {filteredProducts.map((p) => (
+              <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
+                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(selected, p.id, setSelected)} className="h-3.5 w-3.5 accent-brand-500" />
                 {p.label}
               </label>
             ))}
+            {filteredProducts.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No products match your search.</p>}
           </div>
 
           <Button
