@@ -26,7 +26,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { AdminProductQueryDto } from './dto/admin-product-query.dto';
-import { AdminProductDto } from './dto/product-response.dto';
+import { AdminProductDto, AdminProductPickerItemDto } from './dto/product-response.dto';
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
 import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
@@ -54,6 +54,17 @@ export class AdminProductsController {
   @RequirePermission('product.view')
   stats() {
     return this.products.adminStats();
+  }
+
+  // Lightweight id/slug/name list for pickers (collection/cross-sell/etc.
+  // editors) — deliberately skips the full adminList()'s heavy nested
+  // include (variants, media, categories/tags/attributes) since a picker
+  // only ever renders a checkbox list of names.
+  @Get('picker')
+  @RequirePermission('product.view')
+  @ApiOkResponse({ type: [AdminProductPickerItemDto] })
+  pickerList(): Promise<AdminProductPickerItemDto[]> {
+    return this.products.adminPickerList();
   }
 
   @Get('export')

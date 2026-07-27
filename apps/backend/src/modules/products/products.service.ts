@@ -22,6 +22,7 @@ import { AdminProductQueryDto } from './dto/admin-product-query.dto';
 import { computeSeoScore } from './seo-score.util';
 import {
   AdminProductDto,
+  AdminProductPickerItemDto,
   PublicProductDetailDto,
   PublicProductDto,
 } from './dto/product-response.dto';
@@ -87,6 +88,31 @@ export class ProductsService {
       page,
       pageSize,
     );
+  }
+
+  // Deliberately bypasses PRODUCT_INCLUDE/adminList — pickers (collection
+  // editor, cross-sell, etc.) only ever render a checkbox list of names, but
+  // were reusing the full admin list query, which pulls every variant's
+  // attribute values and every category/tag/attribute's translations for
+  // every row. That's fine for the real Products page (which needs it), but
+  // made a 100-row picker genuinely slow to load once the catalog grew past
+  // a handful of products.
+  async adminPickerList(): Promise<AdminProductPickerItemDto[]> {
+    const products = await this.prisma.client.product.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        translations: { select: { name: true }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return products.map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.translations[0]?.name ?? p.slug,
+    }));
   }
 
   // Every distinct SEO_META row for the given products in one query — avoids

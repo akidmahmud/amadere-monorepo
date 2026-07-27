@@ -64,17 +64,20 @@ export function usePickerBlogPosts() {
   });
 }
 
-// No name/text search on the admin products list endpoint yet (confirmed in
-// schema.d.ts — only category/brand/tag/price/sort filters), so this is a
-// plain "first 100" list rather than a searchable picker. Fine while the
-// catalog is small; revisit once Products (Phase 4) exists and/or the
-// backend gains a search query param.
+// Hits the dedicated /admin/products/picker endpoint (id/slug/name only) —
+// not the full admin products list, whose PRODUCT_INCLUDE pulls every
+// variant's attribute values and every category/tag/attribute's
+// translations for every row. That was fine for the real Products page but
+// made this 100-row checkbox list genuinely slow to load once the catalog
+// grew past a handful of products. No name/text search yet (confirmed in
+// schema.d.ts — only category/brand/tag/price/sort filters on the full list
+// endpoint), so this is still a plain "first 100" list, just a cheap one.
 export function usePickerProducts() {
   return useQuery({
     queryKey: ["picker-products"],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<components["schemas"]["AdminProductDto"]>>("/admin/products?pageSize=100");
-      return (res.items ?? []).map((p) => ({ id: p.id, label: firstTranslationLabel(p.translations, p.slug) }));
+      const res = await proxyFetch<components["schemas"]["AdminProductPickerItemDto"][]>("/admin/products/picker");
+      return res.map((p) => ({ id: p.id, label: p.name }));
     },
   });
 }

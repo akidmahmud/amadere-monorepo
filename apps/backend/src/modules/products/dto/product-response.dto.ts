@@ -73,6 +73,18 @@ export class AdminProductDto {
   seoScore?: number;
 }
 
+// Deliberately minimal — id/slug/name only, no media/variants/tags/attributes
+// — for pickers that just need a checkbox list of product names (e.g.
+// collection/cross-sell editors). The full AdminProductDto's PRODUCT_INCLUDE
+// pulls in every variant's attribute values, every category/tag/attribute's
+// translations, etc., which made a 100-row picker list genuinely slow to
+// load once the catalog grew past a handful of products.
+export class AdminProductPickerItemDto {
+  id!: number;
+  slug!: string;
+  name!: string;
+}
+
 export class PublicProductBrandDto {
   id!: number;
   slug!: string;
