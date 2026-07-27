@@ -115,34 +115,42 @@ function EmbedFrame({ src, allow }: { src: string; allow: string }) {
   );
 }
 
-// Starts loading well before the card is actually scrolled into view, pauses
-// once it scrolls back out — replaces the old hover-to-play behavior so a
-// section with many cards doesn't autoplay everything at once on page load.
-// rootMargin extends the "visible" zone outward on all sides: 400px
-// horizontally (this is a horizontally-scrolling row) and a much larger
-// 1000px vertically, since the section itself typically sits well below the
-// fold — a small vertical margin meant the card only started loading once
-// the user had already scrolled it ~50% into view, so the YouTube/TikTok/
-// Instagram embed (third-party page + player JS, not this app) was still
-// booting right as the user's eyes arrived, showing the thumbnail for a
-// beat. threshold 0 (not 0.5) means it fires the instant any part of the
-// card enters that expanded zone, not once it's half-visible — by the time
-// the user actually scrolls to it, the video has had ~1000px of scroll
-// distance (roughly a full screen) to finish loading and be playing
-// already. Still bounded — a card way off-screen never loads.
+// Starts loading well before the card is actually scrolled into view, and —
+// once it has ever come into view — stays mounted and playing even after it
+// scrolls back out (a real user request: re-mounting the iframe every time
+// the card left and re-entered the expanded zone forced YouTube/TikTok/
+// Instagram to reboot their embed from scratch each time, showing a black
+// "reloading" flash and making `loop=1` look like it wasn't working since
+// the video kept restarting from 0 instead of actually looping). One-shot
+// latch: the observer disconnects for good the first time it fires, so a
+// card way off-screen still never loads, but a card that's already loaded
+// is never torn down again. rootMargin extends the "visible" zone outward on
+// all sides: 400px horizontally (this is a horizontally-scrolling row) and a
+// much larger 1000px vertically, since the section itself typically sits
+// well below the fold — a small vertical margin meant the card only started
+// loading once the user had already scrolled it ~50% into view, so the
+// embed (third-party page + player JS, not this app) was still booting
+// right as the user's eyes arrived, showing the thumbnail for a beat.
+// threshold 0 (not 0.5) means it fires the instant any part of the card
+// enters that expanded zone, not once it's half-visible — by the time the
+// user actually scrolls to it, the video has had ~1000px of scroll distance
+// (roughly a full screen) to finish loading and be playing already.
 function useInView(threshold = 0.5, rootMargin = "0px"): [React.RefObject<HTMLDivElement | null>, boolean] {
   const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+  const [hasBeenInView, setHasBeenInView] = useState(false);
 
   useEffect(() => {
+    if (hasBeenInView) return;
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { threshold, rootMargin });
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setHasBeenInView(true);
+    }, { threshold, rootMargin });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold, rootMargin]);
+  }, [threshold, rootMargin, hasBeenInView]);
 
-  return [ref, inView];
+  return [ref, hasBeenInView];
 }
 
 // Below this width, clicking a card opens the full-screen swipeable reel
