@@ -80,7 +80,7 @@ export function Carousel({ children, className, autoplayMs, centerWhenFits = tru
           type="button"
           aria-label="Scroll left"
           onClick={() => scroll(-1)}
-          className="absolute left-[-6px] top-[30%] z-[6] grid h-[46px] w-[46px] -translate-y-1/2 place-items-center rounded-[10px] bg-gold text-white shadow-brand hover:bg-gold-dark"
+          className="absolute left-[-6px] top-[30%] z-[6] grid h-[46px] w-[46px] -translate-y-1/2 place-items-center rounded-[10px] bg-green text-white shadow-brand hover:bg-green-dark"
         >
           {chevronLeft}
         </button>
@@ -100,7 +100,7 @@ export function Carousel({ children, className, autoplayMs, centerWhenFits = tru
           type="button"
           aria-label="Scroll right"
           onClick={() => scroll(1)}
-          className="absolute right-[-6px] top-[30%] z-[6] grid h-[46px] w-[46px] -translate-y-1/2 place-items-center rounded-[10px] bg-gold text-white shadow-brand hover:bg-gold-dark"
+          className="absolute right-[-6px] top-[30%] z-[6] grid h-[46px] w-[46px] -translate-y-1/2 place-items-center rounded-[10px] bg-green text-white shadow-brand hover:bg-green-dark"
         >
           {chevronRight}
         </button>

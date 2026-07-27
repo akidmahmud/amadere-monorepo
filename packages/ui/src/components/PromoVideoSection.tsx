@@ -24,9 +24,9 @@ export interface PromoVideoSectionProps {
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
-  /** Auto-advance one "page" every N ms — longer than other carousels'
-   * default (7000ms) so a video actually gets a few seconds to play before
-   * sliding away; pass 0 to disable. */
+  /** Auto-advance one "page" every N ms — much longer than a plain product
+   * carousel's default (4000ms) so a video actually gets time to play
+   * before sliding away; pass 0 to disable. */
   autoplayMs?: number;
 }
 
@@ -72,25 +72,46 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
   if (card.source === "YOUTUBE") {
     const id = youtubeId(card.url);
     const src = id
-      ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${id}&playsinline=1`
+      ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${id}&playsinline=1`
       : card.url;
     return (
-      <EmbedFrame
-        key={`${card.url}-${muted}`}
-        src={src}
-        allow="autoplay; encrypted-media"
-      />
+      <>
+        <YoutubePreconnect />
+        <EmbedFrame
+          key={`${card.url}-${muted}`}
+          src={src}
+          allow="autoplay; encrypted-media"
+          thumbnailUrl={card.thumbnailUrl}
+        />
+      </>
     );
   }
   if (card.source === "TIKTOK") {
     const id = tiktokId(card.url);
     const src = id ? `https://www.tiktok.com/embed/v2/${id}?autoplay=1` : card.url;
-    return <EmbedFrame src={src} allow="autoplay" />;
+    return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} />;
   }
   // INSTAGRAM
   const code = instagramCode(card.url);
   const src = code ? `https://www.instagram.com/reel/${code}/embed/?autoplay=1` : card.url;
-  return <EmbedFrame src={src} allow="autoplay" />;
+  return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} />;
+}
+
+// Actual YouTube video bytes can't be cached/rehosted ourselves — that's a
+// YouTube ToS violation, not just a technical limitation (use the existing
+// "R2" source instead if a video should be truly self-hosted and load
+// instantly with no third-party dependency at all). This shaves the DNS/TLS
+// handshake time off the embed's own load instead — rendered from inside
+// PromoVideoSection so it only appears in the page's <head> on pages that
+// actually have a YouTube promo card (Next.js App Router hoists <link> tags
+// rendered anywhere in the tree).
+function YoutubePreconnect() {
+  return (
+    <>
+      <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+      <link rel="preconnect" href="https://i.ytimg.com" />
+    </>
+  );
 }
 
 // `object-fit` only works on <img>/<video> — it's a no-op on <iframe>, so a
@@ -102,15 +123,42 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
 // visible area instead. This is a fixed heuristic, not device-aware — it
 // won't be pixel-perfect on every phone's exact aspect ratio, but removes
 // the bars on the common range.
-function EmbedFrame({ src, allow }: { src: string; allow: string }) {
+//
+// The thumbnail stays on top of the iframe (not replaced by it) until the
+// embed's document reports loaded, plus a short fixed buffer — the iframe's
+// `onLoad` fires once the embedded page itself has loaded, which is earlier
+// than the third-party player actually painting real video frames, so a
+// bare onLoad swap still shows a beat of black. This masks that gap with the
+// thumbnail we already have instead of a blank box, without needing
+// YouTube's/TikTok's postMessage player APIs just to know "video is now
+// visibly playing".
+function EmbedFrame({ src, allow, thumbnailUrl }: { src: string; allow: string; thumbnailUrl?: string }) {
+  const [ready, setReady] = useState(false);
+
+  function handleLoad() {
+    setTimeout(() => setReady(true), 600);
+  }
+
   return (
-    <div className="h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden bg-black">
       <iframe
         src={src}
         title="Promo video"
         allow={allow}
+        onLoad={handleLoad}
         className="h-full w-full scale-125 border-0"
       />
+      {thumbnailUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className={cn(
+            "pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300",
+            ready ? "opacity-0" : "opacity-100",
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -227,7 +275,7 @@ export function PromoVideoSection({
   addToCartPending,
   pendingProductId,
   linkComponent = DefaultLink,
-  autoplayMs = 7000,
+  autoplayMs = 12000,
 }: PromoVideoSectionProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const isMobile = useIsMobile();
