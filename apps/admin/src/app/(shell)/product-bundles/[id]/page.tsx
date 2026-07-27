@@ -3,7 +3,8 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
+import { Button, Card, FormSkeleton } from "@amader/admin-ui";
+import { MediaPicker } from "@/components/MediaPicker";
 import { StatusSelect } from "@/components/StatusSelect";
 import { BundleItemsFields, type BundleItem } from "@/components/BundleItemsFields";
 import { useProductBundle, useUpdateProductBundle } from "@/hooks/useProductBundles";
@@ -22,6 +23,7 @@ export default function EditProductBundlePage({ params }: { params: Promise<{ id
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [bundlePrice, setBundlePrice] = useState("");
   const [discountPct, setDiscountPct] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [items, setItems] = useState<BundleItem[]>([]);
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export default function EditProductBundlePage({ params }: { params: Promise<{ id
     setStatus(bundle.status);
     setBundlePrice(bundle.bundlePrice ?? "");
     setDiscountPct(bundle.discountPct ?? "");
+    setImageUrl(bundle.imageUrl ?? undefined);
     setItems(bundle.items.map((i) => ({ productId: i.productId, quantity: i.quantity })));
   }, [bundle]);
 
@@ -40,6 +43,7 @@ export default function EditProductBundlePage({ params }: { params: Promise<{ id
     await update.mutateAsync({
       slug,
       status,
+      imageUrl,
       bundlePrice: bundlePrice ? Number(bundlePrice) : undefined,
       discountPct: discountPct ? Number(discountPct) : undefined,
       translations: [
@@ -51,7 +55,7 @@ export default function EditProductBundlePage({ params }: { params: Promise<{ id
     router.push("/product-bundles");
   }
 
-  if (isLoading || !bundle) return <p className="text-sm text-muted">Loading…</p>;
+  if (isLoading || !bundle) return <FormSkeleton />;
 
   return (
     <Card className="max-w-xl">
@@ -103,6 +107,7 @@ export default function EditProductBundlePage({ params }: { params: Promise<{ id
             />
           </label>
         </div>
+        <MediaPicker value={imageUrl} onChange={setImageUrl} label="Combo image (shown on homepage/listing cards)" />
         <StatusSelect value={status} onChange={setStatus} />
         <BundleItemsFields items={items} onChange={setItems} />
 

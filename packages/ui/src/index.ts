@@ -8,6 +8,7 @@ export * from "./components/IconButton";
 export * from "./components/Skeleton";
 
 export * from "./components/ProductCard";
+export * from "./components/ComboCard";
 export * from "./components/PriceTag";
 export * from "./components/QtyStepper";
 export * from "./components/PillTabs";
@@ -43,8 +44,7 @@ export * from "./components/PriceRangeSlider";
 export * from "./components/ProductGallery";
 export * from "./components/WatchingNowBadge";
 export * from "./components/MarketingReviewSection";
-export * from "./components/ProductInfoVisual";
-export * from "./components/ComparisonSection";
+export * from "./components/ProductComparisonTable";
 export * from "./components/PackSizeSelector";
 export * from "./components/ProductTabs";
 export * from "./components/CartLineItem";

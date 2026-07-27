@@ -1,51 +1,49 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-// Not translatable — same images regardless of locale. Lives on Product
-// itself; paired text (heading/titles/list items) lives in
-// ProductComparisonContentDto on each ProductTranslation instead.
-export class ProductComparisonImagesDto {
+// PDP "Why Choose Us" comparison table — one row per feature, checkmark/X per
+// column. Entirely hidden on the storefront when rows is empty/absent.
+export class ProductComparisonRowDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  card1?: string;
+  feature?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Checkmark under the own-product column' })
   @IsOptional()
-  @IsString()
-  card2?: string;
+  @IsBoolean()
+  own?: boolean;
+
+  @ApiPropertyOptional({ description: 'Checkmark under the competitor column' })
+  @IsOptional()
+  @IsBoolean()
+  competitor?: boolean;
 }
 
-export class ProductComparisonCardContentDto {
-  @ApiPropertyOptional()
+// One per ProductTranslation (EN/BN) — labels and feature text are
+// translatable; the own/competitor booleans are duplicated per locale for
+// simplicity (same convention as every other per-locale content field here).
+export class ProductComparisonTableDto {
+  @ApiPropertyOptional({ description: 'Defaults to "Why Choose {Product Name}?" when left blank' })
   @IsOptional()
   @IsString()
   title?: string;
 
-  @ApiPropertyOptional({ description: 'One bullet line per line of text, same convention as keyBenefits.' })
+  @ApiPropertyOptional({ description: 'Defaults to the product name when left blank' })
   @IsOptional()
   @IsString()
-  items?: string;
-}
+  ownLabel?: string;
 
-// One per ProductTranslation (EN/BN) — card1 is always "us" (checkmark
-// styling), card2 is always "them" (X-mark styling), fixed by position.
-export class ProductComparisonContentDto {
-  @ApiPropertyOptional({ description: 'Admin-authored HTML, same trust level as description/content' })
+  @ApiPropertyOptional({ description: 'e.g. "Regular White Rice"' })
   @IsOptional()
   @IsString()
-  heading?: string;
+  competitorLabel?: string;
 
-  @ApiPropertyOptional({ type: ProductComparisonCardContentDto })
+  @ApiPropertyOptional({ type: [ProductComparisonRowDto] })
   @IsOptional()
-  @ValidateNested()
-  @Type(() => ProductComparisonCardContentDto)
-  card1?: ProductComparisonCardContentDto;
-
-  @ApiPropertyOptional({ type: ProductComparisonCardContentDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ProductComparisonCardContentDto)
-  card2?: ProductComparisonCardContentDto;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductComparisonRowDto)
+  rows?: ProductComparisonRowDto[];
 }

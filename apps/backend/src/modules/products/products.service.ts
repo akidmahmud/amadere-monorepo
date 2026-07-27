@@ -33,20 +33,16 @@ import {
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
 
-// class-transformer produces real ProductInfoVisualContentDto/
-// ProductComparisonContentDto instances (via @Type on the corresponding
-// ProductTranslationDto fields), but Prisma's Json input type wants a plain
-// object with a string index signature — this round-trips through
-// plain-object spread so the shape matches structurally without changing
-// any actual values.
+// class-transformer produces a real ProductComparisonTableDto instance (via
+// @Type on ProductTranslationDto.comparisonTable), but Prisma's Json input
+// type wants a plain object with a string index signature — this round-trips
+// through plain-object spread so the shape matches structurally without
+// changing any actual values.
 function toTranslationCreateInput(translations: ProductTranslationDto[]) {
   return translations.map((t) => ({
     ...t,
-    infoVisualContent: t.infoVisualContent
-      ? ({ ...t.infoVisualContent } as Prisma.InputJsonValue)
-      : undefined,
-    comparisonContent: t.comparisonContent
-      ? ({ ...t.comparisonContent } as Prisma.InputJsonValue)
+    comparisonTable: t.comparisonTable
+      ? ({ ...t.comparisonTable } as Prisma.InputJsonValue)
       : undefined,
   }));
 }
@@ -221,8 +217,6 @@ export class ProductsService {
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
-        infoVisualImages: dto.infoVisualImages as unknown as Prisma.InputJsonValue,
-        comparisonImages: dto.comparisonImages as unknown as Prisma.InputJsonValue,
         translations: { create: toTranslationCreateInput(dto.translations) },
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
@@ -319,12 +313,6 @@ export class ProductsService {
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
-        infoVisualImages: dto.infoVisualImages
-          ? (dto.infoVisualImages as unknown as Prisma.InputJsonValue)
-          : undefined,
-        comparisonImages: dto.comparisonImages
-          ? (dto.comparisonImages as unknown as Prisma.InputJsonValue)
-          : undefined,
         translations: dto.translations
           ? { create: toTranslationCreateInput(dto.translations) }
           : undefined,

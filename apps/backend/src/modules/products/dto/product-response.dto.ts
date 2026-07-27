@@ -6,19 +6,17 @@ import {
   StockStatus,
 } from '@amader/db';
 import { ResolvedSeoDto } from '../../seo/seo.mapper';
-import { ProductInfoVisualContentDto, ProductInfoVisualImagesDto } from './product-info-visual.dto';
-import { ProductComparisonContentDto, ProductComparisonImagesDto } from './product-comparison.dto';
+import { ProductComparisonTableDto } from './product-comparison.dto';
 
 export class AdminProductTranslationDto {
   locale!: Locale;
   name!: string;
   description!: string | null;
   content!: string | null;
-  nutrition!: string | null;
-  ingredients!: string | null;
   keyBenefits!: string | null;
-  infoVisualContent!: ProductInfoVisualContentDto | null;
-  comparisonContent!: ProductComparisonContentDto | null;
+  benefitPoints!: string | null;
+  howToUse!: string | null;
+  comparisonTable!: ProductComparisonTableDto | null;
 }
 
 export class AdminProductMediaDto {
@@ -63,8 +61,6 @@ export class AdminProductDto {
   shippableWeight!: string | null;
   minOrderQuantity!: number;
   maxOrderQuantity!: number | null;
-  infoVisualImages!: ProductInfoVisualImagesDto | null;
-  comparisonImages!: ProductComparisonImagesDto | null;
   translations!: AdminProductTranslationDto[];
   categoryIds!: number[];
   tagIds!: number[];
@@ -137,13 +133,10 @@ export class PublicProductDto {
   name!: string;
   description!: string | null;
   content!: string | null;
-  nutrition!: string | null;
-  ingredients!: string | null;
   keyBenefits!: string | null;
-  infoVisualImages!: ProductInfoVisualImagesDto | null;
-  infoVisualContent!: ProductInfoVisualContentDto | null;
-  comparisonImages!: ProductComparisonImagesDto | null;
-  comparisonContent!: ProductComparisonContentDto | null;
+  benefitPoints!: string | null;
+  howToUse!: string | null;
+  comparisonTable!: ProductComparisonTableDto | null;
   brand!: PublicProductBrandDto | null;
   categories!: PublicProductCategorySummaryDto[];
   tags!: PublicProductTagSummaryDto[];

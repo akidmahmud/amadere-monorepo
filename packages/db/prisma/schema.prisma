@@ -675,17 +675,6 @@ model Product {
   minOrderQuantity Int  @default(1) @map("min_order_quantity")
   maxOrderQuantity Int? @map("max_order_quantity")
 
-  // PDP "Product Info Visual" section — center image + 3 circular ingredient
-  // images. Not translatable (same images regardless of locale), unlike the
-  // headings/captions around them (see ProductTranslation.infoVisualContent).
-  // Shape: { main: string, circles: [string, string, string] }.
-  infoVisualImages Json? @map("info_visual_images")
-
-  // PDP "Comparison" section — one image per card, not translatable (see
-  // ProductTranslation.comparisonContent for the translatable heading/
-  // titles/list text). Shape: { card1: string, card2: string }.
-  comparisonImages Json? @map("comparison_images")
-
   legacyId  Int?      @unique @map("legacy_id")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -727,27 +716,26 @@ model ProductTranslation {
   productId   Int     @map("product_id")
   locale      Locale
   name        String
-  description String?
-  content     String? // long-form detail/story content
-  nutrition   String? // grocery/food product nutrition facts
-  ingredients String?
-  keyBenefits String? @map("key_benefits") // short benefit lines, one per line — rendered as the PDP's "Key Benefits" grid
+  description String? // "Short Description" — teaser near the title + the PDP's "About This Product" section
+  content     String? // "Full Description" — long-form detail/story content, rendered as the PDP's "Description" tab
 
-  // PDP "Product Info Visual" section text — headings/captions accept raw
-  // HTML (admin-authored, same trust level as content/description/etc, no
-  // rich-text editor). Shape: { topHeading: string, bottomHeading: string,
-  // arrows: [{heading, subheading}, ...4], circleLabels: [string,string,string] }.
-  // Paired image URLs (not translatable) live on Product.infoVisualImages.
-  infoVisualContent Json? @map("info_visual_content")
+  // PDP "How to Use" tab — plain/HTML text block.
+  howToUse String? @map("how_to_use")
 
-  // PDP "Comparison" section text — heading + two cards (card1 = us, styled
-  // with checkmarks; card2 = them, styled with X marks — fixed by position,
-  // not admin-configurable). Shape: { heading: string, card1: { title:
-  // string, items: string }, card2: { title: string, items: string } }.
-  // `items` is one bullet line per line of text, same convention as
-  // keyBenefits. Paired image URLs (not translatable) live on
-  // Product.comparisonImages.
-  comparisonContent Json? @map("comparison_content")
+  // PDP "Benefit Badges" strip (formerly "Key Benefits") — short benefit
+  // lines, one per line, up to 4, rendered as the 4-column badge strip
+  // under the CTA row.
+  keyBenefits String? @map("key_benefits")
+
+  // PDP "Key Benefits" tab content — one bullet line per line of text,
+  // rendered as a checklist. Distinct from the keyBenefits badge strip above.
+  benefitPoints String? @map("benefit_points")
+
+  // PDP "Why Choose Us" comparison table — hidden entirely when rows is
+  // empty/absent. Shape: { title?: string, ownLabel?: string,
+  // competitorLabel?: string, rows: { feature: string, own: boolean,
+  // competitor: boolean }[] }.
+  comparisonTable Json? @map("comparison_table")
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -890,6 +878,7 @@ model ProductLicenseCode {
 model ProductBundle {
   id          Int           @id @default(autoincrement())
   slug        String        @unique
+  imageUrl    String?       @map("image_url")
   bundlePrice Decimal?      @map("bundle_price") @db.Decimal(10, 2)
   discountPct Decimal?      @map("discount_pct") @db.Decimal(5, 2)
   status      ContentStatus @default(DRAFT)
@@ -1697,6 +1686,7 @@ enum HomepageSectionType {
   AD_BANNER
   FEATURED_CATEGORIES
   TOP_SELLING_PRODUCTS
+  JUST_FOR_YOU
 }
 
 model HomepageSection {

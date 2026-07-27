@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
+import { MediaPicker } from "@/components/MediaPicker";
 import { StatusSelect } from "@/components/StatusSelect";
 import { BundleItemsFields, type BundleItem } from "@/components/BundleItemsFields";
 import { useCreateProductBundle } from "@/hooks/useProductBundles";
@@ -17,6 +18,7 @@ export default function NewProductBundlePage() {
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [bundlePrice, setBundlePrice] = useState("");
   const [discountPct, setDiscountPct] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [items, setItems] = useState<BundleItem[]>([]);
   const create = useCreateProductBundle();
 
@@ -25,6 +27,7 @@ export default function NewProductBundlePage() {
     await create.mutateAsync({
       slug,
       status,
+      imageUrl,
       bundlePrice: bundlePrice ? Number(bundlePrice) : undefined,
       discountPct: discountPct ? Number(discountPct) : undefined,
       translations: [
@@ -86,6 +89,7 @@ export default function NewProductBundlePage() {
             />
           </label>
         </div>
+        <MediaPicker value={imageUrl} onChange={setImageUrl} label="Combo image (shown on homepage/listing cards)" />
         <StatusSelect value={status} onChange={setStatus} />
         <BundleItemsFields items={items} onChange={setItems} />
 

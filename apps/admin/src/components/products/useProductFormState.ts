@@ -3,48 +3,15 @@ import type { ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts
 import type { PublishStatus } from "@/hooks/useBrands";
 import type { GalleryImage } from "./ProductMediaGallery";
 
-export interface InfoVisualArrowState {
-  heading: string;
-  subheading: string;
+export interface ComparisonRowState {
+  feature: string;
+  own: boolean;
+  competitor: boolean;
 }
 
-export interface InfoVisualCircleState {
-  imageUrl: string;
-  label: string;
-}
-
-export interface ComparisonCardState {
-  imageUrl: string;
-  title: string;
-  items: string;
-}
-
-const EMPTY_ARROW: InfoVisualArrowState = { heading: "", subheading: "" };
-const EMPTY_CIRCLE: InfoVisualCircleState = { imageUrl: "", label: "" };
-
-function arrowsFrom(product?: AdminProduct): InfoVisualArrowState[] {
-  const arrows = product?.translations[0]?.infoVisualContent?.arrows ?? [];
-  return [0, 1, 2, 3].map((i) => ({
-    heading: arrows[i]?.heading ?? "",
-    subheading: arrows[i]?.subheading ?? "",
-  }));
-}
-
-function circlesFrom(product?: AdminProduct): InfoVisualCircleState[] {
-  const images = product?.infoVisualImages?.circles ?? [];
-  const labels = product?.translations[0]?.infoVisualContent?.circleLabels ?? [];
-  return [0, 1, 2].map((i) => ({
-    imageUrl: images[i] ?? "",
-    label: labels[i] ?? "",
-  }));
-}
-
-function comparisonCardFrom(product: AdminProduct | undefined, card: "card1" | "card2"): ComparisonCardState {
-  return {
-    imageUrl: product?.comparisonImages?.[card] ?? "",
-    title: product?.translations[0]?.comparisonContent?.[card]?.title ?? "",
-    items: product?.translations[0]?.comparisonContent?.[card]?.items ?? "",
-  };
+function comparisonRowsFrom(product?: AdminProduct): ComparisonRowState[] {
+  const rows = product?.translations[0]?.comparisonTable?.rows ?? [];
+  return rows.map((r) => ({ feature: r.feature ?? "", own: r.own ?? false, competitor: r.competitor ?? false }));
 }
 
 export function useProductFormState(initial?: AdminProduct) {
@@ -73,44 +40,33 @@ export function useProductFormState(initial?: AdminProduct) {
   const [name, setName] = useState(initial?.translations[0]?.name ?? "");
   const [description, setDescription] = useState(initial?.translations[0]?.description ?? "");
   const [content, setContent] = useState(initial?.translations[0]?.content ?? "");
-  const [nutrition, setNutrition] = useState(initial?.translations[0]?.nutrition ?? "");
-  const [ingredients, setIngredients] = useState(initial?.translations[0]?.ingredients ?? "");
   const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
+  const [benefitPoints, setBenefitPoints] = useState(initial?.translations[0]?.benefitPoints ?? "");
+  const [howToUse, setHowToUse] = useState(initial?.translations[0]?.howToUse ?? "");
   const [categoryIds, setCategoryIds] = useState<number[]>(initial?.categoryIds ?? []);
   const [tagIds, setTagIds] = useState<number[]>(initial?.tagIds ?? []);
   const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
   const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url })) ?? []);
 
-  // "Product Info Visual" PDP section — per-product, optional.
-  const [infoVisualImage, setInfoVisualImage] = useState(initial?.infoVisualImages?.main ?? "");
-  const [infoVisualTopHeading, setInfoVisualTopHeading] = useState(
-    initial?.translations[0]?.infoVisualContent?.topHeading ?? "",
+  // PDP "Why Choose Us" comparison table — hidden entirely on the storefront
+  // when rows is empty, so leaving all 3 blank is a valid "don't show it".
+  const [comparisonTitle, setComparisonTitle] = useState(initial?.translations[0]?.comparisonTable?.title ?? "");
+  const [comparisonOwnLabel, setComparisonOwnLabel] = useState(
+    initial?.translations[0]?.comparisonTable?.ownLabel ?? "",
   );
-  const [infoVisualBottomHeading, setInfoVisualBottomHeading] = useState(
-    initial?.translations[0]?.infoVisualContent?.bottomHeading ?? "",
+  const [comparisonCompetitorLabel, setComparisonCompetitorLabel] = useState(
+    initial?.translations[0]?.comparisonTable?.competitorLabel ?? "",
   );
-  const [infoVisualArrows, setInfoVisualArrows] = useState<InfoVisualArrowState[]>(arrowsFrom(initial));
-  const [infoVisualCircles, setInfoVisualCircles] = useState<InfoVisualCircleState[]>(circlesFrom(initial));
-
-  // "Comparison" PDP section — per-product, optional. card1 = "us"
-  // (checkmarks), card2 = "them" (X marks), fixed by position.
-  const [comparisonHeading, setComparisonHeading] = useState(
-    initial?.translations[0]?.comparisonContent?.heading ?? "",
-  );
-  const [comparisonCard1, setComparisonCard1] = useState<ComparisonCardState>(comparisonCardFrom(initial, "card1"));
-  const [comparisonCard2, setComparisonCard2] = useState<ComparisonCardState>(comparisonCardFrom(initial, "card2"));
+  const [comparisonRows, setComparisonRows] = useState<ComparisonRowState[]>(comparisonRowsFrom(initial));
 
   function toBasePayload() {
-    const infoVisualContent = {
-      topHeading: infoVisualTopHeading || undefined,
-      bottomHeading: infoVisualBottomHeading || undefined,
-      arrows: infoVisualArrows.map((a) => ({ heading: a.heading || undefined, subheading: a.subheading || undefined })),
-      circleLabels: infoVisualCircles.map((c) => c.label || ""),
-    };
-    const comparisonContent = {
-      heading: comparisonHeading || undefined,
-      card1: { title: comparisonCard1.title || undefined, items: comparisonCard1.items || undefined },
-      card2: { title: comparisonCard2.title || undefined, items: comparisonCard2.items || undefined },
+    const comparisonTable = {
+      title: comparisonTitle || undefined,
+      ownLabel: comparisonOwnLabel || undefined,
+      competitorLabel: comparisonCompetitorLabel || undefined,
+      rows: comparisonRows
+        .filter((r) => r.feature.trim())
+        .map((r) => ({ feature: r.feature, own: r.own, competitor: r.competitor })),
     };
     return {
       slug,
@@ -133,36 +89,26 @@ export function useProductFormState(initial?: AdminProduct) {
       shippableWeight: shippableWeight ? Number(shippableWeight) : undefined,
       minOrderQuantity: Number(minOrderQuantity),
       maxOrderQuantity: maxOrderQuantity ? Number(maxOrderQuantity) : undefined,
-      infoVisualImages: {
-        main: infoVisualImage || undefined,
-        circles: infoVisualCircles.map((c) => c.imageUrl || ""),
-      },
-      comparisonImages: {
-        card1: comparisonCard1.imageUrl || undefined,
-        card2: comparisonCard2.imageUrl || undefined,
-      },
       translations: [
         {
           locale: "EN" as const,
           name,
           description: description || undefined,
           content: content || undefined,
-          nutrition: nutrition || undefined,
-          ingredients: ingredients || undefined,
           keyBenefits: keyBenefits || undefined,
-          infoVisualContent,
-          comparisonContent,
+          benefitPoints: benefitPoints || undefined,
+          howToUse: howToUse || undefined,
+          comparisonTable,
         },
         {
           locale: "BN" as const,
           name,
           description: description || undefined,
           content: content || undefined,
-          nutrition: nutrition || undefined,
-          ingredients: ingredients || undefined,
           keyBenefits: keyBenefits || undefined,
-          infoVisualContent,
-          comparisonContent,
+          benefitPoints: benefitPoints || undefined,
+          howToUse: howToUse || undefined,
+          comparisonTable,
         },
       ],
       categoryIds,
@@ -201,21 +147,17 @@ export function useProductFormState(initial?: AdminProduct) {
     setName(product.translations[0]?.name ?? "");
     setDescription(product.translations[0]?.description ?? "");
     setContent(product.translations[0]?.content ?? "");
-    setNutrition(product.translations[0]?.nutrition ?? "");
-    setIngredients(product.translations[0]?.ingredients ?? "");
     setKeyBenefits(product.translations[0]?.keyBenefits ?? "");
+    setBenefitPoints(product.translations[0]?.benefitPoints ?? "");
+    setHowToUse(product.translations[0]?.howToUse ?? "");
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
     setImages(product.media.map((m) => ({ id: m.id, url: m.url })));
-    setInfoVisualImage(product.infoVisualImages?.main ?? "");
-    setInfoVisualTopHeading(product.translations[0]?.infoVisualContent?.topHeading ?? "");
-    setInfoVisualBottomHeading(product.translations[0]?.infoVisualContent?.bottomHeading ?? "");
-    setInfoVisualArrows(arrowsFrom(product));
-    setInfoVisualCircles(circlesFrom(product));
-    setComparisonHeading(product.translations[0]?.comparisonContent?.heading ?? "");
-    setComparisonCard1(comparisonCardFrom(product, "card1"));
-    setComparisonCard2(comparisonCardFrom(product, "card2"));
+    setComparisonTitle(product.translations[0]?.comparisonTable?.title ?? "");
+    setComparisonOwnLabel(product.translations[0]?.comparisonTable?.ownLabel ?? "");
+    setComparisonCompetitorLabel(product.translations[0]?.comparisonTable?.competitorLabel ?? "");
+    setComparisonRows(comparisonRowsFrom(product));
   }
 
   return {
@@ -242,21 +184,17 @@ export function useProductFormState(initial?: AdminProduct) {
     name, setName,
     description, setDescription,
     content, setContent,
-    nutrition, setNutrition,
-    ingredients, setIngredients,
     keyBenefits, setKeyBenefits,
+    benefitPoints, setBenefitPoints,
+    howToUse, setHowToUse,
     categoryIds, setCategoryIds,
     tagIds, setTagIds,
     attributeIds, setAttributeIds,
     images, setImages,
-    infoVisualImage, setInfoVisualImage,
-    infoVisualTopHeading, setInfoVisualTopHeading,
-    infoVisualBottomHeading, setInfoVisualBottomHeading,
-    infoVisualArrows, setInfoVisualArrows,
-    infoVisualCircles, setInfoVisualCircles,
-    comparisonHeading, setComparisonHeading,
-    comparisonCard1, setComparisonCard1,
-    comparisonCard2, setComparisonCard2,
+    comparisonTitle, setComparisonTitle,
+    comparisonOwnLabel, setComparisonOwnLabel,
+    comparisonCompetitorLabel, setComparisonCompetitorLabel,
+    comparisonRows, setComparisonRows,
     toBasePayload,
     seedFrom,
   };

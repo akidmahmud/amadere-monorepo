@@ -39,6 +39,11 @@ export class CreateProductBundleDto {
   @IsString()
   slug!: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
   @ApiPropertyOptional({
     description:
       'Fixed total price for the bundle (overrides discountPct if both given)',

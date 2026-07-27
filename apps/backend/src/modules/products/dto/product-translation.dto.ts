@@ -2,8 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Locale } from '@amader/db';
 import { Type } from 'class-transformer';
 import { IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { ProductInfoVisualContentDto } from './product-info-visual.dto';
-import { ProductComparisonContentDto } from './product-comparison.dto';
+import { ProductComparisonTableDto } from './product-comparison.dto';
 
 export class ProductTranslationDto {
   @ApiProperty({ enum: Locale })
@@ -14,40 +13,34 @@ export class ProductTranslationDto {
   @IsString()
   name!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Short Description — teaser near the title and the PDP\'s "About This Product" section' })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Full Description — rendered as the PDP\'s "Description" tab' })
   @IsOptional()
   @IsString()
   content?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  nutrition?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  ingredients?: string;
-
-  @ApiPropertyOptional({ description: 'Short benefit lines, one per line — rendered as the PDP\'s "Key Benefits" grid.' })
+  @ApiPropertyOptional({ description: 'Benefit Badges — short lines, one per line, up to 4, rendered as the PDP\'s badge strip' })
   @IsOptional()
   @IsString()
   keyBenefits?: string;
 
-  @ApiPropertyOptional({ type: ProductInfoVisualContentDto })
+  @ApiPropertyOptional({ description: 'PDP "Key Benefits" tab — one bullet line per line of text' })
   @IsOptional()
-  @ValidateNested()
-  @Type(() => ProductInfoVisualContentDto)
-  infoVisualContent?: ProductInfoVisualContentDto;
+  @IsString()
+  benefitPoints?: string;
 
-  @ApiPropertyOptional({ type: ProductComparisonContentDto })
+  @ApiPropertyOptional({ description: 'PDP "How to Use" tab' })
+  @IsOptional()
+  @IsString()
+  howToUse?: string;
+
+  @ApiPropertyOptional({ type: ProductComparisonTableDto })
   @IsOptional()
   @ValidateNested()
-  @Type(() => ProductComparisonContentDto)
-  comparisonContent?: ProductComparisonContentDto;
+  @Type(() => ProductComparisonTableDto)
+  comparisonTable?: ProductComparisonTableDto;
 }

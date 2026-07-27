@@ -1,23 +1,10 @@
 import { Locale, Prisma } from '@amader/db';
 import { PRODUCT_INCLUDE } from './product-includes';
 import { AdminProductDto, PublicProductDto } from './dto/product-response.dto';
-import { ProductInfoVisualContentDto, ProductInfoVisualImagesDto } from './dto/product-info-visual.dto';
-import { ProductComparisonContentDto, ProductComparisonImagesDto } from './dto/product-comparison.dto';
+import { ProductComparisonTableDto } from './dto/product-comparison.dto';
 
-function toInfoVisualImages(value: Prisma.JsonValue | null): ProductInfoVisualImagesDto | null {
-  return value ? (value as unknown as ProductInfoVisualImagesDto) : null;
-}
-
-function toInfoVisualContent(value: Prisma.JsonValue | null): ProductInfoVisualContentDto | null {
-  return value ? (value as unknown as ProductInfoVisualContentDto) : null;
-}
-
-function toComparisonImages(value: Prisma.JsonValue | null): ProductComparisonImagesDto | null {
-  return value ? (value as unknown as ProductComparisonImagesDto) : null;
-}
-
-function toComparisonContent(value: Prisma.JsonValue | null): ProductComparisonContentDto | null {
-  return value ? (value as unknown as ProductComparisonContentDto) : null;
+function toComparisonTable(value: Prisma.JsonValue | null): ProductComparisonTableDto | null {
+  return value ? (value as unknown as ProductComparisonTableDto) : null;
 }
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
@@ -57,18 +44,15 @@ export function toAdminProductDto(
     shippableWeight: decimalToString(product.shippableWeight),
     minOrderQuantity: product.minOrderQuantity,
     maxOrderQuantity: product.maxOrderQuantity,
-    infoVisualImages: toInfoVisualImages(product.infoVisualImages),
-    comparisonImages: toComparisonImages(product.comparisonImages),
     translations: product.translations.map((t) => ({
       locale: t.locale,
       name: t.name,
       description: t.description,
       content: t.content,
-      nutrition: t.nutrition,
-      ingredients: t.ingredients,
       keyBenefits: t.keyBenefits,
-      infoVisualContent: toInfoVisualContent(t.infoVisualContent),
-      comparisonContent: toComparisonContent(t.comparisonContent),
+      benefitPoints: t.benefitPoints,
+      howToUse: t.howToUse,
+      comparisonTable: toComparisonTable(t.comparisonTable),
     })),
     categoryIds: product.categories.map((c) => c.categoryId),
     tagIds: product.tags.map((t) => t.tagId),
@@ -130,13 +114,10 @@ export function toPublicProductDto(
     name: translation?.name ?? product.slug,
     description: translation?.description ?? null,
     content: translation?.content ?? null,
-    nutrition: translation?.nutrition ?? null,
-    ingredients: translation?.ingredients ?? null,
     keyBenefits: translation?.keyBenefits ?? null,
-    infoVisualImages: toInfoVisualImages(product.infoVisualImages),
-    infoVisualContent: translation ? toInfoVisualContent(translation.infoVisualContent) : null,
-    comparisonImages: toComparisonImages(product.comparisonImages),
-    comparisonContent: translation ? toComparisonContent(translation.comparisonContent) : null,
+    benefitPoints: translation?.benefitPoints ?? null,
+    howToUse: translation?.howToUse ?? null,
+    comparisonTable: translation ? toComparisonTable(translation.comparisonTable) : null,
     brand: product.brand
       ? {
           id: product.brand.id,

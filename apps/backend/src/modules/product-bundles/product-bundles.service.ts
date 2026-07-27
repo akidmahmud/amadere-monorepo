@@ -66,6 +66,7 @@ export class ProductBundlesService {
     const bundle = await this.prisma.client.productBundle.create({
       data: {
         slug: dto.slug,
+        imageUrl: dto.imageUrl,
         bundlePrice: dto.bundlePrice,
         discountPct: dto.discountPct,
         status: dto.status,
@@ -107,6 +108,7 @@ export class ProductBundlesService {
       where: { id },
       data: {
         slug: dto.slug,
+        imageUrl: dto.imageUrl,
         bundlePrice: dto.bundlePrice,
         discountPct: dto.discountPct,
         status: dto.status,

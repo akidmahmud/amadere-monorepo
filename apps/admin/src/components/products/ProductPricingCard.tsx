@@ -22,7 +22,7 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
           price below is the product-wide default, used when a variant doesn&apos;t set its own.
         </p>
       ) : (
-        <div className="mb-3.5 grid grid-cols-3 gap-3">
+        <div className="mb-3.5 flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">
               Regular Price (৳)<span className="ml-0.5 text-danger">*</span>
@@ -41,14 +41,14 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
       )}
 
       {form.hasVariants && (
-        <label className="mb-3.5 flex flex-col gap-1.5 max-w-[calc((100%-1.5rem)/3)]">
+        <label className="mb-3.5 flex flex-col gap-1.5">
           <span className="text-xs font-bold text-text">Default Cost Price (৳)</span>
           <input type="number" value={form.costPerItem} onChange={(e) => form.setCostPerItem(e.target.value)} className={inputClass} />
         </label>
       )}
 
       {!form.hasVariants && (
-        <div className="mb-3.5 grid grid-cols-2 gap-3">
+        <div className="mb-3.5 flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">Sale starts (optional)</span>
             <input type="date" value={form.saleStartsAt} onChange={(e) => form.setSaleStartsAt(e.target.value)} className={inputClass} />
@@ -62,7 +62,7 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
 
       {!form.hasVariants && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-muted">Profit</span>
               <input readOnly value={hasCost ? `৳ ${profit.toFixed(2)}` : "—"} className={readonlyClass} />

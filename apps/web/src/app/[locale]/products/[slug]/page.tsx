@@ -3,15 +3,14 @@ import type { ReactElement } from "react";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import {
+  Carousel,
+  ComboCard,
   ProductGallery,
   ProductTabs,
-  ProductCarouselSection,
   RatingStars,
   SectionHeading,
   WatchingNowBadge,
-  MarketingReviewSection,
-  ProductInfoVisual,
-  ComparisonSection,
+  ProductComparisonTable,
 } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
@@ -36,11 +35,6 @@ export const revalidate = 3600;
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 type PublicBundleDto = components["schemas"]["PublicBundleDto"];
 
-// Same wavy-scene background as Footer's bottom art — designed to be
-// revealed by giving the section enough height, not cropped down thin.
-const MARKETING_REVIEW_BG_URL =
-  "https://pub-51174804638049198acba5bbf211435e.r2.dev/image/caedc06c-8f36-4a7e-96e6-cc3a5cc838cb-marketing-review-bg.png";
-
 async function getProduct(slug: string, locale: string) {
   const res = await safeGet("/api/v1/products/{slug}", {
     params: { path: { slug }, query: { locale } },
@@ -48,8 +42,14 @@ async function getProduct(slug: string, locale: string) {
   return res.data as PublicProductDetailDto | undefined;
 }
 
-function toBundleCardData(bundle: PublicBundleDto) {
-  return { href: `/combos/${bundle.slug}`, name: bundle.name, price: bundle.bundlePrice ?? "0" };
+function toComboCardData(bundle: PublicBundleDto) {
+  return {
+    href: `/combos/${bundle.slug}`,
+    name: bundle.name,
+    price: bundle.price,
+    originalPrice: bundle.originalPrice ?? undefined,
+    imageUrl: toDisplayImageUrl(bundle.imageUrl),
+  };
 }
 
 export async function generateMetadata({
@@ -94,7 +94,7 @@ export default async function ProductPage({
 
   const category = product.categories[0];
 
-  const [reviewsRes, relatedRes, combosRes, marketingReviewRes, whatsappRes] = await Promise.all([
+  const [reviewsRes, relatedRes, combosRes, whatsappRes] = await Promise.all([
     safeGet("/api/v1/products/{productId}/reviews", {
       params: { path: { productId: product.id }, query: { pageSize: 10 } },
     }),
@@ -106,8 +106,6 @@ export default async function ProductPage({
     safeGet("/api/v1/product-bundles", {
       params: { query: { locale: localeParam, productId: product.id, pageSize: 8 } },
     }),
-    // Same cards on every product page — not product-specific.
-    safeGet("/api/v1/marketing-review-cards", { params: { query: { locale: localeParam } } }),
     // Same config on every product page too — powers the WhatsApp order button.
     safeGet("/api/v1/whatsapp/config"),
   ]);
@@ -117,10 +115,7 @@ export default async function ProductPage({
     .filter((p) => p.id !== product.id)
     .slice(0, 8)
     .map(toProductCardData);
-  const combos = (combosRes.data?.items ?? []).map(toBundleCardData);
-  const marketingReviewCards = (
-    (marketingReviewRes.data ?? []) as components["schemas"]["PublicMarketingReviewCardDto"][]
-  ).map((c) => ({ imageUrl: toDisplayImageUrl(c.imageUrl) ?? c.imageUrl, caption: c.caption }));
+  const combos = (combosRes.data?.items ?? []).map(toComboCardData);
 
   const images = product.media
     .filter((m) => (m.type as unknown as string) !== "VIDEO")
@@ -128,11 +123,11 @@ export default async function ProductPage({
     .filter((url): url is string => Boolean(url))
     .map((url) => ({ url }));
 
-  const keyBenefits = (product.keyBenefits ?? "")
+  // "Key Benefits" tab — a checklist, unlike the deprecated badge strip.
+  const benefitPoints = (product.benefitPoints ?? "")
     .split("\n")
     .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 4);
+    .filter(Boolean);
 
   // Admin-authored WYSIWYG HTML, not user-generated — same trust level as
   // the description block above and blog post content elsewhere. Still
@@ -144,9 +139,24 @@ export default async function ProductPage({
   }
 
   const tabs = [
-    product.ingredients && { id: "ingredients", label: "Ingredients", content: htmlBlock(product.ingredients) },
-    product.nutrition && { id: "nutrition", label: "Nutrition", content: htmlBlock(product.nutrition) },
-    product.content && { id: "additional", label: "Additional Info", content: htmlBlock(product.content) },
+    product.content && { id: "description", label: "Description", content: htmlBlock(product.content) },
+    benefitPoints.length > 0 && {
+      id: "key-benefits",
+      label: "Key Benefits",
+      content: (
+        <ul className="flex flex-col gap-2.5">
+          {benefitPoints.map((point, i) => (
+            <li key={i} className="flex items-start gap-2.5 font-body text-sm font-medium text-text">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-green">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {point}
+            </li>
+          ))}
+        </ul>
+      ),
+    },
+    product.howToUse && { id: "how-to-use", label: "How to Use", content: htmlBlock(product.howToUse) },
   ].filter((tab): tab is { id: string; label: string; content: ReactElement } => Boolean(tab));
 
   return (
@@ -175,7 +185,9 @@ export default async function ProductPage({
                 {category.name}
               </div>
             )}
-            <h1 className="mb-3 font-serif text-3xl font-semibold text-ink">{product.name}</h1>
+            {/* Compact on mobile (18px, matching ghorerbazar's mobile PDP
+                hero) — full size on desktop, unchanged. */}
+            <h1 className="mb-2 font-serif text-lg font-semibold text-ink md:mb-3 md:text-3xl">{product.name}</h1>
             {reviews && reviews.reviewCount > 0 && (
               <RatingStars rating={reviews.averageRating ?? 0} count={reviews.reviewCount} className="mb-3" />
             )}
@@ -184,76 +196,57 @@ export default async function ProductPage({
               // backend's own content.util.ts docs (same pattern already
               // used for blog post content). Was previously rendered as
               // plain text, showing raw `<p><strong>` tags on the page.
+              // Hidden on mobile — the fuller "About This Product" section
+              // further down covers the same content there.
               // eslint-disable-next-line react/no-danger
               <div
-                className="mb-5 font-body text-sm leading-relaxed text-muted [&_strong]:font-semibold [&_strong]:text-ink"
+                className="mb-5 hidden font-body text-sm leading-relaxed text-muted [&_strong]:font-semibold [&_strong]:text-ink md:block"
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
               />
-            )}
-
-            {keyBenefits.length > 0 && (
-              <div className="mb-6">
-                <h2 className="mb-3 font-ui text-sm font-semibold text-ink">Key Benefits</h2>
-                <div className="grid grid-cols-2 gap-3.5">
-                  {keyBenefits.map((benefit, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="h-11 w-11 shrink-0 rounded-[10px] bg-beige" aria-hidden />
-                      <span className="font-ui text-[13px] leading-snug text-ink">{benefit}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             )}
 
             <WatchingNowBadge productId={product.id} />
 
             <PdpPurchasePanel product={product} whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null} />
-
-            <ProductTabs tabs={tabs} />
           </div>
         </div>
+
+        {product.description && (
+          <div className="mx-auto max-w-[820px] py-14 text-center">
+            <SectionHeading>About This Product</SectionHeading>
+            <div
+              className="font-body text-sm leading-loose text-text"
+              // eslint-disable-next-line react/no-danger
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
+            />
+          </div>
+        )}
+
+        <ProductTabs tabs={tabs} />
       </div>
 
-      {marketingReviewCards.length > 0 && (
-        <MarketingReviewSection cards={marketingReviewCards} backgroundImageUrl={MARKETING_REVIEW_BG_URL} />
-      )}
-
-      <ProductInfoVisual
-        mainImageUrl={product.infoVisualImages?.main}
-        topHeadingHtml={product.infoVisualContent?.topHeading}
-        bottomHeadingHtml={product.infoVisualContent?.bottomHeading}
-        arrows={product.infoVisualContent?.arrows ?? []}
-        circles={(product.infoVisualImages?.circles ?? []).map((imageUrl, i) => ({
-          imageUrl,
-          label: product.infoVisualContent?.circleLabels?.[i],
-        }))}
+      <ProductComparisonTable
+        title={product.comparisonTable?.title}
+        ownLabel={product.comparisonTable?.ownLabel || product.name}
+        competitorLabel={product.comparisonTable?.competitorLabel}
+        rows={(product.comparisonTable?.rows ?? [])
+          .filter((row) => row.feature)
+          .map((row) => ({ feature: row.feature!, own: row.own ?? false, competitor: row.competitor ?? false }))}
       />
 
-      <ComparisonSection
-        headingHtml={product.comparisonContent?.heading}
-        card1={
-          product.comparisonImages?.card1 || product.comparisonContent?.card1
-            ? {
-                imageUrl: product.comparisonImages?.card1,
-                title: product.comparisonContent?.card1?.title,
-                items: product.comparisonContent?.card1?.items,
-              }
-            : null
-        }
-        card2={
-          product.comparisonImages?.card2 || product.comparisonContent?.card2
-            ? {
-                imageUrl: product.comparisonImages?.card2,
-                title: product.comparisonContent?.card2?.title,
-                items: product.comparisonContent?.card2?.items,
-              }
-            : null
-        }
-      />
+      {/* ProductCarouselSection has no built-in max-width/gutter of its own
+          (shared with the homepage's edge-to-edge usage) — capped here to
+          match every other section's containment on this page. */}
+      <div className="mx-auto max-w-[1180px] px-5">
+        <ProductCarouselSectionClient
+          heading="Related Products"
+          products={relatedProducts}
+          visibleCount={4}
+          autoplayMs={4000}
+        />
+      </div>
 
-      <ProductCarouselSectionClient heading="Related Products" products={relatedProducts} />
-
-      <div className="mx-auto max-w-[1180px] px-5 py-9">
+      <div className="mx-auto max-w-[1180px] px-5 py-14">
         <SectionHeading>Customer Reviews</SectionHeading>
 
         {reviews && reviews.items.length > 0 && (
@@ -292,13 +285,16 @@ export default async function ProductPage({
         <WriteReviewForm productId={product.id} />
       </div>
 
-      <ProductCarouselSection
-        heading="Frequently Bought Together"
-        products={combos}
-        viewAllHref="/combos"
-        viewAllLabel="View All"
-        linkComponent={AppLink}
-      />
+      {combos.length > 0 && (
+        <div className="mx-auto max-w-[1180px] px-5 py-14">
+          <SectionHeading>Frequently Bought Together</SectionHeading>
+          <Carousel>
+            {combos.map((combo: ReturnType<typeof toComboCardData>) => (
+              <ComboCard key={combo.href} {...combo} linkComponent={AppLink} />
+            ))}
+          </Carousel>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import {
   AdBannerSection,
@@ -8,13 +8,12 @@ import {
   CertificationRow,
   CircleBadgeBar,
   Carousel,
+  ComboCard,
   FeaturedCategoriesSection,
   HeroCarousel,
-  ProductCarouselSection,
   SectionHeading,
   TestimonialsBento,
   ViewAllLink,
-  type ProductCarouselItem,
 } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { getLanguageAlternates } from "@/i18n/alternates";
@@ -42,13 +41,13 @@ export function generateMetadata(): Metadata {
   };
 }
 
-function toBundleCardData(
-  bundle: components["schemas"]["PublicBundleDto"],
-): ProductCarouselItem {
+function toComboCardData(bundle: components["schemas"]["PublicBundleDto"]) {
   return {
     href: `/combos/${bundle.slug}`,
     name: bundle.name,
-    price: bundle.bundlePrice ?? "0",
+    price: bundle.price,
+    originalPrice: bundle.originalPrice ?? undefined,
+    imageUrl: toDisplayImageUrl(bundle.imageUrl),
   };
 }
 
@@ -69,16 +68,18 @@ type HomepageSectionType =
   | "TABBED_COLLECTION_CAROUSEL"
   | "AD_BANNER"
   | "FEATURED_CATEGORIES"
-  | "TOP_SELLING_PRODUCTS";
+  | "TOP_SELLING_PRODUCTS"
+  | "JUST_FOR_YOU";
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
-  "type" | "config" | "promoVideoProducts" | "topSellingProducts"
+  "type" | "config" | "promoVideoProducts" | "topSellingProducts" | "justForYouProducts"
 > & {
   type: HomepageSectionType;
   config: Record<string, unknown>;
   promoVideoProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
   topSellingProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
+  justForYouProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
 };
 
 // Same 1440px container / 16px-mobile-24px-desktop gutter as the header, nav,
@@ -210,6 +211,33 @@ function renderSection(
       if (items.length === 0) return null;
       return (
         <TopSellingProductsSectionClient key={section.id} heading={section.heading ?? undefined} items={items} />
+      );
+    }
+
+    // Same admin-curated `{productId, showBadge}[]` shape as TOP_SELLING_PRODUCTS,
+    // but rendered as the compact strip carousel (ProductStripSection) instead
+    // of the big-card grid — matches ghorerbazar.com's "Just For You" section.
+    // No backing collection to derive a view-all target from, so it links to
+    // the full catalog instead.
+    case "JUST_FOR_YOU": {
+      const configItems = (config.items as { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
+      const resolvedProducts = section.justForYouProducts ?? [];
+      const items = configItems
+        .map((item, i) => {
+          const product = resolvedProducts[i];
+          if (!product) return null;
+          return { ...toProductCardData(product), isFeatured: item.showBadge };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+      if (items.length === 0) return null;
+      return (
+        <TabbedCollectionCarouselSection
+          key={section.id}
+          title={section.heading ?? "Just For You"}
+          viewAllHref="/products"
+          viewAllLabel="Shop All"
+          items={items}
+        />
       );
     }
 
@@ -348,7 +376,7 @@ export default async function Home({
   ]);
 
   const sections = (sectionsRes.data ?? []) as unknown as HomepageSection[];
-  const bundles = (bundlesRes.data?.items ?? []).map(toBundleCardData);
+  const bundles = (bundlesRes.data?.items ?? []).map(toComboCardData);
   const categories = (categoriesRes.data?.items ??
     []) as components["schemas"]["PublicCategoryDto"][];
   const blogPosts = (blogRes.data?.items ??
@@ -367,22 +395,46 @@ export default async function Home({
       ).data?.items ?? [])
     : [];
 
+  const comboSection = bundles.length > 0 && (
+    <section className="pt-10 md:pt-14" key="super-saver-combos">
+      <div className={WRAPPER}>
+        <div className="mb-6 flex items-end justify-between gap-4 border-b border-header-line pb-3.5">
+          <h2 className="relative font-header text-base font-extrabold text-[#227840] after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:text-[1.35rem]">
+            Super Saver Combos
+          </h2>
+          <AppLink
+            href="/combos"
+            className="inline-flex shrink-0 items-center gap-1.5 font-header text-[0.8rem] font-extrabold uppercase tracking-[0.04em] text-header-green hover:text-header-green-dark hover:underline"
+          >
+            View All Combos
+          </AppLink>
+        </div>
+
+        <Carousel>
+          {bundles.map((bundle: ReturnType<typeof toComboCardData>) => (
+            <ComboCard key={bundle.href} {...bundle} linkComponent={AppLink} />
+          ))}
+        </Carousel>
+      </div>
+    </section>
+  );
+  // Combos has no admin-configurable homepage-section type of its own (see
+  // the ProductBundle vs Category/Collection research this was built from)
+  // — it's placed right after Certification specifically because that's
+  // where the user wants it, not derived from any section's own sortOrder.
+  // Falls back to appending at the very end if Certification isn't
+  // currently a configured section at all, so combos never silently vanish.
+  const certificationIndex = sections.findIndex((s) => s.type === "CERTIFICATION_ROW");
+
   return (
     <main className="flex-1">
-      {sections.map((section) => renderSection(section, { categories, blogPosts }))}
-
-      {bundles.length > 0 && (
-        <div className={WRAPPER}>
-          <ProductCarouselSection
-            heading="Super Saver Combos"
-            products={bundles}
-            viewAllHref="/combos"
-            viewAllLabel="View All"
-            linkComponent={AppLink}
-            autoplayMs={4000}
-          />
-        </div>
-      )}
+      {sections.map((section, i) => (
+        <Fragment key={section.id}>
+          {renderSection(section, { categories, blogPosts })}
+          {i === certificationIndex && comboSection}
+        </Fragment>
+      ))}
+      {certificationIndex === -1 && comboSection}
 
       {firstTag && (
         <div className={WRAPPER}>

@@ -5132,42 +5132,21 @@ export interface components {
             sortOrder: number;
             translations?: components["schemas"]["AttributeValueTranslationDto"][];
         };
-        ProductInfoVisualImagesDto: {
-            /** @description Center product image */
-            main?: string;
-            /** @description Exactly 3 circular ingredient images */
-            circles?: string[];
+        ProductComparisonRowDto: {
+            feature?: string;
+            /** @description Checkmark under the own-product column */
+            own?: boolean;
+            /** @description Checkmark under the competitor column */
+            competitor?: boolean;
         };
-        ProductInfoVisualArrowDto: {
-            /** @description Admin-authored HTML, same trust level as description/content */
-            heading?: string;
-            /** @description Admin-authored HTML, same trust level as description/content */
-            subheading?: string;
-        };
-        ProductInfoVisualContentDto: {
-            /** @description Admin-authored HTML, same trust level as description/content */
-            topHeading?: string;
-            /** @description Admin-authored HTML, same trust level as description/content */
-            bottomHeading?: string;
-            /** @description Exactly 4, in fixed position order */
-            arrows?: components["schemas"]["ProductInfoVisualArrowDto"][];
-            /** @description Exactly 3, matching Product.infoVisualImages.circles order */
-            circleLabels?: string[];
-        };
-        ProductComparisonImagesDto: {
-            card1?: string;
-            card2?: string;
-        };
-        ProductComparisonCardContentDto: {
+        ProductComparisonTableDto: {
+            /** @description Defaults to "Why Choose {Product Name}?" when left blank */
             title?: string;
-            /** @description One bullet line per line of text, same convention as keyBenefits. */
-            items?: string;
-        };
-        ProductComparisonContentDto: {
-            /** @description Admin-authored HTML, same trust level as description/content */
-            heading?: string;
-            card1?: components["schemas"]["ProductComparisonCardContentDto"];
-            card2?: components["schemas"]["ProductComparisonCardContentDto"];
+            /** @description Defaults to the product name when left blank */
+            ownLabel?: string;
+            /** @description e.g. "Regular White Rice" */
+            competitorLabel?: string;
+            rows?: components["schemas"]["ProductComparisonRowDto"][];
         };
         PublicProductBrandDto: {
             id: number;
@@ -5223,13 +5202,10 @@ export interface components {
             name: string;
             description: string | null;
             content: string | null;
-            nutrition: string | null;
-            ingredients: string | null;
             keyBenefits: string | null;
-            infoVisualImages: components["schemas"]["ProductInfoVisualImagesDto"] | null;
-            infoVisualContent: components["schemas"]["ProductInfoVisualContentDto"] | null;
-            comparisonImages: components["schemas"]["ProductComparisonImagesDto"] | null;
-            comparisonContent: components["schemas"]["ProductComparisonContentDto"] | null;
+            benefitPoints: string | null;
+            howToUse: string | null;
+            comparisonTable: components["schemas"]["ProductComparisonTableDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -5254,13 +5230,10 @@ export interface components {
             name: string;
             description: string | null;
             content: string | null;
-            nutrition: string | null;
-            ingredients: string | null;
             keyBenefits: string | null;
-            infoVisualImages: components["schemas"]["ProductInfoVisualImagesDto"] | null;
-            infoVisualContent: components["schemas"]["ProductInfoVisualContentDto"] | null;
-            comparisonImages: components["schemas"]["ProductComparisonImagesDto"] | null;
-            comparisonContent: components["schemas"]["ProductComparisonContentDto"] | null;
+            benefitPoints: string | null;
+            howToUse: string | null;
+            comparisonTable: components["schemas"]["ProductComparisonTableDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -5274,11 +5247,10 @@ export interface components {
             name: string;
             description: string | null;
             content: string | null;
-            nutrition: string | null;
-            ingredients: string | null;
             keyBenefits: string | null;
-            infoVisualContent: components["schemas"]["ProductInfoVisualContentDto"] | null;
-            comparisonContent: components["schemas"]["ProductComparisonContentDto"] | null;
+            benefitPoints: string | null;
+            howToUse: string | null;
+            comparisonTable: components["schemas"]["ProductComparisonTableDto"] | null;
         };
         AdminProductMediaDto: {
             id: number;
@@ -5322,8 +5294,6 @@ export interface components {
             shippableWeight: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
-            infoVisualImages: components["schemas"]["ProductInfoVisualImagesDto"] | null;
-            comparisonImages: components["schemas"]["ProductComparisonImagesDto"] | null;
             translations: components["schemas"]["AdminProductTranslationDto"][];
             categoryIds: number[];
             tagIds: number[];
@@ -5338,14 +5308,17 @@ export interface components {
             /** @enum {string} */
             locale: "EN" | "BN";
             name: string;
+            /** @description Short Description — teaser near the title and the PDP's "About This Product" section */
             description?: string;
+            /** @description Full Description — rendered as the PDP's "Description" tab */
             content?: string;
-            nutrition?: string;
-            ingredients?: string;
-            /** @description Short benefit lines, one per line — rendered as the PDP's "Key Benefits" grid. */
+            /** @description Benefit Badges — short lines, one per line, up to 4, rendered as the PDP's badge strip */
             keyBenefits?: string;
-            infoVisualContent?: components["schemas"]["ProductInfoVisualContentDto"];
-            comparisonContent?: components["schemas"]["ProductComparisonContentDto"];
+            /** @description PDP "Key Benefits" tab — one bullet line per line of text */
+            benefitPoints?: string;
+            /** @description PDP "How to Use" tab */
+            howToUse?: string;
+            comparisonTable?: components["schemas"]["ProductComparisonTableDto"];
         };
         CreateProductVariantDto: {
             sku?: string;
@@ -5416,8 +5389,6 @@ export interface components {
             mediaIds?: number[];
             /** @description Required when hasVariants is true */
             variants?: components["schemas"]["CreateProductVariantDto"][];
-            infoVisualImages?: components["schemas"]["ProductInfoVisualImagesDto"];
-            comparisonImages?: components["schemas"]["ProductComparisonImagesDto"];
         };
         UpdateProductDto: {
             slug?: string;
@@ -5475,8 +5446,6 @@ export interface components {
             mediaIds?: number[];
             /** @description Required when hasVariants is true */
             variants?: components["schemas"]["CreateProductVariantDto"][];
-            infoVisualImages?: components["schemas"]["ProductInfoVisualImagesDto"];
-            comparisonImages?: components["schemas"]["ProductComparisonImagesDto"];
         };
         UpdateVariantStockDto: {
             stock: number;
@@ -5554,8 +5523,11 @@ export interface components {
         PublicBundleDto: {
             id: number;
             slug: string;
+            imageUrl: string | null;
             bundlePrice: string | null;
             discountPct: string | null;
+            price: string;
+            originalPrice: string | null;
             name: string;
             description: string | null;
             items: components["schemas"]["PublicBundleItemDto"][];
@@ -5563,8 +5535,11 @@ export interface components {
         PublicBundleDetailDto: {
             id: number;
             slug: string;
+            imageUrl: string | null;
             bundlePrice: string | null;
             discountPct: string | null;
+            price: string;
+            originalPrice: string | null;
             name: string;
             description: string | null;
             items: components["schemas"]["PublicBundleItemDto"][];
@@ -5584,6 +5559,7 @@ export interface components {
         AdminBundleDto: {
             id: number;
             slug: string;
+            imageUrl: string | null;
             bundlePrice: string | null;
             discountPct: string | null;
             status: Record<string, never>;
@@ -5598,6 +5574,7 @@ export interface components {
         };
         CreateProductBundleDto: {
             slug: string;
+            imageUrl?: string;
             /** @description Fixed total price for the bundle (overrides discountPct if both given) */
             bundlePrice?: number;
             /** @description Percentage off the sum of item prices */
@@ -5612,6 +5589,7 @@ export interface components {
         };
         UpdateProductBundleDto: {
             slug?: string;
+            imageUrl?: string;
             /** @description Fixed total price for the bundle (overrides discountPct if both given) */
             bundlePrice?: number;
             /** @description Percentage off the sum of item prices */
@@ -7072,6 +7050,7 @@ export interface components {
             collection: components["schemas"]["PublicCollectionDto"] | null;
             promoVideoProducts: Record<string, never>[] | null;
             topSellingProducts: Record<string, never>[] | null;
+            justForYouProducts: Record<string, never>[] | null;
         };
         AdminHomepageSectionTranslationDto: {
             locale: Record<string, never>;
@@ -7095,7 +7074,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -7111,7 +7090,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU";
             /** @default 0 */
             sortOrder: number;
             /** @default true */

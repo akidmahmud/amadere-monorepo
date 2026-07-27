@@ -66,6 +66,10 @@ export class PublicHomepageSectionDto {
    * entry, same order/length, null for an item whose product no longer
    * resolves (deleted/unpublished) rather than dropping the item silently. */
   topSellingProducts!: (PublicProductDto | null)[] | null;
+  /** JUST_FOR_YOU only — one resolved product per config.items entry, same
+   * order/length, null for an item whose product no longer resolves
+   * (deleted/unpublished) rather than dropping the item silently. */
+  justForYouProducts!: (PublicProductDto | null)[] | null;
 }
 
 export function toPublicHomepageSectionDto(
@@ -74,6 +78,7 @@ export function toPublicHomepageSectionDto(
   locale: Locale,
   promoVideoProducts: (PublicProductDto | null)[] | null = null,
   topSellingProducts: (PublicProductDto | null)[] | null = null,
+  justForYouProducts: (PublicProductDto | null)[] | null = null,
 ): PublicHomepageSectionDto {
   const translation =
     section.translations.find((t) => t.locale === locale) ??
@@ -88,5 +93,6 @@ export function toPublicHomepageSectionDto(
     collection,
     promoVideoProducts,
     topSellingProducts,
+    justForYouProducts,
   };
 }

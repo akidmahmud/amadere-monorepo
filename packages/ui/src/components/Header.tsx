@@ -55,6 +55,11 @@ const hamburgerIcon = (
     <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
   </svg>
 );
+const closeIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
+    <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+  </svg>
+);
 
 export interface HeaderProps {
   brandHref: string;
@@ -119,6 +124,7 @@ export function Header({
 }: HeaderProps) {
   const [query, setQuery] = useState("");
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const openCart = useCartDrawerStore((s) => s.open);
   const isDrawerOpen = useMobileNavDrawerStore((s) => s.isOpen);
   const openDrawer = useMobileNavDrawerStore((s) => s.open);
@@ -132,13 +138,14 @@ export function Header({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setIsSuggestionsOpen(false);
+    setIsMobileSearchOpen(false);
     onSearchSubmit?.(query);
   }
 
   // Shared between the mobile and desktop layouts (spec 5.1's 48/48/44px
   // tiers and 5.2's 40px mobile row both use the same input+button markup) —
   // only the wrapper's height/rounding differ per call site.
-  function searchForm(heightClass: string) {
+  function searchForm(heightClass: string, autoFocus = false) {
     return (
       <form
         onSubmit={handleSubmit}
@@ -153,6 +160,7 @@ export function Header({
           onFocus={() => query.trim().length > 0 && setIsSuggestionsOpen(true)}
           onBlur={() => setIsSuggestionsOpen(false)}
           placeholder={searchPlaceholder}
+          autoFocus={autoFocus}
           className="w-0 flex-1 bg-transparent font-header text-sm text-header-ink outline-none placeholder:text-header-muted"
         />
         <button
@@ -196,9 +204,12 @@ export function Header({
     // scrolling shows just the slim category bar, not this whole
     // logo/search/actions row, per explicit user request.
     <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header md:static", className)}>
-      {/* ===== Mobile (<768px) — two rows + drawer, spec 5.2 ===== */}
+      {/* ===== Mobile (<768px) — single row + drawer + search overlay =====
+          The search bar used to be a permanent second row; now it's a
+          tap-to-open icon beside Cart (per explicit user request), so the
+          header stays a single 64px row on mobile. */}
       <div className="md:hidden">
-        <div className="grid h-16 grid-cols-[44px_1fr_44px] items-center px-4">
+        <div className="grid h-16 grid-cols-[44px_1fr_44px_44px] items-center px-4">
           <button
             type="button"
             aria-label={mobileMenuLabel}
@@ -219,19 +230,51 @@ export function Header({
           </Link>
           <button
             type="button"
+            aria-label={searchAriaLabel}
+            onClick={() => setIsMobileSearchOpen(true)}
+            className="col-start-3 grid h-11 w-11 place-items-center justify-self-end text-header-ink"
+          >
+            {searchIcon}
+          </button>
+          <button
+            type="button"
             onClick={openCart}
             aria-label={`${cartLabel}, ${cartCount ?? 0} items`}
-            className="relative col-start-3 flex h-full w-11 flex-col items-center justify-center justify-self-end gap-0.5 text-header-ink"
+            className="relative col-start-4 flex h-full w-11 flex-col items-center justify-center justify-self-end gap-0.5 text-header-ink"
           >
             {smallCartIcon}
             <Badge count={cartCount} />
             <span className="font-header text-[10px] font-semibold">{cartLabel}</span>
           </button>
         </div>
-        <div className="relative px-4 py-1.5">
-          {searchForm("h-10")}
-          {suggestionsPanel()}
-        </div>
+
+        {isMobileSearchOpen && (
+          <div className="fixed inset-0 z-50">
+            {/* Backdrop — dims/"focuses out" the rest of the page while
+                searching, tap to dismiss. */}
+            <div
+              className="absolute inset-0 bg-ink/40"
+              onClick={() => setIsMobileSearchOpen(false)}
+              aria-hidden
+            />
+            <div className="relative border-b border-header-line bg-white px-4 py-3 shadow-brand">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  {searchForm("h-11", true)}
+                  {suggestionsPanel()}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close search"
+                  onClick={() => setIsMobileSearchOpen(false)}
+                  className="grid h-11 w-11 shrink-0 place-items-center text-header-ink"
+                >
+                  {closeIcon}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===== Tablet/laptop/desktop (>=768px) — single row, spec 5.1 =====

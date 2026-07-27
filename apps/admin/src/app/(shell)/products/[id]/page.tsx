@@ -40,12 +40,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </svg>
           </Link>
           <h1 className="font-ui text-lg font-extrabold text-text">Edit Product</h1>
-          <Link href={`/products/${productId}/info-visual`} className="text-xs font-semibold text-brand-500 hover:underline">
-            Info Visual →
-          </Link>
-          <Link href={`/products/${productId}/comparison`} className="text-xs font-semibold text-brand-500 hover:underline">
-            Comparison →
-          </Link>
           <Link href="/products/marketing-review" className="text-xs font-semibold text-brand-500 hover:underline">
             Marketing Review Cards →
           </Link>

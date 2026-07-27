@@ -14,6 +14,7 @@ import { ProductSeoTab } from "./ProductSeoTab";
 import { ProductAnalyticsTab } from "./ProductAnalyticsTab";
 import { ProductActivityTab } from "./ProductActivityTab";
 import { CrossSellFields } from "./CrossSellFields";
+import { ComparisonTableFields } from "./ComparisonTableFields";
 import { ExistingVariantsManager } from "./ExistingVariantsManager";
 import { NewVariantsBuilder } from "./NewVariantsBuilder";
 
@@ -55,7 +56,7 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
 
       {tab === "General" && (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_1fr]">
             <div className="flex flex-col gap-4">
               <div className="rounded-card border border-border bg-surface p-[18px]">
                 <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Basic Information</h3>
@@ -78,26 +79,24 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   </span>
                   <textarea value={form.description} onChange={(e) => form.setDescription(e.target.value)} rows={3} className={textareaClass} />
                 </label>
-                <label className="flex flex-col gap-1.5">
+                <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">Full Description</span>
                   <RichTextEditor value={form.content} onChange={form.setContent} />
+                </label>
+                <label className="mb-3.5 flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-text">Key Benefits (optional — rendered as a checklist on the product page)</span>
+                  <textarea value={form.benefitPoints} onChange={(e) => form.setBenefitPoints(e.target.value)} rows={4} className={textareaClass} placeholder="One benefit per line" />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-text">How to Use (optional)</span>
+                  <textarea value={form.howToUse} onChange={(e) => form.setHowToUse(e.target.value)} rows={3} className={textareaClass} />
                 </label>
               </div>
 
               <div className="rounded-card border border-border bg-surface p-[18px]">
                 <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Other Details</h3>
-                <div className="mb-3.5 grid grid-cols-2 gap-3">
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold text-text">Nutrition (optional)</span>
-                    <textarea value={form.nutrition} onChange={(e) => form.setNutrition(e.target.value)} rows={3} className={textareaClass} />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold text-text">Ingredients (optional)</span>
-                    <textarea value={form.ingredients} onChange={(e) => form.setIngredients(e.target.value)} rows={3} className={textareaClass} />
-                  </label>
-                </div>
                 <label className="mb-3.5 flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">Key Benefits (optional, one per line, up to 4)</span>
+                  <span className="text-xs font-bold text-text">Benefit Badges (optional, one per line, up to 4)</span>
                   <textarea value={form.keyBenefits} onChange={(e) => form.setKeyBenefits(e.target.value)} rows={4} className={textareaClass} />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -111,6 +110,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   </label>
                 </div>
               </div>
+
+              <ComparisonTableFields form={form} />
             </div>
 
             <div className="flex flex-col gap-4">

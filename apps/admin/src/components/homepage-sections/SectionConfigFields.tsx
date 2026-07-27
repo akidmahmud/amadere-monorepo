@@ -40,7 +40,10 @@ export function SectionConfigFields({
   // rendering differs (150px tile-grid-with-scroll-arrows vs. a plain
   // carousel), so the admin picker is identical.
   if (type === "FEATURED_CATEGORIES") return <CategoryShowcaseFields config={config} onConfigChange={onConfigChange} />;
-  if (type === "TOP_SELLING_PRODUCTS") {
+  // JUST_FOR_YOU stores the exact same `{productId, showBadge}[]` shape as
+  // TOP_SELLING_PRODUCTS — only the storefront's rendering differs (compact
+  // strip carousel vs. big-card grid) — so it reuses the same picker.
+  if (type === "TOP_SELLING_PRODUCTS" || type === "JUST_FOR_YOU") {
     return <TopSellingProductsFields config={config} onConfigChange={onConfigChange} />;
   }
   if (type === "BLOG_TEASER") return <BlogTeaserFields config={config} onConfigChange={onConfigChange} />;

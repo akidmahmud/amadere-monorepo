@@ -16,10 +16,32 @@ import { useAddToCart } from "@/hooks/useCart";
 import { useMe } from "@/hooks/useAuth";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from "@/hooks/useAccount";
 import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
+import { CallNowButton } from "@/components/CallNowButton";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import type { components } from "@/lib/api/schema";
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
+
+const checkIcon = (
+  <svg
+    viewBox="0 0 24 24"
+    width={15}
+    height={15}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="shrink-0 text-green"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="8.5 12.5 11 15 15.5 9.5" />
+  </svg>
+);
+
+// Static, same on every product page — no admin config, per explicit
+// request. Desktop only (mockup's trust-row) — mobile stays compact.
+const TRUST_ITEMS = ["100% Organic", "Chemical Free", "Premium Quality", "Fast Delivery"];
 
 const heartIcon = (filled: boolean) => (
   <svg
@@ -116,11 +138,15 @@ export function PdpPurchasePanel({
     <div>
       <PriceTag price={price} originalPrice={originalPrice} align="left" size="lg" className="mb-4" />
 
+      {/* Desktop keeps variants above the CTAs (normal convention). Mobile
+          moves them below the CTA grid instead — same position ghorerbazar's
+          mobile PDP uses for its Brand row — so the first screen on mobile is
+          just image/title/price/qty/buttons, per explicit user request. */}
       {product.hasVariants && packOptions.length > 0 && selectedVariantId && (
-        <>
+        <div className="hidden md:block">
           <h4 className="mb-2.5 font-ui text-sm font-medium text-ink">Select Pack Size</h4>
           <PackSizeSelector options={packOptions} value={selectedVariantId} onChange={setSelectedVariantId} />
-        </>
+        </div>
       )}
 
       {outOfStock ? (
@@ -137,19 +163,13 @@ export function PdpPurchasePanel({
         </p>
       )}
 
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-3 flex items-center gap-3">
         <QtyStepper
           value={qty}
           onChange={setQty}
           min={product.minOrderQuantity || 1}
           max={product.maxOrderQuantity ?? undefined}
         />
-        <Button variant="gold" disabled={outOfStock || addToCart.isPending} onClick={handleAddToCart}>
-          Add to Cart
-        </Button>
-        <Button variant="green" disabled={outOfStock || addToCart.isPending} onClick={handleBuyNow}>
-          Buy Now
-        </Button>
         <button
           type="button"
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -159,10 +179,48 @@ export function PdpPurchasePanel({
         >
           {heartIcon(isWishlisted)}
         </button>
-        {!outOfStock && <WhatsappOrderButton config={whatsappConfig} productName={product.name} />}
       </div>
 
-      {outOfStock && <WhatsappOrderButton config={whatsappConfig} productName={product.name} variant="block" />}
+      {/* Add to Cart/Buy Now drop out when out of stock (and not on
+          backorder), leaving WhatsApp/Call Now alone in the grid — CSS grid
+          reflows 2 items into a single row on its own, no extra branching
+          needed. WhatsApp/Call Now otherwise always show, every product page,
+          regardless of stock. */}
+      <div className="mb-6 grid grid-cols-2 gap-3">
+        {!outOfStock && (
+          <>
+            <Button variant="gold" disabled={addToCart.isPending} onClick={handleAddToCart}>
+              Add to Cart
+            </Button>
+            <Button
+              variant="green"
+              disabled={addToCart.isPending}
+              onClick={handleBuyNow}
+              className="animate-[wiggle_2.5s_ease-in-out_infinite]"
+            >
+              Buy Now
+            </Button>
+          </>
+        )}
+        <WhatsappOrderButton config={whatsappConfig} productName={product.name} />
+        <CallNowButton config={whatsappConfig} />
+      </div>
+
+      <div className="mb-6 hidden flex-wrap gap-5 md:flex">
+        {TRUST_ITEMS.map((item) => (
+          <span key={item} className="flex items-center gap-2 font-ui text-xs font-bold text-text">
+            {checkIcon}
+            {item}
+          </span>
+        ))}
+      </div>
+
+      {product.hasVariants && packOptions.length > 0 && selectedVariantId && (
+        <div className="md:hidden">
+          <h4 className="mb-2.5 font-ui text-sm font-medium text-ink">Select Pack Size</h4>
+          <PackSizeSelector options={packOptions} value={selectedVariantId} onChange={setSelectedVariantId} />
+        </div>
+      )}
     </div>
   );
 }

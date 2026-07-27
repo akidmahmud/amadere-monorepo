@@ -13,48 +13,29 @@ const whatsappIcon = (
 // SSR, and fetching it client-side caused a real hydration mismatch (server
 // renders null, client's first paint already had the cached button).
 //
-// "icon" is the small always-present circular button next to the wishlist
-// heart (in-stock state). "block" is the full-width labeled CTA shown in
-// place of the (disabled) Add to Cart/Buy Now buttons once a product is out
-// of stock — same link, just a different affordance for a different moment.
+// One of the 4 CTA-grid cells in PdpPurchasePanel — always present on every
+// product page (alongside Call Now) regardless of stock status.
 export function WhatsappOrderButton({
   config,
   productName,
-  variant = "icon",
 }: {
   config: WhatsappConfig | null;
   productName: string;
-  variant?: "icon" | "block";
 }) {
   if (!config?.enabled || !config.phoneNumber) return null;
 
   const message = fillTemplate(config.productMessageTemplate, { productName });
   const href = buildWhatsappLink(config.phoneNumber, message);
 
-  if (variant === "block") {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="mb-6 inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#25D366] px-5 py-2.5 font-ui text-sm font-medium text-white transition-colors hover:bg-[#1ebe5b]"
-      >
-        {whatsappIcon}
-        Order via WhatsApp
-      </a>
-    );
-  }
-
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line text-[#25D366] hover:bg-[#25D366]/10"
-      aria-label="Order on WhatsApp"
-      title="Order on WhatsApp"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#25D366] px-5 py-2.5 font-ui text-sm font-medium text-white transition-colors hover:bg-[#1ebe5b]"
     >
       {whatsappIcon}
+      Order via WhatsApp
     </a>
   );
 }

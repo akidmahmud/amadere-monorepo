@@ -127,9 +127,20 @@ export class HomepageSectionsService {
             : null;
         const topSellingProducts =
           section.type === 'TOP_SELLING_PRODUCTS'
-            ? await this.resolveTopSellingProducts(section.config, locale)
+            ? await this.resolveConfigItemProducts(section.config, locale)
             : null;
-        return toPublicHomepageSectionDto(section, collection, locale, promoVideoProducts, topSellingProducts);
+        const justForYouProducts =
+          section.type === 'JUST_FOR_YOU'
+            ? await this.resolveConfigItemProducts(section.config, locale)
+            : null;
+        return toPublicHomepageSectionDto(
+          section,
+          collection,
+          locale,
+          promoVideoProducts,
+          topSellingProducts,
+          justForYouProducts,
+        );
       }),
     );
   }
@@ -144,11 +155,14 @@ export class HomepageSectionsService {
     return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
   }
 
-  private async resolveTopSellingProducts(
+  // Shared by TOP_SELLING_PRODUCTS and JUST_FOR_YOU — both store an
+  // admin-picked `config.items: {productId, showBadge}[]` and need the same
+  // "resolve ids, preserve order/length" treatment.
+  private async resolveConfigItemProducts(
     config: unknown,
     locale: Locale,
   ): Promise<(PublicProductDto | null)[]> {
-    const productIds = extractTopSellingProductIds(config);
+    const productIds = extractConfigItemProductIds(config);
     const uniqueIds = [...new Set(productIds.filter((id): id is number => id !== null))];
     const resolved = await this.products.getManyByIds(uniqueIds, locale);
     return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
@@ -183,7 +197,7 @@ function extractPromoVideoProductIds(config: unknown): (number | null)[] {
   });
 }
 
-function extractTopSellingProductIds(config: unknown): (number | null)[] {
+function extractConfigItemProductIds(config: unknown): (number | null)[] {
   if (!config || typeof config !== 'object' || Array.isArray(config)) return [];
   const items = (config as Record<string, unknown>).items;
   if (!Array.isArray(items)) return [];
