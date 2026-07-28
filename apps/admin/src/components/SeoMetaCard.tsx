@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Card } from "@amader/admin-ui";
 import { useDeleteSeoMeta, useSeoMeta, useUpsertSeoMeta, type SeoEntityType } from "@/hooks/useSeoMeta";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -81,7 +82,7 @@ export function SeoMetaCard({
 
   const effectiveTitle = form.title || fallbackTitle || "";
   const effectiveDescription = form.description || fallbackDescription || "";
-  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
+  const storefrontUrl = useStorefrontUrl();
 
   return (
     <Card className="flex max-w-2xl flex-col gap-4">

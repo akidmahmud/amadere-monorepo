@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useAttributes, type Attribute } from "@/hooks/useAttributes";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import type { StockStatus, AdminProductVariant, VariantInput } from "@/hooks/useProducts";
 import type { ProductFormState } from "./useProductFormState";
 import { ProductMediaGallery } from "./ProductMediaGallery";
@@ -87,7 +88,7 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
   // Auto-generates the slug from the name until the admin types into the
   // slug field directly — same pattern as BlogPostFormFields.tsx.
   const slugEdited = useRef(false);
-  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
+  const storefrontUrl = useStorefrontUrl();
 
   function handleNameChange(v: string) {
     form.setName(v);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
 import { useGenerateBlogPreviewToken } from "@/hooks/useBlogPosts";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 interface BlogPreviewButtonProps {
   postId?: number;
@@ -18,6 +19,7 @@ const eyeIcon = (
 
 export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
   const previewToken = useGenerateBlogPreviewToken();
+  const storefrontUrl = useStorefrontUrl();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   if (!postId) {
@@ -38,7 +40,6 @@ export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
         onClick={() => {
           previewToken.mutate(postId, {
             onSuccess: ({ token }) => {
-              const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
               // Uses the saved post's slug, not a possibly-unsaved form
               // field — preview shows what's actually persisted.
               setPreviewUrl(`${storefrontUrl}/blog/${slug}?previewToken=${token}`);

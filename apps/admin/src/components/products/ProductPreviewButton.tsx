@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
 import { useGenerateProductPreviewToken } from "@/hooks/useProducts";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 interface ProductPreviewButtonProps {
   productId?: number;
@@ -18,6 +19,7 @@ const eyeIcon = (
 
 export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonProps) {
   const previewToken = useGenerateProductPreviewToken();
+  const storefrontUrl = useStorefrontUrl();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   if (!productId) {
@@ -38,7 +40,6 @@ export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonPr
         onClick={() => {
           previewToken.mutate(productId, {
             onSuccess: ({ token }) => {
-              const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
               // Uses the saved product's slug, not a possibly-unsaved form
               // field — preview shows what's actually persisted.
               setPreviewUrl(`${storefrontUrl}/en/products/${slug}?previewToken=${token}`);

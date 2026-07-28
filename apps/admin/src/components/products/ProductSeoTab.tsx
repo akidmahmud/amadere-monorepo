@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@amader/admin-ui";
 import { useSeoMeta, useUpsertSeoMeta } from "@/hooks/useSeoMeta";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { computeSeoChecks, computeSeoScore } from "./seo-score";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -24,6 +25,7 @@ export function ProductSeoTab({
   const [metaDescription, setMetaDescription] = useState("");
   const query = useSeoMeta("PRODUCT", productId ?? 0, "EN", !!productId);
   const upsert = useUpsertSeoMeta();
+  const storefrontUrl = useStorefrontUrl();
 
   useEffect(() => {
     if (query.data) {
@@ -51,7 +53,6 @@ export function ProductSeoTab({
     description,
   });
   const score = computeSeoScore(checks);
-  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
   const r = 45;
   const circumference = 2 * Math.PI * r;
   const offset = circumference * (1 - score / 100);

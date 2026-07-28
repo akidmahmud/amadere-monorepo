@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useBlogCategories } from "@/hooks/useBlogCategories";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { BlogHtmlDropzone, type ParsedHtmlPost } from "./BlogHtmlDropzone";
 import { CoverImageDropzone } from "./CoverImageDropzone";
@@ -70,7 +71,7 @@ export interface BlogPostFormFieldsProps {
 export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
   const { data: categories } = useBlogCategories();
   const slugEdited = useRef(false);
-  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
+  const storefrontUrl = useStorefrontUrl();
 
   function handleTitleChange(v: string) {
     props.setTitle(v);

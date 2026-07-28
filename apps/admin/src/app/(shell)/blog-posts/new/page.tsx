@@ -9,6 +9,7 @@ import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
 import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 // Fixed key, not per-post (there's no id yet) — same tradeoff as the new
 // product page's draft key.
@@ -38,6 +39,7 @@ export default function NewBlogPostPage() {
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const create = useCreateBlogPost();
+  const storefrontUrl = useStorefrontUrl();
   const [pendingDraft, setPendingDraft] = useState<StoredDraft<BlogPostDraft> | null>(null);
 
   useEffect(() => {
@@ -102,7 +104,7 @@ export default function NewBlogPostPage() {
         <div className="flex gap-3">
           <BlogPreviewButton />
           <a
-            href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
+            href={storefrontUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-10 items-center gap-2 rounded-sm border border-border px-[18px] font-ui text-sm font-semibold text-text hover:bg-surface-2"

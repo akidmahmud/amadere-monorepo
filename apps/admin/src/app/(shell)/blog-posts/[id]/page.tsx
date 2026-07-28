@@ -17,6 +17,7 @@ import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
 import { RevisionHistoryTable } from "@/components/blog/RevisionHistoryTable";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 interface BlogPostDraft {
   title: string;
@@ -47,6 +48,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const submit = useSubmitBlogPost();
   const publish = usePublishBlogPost();
   const archive = useArchiveBlogPost();
+  const storefrontUrl = useStorefrontUrl();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -157,7 +159,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
         <div className="flex gap-3">
           <BlogPreviewButton postId={postId} slug={post.slug} />
           <a
-            href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
+            href={storefrontUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-10 items-center gap-2 rounded-sm border border-border px-[18px] font-ui text-sm font-semibold text-text hover:bg-surface-2"

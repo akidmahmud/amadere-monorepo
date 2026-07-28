@@ -7,6 +7,7 @@ import { useBlogPosts, useBlogPostStats, useDeleteBlogPost, type BlogPostFilters
 import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
 import { BlogStatsStrip } from "@/components/blog/BlogStatsStrip";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 const selectClass =
   "h-[38px] appearance-none rounded-inner border border-border bg-surface px-2.5 pr-7 text-[0.75rem] font-semibold text-secondary outline-none focus:border-brand-500";
@@ -31,6 +32,7 @@ export default function BlogPostsPage() {
   const { data: categories } = useBlogCategories();
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.translations[0]?.name ?? c.slug]));
   const deletePost = useDeleteBlogPost();
+  const storefrontUrl = useStorefrontUrl();
 
   const posts = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -166,7 +168,7 @@ export default function BlogPostsPage() {
                         </Link>
                         {p.status === "PUBLISHED" && (
                           <a
-                            href={`${process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}/blog/${p.slug}`}
+                            href={`${storefrontUrl}/blog/${p.slug}`}
                             target="_blank"
                             rel="noreferrer"
                             aria-label="View"
