@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
-import { useGenerateProductPreviewToken } from "@/hooks/useProducts";
+import { useGenerateBlogPreviewToken } from "@/hooks/useBlogPosts";
 
-interface ProductPreviewButtonProps {
-  productId?: number;
+interface BlogPreviewButtonProps {
+  postId?: number;
   slug?: string;
 }
 
@@ -16,13 +16,13 @@ const eyeIcon = (
   </svg>
 );
 
-export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonProps) {
-  const previewToken = useGenerateProductPreviewToken();
+export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
+  const previewToken = useGenerateBlogPreviewToken();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  if (!productId) {
+  if (!postId) {
     return (
-      <Button type="button" variant="ghost" disabled title="Save the product first — preview needs a real product ID.">
+      <Button type="button" variant="ghost" disabled title="Save the post first — preview needs a real post ID.">
         {eyeIcon}
         Preview
       </Button>
@@ -36,12 +36,12 @@ export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonPr
         variant="ghost"
         disabled={previewToken.isPending || !slug}
         onClick={() => {
-          previewToken.mutate(productId, {
+          previewToken.mutate(postId, {
             onSuccess: ({ token }) => {
               const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
-              // Uses the saved product's slug, not a possibly-unsaved form
+              // Uses the saved post's slug, not a possibly-unsaved form
               // field — preview shows what's actually persisted.
-              setPreviewUrl(`${storefrontUrl}/en/products/${slug}?previewToken=${token}`);
+              setPreviewUrl(`${storefrontUrl}/blog/${slug}?previewToken=${token}`);
             },
           });
         }}
@@ -49,13 +49,8 @@ export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonPr
         {eyeIcon}
         {previewToken.isPending ? "Preparing…" : "Preview"}
       </Button>
-      <Modal
-        open={previewUrl !== null}
-        onClose={() => setPreviewUrl(null)}
-        title="Product Preview"
-        className="h-[88vh] max-w-6xl"
-      >
-        {previewUrl && <iframe src={previewUrl} title="Product preview" className="h-full w-full rounded-sm border border-border" />}
+      <Modal open={previewUrl !== null} onClose={() => setPreviewUrl(null)} title="Post Preview" className="h-[88vh] max-w-6xl">
+        {previewUrl && <iframe src={previewUrl} title="Blog post preview" className="h-full w-full rounded-sm border border-border" />}
       </Modal>
     </>
   );

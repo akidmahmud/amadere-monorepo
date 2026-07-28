@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@amader/admin-ui";
 import type { Attribute } from "@/hooks/useAttributes";
 import { PRODUCTS_KEY, useAddVariant, useRemoveVariant, useUpdateVariantSku, type AdminProductVariant } from "@/hooks/useProducts";
 import { useUpdateVariantPrice } from "@/hooks/useProfit";
@@ -29,6 +28,11 @@ function labelFor(attributes: Attribute[], attributeValueIds: number[]): string 
 }
 
 const editInputClass = "num h-8 w-20 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500";
+// Matches the row's h-8 inputs exactly — the shared Button component's
+// smallest variant is h-10, which is what made this row's box look taller
+// than its content warranted.
+const rowButtonClass =
+  "h-8 shrink-0 rounded-sm border px-3 text-xs font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
 
 // Inline price/stock editor for one existing variant row — hits the same
 // PATCH endpoints Net Profit's Inventory tab (stock) and Profit page (price)
@@ -38,10 +42,14 @@ function VariantEditRow({
   productId,
   variant,
   attributes,
+  onRemove,
+  removePending,
 }: {
   productId: number;
   variant: AdminProductVariant;
   attributes: Attribute[];
+  onRemove: () => void;
+  removePending: boolean;
 }) {
   const qc = useQueryClient();
   const updatePrice = useUpdateVariantPrice(productId);
@@ -76,8 +84,8 @@ function VariantEditRow({
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-2 rounded-inner bg-surface-2 p-2.5">
-      <span className="mb-1.5 min-w-0 flex-1 text-sm text-text">
+    <div className="flex flex-wrap items-end gap-2 rounded-inner bg-surface-2 p-2">
+      <span className="mb-1.5 w-28 shrink-0 truncate text-sm text-text">
         {labelFor(attributes, variant.attributeValueIds) || `Variant #${variant.id}`}
         {variant.isDefault && " (default)"}
       </span>
@@ -101,9 +109,22 @@ function VariantEditRow({
         <span className="text-[11px] font-semibold text-secondary">Stock</span>
         <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} className={editInputClass} />
       </label>
-      <Button type="button" variant="ghost" disabled={!dirty || pending} onClick={save}>
+      <button
+        type="button"
+        disabled={!dirty || pending}
+        onClick={save}
+        className={`${rowButtonClass} border-border bg-surface text-text hover:bg-surface-2`}
+      >
         {pending ? "Saving…" : "Save"}
-      </Button>
+      </button>
+      <button
+        type="button"
+        disabled={removePending}
+        onClick={onRemove}
+        className={`${rowButtonClass} border-danger/40 bg-surface text-danger hover:bg-danger/10`}
+      >
+        {removePending ? "Removing…" : "Remove"}
+      </button>
       {updateSku.isError && (
         <span className="w-full text-xs text-danger">
           {updateSku.error instanceof Error ? updateSku.error.message : "Failed to save SKU"}
@@ -127,14 +148,14 @@ export function ExistingVariantsManager({ productId, attributes, variants }: Exi
       <span className="mb-2 block text-xs font-semibold text-secondary">Variants</span>
       <div className="mb-2 flex flex-col gap-1.5">
         {variants.map((v) => (
-          <div key={v.id} className="flex items-start gap-2">
-            <div className="flex-1">
-              <VariantEditRow productId={productId} variant={v} attributes={attributes} />
-            </div>
-            <Button type="button" variant="link" className="mt-2 text-danger" onClick={() => removeVariant.mutate(v.id)}>
-              Remove
-            </Button>
-          </div>
+          <VariantEditRow
+            key={v.id}
+            productId={productId}
+            variant={v}
+            attributes={attributes}
+            onRemove={() => removeVariant.mutate(v.id)}
+            removePending={removeVariant.isPending && removeVariant.variables === v.id}
+          />
         ))}
         {variants.length === 0 && <p className="text-xs text-muted">No variants yet.</p>}
       </div>

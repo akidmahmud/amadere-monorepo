@@ -561,7 +561,7 @@ export interface paths {
         delete: operations["AdminMediaController_remove"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["AdminMediaController_update"];
         trace?: never;
     };
     "/api/v1/brands": {
@@ -978,6 +978,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminProductsController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/preview-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProductsController_previewToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/products/{id}/stats": {
@@ -4862,6 +4878,9 @@ export interface components {
         UploadMediaDto: {
             altText?: string;
         };
+        UpdateMediaDto: {
+            altText?: string;
+        };
         PublicBrandDto: {
             id: number;
             slug: string;
@@ -5271,6 +5290,7 @@ export interface components {
         AdminProductMediaDto: {
             id: number;
             url: string;
+            altText: string | null;
             isPrimary: boolean;
             sortOrder: number;
         };
@@ -8487,6 +8507,31 @@ export interface operations {
             };
         };
     };
+    AdminMediaController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMediaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaDto"];
+                };
+            };
+        };
+    };
     BrandsController_list: {
         parameters: {
             query?: {
@@ -8981,6 +9026,8 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                /** @description Case-insensitive substring match on tag name */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -9359,6 +9406,7 @@ export interface operations {
         parameters: {
             query?: {
                 locale?: "EN" | "BN";
+                previewToken?: string;
             };
             header?: never;
             path: {
@@ -9590,6 +9638,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminProductDto"];
                 };
+            };
+        };
+    };
+    AdminProductsController_previewToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -13032,6 +13099,8 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                /** @description Case-insensitive substring match on tag name */
+                q?: string;
             };
             header?: never;
             path?: never;

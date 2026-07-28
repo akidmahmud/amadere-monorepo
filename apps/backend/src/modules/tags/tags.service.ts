@@ -28,15 +28,25 @@ export class TagsService {
     private readonly seo: SeoService,
   ) {}
 
-  async adminList(page: number, pageSize: number) {
+  async adminList(page: number, pageSize: number, q?: string) {
+    const where = {
+      deletedAt: null,
+      // Lets callers check "does a tag named X already exist" against the
+      // full catalog instead of only whatever page-1-of-100 a plain list
+      // fetch returns — the product editor's tag autocomplete needs this to
+      // avoid creating duplicate tags once the catalog passes 100 rows.
+      ...(q?.trim()
+        ? { translations: { some: { name: { contains: q.trim(), mode: 'insensitive' as const } } } }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.client.tag.findMany({
-        where: { deletedAt: null },
+        where,
         include: WITH_TRANSLATIONS,
         orderBy: { id: 'asc' },
         ...paginationArgs(page, pageSize),
       }),
-      this.prisma.client.tag.count({ where: { deletedAt: null } }),
+      this.prisma.client.tag.count({ where }),
     ]);
     return toPaginatedResult(items.map(toAdminTagDto), total, page, pageSize);
   }

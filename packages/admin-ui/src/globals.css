@@ -140,8 +140,14 @@
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
 
-  --font-ui: var(--font-inter);
-  --font-display: var(--font-manrope);
+  /* Site-wide default: Siyam Rupali (free/GPL Bangla Unicode font, loaded
+     via apps/admin's layout.tsx <link>) for Bangla glyphs, Arial for Latin
+     characters it doesn't cover well, generic sans-serif as the final
+     fallback — same reset as apps/web's tokens.css, applied here too since
+     the admin panel is in scope. Replaces Inter (UI text) and Manrope
+     (display/headings). */
+  --font-ui: 'Siyam Rupali', Arial, sans-serif;
+  --font-display: 'Siyam Rupali', Arial, sans-serif;
 }
 
 body {

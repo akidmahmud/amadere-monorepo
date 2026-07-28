@@ -60,6 +60,7 @@ export function toAdminProductDto(
     media: product.media.map((m) => ({
       id: m.mediaId,
       url: m.media.url,
+      altText: m.media.altText,
       isPrimary: m.isPrimary,
       sortOrder: m.sortOrder,
     })),

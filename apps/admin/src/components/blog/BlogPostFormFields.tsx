@@ -10,7 +10,22 @@ import { BlogTagsPicker } from "./BlogTagsPicker";
 const inputClass = "h-[38px] rounded-sm border border-border bg-surface px-3 text-sm font-semibold text-ink outline-none focus:border-brand-500";
 const textareaClass = "rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500";
 
+// Same bilingual-title handling as ProductFormFields.tsx's slugify — blog
+// titles are commonly "English (বাংলা)" or "English | বাংলা" and the slug
+// should come from the English part only, not a mixed-script URL. Falls
+// back to a Unicode-aware slug if the ASCII-only pass leaves nothing.
 function slugify(str: string): string {
+  const ascii = str
+    .replace(/\([^)]*\)/g, " ")
+    .split("|")[0]
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  if (ascii) return ascii;
   return str
     .toLowerCase()
     .trim()
@@ -19,6 +34,14 @@ function slugify(str: string): string {
     .replace(/-+/g, "-")
     .slice(0, 80);
 }
+
+const wandIcon = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="m15 4 1.5 3L20 8.5 16.5 10 15 13l-1.5-3L10 8.5 13.5 7Z" />
+    <path d="m5 14 .9 1.8L8 16.7l-2.1.9L5 19.5l-.9-1.9-2.1-.9 2.1-.9Z" />
+    <path d="M3 3v3M1.5 4.5h3" />
+  </svg>
+);
 
 export interface BlogPostFormFieldsProps {
   title: string;
@@ -47,6 +70,7 @@ export interface BlogPostFormFieldsProps {
 export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
   const { data: categories } = useBlogCategories();
   const slugEdited = useRef(false);
+  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
 
   function handleTitleChange(v: string) {
     props.setTitle(v);
@@ -79,10 +103,10 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
 
           <label className="mb-3.5 flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">
-              Slug<span className="ml-0.5 text-danger">*</span>
+              Permalink<span className="ml-0.5 text-danger">*</span>
             </span>
-            <div className="flex items-center">
-              <span className="flex h-[38px] flex-none items-center whitespace-nowrap rounded-l-[8px] border border-r-0 border-border bg-[#f7f9fc] px-2.5 text-[0.7rem] font-semibold text-muted">/blog/</span>
+            <div className="flex h-10 items-center overflow-hidden rounded-sm border border-border bg-surface focus-within:border-brand-500">
+              <span className="select-none whitespace-nowrap pl-3 text-sm text-muted">{storefrontUrl}/blog/</span>
               <input
                 required
                 value={props.slug}
@@ -90,17 +114,39 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
                   slugEdited.current = true;
                   props.setSlug(e.target.value);
                 }}
-                className={`${inputClass} min-w-0 flex-1 rounded-l-none`}
-                placeholder="auto-generated-from-title"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                autoComplete="off"
+                className="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 text-sm font-semibold text-text outline-none"
               />
+              <button
+                type="button"
+                title="Regenerate from title"
+                onClick={() => {
+                  slugEdited.current = false;
+                  props.setSlug(slugify(props.title));
+                }}
+                className="grid h-full w-10 flex-none place-items-center text-muted transition-colors hover:text-brand-500"
+              >
+                {wandIcon}
+              </button>
             </div>
+            {props.slug && (
+              <span className="text-xs text-muted">
+                Preview:{" "}
+                <a href={`${storefrontUrl}/blog/${props.slug}`} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">
+                  {storefrontUrl}/blog/{props.slug}
+                </a>
+              </span>
+            )}
           </label>
 
           <label className="mb-3.5 flex flex-col gap-1.5">
             <span className="flex items-center justify-between text-xs font-bold text-text">
-              Excerpt <span className="font-semibold text-muted">{props.excerpt.length}/200</span>
+              Excerpt <span className="font-semibold text-muted">{props.excerpt.length}/400</span>
             </span>
-            <textarea value={props.excerpt} onChange={(e) => props.setExcerpt(e.target.value)} rows={3} className={textareaClass} placeholder="A short summary shown on blog cards and previews..." />
+            <textarea value={props.excerpt} onChange={(e) => props.setExcerpt(e.target.value)} maxLength={400} rows={3} className={textareaClass} placeholder="A short summary shown on blog cards and previews..." />
           </label>
 
           {/* A plain div, not <label> — see ProductFormFields.tsx's identical

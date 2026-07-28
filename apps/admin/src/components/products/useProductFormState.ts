@@ -14,6 +14,48 @@ function comparisonRowsFrom(product?: AdminProduct): ComparisonRowState[] {
   return rows.map((r) => ({ feature: r.feature ?? "", own: r.own ?? false, competitor: r.competitor ?? false }));
 }
 
+// Flat snapshot of every editable field — the autosave draft shape. Distinct
+// from toBasePayload() (the create/update API shape: nested translations,
+// mediaIds instead of full image objects, numeric strings coerced to
+// numbers) because a draft needs to round-trip back into these exact
+// `useState` setters, not survive a trip through the API.
+export interface ProductFormSnapshot {
+  slug: string;
+  sku: string;
+  brandId: number | undefined;
+  productType: ProductType;
+  status: PublishStatus;
+  isFeatured: boolean;
+  videoUrl: string;
+  hasVariants: boolean;
+  trackInventory: boolean;
+  allowBackorder: boolean;
+  stock: string;
+  stockStatus: StockStatus;
+  price: string;
+  salePrice: string;
+  saleStartsAt: string;
+  saleEndsAt: string;
+  costPerItem: string;
+  shippableWeight: string;
+  minOrderQuantity: string;
+  maxOrderQuantity: string;
+  name: string;
+  description: string;
+  content: string;
+  keyBenefits: string;
+  benefitPoints: string;
+  howToUse: string;
+  categoryIds: number[];
+  tagIds: number[];
+  attributeIds: number[];
+  images: GalleryImage[];
+  comparisonTitle: string;
+  comparisonOwnLabel: string;
+  comparisonCompetitorLabel: string;
+  comparisonRows: ComparisonRowState[];
+}
+
 export function useProductFormState(initial?: AdminProduct) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
@@ -46,7 +88,7 @@ export function useProductFormState(initial?: AdminProduct) {
   const [categoryIds, setCategoryIds] = useState<number[]>(initial?.categoryIds ?? []);
   const [tagIds, setTagIds] = useState<number[]>(initial?.tagIds ?? []);
   const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
-  const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url })) ?? []);
+  const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })) ?? []);
 
   // PDP "Why Choose Us" comparison table — hidden entirely on the storefront
   // when rows is empty, so leaving all 3 blank is a valid "don't show it".
@@ -153,11 +195,58 @@ export function useProductFormState(initial?: AdminProduct) {
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
-    setImages(product.media.map((m) => ({ id: m.id, url: m.url })));
+    setImages(product.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })));
     setComparisonTitle(product.translations[0]?.comparisonTable?.title ?? "");
     setComparisonOwnLabel(product.translations[0]?.comparisonTable?.ownLabel ?? "");
     setComparisonCompetitorLabel(product.translations[0]?.comparisonTable?.competitorLabel ?? "");
     setComparisonRows(comparisonRowsFrom(product));
+  }
+
+  function getSnapshot(): ProductFormSnapshot {
+    return {
+      slug, sku, brandId, productType, status, isFeatured, videoUrl, hasVariants, trackInventory, allowBackorder,
+      stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, shippableWeight,
+      minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
+      categoryIds, tagIds, attributeIds, images,
+      comparisonTitle, comparisonOwnLabel, comparisonCompetitorLabel, comparisonRows,
+    };
+  }
+
+  function applySnapshot(s: ProductFormSnapshot) {
+    setSlug(s.slug);
+    setSku(s.sku);
+    setBrandId(s.brandId);
+    setProductType(s.productType);
+    setStatus(s.status);
+    setIsFeatured(s.isFeatured);
+    setVideoUrl(s.videoUrl);
+    setHasVariants(s.hasVariants);
+    setTrackInventory(s.trackInventory);
+    setAllowBackorder(s.allowBackorder);
+    setStock(s.stock);
+    setStockStatus(s.stockStatus);
+    setPrice(s.price);
+    setSalePrice(s.salePrice);
+    setSaleStartsAt(s.saleStartsAt);
+    setSaleEndsAt(s.saleEndsAt);
+    setCostPerItem(s.costPerItem);
+    setShippableWeight(s.shippableWeight);
+    setMinOrderQuantity(s.minOrderQuantity);
+    setMaxOrderQuantity(s.maxOrderQuantity);
+    setName(s.name);
+    setDescription(s.description);
+    setContent(s.content);
+    setKeyBenefits(s.keyBenefits);
+    setBenefitPoints(s.benefitPoints);
+    setHowToUse(s.howToUse);
+    setCategoryIds(s.categoryIds);
+    setTagIds(s.tagIds);
+    setAttributeIds(s.attributeIds);
+    setImages(s.images);
+    setComparisonTitle(s.comparisonTitle);
+    setComparisonOwnLabel(s.comparisonOwnLabel);
+    setComparisonCompetitorLabel(s.comparisonCompetitorLabel);
+    setComparisonRows(s.comparisonRows);
   }
 
   return {
@@ -197,6 +286,8 @@ export function useProductFormState(initial?: AdminProduct) {
     comparisonRows, setComparisonRows,
     toBasePayload,
     seedFrom,
+    getSnapshot,
+    applySnapshot,
   };
 }
 

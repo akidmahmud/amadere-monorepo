@@ -22,6 +22,7 @@ export class AdminProductTranslationDto {
 export class AdminProductMediaDto {
   id!: number;
   url!: string;
+  altText!: string | null;
   isPrimary!: boolean;
   sortOrder!: number;
 }

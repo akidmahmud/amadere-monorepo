@@ -29,6 +29,15 @@ export function useDeleteMedia() {
   });
 }
 
+export function useUpdateMediaAltText() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, altText }: { id: number; altText: string }) =>
+      proxyFetch<MediaDto>(`/admin/media/${id}`, { method: "PATCH", body: JSON.stringify({ altText }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-media"] }),
+  });
+}
+
 // Goes to the dedicated /api/backend/admin/media route (not proxyFetch —
 // this is a multipart upload, not JSON; see that route's own comment for why
 // it can't share the generic [...path] proxy).

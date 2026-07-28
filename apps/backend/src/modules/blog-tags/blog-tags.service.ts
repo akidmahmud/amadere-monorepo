@@ -23,14 +23,21 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 export class BlogTagsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async adminList(page: number, pageSize: number) {
+  async adminList(page: number, pageSize: number, q?: string) {
+    // Lets the blog post editor's tag autocomplete check "does a tag named
+    // X already exist" against the full catalog instead of only whatever
+    // page-1-of-100 a plain list fetch returns — same fix as products' tags.
+    const where = q?.trim()
+      ? { translations: { some: { name: { contains: q.trim(), mode: 'insensitive' as const } } } }
+      : {};
     const [items, total] = await Promise.all([
       this.prisma.client.blogTag.findMany({
+        where,
         include: WITH_TRANSLATIONS,
         orderBy: { id: 'asc' },
         ...paginationArgs(page, pageSize),
       }),
-      this.prisma.client.blogTag.count(),
+      this.prisma.client.blogTag.count({ where }),
     ]);
     return toPaginatedResult(
       items.map(toAdminBlogTagDto),

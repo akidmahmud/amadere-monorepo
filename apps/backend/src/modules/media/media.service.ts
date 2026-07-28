@@ -75,6 +75,16 @@ export class MediaService {
     return toPaginatedResult(items.map(toMediaDto), total, page, pageSize);
   }
 
+  async updateAltText(id: number, altText: string): Promise<MediaDto> {
+    const media = await this.prisma.client.media.findUnique({ where: { id } });
+    if (!media) throw new NotFoundException('Media not found');
+    const updated = await this.prisma.client.media.update({
+      where: { id },
+      data: { altText },
+    });
+    return toMediaDto(updated);
+  }
+
   async delete(id: number): Promise<void> {
     const media = await this.prisma.client.media.findUnique({
       where: { id },

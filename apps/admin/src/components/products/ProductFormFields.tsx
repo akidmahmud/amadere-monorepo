@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useAttributes, type Attribute } from "@/hooks/useAttributes";
 import type { StockStatus, AdminProductVariant, VariantInput } from "@/hooks/useProducts";
@@ -26,6 +26,41 @@ function toggle(list: number[], id: number, set: (ids: number[]) => void) {
   set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 }
 
+// Product names in this catalog are commonly bilingual — "Amader Fiber Mix
+// ( আমাদের ফাইবার মিক্স )" or "Name | বাংলা নাম" — and the slug should come
+// from the English part only, not a mixed-script URL. Strips parenthetical
+// and pipe-separated segments, then keeps ASCII letters/numbers only. Falls
+// back to a Unicode-aware slug (keeps non-Latin letters) if that leaves
+// nothing, so a Bangla-only name still gets *some* slug instead of "".
+function slugify(str: string): string {
+  const ascii = str
+    .replace(/\([^)]*\)/g, " ")
+    .split("|")[0]
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  if (ascii) return ascii;
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
+const wandIcon = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="m15 4 1.5 3L20 8.5 16.5 10 15 13l-1.5-3L10 8.5 13.5 7Z" />
+    <path d="m5 14 .9 1.8L8 16.7l-2.1.9L5 19.5l-.9-1.9-2.1-.9 2.1-.9Z" />
+    <path d="M3 3v3M1.5 4.5h3" />
+  </svg>
+);
+
 function SaveFirstNotice() {
   return (
     <div className="rounded-card border border-border bg-surface p-[18px] text-sm text-muted">
@@ -49,6 +84,15 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
   const [tab, setTab] = useState<ProductTab>("General");
   const { data: attributes } = useAttributes();
   const selectedAttributes: Attribute[] = (attributes ?? []).filter((a) => form.attributeIds.includes(a.id));
+  // Auto-generates the slug from the name until the admin types into the
+  // slug field directly — same pattern as BlogPostFormFields.tsx.
+  const slugEdited = useRef(false);
+  const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
+
+  function handleNameChange(v: string) {
+    form.setName(v);
+    if (!slugEdited.current) form.setSlug(slugify(v));
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -64,20 +108,54 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   <span className="text-xs font-bold text-text">
                     Product Name<span className="ml-0.5 text-danger">*</span>
                   </span>
-                  <input required value={form.name} onChange={(e) => form.setName(e.target.value)} className={inputClass} />
+                  <input required value={form.name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
                 </label>
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">
-                    Slug (URL)<span className="ml-0.5 text-danger">*</span>
+                    Permalink<span className="ml-0.5 text-danger">*</span>
                   </span>
-                  <input required value={form.slug} onChange={(e) => form.setSlug(e.target.value)} className={inputClass} />
+                  <div className="flex h-10 items-center overflow-hidden rounded-sm border border-border bg-surface focus-within:border-brand-500">
+                    <span className="select-none whitespace-nowrap pl-3 text-sm text-muted">{storefrontUrl}/products/</span>
+                    <input
+                      required
+                      value={form.slug}
+                      onChange={(e) => {
+                        slugEdited.current = true;
+                        form.setSlug(e.target.value);
+                      }}
+                      spellCheck={false}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      autoComplete="off"
+                      className="h-full min-w-0 flex-1 border-0 bg-transparent pr-2 text-sm font-semibold text-text outline-none"
+                    />
+                    <button
+                      type="button"
+                      title="Regenerate from product name"
+                      onClick={() => {
+                        slugEdited.current = false;
+                        form.setSlug(slugify(form.name));
+                      }}
+                      className="grid h-full w-10 flex-none place-items-center text-muted transition-colors hover:text-brand-500"
+                    >
+                      {wandIcon}
+                    </button>
+                  </div>
+                  {form.slug && (
+                    <span className="text-xs text-muted">
+                      Preview:{" "}
+                      <a href={`${storefrontUrl}/products/${form.slug}`} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">
+                        {storefrontUrl}/products/{form.slug}
+                      </a>
+                    </span>
+                  )}
                 </label>
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="flex items-center justify-between text-xs font-bold text-text">
                     Short Description
-                    <span className="font-semibold text-muted">{form.description.length}/160</span>
+                    <span className="font-semibold text-muted">{form.description.length}/350</span>
                   </span>
-                  <textarea value={form.description} onChange={(e) => form.setDescription(e.target.value)} rows={3} className={textareaClass} />
+                  <textarea value={form.description} onChange={(e) => form.setDescription(e.target.value)} maxLength={350} rows={3} className={textareaClass} />
                 </label>
                 {/* A plain div, not <label> — RichTextEditor renders its own
                     toolbar full of buttons, and a bare <label> with no
@@ -243,12 +321,7 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           slug={form.slug}
           name={form.name}
           description={form.description}
-          // The gallery only tracks {id,url} here, not alt text (no
-          // alt-text editing UI exists in this form) — "has at least one
-          // image" is the closest honest proxy available client-side;
-          // the authoritative score on the product list is backend-computed
-          // from the real Media.altText column.
-          primaryImageAlt={form.images.length > 0 ? "has-image" : ""}
+          primaryImageAlt={form.images[0]?.alt ?? ""}
         />
       )}
 

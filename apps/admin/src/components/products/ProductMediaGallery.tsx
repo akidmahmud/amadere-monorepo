@@ -2,11 +2,12 @@
 
 import { useRef } from "react";
 import { Button } from "@amader/admin-ui";
-import { useUploadMedia } from "@/hooks/useMedia";
+import { useUpdateMediaAltText, useUploadMedia } from "@/hooks/useMedia";
 
 export interface GalleryImage {
   id: number;
   url: string;
+  alt?: string | null;
 }
 
 export interface ProductMediaGalleryProps {
@@ -20,6 +21,7 @@ export interface ProductMediaGalleryProps {
 export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadMedia();
+  const updateAlt = useUpdateMediaAltText();
 
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -38,33 +40,52 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
     onChange([img, ...images.filter((i) => i.id !== id)]);
   }
 
+  function setAlt(id: number, alt: string) {
+    onChange(images.map((img) => (img.id === id ? { ...img, alt } : img)));
+  }
+
+  function saveAlt(id: number, alt: string) {
+    updateAlt.mutate({ id, altText: alt });
+  }
+
   return (
     <div>
-      <span className="mb-2 block text-xs font-semibold text-secondary">Images (first = primary)</span>
       <div className="flex flex-wrap gap-3">
         {images.map((img, i) => (
-          <div key={img.id} className="relative w-24">
+          <div key={img.id} className="relative w-48">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={img.url}
               alt=""
-              className={`h-24 w-24 rounded-inner border object-cover ${i === 0 ? "border-brand-500" : "border-border"}`}
+              className={`h-48 w-48 rounded-inner border object-cover ${i === 0 ? "border-brand-500" : "border-border"}`}
             />
             {i === 0 && (
               <span className="absolute top-1 left-1 rounded-pill bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                 Primary
               </span>
             )}
-            <div className="mt-1 flex justify-center gap-2 text-[11px]">
-              {i !== 0 && (
-                <button type="button" className="text-brand-500" onClick={() => moveToFront(img.id)}>
-                  Make primary
-                </button>
-              )}
-              <button type="button" className="text-danger" onClick={() => remove(img.id)}>
-                Remove
+            <button
+              type="button"
+              aria-label="Remove image"
+              onClick={() => remove(img.id)}
+              className="absolute top-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+            {i !== 0 && (
+              <button type="button" className="mt-1 block w-full text-center text-[11px] text-brand-500" onClick={() => moveToFront(img.id)}>
+                Make primary
               </button>
-            </div>
+            )}
+            <input
+              value={img.alt ?? ""}
+              onChange={(e) => setAlt(img.id, e.target.value)}
+              onBlur={(e) => saveAlt(img.id, e.target.value)}
+              placeholder="Alt text (for SEO)"
+              className="mt-1.5 h-8 w-full rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500"
+            />
           </div>
         ))}
       </div>

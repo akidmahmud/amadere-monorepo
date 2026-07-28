@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { proxyFetch } from "@/lib/api/proxy-client";
+import type { components } from "@/lib/api/schema";
 import { usePickerCategories, usePickerTags } from "@/hooks/usePickers";
 import { useBrands } from "@/hooks/useBrands";
+import { useCreateTag } from "@/hooks/useTags";
 import type { ProductFormState } from "./useProductFormState";
+
+type Paginated<T> = { items?: T[]; total?: number };
+type AdminTagDto = components["schemas"]["AdminTagDto"];
 
 const selectClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm font-semibold text-ink outline-none focus:border-brand-500";
 
@@ -11,14 +18,112 @@ function toggle(list: number[], id: number, set: (ids: number[]) => void) {
   set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 }
 
+// Same slugify as BlogPostFormFields.tsx — small enough to duplicate rather
+// than pull into a shared util for one more caller.
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
 export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) {
   const { data: categories } = usePickerCategories();
   const { data: tags } = usePickerTags();
   const { data: brands } = useBrands();
+  const createTag = useCreateTag();
+  const qc = useQueryClient();
   const [tagSearch, setTagSearch] = useState("");
+  // usePickerTags fetches a flat pageSize-100 page (the backend hard-caps
+  // pageSize at 100) ordered oldest-first, so once a catalog has more than
+  // 100 tags — this one does — nothing past the 100th-oldest ever appears in
+  // it, permanently, no matter how many times it's refetched. Tags resolved
+  // here (found via a targeted backend search, or freshly created — both
+  // always land past that cutoff) are kept in their own bit of state so they
+  // still render as real chips/checkboxes instead of silently vanishing.
+  const [extraTags, setExtraTags] = useState<{ id: number; label: string }[]>([]);
 
-  const selectedTags = (tags ?? []).filter((t) => form.tagIds.includes(t.id));
-  const filteredTags = (tags ?? []).filter((t) => t.label.toLowerCase().includes(tagSearch.trim().toLowerCase()));
+  const allTags = useMemo(() => {
+    const map = new Map((tags ?? []).map((t) => [t.id, t] as const));
+    for (const t of extraTags) if (!map.has(t.id)) map.set(t.id, t);
+    return [...map.values()];
+  }, [tags, extraTags]);
+
+  const selectedTags = allTags.filter((t) => form.tagIds.includes(t.id));
+  const filteredTags = allTags.filter((t) => t.label.toLowerCase().includes(tagSearch.trim().toLowerCase()));
+
+  // A product's already-assigned tags can themselves be past the picker's
+  // page-1-of-100 cutoff (same root cause as the comment above) — without
+  // this, opening an existing product could silently show fewer selected
+  // chips than it actually has tags, even though form.tagIds is correct.
+  // Resolves each missing id directly by id once the picker page has loaded.
+  useEffect(() => {
+    if (!tags) return;
+    const known = new Set([...tags.map((t) => t.id), ...extraTags.map((t) => t.id)]);
+    const missing = form.tagIds.filter((id) => !known.has(id));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      missing.map((id) => proxyFetch<AdminTagDto>(`/admin/tags/${id}`).catch(() => null)),
+    ).then((results) => {
+      if (cancelled) return;
+      const found = results
+        .filter((t): t is AdminTagDto => t !== null)
+        .map((t) => ({ id: t.id, label: t.translations?.[0]?.name ?? t.slug }));
+      if (found.length > 0) setExtraTags((prev) => [...prev, ...found]);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tags, form.tagIds]);
+
+  // Lets "wallet, new tag, bags<Enter>" add all three in one go — each piece
+  // is trimmed (so stray spaces around commas don't matter). Each name is
+  // checked against the *server* (not just the locally-loaded picker page)
+  // before deciding to create it, so a tag ranked past #100 doesn't get
+  // silently duplicated just because it isn't in the capped local list.
+  async function commitTagSearch() {
+    const names = tagSearch.split(",").map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    const ids: number[] = [];
+    const resolved: { id: number; label: string }[] = [];
+    for (const name of names) {
+      const localMatch = allTags.find((t) => t.label.toLowerCase() === name.toLowerCase());
+      if (localMatch) {
+        ids.push(localMatch.id);
+        continue;
+      }
+      const searchRes = await proxyFetch<Paginated<AdminTagDto>>(
+        `/admin/tags?pageSize=5&q=${encodeURIComponent(name)}`,
+      );
+      const serverMatch = (searchRes.items ?? []).find(
+        (t) => (t.translations?.[0]?.name ?? "").toLowerCase() === name.toLowerCase(),
+      );
+      if (serverMatch) {
+        ids.push(serverMatch.id);
+        resolved.push({ id: serverMatch.id, label: serverMatch.translations?.[0]?.name ?? name });
+        continue;
+      }
+      const created = await createTag.mutateAsync({
+        slug: slugify(name),
+        status: "PUBLISHED",
+        translations: [
+          { locale: "EN", name },
+          { locale: "BN", name },
+        ],
+      });
+      ids.push(created.id);
+      resolved.push({ id: created.id, label: name });
+    }
+    if (resolved.length > 0) setExtraTags((prev) => [...prev, ...resolved]);
+    form.setTagIds([...new Set([...form.tagIds, ...ids])]);
+    setTagSearch("");
+    qc.invalidateQueries({ queryKey: ["picker-tags"] });
+  }
 
   return (
     <div className="rounded-card border border-border bg-surface p-[18px]">
@@ -73,8 +178,15 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
           type="text"
           value={tagSearch}
           onChange={(e) => setTagSearch(e.target.value)}
-          placeholder="Search tags..."
-          className="mb-2.5 h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitTagSearch();
+            }
+          }}
+          disabled={createTag.isPending}
+          placeholder="Search or add tags — separate multiple with commas, press Enter"
+          className="mb-2.5 h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500 disabled:opacity-60"
         />
         <div className="flex max-h-[210px] flex-col gap-0.5 overflow-y-auto rounded-inner border border-border p-1.5">
           {filteredTags.map((t) => (
@@ -83,7 +195,11 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
               {t.label}
             </label>
           ))}
-          {filteredTags.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No tags match your search.</p>}
+          {filteredTags.length === 0 && (
+            <p className="px-1.5 py-2 text-[0.72rem] text-muted">
+              {tagSearch.trim() ? "No match — press Enter to create it." : "No tags match your search."}
+            </p>
+          )}
         </div>
       </div>
     </div>

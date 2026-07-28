@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
+import { ckeditorFontFamilyOptions } from "@amader/shared";
 import {
   ClassicEditor,
   Essentials,
@@ -11,7 +12,14 @@ import {
   Italic,
   Underline,
   Strikethrough,
+  RemoveFormat,
   FontColor,
+  FontBackgroundColor,
+  FontFamily,
+  FontSize,
+  Alignment,
+  Indent,
+  IndentBlock,
   List,
   BlockQuote,
   Link,
@@ -21,12 +29,22 @@ import {
   MediaEmbed,
   Table,
   TableToolbar,
+  FindAndReplace,
   SourceEditing,
   GeneralHtmlSupport,
   type Editor,
   type EditorConfig,
 } from "ckeditor5";
 import "ckeditor5/ckeditor5.css";
+
+// Literal, name-addressable families — matching exactly what apps/admin's
+// and apps/web's root layouts load via a classic Google Fonts <link>
+// (@amader/shared's ckeditorGoogleFontsUrl) specifically so these names
+// resolve to a real typeface, not next/font's hashed-name variables. One
+// shared list (English sans/serif/mono variety plus several Bangla faces)
+// so whatever gets picked here still renders correctly once this content is
+// published on the storefront.
+const FONT_FAMILY_OPTIONS = ckeditorFontFamilyOptions();
 
 const COLOR_SWATCHES = [
   { color: "#1a1a1a", label: "Black" },
@@ -74,7 +92,14 @@ const CONFIG: EditorConfig = {
     Italic,
     Underline,
     Strikethrough,
+    RemoveFormat,
     FontColor,
+    FontBackgroundColor,
+    FontFamily,
+    FontSize,
+    Alignment,
+    Indent,
+    IndentBlock,
     List,
     BlockQuote,
     Link,
@@ -84,6 +109,7 @@ const CONFIG: EditorConfig = {
     MediaEmbed,
     Table,
     TableToolbar,
+    FindAndReplace,
     SourceEditing,
     GeneralHtmlSupport,
     UploadAdapterPlugin,
@@ -94,21 +120,32 @@ const CONFIG: EditorConfig = {
     "|",
     "heading",
     "|",
+    "fontFamily",
+    "fontSize",
+    "|",
     "bold",
     "italic",
     "underline",
     "strikethrough",
+    "removeFormat",
     "|",
     "fontColor",
+    "fontBackgroundColor",
+    "|",
+    "alignment",
     "|",
     "bulletedList",
     "numberedList",
+    "outdent",
+    "indent",
     "|",
     "blockQuote",
     "link",
     "uploadImage",
     "insertTable",
     "mediaEmbed",
+    "|",
+    "findAndReplace",
     "|",
     "sourceEditing",
   ],
@@ -122,6 +159,12 @@ const CONFIG: EditorConfig = {
     ],
   },
   fontColor: { colors: COLOR_SWATCHES },
+  fontBackgroundColor: { colors: COLOR_SWATCHES },
+  // `supportAllValues` lets content saved with a family/size not in the
+  // list (or authored via Source view) still round-trip correctly instead
+  // of the toolbar silently clearing it back to "default" on next load.
+  fontFamily: { options: FONT_FAMILY_OPTIONS, supportAllValues: true },
+  fontSize: { options: [10, 12, "default", 16, 18, 20, 24, 28, 32, 40], supportAllValues: true },
   image: { toolbar: ["imageTextAlternative"] },
   table: { contentToolbar: ["tableColumn", "tableRow", "mergeTableCells"] },
   // General HTML Support (still free/open-source, same `ckeditor5` package)

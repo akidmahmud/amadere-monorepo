@@ -9,3 +9,26 @@
 .ck-editor__editable_inline {
   min-height: 340px;
 }
+
+/* Tailwind's preflight reset strips every h1-h6's default font-size/weight
+   (they inherit body text's), so picking "Heading 3" from the toolbar
+   correctly changed the underlying tag but was visually indistinguishable
+   from a plain paragraph — confirmed live: the model/view conversion was
+   never broken, only the missing type scale made it invisible. CKEditor's
+   own docs recommend exactly this: style headings by targeting the
+   `.ck-content` wrapper it puts around the editable root. */
+.ck-content h1 { font-size: 2rem; font-weight: 700; line-height: 1.25; margin: 0.7em 0 0.4em; }
+.ck-content h2 { font-size: 1.6rem; font-weight: 700; line-height: 1.3; margin: 0.7em 0 0.4em; }
+.ck-content h3 { font-size: 1.3rem; font-weight: 600; line-height: 1.35; margin: 0.6em 0 0.35em; }
+.ck-content h4 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; margin: 0.6em 0 0.3em; }
+
+/* CKEditor's dropdown lists (Font Family, Font Size, Heading, ...) have no
+   height cap of their own — with 19+ fonts in the Font Family list, the
+   panel rendered ~715px tall and got positioned partly above the viewport,
+   cutting options off with no way to reach them. Scoped to `.ck-list`
+   specifically (not `.ck-dropdown__panel` itself) so it doesn't touch the
+   color-swatch/table-size grid dropdowns, which use a different structure. */
+.ck-dropdown__panel .ck-list {
+  max-height: 260px;
+  overflow-y: auto;
+}

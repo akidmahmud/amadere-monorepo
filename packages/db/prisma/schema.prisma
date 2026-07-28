@@ -1103,6 +1103,7 @@ model OrderItem {
   variant     ProductVariant?     @relation(fields: [variantId], references: [id], onDelete: SetNull)
   licenseCode ProductLicenseCode?
 
+  @@index([orderId])
   @@map("order_items")
 }
 
@@ -1184,6 +1185,7 @@ model Payment {
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  @@index([orderId])
   @@map("payments")
 }
 
@@ -1237,6 +1239,7 @@ model Shipment {
   order  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   events ShipmentEvent[]
 
+  @@index([orderId])
   @@map("shipments")
 }
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Poppins, Inter, Hind_Siliguri, Plus_Jakarta_Sans, Noto_Sans_Bengali } from "next/font/google";
+import { ckeditorGoogleFontsUrl } from "@amader/shared";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -15,49 +15,6 @@ import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/Analy
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
 import "../globals.css";
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const hindSiliguri = Hind_Siliguri({
-  variable: "--font-hind-siliguri",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-// Header/nav/announcement-bar-only, per amader-header-spec.md — Bangla nav
-// labels and drawer text render in Noto Sans Bengali (the spec's required
-// fallback; site-wide Bangla text elsewhere keeps using Hind Siliguri).
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-const notoBengali = Noto_Sans_Bengali({
-  variable: "--font-noto-bengali",
-  subsets: ["bengali"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "আমাদের",
@@ -109,10 +66,7 @@ export default async function LocaleLayout({
   ]);
 
   return (
-    <html
-      lang={locale}
-      className={`${fraunces.variable} ${poppins.variable} ${inter.variable} ${hindSiliguri.variable} ${plusJakarta.variable} ${notoBengali.variable} h-full antialiased`}
-    >
+    <html lang={locale} className="h-full antialiased">
       {/* Opens the connection (DNS + TLS) to promo-video embed platforms
           ahead of time, before any specific iframe actually needs one — the
           handshake itself is often a big chunk of the perceived "video takes
@@ -121,6 +75,19 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
+      {/* Site-wide default type stack (packages/ui's tokens.css) — Siyam
+          Rupali isn't on Google Fonts, so it's not a next/font call like the
+          fonts this replaced; this free/GPL CDN (maateen.me's "Bangla Web
+          Fonts" project) is the standard way to embed it. */}
+      <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css" precedence="default" />
+      {/* Loaded under their real, literal family names — admin-authored
+          content (product/blog descriptions) can carry inline
+          `font-family: "Poppins"` etc. styles from the admin's CKEditor font
+          picker (a deliberately wider choice than the site's own default),
+          and those only resolve to the actual typeface if a stylesheet
+          registers that exact literal name here. Same list as apps/admin's
+          layout.tsx (shared via @amader/shared). */}
+      <link rel="stylesheet" href={ckeditorGoogleFontsUrl()} precedence="default" />
       <body className="min-h-full flex flex-col font-body">
         <AnalyticsScripts
           config={

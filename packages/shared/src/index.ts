@@ -19,6 +19,7 @@ export * from './url-paths';
 export * from './courier-status';
 export * from './bd-geo';
 export * from './phone';
+export * from './ckeditor-fonts';
 
 export interface PaginatedResult<T> {
   items: T[];

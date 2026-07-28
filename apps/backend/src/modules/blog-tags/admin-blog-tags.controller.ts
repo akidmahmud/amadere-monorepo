@@ -17,9 +17,9 @@ import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { BlogTagsService } from './blog-tags.service';
+import { AdminBlogTagQueryDto } from './dto/admin-blog-tag-query.dto';
 import { CreateBlogTagDto } from './dto/create-blog-tag.dto';
 import { UpdateBlogTagDto } from './dto/update-blog-tag.dto';
 import { AdminBlogTagDto } from './blog-tags.mapper';
@@ -36,9 +36,9 @@ export class AdminBlogTagsController {
   @RequirePermission('blog_tag.view')
   @ApiPaginatedResponse(AdminBlogTagDto)
   list(
-    @Query() { page, pageSize }: PaginationQueryDto,
+    @Query() { page, pageSize, q }: AdminBlogTagQueryDto,
   ): Promise<PaginatedResult<AdminBlogTagDto>> {
-    return this.tags.adminList(page ?? 1, pageSize ?? 20);
+    return this.tags.adminList(page ?? 1, pageSize ?? 20, q);
   }
 
   @Get(':id')

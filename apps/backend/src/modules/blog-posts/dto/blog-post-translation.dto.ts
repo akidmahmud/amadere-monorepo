@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { BlogPostFaqDto } from './blog-post-faq.dto';
@@ -19,9 +20,13 @@ export class BlogPostTranslationDto {
   @IsString()
   title!: string;
 
-  @ApiPropertyOptional()
+  // Admin's Excerpt field shows a "X/400" counter next to it — the frontend
+  // also caps the textarea's `maxLength` at 400, but this is the real
+  // enforcement (a direct API call could otherwise still bypass it).
+  @ApiPropertyOptional({ maxLength: 400 })
   @IsOptional()
   @IsString()
+  @MaxLength(400)
   excerpt?: string;
 
   @ApiProperty()

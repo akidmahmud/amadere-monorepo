@@ -7,6 +7,7 @@ import {
   Param,
   ParseFilePipe,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UploadedFile,
@@ -30,6 +31,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { MediaService } from './media.service';
 import { UploadMediaDto } from './dto/upload-media.dto';
+import { UpdateMediaDto } from './dto/update-media.dto';
 import { MediaDto } from './media.mapper';
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20MB
@@ -66,6 +68,19 @@ export class AdminMediaController {
     @Body() dto: UploadMediaDto,
   ): Promise<MediaDto> {
     return this.media.upload(file, dto.altText);
+  }
+
+  // Same permission tier as upload — editing alt text is completing the
+  // upload's own metadata, not a distinct capability worth its own
+  // permission key (and role) to seed.
+  @Patch(':id')
+  @RequirePermission('media.upload')
+  @ApiOkResponse({ type: MediaDto })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateMediaDto,
+  ): Promise<MediaDto> {
+    return this.media.updateAltText(id, dto.altText ?? '');
   }
 
   @Delete(':id')

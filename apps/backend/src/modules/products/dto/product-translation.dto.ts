@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Locale } from '@amader/db';
 import { Type } from 'class-transformer';
-import { IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { ProductComparisonTableDto } from './product-comparison.dto';
 
 export class ProductTranslationDto {
@@ -13,9 +13,13 @@ export class ProductTranslationDto {
   @IsString()
   name!: string;
 
-  @ApiPropertyOptional({ description: 'Short Description — teaser near the title and the PDP\'s "About This Product" section' })
+  // Admin's Short Description field shows a "X/350" counter next to it —
+  // the frontend also caps the textarea's `maxLength` at 350, but this is
+  // the real enforcement (a direct API call could otherwise still bypass it).
+  @ApiPropertyOptional({ description: 'Short Description — teaser near the title and the PDP\'s "About This Product" section', maxLength: 350 })
   @IsOptional()
   @IsString()
+  @MaxLength(350)
   description?: string;
 
   @ApiPropertyOptional({ description: 'Full Description — rendered as the PDP\'s "Description" tab' })

@@ -1,11 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@amader/admin-ui";
 import { useCreateBlogPost } from "@/hooks/useBlogPosts";
 import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
+import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
+import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
+import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
+
+// Fixed key, not per-post (there's no id yet) — same tradeoff as the new
+// product page's draft key.
+const DRAFT_KEY = "blog-post-draft-new";
+
+interface BlogPostDraft {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  metaDescription: string;
+  imageUrl: string | undefined;
+  isFeatured: boolean;
+  categoryIds: number[];
+  tagIds: number[];
+}
 
 export default function NewBlogPostPage() {
   const router = useRouter();
@@ -19,10 +38,35 @@ export default function NewBlogPostPage() {
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const create = useCreateBlogPost();
+  const [pendingDraft, setPendingDraft] = useState<StoredDraft<BlogPostDraft> | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await create.mutateAsync({
+  useEffect(() => {
+    setPendingDraft(loadDraft<BlogPostDraft>(DRAFT_KEY));
+  }, []);
+
+  useAutosaveDraft(DRAFT_KEY, () => ({
+    title, slug, excerpt, content, metaDescription, imageUrl, isFeatured, categoryIds, tagIds,
+  }));
+
+  function restoreDraft(d: BlogPostDraft) {
+    setTitle(d.title);
+    setSlug(d.slug);
+    setExcerpt(d.excerpt);
+    setContent(d.content);
+    setMetaDescription(d.metaDescription);
+    setImageUrl(d.imageUrl);
+    setIsFeatured(d.isFeatured);
+    setCategoryIds(d.categoryIds);
+    setTagIds(d.tagIds);
+  }
+
+  // "Save" creates the post and drops onto its own edit page — same
+  // reasoning as the new product page: a brand new post has no id yet, so
+  // there's nowhere to see Revision History or SEO tools until it exists.
+  // "Save & Exit" is the old always-back-to-the-list behavior, kept for
+  // when there's nothing more to add.
+  async function handleSave(exit: boolean) {
+    const created = await create.mutateAsync({
       slug,
       imageUrl,
       isFeatured,
@@ -33,11 +77,18 @@ export default function NewBlogPostPage() {
         { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
       ],
     });
-    router.push("/blog-posts");
+    clearDraft(DRAFT_KEY);
+    router.push(exit ? "/blog-posts" : `/blog-posts/${created.id}`);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave(false);
+      }}
+      className="flex flex-col gap-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/blog-posts" aria-label="Back to blog posts" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
@@ -49,6 +100,7 @@ export default function NewBlogPostPage() {
           <h1 className="font-ui text-lg font-extrabold text-text">New Blog Post</h1>
         </div>
         <div className="flex gap-3">
+          <BlogPreviewButton />
           <a
             href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
             target="_blank"
@@ -57,8 +109,11 @@ export default function NewBlogPostPage() {
           >
             Visit website
           </a>
+          <Button type="button" variant="ghost" disabled={create.isPending} onClick={() => handleSave(true)}>
+            {create.isPending ? "Saving…" : "Save & Exit"}
+          </Button>
           <Button type="submit" variant="primary" disabled={create.isPending}>
-            {create.isPending ? "Saving…" : "Create Post"}
+            {create.isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
@@ -71,6 +126,20 @@ export default function NewBlogPostPage() {
         </svg>
         New posts start as a draft — submit, publish or archive it from the edit page once created.
       </div>
+
+      {pendingDraft && (
+        <DraftRestoreBanner
+          savedAt={pendingDraft.savedAt}
+          onRestore={() => {
+            restoreDraft(pendingDraft.data);
+            setPendingDraft(null);
+          }}
+          onDiscard={() => {
+            clearDraft(DRAFT_KEY);
+            setPendingDraft(null);
+          }}
+        />
+      )}
 
       <BlogPostFormFields
         title={title}

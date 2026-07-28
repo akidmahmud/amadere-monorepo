@@ -8,13 +8,27 @@ import { SeoMetaCard } from "@/components/SeoMetaCard";
 import {
   useArchiveBlogPost,
   useBlogPost,
-  useGenerateBlogPreviewToken,
   usePublishBlogPost,
   useSubmitBlogPost,
   useUpdateBlogPost,
 } from "@/hooks/useBlogPosts";
 import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
+import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
 import { RevisionHistoryTable } from "@/components/blog/RevisionHistoryTable";
+import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
+import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
+
+interface BlogPostDraft {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  metaDescription: string;
+  imageUrl: string | undefined;
+  isFeatured: boolean;
+  categoryIds: number[];
+  tagIds: number[];
+}
 
 const STATUS_PILL: Record<string, string> = {
   PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
@@ -26,13 +40,13 @@ const STATUS_PILL: Record<string, string> = {
 export default function EditBlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const postId = Number(id);
+  const draftKey = `blog-post-draft-${postId}`;
   const router = useRouter();
   const { data: post, isLoading } = useBlogPost(postId);
   const update = useUpdateBlogPost(postId);
   const submit = useSubmitBlogPost();
   const publish = usePublishBlogPost();
   const archive = useArchiveBlogPost();
-  const previewToken = useGenerateBlogPreviewToken();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -44,6 +58,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<"detail" | "revisions">("detail");
+  const [pendingDraft, setPendingDraft] = useState<StoredDraft<BlogPostDraft> | null>(null);
 
   useEffect(() => {
     if (!post) return;
@@ -56,10 +71,34 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     setIsFeatured(post.isFeatured);
     setCategoryIds(post.categoryIds);
     setTagIds(post.tagIds);
+    // Same reasoning as the product edit page: useUpdateBlogPost's own
+    // successful saves always clear this draft, so anything still here at
+    // load time is unsaved work from before a crash/outage.
+    setPendingDraft(loadDraft<BlogPostDraft>(draftKey));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useAutosaveDraft(draftKey, () => ({
+    title, slug, excerpt, content, metaDescription, imageUrl, isFeatured, categoryIds, tagIds,
+  }));
+
+  function restoreDraft(d: BlogPostDraft) {
+    setTitle(d.title);
+    setSlug(d.slug);
+    setExcerpt(d.excerpt);
+    setContent(d.content);
+    setMetaDescription(d.metaDescription);
+    setImageUrl(d.imageUrl);
+    setIsFeatured(d.isFeatured);
+    setCategoryIds(d.categoryIds);
+    setTagIds(d.tagIds);
+  }
+
+  // "Save" stays on this page (same reasoning as the product edit page —
+  // multi-tab edits shouldn't force a re-navigate after every change).
+  // "Save & Exit" is the old always-redirect behavior, kept as its own
+  // explicit action for when the edit really is done.
+  async function handleSave(exit: boolean) {
     await update.mutateAsync({
       slug,
       imageUrl,
@@ -71,14 +110,25 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
         { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
       ],
     });
-    router.push("/blog-posts");
+    clearDraft(draftKey);
+    if (exit) router.push("/blog-posts");
   }
 
   if (isLoading || !post) return <FormSkeleton />;
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* SeoMetaCard below renders its own <form> with its own Save button —
+          nesting it inside this page's <form> is invalid HTML (and React
+          warns/hydration-errors on it), so only the Detail tab's own fields
+          go inside this <form>; SeoMetaCard stays a sibling underneath it. */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave(false);
+        }}
+        className="flex flex-col gap-4"
+      >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/blog-posts" aria-label="Back to blog posts" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
@@ -105,23 +155,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           )}
         </div>
         <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={previewToken.isPending}
-            onClick={() => {
-              const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001";
-              previewToken.mutate(postId, {
-                onSuccess: ({ token }) => {
-                  // Uses the saved post's slug, not the (possibly unsaved)
-                  // form field — preview shows what's actually persisted.
-                  window.open(`${storefrontUrl}/blog/${post.slug}?previewToken=${token}`, "_blank", "noopener,noreferrer");
-                },
-              });
-            }}
-          >
-            {previewToken.isPending ? "Preparing…" : "Preview"}
-          </Button>
+          <BlogPreviewButton postId={postId} slug={post.slug} />
           <a
             href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
             target="_blank"
@@ -130,12 +164,28 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           >
             Visit website
           </a>
+          <Button type="button" variant="ghost" disabled={update.isPending} onClick={() => handleSave(true)}>
+            {update.isPending ? "Saving…" : "Save & Exit"}
+          </Button>
           <Button type="submit" variant="primary" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save Post"}
+            {update.isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
-      </form>
+
+      {pendingDraft && (
+        <DraftRestoreBanner
+          savedAt={pendingDraft.savedAt}
+          onRestore={() => {
+            restoreDraft(pendingDraft.data);
+            setPendingDraft(null);
+          }}
+          onDiscard={() => {
+            clearDraft(draftKey);
+            setPendingDraft(null);
+          }}
+        />
+      )}
 
       <Tabs
         options={[
@@ -147,41 +197,42 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
       />
 
       {activeTab === "detail" ? (
-        <>
-          <BlogPostFormFields
-            title={title}
-            setTitle={setTitle}
-            slug={slug}
-            setSlug={setSlug}
-            excerpt={excerpt}
-            setExcerpt={setExcerpt}
-            content={content}
-            setContent={setContent}
-            metaDescription={metaDescription}
-            setMetaDescription={setMetaDescription}
-            imageUrl={imageUrl}
-            setImageUrl={setImageUrl}
-            isFeatured={isFeatured}
-            setIsFeatured={setIsFeatured}
-            categoryIds={categoryIds}
-            setCategoryIds={setCategoryIds}
-            tagIds={tagIds}
-            setTagIds={setTagIds}
-            statusLabel={post.status.charAt(0) + post.status.slice(1).toLowerCase()}
-            statusPillClass={STATUS_PILL[post.status]}
-          />
-
-          <SeoMetaCard
-            entityType="BLOG_POST"
-            entityId={postId}
-            slug={slug}
-            previewPath="/blog"
-            fallbackTitle={title}
-            fallbackDescription={excerpt || metaDescription}
-          />
-        </>
+        <BlogPostFormFields
+          title={title}
+          setTitle={setTitle}
+          slug={slug}
+          setSlug={setSlug}
+          excerpt={excerpt}
+          setExcerpt={setExcerpt}
+          content={content}
+          setContent={setContent}
+          metaDescription={metaDescription}
+          setMetaDescription={setMetaDescription}
+          imageUrl={imageUrl}
+          setImageUrl={setImageUrl}
+          isFeatured={isFeatured}
+          setIsFeatured={setIsFeatured}
+          categoryIds={categoryIds}
+          setCategoryIds={setCategoryIds}
+          tagIds={tagIds}
+          setTagIds={setTagIds}
+          statusLabel={post.status.charAt(0) + post.status.slice(1).toLowerCase()}
+          statusPillClass={STATUS_PILL[post.status]}
+        />
       ) : (
         <RevisionHistoryTable postId={postId} />
+      )}
+      </form>
+
+      {activeTab === "detail" && (
+        <SeoMetaCard
+          entityType="BLOG_POST"
+          entityId={postId}
+          slug={slug}
+          previewPath="/blog"
+          fallbackTitle={title}
+          fallbackDescription={excerpt || metaDescription}
+        />
       )}
     </div>
   );
