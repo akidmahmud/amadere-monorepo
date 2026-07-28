@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button, FormSkeleton } from "@amader/admin-ui";
 import { useProduct, useUpdateProduct } from "@/hooks/useProducts";
 import { ProductFormFields } from "@/components/products/ProductFormFields";
+import { ProductPreviewButton } from "@/components/products/ProductPreviewButton";
 import { useProductFormState } from "@/components/products/useProductFormState";
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +51,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               Cancel
             </Button>
           </Link>
+          <ProductPreviewButton productId={productId} slug={product.slug} />
           <Button type="submit" variant="primary" disabled={update.isPending}>
             {update.isPending ? "Saving…" : "Save Product"}
           </Button>

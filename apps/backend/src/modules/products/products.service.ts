@@ -28,6 +28,7 @@ import {
 } from './dto/product-response.dto';
 import { SeoService } from '../seo/seo.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { TokenService } from '../../common/auth/token.service';
 import {
   buildBreadcrumbJsonLd,
   buildProductJsonLd,
@@ -54,6 +55,7 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly seo: SeoService,
     private readonly reviews: ReviewsService,
+    private readonly tokens: TokenService,
   ) {}
 
   async adminList(
@@ -594,19 +596,51 @@ export class ProductsService {
     return new Map(products.map((p) => [p.id, toPublicProductDto(p, locale)]));
   }
 
+  async generatePreviewToken(id: number): Promise<{ token: string }> {
+    await this.adminGet(id);
+    const token = await this.tokens.signProductPreviewToken(id);
+    return { token };
+  }
+
   async publicGetBySlug(
     slug: string,
     locale: Locale,
+    previewToken?: string,
   ): Promise<PublicProductDetailDto> {
+    // Same convention as blog posts' preview link: a valid token minted for
+    // THIS product unlocks it regardless of status; an invalid/expired token
+    // just falls back to the normal published-only lookup rather than
+    // surfacing a hard auth error (an expired preview link 404s the same way
+    // a wrong slug would, instead of leaking "this product exists").
+    let allowUnpublished: number | null = null;
+    if (previewToken) {
+      try {
+        const payload = await this.tokens.verifyProductPreviewToken(previewToken);
+        allowUnpublished = payload.productId;
+      } catch {
+        allowUnpublished = null;
+      }
+    }
+
     const product = await this.prisma.client.product.findFirst({
-      where: { slug, deletedAt: null, status: 'PUBLISHED' },
+      where: {
+        slug,
+        deletedAt: null,
+        ...(allowUnpublished ? {} : { status: 'PUBLISHED' }),
+      },
       include: PRODUCT_INCLUDE,
     });
     if (!product) throw new NotFoundException('Product not found');
-    await this.prisma.client.product.update({
-      where: { id: product.id },
-      data: { viewCount: { increment: 1 } },
-    });
+    if (allowUnpublished && product.id !== allowUnpublished) {
+      throw new NotFoundException('Product not found');
+    }
+    // Previewing a draft shouldn't inflate real view-count analytics.
+    if (!allowUnpublished) {
+      await this.prisma.client.product.update({
+        where: { id: product.id },
+        data: { viewCount: { increment: 1 } },
+      });
+    }
 
     const dto = toPublicProductDto(product, locale);
     const imageUrls = dto.media.map((m) => m.url);

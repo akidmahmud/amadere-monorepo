@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@amader/admin-ui";
 import { useCreateProduct, type VariantInput } from "@/hooks/useProducts";
 import { ProductFormFields } from "@/components/products/ProductFormFields";
+import { ProductPreviewButton } from "@/components/products/ProductPreviewButton";
 import { useProductFormState } from "@/components/products/useProductFormState";
 
 export default function NewProductPage() {
@@ -33,6 +34,7 @@ export default function NewProductPage() {
               Cancel
             </Button>
           </Link>
+          <ProductPreviewButton />
           <Button type="submit" variant="primary" disabled={create.isPending}>
             {create.isPending ? "Saving…" : "Save Product"}
           </Button>

@@ -35,9 +35,9 @@ export const revalidate = 3600;
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 type PublicBundleDto = components["schemas"]["PublicBundleDto"];
 
-async function getProduct(slug: string, locale: string) {
+async function getProduct(slug: string, locale: string, previewToken?: string) {
   const res = await safeGet("/api/v1/products/{slug}", {
-    params: { path: { slug }, query: { locale } },
+    params: { path: { slug }, query: { locale, previewToken } },
   });
   return res.data as PublicProductDetailDto | undefined;
 }
@@ -54,11 +54,14 @@ function toComboCardData(bundle: PublicBundleDto) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; slug: string }>;
+  searchParams: Promise<{ previewToken?: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const product = await getProduct(slug, toApiLocale(locale));
+  const { previewToken } = await searchParams;
+  const product = await getProduct(slug, toApiLocale(locale), previewToken);
   if (!product) {
     await redirectIfMapped(`/products/${slug}`, locale);
     notFound();
@@ -79,14 +82,17 @@ export async function generateMetadata({
 
 export default async function ProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; slug: string }>;
+  searchParams: Promise<{ previewToken?: string }>;
 }) {
   const { locale, slug } = await params;
+  const { previewToken } = await searchParams;
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
 
-  const product = await getProduct(slug, localeParam);
+  const product = await getProduct(slug, localeParam, previewToken);
   if (!product) {
     await redirectIfMapped(`/products/${slug}`, locale);
     notFound();
@@ -161,6 +167,11 @@ export default async function ProductPage({
 
   return (
     <main className="flex-1">
+      {previewToken && (
+        <div className="sticky top-0 z-50 bg-[#7c3aed] py-2 text-center font-ui text-xs font-bold text-white">
+          Preview mode — this product is not published yet
+        </div>
+      )}
       {product.structuredData.map((item, i) => (
         // eslint-disable-next-line react/no-danger
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }} />

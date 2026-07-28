@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
@@ -33,10 +33,12 @@ export class ProductsController {
 
   @Get(':slug')
   @ApiOkResponse({ type: PublicProductDetailDto })
+  @ApiQuery({ name: 'previewToken', required: false })
   getBySlug(
     @Param('slug') slug: string,
     @Query() { locale }: LocaleQueryDto,
+    @Query('previewToken') previewToken?: string,
   ): Promise<PublicProductDetailDto> {
-    return this.products.publicGetBySlug(slug, locale ?? 'EN');
+    return this.products.publicGetBySlug(slug, locale ?? 'EN', previewToken);
   }
 }

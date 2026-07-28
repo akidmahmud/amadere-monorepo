@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useCreatePage } from "@/hooks/usePages";
 import type { PublishStatus } from "@/hooks/useBrands";
@@ -40,10 +41,12 @@ export default function NewPagePage() {
           <span className="text-xs font-semibold text-secondary">Slug</span>
           <input required value={slug} onChange={(e) => setSlug(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Content (HTML)</span>
-          <textarea required value={content} onChange={(e) => setContent(e.target.value)} rows={10} className="rounded-sm border border-border bg-surface p-3 font-mono text-xs text-text outline-none focus:border-brand-500" />
-        </label>
+        {/* A plain div, not <label> — see ProductFormFields.tsx's identical
+            comment on its own RichTextEditor field. */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Content</span>
+          <RichTextEditor value={content} onChange={setContent} />
+        </div>
         <StatusSelect value={status} onChange={setStatus} />
 
         <div className="flex gap-3">

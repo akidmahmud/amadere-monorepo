@@ -9,7 +9,7 @@ import { ProductMediaGallery } from "./ProductMediaGallery";
 import { ProductTabs, type ProductTab } from "./ProductTabs";
 import { ProductPricingCard } from "./ProductPricingCard";
 import { ProductCategoriesTagsCard } from "./ProductCategoriesTagsCard";
-import { RichTextEditor } from "./RichTextEditor";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { ProductSeoTab } from "./ProductSeoTab";
 import { ProductAnalyticsTab } from "./ProductAnalyticsTab";
 import { ProductActivityTab } from "./ProductActivityTab";
@@ -79,10 +79,16 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   </span>
                   <textarea value={form.description} onChange={(e) => form.setDescription(e.target.value)} rows={3} className={textareaClass} />
                 </label>
-                <label className="mb-3.5 flex flex-col gap-1.5">
+                {/* A plain div, not <label> — RichTextEditor renders its own
+                    toolbar full of buttons, and a bare <label> with no
+                    htmlFor wrapping multiple interactive elements makes the
+                    browser synthesize a click on the first one (the
+                    Fullscreen button) whenever anything inside is clicked,
+                    including the editor's own content area. */}
+                <div className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">Full Description</span>
                   <RichTextEditor value={form.content} onChange={form.setContent} />
-                </label>
+                </div>
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">Key Benefits (optional — rendered as a checklist on the product page)</span>
                   <textarea value={form.benefitPoints} onChange={(e) => form.setBenefitPoints(e.target.value)} rows={4} className={textareaClass} placeholder="One benefit per line" />

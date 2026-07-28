@@ -57,6 +57,8 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
       <video
         key={card.url}
         src={card.url}
+        poster={card.thumbnailUrl}
+        preload="auto"
         autoPlay
         muted={muted}
         loop

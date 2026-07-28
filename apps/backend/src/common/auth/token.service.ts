@@ -8,6 +8,7 @@ import {
   BlogPreviewPayload,
   CustomerAccessPayload,
   CustomerRefreshPayload,
+  ProductPreviewPayload,
   TokenPair,
 } from './token.types';
 
@@ -18,6 +19,7 @@ const TWO_FACTOR_PENDING_EXPIRES_IN = '5m';
 // to keep re-generating the link, short enough that an old preview link
 // doesn't stay a permanent, unlisted way to view unpublished content.
 const BLOG_PREVIEW_EXPIRES_IN = '7d';
+const PRODUCT_PREVIEW_EXPIRES_IN = '7d';
 
 @Injectable()
 export class TokenService {
@@ -149,6 +151,24 @@ export class TokenService {
       token,
       'ADMIN_JWT_ACCESS_SECRET',
       'blog_preview',
+    );
+  }
+
+  async signProductPreviewToken(productId: number): Promise<string> {
+    return this.jwt.signAsync(
+      { productId, tokenType: 'product_preview' } satisfies ProductPreviewPayload,
+      {
+        secret: this.config.getOrThrow('ADMIN_JWT_ACCESS_SECRET'),
+        expiresIn: PRODUCT_PREVIEW_EXPIRES_IN,
+      },
+    );
+  }
+
+  async verifyProductPreviewToken(token: string): Promise<ProductPreviewPayload> {
+    return this.verify<ProductPreviewPayload>(
+      token,
+      'ADMIN_JWT_ACCESS_SECRET',
+      'product_preview',
     );
   }
 

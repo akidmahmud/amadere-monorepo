@@ -28,6 +28,11 @@ export interface BlogPreviewPayload {
   tokenType: 'blog_preview';
 }
 
+export interface ProductPreviewPayload {
+  productId: number;
+  tokenType: 'product_preview';
+}
+
 export class TokenPair {
   accessToken!: string;
   refreshToken!: string;

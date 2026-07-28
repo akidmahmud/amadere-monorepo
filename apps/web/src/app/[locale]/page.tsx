@@ -359,13 +359,27 @@ export default async function Home({
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
 
-  const [sectionsRes, bundlesRes, tagsRes, categoriesRes, blogRes] = await Promise.all([
+  // tagsRes is awaited on its own (not folded into the Promise.all below) so
+  // the tag-dependent firstTagProducts request can fire as soon as it
+  // resolves, instead of sitting behind the other 4 unrelated calls first —
+  // that used to make this a 6-calls-deep serial chain for no reason, since
+  // sections/bundles/categories/blog don't depend on tags at all.
+  const tagsRes = await safeGet("/api/v1/tags", {
+    params: { query: { locale: localeParam, pageSize: 6 } },
+  });
+  const tags = (tagsRes.data?.items ??
+    []) as components["schemas"]["PublicTagDto"][];
+  const firstTag = tags[0];
+  const firstTagProductsPromise = firstTag
+    ? safeGet("/api/v1/products", {
+        params: { query: { locale: localeParam, tagIds: [firstTag.id], pageSize: 8 } },
+      })
+    : Promise.resolve({ data: undefined });
+
+  const [sectionsRes, bundlesRes, categoriesRes, blogRes, firstTagProductsRes] = await Promise.all([
     safeGet("/api/v1/homepage-sections", { params: { query: { locale: localeParam } } }),
     safeGet("/api/v1/product-bundles", {
       params: { query: { locale: localeParam, pageSize: 8 } },
-    }),
-    safeGet("/api/v1/tags", {
-      params: { query: { locale: localeParam, pageSize: 6 } },
     }),
     safeGet("/api/v1/categories", {
       params: { query: { locale: localeParam, pageSize: 10 } },
@@ -373,6 +387,7 @@ export default async function Home({
     safeGet("/api/v1/blog-posts", {
       params: { query: { locale: localeParam, pageSize: 6 } },
     }),
+    firstTagProductsPromise,
   ]);
 
   const sections = (sectionsRes.data ?? []) as unknown as HomepageSection[];
@@ -381,19 +396,7 @@ export default async function Home({
     []) as components["schemas"]["PublicCategoryDto"][];
   const blogPosts = (blogRes.data?.items ??
     []) as components["schemas"]["PublicBlogPostSummaryDto"][];
-
-  const tags = (tagsRes.data?.items ??
-    []) as components["schemas"]["PublicTagDto"][];
-  const firstTag = tags[0];
-  const firstTagProducts = firstTag
-    ? ((
-        await safeGet("/api/v1/products", {
-          params: {
-            query: { locale: localeParam, tagIds: [firstTag.id], pageSize: 8 },
-          },
-        })
-      ).data?.items ?? [])
-    : [];
+  const firstTagProducts = firstTagProductsRes.data?.items ?? [];
 
   const comboSection = bundles.length > 0 && (
     <section className="pt-10 md:pt-14" key="super-saver-combos">

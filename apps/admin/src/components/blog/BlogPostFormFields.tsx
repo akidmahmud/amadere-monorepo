@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useBlogCategories } from "@/hooks/useBlogCategories";
-import { RichTextEditor } from "@/components/products/RichTextEditor";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { BlogHtmlDropzone, type ParsedHtmlPost } from "./BlogHtmlDropzone";
 import { CoverImageDropzone } from "./CoverImageDropzone";
 import { BlogTagsPicker } from "./BlogTagsPicker";
@@ -103,12 +103,14 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
             <textarea value={props.excerpt} onChange={(e) => props.setExcerpt(e.target.value)} rows={3} className={textareaClass} placeholder="A short summary shown on blog cards and previews..." />
           </label>
 
-          <label className="mb-3.5 flex flex-col gap-1.5">
+          {/* A plain div, not <label> — see ProductFormFields.tsx's identical
+              comment on its own RichTextEditor field. */}
+          <div className="mb-3.5 flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">
               Content<span className="ml-0.5 text-danger">*</span>
             </span>
             <RichTextEditor value={props.content} onChange={props.setContent} />
-          </label>
+          </div>
 
           <label className="flex flex-col gap-1.5">
             <span className="flex items-center justify-between text-xs font-bold text-text">

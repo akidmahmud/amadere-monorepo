@@ -83,6 +83,12 @@ export class AdminProductsController {
     return this.products.adminGet(id);
   }
 
+  @Post(':id/preview-token')
+  @RequirePermission('product.view')
+  previewToken(@Param('id', ParseIntPipe) id: number): Promise<{ token: string }> {
+    return this.products.generatePreviewToken(id);
+  }
+
   @Get(':id/stats')
   @RequirePermission('product.view')
   statsFor(@Param('id', ParseIntPipe) id: number) {

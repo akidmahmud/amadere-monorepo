@@ -175,4 +175,10 @@ export function useUpdateVariantSku(productId: number) {
   });
 }
 
+export function useGenerateProductPreviewToken() {
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<{ token: string }>(`/admin/products/${id}/preview-token`, { method: "POST" }),
+  });
+}
+
 export { KEY as PRODUCTS_KEY };

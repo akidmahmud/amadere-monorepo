@@ -82,21 +82,31 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
 
-  const { data: siteInfo } = await safeGet("/api/v1/settings/site");
-  const { data: analyticsConfig } = await safeGet("/api/v1/analytics/config");
-  const { data: whatsappConfig } = await safeGet("/api/v1/whatsapp/config");
-  // Fetched server-side so the nav's categories are in the very first HTML
-  // response instead of appearing after a client-side fetch completes post-hydration —
-  // that round trip was the "navbar takes too long to load" delay.
-  const { data: categoriesNav } = await safeGet("/api/v1/categories/nav", {
-    params: { query: { locale: locale.toUpperCase() } },
-  });
-  // Same fix as categories nav — the announcement bar was flashing in late
-  // after a client-side fetch; server-fetching it here puts it in the first
-  // HTML response instead.
-  const { data: announcements } = await safeGet("/api/v1/announcements", {
-    params: { query: { locale: locale.toUpperCase() } },
-  });
+  // These 5 calls used to run as separate sequential `await`s — each one
+  // paying its own round-trip latency back-to-back before the layout (and
+  // everything nested under it, including the homepage) could render a
+  // single byte. Promise.all fires them concurrently so the total wait is
+  // whichever call is slowest, not the sum of all five.
+  const [
+    { data: siteInfo },
+    { data: analyticsConfig },
+    { data: whatsappConfig },
+    // Fetched server-side so the nav's categories are in the very first HTML
+    // response instead of appearing after a client-side fetch completes
+    // post-hydration — that round trip was the "navbar takes too long to
+    // load" delay.
+    { data: categoriesNav },
+    // Same fix as categories nav — the announcement bar was flashing in late
+    // after a client-side fetch; server-fetching it here puts it in the
+    // first HTML response instead.
+    { data: announcements },
+  ] = await Promise.all([
+    safeGet("/api/v1/settings/site"),
+    safeGet("/api/v1/analytics/config"),
+    safeGet("/api/v1/whatsapp/config"),
+    safeGet("/api/v1/categories/nav", { params: { query: { locale: locale.toUpperCase() } } }),
+    safeGet("/api/v1/announcements", { params: { query: { locale: locale.toUpperCase() } } }),
+  ]);
 
   return (
     <html

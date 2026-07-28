@@ -3,3 +3,9 @@
 /* Tailwind's default content scan doesn't reach into workspace packages —
    point it at the shared admin component library explicitly. */
 @source "../../../../packages/admin-ui/src";
+
+/* CKEditor 5's editable area has no min-height of its own — without this it
+   renders barely tall enough for one line, per direct user report. */
+.ck-editor__editable_inline {
+  min-height: 340px;
+}
