@@ -33,6 +33,11 @@ export interface ClarityConfig {
 export interface UtmConfig {
   enabled: boolean;
 }
+export interface CustomScriptConfig {
+  enabled: boolean;
+  headerScript: string;
+  bodyScript: string;
+}
 
 const KEY = ["analytics-settings"];
 const BASE = "/admin/analytics/settings";
@@ -115,6 +120,18 @@ export function useUpdateUtmSettings() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Partial<UtmConfig>) => proxyFetch<UtmConfig>(`${BASE}/utm`, { method: "PUT", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useCustomScriptSettings() {
+  return useQuery({ queryKey: [...KEY, "custom-script"], queryFn: () => proxyFetch<CustomScriptConfig>(`${BASE}/custom-script`) });
+}
+export function useUpdateCustomScriptSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<CustomScriptConfig>) =>
+      proxyFetch<CustomScriptConfig>(`${BASE}/custom-script`, { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

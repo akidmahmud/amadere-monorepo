@@ -66,10 +66,16 @@ function toQueryString(filters: object): string {
   return s ? `?${s}` : "";
 }
 
+// New orders placed by other customers/staff wouldn't otherwise show up
+// here until a manual reload — polling closes that gap without needing a
+// websocket/SSE channel.
+const LIST_REFETCH_INTERVAL_MS = 15_000;
+
 export function useOrderManagerList(filters: OrderManagerFilters) {
   return useQuery({
     queryKey: [...KEY, filters],
     queryFn: () => proxyFetch<Paginated<OrderManagerRow>>(`/admin/net-profit/orders${toQueryString(filters)}`),
+    refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
 }
 
@@ -79,6 +85,7 @@ export function useOrderManagerStatusCounts(filters: Omit<OrderManagerFilters, "
   return useQuery({
     queryKey: [...KEY, "status-counts", filters],
     queryFn: () => proxyFetch<Record<string, number>>(`/admin/net-profit/orders/status-counts${toQueryString(filters)}`),
+    refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
 }
 

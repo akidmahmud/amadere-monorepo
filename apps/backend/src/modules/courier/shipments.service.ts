@@ -38,6 +38,13 @@ const ACTIVE_STATUSES = new Set<ShipmentStatus>([
   'IN_TRANSIT',
 ]);
 
+// Same set as OrdersService's ITEM_EDITABLE_STATUSES (private to that file,
+// so not imported directly) — "order still holds a live, uncommitted stock
+// reservation." A delivered-webhook should only auto-complete orders still
+// in one of these; anything already CANCELED/RETURNED/COMPLETED is left to
+// whatever an admin already decided.
+const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HOLD']);
+
 // Shared with the B12 migration script (packages/db/scripts/migrate/orders.ts)
 // so the legacy-status mapping is defined once, not duplicated.
 function mapRawStatus(raw: string): ShipmentStatus {
@@ -381,6 +388,28 @@ export class ShipmentsService {
         },
       },
     });
+
+    // Previously this only updated the Shipment sub-record — the parent
+    // Order stayed wherever an admin last left it (often PROCESSING)
+    // forever, even after the courier confirmed real-world delivery,
+    // leaving stock reservations uncommitted indefinitely. Only fires while
+    // the order is still in an active, pre-completion status — an order an
+    // admin already CANCELED/RETURNED (or already COMPLETED) is left alone,
+    // same guard OrdersService.updateStatus itself uses to decide whether a
+    // live reservation still exists to commit.
+    if (status === 'DELIVERED') {
+      const order = await this.prisma.client.order.findUnique({
+        where: { id: shipment.orderId },
+        select: { id: true, status: true },
+      });
+      if (order && ACTIVE_ORDER_STATUSES.has(order.status)) {
+        await this.orders.updateStatus(
+          order.id,
+          { status: 'COMPLETED', note: `Auto-completed — ${provider} confirmed delivery` },
+          null,
+        );
+      }
+    }
   }
 
   private async computeOrderWeight(

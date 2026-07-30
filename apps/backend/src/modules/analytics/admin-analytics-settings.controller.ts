@@ -7,6 +7,7 @@ import { AuditLogInterceptor } from '../../common/audit-log/audit-log.intercepto
 import { AnalyticsSettingsService } from './analytics-settings.service';
 import {
   UpdateClaritySettingsDto,
+  UpdateCustomScriptSettingsDto,
   UpdateGa4SettingsDto,
   UpdateGoogleAdsSettingsDto,
   UpdateGtmSettingsDto,
@@ -105,5 +106,17 @@ export class AdminAnalyticsSettingsController {
   @RequirePermission('analytics.manage')
   updateUtm(@Body() dto: UpdateUtmSettingsDto) {
     return this.settings.updateUtmConfig(dto);
+  }
+
+  @Get('custom-script')
+  @RequirePermission('analytics.view')
+  getCustomScript() {
+    return this.settings.getCustomScriptConfig();
+  }
+
+  @Put('custom-script')
+  @RequirePermission('analytics.manage')
+  updateCustomScript(@Body() dto: UpdateCustomScriptSettingsDto) {
+    return this.settings.updateCustomScriptConfig(dto);
   }
 }

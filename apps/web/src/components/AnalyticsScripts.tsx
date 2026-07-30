@@ -12,6 +12,29 @@ export interface PublicAnalyticsConfig {
   tiktok: { pixelCode: string } | null;
   clarity: { projectId: string } | null;
   utmEnabled: boolean;
+  customScript: { headerScript: string; bodyScript: string } | null;
+}
+
+// Re-parses a raw admin-pasted HTML snippet and re-creates any <script>
+// elements via createElement/appendChild — script tags set through
+// innerHTML (what dangerouslySetInnerHTML does under the hood) never
+// execute, so a literal "<script>...</script>" snippet (the shape every
+// tracking vendor hands out) would otherwise silently do nothing.
+function injectRawHtml(html: string, target: "head" | "body") {
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  const parent = target === "head" ? document.head : document.body;
+  Array.from(container.childNodes).forEach((node) => {
+    if (node.nodeName === "SCRIPT") {
+      const src = node as HTMLScriptElement;
+      const script = document.createElement("script");
+      Array.from(src.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
+      script.text = src.text;
+      parent.appendChild(script);
+    } else {
+      parent.appendChild(node.cloneNode(true));
+    }
+  });
 }
 
 // Injects only the tracking scripts the admin has actually turned on
@@ -24,6 +47,17 @@ export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) 
   useEffect(() => {
     if (config.utmEnabled) captureUtmParams();
   }, [config.utmEnabled]);
+
+  useEffect(() => {
+    if (!config.customScript) return;
+    // Guards against React StrictMode's double-invoke in dev re-injecting
+    // (and thus double-firing) the same third-party script.
+    const marker = "__amaderCustomScriptInjected";
+    if ((window as unknown as Record<string, boolean>)[marker]) return;
+    (window as unknown as Record<string, boolean>)[marker] = true;
+    injectRawHtml(config.customScript.headerScript, "head");
+    if (config.customScript.bodyScript) injectRawHtml(config.customScript.bodyScript, "body");
+  }, [config.customScript]);
 
   const needsGtag = config.ga4 || config.googleAds;
 

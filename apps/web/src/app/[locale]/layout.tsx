@@ -97,6 +97,7 @@ export default async function LocaleLayout({
               tiktok: null,
               clarity: null,
               utmEnabled: false,
+              customScript: null,
             }
           }
         />

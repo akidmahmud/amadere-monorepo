@@ -63,12 +63,17 @@ function toQueryString(filters: CustomerListFilters): string {
   return s ? `?${s}` : "";
 }
 
+// New customers (e.g. auto-created from a guest checkout) wouldn't
+// otherwise show up here until a manual reload.
+const LIST_REFETCH_INTERVAL_MS = 15_000;
+
 export function useCustomers(filters: CustomerListFilters = {}) {
   return useQuery({
     queryKey: [...LIST_KEY, filters],
     queryFn: () =>
       proxyFetch<{ items: AdminCustomerListItem[]; total: number }>(`/admin/customers${toQueryString(filters)}`),
     placeholderData: keepPreviousData,
+    refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
 }
 
@@ -78,6 +83,7 @@ export function useCustomerStats() {
   return useQuery({
     queryKey: [...LIST_KEY, "stats"],
     queryFn: () => proxyFetch<CustomerStats>("/admin/customers/stats"),
+    refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
 }
 

@@ -56,6 +56,10 @@ export function useInventory(params: InventoryParams) {
   return useQuery({
     queryKey: [...KEY, params],
     queryFn: () => proxyFetch<InventoryList>(`/admin/net-profit/overview/inventory?${toQuery(params)}`),
+    // Stock changes from other staff/orders elsewhere wouldn't show up here
+    // otherwise until a manual reload — same polling approach as Order
+    // Manager/Customers lists.
+    refetchInterval: 15_000,
   });
 }
 

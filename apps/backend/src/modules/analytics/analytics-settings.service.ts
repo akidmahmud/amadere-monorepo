@@ -36,6 +36,11 @@ export interface ClarityConfig {
 export interface UtmConfig {
   enabled: boolean;
 }
+export interface CustomScriptConfig {
+  enabled: boolean;
+  headerScript: string;
+  bodyScript: string;
+}
 
 export interface PublicAnalyticsConfig {
   ga4: { measurementId: string } | null;
@@ -45,6 +50,7 @@ export interface PublicAnalyticsConfig {
   tiktok: { pixelCode: string } | null;
   clarity: { projectId: string } | null;
   utmEnabled: boolean;
+  customScript: { headerScript: string; bodyScript: string } | null;
 }
 
 interface Ga4Json {
@@ -76,6 +82,11 @@ interface ClarityJson {
 interface UtmJson {
   enabled: boolean;
 }
+interface CustomScriptJson {
+  enabled: boolean;
+  headerScript: string;
+  bodyScript: string;
+}
 
 const GA4_DEFAULTS: Ga4Json = { enabled: false, measurementId: '' };
 const GTM_DEFAULTS: GtmJson = { enabled: false, containerId: '' };
@@ -84,6 +95,7 @@ const GOOGLE_ADS_DEFAULTS: GoogleAdsJson = { enabled: false, conversionId: '', c
 const TIKTOK_DEFAULTS: TiktokJson = { enabled: false, pixelCode: '' };
 const CLARITY_DEFAULTS: ClarityJson = { enabled: false, projectId: '' };
 const UTM_DEFAULTS: UtmJson = { enabled: true };
+const CUSTOM_SCRIPT_DEFAULTS: CustomScriptJson = { enabled: false, headerScript: '', bodyScript: '' };
 
 // Credential/config storage for the tracking pixels (GA4/GTM/Meta/Google
 // Ads/TikTok/Clarity) plus the UTM-capture toggle — same split as
@@ -234,11 +246,30 @@ export class AnalyticsSettingsService {
     return next;
   }
 
+  // Raw <head>/<body> tracking snippets for services we don't have a
+  // dedicated provider for (Matomo, Plausible, Fathom, etc.) — same escape
+  // hatch as the reference site's "Custom Tracking Code" mode, additive to
+  // our other providers rather than mutually exclusive with them.
+  async getCustomScriptConfig(): Promise<CustomScriptConfig> {
+    return this.getJson('custom_script', CUSTOM_SCRIPT_DEFAULTS);
+  }
+
+  async updateCustomScriptConfig(input: Partial<CustomScriptJson>): Promise<CustomScriptConfig> {
+    const current = await this.getJson('custom_script', CUSTOM_SCRIPT_DEFAULTS);
+    const next = {
+      enabled: input.enabled ?? current.enabled,
+      headerScript: input.headerScript ?? current.headerScript,
+      bodyScript: input.bodyScript ?? current.bodyScript,
+    };
+    await this.setJson('custom_script', next);
+    return next;
+  }
+
   // Client-safe subset for the storefront's script loader — never secrets,
   // and only for providers that are both enabled and have their public ID
   // actually set (so a half-configured provider never injects a broken tag).
   async getPublicConfig(): Promise<PublicAnalyticsConfig> {
-    const [ga4, gtm, meta, googleAds, tiktok, clarity, utm] = await Promise.all([
+    const [ga4, gtm, meta, googleAds, tiktok, clarity, utm, customScript] = await Promise.all([
       this.getJson('ga4', GA4_DEFAULTS),
       this.getJson('gtm', GTM_DEFAULTS),
       this.getJson('meta', META_DEFAULTS),
@@ -246,6 +277,7 @@ export class AnalyticsSettingsService {
       this.getJson('tiktok', TIKTOK_DEFAULTS),
       this.getJson('clarity', CLARITY_DEFAULTS),
       this.getJson('utm', UTM_DEFAULTS),
+      this.getJson('custom_script', CUSTOM_SCRIPT_DEFAULTS),
     ]);
     return {
       ga4: ga4.enabled && ga4.measurementId ? { measurementId: ga4.measurementId } : null,
@@ -258,6 +290,10 @@ export class AnalyticsSettingsService {
       tiktok: tiktok.enabled && tiktok.pixelCode ? { pixelCode: tiktok.pixelCode } : null,
       clarity: clarity.enabled && clarity.projectId ? { projectId: clarity.projectId } : null,
       utmEnabled: utm.enabled,
+      customScript:
+        customScript.enabled && customScript.headerScript
+          ? { headerScript: customScript.headerScript, bodyScript: customScript.bodyScript }
+          : null,
     };
   }
 }

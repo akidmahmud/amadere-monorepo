@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateGa4SettingsDto {
   @ApiPropertyOptional()
@@ -103,4 +103,23 @@ export class UpdateUtmSettingsDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+}
+
+export class UpdateCustomScriptSettingsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Raw <head> tracking script, e.g. Matomo/Plausible/Fathom snippets' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10000)
+  headerScript?: string;
+
+  @ApiPropertyOptional({ description: 'Raw markup injected near the top of <body> (e.g. a noscript fallback)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10000)
+  bodyScript?: string;
 }

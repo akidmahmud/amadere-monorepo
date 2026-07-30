@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Button, Card, Icon, PageHeader, StatCard, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import {
   useClaritySettings,
+  useCustomScriptSettings,
   useGa4Settings,
   useGoogleAdsSettings,
   useGtmSettings,
   useMetaSettings,
   useTiktokSettings,
   useUpdateClaritySettings,
+  useUpdateCustomScriptSettings,
   useUpdateGa4Settings,
   useUpdateGoogleAdsSettings,
   useUpdateGtmSettings,
@@ -21,6 +23,8 @@ import {
 
 const analyticsIcon = <Icon name="monitoring" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+const textareaClass =
+  "min-h-[120px] rounded-sm border border-border bg-surface px-3 py-2 font-mono text-xs text-text outline-none focus:border-brand-500";
 
 function ProviderStat({ label, configured, icon }: { label: string; configured: boolean; icon: React.ReactNode }) {
   return (
@@ -41,6 +45,7 @@ function OverviewTab() {
   const { data: tiktok } = useTiktokSettings();
   const { data: clarity } = useClaritySettings();
   const { data: utm } = useUtmSettings();
+  const { data: customScript } = useCustomScriptSettings();
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,6 +56,11 @@ function OverviewTab() {
         <ProviderStat label="Google Ads" configured={!!googleAds?.enabled && !!googleAds.conversionId} icon={<Icon name="ads_click" />} />
         <ProviderStat label="TikTok Pixel" configured={!!tiktok?.enabled && !!tiktok.pixelCode} icon={<Icon name="music_note" />} />
         <ProviderStat label="Microsoft Clarity" configured={!!clarity?.enabled && !!clarity.projectId} icon={<Icon name="visibility" />} />
+        <ProviderStat
+          label="Custom Tracking Code"
+          configured={!!customScript?.enabled && !!customScript.headerScript}
+          icon={<Icon name="code" />}
+        />
       </div>
       <Card className="text-sm text-secondary">
         UTM attribution (utm_source/medium/campaign/term/content capture) is{" "}
@@ -364,9 +374,62 @@ function UtmCard() {
   );
 }
 
+function CustomScriptCard() {
+  const { data, isLoading } = useCustomScriptSettings();
+  const update = useUpdateCustomScriptSettings();
+  const [headerScript, setHeaderScript] = useState("");
+  const [bodyScript, setBodyScript] = useState("");
+  const [dirty, setDirty] = useState(false);
+
+  if (isLoading || !data) return <Card><p className="text-sm text-muted">Loading…</p></Card>;
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-ui text-sm font-bold text-text">Custom Tracking Code</h3>
+          <p className="text-xs text-muted">
+            For advanced tracking scripts (Matomo, Plausible, Fathom, etc.) that don&apos;t have a dedicated
+            provider above — pasted exactly as given, additive to everything else on this page.
+          </p>
+        </div>
+        <ToggleSwitch checked={data.enabled} onChange={(v) => update.mutate({ enabled: v })} label="Enabled" />
+      </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Step 1: Header tracking script</span>
+        <textarea
+          placeholder={data.headerScript || "<script>...</script>"}
+          value={dirty ? headerScript : data.headerScript}
+          onChange={(e) => { setDirty(true); setHeaderScript(e.target.value); }}
+          className={textareaClass}
+        />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Step 2: Body tracking code (optional)</span>
+        <textarea
+          placeholder={data.bodyScript || "<noscript>...</noscript>"}
+          value={dirty ? bodyScript : data.bodyScript}
+          onChange={(e) => { setDirty(true); setBodyScript(e.target.value); }}
+          className={textareaClass}
+        />
+      </label>
+      <Button
+        type="button"
+        variant="primary"
+        className="self-start"
+        disabled={update.isPending || !dirty}
+        onClick={() => update.mutate({ headerScript, bodyScript }, { onSuccess: () => setDirty(false) })}
+      >
+        Save
+      </Button>
+    </Card>
+  );
+}
+
 function SettingsTab() {
   return (
     <div className="flex flex-col gap-4">
+      <CustomScriptCard />
       <Ga4Card />
       <GtmCard />
       <MetaCard />

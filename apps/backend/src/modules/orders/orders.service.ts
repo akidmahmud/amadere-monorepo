@@ -33,15 +33,18 @@ import {
 const Decimal = Prisma.Decimal;
 
 // Statuses that release/commit the stock reservation held at checkout.
-// RETURNED is included deliberately — an order that never reached COMPLETED
-// still holds a live reservation (reservedStock), and one that did reach
-// COMPLETED had its stock actually decremented, so a return needs to restock
-// rather than release (see updateStatus). PARTIALLY_RETURNED is excluded on
-// purpose: ponytail — this codebase has no per-item return-quantity tracking
-// (OrderItem.restockedQuantity is a schema column nothing writes to), so a
-// partial return can't know how much to release/restock; upgrade path is a
-// real returns line-item model, not a guess here.
-const RELEASE_ON_CANCEL = new Set(['CANCELED', 'RETURNED']);
+// RETURNED and PARTIALLY_RETURNED are included deliberately — an order that
+// never reached COMPLETED still holds a live reservation (reservedStock),
+// and one that did reach COMPLETED had its stock actually decremented, so a
+// return needs to restock rather than release (see updateStatus).
+// PARTIALLY_RETURNED is treated the same as a full RETURNED (restock/release
+// everything) rather than doing nothing: ponytail — this codebase has no
+// per-item return-quantity tracking (OrderItem.restockedQuantity is a schema
+// column nothing writes to), so a true partial restock can't know how much
+// to move; upgrade path is a real returns line-item model, not a guess here,
+// but leaving stock untouched entirely (the old behavior) was strictly worse
+// than restocking the full quantity.
+const RELEASE_ON_CANCEL = new Set(['CANCELED', 'RETURNED', 'PARTIALLY_RETURNED']);
 const COMMIT_ON_COMPLETE = new Set(['COMPLETED']);
 
 // Line items can only be edited before stock has been committed/released —
@@ -90,7 +93,10 @@ export class OrdersService {
   async updateStatus(
     id: number,
     dto: UpdateOrderStatusDto,
-    adminUserId: number,
+    // null for system-triggered transitions (e.g. a courier webhook
+    // auto-completing delivered orders) — same nullable convention the
+    // webhook controllers already use for audit-log entries.
+    adminUserId: number | null,
   ): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { id },
@@ -99,24 +105,49 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
     if (order.status === dto.status) return this.reload(id);
 
+    // `completedAt` is a one-way marker — it's only ever set (never cleared)
+    // by this same method below, regardless of what status the order moves
+    // to afterward. That makes it a far more reliable "has this order's
+    // stock ever actually been committed/decremented" signal than the
+    // order's CURRENT status label: the admin status dropdown allows any
+    // transition (including backward ones like COMPLETED → PROCESSING),
+    // and a naive `order.status === 'COMPLETED'` / `ITEM_EDITABLE_STATUSES`
+    // check breaks the moment an order takes a detour through an active
+    // status after already being completed once — confirmed live: PENDING →
+    // COMPLETED → PROCESSING → CANCELED left reservedStock at -1 because the
+    // CANCELED branch saw status='PROCESSING' and (wrongly) tried to release
+    // a reservation that had already been consumed.
+    const wasEverCompleted = order.completedAt !== null;
+
     await this.prisma.client.$transaction(async (tx) => {
       // Guarded on the FROM status too, not just the TO status — without
       // this, bouncing between two release statuses (e.g. RETURNED then
-      // CANCELED) would release the same reservation twice, driving
-      // reservedStock negative and making every later availability check
-      // wrong in the other direction (looks like MORE stock than exists).
+      // CANCELED) would release/restock the same order twice.
       if (RELEASE_ON_CANCEL.has(dto.status) && !RELEASE_ON_CANCEL.has(order.status)) {
-        if (order.status === 'COMPLETED') {
-          // Stock was already committed (decremented for real) — the
-          // physical items are coming back, so restock instead of releasing
-          // a reservation that no longer exists.
+        if (wasEverCompleted) {
+          // Stock was already committed (decremented for real) at some
+          // point in this order's history — the physical items are coming
+          // back, so restock instead of releasing a reservation that no
+          // longer exists.
           await this.restockReturnedItems(tx, order.items);
         } else {
           await this.releaseReservations(tx, order.items);
         }
       }
       if (COMMIT_ON_COMPLETE.has(dto.status)) {
-        await this.commitReservations(tx, order.items);
+        if (wasEverCompleted) {
+          // Re-completing (directly or via a detour through another active
+          // status) after an earlier CANCELED/RETURNED — that reservation
+          // was already resolved, so there's nothing left in reservedStock
+          // to consume. Decrementing it again would drive it negative,
+          // making every later availability check (stock - reservedStock)
+          // overstate what's actually sellable. Only stock should move.
+          await this.decrementStockOnly(tx, order.items);
+        } else {
+          // Genuinely the first completion — a live reservation still
+          // exists, so consume it for real (reservedStock AND stock).
+          await this.commitReservations(tx, order.items);
+        }
       }
 
       await tx.order.update({
@@ -471,6 +502,33 @@ export class OrdersService {
         await tx.product.update({
           where: { id: item.productId },
           data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+  }
+
+  // Counterpart to restockReturnedItems — re-completing an order whose
+  // reservation was already resolved by an earlier CANCELED/RETURNED
+  // transition. Only stock moves; there's no live reservedStock left to
+  // consume (see updateStatus).
+  private async decrementStockOnly(
+    tx: Prisma.TransactionClient,
+    items: {
+      productId: number | null;
+      variantId: number | null;
+      quantity: number;
+    }[],
+  ): Promise<void> {
+    for (const item of items) {
+      if (item.variantId) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      } else if (item.productId) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
         });
       }
     }
