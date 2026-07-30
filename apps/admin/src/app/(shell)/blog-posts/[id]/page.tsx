@@ -18,6 +18,9 @@ import { RevisionHistoryTable } from "@/components/blog/RevisionHistoryTable";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { useToast } from "@/components/ToastProvider";
 
 interface BlogPostDraft {
   title: string;
@@ -49,6 +52,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const publish = usePublishBlogPost();
   const archive = useArchiveBlogPost();
   const storefrontUrl = useStorefrontUrl();
+  const toast = useToast();
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -101,17 +105,22 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   // "Save & Exit" is the old always-redirect behavior, kept as its own
   // explicit action for when the edit really is done.
   async function handleSave(exit: boolean) {
-    await update.mutateAsync({
-      slug,
-      imageUrl,
-      isFeatured,
-      categoryIds,
-      tagIds,
-      translations: [
-        { locale: "EN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-        { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-      ],
-    });
+    try {
+      await update.mutateAsync({
+        slug,
+        imageUrl,
+        isFeatured,
+        categoryIds,
+        tagIds,
+        translations: [
+          { locale: "EN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
+          { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
+        ],
+      });
+    } catch (err) {
+      toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to save post");
+      return;
+    }
     clearDraft(draftKey);
     if (exit) router.push("/blog-posts");
   }

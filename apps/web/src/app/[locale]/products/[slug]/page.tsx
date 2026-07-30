@@ -141,7 +141,7 @@ export default async function ProductPage({
   // stored-XSS payload that runs for every visitor.
   function htmlBlock(html: string) {
     // eslint-disable-next-line react/no-danger
-    return <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
+    return <div className="rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
   }
 
   const tabs = [
@@ -177,7 +177,14 @@ export default async function ProductPage({
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }} />
       ))}
 
-      <div className="mx-auto max-w-[1180px] px-5">
+      {/* 80% of viewport, not the site's usual fixed max-w-[1180px] (used
+          elsewhere: checkout, blog, category/brand/tag listings, etc.) —
+          ghorerbazar.com's own product-detail container is a fluid
+          `max-width: 80%` with no fixed cap (confirmed via computed style),
+          so a fixed pixel width here left a much wider margin than theirs on
+          large screens. Scoped to this page only; the sitewide 1180px
+          convention elsewhere is unchanged. */}
+      <div className="mx-auto max-w-[80%] px-5">
         <AppBreadcrumb
           items={[
             { label: "Home", href: "/" },
@@ -187,38 +194,47 @@ export default async function ProductPage({
           ]}
         />
 
-        <div className="grid grid-cols-[6fr_5fr] items-start gap-11 pb-4 max-lg:grid-cols-1">
-          <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
+        {/* Card look matched to ghorerbazar.com's PDP hero card: no border,
+            a tighter/darker shadow than this app's default shadow-brand
+            token, ~12px radius, flat 24px padding, 40px gap before the next
+            card — measured directly off that reference page rather than
+            reusing @amader/ui's Card (its border+shadow-brand defaults
+            don't match and can't be reliably overridden via plain string
+            concatenation, since `cn` here is clsx without tailwind-merge). */}
+        <div className="mb-10 rounded-xl bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)]">
+          <div className="grid grid-cols-[6fr_5fr] items-start gap-11 max-lg:grid-cols-1">
+            <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
-          <div>
-            {category && (
-              <div className="mb-1 font-ui text-xs font-semibold uppercase tracking-wide text-gold-dark">
-                {category.name}
-              </div>
-            )}
-            {/* Compact on mobile (18px, matching ghorerbazar's mobile PDP
-                hero) — full size on desktop, unchanged. */}
-            <h1 className="mb-2 font-serif text-lg font-semibold text-ink md:mb-3 md:text-3xl">{product.name}</h1>
-            {reviews && reviews.reviewCount > 0 && (
-              <RatingStars rating={reviews.averageRating ?? 0} count={reviews.reviewCount} className="mb-3" />
-            )}
-            {product.description && (
-              // Admin-authored WYSIWYG HTML, not user-generated — safe per
-              // backend's own content.util.ts docs (same pattern already
-              // used for blog post content). Was previously rendered as
-              // plain text, showing raw `<p><strong>` tags on the page.
-              // Hidden on mobile — the fuller "About This Product" section
-              // further down covers the same content there.
-              // eslint-disable-next-line react/no-danger
-              <div
-                className="mb-5 hidden font-body text-sm leading-relaxed text-muted [&_strong]:font-semibold [&_strong]:text-ink md:block"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
-              />
-            )}
+            <div>
+              {category && (
+                <div className="mb-1 font-ui text-xs font-semibold uppercase tracking-wide text-gold-dark">
+                  {category.name}
+                </div>
+              )}
+              {/* Compact on mobile (18px, matching ghorerbazar's mobile PDP
+                  hero) — full size on desktop, unchanged. */}
+              <h1 className="mb-2 font-serif text-lg font-semibold text-ink md:mb-3 md:text-3xl">{product.name}</h1>
+              {reviews && reviews.reviewCount > 0 && (
+                <RatingStars rating={reviews.averageRating ?? 0} count={reviews.reviewCount} className="mb-3" />
+              )}
+              {product.description && (
+                // Admin-authored WYSIWYG HTML, not user-generated — safe per
+                // backend's own content.util.ts docs (same pattern already
+                // used for blog post content). Was previously rendered as
+                // plain text, showing raw `<p><strong>` tags on the page.
+                // Hidden on mobile — the fuller "About This Product" section
+                // further down covers the same content there.
+                // eslint-disable-next-line react/no-danger
+                <div
+                  className="mb-5 hidden font-body text-sm leading-relaxed text-muted [&_strong]:font-semibold [&_strong]:text-ink md:block"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
+                />
+              )}
 
-            <WatchingNowBadge productId={product.id} />
+              <WatchingNowBadge productId={product.id} />
 
-            <PdpPurchasePanel product={product} whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null} />
+              <PdpPurchasePanel product={product} whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null} />
+            </div>
           </div>
         </div>
 
@@ -233,7 +249,9 @@ export default async function ProductPage({
           </div>
         )}
 
-        <ProductTabs tabs={tabs} />
+        <div className="rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)]">
+          <ProductTabs tabs={tabs} />
+        </div>
       </div>
 
       <ProductComparisonTable
@@ -248,7 +266,7 @@ export default async function ProductPage({
       {/* ProductCarouselSection has no built-in max-width/gutter of its own
           (shared with the homepage's edge-to-edge usage) — capped here to
           match every other section's containment on this page. */}
-      <div className="mx-auto max-w-[1180px] px-5">
+      <div className="mx-auto max-w-[80%] px-5">
         <ProductCarouselSectionClient
           heading="Related Products"
           products={relatedProducts}
@@ -257,7 +275,7 @@ export default async function ProductPage({
         />
       </div>
 
-      <div className="mx-auto max-w-[1180px] px-5 py-14">
+      <div className="mx-auto max-w-[80%] px-5 py-14">
         <SectionHeading>Customer Reviews</SectionHeading>
 
         {reviews && reviews.items.length > 0 && (
@@ -297,7 +315,7 @@ export default async function ProductPage({
       </div>
 
       {combos.length > 0 && (
-        <div className="mx-auto max-w-[1180px] px-5 py-14">
+        <div className="mx-auto max-w-[80%] px-5 py-14">
           <SectionHeading>Frequently Bought Together</SectionHeading>
           <Carousel>
             {combos.map((combo: ReturnType<typeof toComboCardData>) => (

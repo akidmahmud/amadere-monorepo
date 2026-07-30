@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useAssignableStaff, useCustomers, useCustomerStats, useCustomerTiers, type CustomerListFilters } from "@/hooks/useCustomers";
 import { CustomerStatsStrip } from "@/components/customers/CustomerStatsStrip";
 import { CustomerFilters, type CustomerFilterState } from "@/components/customers/CustomerFilters";
 import { CustomersTable } from "@/components/customers/CustomersTable";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
+import { CreateCustomerModal } from "@/components/orders/CreateCustomerModal";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -24,6 +24,7 @@ export default function CustomersPage() {
   const [pageSize, setPageSize] = useState(10);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const queryFilters: CustomerListFilters = { ...uiFilters, page, pageSize };
   const { data: stats } = useCustomerStats();
@@ -87,8 +88,9 @@ export default function CustomersPage() {
             </svg>
             Import
           </button>
-          <Link
-            href="/customers/new"
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
             className="inline-flex h-10 items-center gap-2 rounded-[10px] px-4 text-[0.82rem] font-bold text-white"
             style={{ background: GREEN }}
             onMouseEnter={(e) => (e.currentTarget.style.background = GREEN_DARK)}
@@ -99,7 +101,7 @@ export default function CustomersPage() {
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Add Customer
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -130,6 +132,15 @@ export default function CustomersPage() {
 
       {selectedId && <CustomerDetailModal customerId={selectedId} onClose={() => setSelectedId(null)} />}
       {importOpen && <CustomerImportModal onClose={() => setImportOpen(false)} />}
+      <CreateCustomerModal
+        open={addOpen}
+        showAddress={false}
+        onClose={() => setAddOpen(false)}
+        onCreated={(customer) => {
+          setAddOpen(false);
+          setSelectedId(customer.id);
+        }}
+      />
     </div>
   );
 }

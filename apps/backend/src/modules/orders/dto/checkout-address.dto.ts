@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class CheckoutAddressDto {
   @ApiProperty()
@@ -8,6 +9,7 @@ export class CheckoutAddressDto {
 
   @ApiProperty()
   @IsString()
+  @IsBdPhone()
   phone!: string;
 
   @ApiPropertyOptional()

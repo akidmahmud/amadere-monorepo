@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, Input, Select } from "@amader/ui";
-import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { useAddresses, useCreateAddress, useDeleteAddress, useUpdateAddress } from "@/hooks/useAccount";
 import type { components } from "@/lib/api/schema";
 
@@ -37,7 +37,14 @@ function AddressFormFields({
         <Input placeholder="Recipient name" value={value.recipientName} onChange={(e) => onChange({ ...value, recipientName: e.target.value })} />
       </div>
       <div className="mb-3 grid grid-cols-2 gap-3">
-        <Input placeholder="Phone" value={value.phone} onChange={(e) => onChange({ ...value, phone: e.target.value })} />
+        <Input
+          type="tel"
+          placeholder="Phone"
+          value={value.phone}
+          onChange={(e) => onChange({ ...value, phone: e.target.value })}
+          pattern="(?:\+?880|0)?1\d{9}"
+          title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+        />
         <Input placeholder="Postcode (optional)" value={value.postCode} onChange={(e) => onChange({ ...value, postCode: e.target.value })} />
       </div>
       <Input
@@ -84,17 +91,25 @@ function AddressCard({ address }: { address: AddressDto }) {
   });
   const updateAddress = useUpdateAddress();
   const deleteAddress = useDeleteAddress();
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  function handleSave() {
+    if (!isValidBdPhone(form.phone)) {
+      setPhoneError("Enter a valid Bangladeshi mobile number, e.g. 01712345678");
+      return;
+    }
+    setPhoneError(null);
+    updateAddress.mutate({ ...form, id: address.id }, { onSuccess: () => setEditing(false) });
+  }
 
   if (editing) {
     return (
       <div className="rounded-brand border border-line bg-white p-4">
         <AddressFormFields value={form} onChange={setForm} />
+        {phoneError && <p className="mt-1 font-body text-xs text-red-600">{phoneError}</p>}
+        {updateAddress.isError && <p className="mt-1 font-body text-xs text-red-600">Failed to save address.</p>}
         <div className="mt-3 flex gap-2">
-          <Button
-            variant="green"
-            disabled={updateAddress.isPending}
-            onClick={() => updateAddress.mutate({ ...form, id: address.id }, { onSuccess: () => setEditing(false) })}
-          >
+          <Button variant="green" disabled={updateAddress.isPending} onClick={handleSave}>
             Save
           </Button>
           <Button variant="ghost" onClick={() => setEditing(false)}>
@@ -134,6 +149,21 @@ export function AddressesManager() {
   const createAddress = useCreateAddress();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(BLANK);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  function handleCreate() {
+    if (!isValidBdPhone(form.phone)) {
+      setPhoneError("Enter a valid Bangladeshi mobile number, e.g. 01712345678");
+      return;
+    }
+    setPhoneError(null);
+    createAddress.mutate(form, {
+      onSuccess: () => {
+        setAdding(false);
+        setForm(BLANK);
+      },
+    });
+  }
 
   return (
     <div>
@@ -149,19 +179,10 @@ export function AddressesManager() {
       {adding && (
         <div className="mb-4 rounded-brand border border-line bg-white p-4">
           <AddressFormFields value={form} onChange={setForm} />
+          {phoneError && <p className="mt-1 font-body text-xs text-red-600">{phoneError}</p>}
+          {createAddress.isError && <p className="mt-1 font-body text-xs text-red-600">Failed to save address.</p>}
           <div className="mt-3 flex gap-2">
-            <Button
-              variant="green"
-              disabled={createAddress.isPending}
-              onClick={() =>
-                createAddress.mutate(form, {
-                  onSuccess: () => {
-                    setAdding(false);
-                    setForm(BLANK);
-                  },
-                })
-              }
-            >
+            <Button variant="green" disabled={createAddress.isPending} onClick={handleCreate}>
               Save Address
             </Button>
             <Button variant="ghost" onClick={() => setAdding(false)}>

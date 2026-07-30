@@ -34,6 +34,13 @@ export class AdminProductVariantDto {
   price!: string | null;
   salePrice!: string | null;
   stock!: number;
+  // reservedStock is held by in-progress orders — reserveStock() (order
+  // creation/item-add) enforces stock - reservedStock >= quantity, but
+  // stockStatus is derived from stock alone (products.service.ts) and goes
+  // stale once reservations eat all the remaining stock. Admin UIs that need
+  // to know whether adding this variant to an order will actually succeed
+  // must compute availability from stock - reservedStock, not stockStatus.
+  reservedStock!: number;
   stockStatus!: StockStatus;
   weightOverride!: string | null;
   isDefault!: boolean;
@@ -53,6 +60,10 @@ export class AdminProductDto {
   trackInventory!: boolean;
   allowBackorder!: boolean;
   stock!: number;
+  // Same staleness caveat as AdminProductVariantDto.reservedStock — only
+  // relevant when hasVariants is false (a variant purchase always checks its
+  // own stock/reservedStock, ignoring the parent product's).
+  reservedStock!: number;
   stockStatus!: StockStatus;
   price!: string | null;
   salePrice!: string | null;

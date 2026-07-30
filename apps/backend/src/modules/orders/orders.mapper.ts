@@ -1,6 +1,7 @@
 import {
   CourierProviderName,
   OrderAddressType,
+  OrderChannel,
   OrderStatus,
   PaymentProvider,
   PaymentStatus,
@@ -9,9 +10,17 @@ import {
 } from '@amader/db';
 
 export const ORDER_INCLUDE = {
-  items: true,
+  items: {
+    include: {
+      product: { select: { shippableWeight: true } },
+      variant: { select: { weightOverride: true } },
+    },
+  },
   addresses: true,
-  statusHistory: { orderBy: { createdAt: 'asc' as const } },
+  statusHistory: {
+    orderBy: { createdAt: 'asc' as const },
+    include: { adminUser: { select: { firstName: true, lastName: true } } },
+  },
   payments: { orderBy: { createdAt: 'asc' as const } },
   // Most recent shipment only — an order can theoretically get re-dispatched
   // (e.g. after a return), so `shipments` is a list, but customers/admins
@@ -46,6 +55,10 @@ export class OrderItemDto {
   unitPrice!: string;
   quantity!: number;
   taxAmount!: string;
+  // Variant weightOverride falls back to the product's shippableWeight —
+  // same precedence as ShipmentsService.computeOrderWeight (courier
+  // charging). Null when neither is configured.
+  weight!: string | null;
 }
 
 export class OrderAddressDto {
@@ -64,6 +77,7 @@ export class OrderAddressDto {
 export class OrderStatusHistoryEntryDto {
   status!: OrderStatus;
   note!: string | null;
+  adminName!: string | null;
   createdAt!: Date;
 }
 
@@ -84,9 +98,14 @@ export class OrderShipmentEventDto {
 export class OrderShipmentDto {
   provider!: CourierProviderName;
   status!: ShipmentStatus;
+  consignmentId!: string | null;
   trackingCode!: string | null;
+  cost!: string | null;
+  weight!: string | null;
+  codAmount!: string | null;
   dispatchedAt!: Date | null;
   deliveredAt!: Date | null;
+  updatedAt!: Date;
   events!: OrderShipmentEventDto[];
 }
 
@@ -95,6 +114,7 @@ export class OrderDto {
   orderNumber!: string;
   customerId!: number | null;
   status!: OrderStatus;
+  channel!: OrderChannel;
   subTotal!: string;
   discountAmount!: string;
   taxAmount!: string;
@@ -104,13 +124,30 @@ export class OrderDto {
   couponCode!: string | null;
   shippingMethod!: string | null;
   customerNote!: string | null;
+  staffNote!: string | null;
   cancelReason!: string | null;
   codVerifiedAt!: Date | null;
   confirmedAt!: Date | null;
   completedAt!: Date | null;
   canceledAt!: Date | null;
   createdAt!: Date;
+  // Attribution — captured at checkout time (see checkout.service.ts /
+  // apps/web utm.ts); all null for staff-created manual orders, which have
+  // no browser context to capture from.
+  ipAddress!: string | null;
+  utmSource!: string | null;
+  utmMedium!: string | null;
+  utmCampaign!: string | null;
+  landingDomain!: string | null;
+  landingPage!: string | null;
+  referrerUrl!: string | null;
+  referrerDomain!: string | null;
   items!: OrderItemDto[];
+  // Sum of each item's weight × quantity (items with no configured weight
+  // contribute 0) — same formula ShipmentsService uses at dispatch time, so
+  // this is a live preview of what a courier shipment will end up costing,
+  // available before any shipment exists.
+  totalWeight!: string;
   addresses!: OrderAddressDto[];
   statusHistory!: OrderStatusHistoryEntryDto[];
   payments!: OrderPaymentDto[];
@@ -124,6 +161,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     orderNumber: order.orderNumber,
     customerId: order.customerId,
     status: order.status,
+    channel: order.channel,
     subTotal: order.subTotal.toString(),
     discountAmount: order.discountAmount.toString(),
     taxAmount: order.taxAmount.toString(),
@@ -133,12 +171,21 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     couponCode: order.couponCode,
     shippingMethod: order.shippingMethod,
     customerNote: order.customerNote,
+    staffNote: order.staffNote,
     cancelReason: order.cancelReason,
     codVerifiedAt: order.codVerifiedAt,
     confirmedAt: order.confirmedAt,
     completedAt: order.completedAt,
     canceledAt: order.canceledAt,
     createdAt: order.createdAt,
+    ipAddress: order.ipAddress,
+    utmSource: order.utmSource,
+    utmMedium: order.utmMedium,
+    utmCampaign: order.utmCampaign,
+    landingDomain: order.landingDomain,
+    landingPage: order.landingPage,
+    referrerUrl: order.referrerUrl,
+    referrerDomain: order.referrerDomain,
     items: order.items.map((i) => ({
       id: i.id,
       productId: i.productId,
@@ -148,7 +195,14 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       unitPrice: i.unitPrice.toString(),
       quantity: i.quantity,
       taxAmount: i.taxAmount.toString(),
+      weight: decimalToString(i.variant?.weightOverride ?? i.product?.shippableWeight),
     })),
+    totalWeight: order.items
+      .reduce((sum, i) => {
+        const w = i.variant?.weightOverride ?? i.product?.shippableWeight;
+        return w ? sum.plus(w.times(i.quantity)) : sum;
+      }, new Prisma.Decimal(0))
+      .toString(),
     addresses: order.addresses.map((a) => ({
       type: a.type,
       recipientName: a.recipientName,
@@ -164,6 +218,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     statusHistory: order.statusHistory.map((h) => ({
       status: h.status,
       note: h.note,
+      adminName: h.adminUser ? `${h.adminUser.firstName} ${h.adminUser.lastName}`.trim() : null,
       createdAt: h.createdAt,
     })),
     payments: order.payments.map((p) => ({
@@ -177,9 +232,14 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       ? {
           provider: shipment.provider,
           status: shipment.status,
+          consignmentId: shipment.consignmentId,
           trackingCode: shipment.trackingCode,
+          cost: decimalToString(shipment.cost),
+          weight: decimalToString(shipment.weight),
+          codAmount: decimalToString(shipment.codAmount),
           dispatchedAt: shipment.dispatchedAt,
           deliveredAt: shipment.deliveredAt,
+          updatedAt: shipment.updatedAt,
           events: shipment.events.map((e) => ({
             status: e.status,
             note: e.note,

@@ -61,7 +61,16 @@ export default function NewCustomerPage() {
             <span className="text-[0.78rem] font-bold" style={{ color: TEXT }}>
               Phone
             </span>
-            <input required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} style={inputStyle} />
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={inputClass}
+              style={inputStyle}
+              pattern="(?:\+?880|0)?1\d{9}"
+              title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+            />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-[0.78rem] font-bold" style={{ color: TEXT }}>

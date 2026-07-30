@@ -41,7 +41,15 @@ export function TrackOrderForm() {
         </div>
         <div>
           <label className="mb-1.5 block font-ui text-xs font-medium text-ink">Phone Number</label>
-          <Input placeholder="017*********" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input
+            type="tel"
+            required
+            placeholder="017*********"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            pattern="(?:\+?880|0)?1\d{9}"
+            title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+          />
         </div>
         {track.isError && (
           <p className="font-body text-xs text-red-600">

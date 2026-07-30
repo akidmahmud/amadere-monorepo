@@ -188,9 +188,9 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
           placeholder="Search or add tags — separate multiple with commas, press Enter"
           className="mb-2.5 h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500 disabled:opacity-60"
         />
-        <div className="flex max-h-[210px] flex-col gap-0.5 overflow-y-auto rounded-inner border border-border p-1.5">
+        <div className="flex max-h-[210px] flex-col gap-1 overflow-y-auto rounded-inner border border-border p-2">
           {filteredTags.map((t) => (
-            <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
+            <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-2 py-2 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
               <input type="checkbox" checked={form.tagIds.includes(t.id)} onChange={() => toggle(form.tagIds, t.id, form.setTagIds)} className="h-3.5 w-3.5 accent-brand-500" />
               {t.label}
             </label>

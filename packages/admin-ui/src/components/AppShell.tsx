@@ -118,6 +118,31 @@ function groupNav(entries: AppNavEntry[]): RenderGroup[] {
   return groups;
 }
 
+// A page like /products/77 (edit product) has no nav entry of its own — only
+// its parent module (/products) does — so exact-match against `activeHref`
+// left the whole sidebar unhighlighted on every sub-page. Matches "/href" or
+// "/href/*" instead, so any page under a module keeps that module's nav row
+// highlighted. `/net-profit` and `/net-profit/fraud` are both real, separate
+// nav entries though (one module's own Overview row, one its subsection) —
+// naive prefix matching would light up both at once on the fraud page, so
+// this picks the single LONGEST matching href across the whole nav rather
+// than matching each item independently.
+function isPrefixMatch(href: string, pathname: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function resolveActiveHref(entries: AppNavEntry[], pathname: string): string | null {
+  let best: string | null = null;
+  for (const entry of entries) {
+    if (isLabel(entry)) continue;
+    if (isPrefixMatch(entry.href, pathname) && (!best || entry.href.length > best.length)) {
+      best = entry.href;
+    }
+  }
+  return best;
+}
+
 // §4 (rebuilt) — flush edge-to-edge shell matching the GetCommerce reference:
 // fixed-width white sidebar with a border-right separator (no floating card,
 // no gap, no collapse-to-icon-rail), flat nav rows under plain section
@@ -161,6 +186,8 @@ export function AppShell({
     setCacheMessage("Cache cleared");
     setTimeout(() => setCacheMessage(null), 2000);
   }
+
+  const resolvedActiveHref = resolveActiveHref(nav, activeHref);
 
   const filter = navFilter.trim().toLowerCase();
   const groups = groupNav(nav)
@@ -223,7 +250,7 @@ export function AppShell({
                     icon={item.icon}
                     label={item.label}
                     href={item.href}
-                    active={item.href === activeHref}
+                    active={item.href === resolvedActiveHref}
                     linkComponent={Link}
                   />
                 ))}

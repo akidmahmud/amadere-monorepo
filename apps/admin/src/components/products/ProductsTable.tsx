@@ -143,14 +143,8 @@ export function ProductsTable({
           className="h-[38px] w-[200px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
         />
         <Link
-          href="/products/marketing-review"
-          className="ml-auto inline-flex h-[38px] items-center rounded-inner border border-border px-3 text-[0.78rem] font-bold text-text hover:bg-surface-2"
-        >
-          Marketing Review Cards
-        </Link>
-        <Link
           href="/products/new"
-          className="inline-flex h-[38px] items-center gap-1.5 rounded-inner bg-brand-500 px-[15px] text-[0.8rem] font-bold text-white hover:bg-brand-600"
+          className="ml-auto inline-flex h-[38px] items-center gap-1.5 rounded-inner bg-brand-500 px-[15px] text-[0.8rem] font-bold text-white hover:bg-brand-600"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />

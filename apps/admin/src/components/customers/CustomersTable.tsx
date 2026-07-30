@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { isValidBdPhone } from "@amader/shared";
 import {
   useUpdateCustomer,
   type AdminCustomerListItem,
@@ -251,11 +252,26 @@ export function CustomersTable({
 
 function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerListItem; staff?: AssignableStaff[]; onView: (id: number) => void }) {
   const update = useUpdateCustomer(c.id);
+  const [name, setName] = useState(c.name);
+  const [address, setAddress] = useState(c.address ?? "");
+  const [phone, setPhone] = useState(c.phone ?? "");
+  const [phoneError, setPhoneError] = useState(false);
+  const [email, setEmail] = useState(c.email ?? "");
   const [feedback, setFeedback] = useState(c.customerFeedback ?? "");
   const [amaderFeedback, setAmaderFeedback] = useState(c.amaderFeedback ?? "");
   const [family, setFamily] = useState(c.familyDetails ?? "");
   const [reason, setPurchaseReason] = useState(c.purchaseReason ?? "");
   const [fbUrl, setFbUrl] = useState(c.facebookProfileUrl ?? "");
+
+  function commitPhone() {
+    if (phone === (c.phone ?? "")) return;
+    if (phone && !isValidBdPhone(phone)) {
+      setPhoneError(true);
+      return;
+    }
+    setPhoneError(false);
+    update.mutate({ phone });
+  }
 
   const daysLeft = c.nextCallTarget ? Math.ceil((new Date(c.nextCallTarget).getTime() - Date.now()) / 86_400_000) : null;
   const priorityStyle = c.priority ? PRIORITY_STYLE[c.priority] : PRIORITY_STYLE.MEDIUM;
@@ -270,9 +286,21 @@ function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerLi
         <input type="checkbox" className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
       </td>
       <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
-        <div className="font-bold whitespace-normal" style={{ color: INK }}>
-          {c.name}
-        </div>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => {
+            if (name === c.name) return;
+            // The list only carries a combined display name (no separate
+            // firstName/lastName here) — same first-word/rest split
+            // customer-order-event.listener.ts already uses when deriving a
+            // name from a shipping address's recipientName.
+            const [firstName, ...rest] = name.trim().split(/\s+/);
+            update.mutate({ firstName: firstName || "", lastName: rest.length ? rest.join(" ") : "" });
+          }}
+          className="h-[26px] w-[170px] rounded-[7px] border border-transparent bg-transparent px-1.5 font-bold outline-none hover:border-[color:var(--line)] hover:bg-white focus:border-[color:var(--green)] focus:bg-white"
+          style={{ color: INK }}
+        />
         <div className="mt-[3px] text-[0.66rem] font-medium" style={{ color: FAINT }}>
           #CUST-{c.id} {c.tier ? `· ${c.tier}` : ""}
         </div>
@@ -292,15 +320,39 @@ function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerLi
         />
       </td>
       <td className={td} style={tdStyle}>
-        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" style={{ maxWidth: 220 }} title={c.address ?? undefined}>
-          {c.address ?? "—"}
-        </span>
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          onBlur={() => address !== (c.address ?? "") && update.mutate({ addressLine: address })}
+          placeholder="Add address..."
+          className={cellInputClass}
+          style={{ width: 220 }}
+        />
       </td>
       <td className={td} style={tdStyle}>
-        {c.phone ?? "—"}
+        <input
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            setPhoneError(false);
+          }}
+          onBlur={commitPhone}
+          placeholder="Phone"
+          title={phoneError ? "Enter a valid Bangladeshi mobile number, e.g. 01712345678" : undefined}
+          className={cellInputClass}
+          style={{ width: 130, borderColor: phoneError ? RED : undefined }}
+        />
       </td>
       <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
-        {c.email ?? "—"}
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => email !== (c.email ?? "") && update.mutate({ email })}
+          placeholder="Email"
+          className={cellInputClass}
+          style={{ width: 190 }}
+        />
       </td>
       <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
         {c.completedOrderCount}

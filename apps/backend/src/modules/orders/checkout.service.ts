@@ -25,6 +25,7 @@ import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 import { generateOrderNumber } from './order-number.util';
 import { reserveStock } from './stock-reservation.util';
 import { toOrderAddressCreate } from './order-address.util';
+import { OrdersService } from './orders.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -40,6 +41,7 @@ export class CheckoutService {
     private readonly advancePayment: AdvancePaymentService,
     private readonly otpSecurity: OtpSecurityService,
     private readonly sms: SmsService,
+    private readonly orders: OrdersService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -201,6 +203,10 @@ export class CheckoutService {
           utmCampaign: dto.utmCampaign,
           utmTerm: dto.utmTerm,
           utmContent: dto.utmContent,
+          landingDomain: dto.landingDomain,
+          landingPage: dto.landingPage,
+          referrerUrl: dto.referrerUrl,
+          referrerDomain: dto.referrerDomain,
           items: {
             create: cart.items.map((item) => {
               const priced = pricing.lines.find(
@@ -323,6 +329,8 @@ export class CheckoutService {
         await this.fraud.recordSaving(dto.shippingAddress.phone, required, 'advance_required', order.id);
       }
     }
+
+    await this.orders.sendConfirmationEmail(order.id);
 
     return this.getByIdInternal(order.id);
   }

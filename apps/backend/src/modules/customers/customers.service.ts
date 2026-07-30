@@ -396,11 +396,32 @@ export class CustomersService {
   }
 
   async adminUpdate(id: number, dto: UpdateCustomerDto): Promise<AdminCustomerDto> {
+    const existing = await this.prisma.client.customer.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Customer not found');
+
+    // Same conflict-check pattern as createCustomer() — a raw Prisma update
+    // would otherwise throw an uncaught unique-constraint error (P2002)
+    // instead of a friendly message.
+    if (dto.phone !== undefined && dto.phone !== existing.phone) {
+      const conflict = await this.prisma.client.customer.findUnique({ where: { phone: dto.phone } });
+      if (conflict && conflict.id !== id) {
+        throw new ConflictException(`A customer with phone "${dto.phone}" already exists`);
+      }
+    }
+    if (dto.email !== undefined && dto.email !== existing.email) {
+      const conflict = await this.prisma.client.customer.findUnique({ where: { email: dto.email } });
+      if (conflict && conflict.id !== id) {
+        throw new ConflictException(`A customer with email "${dto.email}" already exists`);
+      }
+    }
+
     await this.prisma.client.customer.update({
       where: { id },
       data: {
         firstName: dto.firstName,
         lastName: dto.lastName,
+        phone: dto.phone,
+        email: dto.email,
         dob: dto.dob === undefined ? undefined : dto.dob ? new Date(dto.dob) : null,
         isFavorite: dto.isFavorite,
         assignedAdminId: dto.assignedAdminId,
@@ -418,6 +439,32 @@ export class CustomersService {
         facebookProfileUrl: dto.facebookProfileUrl,
       },
     });
+
+    // No `address` column on Customer — upsert the default CustomerAddress
+    // row instead (same "isDefault desc, createdAt desc" pick loadListExtras()
+    // uses to decide which row is "the" address). Division/district are left
+    // blank on first-creation from this quick-edit path since the table cell
+    // only collects a single address line; the customer's own profile page
+    // (or storefront account) can fill those in with the full picker.
+    if (dto.addressLine !== undefined) {
+      const address = await this.prisma.client.customerAddress.findFirst({
+        where: { customerId: id },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+      });
+      if (address) {
+        await this.prisma.client.customerAddress.update({
+          where: { id: address.id },
+          data: { addressLine: dto.addressLine },
+        });
+      } else {
+        const recipientName = `${dto.firstName ?? existing.firstName ?? ''} ${dto.lastName ?? existing.lastName ?? ''}`.trim() || 'Customer';
+        const phone = dto.phone ?? existing.phone ?? '';
+        await this.prisma.client.customerAddress.create({
+          data: { customerId: id, recipientName, phone, division: '', district: '', addressLine: dto.addressLine, isDefault: true },
+        });
+      }
+    }
+
     return this.adminGet(id);
   }
 

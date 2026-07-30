@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma } from '@amader/db';
+import { OrderAddressType, Prisma } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -13,24 +13,50 @@ import {
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { PaymentsService } from '../payments/payments.service';
+import { PricingService } from '../cart/pricing.service';
+import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { TrackOrderDto } from './dto/track-order.dto';
+import { AddOrderItemDto } from './dto/add-order-item.dto';
+import { UpdateOrderItemDto } from './dto/update-order-item.dto';
+import { UpdateOrderDetailsDto } from './dto/update-order-details.dto';
+import { UpdateOrderPaymentDto } from './dto/update-order-payment.dto';
+import { UpdateOrderAmountsDto } from './dto/update-order-amounts.dto';
+import { reserveStock, releaseStock } from './stock-reservation.util';
 import {
   ORDER_STATUS_CHANGED_EVENT,
   OrderStatusChangedEvent,
 } from './orders.events';
 
+const Decimal = Prisma.Decimal;
+
 // Statuses that release/commit the stock reservation held at checkout.
-const RELEASE_ON_CANCEL = new Set(['CANCELED']);
+// RETURNED is included deliberately — an order that never reached COMPLETED
+// still holds a live reservation (reservedStock), and one that did reach
+// COMPLETED had its stock actually decremented, so a return needs to restock
+// rather than release (see updateStatus). PARTIALLY_RETURNED is excluded on
+// purpose: ponytail — this codebase has no per-item return-quantity tracking
+// (OrderItem.restockedQuantity is a schema column nothing writes to), so a
+// partial return can't know how much to release/restock; upgrade path is a
+// real returns line-item model, not a guess here.
+const RELEASE_ON_CANCEL = new Set(['CANCELED', 'RETURNED']);
 const COMMIT_ON_COMPLETE = new Set(['COMPLETED']);
+
+// Line items can only be edited before stock has been committed/released —
+// once an order is COMPLETED (stock decremented for real) or in a terminal
+// state (CANCELED/RETURNED/PARTIALLY_RETURNED), further edits here would
+// desync the reservation accounting those transitions already settled.
+const ITEM_EDITABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HOLD']);
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
+    private readonly pricing: PricingService,
+    private readonly email: SmtpEmailProvider,
     private readonly events: EventEmitter2,
   ) {}
 
@@ -74,8 +100,20 @@ export class OrdersService {
     if (order.status === dto.status) return this.reload(id);
 
     await this.prisma.client.$transaction(async (tx) => {
-      if (RELEASE_ON_CANCEL.has(dto.status)) {
-        await this.releaseReservations(tx, order.items);
+      // Guarded on the FROM status too, not just the TO status — without
+      // this, bouncing between two release statuses (e.g. RETURNED then
+      // CANCELED) would release the same reservation twice, driving
+      // reservedStock negative and making every later availability check
+      // wrong in the other direction (looks like MORE stock than exists).
+      if (RELEASE_ON_CANCEL.has(dto.status) && !RELEASE_ON_CANCEL.has(order.status)) {
+        if (order.status === 'COMPLETED') {
+          // Stock was already committed (decremented for real) — the
+          // physical items are coming back, so restock instead of releasing
+          // a reservation that no longer exists.
+          await this.restockReturnedItems(tx, order.items);
+        } else {
+          await this.releaseReservations(tx, order.items);
+        }
       }
       if (COMMIT_ON_COMPLETE.has(dto.status)) {
         await this.commitReservations(tx, order.items);
@@ -127,6 +165,217 @@ export class OrdersService {
       },
     });
     return this.reload(id);
+  }
+
+  private async assertItemsEditable(orderId: number): Promise<{ id: number; status: string }> {
+    const order = await this.prisma.client.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (!ITEM_EDITABLE_STATUSES.has(order.status)) {
+      throw new BadRequestException(
+        `Items can't be edited once an order is ${order.status.toLowerCase()}`,
+      );
+    }
+    return order;
+  }
+
+  // Re-sums the current item list rather than re-running full checkout
+  // pricing/coupon validation — discountAmount/taxAmount/shippingAmount are
+  // deliberately held fixed across item edits (ponytail: re-validating
+  // coupon eligibility, e.g. minOrderAmount, on every quantity tweak is a
+  // materially bigger feature; revisit if staff report stale discounts).
+  private async recomputeTotals(tx: Prisma.TransactionClient, orderId: number): Promise<void> {
+    const [order, items] = await Promise.all([
+      tx.order.findUniqueOrThrow({ where: { id: orderId } }),
+      tx.orderItem.findMany({ where: { orderId } }),
+    ]);
+    const subTotal = items.reduce(
+      (sum, i) => sum.plus(i.unitPrice.times(i.quantity)),
+      new Decimal(0),
+    );
+    const totalAmount = Decimal.max(
+      subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.shippingAmount),
+      new Decimal(0),
+    );
+    await tx.order.update({ where: { id: orderId }, data: { subTotal, totalAmount } });
+  }
+
+  async addItem(orderId: number, dto: AddOrderItemDto): Promise<OrderDto> {
+    await this.assertItemsEditable(orderId);
+
+    const product = await this.prisma.client.product.findUnique({
+      where: { id: dto.productId },
+      include: { translations: { where: { locale: 'EN' }, take: 1 }, variants: true },
+    });
+    if (!product) throw new BadRequestException(`Product #${dto.productId} not found`);
+    if (dto.variantId && !product.variants.some((v) => v.id === dto.variantId)) {
+      throw new BadRequestException(`Variant #${dto.variantId} does not belong to product #${dto.productId}`);
+    }
+
+    const [priced] = await this.pricing.priceLines([
+      { productId: dto.productId, variantId: dto.variantId ?? null, quantity: dto.quantity },
+    ]);
+    const unitPrice = dto.unitPrice !== undefined ? new Decimal(dto.unitPrice) : priced.unitPrice;
+    const variant = dto.variantId ? product.variants.find((v) => v.id === dto.variantId) : undefined;
+
+    await this.prisma.client.$transaction(async (tx) => {
+      await reserveStock(tx, dto.productId, dto.variantId ?? null, dto.quantity);
+      await tx.orderItem.create({
+        data: {
+          orderId,
+          productId: dto.productId,
+          variantId: dto.variantId ?? null,
+          productNameSnapshot: product.translations[0]?.name ?? product.slug,
+          skuSnapshot: variant?.sku ?? product.sku,
+          unitPrice,
+          quantity: dto.quantity,
+        },
+      });
+      await this.recomputeTotals(tx, orderId);
+    });
+
+    return this.reload(orderId);
+  }
+
+  async updateItemQuantity(orderId: number, itemId: number, dto: UpdateOrderItemDto): Promise<OrderDto> {
+    await this.assertItemsEditable(orderId);
+    const item = await this.prisma.client.orderItem.findUnique({ where: { id: itemId } });
+    if (!item || item.orderId !== orderId) throw new NotFoundException('Order item not found');
+
+    const delta = dto.quantity - item.quantity;
+    await this.prisma.client.$transaction(async (tx) => {
+      // productId is only null for a line whose product was later deleted
+      // (schema's onDelete: SetNull) — nothing left to reserve against.
+      if (item.productId) {
+        if (delta > 0) {
+          await reserveStock(tx, item.productId, item.variantId, delta);
+        } else if (delta < 0) {
+          await releaseStock(tx, item.productId, item.variantId, -delta);
+        }
+      }
+      await tx.orderItem.update({ where: { id: itemId }, data: { quantity: dto.quantity } });
+      await this.recomputeTotals(tx, orderId);
+    });
+
+    return this.reload(orderId);
+  }
+
+  async removeItem(orderId: number, itemId: number): Promise<OrderDto> {
+    await this.assertItemsEditable(orderId);
+    const [item, itemCount] = await Promise.all([
+      this.prisma.client.orderItem.findUnique({ where: { id: itemId } }),
+      this.prisma.client.orderItem.count({ where: { orderId } }),
+    ]);
+    if (!item || item.orderId !== orderId) throw new NotFoundException('Order item not found');
+    if (itemCount <= 1) throw new BadRequestException('An order must have at least one item');
+
+    await this.prisma.client.$transaction(async (tx) => {
+      if (item.productId) {
+        await releaseStock(tx, item.productId, item.variantId, item.quantity);
+      }
+      await tx.orderItem.delete({ where: { id: itemId } });
+      await this.recomputeTotals(tx, orderId);
+    });
+
+    return this.reload(orderId);
+  }
+
+  async updateDetails(orderId: number, dto: UpdateOrderDetailsDto): Promise<OrderDto> {
+    const order = await this.prisma.client.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+
+    await this.prisma.client.$transaction(async (tx) => {
+      if (dto.channel !== undefined || dto.utmSource !== undefined) {
+        await tx.order.update({
+          where: { id: orderId },
+          data: { channel: dto.channel, utmSource: dto.utmSource },
+        });
+      }
+      if (dto.division !== undefined || dto.phone !== undefined || dto.addressLine !== undefined) {
+        await tx.orderAddress.updateMany({
+          where: { orderId, type: OrderAddressType.SHIPPING },
+          data: { division: dto.division, phone: dto.phone, addressLine: dto.addressLine },
+        });
+      }
+    });
+
+    return this.reload(orderId);
+  }
+
+  async updatePayment(orderId: number, dto: UpdateOrderPaymentDto): Promise<OrderDto> {
+    const latest = await this.prisma.client.payment.findFirst({
+      where: { orderId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!latest) throw new NotFoundException('Order has no payment record');
+
+    await this.prisma.client.payment.update({
+      where: { id: latest.id },
+      data: { provider: dto.provider, status: dto.status },
+    });
+
+    return this.reload(orderId);
+  }
+
+  async updateAmounts(orderId: number, dto: UpdateOrderAmountsDto): Promise<OrderDto> {
+    const order = await this.prisma.client.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const discountAmount = dto.discountAmount !== undefined ? new Decimal(dto.discountAmount) : order.discountAmount;
+    const shippingAmount = dto.shippingAmount !== undefined ? new Decimal(dto.shippingAmount) : order.shippingAmount;
+    const totalAmount = Decimal.max(
+      order.subTotal.minus(discountAmount).plus(order.taxAmount).plus(shippingAmount),
+      new Decimal(0),
+    );
+
+    await this.prisma.client.order.update({
+      where: { id: orderId },
+      data: {
+        discountAmount,
+        shippingAmount,
+        totalAmount,
+        couponCode: dto.couponCode !== undefined ? dto.couponCode || null : undefined,
+      },
+    });
+
+    return this.reload(orderId);
+  }
+
+  // Best-effort — SmtpEmailProvider never throws (see its own comments), so
+  // this always resolves; the result is only used to decide what to write
+  // into history, not to fail whatever triggered it (checkout, manual
+  // order creation, or the admin's explicit "Resend" click).
+  async sendConfirmationEmail(orderId: number, adminUserId?: number): Promise<{ sent: boolean; reason?: string }> {
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: orderId },
+      include: { addresses: true },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
+    const to = shipping?.email;
+    if (!to) {
+      await this.prisma.client.orderStatusHistory.create({
+        data: { orderId, status: order.status, note: 'Email confirmation not sent — no email on file', adminUserId },
+      });
+      return { sent: false, reason: 'No email on file' };
+    }
+
+    const result = await this.email.send(
+      to,
+      `Your order ${order.orderNumber} is confirmed`,
+      `Thank you for your order ${order.orderNumber}. Total: ${order.currency} ${order.totalAmount.toString()}. We'll notify you when it ships.`,
+    );
+
+    await this.prisma.client.orderStatusHistory.create({
+      data: {
+        orderId,
+        status: order.status,
+        note: result.failed ? `Email confirmation failed: ${result.error}` : 'The email confirmation was sent to customer',
+        adminUserId,
+      },
+    });
+
+    return { sent: !result.failed, reason: result.error };
   }
 
   async myList(
@@ -196,6 +445,32 @@ export class OrdersService {
         await tx.product.update({
           where: { id: item.productId },
           data: { reservedStock: { decrement: item.quantity } },
+        });
+      }
+    }
+  }
+
+  // Counterpart to commitReservations — a return after COMPLETED puts
+  // physical stock back on the shelf (reservedStock is already 0 for these
+  // items; commitReservations zeroed it when the sale completed).
+  private async restockReturnedItems(
+    tx: Prisma.TransactionClient,
+    items: {
+      productId: number | null;
+      variantId: number | null;
+      quantity: number;
+    }[],
+  ): Promise<void> {
+    for (const item of items) {
+      if (item.variantId) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+      } else if (item.productId) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
         });
       }
     }

@@ -140,14 +140,15 @@
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
 
-  /* Site-wide default: Siyam Rupali (free/GPL Bangla Unicode font, loaded
-     via apps/admin's layout.tsx <link>) for Bangla glyphs, Arial for Latin
-     characters it doesn't cover well, generic sans-serif as the final
-     fallback — same reset as apps/web's tokens.css, applied here too since
-     the admin panel is in scope. Replaces Inter (UI text) and Manrope
-     (display/headings). */
-  --font-ui: 'Siyam Rupali', Arial, sans-serif;
-  --font-display: 'Siyam Rupali', Arial, sans-serif;
+  /* Site-wide default: Roboto (Google's open-source flagship UI font — see
+     packages/ui/src/tokens.css's comment for why proprietary "Google Sans"
+     itself can't be used) for Latin characters, falling through per-glyph to
+     Noto Sans Bengali for Bengali characters, generic sans-serif as the
+     final fallback — same reset as apps/web's tokens.css, applied here too
+     since the admin panel is in scope. Deprecates the previous Siyam Rupali
+     + Arial stack (which itself had replaced Inter/Manrope). */
+  --font-ui: 'Roboto', 'Noto Sans Bengali', sans-serif;
+  --font-display: 'Roboto', 'Noto Sans Bengali', sans-serif;
 }
 
 body {

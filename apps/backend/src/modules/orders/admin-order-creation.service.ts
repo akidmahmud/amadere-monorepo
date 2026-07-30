@@ -10,6 +10,7 @@ import { reserveStock } from './stock-reservation.util';
 import { toOrderAddressCreate } from './order-address.util';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
+import { OrdersService } from './orders.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -28,6 +29,7 @@ export class AdminOrderCreationService {
     private readonly pricing: PricingService,
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
+    private readonly orders: OrdersService,
   ) {}
 
   async create(dto: CreateManualOrderDto, adminId: number): Promise<OrderDto> {
@@ -63,11 +65,45 @@ export class AdminOrderCreationService {
     );
 
     const subTotal = pricedLines.reduce((sum, l) => sum.plus(l.lineTotal), new Decimal(0));
-    const totalAmount = dto.items.reduce((sum, item, idx) => {
+    const lineItemsTotal = dto.items.reduce((sum, item, idx) => {
       const effective = item.unitPrice !== undefined ? new Decimal(item.unitPrice) : pricedLines[idx].unitPrice;
       return sum.plus(effective.times(item.quantity));
     }, new Decimal(0));
-    const discountAmount = Decimal.max(subTotal.minus(totalAmount), new Decimal(0));
+    // Per-line price overrides (unitPrice below catalog price) are an
+    // implicit discount on top of whatever the staff also typed into the
+    // explicit "discount"/"promotion" fields — all three roll into the one
+    // stored Order.discountAmount, same as the real checkout's own subTotal
+    // vs. totalAmount relationship.
+    const lineDiscount = Decimal.max(subTotal.minus(lineItemsTotal), new Decimal(0));
+    const explicitDiscount = dto.discountAmount != null ? new Decimal(dto.discountAmount) : new Decimal(0);
+    const explicitPromotion = dto.promotionAmount != null ? new Decimal(dto.promotionAmount) : new Decimal(0);
+    const taxAmount = dto.taxAmount != null ? new Decimal(dto.taxAmount) : new Decimal(0);
+    const shippingAmount = dto.shippingAmount != null ? new Decimal(dto.shippingAmount) : new Decimal(0);
+
+    // Reuses the exact same coupon validation real checkout runs (expiry,
+    // usage limits, min order amount, product/category scope) — only the
+    // COUPON entry from the result is used; any auto-applied
+    // BUNDLE/PROMOTION discounts it also computes are deliberately ignored
+    // here so a staff-created order never picks up a surprise discount the
+    // staff didn't ask for.
+    let couponAmount = new Decimal(0);
+    if (dto.couponCode) {
+      const pricing = await this.pricing.price(
+        dto.items.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
+        { couponCode: dto.couponCode, customerId: dto.customerId },
+      );
+      if (pricing.couponError) {
+        throw new BadRequestException(pricing.couponError);
+      }
+      const coupon = pricing.discounts.find((d) => d.source === 'COUPON');
+      couponAmount = coupon?.amount ?? new Decimal(0);
+    }
+
+    const discountAmount = lineDiscount.plus(explicitDiscount).plus(explicitPromotion).plus(couponAmount);
+    const totalAmount = Decimal.max(
+      lineItemsTotal.minus(explicitDiscount).minus(explicitPromotion).minus(couponAmount).plus(taxAmount).plus(shippingAmount),
+      new Decimal(0),
+    );
 
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -81,7 +117,10 @@ export class AdminOrderCreationService {
           customerId: dto.customerId ?? null,
           subTotal,
           discountAmount,
+          taxAmount,
+          shippingAmount,
           totalAmount,
+          couponCode: couponAmount.greaterThan(0) ? dto.couponCode : undefined,
           customerNote: dto.customerNote,
           items: {
             create: dto.items.map((item, idx) => {
@@ -118,12 +157,28 @@ export class AdminOrderCreationService {
         data: {
           orderId: created.id,
           provider: dto.paymentProvider,
-          status: authResult.status,
+          // Staff-provided values win — e.g. bKash/Nagad/Rocket/Upay's own
+          // provider always authorizes as PENDING with no ref (real
+          // settlement normally goes through the customer-submitted
+          // ManualPayment queue instead), but a staff member taking the
+          // order over the phone may already have the transaction ID read
+          // out to them and know it's been paid.
+          status: dto.paymentStatus ?? authResult.status,
           amount: totalAmount,
-          transactionRef: authResult.transactionRef,
+          transactionRef: dto.transactionId ?? authResult.transactionRef,
           rawResponse: (authResult.rawResponse as object) ?? undefined,
         },
       });
+
+      if (couponAmount.greaterThan(0) && dto.couponCode) {
+        const discount = await tx.discount.findUnique({ where: { code: dto.couponCode } });
+        if (discount) {
+          await tx.discountRedemption.create({
+            data: { discountId: discount.id, customerId: dto.customerId ?? null, orderId: created.id },
+          });
+          await tx.discount.update({ where: { id: discount.id }, data: { usedCount: { increment: 1 } } });
+        }
+      }
 
       return created;
     });
@@ -133,10 +188,70 @@ export class AdminOrderCreationService {
       customerId: dto.customerId ?? null,
     } satisfies OrderCreatedEvent);
 
+    await this.orders.sendConfirmationEmail(order.id, adminId);
+
     const full = await this.prisma.client.order.findUniqueOrThrow({
       where: { id: order.id },
       include: ORDER_INCLUDE,
     });
     return toOrderDto(full);
+  }
+
+  // Recreates a past order as a brand-new one — same customer/addresses/
+  // items at their ORIGINAL prices (passed as unitPrice overrides, not
+  // re-priced live) so "Reorder" reproduces what was actually charged, not
+  // today's catalog price. Deliberately drops any coupon code (re-applying
+  // a possibly-expired/exhausted/single-use code to a new order is more
+  // likely to error or double-redeem than to help) and any per-line
+  // discount baked into the old order's totals — those become a flat
+  // discountAmount here, same simplification as OrdersService.updateAmounts.
+  async reorder(orderId: number, adminId: number): Promise<OrderDto> {
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: orderId },
+      include: { items: true, addresses: true, payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+    if (!order) throw new BadRequestException('Order not found');
+
+    const items = order.items.filter((i) => i.productId !== null);
+    if (items.length === 0) {
+      throw new BadRequestException("This order's products no longer exist and can't be reordered");
+    }
+
+    const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
+    if (!shipping) throw new BadRequestException('Order has no shipping address to reorder to');
+    const billing = order.addresses.find((a) => a.type === 'BILLING') ?? shipping;
+
+    const toAddressDto = (a: typeof shipping) => ({
+      recipientName: a.recipientName,
+      phone: a.phone,
+      email: a.email ?? undefined,
+      division: a.division,
+      district: a.district,
+      area: a.area ?? undefined,
+      landmark: a.landmark ?? undefined,
+      addressLine: a.addressLine,
+      postCode: a.postCode ?? undefined,
+    });
+
+    return this.create(
+      {
+        customerId: order.customerId ?? undefined,
+        channel: order.channel,
+        shippingAddress: toAddressDto(shipping),
+        billingAddress: toAddressDto(billing),
+        items: items.map((i) => ({
+          productId: i.productId!,
+          variantId: i.variantId ?? undefined,
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+        })),
+        paymentProvider: order.payments[0]?.provider ?? 'COD',
+        taxAmount: order.taxAmount.greaterThan(0) ? Number(order.taxAmount) : undefined,
+        discountAmount: order.discountAmount.greaterThan(0) ? Number(order.discountAmount) : undefined,
+        shippingAmount: order.shippingAmount.greaterThan(0) ? Number(order.shippingAmount) : undefined,
+        customerNote: order.customerNote ?? undefined,
+      },
+      adminId,
+    );
   }
 }

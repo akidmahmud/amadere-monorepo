@@ -62,7 +62,14 @@ export default function EditStaffPage({ params }: { params: Promise<{ id: string
           </div>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary">Phone (optional)</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={inputClass}
+              pattern="(?:\+?880|0)?1\d{9}"
+              title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+            />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary">Status</span>

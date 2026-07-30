@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@amader/admin-ui";
 import { adminNav } from "@/lib/nav-config";
 import { pageTitleFor } from "@/lib/page-title";
@@ -21,6 +22,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       }
       nav={adminNav}
       activeHref={pathname}
+      linkComponent={Link}
       userName={me ? `${me.firstName} ${me.lastName}`.trim() || me.email : "…"}
       userSubtitle={me?.email}
       pageTitle={pageTitleFor(pathname)}

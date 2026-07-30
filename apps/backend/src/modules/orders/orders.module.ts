@@ -7,6 +7,7 @@ import { AdvancePaymentModule } from '../net-profit/advance-payment/advance-paym
 import { OtpSecurityModule } from '../net-profit/otp-security/otp-security.module';
 import { SmsModule } from '../net-profit/sms/sms.module';
 import { CustomersModule } from '../customers/customers.module';
+import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
 import { CheckoutController } from './checkout.controller';
 import { OrdersController } from './orders.controller';
 import { AdminOrdersController } from './admin-orders.controller';
@@ -17,7 +18,9 @@ import { AdminOrderCreationService } from './admin-order-creation.service';
 @Module({
   imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, CustomersModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
-  providers: [CheckoutService, OrdersService, AdminOrderCreationService],
+  // SmtpEmailProvider is stateless (just ConfigService) — re-provided here
+  // rather than importing the whole CartCampaignsModule for one class.
+  providers: [CheckoutService, OrdersService, AdminOrderCreationService, SmtpEmailProvider],
   exports: [OrdersService],
 })
 export class OrdersModule {}

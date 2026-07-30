@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CustomerBehaviour, CustomerCrmStatus, CustomerPriority } from '@amader/db';
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class UpdateCustomerDto {
   @ApiPropertyOptional()
@@ -12,6 +13,29 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   lastName?: string;
+
+  // Uniqueness is enforced in CustomersService.adminUpdate() (a friendly
+  // ConflictException, matching createCustomer()) rather than here — class
+  // validators can't see other rows. Editing this changes which future
+  // guest-checkout orders auto-match to this customer (upsert-by-phone in
+  // customer-order-event.listener.ts), not just a display value.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBdPhone()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  // No `address` column exists on Customer — this upserts the customer's
+  // default CustomerAddress row (creating one if none exists yet). See
+  // CustomersService.adminUpdate().
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  addressLine?: string;
 
   @ApiPropertyOptional({ description: 'Birthday, ISO date, or null to clear' })
   @IsOptional()

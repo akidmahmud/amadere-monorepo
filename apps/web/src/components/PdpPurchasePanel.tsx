@@ -163,6 +163,10 @@ export function PdpPurchasePanel({
         </p>
       )}
 
+      {/* Matches the reference's <hr> between the price/offer block and the
+          quantity row — was missing entirely before. */}
+      <hr className="mb-4 border-line" />
+
       <div className="mb-3 flex items-center gap-3">
         <QtyStepper
           value={qty}
@@ -185,25 +189,40 @@ export function PdpPurchasePanel({
           backorder), leaving WhatsApp/Call Now alone in the grid — CSS grid
           reflows 2 items into a single row on its own, no extra branching
           needed. WhatsApp/Call Now otherwise always show, every product page,
-          regardless of stock. */}
-      <div className="mb-6 grid grid-cols-2 gap-3">
+          regardless of stock.
+
+          Mobile: Add to Cart/Buy Now each get their own full-width row (per
+          explicit request) instead of sharing a 2-col grid cell — achieved
+          without duplicating the buttons by making the outer container a
+          column flex (stretches children full-width) on mobile and a 2-col
+          grid on desktop, while the WhatsApp/Call Now wrapper is itself a
+          2-col grid on mobile but `contents` on desktop so its two children
+          fall directly into the parent grid's second row instead of being
+          squeezed into a single cell. */}
+      <div className="mb-6 flex flex-col gap-3 md:grid md:grid-cols-2">
         {!outOfStock && (
           <>
-            <Button variant="gold" disabled={addToCart.isPending} onClick={handleAddToCart}>
+            {/* uppercase/tracking-wide matches the reference's button style
+                exactly — purely a text-transform, the underlying label stays
+                "Add to Cart" so this is presentational only. */}
+            <Button variant="gold" block disabled={addToCart.isPending} onClick={handleAddToCart} className="uppercase tracking-wide">
               Add to Cart
             </Button>
             <Button
               variant="green"
+              block
               disabled={addToCart.isPending}
               onClick={handleBuyNow}
-              className="animate-[wiggle_2.5s_ease-in-out_infinite]"
+              className="animate-[wiggle_2.5s_ease-in-out_infinite] uppercase tracking-wide"
             >
               Buy Now
             </Button>
           </>
         )}
-        <WhatsappOrderButton config={whatsappConfig} productName={product.name} />
-        <CallNowButton config={whatsappConfig} />
+        <div className="grid grid-cols-2 gap-3 md:contents">
+          <WhatsappOrderButton config={whatsappConfig} productName={product.name} />
+          <CallNowButton config={whatsappConfig} />
+        </div>
       </div>
 
       <div className="mb-6 hidden flex-wrap gap-5 md:flex">

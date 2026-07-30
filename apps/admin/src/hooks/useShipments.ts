@@ -44,6 +44,7 @@ export function useDispatchShipment() {
       proxyFetch<Shipment>("/admin/shipments/dispatch", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
       qc.invalidateQueries({ queryKey: ["net-profit-order-manager"] });
     },
   });
@@ -62,6 +63,26 @@ export function useCancelShipment() {
   return useMutation({
     mutationFn: ({ id, reasonCode }: { id: number; reasonCode: string }) =>
       proxyFetch<Shipment>(`/admin/shipments/${id}/cancel`, { method: "POST", body: JSON.stringify({ reasonCode }) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["net-profit-order-manager"] });
+    },
+  });
+}
+
+export type ShipmentStatus = "PENDING" | "DISPATCHED" | "IN_TRANSIT" | "DELIVERED" | "PARTIALLY_DELIVERED" | "RETURNED" | "CANCELED" | "FAILED";
+export const SHIPMENT_STATUSES: ShipmentStatus[] = ["PENDING", "DISPATCHED", "IN_TRANSIT", "DELIVERED", "PARTIALLY_DELIVERED", "RETURNED", "CANCELED", "FAILED"];
+
+export function useUpdateShipmentStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, note }: { id: number; status: ShipmentStatus; note?: string }) =>
+      proxyFetch<Shipment>(`/admin/shipments/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, note }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["net-profit-order-manager"] });
+    },
   });
 }

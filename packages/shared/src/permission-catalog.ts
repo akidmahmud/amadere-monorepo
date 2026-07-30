@@ -137,11 +137,6 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('announcement', 'update'),
   perm('announcement', 'delete'),
 
-  perm('marketing_review', 'view'),
-  perm('marketing_review', 'create'),
-  perm('marketing_review', 'update'),
-  perm('marketing_review', 'delete'),
-
   perm('collection', 'view'),
   perm('collection', 'create'),
   perm('collection', 'update'),

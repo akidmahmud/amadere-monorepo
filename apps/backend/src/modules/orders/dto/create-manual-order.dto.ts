@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OrderChannel, PaymentProvider } from '@amader/db';
+import { OrderChannel, PaymentProvider, PaymentStatus } from '@amader/db';
 import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsPositive,
@@ -63,6 +63,58 @@ export class CreateManualOrderDto {
   @ApiProperty({ enum: PaymentProvider })
   @IsEnum(PaymentProvider)
   paymentProvider!: PaymentProvider;
+
+  @ApiPropertyOptional({
+    description: 'Staff-entered tax, added on top of the line-item subtotal',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  taxAmount?: number;
+
+  @ApiPropertyOptional({
+    description: 'Staff-entered discount, on top of any per-line price override',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
+
+  @ApiPropertyOptional({
+    description: 'Staff-entered promotion allowance — a second, separate manual reduction alongside discountAmount',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  promotionAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Staff-entered shipping fee — defaults to free (0) if omitted' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  shippingAmount?: number;
+
+  @ApiPropertyOptional({
+    description: 'A real Discount/coupon code — validated and priced the exact same way real checkout does (expiry, usage limits, min order amount, product/category scope), and recorded as a redemption on success.',
+  })
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'bKash/Nagad/Rocket/Upay transaction ID, when the staff already has it (e.g. read out over the phone) — recorded straight onto the order\'s payment record instead of going through the customer-submitted manual-payment verification queue.',
+  })
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
+
+  @ApiPropertyOptional({
+    enum: PaymentStatus,
+    description: 'Overrides the payment provider\'s default authorization status — e.g. mark a manual (bKash/Nagad) payment CAPTURED immediately when staff has already confirmed receipt.',
+  })
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  paymentStatus?: PaymentStatus;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -561,7 +561,7 @@ export interface paths {
         delete: operations["AdminMediaController_remove"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["AdminMediaController_update"];
         trace?: never;
     };
     "/api/v1/brands": {
@@ -932,6 +932,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/picker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_pickerList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/export": {
         parameters: {
             query?: never;
@@ -962,6 +978,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminProductsController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/preview-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProductsController_previewToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/products/{id}/stats": {
@@ -1618,6 +1650,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminOrdersController_addItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminOrdersController_removeItem"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrdersController_updateItem"];
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrdersController_updateDetails"];
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrdersController_updatePayment"];
         trace?: never;
     };
     "/api/v1/admin/net-profit/fraud/checks": {
@@ -3348,54 +3444,6 @@ export interface paths {
         patch: operations["AdminAnnouncementsController_update"];
         trace?: never;
     };
-    "/api/v1/marketing-review-cards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MarketingReviewController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/marketing-review-cards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminMarketingReviewController_list"];
-        put?: never;
-        post: operations["AdminMarketingReviewController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/marketing-review-cards/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminMarketingReviewController_get"];
-        put?: never;
-        post?: never;
-        delete: operations["AdminMarketingReviewController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["AdminMarketingReviewController_update"];
-        trace?: never;
-    };
     "/api/v1/collections": {
         parameters: {
             query?: never;
@@ -4846,6 +4894,9 @@ export interface components {
         UploadMediaDto: {
             altText?: string;
         };
+        UpdateMediaDto: {
+            altText?: string;
+        };
         PublicBrandDto: {
             id: number;
             slug: string;
@@ -5255,6 +5306,7 @@ export interface components {
         AdminProductMediaDto: {
             id: number;
             url: string;
+            altText: string | null;
             isPrimary: boolean;
             sortOrder: number;
         };
@@ -5303,6 +5355,11 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
             seoScore?: number;
+        };
+        AdminProductPickerItemDto: {
+            id: number;
+            slug: string;
+            name: string;
         };
         ProductTranslationDto: {
             /** @enum {string} */
@@ -5833,6 +5890,11 @@ export interface components {
             utmCampaign?: string;
             utmTerm?: string;
             utmContent?: string;
+            /** @description Referral/landing attribution — first-touch capture from the utm_* landing-page cookie (apps/web utm.ts) */
+            landingDomain?: string;
+            landingPage?: string;
+            referrerUrl?: string;
+            referrerDomain?: string;
         };
         OrderItemDto: {
             id: number;
@@ -5879,11 +5941,17 @@ export interface components {
         OrderShipmentDto: {
             provider: Record<string, never>;
             status: Record<string, never>;
+            consignmentId: string | null;
             trackingCode: string | null;
+            cost: string | null;
+            weight: string | null;
+            codAmount: string | null;
             /** Format: date-time */
             dispatchedAt: string | null;
             /** Format: date-time */
             deliveredAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
             events: components["schemas"]["OrderShipmentEventDto"][];
         };
         OrderDto: {
@@ -5891,6 +5959,7 @@ export interface components {
             orderNumber: string;
             customerId: number | null;
             status: Record<string, never>;
+            channel: Record<string, never>;
             subTotal: string;
             discountAmount: string;
             taxAmount: string;
@@ -5900,6 +5969,7 @@ export interface components {
             couponCode: string | null;
             shippingMethod: string | null;
             customerNote: string | null;
+            staffNote: string | null;
             cancelReason: string | null;
             /** Format: date-time */
             codVerifiedAt: string | null;
@@ -5911,6 +5981,14 @@ export interface components {
             canceledAt: string | null;
             /** Format: date-time */
             createdAt: string;
+            ipAddress: string | null;
+            utmSource: string | null;
+            utmMedium: string | null;
+            utmCampaign: string | null;
+            landingDomain: string | null;
+            landingPage: string | null;
+            referrerUrl: string | null;
+            referrerDomain: string | null;
             items: components["schemas"]["OrderItemDto"][];
             addresses: components["schemas"]["OrderAddressDto"][];
             statusHistory: components["schemas"]["OrderStatusHistoryEntryDto"][];
@@ -5943,6 +6021,21 @@ export interface components {
             items: components["schemas"]["ManualOrderItemDto"][];
             /** @enum {string} */
             paymentProvider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+            /** @description Staff-entered tax, added on top of the line-item subtotal */
+            taxAmount?: number;
+            /** @description Staff-entered discount, on top of any per-line price override */
+            discountAmount?: number;
+            /** @description Staff-entered promotion allowance — a second, separate manual reduction alongside discountAmount */
+            promotionAmount?: number;
+            /** @description A real Discount/coupon code — validated and priced the exact same way real checkout does (expiry, usage limits, min order amount, product/category scope), and recorded as a redemption on success. */
+            couponCode?: string;
+            /** @description bKash/Nagad/Rocket/Upay transaction ID, when the staff already has it (e.g. read out over the phone) — recorded straight onto the order's payment record instead of going through the customer-submitted manual-payment verification queue. */
+            transactionId?: string;
+            /**
+             * @description Overrides the payment provider's default authorization status — e.g. mark a manual (bKash/Nagad) payment CAPTURED immediately when staff has already confirmed receipt.
+             * @enum {string}
+             */
+            paymentStatus?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
             customerNote?: string;
         };
         UpdateOrderStatusDto: {
@@ -5953,6 +6046,33 @@ export interface components {
         RefundOrderDto: {
             amount: number;
             reason?: string;
+        };
+        AddOrderItemDto: {
+            productId: number;
+            variantId?: number;
+            quantity: number;
+            /** @description Overrides the product's real price for this line if set */
+            unitPrice?: number;
+        };
+        UpdateOrderItemDto: {
+            quantity: number;
+        };
+        UpdateOrderDetailsDto: {
+            /**
+             * @description Origin — how the order was placed
+             * @enum {string}
+             */
+            channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
+            /** @description Shipping address's division */
+            division?: string;
+            /** @description Campaign attribution — manual override/correction of the checkout-captured value */
+            utmSource?: string;
+        };
+        UpdateOrderPaymentDto: {
+            /** @enum {string} */
+            provider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+            /** @enum {string} */
+            status?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
         };
         FraudCheckDto: {
             id: number;
@@ -6920,43 +7040,6 @@ export interface components {
             /** @default true */
             isActive: boolean;
             translations?: components["schemas"]["AnnouncementTranslationDto"][];
-        };
-        PublicMarketingReviewCardDto: {
-            id: number;
-            imageUrl: string;
-            caption: string | null;
-        };
-        AdminMarketingReviewCardTranslationDto: {
-            locale: Record<string, never>;
-            caption: string | null;
-        };
-        AdminMarketingReviewCardDto: {
-            id: number;
-            imageUrl: string;
-            sortOrder: number;
-            isActive: boolean;
-            translations: components["schemas"]["AdminMarketingReviewCardTranslationDto"][];
-        };
-        MarketingReviewCardTranslationDto: {
-            /** @enum {string} */
-            locale: "EN" | "BN";
-            caption?: string;
-        };
-        CreateMarketingReviewCardDto: {
-            imageUrl: string;
-            /** @default 0 */
-            sortOrder: number;
-            /** @default true */
-            isActive: boolean;
-            translations: components["schemas"]["MarketingReviewCardTranslationDto"][];
-        };
-        UpdateMarketingReviewCardDto: {
-            imageUrl?: string;
-            /** @default 0 */
-            sortOrder: number;
-            /** @default true */
-            isActive: boolean;
-            translations?: components["schemas"]["MarketingReviewCardTranslationDto"][];
         };
         PublicCollectionSummaryDto: {
             id: number;
@@ -8466,6 +8549,31 @@ export interface operations {
             };
         };
     };
+    AdminMediaController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMediaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaDto"];
+                };
+            };
+        };
+    };
     BrandsController_list: {
         parameters: {
             query?: {
@@ -8960,6 +9068,8 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                /** @description Case-insensitive substring match on tag name */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -9338,6 +9448,7 @@ export interface operations {
         parameters: {
             query?: {
                 locale?: "EN" | "BN";
+                previewToken?: string;
             };
             header?: never;
             path: {
@@ -9451,6 +9562,25 @@ export interface operations {
             };
         };
     };
+    AdminProductsController_pickerList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductPickerItemDto"][];
+                };
+            };
+        };
+    };
     AdminProductsController_export: {
         parameters: {
             query?: {
@@ -9550,6 +9680,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminProductDto"];
                 };
+            };
+        };
+    };
+    AdminProductsController_previewToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10970,6 +11119,137 @@ export interface operations {
                 };
             };
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_addItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOrderItemDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_removeItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                itemId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_updateItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                itemId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderItemDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_updateDetails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderDetailsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_updatePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderPaymentDto"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12992,6 +13272,8 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                /** @description Case-insensitive substring match on tag name */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -14533,142 +14815,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminAnnouncementDto"];
-                };
-            };
-        };
-    };
-    MarketingReviewController_list: {
-        parameters: {
-            query?: {
-                locale?: "EN" | "BN";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PublicMarketingReviewCardDto"][];
-                };
-            };
-        };
-    };
-    AdminMarketingReviewController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"][];
-                };
-            };
-        };
-    };
-    AdminMarketingReviewController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateMarketingReviewCardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
-                };
-            };
-        };
-    };
-    AdminMarketingReviewController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
-                };
-            };
-        };
-    };
-    AdminMarketingReviewController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminMarketingReviewController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateMarketingReviewCardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminMarketingReviewCardDto"];
                 };
             };
         };

@@ -101,7 +101,13 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
 
       {tab === "General" && (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_1fr]">
+          {/* minmax(0, Nfr), not a bare Nfr — a bare fr track's implicit
+              minimum is its content's min-content width (same root cause as
+              the classic flexbox min-width:auto overflow bug), and the
+              CKEditor toolbar's min-content is wide enough to blow straight
+              through its nominal 70% share, starving the Pricing column
+              down to whatever's left over instead of an actual 70/30 split. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
             <div className="flex flex-col gap-4">
               <div className="rounded-card border border-border bg-surface p-[18px]">
                 <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Basic Information</h3>

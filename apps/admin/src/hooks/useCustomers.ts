@@ -31,6 +31,9 @@ export interface CustomerListFilters {
 export interface UpdateCustomerInput {
   firstName?: string;
   lastName?: string;
+  phone?: string;
+  email?: string;
+  addressLine?: string;
   dob?: string | null;
   isFavorite?: boolean;
   assignedAdminId?: number | null;

@@ -3,7 +3,7 @@ import { OtpNotifier } from './otp-notifier.interface';
 import { SmsService } from '../../net-profit/sms/sms.service';
 import { SmtpEmailProvider } from '../../net-profit/cart-campaigns/providers/smtp-email.provider';
 
-const BD_PHONE_RE = /^(?:\+?880|0)?1[3-9]\d{8}$/;
+const BD_PHONE_RE = /^(?:\+?880|0)?1\d{9}$/;
 
 // Real send, replacing ConsoleOtpNotifier — routes through the same
 // SmsService/SmsTemplate('otp') path every other transactional SMS in this

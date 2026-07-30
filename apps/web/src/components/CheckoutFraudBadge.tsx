@@ -12,7 +12,7 @@ function normalizePhone(raw: string): string {
 }
 
 function isValidBdPhone(phone: string): boolean {
-  return /^01[3-9]\d{8}$/.test(phone);
+  return /^01\d{9}$/.test(phone);
 }
 
 // Real-time courier fraud badge shown next to the checkout phone field —

@@ -20,7 +20,7 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
   const activeTab = tabs.find((t) => t.id === active) ?? tabs[0];
 
   return (
-    <div className={cn("border-t border-line pt-5.5", className)}>
+    <div className={cn(className)}>
       <div role="tablist" className="mb-4 flex flex-wrap gap-6 border-b border-line">
         {tabs.map((tab) => (
           <button

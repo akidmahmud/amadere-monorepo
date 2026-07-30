@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Modal } from "@amader/admin-ui";
 import { ConsignModal } from "@/components/ConsignModal";
 import { FraudDetailModal } from "@/components/FraudDetailModal";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { OrderManagerStatsStrip } from "@/components/net-profit/OrderManagerStatsStrip";
 import { OrderManagerFilterBar, type OrderFilterState } from "@/components/net-profit/OrderManagerFilterBar";
 import { OrderManagerTable, OPTIONAL_COLUMNS, type OptionalColumn } from "@/components/net-profit/OrderManagerTable";
-import { useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
+import { ORDER_MANAGER_KEY, useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { OrderStatusesTab } from "./OrderStatusesTab";
 
@@ -170,6 +172,8 @@ export default function OrderManagerPage() {
   const [columns, setColumns] = useState<Set<OptionalColumn>>(new Set(OPTIONAL_COLUMNS));
   const [showScreenOptions, setShowScreenOptions] = useState(false);
   const [showSymbology, setShowSymbology] = useState(false);
+  const [newOrderModalOpen, setNewOrderModalOpen] = useState(false);
+  const qc = useQueryClient();
 
   useEffect(() => {
     const savedSize = Number(localStorage.getItem(PAGE_SIZE_KEY));
@@ -210,6 +214,15 @@ export default function OrderManagerPage() {
     setPageSizeState(n);
   }
 
+  // resolveDateRange() computes `to: new Date()` — calling it inline on
+  // every render produced a fresh from/to pair (and thus a new React Query
+  // key) on EVERY render, which refetched, which re-rendered, which
+  // recomputed `to`... an infinite request loop that eventually got
+  // rate-limited (429s), which is what made the date filters look like they
+  // "don't load" / "take too long." Memoized so it only recomputes when the
+  // selected range actually changes.
+  const dateRange = useMemo(() => resolveDateRange(uiFilters.dateRange), [uiFilters.dateRange]);
+
   const filters: OrderManagerFilters = {
     q: uiFilters.q || undefined,
     status: uiFilters.status,
@@ -217,7 +230,7 @@ export default function OrderManagerPage() {
     courierProvider: uiFilters.courierProvider,
     risk: uiFilters.risk,
     division: uiFilters.division,
-    ...resolveDateRange(uiFilters.dateRange),
+    ...dateRange,
     page,
     pageSize,
   };
@@ -283,8 +296,9 @@ export default function OrderManagerPage() {
           </HeaderButton>
           <HeaderButton onClick={() => setShowScreenOptions(true)}>Screen Options</HeaderButton>
           <HeaderButton onClick={() => setShowSymbology(true)}>Symbology</HeaderButton>
-          <Link
-            href="/orders/new"
+          <button
+            type="button"
+            onClick={() => setNewOrderModalOpen(true)}
             className="inline-flex h-10 items-center gap-2 rounded-[10px] px-4 text-[0.82rem] font-bold text-white"
             style={{ background: GREEN }}
             onMouseEnter={(e) => (e.currentTarget.style.background = GREEN_DARK)}
@@ -295,7 +309,7 @@ export default function OrderManagerPage() {
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Add New Order
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -345,6 +359,15 @@ export default function OrderManagerPage() {
               style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
             >
               Export CSV
+            </button>
+            <button
+              type="button"
+              disabled={selected.size === 0}
+              onClick={() => window.open(`/print/orders/bulk-invoice?ids=${[...selected].join(",")}`, "_blank")}
+              className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
+              style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
+            >
+              Generate Invoices
             </button>
             <div className="flex items-center gap-1.5 rounded-[9px] border p-1" style={{ borderColor: LINE }}>
               <select
@@ -412,6 +435,11 @@ export default function OrderManagerPage() {
       {consignOrder && <ConsignModal order={consignOrder.order} defaultProvider={consignOrder.provider} onClose={() => setConsignOrder(null)} />}
       {detailOrder && <OrderDetailModal row={detailOrder} onClose={() => setDetailOrder(null)} />}
       {riskPhone && <FraudDetailModal phone={riskPhone} onClose={() => setRiskPhone(null)} />}
+      <NewOrderModal
+        open={newOrderModalOpen}
+        onClose={() => setNewOrderModalOpen(false)}
+        onCreated={() => qc.invalidateQueries({ queryKey: ORDER_MANAGER_KEY })}
+      />
     </div>
   );
 }

@@ -1,8 +1,12 @@
 import { z } from "zod";
+import { isValidBdPhone } from "@amader/shared";
 
 export const addressSchema = z.object({
   recipientName: z.string().min(1, "Full name is required"),
-  phone: z.string().min(1, "Phone number is required"),
+  phone: z
+    .string()
+    .min(1, "Phone number is required")
+    .refine(isValidBdPhone, "Enter a valid Bangladeshi mobile number (e.g. 01712345678)"),
   email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   division: z.string().min(1, "Select a division"),
   district: z.string().min(1, "Select a district"),

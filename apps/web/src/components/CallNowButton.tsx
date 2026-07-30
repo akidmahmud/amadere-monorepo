@@ -18,7 +18,7 @@ export function CallNowButton({ config }: { config: WhatsappConfig | null }) {
   return (
     <a
       href={href}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-green-deep px-5 py-2.5 font-ui text-sm font-medium text-white transition-colors hover:bg-green-dark"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-green-deep px-5 py-2 font-ui text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-dark md:py-2.5"
     >
       {phoneIcon}
       Call Now

@@ -44,7 +44,6 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { MenusModule } from './modules/menus/menus.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
-import { MarketingReviewModule } from './modules/marketing-review/marketing-review.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
@@ -133,7 +132,6 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     SettingsModule,
     MenusModule,
     AnnouncementsModule,
-    MarketingReviewModule,
     CollectionsModule,
     HomepageSectionsModule,
     NetProfitModule,

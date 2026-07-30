@@ -22,6 +22,7 @@ import { ShippingChargeCalculator } from './shipping-charge.calculator';
 import { CourierSettingsService } from './courier-settings.service';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
+import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import {
   ShipmentDto,
   ShipmentPerformanceDto,
@@ -231,6 +232,27 @@ export class ShipmentsService {
         rawResponse: result.rawResponse as object,
         events: {
           create: { status: 'CANCELED', note: result.note ?? dto.reasonCode },
+        },
+      },
+      include: SHIPMENT_INCLUDE,
+    });
+    return toShipmentDto(updated);
+  }
+
+  // Manual override — distinct from track() (pulls from the courier's own
+  // API) and the webhook handler (courier-pushed). Staff sometimes learn a
+  // real status update by phone/portal before either of those catches up.
+  async updateStatus(id: number, dto: UpdateShipmentStatusDto): Promise<ShipmentDto> {
+    const shipment = await this.prisma.client.shipment.findUnique({ where: { id } });
+    if (!shipment) throw new NotFoundException('Shipment not found');
+
+    const updated = await this.prisma.client.shipment.update({
+      where: { id },
+      data: {
+        status: dto.status,
+        deliveredAt: dto.status === 'DELIVERED' ? new Date() : shipment.deliveredAt,
+        events: {
+          create: { status: dto.status, note: dto.note ?? 'Manually updated by staff' },
         },
       },
       include: SHIPMENT_INCLUDE,

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import {
   Button,
   CartLineItem,
@@ -17,6 +17,7 @@ import { AppLink } from "@/components/AppLink";
 import { AddressFields } from "@/components/AddressFields";
 import { OrderConfirmation } from "@/components/OrderConfirmation";
 import { BlockPopup, type BlockPopupDetails } from "@/components/BlockPopup";
+import { CodOtpPopup } from "@/components/CodOtpPopup";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { getDeviceId } from "@/lib/device-id";
@@ -59,7 +60,9 @@ export function CheckoutForm() {
   const [blockPopupDismissed, setBlockPopupDismissed] = useState(false);
   const [fraudResult, setFraudResult] = useState<FraudPreflightResult | null>(null);
   const [preflightBlock, setPreflightBlock] = useState<BlockPopupDetails | null>(null);
+  const [showOtpPopup, setShowOtpPopup] = useState(false);
   const checkoutStartedAtRef = useRef(Math.floor(Date.now() / 1000));
+  const shippingAddressRef = useRef<HTMLDivElement>(null);
 
   const { data: cart } = useCartQuery(locale);
   const updateItem = useUpdateCartItem(locale);
@@ -126,6 +129,7 @@ export function CheckoutForm() {
     if (!hasItems) return;
 
     if (fraudResult?.verdict === "block") {
+      setShowOtpPopup(false);
       setPreflightBlock({
         blocked: true,
         heading: "We could not accept this order",
@@ -152,14 +156,41 @@ export function CheckoutForm() {
     );
   }
 
+  // Below `lg`, jump the customer straight to whatever's blocking
+  // submission instead of leaving them stuck on the "Place Order" button
+  // with no clue why nothing happened: missing shipping fields scroll into
+  // view (checked first — it's earlier in the form and more fundamental),
+  // otherwise a missing/invalid COD OTP opens as a popup since that field
+  // is hidden inline on mobile (see the `max-lg:hidden` OTP block below).
+  function onInvalid(errors: FieldErrors<CheckoutFormValues>) {
+    if (errors.shippingAddress) {
+      shippingAddressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (errors.codOtpCode && typeof window !== "undefined" && window.innerWidth < 1024) {
+      setShowOtpPopup(true);
+    }
+  }
+
+  const submitForm = handleSubmit(onSubmit, onInvalid);
+
   const blockDetails =
     placeOrder.error instanceof ApiError && !blockPopupDismissed && isBlockDetails(placeOrder.error.details)
       ? placeOrder.error.details
       : null;
 
+  // Same condition as the bottom-of-form error paragraph below — a block
+  // is shown via BlockPopup instead, not as a plain error string.
+  const placeOrderErrorMessage =
+    placeOrder.isError && !blockDetails
+      ? placeOrder.error instanceof Error
+        ? placeOrder.error.message
+        : "Couldn't place your order"
+      : undefined;
+
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="mx-auto max-w-[1180px] px-5 py-9">
+      <form onSubmit={submitForm} className="mx-auto max-w-[1180px] px-5 py-9">
         <h1 className="mb-1 text-center font-ui text-2xl font-bold text-ink">Checkout</h1>
         <p className="mb-6 text-center font-body text-sm text-muted">Home &gt; Checkout</p>
 
@@ -185,7 +216,7 @@ export function CheckoutForm() {
               ))}
             </div>
 
-            <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
+            <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
               <AddressFields prefix="shippingAddress" onFraudResult={setFraudResult} />
             </div>
@@ -258,7 +289,10 @@ export function CheckoutForm() {
               )}
 
               {paymentProvider === "COD" && (
-                <div className="mt-4 border-t border-line pt-4">
+                // Hidden below `lg` — mobile shows this same field as a
+                // popup instead (see onInvalid/showOtpPopup + CodOtpPopup),
+                // triggered only once the customer tries to place the order.
+                <div className="mt-4 border-t border-line pt-4 max-lg:hidden">
                   <p className="mb-2 font-body text-xs text-muted">
                     We&apos;ll text a verification code to {shippingPhone || "your shipping phone number"}.
                   </p>
@@ -342,10 +376,8 @@ export function CheckoutForm() {
               <p className="mb-3 font-body text-xs text-red-600">{formState.errors.agreedToTerms.message}</p>
             )}
 
-            {placeOrder.isError && !blockDetails && (
-              <p className="mb-3 font-body text-sm text-red-600">
-                {placeOrder.error instanceof Error ? placeOrder.error.message : "Couldn't place your order"}
-              </p>
+            {placeOrderErrorMessage && (
+              <p className="mb-3 font-body text-sm text-red-600">{placeOrderErrorMessage}</p>
             )}
 
             <Button type="submit" variant="gold" block disabled={!hasItems || placeOrder.isPending}>
@@ -354,6 +386,15 @@ export function CheckoutForm() {
           </div>
         </div>
       </form>
+      {showOtpPopup && (
+        <CodOtpPopup
+          shippingPhone={shippingPhone}
+          onConfirm={submitForm}
+          onClose={() => setShowOtpPopup(false)}
+          isSubmitting={placeOrder.isPending}
+          errorMessage={placeOrderErrorMessage}
+        />
+      )}
       {blockDetails && <BlockPopup details={blockDetails} onClose={() => setBlockPopupDismissed(true)} />}
       {!blockDetails && preflightBlock && <BlockPopup details={preflightBlock} onClose={() => setPreflightBlock(null)} />}
     </FormProvider>

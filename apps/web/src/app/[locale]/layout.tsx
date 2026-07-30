@@ -75,18 +75,16 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
-      {/* Site-wide default type stack (packages/ui's tokens.css) — Siyam
-          Rupali isn't on Google Fonts, so it's not a next/font call like the
-          fonts this replaced; this free/GPL CDN (maateen.me's "Bangla Web
-          Fonts" project) is the standard way to embed it. */}
-      <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css" precedence="default" />
-      {/* Loaded under their real, literal family names — admin-authored
-          content (product/blog descriptions) can carry inline
-          `font-family: "Poppins"` etc. styles from the admin's CKEditor font
-          picker (a deliberately wider choice than the site's own default),
-          and those only resolve to the actual typeface if a stylesheet
-          registers that exact literal name here. Same list as apps/admin's
-          layout.tsx (shared via @amader/shared). */}
+      {/* Loaded under their real, literal family names — this is also how
+          the site-wide default type stack (packages/ui's tokens.css: Roboto
+          + Noto Sans Bengali) actually gets its typefaces, since both happen
+          to already be in this same list; no separate link needed for them.
+          Admin-authored content (product/blog descriptions) can also carry
+          inline `font-family: "Poppins"` etc. styles from the admin's
+          CKEditor font picker (a deliberately wider choice beyond the
+          site's own default), which only resolve to the actual typeface if
+          a stylesheet registers that exact literal name here. Same list as
+          apps/admin's layout.tsx (shared via @amader/shared). */}
       <link rel="stylesheet" href={ckeditorGoogleFontsUrl()} precedence="default" />
       <body className="min-h-full flex flex-col font-body">
         <AnalyticsScripts

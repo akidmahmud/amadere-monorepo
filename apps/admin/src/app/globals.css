@@ -22,6 +22,30 @@
 .ck-content h3 { font-size: 1.3rem; font-weight: 600; line-height: 1.35; margin: 0.6em 0 0.35em; }
 .ck-content h4 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; margin: 0.6em 0 0.3em; }
 
+/* Same root cause as the headings above — Tailwind's preflight strips
+   `border-collapse`/borders/padding from every table/td/th, so an inserted
+   table rendered as plain stacked text with no grid lines at all. CKEditor
+   wraps the real <table> in a <figure class="table"> (hence the nested
+   selector); these are CKEditor's own documented default content styles for
+   the Table plugin, since it ships none itself for published/rendered HTML. */
+.ck-content .table { margin: 0.9em 0; display: table; }
+.ck-content .table table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+  border: 1px double #b3b3b3;
+}
+.ck-content .table table td,
+.ck-content .table table th {
+  min-width: 2em;
+  padding: 0.4em;
+  border: 1px solid #bfbfbf;
+}
+.ck-content .table table th {
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.05);
+}
+
 /* CKEditor's dropdown lists (Font Family, Font Size, Heading, ...) have no
    height cap of their own — with 19+ fonts in the Font Family list, the
    panel rendered ~715px tall and got positioned partly above the viewport,

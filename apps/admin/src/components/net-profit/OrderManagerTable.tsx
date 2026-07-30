@@ -1,10 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { Button } from "@amader/admin-ui";
 import { useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
-import { ORDER_STATUSES, useUpdateOrderStatus, type OrderStatus } from "@/hooks/useOrders";
+import {
+  ORDER_STATUSES,
+  PAYMENT_PROVIDER_TYPES,
+  useUpdateOrderDetails,
+  useUpdateOrderPayment,
+  useUpdateOrderStatus,
+  type OrderStatus,
+  type PaymentProviderType,
+} from "@/hooks/useOrders";
 
 // Same visual language as CustomersTable.tsx (green sticky header, white
 // rows, sticky lead columns, numbered-page pagination) — this page is being
@@ -106,6 +115,116 @@ function InternalNoteCell({ order }: { order: OrderManagerRow }) {
   );
 }
 
+function PhoneCell({ order }: { order: OrderManagerRow }) {
+  const [value, setValue] = useState(order.shippingPhone ?? "");
+  const [error, setError] = useState(false);
+  const updateDetails = useUpdateOrderDetails(order.id);
+
+  function commit() {
+    if (value === (order.shippingPhone ?? "")) return;
+    if (!isValidBdPhone(value)) {
+      setError(true);
+      return;
+    }
+    setError(false);
+    updateDetails.mutate({ phone: value });
+  }
+
+  return (
+    <input
+      value={value}
+      onChange={(e) => {
+        setValue(e.target.value);
+        setError(false);
+      }}
+      onBlur={commit}
+      onClick={(e) => e.stopPropagation()}
+      placeholder="Phone"
+      title={error ? "Enter a valid Bangladeshi mobile number, e.g. 01712345678" : undefined}
+      className="h-9 w-32 rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      style={{ borderColor: error ? "#e5484d" : "transparent" }}
+      onFocus={(e) => !error && (e.currentTarget.style.borderColor = GREEN)}
+    />
+  );
+}
+
+function AddressCell({ order }: { order: OrderManagerRow }) {
+  const [value, setValue] = useState(order.addressLine ?? "");
+  const updateDetails = useUpdateOrderDetails(order.id);
+
+  return (
+    <input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => value !== (order.addressLine ?? "") && updateDetails.mutate({ addressLine: value })}
+      onClick={(e) => e.stopPropagation()}
+      placeholder="Address line"
+      title={[order.district, order.division, order.postCode].filter(Boolean).join(", ") || undefined}
+      className="h-9 w-full rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      style={{ borderColor: "transparent", minWidth: 200 }}
+      onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
+    />
+  );
+}
+
+function SourceCell({ order }: { order: OrderManagerRow }) {
+  const [value, setValue] = useState(order.utmSource ?? "");
+  const updateDetails = useUpdateOrderDetails(order.id);
+
+  return (
+    <input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => value !== (order.utmSource ?? "") && updateDetails.mutate({ utmSource: value })}
+      onClick={(e) => e.stopPropagation()}
+      placeholder="e.g. facebook"
+      className="h-9 w-28 rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      style={{ borderColor: "transparent" }}
+      onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
+    />
+  );
+}
+
+function PaymentCell({ order }: { order: OrderManagerRow }) {
+  const updatePayment = useUpdateOrderPayment(order.id);
+  return (
+    <select
+      value={(order.paymentProvider as PaymentProviderType) ?? ""}
+      disabled={updatePayment.isPending}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => updatePayment.mutate({ provider: e.target.value as PaymentProviderType })}
+      className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      style={{ borderColor: "transparent" }}
+      onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
+    >
+      {!order.paymentProvider && <option value="">—</option>}
+      {PAYMENT_PROVIDER_TYPES.map((p) => (
+        <option key={p} value={p}>{p}</option>
+      ))}
+    </select>
+  );
+}
+
+function DivisionCell({ order }: { order: OrderManagerRow }) {
+  const updateDetails = useUpdateOrderDetails(order.id);
+  return (
+    <select
+      value={order.division ?? ""}
+      disabled={updateDetails.isPending}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => updateDetails.mutate({ division: e.target.value })}
+      className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      style={{ borderColor: "transparent" }}
+      onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
+    >
+      {!order.division && <option value="">—</option>}
+      {BD_DIVISIONS.map((d) => (
+        <option key={d} value={d}>{d}</option>
+      ))}
+    </select>
+  );
+}
+
 function CourierSendCell({ order, onConsign }: { order: OrderManagerRow; onConsign: (provider: "STEADFAST" | "REDX") => void }) {
   return (
     <div className="flex flex-col gap-1">
@@ -186,7 +305,7 @@ export function OrderManagerTable({
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
 
-  const colCount = 12 + columns.size;
+  const colCount = 13 + columns.size;
   const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
   const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
@@ -218,6 +337,7 @@ export function OrderManagerTable({
               {columns.has("division") && <TH>Division</TH>}
               {columns.has("internalNote") && <TH>Internal Note</TH>}
               {columns.has("source") && <TH>Source</TH>}
+              <TH>Invoice</TH>
               <TH>Risk</TH>
               <TH>Courier Send</TH>
               <TH>Courier Status</TH>
@@ -246,12 +366,14 @@ export function OrderManagerTable({
                     <input type="checkbox" checked={selected.has(o.id)} onChange={() => onToggle(o.id)} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
                   </td>
                   <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
-                    <button type="button" className="block font-bold" style={{ color: GREEN }} onClick={() => onView(o)}>
-                      #{o.id} · {o.orderNumber}
+                    <button type="button" className="group block text-left" onClick={() => onView(o)}>
+                      <span className="block font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
+                        #{o.id} · {o.orderNumber}
+                      </span>
+                      <span className="mt-[3px] block text-[0.68rem] font-medium text-[#94a69a] transition-colors duration-150 group-hover:text-[#1d5230]">
+                        {o.recipientName ?? "—"}
+                      </span>
                     </button>
-                    <div className="mt-[3px] text-[0.68rem] font-medium" style={{ color: FAINT }}>
-                      {o.recipientName ?? "—"}
-                    </div>
                   </td>
                   <td className={td} style={tdStyle}>
                     <div>{date}</div>
@@ -265,25 +387,23 @@ export function OrderManagerTable({
                   <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
                     ৳{Number(o.totalAmount).toLocaleString()}
                   </td>
-                  <td className={td} style={tdStyle}>
-                    {o.shippingPhone ?? "—"}
+                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                    <PhoneCell order={o} />
                   </td>
-                  <td className={td} style={tdStyle}>
-                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" style={{ maxWidth: 220 }} title={[o.addressLine, o.district, o.division, o.postCode].filter(Boolean).join(", ") || undefined}>
-                      {[o.addressLine, o.district, o.division, o.postCode].filter(Boolean).join(", ") || "—"}
-                    </span>
+                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                    <AddressCell order={o} />
                   </td>
                   <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
                     {o.origin}
                   </td>
                   {columns.has("payment") && (
-                    <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
-                      {o.paymentProvider ?? "—"}
+                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <PaymentCell order={o} />
                     </td>
                   )}
                   {columns.has("division") && (
-                    <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
-                      {o.division ?? "—"}
+                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <DivisionCell order={o} />
                     </td>
                   )}
                   {columns.has("internalNote") && (
@@ -292,17 +412,26 @@ export function OrderManagerTable({
                     </td>
                   )}
                   {columns.has("source") && (
-                    <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
-                      {o.utmSource ? (
-                        <>
-                          <div style={{ color: TEXT, fontWeight: 700 }}>{o.utmSource}</div>
-                          {o.utmCampaign && <div>{o.utmCampaign}</div>}
-                        </>
-                      ) : (
-                        "—"
-                      )}
+                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <SourceCell order={o} />
                     </td>
                   )}
+                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                    <a
+                      href={`/print/orders/${o.id}/invoice`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold"
+                      style={{ borderColor: LINE, color: TEXT }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9V2h12v7" />
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                        <rect x="6" y="14" width="12" height="8" />
+                      </svg>
+                      Invoice
+                    </a>
+                  </td>
                   <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
                     <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}>
                       Check

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
+import { ADMIN_ORDERS_KEY } from "./useOrders";
 import type { RiskLevel } from "./useFraud";
 
 export interface OrderManagerCourierAttempt {
@@ -53,7 +54,8 @@ export interface OrderManagerFilters {
   pageSize?: number;
 }
 
-const KEY = ["net-profit-order-manager"];
+export const ORDER_MANAGER_KEY = ["net-profit-order-manager"];
+const KEY = ORDER_MANAGER_KEY;
 
 function toQueryString(filters: object): string {
   const params = new URLSearchParams();
@@ -91,7 +93,13 @@ export function useUpdateOrderNote(id: number) {
   return useMutation({
     mutationFn: (note: string) =>
       proxyFetch(`/admin/net-profit/orders/${id}/note`, { method: "PATCH", body: JSON.stringify({ note }) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    // Also invalidates admin-orders — OrderDetailModal's useOrder(id) reads
+    // from that key, not this module's, so without this the modal keeps
+    // showing the pre-save note until something else happens to refetch it.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ADMIN_ORDERS_KEY });
+    },
   });
 }
 

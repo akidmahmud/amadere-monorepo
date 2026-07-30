@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -22,6 +23,7 @@ import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { ShipmentsService } from './shipments.service';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
+import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { ShipmentDto, ShipmentPerformanceDto } from './shipments.mapper';
 
 @ApiTags('admin/shipments')
@@ -85,5 +87,15 @@ export class AdminShipmentsController {
     @Body() dto: CancelShipmentDto,
   ): Promise<ShipmentDto> {
     return this.shipments.cancelOrReturn(id, dto);
+  }
+
+  @Patch(':id/status')
+  @RequirePermission('shipment.manage')
+  @ApiOkResponse({ type: ShipmentDto })
+  updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateShipmentStatusDto,
+  ): Promise<ShipmentDto> {
+    return this.shipments.updateStatus(id, dto);
   }
 }

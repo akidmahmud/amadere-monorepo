@@ -10,6 +10,9 @@ import { ProductPreviewButton } from "@/components/products/ProductPreviewButton
 import { useProductFormState, type ProductFormSnapshot } from "@/components/products/useProductFormState";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { useToast } from "@/components/ToastProvider";
 
 // Fixed key, not per-product (there's no id yet) — only one "add product"
 // tab is realistically open at a time, so this is an acceptable tradeoff
@@ -32,6 +35,7 @@ export default function NewProductPage() {
   const form = useProductFormState();
   const [variants, setVariants] = useState<VariantInput[]>([]);
   const create = useCreateProduct();
+  const toast = useToast();
   const [pendingDraft, setPendingDraft] = useState<StoredDraft<NewProductDraft> | null>(null);
 
   useEffect(() => {
@@ -47,10 +51,16 @@ export default function NewProductPage() {
   // the list lets that continue in one flow. "Save & Exit" is the old
   // always-back-to-the-list behavior, kept for when there's nothing more to add.
   async function handleSave(exit: boolean) {
-    const created = await create.mutateAsync({
-      ...form.toBasePayload(),
-      variants: form.hasVariants ? variants : undefined,
-    });
+    let created;
+    try {
+      created = await create.mutateAsync({
+        ...form.toBasePayload(),
+        variants: form.hasVariants ? variants : undefined,
+      });
+    } catch (err) {
+      toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to create product");
+      return;
+    }
     clearDraft(DRAFT_KEY);
     router.push(exit ? "/products" : `/products/${created.id}`);
   }

@@ -4,7 +4,10 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, FormSkeleton } from "@amader/admin-ui";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
 import { useProduct, useUpdateProduct } from "@/hooks/useProducts";
+import { useToast } from "@/components/ToastProvider";
 import { ProductFormFields } from "@/components/products/ProductFormFields";
 import { ProductPreviewButton } from "@/components/products/ProductPreviewButton";
 import { useProductFormState, type ProductFormSnapshot } from "@/components/products/useProductFormState";
@@ -27,6 +30,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const { data: product, isLoading } = useProduct(productId);
   const form = useProductFormState();
   const update = useUpdateProduct(productId);
+  const toast = useToast();
   const [pendingDraft, setPendingDraft] = useState<StoredDraft<ProductFormSnapshot> | null>(null);
 
   useEffect(() => {
@@ -48,7 +52,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   // every single change. "Save & Exit" is the old always-redirect behavior,
   // kept as its own explicit action for when the edit really is done.
   async function handleSave(exit: boolean) {
-    await update.mutateAsync(form.toBasePayload());
+    try {
+      await update.mutateAsync(form.toBasePayload());
+    } catch (err) {
+      toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to save product");
+      return;
+    }
     clearDraft(draftKey);
     if (exit) router.push("/products");
   }
@@ -72,9 +81,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </svg>
           </Link>
           <h1 className="font-ui text-lg font-extrabold text-text">Edit Product</h1>
-          <Link href="/products/marketing-review" className="text-xs font-semibold text-brand-500 hover:underline">
-            Marketing Review Cards →
-          </Link>
+          {form.name && (
+            <span className="max-w-[320px] truncate text-sm font-semibold text-text" title={form.name}>
+              — {form.name}
+            </span>
+          )}
         </div>
         <div className="flex gap-3">
           <Link href="/products">

@@ -33,3 +33,33 @@ export async function reserveStock(
   if (affected === 0)
     throw new ConflictException(`Insufficient stock for "${product.slug}"`);
 }
+
+// Counterpart to reserveStock — releasing a hold never fails a capacity
+// check, so this is a plain decrement (used when an existing order line's
+// quantity is reduced or the line is removed entirely, unlike
+// OrdersService's releaseReservations which releases a whole order's items
+// on cancel).
+export async function releaseStock(
+  tx: Prisma.TransactionClient,
+  productId: number,
+  variantId: number | null,
+  quantity: number,
+): Promise<void> {
+  if (quantity <= 0) return;
+
+  if (variantId) {
+    await tx.productVariant.update({
+      where: { id: variantId },
+      data: { reservedStock: { decrement: quantity } },
+    });
+    return;
+  }
+
+  const product = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+  if (!product.trackInventory) return;
+
+  await tx.product.update({
+    where: { id: productId },
+    data: { reservedStock: { decrement: quantity } },
+  });
+}

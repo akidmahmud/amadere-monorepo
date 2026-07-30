@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -24,6 +25,11 @@ import { AdminOrderCreationService } from './admin-order-creation.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
+import { AddOrderItemDto } from './dto/add-order-item.dto';
+import { UpdateOrderItemDto } from './dto/update-order-item.dto';
+import { UpdateOrderDetailsDto } from './dto/update-order-details.dto';
+import { UpdateOrderPaymentDto } from './dto/update-order-payment.dto';
+import { UpdateOrderAmountsDto } from './dto/update-order-amounts.dto';
 import { OrderDto } from './orders.mapper';
 
 @ApiTags('admin/orders')
@@ -85,5 +91,85 @@ export class AdminOrdersController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<OrderDto> {
     return this.orders.refund(id, dto, admin.id);
+  }
+
+  @Post(':id/items')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  addItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddOrderItemDto,
+  ): Promise<OrderDto> {
+    return this.orders.addItem(id, dto);
+  }
+
+  @Patch(':id/items/:itemId')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  updateItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @Body() dto: UpdateOrderItemDto,
+  ): Promise<OrderDto> {
+    return this.orders.updateItemQuantity(id, itemId, dto);
+  }
+
+  @Delete(':id/items/:itemId')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  removeItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('itemId', ParseIntPipe) itemId: number,
+  ): Promise<OrderDto> {
+    return this.orders.removeItem(id, itemId);
+  }
+
+  @Patch(':id/details')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  updateDetails(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOrderDetailsDto,
+  ): Promise<OrderDto> {
+    return this.orders.updateDetails(id, dto);
+  }
+
+  @Patch(':id/payment')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  updatePayment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOrderPaymentDto,
+  ): Promise<OrderDto> {
+    return this.orders.updatePayment(id, dto);
+  }
+
+  @Patch(':id/amounts')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  updateAmounts(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOrderAmountsDto,
+  ): Promise<OrderDto> {
+    return this.orders.updateAmounts(id, dto);
+  }
+
+  @Post(':id/resend-confirmation')
+  @RequirePermission('order.update')
+  resendConfirmation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<{ sent: boolean; reason?: string }> {
+    return this.orders.sendConfirmationEmail(id, admin.id);
+  }
+
+  @Post(':id/reorder')
+  @RequirePermission('order.create')
+  @ApiOkResponse({ type: OrderDto })
+  reorder(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<OrderDto> {
+    return this.orderCreation.reorder(id, admin.id);
   }
 }

@@ -75,4 +75,24 @@ export class CheckoutDto {
   @IsOptional()
   @IsString()
   utmContent?: string;
+
+  @ApiPropertyOptional({ description: 'Referral/landing attribution — first-touch capture from the utm_* landing-page cookie (apps/web utm.ts)' })
+  @IsOptional()
+  @IsString()
+  landingDomain?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landingPage?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  referrerUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  referrerDomain?: string;
 }

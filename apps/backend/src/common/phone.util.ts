@@ -5,6 +5,6 @@ export function toE164Bd(phone: string): string | null {
   let digits = phone.replace(/\D/g, '');
   if (digits.startsWith('880')) digits = digits.slice(3);
   if (digits.startsWith('0')) digits = digits.slice(1);
-  if (!/^1[3-9]\d{8}$/.test(digits)) return null;
+  if (!/^1\d{9}$/.test(digits)) return null;
   return `+880${digits}`;
 }

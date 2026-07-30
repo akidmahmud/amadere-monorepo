@@ -155,6 +155,7 @@ model AdminUser {
   customerNotes    CustomerNote[]
   customerCallLogs CustomerCallLog[]
   assignedCustomers Customer[] @relation("CustomerAssignedAdmin")
+  orderStatusHistory OrderStatusHistory[]
 
   @@map("admin_users")
 }
@@ -1052,6 +1053,15 @@ model Order {
   utmTerm     String? @map("utm_term")
   utmContent  String? @map("utm_content")
 
+  // Referral/landing attribution — first-touch capture (apps/web utm.ts),
+  // same 30-day cookie as the utm_* fields above. Distinct from utm_* since
+  // most real referral traffic (organic search, a shared link) carries no
+  // utm_ param at all.
+  landingDomain  String? @map("landing_domain")
+  landingPage    String? @map("landing_page")
+  referrerUrl    String? @map("referrer_url")
+  referrerDomain String? @map("referrer_domain")
+
   // Durable proof of COD phone-OTP verification (mirrors Review.orderItemId —
   // a stored fact, not just trusting an Otp row got consumed at some point).
   codVerifiedAt DateTime? @map("cod_verified_at")
@@ -1140,7 +1150,8 @@ model OrderStatusHistory {
   adminUserId Int?        @map("admin_user_id") // null = system/customer-triggered
   createdAt   DateTime    @default(now()) @map("created_at")
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
 
   @@map("order_status_history")
 }
@@ -1832,31 +1843,6 @@ model AnnouncementTranslation {
 
   @@unique([announcementId, locale])
   @@map("announcement_translations")
-}
-
-model MarketingReviewCard {
-  id        Int      @id @default(autoincrement())
-  imageUrl  String   @map("image_url")
-  sortOrder Int      @default(0) @map("sort_order")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  translations MarketingReviewCardTranslation[]
-
-  @@map("marketing_review_cards")
-}
-
-model MarketingReviewCardTranslation {
-  id      Int     @id @default(autoincrement())
-  cardId  Int     @map("card_id")
-  locale  Locale
-  caption String?
-
-  card MarketingReviewCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
-
-  @@unique([cardId, locale])
-  @@map("marketing_review_card_translations")
 }
 
 // --- Net Profit (CLAUDE.net-profit.md) --------------------------------

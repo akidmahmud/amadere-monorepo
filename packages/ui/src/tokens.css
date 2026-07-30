@@ -62,19 +62,21 @@
   --radius-brand: var(--radius-brand);
   --shadow-brand: var(--shadow-brand);
 
-  /* Site-wide default: Siyam Rupali (free/GPL Bangla Unicode font, loaded via
-     apps/web's layout.tsx <link> — not on Google Fonts, so not a next/font
-     call like the fonts this replaced) for Bangla glyphs, falling through to
-     Arial for Latin characters Siyam Rupali doesn't cover well, then a
-     generic sans-serif as the final fallback. Applies to every semantic
-     token (previously: Fraunces serif / Poppins UI / Inter body / Hind
-     Siliguri Bengali / Plus Jakarta Sans+Noto Sans Bengali header) — a
-     deliberate full type-system reset, not per-token tuning. */
-  --font-serif: 'Siyam Rupali', Arial, sans-serif;
-  --font-ui: 'Siyam Rupali', Arial, sans-serif;
-  --font-body: 'Siyam Rupali', Arial, sans-serif;
-  --font-bengali: 'Siyam Rupali', Arial, sans-serif;
-  --font-header: 'Siyam Rupali', Arial, sans-serif;
+  /* Site-wide default: Roboto (Google's actual open-source flagship UI font —
+     "Google Sans" itself is a proprietary, unlicensed-for-reuse Google
+     trademark with no Bengali glyphs at all, so it can't be used here; Roboto
+     is its closest legitimate open relative and is loaded via a Google Fonts
+     <link> in each app's layout.tsx) for Latin characters, falling through
+     per-glyph to Noto Sans Bengali (Google's own Bengali-script font,
+     designed to pair with Roboto) for Bengali characters Roboto doesn't
+     cover, then a generic sans-serif as the final fallback. Deprecates the
+     previous Siyam Rupali + Arial stack. Applies to every semantic token —
+     a deliberate full type-system reset, not per-token tuning. */
+  --font-serif: 'Roboto', 'Noto Sans Bengali', sans-serif;
+  --font-ui: 'Roboto', 'Noto Sans Bengali', sans-serif;
+  --font-body: 'Roboto', 'Noto Sans Bengali', sans-serif;
+  --font-bengali: 'Roboto', 'Noto Sans Bengali', sans-serif;
+  --font-header: 'Roboto', 'Noto Sans Bengali', sans-serif;
 
   /* CertificationRow's mobile auto-scroll — content is duplicated exactly
      once, so -50% is precisely one full set's width, giving a seamless loop

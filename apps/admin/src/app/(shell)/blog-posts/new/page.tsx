@@ -10,6 +10,9 @@ import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { useToast } from "@/components/ToastProvider";
 
 // Fixed key, not per-post (there's no id yet) — same tradeoff as the new
 // product page's draft key.
@@ -40,6 +43,7 @@ export default function NewBlogPostPage() {
   const [tagIds, setTagIds] = useState<number[]>([]);
   const create = useCreateBlogPost();
   const storefrontUrl = useStorefrontUrl();
+  const toast = useToast();
   const [pendingDraft, setPendingDraft] = useState<StoredDraft<BlogPostDraft> | null>(null);
 
   useEffect(() => {
@@ -68,17 +72,23 @@ export default function NewBlogPostPage() {
   // "Save & Exit" is the old always-back-to-the-list behavior, kept for
   // when there's nothing more to add.
   async function handleSave(exit: boolean) {
-    const created = await create.mutateAsync({
-      slug,
-      imageUrl,
-      isFeatured,
-      categoryIds,
-      tagIds,
-      translations: [
-        { locale: "EN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-        { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-      ],
-    });
+    let created;
+    try {
+      created = await create.mutateAsync({
+        slug,
+        imageUrl,
+        isFeatured,
+        categoryIds,
+        tagIds,
+        translations: [
+          { locale: "EN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
+          { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
+        ],
+      });
+    } catch (err) {
+      toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to create post");
+      return;
+    }
     clearDraft(DRAFT_KEY);
     router.push(exit ? "/blog-posts" : `/blog-posts/${created.id}`);
   }
