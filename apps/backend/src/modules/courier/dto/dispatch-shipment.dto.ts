@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CourierProviderName } from '@amader/db';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Min, ValidateNested } from 'class-validator';
+import { IsEnum, IsInt, IsNumber, IsOptional, Min, ValidateNested } from 'class-validator';
 
 class PathaoDispatchOptionsDto {
   @ApiProperty()
@@ -65,4 +65,14 @@ export class DispatchShipmentDto {
   @ValidateNested()
   @Type(() => RedxDispatchOptionsDto)
   redx?: RedxDispatchOptionsDto;
+
+  // Lets staff review/adjust the COD amount before sending (the reference
+  // dispatch queue's editable "Amount" column) — defaults to the order's
+  // own computed COD amount when omitted.
+  @ApiPropertyOptional({ description: 'Overrides the auto-computed COD amount' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  codAmountOverride?: number;
 }

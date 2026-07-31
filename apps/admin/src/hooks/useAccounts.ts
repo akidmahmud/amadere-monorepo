@@ -35,6 +35,11 @@ export interface VatSettings {
   binNumber: string;
 }
 
+export interface CodFeeSettings {
+  enabled: boolean;
+  percent: number;
+}
+
 export interface VatSummary {
   outputVat: string;
   inputVat: string;
@@ -165,6 +170,22 @@ export function useUpdateVatSettings() {
   return useMutation({
     mutationFn: (input: Partial<VatSettings>) =>
       proxyFetch<VatSettings>("/admin/net-profit/accounts/vat-settings", { method: "PUT", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useCodFeeSettings() {
+  return useQuery({
+    queryKey: [...KEY, "cod-fee-settings"],
+    queryFn: () => proxyFetch<CodFeeSettings>("/admin/net-profit/accounts/cod-fee-settings"),
+  });
+}
+
+export function useUpdateCodFeeSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<CodFeeSettings>) =>
+      proxyFetch<CodFeeSettings>("/admin/net-profit/accounts/cod-fee-settings", { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

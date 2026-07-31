@@ -6,6 +6,7 @@ import {
   accountsExportUrl,
   useAccountsOverview,
   useCashFlow,
+  useCodFeeSettings,
   useCreateDue,
   useCreateExpense,
   useDeleteDue,
@@ -13,6 +14,7 @@ import {
   useDues,
   useExpenses,
   useRecordDuePayment,
+  useUpdateCodFeeSettings,
   useUpdateVatSettings,
   useVatSettings,
   useVatSummary,
@@ -291,11 +293,18 @@ function VatCashFlowTab({ range }: { range: DateRange }) {
   const { data: flow } = useCashFlow(range);
   const [rate, setRate] = useState<string | null>(null);
   const [bin, setBin] = useState<string | null>(null);
+  const { data: codFeeSettings } = useCodFeeSettings();
+  const updateCodFeeSettings = useUpdateCodFeeSettings();
+  const [codFeePercent, setCodFeePercent] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-5">
       <Card className="flex flex-col gap-4">
         <h3 className="font-ui text-sm font-bold text-text">VAT Settings</h3>
+        <p className="text-xs text-muted">
+          Applied automatically at checkout on every real order (site-wide) at this exact rate — not just a
+          reporting estimate.
+        </p>
         {settings && (
           <div className="flex flex-wrap items-end gap-4">
             <ToggleSwitch
@@ -322,6 +331,41 @@ function VatCashFlowTab({ range }: { range: DateRange }) {
                 onChange={(e) => setBin(e.target.value)}
                 onBlur={() => { if (bin !== null) { updateSettings.mutate({ binNumber: bin }); setBin(null); } }}
                 className="h-10 w-52 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+              />
+            </label>
+          </div>
+        )}
+      </Card>
+
+      <Card className="flex flex-col gap-4">
+        <h3 className="font-ui text-sm font-bold text-text">COD Fee</h3>
+        <p className="text-xs text-muted">
+          A handling surcharge applied automatically, site-wide, to Cash on Delivery orders only. Off by default —
+          turning this on changes what real customers pay on their next COD order.
+        </p>
+        {codFeeSettings && (
+          <div className="flex flex-wrap items-end gap-4">
+            <ToggleSwitch
+              checked={codFeeSettings.enabled}
+              onChange={(v) => updateCodFeeSettings.mutate({ enabled: v })}
+              label="COD fee enabled"
+            />
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-secondary">Fee (%)</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.1"
+                value={codFeePercent ?? codFeeSettings.percent}
+                onChange={(e) => setCodFeePercent(e.target.value)}
+                onBlur={() => {
+                  if (codFeePercent !== null) {
+                    updateCodFeeSettings.mutate({ percent: Number(codFeePercent) });
+                    setCodFeePercent(null);
+                  }
+                }}
+                className="num h-10 w-24 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
               />
             </label>
           </div>

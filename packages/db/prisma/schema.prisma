@@ -1027,6 +1027,10 @@ model Order {
   subTotal       Decimal @map("sub_total") @db.Decimal(10, 2)
   discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(10, 2)
   taxAmount      Decimal @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  // COD handling fee (Settings > Accounts > VAT & Cash Flow) — a percentage
+  // surcharge applied only when paymentProvider=COD, same "off by default,
+  // admin opts in" posture as every other Net Profit toggle.
+  codFee         Decimal @default(0) @map("cod_fee") @db.Decimal(10, 2)
   shippingAmount Decimal @default(0) @map("shipping_amount") @db.Decimal(10, 2)
   totalAmount    Decimal @map("total_amount") @db.Decimal(10, 2)
   currency       String  @default("BDT")

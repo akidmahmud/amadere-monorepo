@@ -39,6 +39,9 @@ import { PagesModule } from './modules/pages/pages.module';
 import { SeoModule } from './modules/seo/seo.module';
 import { RedirectsModule } from './modules/redirects/redirects.module';
 import { SitemapModule } from './modules/sitemap/sitemap.module';
+import { InvoiceSettingsModule } from './modules/invoice-settings/invoice-settings.module';
+import { ShippingLabelSettingsModule } from './modules/shipping-label-settings/shipping-label-settings.module';
+import { EmailSettingsModule } from './modules/email-settings/email-settings.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { SettingsModule } from './modules/settings/settings.module';
@@ -127,6 +130,9 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     SeoModule,
     RedirectsModule,
     SitemapModule,
+    InvoiceSettingsModule,
+    ShippingLabelSettingsModule,
+    EmailSettingsModule,
     AnalyticsModule,
     WhatsappModule,
     SettingsModule,

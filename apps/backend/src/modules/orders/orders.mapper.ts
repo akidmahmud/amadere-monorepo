@@ -12,7 +12,12 @@ import {
 export const ORDER_INCLUDE = {
   items: {
     include: {
-      product: { select: { shippableWeight: true } },
+      product: {
+        select: {
+          shippableWeight: true,
+          media: { where: { isPrimary: true }, take: 1, select: { media: { select: { url: true } } } },
+        },
+      },
       variant: { select: { weightOverride: true } },
     },
   },
@@ -59,6 +64,10 @@ export class OrderItemDto {
   // same precedence as ShipmentsService.computeOrderWeight (courier
   // charging). Null when neither is configured.
   weight!: string | null;
+  // Product's primary image at read time (not a snapshot — reflects
+  // whatever the product currently has, same as every other product-image
+  // read in this codebase). Null for deleted products or ones with no image.
+  imageUrl!: string | null;
 }
 
 export class OrderAddressDto {
@@ -107,7 +116,16 @@ export class OrderShipmentDto {
   deliveredAt!: Date | null;
   updatedAt!: Date;
   events!: OrderShipmentEventDto[];
+  // Courier's own public tracking page — null for providers with no public
+  // page to link to (nothing worse than a broken/guessed link). Only
+  // Steadfast is a real, live integration today (see AGENTS.md); Pathao/RedX
+  // have no configured provider yet.
+  trackingUrl!: string | null;
 }
+
+const COURIER_TRACKING_URLS: Partial<Record<CourierProviderName, string>> = {
+  STEADFAST: 'https://steadfast.com.bd/tracking',
+};
 
 export class OrderDto {
   id!: number;
@@ -118,6 +136,7 @@ export class OrderDto {
   subTotal!: string;
   discountAmount!: string;
   taxAmount!: string;
+  codFee!: string;
   shippingAmount!: string;
   totalAmount!: string;
   currency!: string;
@@ -165,6 +184,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     subTotal: order.subTotal.toString(),
     discountAmount: order.discountAmount.toString(),
     taxAmount: order.taxAmount.toString(),
+    codFee: order.codFee.toString(),
     shippingAmount: order.shippingAmount.toString(),
     totalAmount: order.totalAmount.toString(),
     currency: order.currency,
@@ -196,6 +216,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       quantity: i.quantity,
       taxAmount: i.taxAmount.toString(),
       weight: decimalToString(i.variant?.weightOverride ?? i.product?.shippableWeight),
+      imageUrl: i.product?.media[0]?.media.url ?? null,
     })),
     totalWeight: order.items
       .reduce((sum, i) => {
@@ -245,6 +266,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
             note: e.note,
             occurredAt: e.occurredAt,
           })),
+          trackingUrl: COURIER_TRACKING_URLS[shipment.provider] ?? null,
         }
       : null,
   };

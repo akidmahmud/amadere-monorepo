@@ -158,6 +158,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Baseline hover affordance for every <button> app-wide — audited ~90 raw
+   <button> call sites across apps/admin with no hover: class at all (icon
+   buttons in AppShell's topbar, table row actions, etc). Opacity is the one
+   property none of those components' own hover styles touch (bg/text/
+   underline/brightness), so this only ever layers a subtle dim on top of
+   whatever a button already does on hover — it never overrides one. */
+button:not(:disabled) {
+  transition: opacity 150ms ease;
+}
+
+button:not(:disabled):hover {
+  opacity: 0.85;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Net Profit violet scope — design-parity with the WPFOK plugin, an
    approved exception to DESIGN_SYSTEM.md section 1's "one brand color"

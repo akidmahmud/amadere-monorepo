@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button, Card, Icon, PageHeader, StatCard, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import {
   useClaritySettings,
@@ -20,6 +21,7 @@ import {
   useUpdateUtmSettings,
   useUtmSettings,
 } from "@/hooks/useAnalyticsSettings";
+import { useSitemapSettings } from "@/hooks/useSitemap";
 
 const analyticsIcon = <Icon name="monitoring" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -46,6 +48,7 @@ function OverviewTab() {
   const { data: clarity } = useClaritySettings();
   const { data: utm } = useUtmSettings();
   const { data: customScript } = useCustomScriptSettings();
+  const { data: sitemap } = useSitemapSettings();
 
   return (
     <div className="flex flex-col gap-4">
@@ -61,7 +64,27 @@ function OverviewTab() {
           configured={!!customScript?.enabled && !!customScript.headerScript}
           icon={<Icon name="code" />}
         />
+        <ProviderStat label="Sitemap" configured={!!sitemap?.enabled} icon={<Icon name="account_tree" />} />
       </div>
+
+      <Card className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-inner bg-brand-50 text-brand-500">
+            <Icon name="account_tree" />
+          </div>
+          <div>
+            <h3 className="font-ui text-sm font-bold text-text">Sitemap &amp; search-engine indexing</h3>
+            <p className="text-xs text-muted">
+              {sitemap ? `${sitemap.urlCount.toLocaleString()} URLs live` : "…"} · IndexNow{" "}
+              {sitemap?.indexNowEnabled ? "enabled" : "disabled"}
+            </p>
+          </div>
+        </div>
+        <Link href="/analytics/sitemap" className="inline-flex h-9 items-center gap-1.5 rounded-inner border border-border px-3 text-sm font-semibold text-text hover:bg-surface-2">
+          Manage <Icon name="arrow_forward" size={16} />
+        </Link>
+      </Card>
+
       <Card className="text-sm text-secondary">
         UTM attribution (utm_source/medium/campaign/term/content capture) is{" "}
         <span className={utm?.enabled ? "font-semibold text-success" : "font-semibold text-muted"}>
@@ -428,15 +451,19 @@ function CustomScriptCard() {
 
 function SettingsTab() {
   return (
-    <div className="flex flex-col gap-4">
-      <CustomScriptCard />
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <CustomScriptCard />
+      </div>
       <Ga4Card />
       <GtmCard />
       <MetaCard />
       <GoogleAdsCard />
       <TiktokCard />
       <ClarityCard />
-      <UtmCard />
+      <div className="md:col-span-2">
+        <UtmCard />
+      </div>
     </div>
   );
 }
@@ -451,6 +478,14 @@ export default function AnalyticsPage() {
         title="Analytics"
         subtitle="Tracking pixels, conversions API credentials, and UTM attribution."
         style={{ background: "linear-gradient(135deg, #140A24 0%, #5F03AA 100%)" }}
+        actions={
+          <Link
+            href="/analytics/sitemap"
+            className="inline-flex h-10 items-center gap-2 rounded-inner bg-white/15 px-4 text-sm font-semibold text-white hover:bg-white/25"
+          >
+            <Icon name="account_tree" size={16} /> Sitemap
+          </Link>
+        }
       />
       <Tabs
         options={[

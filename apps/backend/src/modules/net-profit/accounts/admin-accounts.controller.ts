@@ -6,7 +6,7 @@ import { PermissionGuard } from '../../../common/auth/permission.guard';
 import { RequirePermission } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { CurrentAdmin } from '../../../common/auth/current-admin.decorator';
-import { AccountsService, VatSettings } from './accounts.service';
+import { AccountsService, CodFeeSettings, VatSettings } from './accounts.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpenseQueryDto } from './dto/expense-query.dto';
@@ -86,6 +86,18 @@ export class AdminAccountsController {
   @RequirePermission('net_profit_accounts.manage')
   updateVatSettings(@Body() dto: Partial<VatSettings>) {
     return this.accounts.updateVatSettings(dto);
+  }
+
+  @Get('cod-fee-settings')
+  @RequirePermission('net_profit_accounts.view')
+  getCodFeeSettings() {
+    return this.accounts.getCodFeeSettings();
+  }
+
+  @Put('cod-fee-settings')
+  @RequirePermission('net_profit_accounts.manage')
+  updateCodFeeSettings(@Body() dto: Partial<CodFeeSettings>) {
+    return this.accounts.updateCodFeeSettings(dto);
   }
 
   @Get('vat-summary')

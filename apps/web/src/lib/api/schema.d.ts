@@ -1716,6 +1716,54 @@ export interface paths {
         patch: operations["AdminOrdersController_updatePayment"];
         trace?: never;
     };
+    "/api/v1/admin/orders/{id}/amounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrdersController_updateAmounts"];
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/resend-confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminOrdersController_resendConfirmation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/orders/{id}/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminOrdersController_reorder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/fraud/checks": {
         parameters: {
             query?: never;
@@ -2356,6 +2404,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/shipments/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminShipmentsController_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipments/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminShipmentsController_balance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/shipments/{id}": {
         parameters: {
             query?: never;
@@ -2382,6 +2462,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminShipmentsController_dispatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipments/dispatch-bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminShipmentsController_dispatchBulk"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2418,6 +2514,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipments/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminShipmentsController_updateStatus"];
         trace?: never;
     };
     "/api/v1/admin/courier/settings/steadfast": {
@@ -3124,6 +3236,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/sitemap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSitemapController_get"];
+        put: operations["AdminSitemapController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/sitemap/indexnow/generate-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminSitemapController_generateKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/sitemap/indexnow/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminSitemapController_ping"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/events": {
         parameters: {
             query?: never;
@@ -3261,6 +3421,22 @@ export interface paths {
         };
         get: operations["AdminAnalyticsSettingsController_getUtm"];
         put: operations["AdminAnalyticsSettingsController_updateUtm"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/analytics/settings/custom-script": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAnalyticsSettingsController_getCustomScript"];
+        put: operations["AdminAnalyticsSettingsController_updateCustomScript"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4644,6 +4820,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/accounts/cod-fee-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAccountsController_getCodFeeSettings"];
+        put: operations["AdminAccountsController_updateCodFeeSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/accounts/vat-summary": {
         parameters: {
             query?: never;
@@ -5317,6 +5509,7 @@ export interface components {
             price: string | null;
             salePrice: string | null;
             stock: number;
+            reservedStock: number;
             stockStatus: Record<string, never>;
             weightOverride: string | null;
             isDefault: boolean;
@@ -5335,6 +5528,7 @@ export interface components {
             trackInventory: boolean;
             allowBackorder: boolean;
             stock: number;
+            reservedStock: number;
             stockStatus: Record<string, never>;
             price: string | null;
             salePrice: string | null;
@@ -5905,6 +6099,8 @@ export interface components {
             unitPrice: string;
             quantity: number;
             taxAmount: string;
+            weight: string | null;
+            imageUrl: string | null;
         };
         OrderAddressDto: {
             type: Record<string, never>;
@@ -5921,6 +6117,7 @@ export interface components {
         OrderStatusHistoryEntryDto: {
             status: Record<string, never>;
             note: string | null;
+            adminName: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -5953,6 +6150,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             events: components["schemas"]["OrderShipmentEventDto"][];
+            trackingUrl: string | null;
         };
         OrderDto: {
             id: number;
@@ -5963,6 +6161,7 @@ export interface components {
             subTotal: string;
             discountAmount: string;
             taxAmount: string;
+            codFee: string;
             shippingAmount: string;
             totalAmount: string;
             currency: string;
@@ -5990,6 +6189,7 @@ export interface components {
             referrerUrl: string | null;
             referrerDomain: string | null;
             items: components["schemas"]["OrderItemDto"][];
+            totalWeight: string;
             addresses: components["schemas"]["OrderAddressDto"][];
             statusHistory: components["schemas"]["OrderStatusHistoryEntryDto"][];
             payments: components["schemas"]["OrderPaymentDto"][];
@@ -6027,6 +6227,8 @@ export interface components {
             discountAmount?: number;
             /** @description Staff-entered promotion allowance — a second, separate manual reduction alongside discountAmount */
             promotionAmount?: number;
+            /** @description Staff-entered shipping fee — defaults to free (0) if omitted */
+            shippingAmount?: number;
             /** @description A real Discount/coupon code — validated and priced the exact same way real checkout does (expiry, usage limits, min order amount, product/category scope), and recorded as a redemption on success. */
             couponCode?: string;
             /** @description bKash/Nagad/Rocket/Upay transaction ID, when the staff already has it (e.g. read out over the phone) — recorded straight onto the order's payment record instead of going through the customer-submitted manual-payment verification queue. */
@@ -6063,6 +6265,10 @@ export interface components {
              * @enum {string}
              */
             channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
+            /** @description Shipping address's phone */
+            phone?: string;
+            /** @description Shipping address's address line */
+            addressLine?: string;
             /** @description Shipping address's division */
             division?: string;
             /** @description Campaign attribution — manual override/correction of the checkout-captured value */
@@ -6073,6 +6279,12 @@ export interface components {
             provider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
             /** @enum {string} */
             status?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+        };
+        UpdateOrderAmountsDto: {
+            discountAmount?: number;
+            shippingAmount?: number;
+            /** @description Coupon code label shown next to the discount amount — cosmetic only, not re-validated */
+            couponCode?: string;
         };
         FraudCheckDto: {
             id: number;
@@ -6373,6 +6585,10 @@ export interface components {
         UpdateCustomerDto: {
             firstName?: string;
             lastName?: string;
+            phone?: string;
+            /** Format: email */
+            email?: string;
+            addressLine?: string;
             /** @description Birthday, ISO date, or null to clear */
             dob?: string | null;
             isFavorite?: boolean;
@@ -6445,6 +6661,25 @@ export interface components {
             returnRate: string | null;
             avgDeliveryHours: number | null;
         };
+        ShipmentQueueShipmentDto: {
+            id: number;
+            provider: Record<string, never>;
+            status: Record<string, never>;
+            consignmentId: string | null;
+            trackingCode: string | null;
+        };
+        ShipmentQueueRowDto: {
+            id: number;
+            orderNumber: string;
+            /** Format: date-time */
+            createdAt: string;
+            status: Record<string, never>;
+            recipientName: string | null;
+            shippingPhone: string | null;
+            totalAmount: string;
+            pendingCodAmount: string | null;
+            shipment: components["schemas"]["ShipmentQueueShipmentDto"] | null;
+        };
         PathaoDispatchOptionsDto: {
             storeId: number;
             recipientCity?: number;
@@ -6461,10 +6696,22 @@ export interface components {
             provider: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
             pathao?: components["schemas"]["PathaoDispatchOptionsDto"];
             redx?: components["schemas"]["RedxDispatchOptionsDto"];
+            /** @description Overrides the auto-computed COD amount */
+            codAmountOverride?: number;
+        };
+        DispatchBulkShipmentDto: {
+            orderIds: number[];
+            /** @enum {string} */
+            provider: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
         };
         CancelShipmentDto: {
             /** @description e.g. customer-requested, out-of-stock, address-unreachable */
             reasonCode: string;
+        };
+        UpdateShipmentStatusDto: {
+            /** @enum {string} */
+            status: "PENDING" | "DISPATCHED" | "IN_TRANSIT" | "DELIVERED" | "PARTIALLY_DELIVERED" | "RETURNED" | "CANCELED" | "FAILED";
+            note?: string;
         };
         UpdateSteadfastSettingsDto: {
             enabled?: boolean;
@@ -6886,6 +7133,10 @@ export interface components {
         RedirectNotFoundDto: {
             redirect: boolean;
         };
+        UpdateSitemapSettingsDto: {
+            enabled?: boolean;
+            indexNowEnabled?: boolean;
+        };
         TrackEventDto: {
             /** @description e.g. "page_view", "view_item", "add_to_cart" */
             name: string;
@@ -6937,6 +7188,13 @@ export interface components {
         UpdateUtmSettingsDto: {
             /** @description Capture utm_source/medium/campaign/term/content from landing URLs */
             enabled?: boolean;
+        };
+        UpdateCustomScriptSettingsDto: {
+            enabled?: boolean;
+            /** @description Raw <head> tracking script, e.g. Matomo/Plausible/Fathom snippets */
+            headerScript?: string;
+            /** @description Raw markup injected near the top of <body> (e.g. a noscript fallback) */
+            bodyScript?: string;
         };
         UpdateWhatsappSettingsDto: {
             enabled?: boolean;
@@ -11259,6 +11517,79 @@ export interface operations {
             };
         };
     };
+    AdminOrdersController_updateAmounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderAmountsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_resendConfirmation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOrdersController_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
     AdminFraudController_list: {
         parameters: {
             query?: {
@@ -12459,6 +12790,55 @@ export interface operations {
             };
         };
     };
+    AdminShipmentsController_queue: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["ShipmentQueueRowDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminShipmentsController_balance: {
+        parameters: {
+            query: {
+                provider: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminShipmentsController_get: {
         parameters: {
             query?: never;
@@ -12508,6 +12888,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ShipmentDto"];
                 };
+            };
+        };
+    };
+    AdminShipmentsController_dispatchBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispatchBulkShipmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -12564,6 +12965,31 @@ export interface operations {
                 };
             };
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentDto"];
+                };
+            };
+        };
+    };
+    AdminShipmentsController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShipmentStatusDto"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14058,6 +14484,82 @@ export interface operations {
             };
         };
     };
+    AdminSitemapController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSitemapController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSitemapSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSitemapController_generateKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSitemapController_ping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AnalyticsController_track: {
         parameters: {
             query?: never;
@@ -14389,6 +14891,48 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateUtmSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_getCustomScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAnalyticsSettingsController_updateCustomScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomScriptSettingsDto"];
             };
         };
         responses: {
@@ -16823,6 +17367,44 @@ export interface operations {
         };
     };
     AdminAccountsController_updateVatSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_getCodFeeSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminAccountsController_updateCodFeeSettings: {
         parameters: {
             query?: never;
             header?: never;

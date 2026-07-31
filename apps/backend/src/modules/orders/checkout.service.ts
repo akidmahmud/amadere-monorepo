@@ -17,6 +17,8 @@ import { BlockerService } from '../net-profit/blocker/blocker.service';
 import { AdvancePaymentService } from '../net-profit/advance-payment/advance-payment.service';
 import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
 import { SmsService } from '../net-profit/sms/sms.service';
+import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
+import { VAT_DEFAULTS, COD_FEE_DEFAULTS } from '../net-profit/accounts/accounts.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -42,6 +44,7 @@ export class CheckoutService {
     private readonly otpSecurity: OtpSecurityService,
     private readonly sms: SmsService,
     private readonly orders: OrdersService,
+    private readonly netProfitSettings: NetProfitSettingsService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -169,10 +172,29 @@ export class CheckoutService {
     const voucherAmount = voucher
       ? Decimal.min(voucher.remainingBalance, pricing.total)
       : new Decimal(0);
-    const totalAmount = Decimal.max(
+    const preFeeTotal = Decimal.max(
       pricing.total.minus(voucherAmount),
       new Decimal(0),
     );
+
+    // Real per-order tax/COD-fee, applied site-wide at the same rates shown
+    // in Settings > Accounts > VAT & Cash Flow — previously that page only
+    // reported a synthetic revenue×rate estimate with no real order ever
+    // carrying a non-zero taxAmount (confirmed live: PricingService never
+    // touched tax at all). Both settings default such that this is a no-op
+    // until an admin explicitly turns them on.
+    const [vatSettings, codFeeSettings] = await Promise.all([
+      this.netProfitSettings.getNamespace('accounts_vat', VAT_DEFAULTS),
+      this.netProfitSettings.getNamespace('cod_fee', COD_FEE_DEFAULTS),
+    ]);
+    const taxAmount = vatSettings.enabled
+      ? preFeeTotal.times(vatSettings.ratePercent).dividedBy(100).toDecimalPlaces(2)
+      : new Decimal(0);
+    const codFee =
+      codFeeSettings.enabled && dto.paymentProvider === 'COD'
+        ? preFeeTotal.times(codFeeSettings.percent).dividedBy(100).toDecimalPlaces(2)
+        : new Decimal(0);
+    const totalAmount = preFeeTotal.plus(taxAmount).plus(codFee);
 
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of cart.items) {
@@ -192,6 +214,8 @@ export class CheckoutService {
           customerId: identity.customerId ?? null,
           subTotal: pricing.subTotal,
           discountAmount: pricing.totalDiscount,
+          taxAmount,
+          codFee,
           totalAmount,
           couponCode: cart.couponCode,
           customerNote: dto.customerNote,

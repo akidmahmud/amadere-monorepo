@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  BalanceOutcome,
   CancelReturnResult,
   CourierProvider,
   CreateConsignmentInput,
@@ -33,6 +34,13 @@ interface SteadfastFraudCheckResponse {
   total_delivered?: number;
   total_cancelled?: number;
   total_fraud_reports?: unknown[];
+}
+
+// Verified against the reference codebase's working integration: no
+// `message` field on success, just `{ status: 200, current_balance }`.
+interface SteadfastBalanceResponse {
+  status?: number;
+  current_balance?: number;
 }
 
 const BASE_URL = 'https://portal.packzy.com/api/v1';
@@ -147,6 +155,22 @@ export class SteadfastCourierProvider implements CourierProvider {
       this.logger.warn(
         `Steadfast fraud_check failed for ${phoneMsisdn}: ${err instanceof Error ? err.message : String(err)}`,
       );
+      return { unavailable: true };
+    }
+  }
+
+  // Current COD-collections balance held by Steadfast for this merchant
+  // account — same never-throws-on-failure contract as fraudCheck above.
+  async getBalance(): Promise<BalanceOutcome> {
+    try {
+      const response = await this.request<SteadfastBalanceResponse>('/get_balance', 'GET');
+      if (response.httpStatus !== 200 || response.body.current_balance === undefined) {
+        this.logger.warn(`Steadfast get_balance non-200/missing balance: HTTP ${response.httpStatus}`);
+        return { unavailable: true };
+      }
+      return { balance: response.body.current_balance };
+    } catch (err) {
+      this.logger.warn(`Steadfast get_balance failed: ${err instanceof Error ? err.message : String(err)}`);
       return { unavailable: true };
     }
   }

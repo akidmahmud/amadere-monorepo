@@ -22,9 +22,11 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { ShipmentsService } from './shipments.service';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
+import { DispatchBulkShipmentDto } from './dto/dispatch-bulk-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
-import { ShipmentDto, ShipmentPerformanceDto } from './shipments.mapper';
+import { ShipmentDto, ShipmentPerformanceDto, ShipmentQueueRowDto } from './shipments.mapper';
+import { BalanceOutcome } from './courier-provider.interface';
 
 @ApiTags('admin/shipments')
 @ApiBearerAuth()
@@ -55,6 +57,28 @@ export class AdminShipmentsController {
     return this.shipments.performance(provider);
   }
 
+  // Order-centric dispatch queue — every order (dispatched or not), so
+  // staff can send un-dispatched ones from the same table where they track
+  // ones already sent. Listed before ':id' so "queue" never gets swallowed
+  // by the numeric-id route.
+  @Get('queue')
+  @RequirePermission('shipment.view')
+  @ApiQuery({ name: 'search', required: false })
+  @ApiPaginatedResponse(ShipmentQueueRowDto)
+  queue(
+    @Query() { page, pageSize }: PaginationQueryDto,
+    @Query('search') search?: string,
+  ): Promise<PaginatedResult<ShipmentQueueRowDto>> {
+    return this.shipments.adminQueue(page ?? 1, pageSize ?? 20, search);
+  }
+
+  @Get('balance')
+  @RequirePermission('shipment.view')
+  @ApiQuery({ name: 'provider', enum: CourierProviderName })
+  balance(@Query('provider') provider: CourierProviderName): Promise<BalanceOutcome> {
+    return this.shipments.getBalance(provider);
+  }
+
   @Get(':id')
   @RequirePermission('shipment.view')
   @ApiOkResponse({ type: ShipmentDto })
@@ -70,6 +94,15 @@ export class AdminShipmentsController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<ShipmentDto> {
     return this.shipments.dispatch(dto, admin.id);
+  }
+
+  @Post('dispatch-bulk')
+  @RequirePermission('shipment.dispatch')
+  dispatchBulk(
+    @Body() dto: DispatchBulkShipmentDto,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<{ succeeded: number[]; failed: { orderId: number; error: string }[] }> {
+    return this.shipments.dispatchBulk(dto.orderIds, dto.provider, admin.id);
   }
 
   @Post(':id/track')

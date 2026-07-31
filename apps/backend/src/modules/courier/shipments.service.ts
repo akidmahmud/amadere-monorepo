@@ -13,7 +13,7 @@ import {
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { OrdersService } from '../orders/orders.service';
-import { CourierProvider } from './courier-provider.interface';
+import { BalanceOutcome, CourierProvider } from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
 import { PathaoCourierProvider } from './providers/pathao-courier.provider';
 import { RedxCourierProvider } from './providers/redx-courier.provider';
@@ -26,6 +26,7 @@ import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import {
   ShipmentDto,
   ShipmentPerformanceDto,
+  ShipmentQueueRowDto,
   SHIPMENT_INCLUDE,
   toShipmentDto,
 } from './shipments.mapper';
@@ -93,11 +94,26 @@ export class ShipmentsService {
       throw new ConflictException('Order has no shipping address');
 
     const weight = await this.computeOrderWeight(order.items);
+    const cost = await this.charges.calculate(weight, shippingAddress.division);
+    // The courier's quoted cost can differ from whatever shippingAmount was
+    // estimated at checkout — recompute totalAmount the same way
+    // OrdersService.updateAmounts does, so it stays correct once dispatch
+    // sets the real shippingAmount below, and so codAmount (what the
+    // courier actually collects from the customer) isn't computed off a
+    // stale total.
+    const correctedTotalAmount = Decimal.max(
+      order.subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.codFee).plus(cost),
+      new Decimal(0),
+    );
     const pendingCod = order.payments.some(
       (p) => p.provider === 'COD' && p.status === 'PENDING',
     );
-    const codAmount = pendingCod ? order.totalAmount : new Decimal(0);
-    const cost = await this.charges.calculate(weight, shippingAddress.division);
+    const codAmount =
+      dto.codAmountOverride !== undefined
+        ? new Decimal(dto.codAmountOverride)
+        : pendingCod
+          ? correctedTotalAmount
+          : new Decimal(0);
 
     const addressParts = [
       shippingAddress.addressLine,
@@ -164,7 +180,7 @@ export class ShipmentsService {
     if (result.success) {
       await this.prisma.client.order.update({
         where: { id: order.id },
-        data: { shippingAmount: cost, shippingMethod: dto.provider },
+        data: { shippingAmount: cost, shippingMethod: dto.provider, totalAmount: correctedTotalAmount },
       });
       if (order.status === 'PENDING') {
         await this.orders.updateStatus(
@@ -292,6 +308,104 @@ export class ShipmentsService {
     });
     if (!shipment) throw new NotFoundException('Shipment not found');
     return toShipmentDto(shipment);
+  }
+
+  // Order-centric dispatch queue (AGENTS.md — reference-site "SteadFast"
+  // page parity): every order, whether or not it's ever been sent to a
+  // courier, so staff can send un-dispatched ones from the same view where
+  // they track already-dispatched ones. Deliberately a separate query from
+  // adminList() above (which is shipment-record-centric) rather than a
+  // shared helper — the two return fundamentally different row shapes.
+  async adminQueue(page: number, pageSize: number, search?: string): Promise<PaginatedResult<ShipmentQueueRowDto>> {
+    const where: Prisma.OrderWhereInput = search
+      ? {
+          OR: [
+            { orderNumber: { contains: search, mode: 'insensitive' } },
+            {
+              addresses: {
+                some: {
+                  type: 'SHIPPING',
+                  OR: [
+                    { phone: { contains: search } },
+                    { recipientName: { contains: search, mode: 'insensitive' } },
+                  ],
+                },
+              },
+            },
+          ],
+        }
+      : {};
+
+    const [orders, total] = await Promise.all([
+      this.prisma.client.order.findMany({
+        where,
+        include: {
+          addresses: { where: { type: 'SHIPPING' }, take: 1 },
+          payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+          shipments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+        ...paginationArgs(page, pageSize),
+      }),
+      this.prisma.client.order.count({ where }),
+    ]);
+
+    const rows: ShipmentQueueRowDto[] = orders.map((o) => {
+      const shippingAddress = o.addresses[0];
+      const latestPayment = o.payments[0];
+      const latestShipment = o.shipments[0];
+      const pendingCod = latestPayment?.provider === 'COD' && latestPayment.status === 'PENDING';
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt,
+        status: o.status,
+        recipientName: shippingAddress?.recipientName ?? null,
+        shippingPhone: shippingAddress?.phone ?? null,
+        totalAmount: o.totalAmount.toString(),
+        pendingCodAmount: pendingCod ? o.totalAmount.toString() : null,
+        shipment: latestShipment
+          ? {
+              id: latestShipment.id,
+              provider: latestShipment.provider,
+              status: latestShipment.status,
+              consignmentId: latestShipment.consignmentId,
+              trackingCode: latestShipment.trackingCode,
+            }
+          : null,
+      };
+    });
+
+    return toPaginatedResult(rows, total, page, pageSize);
+  }
+
+  async getBalance(provider: CourierProviderName): Promise<BalanceOutcome> {
+    const impl = this.providers[provider];
+    if (!impl.getBalance) return { unavailable: true };
+    return impl.getBalance();
+  }
+
+  // Same succeeded/failed error-collecting shape as Order Manager's bulk
+  // "consign" action (which also just calls dispatch() per id) — a
+  // dedicated endpoint here so the redesigned dispatch queue doesn't need
+  // to round-trip through the Order Manager module for something that's
+  // really this module's own responsibility.
+  async dispatchBulk(
+    orderIds: number[],
+    provider: CourierProviderName,
+    adminUserId: number,
+  ): Promise<{ succeeded: number[]; failed: { orderId: number; error: string }[] }> {
+    const succeeded: number[] = [];
+    const failed: { orderId: number; error: string }[] = [];
+    for (const orderId of orderIds) {
+      try {
+        await this.dispatch({ orderId, provider }, adminUserId);
+        succeeded.push(orderId);
+      } catch (err) {
+        failed.push({ orderId, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    return { succeeded, failed };
   }
 
   // Courier performance data (AGENTS.md §6): success/return rate, avg delivery time.

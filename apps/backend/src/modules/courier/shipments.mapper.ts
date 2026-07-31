@@ -1,4 +1,4 @@
-import { CourierProviderName, Prisma, ShipmentStatus } from '@amader/db';
+import { CourierProviderName, OrderStatus, Prisma, ShipmentStatus } from '@amader/db';
 
 export const SHIPMENT_INCLUDE = {
   events: { orderBy: { occurredAt: 'asc' as const } },
@@ -64,6 +64,34 @@ export function toShipmentDto(shipment: ShipmentWithEvents): ShipmentDto {
       occurredAt: e.occurredAt,
     })),
   };
+}
+
+// One row per ORDER (not per shipment) — the dispatch-queue table needs to
+// show orders that have never been sent to a courier at all (so staff can
+// send them from here) alongside ones already dispatched, matching the
+// reference's single unified "SteadFast" list.
+export class ShipmentQueueShipmentDto {
+  id!: number;
+  provider!: CourierProviderName;
+  status!: ShipmentStatus;
+  consignmentId!: string | null;
+  trackingCode!: string | null;
+}
+
+export class ShipmentQueueRowDto {
+  id!: number;
+  orderNumber!: string;
+  createdAt!: Date;
+  status!: OrderStatus;
+  recipientName!: string | null;
+  shippingPhone!: string | null;
+  totalAmount!: string;
+  // What would actually be collected on dispatch (pending-COD orders only)
+  // — the editable "Amount" cell in the reference table. Null for orders
+  // that are already fully paid or use a non-COD method, same as
+  // ShipmentsService.dispatch()'s own codAmount = 0 fallback.
+  pendingCodAmount!: string | null;
+  shipment!: ShipmentQueueShipmentDto | null;
 }
 
 export class ShipmentPerformanceDto {

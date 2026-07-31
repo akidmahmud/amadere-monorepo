@@ -50,6 +50,10 @@ export type FraudCheckOutcome =
   | ({ unavailable?: false } & FraudCheckResult)
   | { unavailable: true };
 
+export type BalanceOutcome =
+  | { unavailable?: false; balance: number }
+  | { unavailable: true };
+
 // One interface, one implementation per courier — Steadfast is real
 // (proven against the reference codebase's working integration); Pathao/
 // RedX/eCourier plug in behind it the same way once credentials arrive
@@ -68,4 +72,7 @@ export interface CourierProvider {
   // fraud-check endpoint simply omits this method; callers must check for
   // its presence and never assume every provider implements it.
   fraudCheck?(phoneMsisdn: string): Promise<FraudCheckOutcome>;
+  // Current COD-collections account balance held by the courier — same
+  // "optional, presence-checked" pattern as fraudCheck above.
+  getBalance?(): Promise<BalanceOutcome>;
 }

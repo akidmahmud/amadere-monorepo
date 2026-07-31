@@ -10,9 +10,10 @@ import { SOCIAL_LOGIN_VERIFIER } from './notification/social-login-verifier.inte
 import { GoogleSocialLoginVerifier } from './notification/google-social-login-verifier';
 import { SmsModule } from '../net-profit/sms/sms.module';
 import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
+import { EmailSettingsModule } from '../email-settings/email-settings.module';
 
 @Module({
-  imports: [SmsModule],
+  imports: [SmsModule, EmailSettingsModule],
   controllers: [AuthController, AdminAuthController],
   providers: [
     CustomerAuthService,

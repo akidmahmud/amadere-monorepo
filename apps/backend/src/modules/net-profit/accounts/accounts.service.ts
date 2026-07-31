@@ -21,8 +21,21 @@ export interface VatSettings {
 }
 
 // 15% is the standard NBR VAT rate for most goods in Bangladesh — a sane
-// e-commerce default, editable per-store in Settings.
-const VAT_DEFAULTS: VatSettings = { enabled: true, ratePercent: 15, binNumber: '' };
+// e-commerce default, editable per-store in Settings. Exported so
+// CheckoutService can apply the exact same rate to real orders instead of
+// this being a reporting-only figure divorced from what customers actually
+// pay (see checkout.service.ts).
+export const VAT_DEFAULTS: VatSettings = { enabled: true, ratePercent: 15, binNumber: '' };
+
+export interface CodFeeSettings {
+  enabled: boolean;
+  percent: number;
+}
+
+// Off by default — a COD surcharge changes what real customers pay, so it
+// shouldn't switch on silently the moment this code ships. Admin opts in
+// from the same VAT & Cash Flow tab (Settings > Accounts).
+export const COD_FEE_DEFAULTS: CodFeeSettings = { enabled: false, percent: 1 };
 
 export interface VatSummary {
   outputVat: string;
@@ -183,6 +196,15 @@ export class AccountsService {
     return this.getVatSettings();
   }
 
+  async getCodFeeSettings(): Promise<CodFeeSettings> {
+    return this.settings.getNamespace('cod_fee', COD_FEE_DEFAULTS);
+  }
+
+  async updateCodFeeSettings(dto: Partial<CodFeeSettings>): Promise<CodFeeSettings> {
+    await this.settings.setNamespace('cod_fee', dto);
+    return this.getCodFeeSettings();
+  }
+
   private async revenueInRange(from?: string, to?: string): Promise<Prisma.Decimal> {
     const agg = await this.prisma.client.order.aggregate({
       where: { status: 'COMPLETED', completedAt: dateRange(from, to) },
@@ -195,6 +217,17 @@ export class AccountsService {
     const vat = await this.getVatSettings();
     const revenue = await this.revenueInRange(from, to);
 
+    // Real tax actually collected on completed orders (CheckoutService
+    // applies the same accounts_vat rate at checkout time) rather than a
+    // synthetic revenue×rate estimate — the two used to disagree whenever
+    // an order's real tax differed from the current rate (rate changes,
+    // orders placed before VAT was enabled, etc.).
+    const outputVatAgg = await this.prisma.client.order.aggregate({
+      where: { status: 'COMPLETED', completedAt: dateRange(from, to) },
+      _sum: { taxAmount: true },
+    });
+    const outputVat = outputVatAgg._sum.taxAmount ?? new Decimal(0);
+
     const inputExpenses = await this.prisma.client.expense.aggregate({
       where: { isVatInput: true, ...((from || to) ? { expenseDate: dateRange(from, to) } : {}) },
       _sum: { amount: true },
@@ -202,7 +235,6 @@ export class AccountsService {
     const inputBase = inputExpenses._sum.amount ?? new Decimal(0);
 
     const rate = new Decimal(vat.ratePercent).dividedBy(100);
-    const outputVat = revenue.times(rate);
     const inputVat = inputBase.times(rate);
 
     return {

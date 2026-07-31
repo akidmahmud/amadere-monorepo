@@ -27,7 +27,6 @@ import { useAdvancePayment, useManualPaymentsForOrder } from "@/hooks/usePayment
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useCancelShipment, useTrackShipment, useUpdateShipmentStatus, SHIPMENT_STATUSES, type ShipmentStatus } from "@/hooks/useShipments";
-import type { OrderManagerRow } from "@/hooks/useOrderManager";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { ConsignModal } from "./ConsignModal";
 import { FraudDetailModal } from "./FraudDetailModal";
@@ -73,7 +72,19 @@ function TimelineDot({ active }: { active: boolean }) {
 
 const outlineBtn = "inline-flex h-9 items-center gap-1.5 rounded-sm border border-border bg-surface px-3 text-sm font-medium text-text hover:bg-surface-2";
 
-export function OrderDetailModal({ row, onClose }: { row: OrderManagerRow; onClose: () => void }) {
+// Everything else the modal shows comes from its own useOrder(row.id) fetch
+// — these three fields are the only ones actually read off the caller's row
+// object, so any list (Order Manager, the Shipments dispatch queue, ...)
+// can open this modal by passing just this much rather than a full
+// OrderManagerRow.
+export interface OrderDetailModalRow {
+  id: number;
+  orderNumber: string;
+  shipmentId: number | null;
+  shippingPhone: string | null;
+}
+
+export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; onClose: () => void }) {
   const { data: order, isLoading } = useOrder(row.id);
   const { data: statusConfigs } = useOrderStatusConfigs();
   const { data: advance } = useAdvancePayment(row.id);
@@ -297,6 +308,13 @@ export function OrderDetailModal({ row, onClose }: { row: OrderManagerRow; onClo
                     </span>
                   )}
                 </div>
+
+                {Number(order.taxAmount) > 0 && (
+                  <div className="flex items-center justify-between"><span className="text-muted">Tax</span><span className="num font-semibold text-text">৳{order.taxAmount}</span></div>
+                )}
+                {Number(order.codFee) > 0 && (
+                  <div className="flex items-center justify-between"><span className="text-muted">COD Fee</span><span className="num font-semibold text-text">৳{order.codFee}</span></div>
+                )}
 
                 <div className="flex items-start justify-between">
                   <div>

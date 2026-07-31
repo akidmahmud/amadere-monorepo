@@ -6,9 +6,36 @@ export type ShipmentProvider = "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
 export const SHIPMENT_PROVIDERS: ShipmentProvider[] = ["STEADFAST", "PATHAO", "REDX", "ECOURIER"];
 
 export type Shipment = components["schemas"]["ShipmentDto"];
+export type ShipmentQueueRow = components["schemas"]["ShipmentQueueRowDto"];
+export type BalanceOutcome = { unavailable?: false; balance: number } | { unavailable: true };
 
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-shipments"];
+
+export function useShipmentQueue(filters: { page?: number; pageSize?: number; search?: string }) {
+  return useQuery({
+    queryKey: [...KEY, "queue", filters],
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (filters.page) qs.set("page", String(filters.page));
+      if (filters.pageSize) qs.set("pageSize", String(filters.pageSize));
+      if (filters.search) qs.set("search", filters.search);
+      return proxyFetch<Paginated<ShipmentQueueRow> & { total: number; page: number; pageSize: number }>(
+        `/admin/shipments/queue?${qs}`,
+      );
+    },
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useCourierBalance(provider: ShipmentProvider | undefined) {
+  return useQuery({
+    queryKey: [...KEY, "balance", provider],
+    queryFn: () => proxyFetch<BalanceOutcome>(`/admin/shipments/balance?provider=${provider}`),
+    enabled: !!provider,
+    staleTime: 60_000,
+  });
+}
 
 export function useShipments(provider?: ShipmentProvider) {
   return useQuery({
@@ -35,6 +62,7 @@ export interface DispatchShipmentInput {
   provider: ShipmentProvider;
   pathao?: { storeId: number; recipientCity?: number; recipientZone?: number; recipientArea?: number };
   redx?: { deliveryAreaId: number; pickupStoreId?: number };
+  codAmountOverride?: number;
 }
 
 export function useDispatchShipment() {
@@ -42,6 +70,24 @@ export function useDispatchShipment() {
   return useMutation({
     mutationFn: (input: DispatchShipmentInput) =>
       proxyFetch<Shipment>("/admin/shipments/dispatch", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["net-profit-order-manager"] });
+    },
+  });
+}
+
+export interface DispatchBulkResult {
+  succeeded: number[];
+  failed: { orderId: number; error: string }[];
+}
+
+export function useDispatchBulkShipment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { orderIds: number[]; provider: ShipmentProvider }) =>
+      proxyFetch<DispatchBulkResult>("/admin/shipments/dispatch-bulk", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: ["admin-orders"] });

@@ -1,9 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card } from "@amader/admin-ui";
+import Link from "next/link";
+import { Button, Card, Icon } from "@amader/admin-ui";
 import { useSettings, useUpsertSetting, type Setting } from "@/hooks/useSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+
+const SETTINGS_LINKS = [
+  { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
+  { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },
+  { href: "/settings/email", icon: "mail", label: "Email Settings", description: "SMTP configuration used to send emails." },
+];
+
+function SettingsLinksGrid() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {SETTINGS_LINKS.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4 shadow-card hover:bg-surface-2"
+        >
+          <div className="grid h-9 w-9 place-items-center rounded-inner bg-brand-50 text-brand-500">
+            <Icon name={link.icon} />
+          </div>
+          <div className="font-ui text-sm font-bold text-text">{link.label}</div>
+          <p className="text-xs text-muted">{link.description}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 function SettingRow({ setting }: { setting: Setting }) {
   const [editing, setEditing] = useState(false);
@@ -105,6 +132,7 @@ export default function SettingsPage() {
 
   return (
     <>
+      <SettingsLinksGrid />
       <TwoFactorSettings />
 
       <div className="flex items-center justify-between">

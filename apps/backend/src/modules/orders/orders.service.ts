@@ -224,7 +224,7 @@ export class OrdersService {
       new Decimal(0),
     );
     const totalAmount = Decimal.max(
-      subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.shippingAmount),
+      subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.codFee).plus(order.shippingAmount),
       new Decimal(0),
     );
     await tx.order.update({ where: { id: orderId }, data: { subTotal, totalAmount } });
@@ -354,7 +354,7 @@ export class OrdersService {
     const discountAmount = dto.discountAmount !== undefined ? new Decimal(dto.discountAmount) : order.discountAmount;
     const shippingAmount = dto.shippingAmount !== undefined ? new Decimal(dto.shippingAmount) : order.shippingAmount;
     const totalAmount = Decimal.max(
-      order.subTotal.minus(discountAmount).plus(order.taxAmount).plus(shippingAmount),
+      order.subTotal.minus(discountAmount).plus(order.taxAmount).plus(order.codFee).plus(shippingAmount),
       new Decimal(0),
     );
 
