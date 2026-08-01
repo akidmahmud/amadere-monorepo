@@ -3,7 +3,7 @@ import { Fragment, type ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import {
   AdBannerSection,
-  BentoBlogs,
+  BlogCardGrid,
   CategoryCard,
   CertificationRow,
   CircleBadgeBar,
@@ -24,6 +24,7 @@ import { toProductCardData, toPromoVideoProductData } from "@/lib/product-card-m
 import { toDisplayImageUrl } from "@/lib/media";
 import { toBlogCardData } from "@/lib/blog-mapper";
 import { HealthConcernSection } from "@/components/HealthConcernSection";
+import { NewsletterBanner } from "@/components/NewsletterBanner";
 import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
 import { PromoVideoSectionClient } from "@/components/PromoVideoSectionClient";
 import { TabbedCollectionCarouselSection } from "@/components/TabbedCollectionCarouselSection";
@@ -246,7 +247,7 @@ function renderSection(
       // When the admin explicitly picked posts (postIds), show all of them —
       // `config.limit` is a leftover default for the "latest N posts" mode
       // and shouldn't silently drop an explicitly-selected post.
-      const limit = postIds?.length ?? (config.limit as number | undefined) ?? 6;
+      const limit = postIds?.length ?? (config.limit as number | undefined) ?? 8;
       const selected = (postIds?.length ? ctx.blogPosts.filter((p) => postIds.includes(p.id)) : ctx.blogPosts).slice(
         0,
         limit,
@@ -255,7 +256,7 @@ function renderSection(
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "আমাদের ব্লগ"}</SectionHeading>
-          <BentoBlogs
+          <BlogCardGrid
             posts={selected.map((post) => toBlogCardData(post))}
             viewAllHref="/blog"
             viewAllLabel="View All"
@@ -385,7 +386,7 @@ export default async function Home({
       params: { query: { locale: localeParam, pageSize: 10 } },
     }),
     safeGet("/api/v1/blog-posts", {
-      params: { query: { locale: localeParam, pageSize: 6 } },
+      params: { query: { locale: localeParam, pageSize: 8 } },
     }),
     firstTagProductsPromise,
   ]);
@@ -450,6 +451,10 @@ export default async function Home({
           />
         </div>
       )}
+
+      <div className={`${WRAPPER} py-9`}>
+        <NewsletterBanner />
+      </div>
     </main>
   );
 }

@@ -34,7 +34,7 @@ export * from "./components/CircleBadgeBar";
 export * from "./components/PromoVideoSection";
 export * from "./components/CertificationRow";
 export * from "./components/FeatureTile";
-export * from "./components/BentoBlogs";
+export * from "./components/BlogCardGrid";
 export * from "./components/TestimonialsBento";
 export * from "./components/HeroCarousel";
 export * from "./components/Pager";
