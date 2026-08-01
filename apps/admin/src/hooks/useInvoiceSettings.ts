@@ -2,10 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 
 export type InvoiceDateFormat = "MDY" | "DMY" | "YMD";
+export type InvoiceLanguageSupport = "default" | "arabic" | "bengali" | "chinese";
 
 export interface InvoiceSettings {
   companyName: string;
   companyAddress: string;
+  companyCity: string;
+  companyState: string;
+  companyCountry: string;
+  companyZipcode: string;
   companyEmail: string;
   companyPhone: string;
   companyTaxId: string;
@@ -15,6 +20,10 @@ export interface InvoiceSettings {
   disableUntilConfirmed: boolean;
   stampEnabled: boolean;
   stampImageUrl: string | null;
+  customFontEnabled: boolean;
+  customFontFamily: string;
+  languageSupport: InvoiceLanguageSupport;
+  termsAndConditions: string;
 }
 
 const KEY = ["admin-invoice-settings"];

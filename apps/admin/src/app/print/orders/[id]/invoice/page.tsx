@@ -14,7 +14,10 @@ export default function InvoicePrintPage({ params }: { params: Promise<{ id: str
   const { data: order, isLoading } = useOrder(Number(id));
 
   useEffect(() => {
-    if (order) setTimeout(() => window.print(), 300);
+    // ?preview=1 skips the auto-print dialog — useful to just look at the layout.
+    if (order && !new URLSearchParams(window.location.search).has("preview")) {
+      setTimeout(() => window.print(), 300);
+    }
   }, [order]);
 
   if (isLoading || !order) return <p className="p-8 text-sm text-muted">Loading…</p>;

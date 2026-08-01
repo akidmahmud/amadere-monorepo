@@ -8,13 +8,14 @@ import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 
 const SETTINGS_LINKS = [
   { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
+  { href: "/settings/invoice-template", icon: "description", label: "Invoice Template", description: "Custom raw-HTML layout for generated invoices." },
   { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },
   { href: "/settings/email", icon: "mail", label: "Email Settings", description: "SMTP configuration used to send emails." },
 ];
 
 function SettingsLinksGrid() {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {SETTINGS_LINKS.map((link) => (
         <Link
           key={link.href}

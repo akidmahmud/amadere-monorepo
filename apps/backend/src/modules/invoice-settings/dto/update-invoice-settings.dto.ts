@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-import type { InvoiceDateFormat } from '../invoice-settings.service';
+import type { InvoiceDateFormat, InvoiceLanguageSupport } from '../invoice-settings.service';
 
 const DATE_FORMATS: InvoiceDateFormat[] = ['MDY', 'DMY', 'YMD'];
+const LANGUAGE_SUPPORT: InvoiceLanguageSupport[] = ['default', 'arabic', 'bengali', 'chinese'];
 
 export class UpdateInvoiceSettingsDto {
   @ApiPropertyOptional()
@@ -16,6 +17,30 @@ export class UpdateInvoiceSettingsDto {
   @IsString()
   @MaxLength(500)
   companyAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  companyCity?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  companyState?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  companyCountry?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  companyZipcode?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -65,4 +90,26 @@ export class UpdateInvoiceSettingsDto {
   @IsOptional()
   @IsString()
   stampImageUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  customFontEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  customFontFamily?: string;
+
+  @ApiPropertyOptional({ enum: LANGUAGE_SUPPORT })
+  @IsOptional()
+  @IsIn(LANGUAGE_SUPPORT)
+  languageSupport?: InvoiceLanguageSupport;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  termsAndConditions?: string;
 }

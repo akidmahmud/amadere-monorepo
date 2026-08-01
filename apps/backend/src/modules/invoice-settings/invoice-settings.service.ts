@@ -4,10 +4,15 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 const KEY = 'invoice.settings';
 
 export type InvoiceDateFormat = 'MDY' | 'DMY' | 'YMD';
+export type InvoiceLanguageSupport = 'default' | 'arabic' | 'bengali' | 'chinese';
 
 export interface InvoiceSettings {
   companyName: string;
   companyAddress: string;
+  companyCity: string;
+  companyState: string;
+  companyCountry: string;
+  companyZipcode: string;
   companyEmail: string;
   companyPhone: string;
   companyTaxId: string;
@@ -21,12 +26,20 @@ export interface InvoiceSettings {
   disableUntilConfirmed: boolean;
   stampEnabled: boolean;
   stampImageUrl: string | null;
+  customFontEnabled: boolean;
+  customFontFamily: string;
+  languageSupport: InvoiceLanguageSupport;
+  termsAndConditions: string;
 }
 
 const DEFAULTS: InvoiceSettings = {
-  companyName: 'Amader',
-  companyAddress: '',
-  companyEmail: '',
+  companyName: 'Amader™ eBuy Ltd',
+  companyAddress: 'Moyshan Bari, Salna, Gazipur City Corporation',
+  companyCity: 'Gazipur',
+  companyState: 'Gazipur',
+  companyCountry: 'Bangladesh',
+  companyZipcode: '',
+  companyEmail: 'amaderecommercer@gmail.com',
   companyPhone: '',
   companyTaxId: '',
   companyLogoUrl: null,
@@ -35,6 +48,10 @@ const DEFAULTS: InvoiceSettings = {
   disableUntilConfirmed: false,
   stampEnabled: false,
   stampImageUrl: null,
+  customFontEnabled: false,
+  customFontFamily: '',
+  languageSupport: 'default',
+  termsAndConditions: '',
 };
 
 // Same generic-Setting-table pattern as every other *SettingsService this
