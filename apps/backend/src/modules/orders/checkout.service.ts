@@ -18,7 +18,7 @@ import { AdvancePaymentService } from '../net-profit/advance-payment/advance-pay
 import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
 import { SmsService } from '../net-profit/sms/sms.service';
 import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
-import { VAT_DEFAULTS, COD_FEE_DEFAULTS } from '../net-profit/accounts/accounts.service';
+import { VAT_DEFAULTS, COD_FEE_DEFAULTS, computeCheckoutFees } from '../net-profit/accounts/accounts.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -187,14 +187,14 @@ export class CheckoutService {
       this.netProfitSettings.getNamespace('accounts_vat', VAT_DEFAULTS),
       this.netProfitSettings.getNamespace('cod_fee', COD_FEE_DEFAULTS),
     ]);
-    const taxAmount = vatSettings.enabled
-      ? preFeeTotal.times(vatSettings.ratePercent).dividedBy(100).toDecimalPlaces(2)
-      : new Decimal(0);
-    const codFee =
-      codFeeSettings.enabled && dto.paymentProvider === 'COD'
-        ? preFeeTotal.times(codFeeSettings.percent).dividedBy(100).toDecimalPlaces(2)
-        : new Decimal(0);
-    const totalAmount = preFeeTotal.plus(taxAmount).plus(codFee);
+    const { taxAmount, codFee, shippingFee } = computeCheckoutFees(
+      preFeeTotal,
+      dto.paymentProvider === 'COD',
+      pricing.discounts.some((d) => d.freeShipping),
+      vatSettings,
+      codFeeSettings,
+    );
+    const totalAmount = preFeeTotal.plus(taxAmount).plus(codFee).plus(shippingFee);
 
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of cart.items) {
@@ -216,6 +216,7 @@ export class CheckoutService {
           discountAmount: pricing.totalDiscount,
           taxAmount,
           codFee,
+          shippingAmount: shippingFee,
           totalAmount,
           couponCode: cart.couponCode,
           customerNote: dto.customerNote,

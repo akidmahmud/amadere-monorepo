@@ -18,13 +18,17 @@ function persistGuestToken(cart: CartViewDto): void {
   if (cart.guestToken) setGuestToken(cart.guestToken);
 }
 
-function cartKey(locale: string) {
-  return ["cart", locale] as const;
+function cartKey(locale: string, paymentProvider?: string) {
+  return ["cart", locale, paymentProvider] as const;
 }
 
-async function fetchCart(locale: string): Promise<CartViewDto> {
+type CartPaymentProvider = NonNullable<
+  components["schemas"]["CheckoutDto"]["paymentProvider"]
+>;
+
+async function fetchCart(locale: string, paymentProvider?: string): Promise<CartViewDto> {
   const { data, error } = await api.GET("/api/v1/cart", {
-    params: { query: { locale: locale as "EN" | "BN" } },
+    params: { query: { locale: locale as "EN" | "BN", paymentProvider: paymentProvider as CartPaymentProvider | undefined } },
     headers: cartHeaders(),
   });
   if (error) throw error;
@@ -32,8 +36,16 @@ async function fetchCart(locale: string): Promise<CartViewDto> {
   return data;
 }
 
-export function useCartQuery(locale: string) {
-  return useQuery({ queryKey: cartKey(locale), queryFn: () => fetchCart(locale) });
+// paymentProvider is optional — pass the checkout form's currently selected
+// method so taxAmount/codFee/grandTotal reflect what the customer will
+// actually be charged (COD fee only applies to COD). Omit it anywhere the
+// customer hasn't picked a method yet (mini-cart, cart drawer); tax still
+// applies there since it isn't payment-method-dependent.
+export function useCartQuery(locale: string, paymentProvider?: string) {
+  return useQuery({
+    queryKey: cartKey(locale, paymentProvider),
+    queryFn: () => fetchCart(locale, paymentProvider),
+  });
 }
 
 function useCartMutation<TArgs>(
@@ -45,7 +57,14 @@ function useCartMutation<TArgs>(
     mutationFn,
     onSuccess: (cart) => {
       persistGuestToken(cart);
-      queryClient.setQueryData(cartKey(locale), cart);
+      // Item/coupon mutations don't know the customer's selected payment
+      // method, so their response always computes codFee as if not COD —
+      // invalidating every cart query for this locale (prefix match, e.g.
+      // the checkout page's cartKey(locale, "COD")) instead of seeding the
+      // cache directly means every mounted view refetches with its own
+      // correct provider rather than momentarily showing this codFee-less
+      // total.
+      queryClient.invalidateQueries({ queryKey: ["cart", locale] });
     },
   });
 }

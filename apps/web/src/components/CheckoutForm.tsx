@@ -64,15 +64,6 @@ export function CheckoutForm() {
   const checkoutStartedAtRef = useRef(Math.floor(Date.now() / 1000));
   const shippingAddressRef = useRef<HTMLDivElement>(null);
 
-  const { data: cart } = useCartQuery(locale);
-  const updateItem = useUpdateCartItem(locale);
-  const removeItem = useRemoveCartItem(locale);
-  const requestCodOtp = useRequestCodOtp();
-  const placeOrder = usePlaceOrder(locale);
-  const voucherCheck = useGiftVoucherCheck(voucherInput);
-  const { data: methodConfigs } = usePaymentMethodConfigs();
-  const [copied, setCopied] = useState(false);
-
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
@@ -100,6 +91,20 @@ export function CheckoutForm() {
   const paymentProvider = watch("paymentProvider");
   const billingSameAsShipping = watch("billingSameAsShipping");
   const shippingPhone = watch("shippingAddress.phone");
+
+  // paymentProvider is threaded through so the previewed total includes the
+  // real COD fee (Settings > Accounts) whenever COD is selected — the cart
+  // endpoint recomputes tax/codFee for whichever provider this is, per
+  // computeCheckoutFees on the backend, so this always matches what
+  // usePlaceOrder will actually charge.
+  const { data: cart } = useCartQuery(locale, paymentProvider);
+  const updateItem = useUpdateCartItem(locale);
+  const removeItem = useRemoveCartItem(locale);
+  const requestCodOtp = useRequestCodOtp();
+  const placeOrder = usePlaceOrder(locale);
+  const voucherCheck = useGiftVoucherCheck(voucherInput);
+  const { data: methodConfigs } = usePaymentMethodConfigs();
+  const [copied, setCopied] = useState(false);
 
   const manualOptions = (methodConfigs ?? [])
     .filter((c) => c.isActive)
@@ -260,7 +265,7 @@ export function CheckoutForm() {
                 <div className="mt-4 border-t border-line pt-4">
                   <div className="flex items-center gap-2">
                     <span className="font-body text-sm text-ink">
-                      Send {cart ? formatMoney(cart.total) : ""} to{" "}
+                      Send {cart ? formatMoney(cart.grandTotal) : ""} to{" "}
                       <span className="num font-semibold">{selectedMethodConfig.number}</span>
                       <span className="ml-1 text-xs text-muted">({selectedMethodConfig.accountType.toLowerCase()})</span>
                     </span>
@@ -346,9 +351,15 @@ export function CheckoutForm() {
                     <span>-{formatMoney(d.amount)}</span>
                   </div>
                 ))}
-                <div className="flex justify-between py-1.5 font-ui font-bold text-ink">
+                {Number(cart.shippingFee) > 0 && (
+                  <div className="flex justify-between py-1.5 font-body text-sm text-ink">
+                    <span>Shipping fee</span>
+                    <span>{formatMoney(cart.shippingFee)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-line py-1.5 pt-2.5 font-ui font-bold text-ink">
                   <span>Total</span>
-                  <span>{formatMoney(cart.total)}</span>
+                  <span>{formatMoney(cart.grandTotal)}</span>
                 </div>
               </div>
             )}

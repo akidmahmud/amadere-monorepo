@@ -21,16 +21,26 @@ export class DiscountsService {
   async list(
     page: number,
     pageSize: number,
+    q?: string,
   ): Promise<PaginatedResult<DiscountDto>> {
+    const where = q ? { code: { contains: q, mode: 'insensitive' as const } } : {};
     const [items, total] = await Promise.all([
       this.prisma.client.discount.findMany({
+        where,
         include: DISCOUNT_INCLUDE,
         orderBy: { createdAt: 'desc' },
         ...paginationArgs(page, pageSize),
       }),
-      this.prisma.client.discount.count(),
+      this.prisma.client.discount.count({ where }),
     ]);
     return toPaginatedResult(items.map(toDiscountDto), total, page, pageSize);
+  }
+
+  async bulkDelete(ids: number[]): Promise<{ deleted: number }> {
+    const result = await this.prisma.client.discount.deleteMany({
+      where: { id: { in: ids } },
+    });
+    return { deleted: result.count };
   }
 
   async get(id: number): Promise<DiscountDto> {

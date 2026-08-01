@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
+import { CartQueryDto } from './dto/cart-query.dto';
 import { CustomerJwtGuard } from '../../common/auth/customer-jwt.guard';
 import { CurrentCustomer } from '../../common/auth/current-customer.decorator';
 import { CartIdentityGuard } from './cart-identity.guard';
@@ -41,9 +42,9 @@ export class CartController {
   @ApiOkResponse({ type: CartViewDto })
   getCart(
     @Req() req: RequestWithCartIdentity,
-    @Query() { locale }: LocaleQueryDto,
+    @Query() { locale, paymentProvider }: CartQueryDto,
   ): Promise<CartViewDto> {
-    return this.cart.getView(req.cartIdentity, locale ?? 'EN');
+    return this.cart.getView(req.cartIdentity, locale ?? 'EN', paymentProvider);
   }
 
   @Post('items')

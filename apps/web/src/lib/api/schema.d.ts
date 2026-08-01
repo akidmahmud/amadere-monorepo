@@ -436,6 +436,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/email-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailSettingsController_get"];
+        put: operations["AdminEmailSettingsController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-settings/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminEmailSettingsController_sendTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/rbac/permissions": {
         parameters: {
             query?: never;
@@ -1342,6 +1374,22 @@ export interface paths {
         get: operations["AdminDiscountsController_list"];
         put?: never;
         post: operations["AdminDiscountsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/discounts/bulk-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminDiscountsController_bulkDelete"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2804,6 +2852,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/newsletter/subscribers/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/subscribers/bulk-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterController_bulkDelete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/subscribers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminNewsletterController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/dashboard/overview": {
         parameters: {
             query?: never;
@@ -3278,6 +3374,54 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminSitemapController_ping"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/invoice-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminInvoiceSettingsController_get"];
+        put: operations["AdminInvoiceSettingsController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/invoice-template-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminInvoiceTemplateSettingsController_get"];
+        put: operations["AdminInvoiceTemplateSettingsController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipping-label-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminShippingLabelSettingsController_get"];
+        put: operations["AdminShippingLabelSettingsController_update"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5000,6 +5144,22 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        UpdateEmailSettingsDto: {
+            enabled?: boolean;
+            /** @description e.g. smtp.gmail.com */
+            host?: string;
+            port?: number;
+            username?: string;
+            /** @description Leave blank to keep the existing stored password */
+            password?: string;
+            /** @enum {string} */
+            encryption?: "none" | "tls" | "ssl";
+            senderName?: string;
+            senderEmail?: string;
+        };
+        SendTestEmailDto: {
+            to: string;
+        };
         PermissionDto: {
             id: number;
             resource: string;
@@ -5897,6 +6057,9 @@ export interface components {
             categoryIds: number[];
             customerIds: number[];
         };
+        BulkDeleteDiscountDto: {
+            ids: number[];
+        };
         CreateDiscountDto: {
             /** @description Required for COUPON, must be absent for PROMOTION */
             code?: string;
@@ -6015,6 +6178,10 @@ export interface components {
             total: string;
             couponError: string | null;
             freeShipping: components["schemas"]["FreeShippingLadderDto"] | null;
+            taxAmount: string;
+            codFee: string;
+            shippingFee: string;
+            grandTotal: string;
         };
         AddCartItemDto: {
             productId: number;
@@ -6043,6 +6210,10 @@ export interface components {
             total: string;
             couponError: string | null;
             freeShipping: components["schemas"]["FreeShippingLadderDto"] | null;
+            taxAmount: string;
+            codFee: string;
+            shippingFee: string;
+            grandTotal: string;
         };
         MergeCartDto: {
             guestToken: string;
@@ -6756,6 +6927,9 @@ export interface components {
             /** Format: date-time */
             unsubscribedAt: string | null;
         };
+        BulkDeleteNewsletterDto: {
+            ids: number[];
+        };
         PeriodStatsDto: {
             orders: number;
             revenue: string;
@@ -7136,6 +7310,37 @@ export interface components {
         UpdateSitemapSettingsDto: {
             enabled?: boolean;
             indexNowEnabled?: boolean;
+        };
+        UpdateInvoiceSettingsDto: {
+            companyName?: string;
+            companyAddress?: string;
+            companyCity?: string;
+            companyState?: string;
+            companyCountry?: string;
+            companyZipcode?: string;
+            companyEmail?: string;
+            companyPhone?: string;
+            companyTaxId?: string;
+            companyLogoUrl?: string;
+            invoicePrefix?: string;
+            /** @enum {string} */
+            dateFormat?: "MDY" | "DMY" | "YMD";
+            disableUntilConfirmed?: boolean;
+            stampEnabled?: boolean;
+            stampImageUrl?: string;
+            customFontEnabled?: boolean;
+            customFontFamily?: string;
+            /** @enum {string} */
+            languageSupport?: "default" | "arabic" | "bengali" | "chinese";
+            termsAndConditions?: string;
+        };
+        UpdateInvoiceTemplateSettingsDto: {
+            enabled?: boolean;
+            template?: string;
+        };
+        UpdateShippingLabelSettingsDto: {
+            enabled?: boolean;
+            template?: string;
         };
         TrackEventDto: {
             /** @description e.g. "page_view", "view_item", "add_to_cart" */
@@ -8443,6 +8648,69 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminEmailSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminEmailSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminEmailSettingsController_sendTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendTestEmailDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -10640,6 +10908,8 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                /** @description Search by coupon code */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -10690,6 +10960,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DiscountDto"];
                 };
+            };
+        };
+    };
+    AdminDiscountsController_bulkDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDeleteDiscountDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10870,6 +11161,7 @@ export interface operations {
         parameters: {
             query?: {
                 locale?: "EN" | "BN";
+                paymentProvider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
             };
             header?: {
                 /** @description Guest cart token (returned on first add-to-cart) */
@@ -13423,6 +13715,8 @@ export interface operations {
     AdminNewsletterController_list: {
         parameters: {
             query?: {
+                /** @description Search by email */
+                q?: string;
                 page?: number;
                 pageSize?: number;
             };
@@ -13444,6 +13738,63 @@ export interface operations {
                         pageSize?: number;
                     };
                 };
+            };
+        };
+    };
+    AdminNewsletterController_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterController_bulkDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDeleteNewsletterDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -14557,6 +14908,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminInvoiceSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminInvoiceSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInvoiceSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminInvoiceTemplateSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminInvoiceTemplateSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInvoiceTemplateSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminShippingLabelSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminShippingLabelSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShippingLabelSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };

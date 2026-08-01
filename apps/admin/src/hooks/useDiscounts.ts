@@ -18,22 +18,33 @@ export type DiscountInput = Omit<components["schemas"]["CreateDiscountDto"], "ty
   status: PublishStatus;
 };
 
-type Paginated<T> = { items?: T[]; total?: number };
+export type DiscountListFilters = {
+  q?: string;
+  page: number;
+  pageSize: number;
+};
+
 const KEY = ["admin-discounts"];
 
-export function useDiscounts() {
+function toQueryString(filters: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v !== undefined && v !== "") params.set(k, String(v));
+  }
+  const s = params.toString();
+  return s ? `?${s}` : "";
+}
+
+export function useDiscounts(filters: DiscountListFilters) {
   return useQuery({
-    queryKey: KEY,
-    queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminDiscount>>("/admin/discounts?pageSize=100");
-      return res.items ?? [];
-    },
+    queryKey: [...KEY, filters],
+    queryFn: () => proxyFetch<{ items: AdminDiscount[]; total: number }>(`/admin/discounts${toQueryString(filters)}`),
   });
 }
 
 export function useDiscount(id: number) {
   return useQuery({
-    queryKey: [...KEY, id],
+    queryKey: [...KEY, "detail", id],
     queryFn: () => proxyFetch<AdminDiscount>(`/admin/discounts/${id}`),
     enabled: Number.isFinite(id),
   });
@@ -61,6 +72,15 @@ export function useDeleteDiscount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => proxyFetch<void>(`/admin/discounts/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useBulkDeleteDiscounts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) =>
+      proxyFetch<{ deleted: number }>("/admin/discounts/bulk-delete", { method: "POST", body: JSON.stringify({ ids }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

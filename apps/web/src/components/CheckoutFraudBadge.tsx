@@ -100,9 +100,7 @@ export function CheckoutFraudBadge({ phone, onResult }: { phone: string; onResul
     );
   }
 
-  return (
-    <p className="mt-1.5 font-body text-xs text-green">
-      ✓ Courier delivery score: {result.successRatePercent}%
-    </p>
-  );
+  // Good delivery history needs no customer-facing message — the score
+  // itself is an internal fraud-scoring detail, not something to surface.
+  return null;
 }

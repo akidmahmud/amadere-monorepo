@@ -17,11 +17,12 @@ import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { DiscountsService } from './discounts.service';
 import { CreateDiscountDto } from './dto/create-discount.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
+import { AdminDiscountQueryDto } from './dto/admin-discount-query.dto';
+import { BulkDeleteDiscountDto } from './dto/bulk-delete-discount.dto';
 import { DiscountDto } from './discounts.mapper';
 
 @ApiTags('admin/discounts')
@@ -36,9 +37,15 @@ export class AdminDiscountsController {
   @RequirePermission('discount.view')
   @ApiPaginatedResponse(DiscountDto)
   list(
-    @Query() { page, pageSize }: PaginationQueryDto,
+    @Query() { page, pageSize, q }: AdminDiscountQueryDto,
   ): Promise<PaginatedResult<DiscountDto>> {
-    return this.discounts.list(page ?? 1, pageSize ?? 20);
+    return this.discounts.list(page ?? 1, pageSize ?? 20, q);
+  }
+
+  @Post('bulk-delete')
+  @RequirePermission('discount.delete')
+  bulkDelete(@Body() dto: BulkDeleteDiscountDto): Promise<{ deleted: number }> {
+    return this.discounts.bulkDelete(dto.ids);
   }
 
   @Get(':id')

@@ -37,6 +37,36 @@ export interface CodFeeSettings {
 // from the same VAT & Cash Flow tab (Settings > Accounts).
 export const COD_FEE_DEFAULTS: CodFeeSettings = { enabled: false, percent: 1 };
 
+// Flat checkout-time shipping fee (courier cost isn't known until dispatch —
+// see ShippingChargeCalculator — so this is what's actually charged to the
+// customer at order placement; ShipmentsService.dispatch() later overwrites
+// both shippingAmount and totalAmount with the real courier cost).
+export const FLAT_SHIPPING_FEE = new Decimal(80);
+
+// Single source of truth for tax/COD-fee/shipping-fee math — used by
+// CheckoutService when actually placing an order AND by CartService's
+// checkout-preview pricing, so what the customer sees on the checkout page
+// can never drift from what they're actually charged (that mismatch was a
+// real reported bug: the checkout page showed cart.total with no tax/COD-fee
+// line at all).
+export function computeCheckoutFees(
+  preFeeTotal: Prisma.Decimal,
+  isCod: boolean,
+  freeShipping: boolean,
+  vatSettings: VatSettings,
+  codFeeSettings: CodFeeSettings,
+): { taxAmount: Prisma.Decimal; codFee: Prisma.Decimal; shippingFee: Prisma.Decimal } {
+  const taxAmount = vatSettings.enabled
+    ? preFeeTotal.times(vatSettings.ratePercent).dividedBy(100).toDecimalPlaces(2)
+    : new Decimal(0);
+  const codFee =
+    codFeeSettings.enabled && isCod
+      ? preFeeTotal.times(codFeeSettings.percent).dividedBy(100).toDecimalPlaces(2)
+      : new Decimal(0);
+  const shippingFee = freeShipping ? new Decimal(0) : FLAT_SHIPPING_FEE;
+  return { taxAmount, codFee, shippingFee };
+}
+
 export interface VatSummary {
   outputVat: string;
   inputVat: string;
