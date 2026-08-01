@@ -7,6 +7,7 @@ import {
   PackSizeSelector,
   PriceTag,
   QtyStepper,
+  formatMoney,
   useCartDrawerStore,
 } from "@amader/ui";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -168,6 +169,24 @@ export function PdpPurchasePanel({
       <hr className="mb-4 border-line" />
 
       <div className="mb-3 flex items-center gap-3">
+        {/* Slim, inline stand-in for the desktop PackSizeSelector card grid
+            (kept above the CTAs, unchanged) — that card layout is too wide
+            to sit next to the qty stepper on a phone, so mobile gets a
+            native select sharing this row instead, per explicit request. */}
+        {product.hasVariants && packOptions.length > 0 && selectedVariantId && (
+          <select
+            aria-label="Select pack size"
+            value={selectedVariantId}
+            onChange={(e) => setSelectedVariantId(e.target.value)}
+            className="h-10 min-w-0 flex-1 rounded-full border border-line bg-white px-3 font-ui text-sm text-ink md:hidden"
+          >
+            {packOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} — {formatMoney(option.price)}
+              </option>
+            ))}
+          </select>
+        )}
         <QtyStepper
           value={qty}
           onChange={setQty}
@@ -234,12 +253,6 @@ export function PdpPurchasePanel({
         ))}
       </div>
 
-      {product.hasVariants && packOptions.length > 0 && selectedVariantId && (
-        <div className="md:hidden">
-          <h4 className="mb-2.5 font-ui text-sm font-medium text-ink">Select Pack Size</h4>
-          <PackSizeSelector options={packOptions} value={selectedVariantId} onChange={setSelectedVariantId} />
-        </div>
-      )}
     </div>
   );
 }

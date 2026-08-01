@@ -184,15 +184,17 @@ export default async function ProductPage({
           so a fixed pixel width here left a much wider margin than theirs on
           large screens. Scoped to this page only; the sitewide 1180px
           convention elsewhere is unchanged. */}
-      <div className="mx-auto max-w-[80%] px-5">
-        <AppBreadcrumb
-          items={[
-            { label: "Home", href: "/" },
-            { label: "Shop", href: "/products" },
-            ...(category ? [{ label: category.name, href: `/categories/${category.slug}` }] : []),
-            { label: product.name },
-          ]}
-        />
+      <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5">
+        <div className="pl-4 sm:pl-0">
+          <AppBreadcrumb
+            items={[
+              { label: "Home", href: "/" },
+              { label: "Shop", href: "/products" },
+              ...(category ? [{ label: category.name, href: `/categories/${category.slug}` }] : []),
+              { label: product.name },
+            ]}
+          />
+        </div>
 
         {/* Card look matched to ghorerbazar.com's PDP hero card: no border,
             a tighter/darker shadow than this app's default shadow-brand
@@ -201,7 +203,7 @@ export default async function ProductPage({
             reusing @amader/ui's Card (its border+shadow-brand defaults
             don't match and can't be reliably overridden via plain string
             concatenation, since `cn` here is clsx without tailwind-merge). */}
-        <div className="mb-10 rounded-xl bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)]">
+        <div className="mb-10 rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-xl">
           <div className="grid grid-cols-[6fr_5fr] items-start gap-11 max-lg:grid-cols-1">
             <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
@@ -249,7 +251,7 @@ export default async function ProductPage({
           </div>
         )}
 
-        <div className="rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)]">
+        <div className="rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-lg">
           <ProductTabs tabs={tabs} />
         </div>
       </div>
@@ -266,7 +268,7 @@ export default async function ProductPage({
       {/* ProductCarouselSection has no built-in max-width/gutter of its own
           (shared with the homepage's edge-to-edge usage) — capped here to
           match every other section's containment on this page. */}
-      <div className="mx-auto max-w-[80%] px-5">
+      <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5">
         <ProductCarouselSectionClient
           heading="Related Products"
           products={relatedProducts}
@@ -275,7 +277,7 @@ export default async function ProductPage({
         />
       </div>
 
-      <div className="mx-auto max-w-[80%] px-5 py-14">
+      <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5 py-14">
         <SectionHeading>Customer Reviews</SectionHeading>
 
         {reviews && reviews.items.length > 0 && (
@@ -315,7 +317,7 @@ export default async function ProductPage({
       </div>
 
       {combos.length > 0 && (
-        <div className="mx-auto max-w-[80%] px-5 py-14">
+        <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5 py-14">
           <SectionHeading>Frequently Bought Together</SectionHeading>
           <Carousel>
             {combos.map((combo: ReturnType<typeof toComboCardData>) => (
