@@ -25,6 +25,7 @@ import { UpdateOrderDetailsDto } from './dto/update-order-details.dto';
 import { UpdateOrderPaymentDto } from './dto/update-order-payment.dto';
 import { UpdateOrderAmountsDto } from './dto/update-order-amounts.dto';
 import { reserveStock, releaseStock } from './stock-reservation.util';
+import { lockOrderRow } from './order-totals.util';
 import {
   ORDER_STATUS_CHANGED_EVENT,
   OrderStatusChangedEvent,
@@ -215,6 +216,7 @@ export class OrdersService {
   // coupon eligibility, e.g. minOrderAmount, on every quantity tweak is a
   // materially bigger feature; revisit if staff report stale discounts).
   private async recomputeTotals(tx: Prisma.TransactionClient, orderId: number): Promise<void> {
+    await lockOrderRow(tx, orderId);
     const [order, items] = await Promise.all([
       tx.order.findUniqueOrThrow({ where: { id: orderId } }),
       tx.orderItem.findMany({ where: { orderId } }),
@@ -348,24 +350,27 @@ export class OrdersService {
   }
 
   async updateAmounts(orderId: number, dto: UpdateOrderAmountsDto): Promise<OrderDto> {
-    const order = await this.prisma.client.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException('Order not found');
+    await this.prisma.client.$transaction(async (tx) => {
+      await lockOrderRow(tx, orderId);
+      const order = await tx.order.findUnique({ where: { id: orderId } });
+      if (!order) throw new NotFoundException('Order not found');
 
-    const discountAmount = dto.discountAmount !== undefined ? new Decimal(dto.discountAmount) : order.discountAmount;
-    const shippingAmount = dto.shippingAmount !== undefined ? new Decimal(dto.shippingAmount) : order.shippingAmount;
-    const totalAmount = Decimal.max(
-      order.subTotal.minus(discountAmount).plus(order.taxAmount).plus(order.codFee).plus(shippingAmount),
-      new Decimal(0),
-    );
+      const discountAmount = dto.discountAmount !== undefined ? new Decimal(dto.discountAmount) : order.discountAmount;
+      const shippingAmount = dto.shippingAmount !== undefined ? new Decimal(dto.shippingAmount) : order.shippingAmount;
+      const totalAmount = Decimal.max(
+        order.subTotal.minus(discountAmount).plus(order.taxAmount).plus(order.codFee).plus(shippingAmount),
+        new Decimal(0),
+      );
 
-    await this.prisma.client.order.update({
-      where: { id: orderId },
-      data: {
-        discountAmount,
-        shippingAmount,
-        totalAmount,
-        couponCode: dto.couponCode !== undefined ? dto.couponCode || null : undefined,
-      },
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          discountAmount,
+          shippingAmount,
+          totalAmount,
+          couponCode: dto.couponCode !== undefined ? dto.couponCode || null : undefined,
+        },
+      });
     });
 
     return this.reload(orderId);

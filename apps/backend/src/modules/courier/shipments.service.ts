@@ -13,6 +13,7 @@ import {
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { OrdersService } from '../orders/orders.service';
+import { lockOrderRow } from '../orders/order-totals.util';
 import { BalanceOutcome, CourierProvider } from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
 import { PathaoCourierProvider } from './providers/pathao-courier.provider';
@@ -100,7 +101,12 @@ export class ShipmentsService {
     // OrdersService.updateAmounts does, so it stays correct once dispatch
     // sets the real shippingAmount below, and so codAmount (what the
     // courier actually collects from the customer) isn't computed off a
-    // stale total.
+    // stale total. This is an estimate for the courier API call below (COD
+    // amount has to be quoted before dispatch) — the order's own stored
+    // totalAmount is recomputed from a fresh, lock-protected read after the
+    // dispatch call returns (see the `tx` block below), since a manual
+    // shipping-fee edit or item change racing against this slow external
+    // call could otherwise leave shippingAmount and totalAmount mismatched.
     const correctedTotalAmount = Decimal.max(
       order.subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.codFee).plus(cost),
       new Decimal(0),
@@ -178,9 +184,17 @@ export class ShipmentsService {
     });
 
     if (result.success) {
-      await this.prisma.client.order.update({
-        where: { id: order.id },
-        data: { shippingAmount: cost, shippingMethod: dto.provider, totalAmount: correctedTotalAmount },
+      await this.prisma.client.$transaction(async (tx) => {
+        await lockOrderRow(tx, order.id);
+        const fresh = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
+        const finalTotalAmount = Decimal.max(
+          fresh.subTotal.minus(fresh.discountAmount).plus(fresh.taxAmount).plus(fresh.codFee).plus(cost),
+          new Decimal(0),
+        );
+        await tx.order.update({
+          where: { id: order.id },
+          data: { shippingAmount: cost, shippingMethod: dto.provider, totalAmount: finalTotalAmount },
+        });
       });
       if (order.status === 'PENDING') {
         await this.orders.updateStatus(
