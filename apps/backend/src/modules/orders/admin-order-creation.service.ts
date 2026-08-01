@@ -4,6 +4,8 @@ import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from '../cart/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
+import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
+import { COD_FEE_DEFAULTS } from '../net-profit/accounts/accounts.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { generateOrderNumber } from './order-number.util';
 import { reserveStock } from './stock-reservation.util';
@@ -30,6 +32,7 @@ export class AdminOrderCreationService {
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
     private readonly orders: OrdersService,
+    private readonly netProfitSettings: NetProfitSettingsService,
   ) {}
 
   async create(dto: CreateManualOrderDto, adminId: number): Promise<OrderDto> {
@@ -100,10 +103,19 @@ export class AdminOrderCreationService {
     }
 
     const discountAmount = lineDiscount.plus(explicitDiscount).plus(explicitPromotion).plus(couponAmount);
-    const totalAmount = Decimal.max(
-      lineItemsTotal.minus(explicitDiscount).minus(explicitPromotion).minus(couponAmount).plus(taxAmount).plus(shippingAmount),
+    const preFeeTotal = Decimal.max(
+      lineItemsTotal.minus(explicitDiscount).minus(explicitPromotion).minus(couponAmount),
       new Decimal(0),
     );
+    // Same COD-fee rule real checkout applies (Settings > Accounts) — this
+    // path previously never charged it at all, so a manually-created COD
+    // order's totalAmount silently excluded the fee even when enabled.
+    const codFeeSettings = await this.netProfitSettings.getNamespace('cod_fee', COD_FEE_DEFAULTS);
+    const codFee =
+      codFeeSettings.enabled && dto.paymentProvider === 'COD'
+        ? preFeeTotal.times(codFeeSettings.percent).dividedBy(100).toDecimalPlaces(2)
+        : new Decimal(0);
+    const totalAmount = preFeeTotal.plus(taxAmount).plus(shippingAmount).plus(codFee);
 
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -118,6 +130,7 @@ export class AdminOrderCreationService {
           subTotal,
           discountAmount,
           taxAmount,
+          codFee,
           shippingAmount,
           totalAmount,
           couponCode: couponAmount.greaterThan(0) ? dto.couponCode : undefined,

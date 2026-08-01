@@ -14,8 +14,8 @@ const textareaClass =
 
 const MERGE_TAGS = [
   "companyLogoHtml", "companyName", "companyAddress", "companyEmail", "companyPhone", "companyTaxId",
-  "invoiceNumber", "invoiceDate", "customerName", "customerPhone", "customerAddress", "itemsTableRows",
-  "currency", "subTotal", "discountRow", "taxRow", "codFeeRow", "shippingRow", "totalAmount",
+  "invoiceNumber", "invoiceDate", "customerName", "customerPhone", "customerAddress", "courierBoxHtml",
+  "itemsTableRows", "currency", "subTotal", "discountRow", "taxRow", "codFeeRow", "shippingRow", "totalAmount",
   "paymentMethod", "paymentStatus", "stampImageHtml", "termsBlock",
 ];
 
