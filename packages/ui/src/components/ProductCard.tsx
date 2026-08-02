@@ -19,6 +19,8 @@ export interface ProductCardProps {
   price: string;
   originalPrice?: string | null;
   discountLabel?: string;
+  isFeatured?: boolean;
+  bestBadgeLabel?: string;
   /** Variant products: Add to Cart adds this pack directly, no inline
    * picker — matches ghorerbazar.com's card (name/price/button only).
    * Choosing a different pack size happens on the product detail page. */
@@ -38,6 +40,8 @@ export function ProductCard({
   price,
   originalPrice,
   discountLabel,
+  isFeatured,
+  bestBadgeLabel = "Best Selling",
   packOptions,
   defaultPackValue,
   onAddToCart,
@@ -57,37 +61,39 @@ export function ProductCard({
     // with no radius of its own, left-aligned text, outlined not solid-fill
     // Add to Cart button) — colors are Amader's own (green/beige/ink), not
     // copied from their orange.
-    <div className={cn("flex h-full flex-col rounded border border-line bg-white p-2", className)}>
-      <Link href={href} className="relative block aspect-square bg-beige">
-        {imageUrl && (
-          // Plain <img> keeps this library framework-agnostic; page-level
-          // composition swaps in next/image once wired to real API media (F3+).
-          <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-cover" />
-        )}
-        {discountLabel && (
-          <Badge className="absolute left-2 top-2">{discountLabel}</Badge>
+    <div className={cn("group relative flex h-full flex-col justify-between rounded border border-header-line bg-white p-2 text-[#020101] font-sans transition-shadow duration-300", className)}>
+      {isFeatured && (
+        <Badge variant="red" className="absolute left-[6px] top-[6px] z-10 rounded bg-[#e6342e] px-2.5 py-1 text-[11px] font-medium text-white">
+          {bestBadgeLabel}
+        </Badge>
+      )}
+      {discountLabel && (
+        <Badge variant="green" className="absolute right-[6px] top-[6px] z-10 rounded bg-[#34be82] px-2.5 py-1 text-[11px] font-medium text-white">
+          {discountLabel}
+        </Badge>
+      )}
+      <Link href={href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
+        {imageUrl ? (
+          <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]" />
+        ) : (
+          <div className="h-full w-full bg-beige" />
         )}
       </Link>
-      <div className="flex flex-1 flex-col gap-2 pt-3">
-        <Link href={href} className="truncate font-ui text-base font-medium text-ink">
+      <div className="flex flex-1 flex-col justify-between pt-3">
+        <Link href={href} className="mb-2 line-clamp-2 min-h-[34px] md:min-h-[38px] font-sans text-sm md:text-base font-medium text-[#020101] transition-colors hover:text-header-green">
           {name}
         </Link>
         <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} align="left" />
-        {/* Plain <button>, not the shared Button component — Button's own
-            base classes hardcode a 9px radius, and this codebase's `cn()` is
-            plain clsx (no tailwind-merge), so a conflicting `rounded`
-            override here isn't guaranteed to win (confirmed live: it
-            didn't — same class of bug already hit once this session with
-            Header's own action-button sizing). A standalone button sidesteps
-            the conflict entirely instead of fighting it. */}
-        <button
-          type="button"
-          disabled={addToCartPending}
-          onClick={() => onAddToCart?.(defaultPack)}
-          className="mt-auto flex h-10 w-full items-center justify-center rounded border-[1.5px] border-green font-ui text-sm font-semibold text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {addToCartPending ? "Adding…" : addToCartLabel}
-        </button>
+        <div className="mt-3">
+          <button
+            type="button"
+            disabled={addToCartPending}
+            onClick={() => onAddToCart?.(defaultPack)}
+            className="flex h-[34px] md:h-[40px] w-full items-center justify-center gap-1.5 rounded border border-header-green bg-transparent font-sans text-xs md:text-sm font-semibold text-header-green transition-all duration-400 hover:bg-header-green hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {addToCartPending ? "Adding…" : addToCartLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

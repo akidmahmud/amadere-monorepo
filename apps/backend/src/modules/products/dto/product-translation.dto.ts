@@ -1,8 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Locale } from '@amader/db';
-import { Type } from 'class-transformer';
-import { IsEnum, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
-import { ProductComparisonTableDto } from './product-comparison.dto';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ProductTranslationDto {
   @ApiProperty({ enum: Locale })
@@ -41,10 +39,4 @@ export class ProductTranslationDto {
   @IsOptional()
   @IsString()
   howToUse?: string;
-
-  @ApiPropertyOptional({ type: ProductComparisonTableDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ProductComparisonTableDto)
-  comparisonTable?: ProductComparisonTableDto;
 }

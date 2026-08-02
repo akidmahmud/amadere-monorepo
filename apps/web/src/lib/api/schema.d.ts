@@ -1140,6 +1140,22 @@ export interface paths {
         patch: operations["AdminProductsController_updateCrossSell"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/frequently-bought-together": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_getFrequentlyBoughtTogether"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateFrequentlyBoughtTogether"];
+        trace?: never;
+    };
     "/api/v1/products/{productId}/reviews": {
         parameters: {
             query?: never;
@@ -5535,22 +5551,6 @@ export interface components {
             sortOrder: number;
             translations?: components["schemas"]["AttributeValueTranslationDto"][];
         };
-        ProductComparisonRowDto: {
-            feature?: string;
-            /** @description Checkmark under the own-product column */
-            own?: boolean;
-            /** @description Checkmark under the competitor column */
-            competitor?: boolean;
-        };
-        ProductComparisonTableDto: {
-            /** @description Defaults to "Why Choose {Product Name}?" when left blank */
-            title?: string;
-            /** @description Defaults to the product name when left blank */
-            ownLabel?: string;
-            /** @description e.g. "Regular White Rice" */
-            competitorLabel?: string;
-            rows?: components["schemas"]["ProductComparisonRowDto"][];
-        };
         PublicProductBrandDto: {
             id: number;
             slug: string;
@@ -5608,7 +5608,6 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
-            comparisonTable: components["schemas"]["ProductComparisonTableDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -5636,7 +5635,6 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
-            comparisonTable: components["schemas"]["ProductComparisonTableDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -5644,6 +5642,8 @@ export interface components {
             variants: components["schemas"]["PublicProductVariantDto"][];
             seo: components["schemas"]["ResolvedSeoDto"];
             structuredData: Record<string, never>[];
+            crossSell: components["schemas"]["PublicProductDto"][];
+            frequentlyBoughtTogether: components["schemas"]["PublicProductDto"][];
         };
         AdminProductTranslationDto: {
             locale: Record<string, never>;
@@ -5653,7 +5653,6 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
-            comparisonTable: components["schemas"]["ProductComparisonTableDto"] | null;
         };
         AdminProductMediaDto: {
             id: number;
@@ -5729,7 +5728,6 @@ export interface components {
             benefitPoints?: string;
             /** @description PDP "How to Use" tab */
             howToUse?: string;
-            comparisonTable?: components["schemas"]["ProductComparisonTableDto"];
         };
         CreateProductVariantDto: {
             sku?: string;
@@ -10394,6 +10392,52 @@ export interface operations {
         };
     };
     AdminProductsController_updateCrossSell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCrossSellDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    AdminProductsController_getFrequentlyBoughtTogether: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    AdminProductsController_updateFrequentlyBoughtTogether: {
         parameters: {
             query?: never;
             header?: never;

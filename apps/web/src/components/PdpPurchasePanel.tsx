@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { useLocale } from "next-intl";
 import {
-  Button,
   PackSizeSelector,
   PriceTag,
   QtyStepper,
+  WatchingNowBadge,
   formatMoney,
   useCartDrawerStore,
 } from "@amader/ui";
@@ -136,8 +136,14 @@ export function PdpPurchasePanel({
   }
 
   return (
-    <div>
-      <PriceTag price={price} originalPrice={originalPrice} align="left" size="lg" className="mb-4" />
+    <div className="font-['Open_Sans',sans-serif]">
+      <PriceTag
+        price={price}
+        originalPrice={originalPrice}
+        align="left"
+        size="lg"
+        className="mb-4 [&_span]:text-[26px] [&_span]:font-semibold [&_span]:tracking-[-1.3px] [&_span]:text-green"
+      />
 
       {/* Desktop keeps variants above the CTAs (normal convention). Mobile
           moves them below the CTA grid instead — same position ghorerbazar's
@@ -149,6 +155,14 @@ export function PdpPurchasePanel({
           <PackSizeSelector options={packOptions} value={selectedVariantId} onChange={setSelectedVariantId} />
         </div>
       )}
+
+      {/* Desktop only, per explicit request — the live-viewer count isn't
+          shown to mobile visitors, and sits right under Select Pack Size
+          (still here even when that section doesn't render, e.g. products
+          with no variants). */}
+      <div className="hidden md:block">
+        <WatchingNowBadge productId={product.id} />
+      </div>
 
       {outOfStock ? (
         <p className="mb-4 font-ui text-sm font-semibold text-red-600">Out of Stock</p>
@@ -218,24 +232,25 @@ export function PdpPurchasePanel({
           2-col grid on mobile but `contents` on desktop so its two children
           fall directly into the parent grid's second row instead of being
           squeezed into a single cell. */}
-      <div className="mb-6 flex flex-col gap-3 md:grid md:grid-cols-2">
+      <div className="mb-4 flex flex-col gap-3 md:grid md:grid-cols-2">
         {!outOfStock && (
           <>
-            {/* uppercase/tracking-wide matches the reference's button style
-                exactly — purely a text-transform, the underlying label stays
-                "Add to Cart" so this is presentational only. */}
-            <Button variant="gold" block disabled={addToCart.isPending} onClick={handleAddToCart} className="uppercase tracking-wide">
-              Add to Cart
-            </Button>
-            <Button
-              variant="green"
-              block
+            <button
+              type="button"
+              disabled={addToCart.isPending}
+              onClick={handleAddToCart}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-green text-xs font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Add To Cart
+            </button>
+            <button
+              type="button"
               disabled={addToCart.isPending}
               onClick={handleBuyNow}
-              className="animate-[wiggle_2.5s_ease-in-out_infinite] uppercase tracking-wide"
+              className="flex h-11 w-full animate-[wiggle_2.5s_ease-in-out_infinite] items-center justify-center gap-2 rounded-md bg-[#041F1E] text-xs font-semibold uppercase text-white transition-colors hover:bg-[#0a2f2d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Buy Now
-            </Button>
+            </button>
           </>
         )}
         <div className="grid grid-cols-2 gap-3 md:contents">
@@ -244,7 +259,18 @@ export function PdpPurchasePanel({
         </div>
       </div>
 
-      <div className="mb-6 hidden flex-wrap gap-5 md:flex">
+      <div className="flex flex-wrap items-center gap-3">
+        {product.brand && (
+          <a
+            href={`/brands/${product.brand.slug}`}
+            className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3.5 py-2 font-ui text-sm text-[#222831]"
+          >
+            <span className="text-muted">Brand:</span> {product.brand.name}
+          </a>
+        )}
+      </div>
+
+      <div className="mt-6 hidden flex-wrap gap-5 md:flex">
         {TRUST_ITEMS.map((item) => (
           <span key={item} className="flex items-center gap-2 font-ui text-xs font-bold text-text">
             {checkIcon}
@@ -252,7 +278,6 @@ export function PdpPurchasePanel({
           </span>
         ))}
       </div>
-
     </div>
   );
 }

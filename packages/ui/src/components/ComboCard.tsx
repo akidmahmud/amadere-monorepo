@@ -2,6 +2,7 @@
 
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
+import { Badge } from "./Badge";
 
 export interface ComboCardProps {
   href: string;
@@ -41,46 +42,50 @@ export function ComboCard({
     // ProductStripSection's 20px — this card is composed with the generic
     // Carousel, so it needs 18px-based fractions or rows fall a couple px
     // short of the full row width.
-    <article className="relative flex min-w-[170px] flex-none basis-[calc((100%-18px)/2)] snap-start flex-col rounded-xl border border-header-line bg-white p-3.5 pb-4 transition-[box-shadow,border-color] duration-200 hover:border-header-green hover:shadow-[0_10px_24px_rgba(33,113,61,.13)] sm:basis-[calc((100%-36px)/3)] lg:basis-[calc((100%-54px)/4)] xl:basis-[calc((100%-72px)/5)]">
-      {hasDiscount && (
-        <span className="absolute left-3 top-3 z-[2] rounded-md bg-header-green px-2.5 py-1.5 text-[0.66rem] font-extrabold text-white">
-          Save {savePercent}%
-        </span>
-      )}
-      <span className="absolute right-3 top-3 z-[2] rounded-md bg-[#e07b1a] px-2.5 py-1.5 text-[0.66rem] font-extrabold text-white">
+    <article className="group relative flex min-w-[150px] flex-none basis-[calc((100%-18px)/2)] snap-start flex-col justify-between rounded border border-header-line bg-white p-2 font-sans text-[#020101] transition-shadow duration-300 sm:basis-[calc((100%-36px)/3)] lg:basis-[calc((100%-54px)/4)] xl:basis-[calc((100%-72px)/5)]">
+      <Badge variant="orange" className="absolute left-[6px] top-[6px] z-10 rounded bg-[#e07b1a] px-2.5 py-1 text-[11px] font-medium text-white">
         {comboLabel}
-      </span>
+      </Badge>
+      {hasDiscount && (
+        <Badge variant="green" className="absolute right-[6px] top-[6px] z-10 rounded bg-[#34be82] px-2.5 py-1 text-[11px] font-medium text-white">
+          Save {savePercent}%
+        </Badge>
+      )}
 
-      <Link href={href} className="mb-3.5 flex h-40 items-center justify-center overflow-hidden md:h-[210px]">
+      <Link href={href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="" className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105" />
+          <img src={imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]" />
         ) : (
           <div className="h-full w-full bg-beige" />
         )}
       </Link>
 
-      <h3 className="min-h-[2.6em] font-header text-[0.92rem] font-bold leading-[1.4] text-header-ink">
-        <Link href={href} className="hover:text-header-green">
-          {name}
-        </Link>
-      </h3>
+      <div className="flex flex-1 flex-col justify-between pt-3">
+        <h3 className="mb-2 line-clamp-2 min-h-[34px] font-sans text-sm font-medium text-[#020101] transition-colors hover:text-header-green md:min-h-[38px] md:text-base">
+          <Link href={href}>
+            {name}
+          </Link>
+        </h3>
 
-      <div className="my-2 mb-3.5 flex items-center gap-2.5">
-        <span className="font-header text-base font-extrabold text-header-green">{formatMoney(price)}</span>
-        {hasDiscount && (
-          <span className="font-header text-[0.82rem] font-semibold text-header-muted line-through">
-            {formatMoney(originalPrice!)}
-          </span>
-        )}
+        <div className="my-1 flex items-center gap-2">
+          <span className="font-sans text-sm font-bold text-header-green md:text-[18px]">{formatMoney(price)}</span>
+          {hasDiscount && (
+            <span className="font-sans text-sm font-medium text-[#767a7a] line-through md:text-[18px]">
+              {formatMoney(originalPrice!)}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <Link
+            href={href}
+            className="flex h-[34px] w-full items-center justify-center gap-1.5 rounded border border-header-green bg-transparent font-sans text-xs font-semibold text-header-green transition-all duration-400 hover:bg-header-green hover:text-white md:h-[40px] md:text-sm"
+          >
+            {viewDetailsLabel}
+          </Link>
+        </div>
       </div>
-
-      <Link
-        href={href}
-        className="mt-auto flex h-[42px] w-full items-center justify-center rounded-lg border-[1.5px] border-header-green font-header text-[0.82rem] font-bold text-header-green transition-colors hover:bg-header-green hover:text-white"
-      >
-        {viewDetailsLabel}
-      </Link>
     </article>
   );
 }

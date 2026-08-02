@@ -32,10 +32,10 @@ export function WhatsappOrderButton({
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#25D366] px-5 py-2 font-ui text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[#1ebe5b] md:py-2.5"
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#1DAA61] px-5 font-ui text-xs font-semibold capitalize text-white transition-colors hover:bg-[#178f50]"
     >
       {whatsappIcon}
-      Order via WhatsApp
+      WhatsApp
     </a>
   );
 }

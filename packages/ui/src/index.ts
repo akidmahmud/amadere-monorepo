@@ -43,7 +43,6 @@ export * from "./components/FilterDrawer";
 export * from "./components/PriceRangeSlider";
 export * from "./components/ProductGallery";
 export * from "./components/WatchingNowBadge";
-export * from "./components/ProductComparisonTable";
 export * from "./components/PackSizeSelector";
 export * from "./components/ProductTabs";
 export * from "./components/CartLineItem";

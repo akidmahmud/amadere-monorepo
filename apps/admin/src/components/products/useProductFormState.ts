@@ -3,17 +3,6 @@ import type { ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts
 import type { PublishStatus } from "@/hooks/useBrands";
 import type { GalleryImage } from "./ProductMediaGallery";
 
-export interface ComparisonRowState {
-  feature: string;
-  own: boolean;
-  competitor: boolean;
-}
-
-function comparisonRowsFrom(product?: AdminProduct): ComparisonRowState[] {
-  const rows = product?.translations[0]?.comparisonTable?.rows ?? [];
-  return rows.map((r) => ({ feature: r.feature ?? "", own: r.own ?? false, competitor: r.competitor ?? false }));
-}
-
 // Flat snapshot of every editable field — the autosave draft shape. Distinct
 // from toBasePayload() (the create/update API shape: nested translations,
 // mediaIds instead of full image objects, numeric strings coerced to
@@ -50,10 +39,6 @@ export interface ProductFormSnapshot {
   tagIds: number[];
   attributeIds: number[];
   images: GalleryImage[];
-  comparisonTitle: string;
-  comparisonOwnLabel: string;
-  comparisonCompetitorLabel: string;
-  comparisonRows: ComparisonRowState[];
 }
 
 export function useProductFormState(initial?: AdminProduct) {
@@ -90,26 +75,7 @@ export function useProductFormState(initial?: AdminProduct) {
   const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
   const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })) ?? []);
 
-  // PDP "Why Choose Us" comparison table — hidden entirely on the storefront
-  // when rows is empty, so leaving all 3 blank is a valid "don't show it".
-  const [comparisonTitle, setComparisonTitle] = useState(initial?.translations[0]?.comparisonTable?.title ?? "");
-  const [comparisonOwnLabel, setComparisonOwnLabel] = useState(
-    initial?.translations[0]?.comparisonTable?.ownLabel ?? "",
-  );
-  const [comparisonCompetitorLabel, setComparisonCompetitorLabel] = useState(
-    initial?.translations[0]?.comparisonTable?.competitorLabel ?? "",
-  );
-  const [comparisonRows, setComparisonRows] = useState<ComparisonRowState[]>(comparisonRowsFrom(initial));
-
   function toBasePayload() {
-    const comparisonTable = {
-      title: comparisonTitle || undefined,
-      ownLabel: comparisonOwnLabel || undefined,
-      competitorLabel: comparisonCompetitorLabel || undefined,
-      rows: comparisonRows
-        .filter((r) => r.feature.trim())
-        .map((r) => ({ feature: r.feature, own: r.own, competitor: r.competitor })),
-    };
     return {
       slug,
       sku: sku || undefined,
@@ -140,7 +106,6 @@ export function useProductFormState(initial?: AdminProduct) {
           keyBenefits: keyBenefits || undefined,
           benefitPoints: benefitPoints || undefined,
           howToUse: howToUse || undefined,
-          comparisonTable,
         },
         {
           locale: "BN" as const,
@@ -150,7 +115,6 @@ export function useProductFormState(initial?: AdminProduct) {
           keyBenefits: keyBenefits || undefined,
           benefitPoints: benefitPoints || undefined,
           howToUse: howToUse || undefined,
-          comparisonTable,
         },
       ],
       categoryIds,
@@ -196,10 +160,6 @@ export function useProductFormState(initial?: AdminProduct) {
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
     setImages(product.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })));
-    setComparisonTitle(product.translations[0]?.comparisonTable?.title ?? "");
-    setComparisonOwnLabel(product.translations[0]?.comparisonTable?.ownLabel ?? "");
-    setComparisonCompetitorLabel(product.translations[0]?.comparisonTable?.competitorLabel ?? "");
-    setComparisonRows(comparisonRowsFrom(product));
   }
 
   function getSnapshot(): ProductFormSnapshot {
@@ -208,7 +168,6 @@ export function useProductFormState(initial?: AdminProduct) {
       stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, shippableWeight,
       minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
       categoryIds, tagIds, attributeIds, images,
-      comparisonTitle, comparisonOwnLabel, comparisonCompetitorLabel, comparisonRows,
     };
   }
 
@@ -243,10 +202,6 @@ export function useProductFormState(initial?: AdminProduct) {
     setTagIds(s.tagIds);
     setAttributeIds(s.attributeIds);
     setImages(s.images);
-    setComparisonTitle(s.comparisonTitle);
-    setComparisonOwnLabel(s.comparisonOwnLabel);
-    setComparisonCompetitorLabel(s.comparisonCompetitorLabel);
-    setComparisonRows(s.comparisonRows);
   }
 
   return {
@@ -280,10 +235,6 @@ export function useProductFormState(initial?: AdminProduct) {
     tagIds, setTagIds,
     attributeIds, setAttributeIds,
     images, setImages,
-    comparisonTitle, setComparisonTitle,
-    comparisonOwnLabel, setComparisonOwnLabel,
-    comparisonCompetitorLabel, setComparisonCompetitorLabel,
-    comparisonRows, setComparisonRows,
     toBasePayload,
     seedFrom,
     getSnapshot,

@@ -21,7 +21,11 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
 
   return (
     <div className={cn(className)}>
-      <div role="tablist" className="mb-4 flex flex-wrap gap-6 border-b border-line">
+      {/* Single scrollable row rather than flex-wrap — with 4-5 tabs, wrapping
+          produces an uneven last row on narrow screens (e.g. one lone pill on
+          its own line). A horizontal scroller keeps every screen size to one
+          tidy row, matching how this pattern is usually handled on mobile. */}
+      <div role="tablist" className="mb-4 flex gap-2 overflow-x-auto [scrollbar-width:none] sm:gap-3 [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -30,8 +34,8 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
             aria-selected={tab.id === activeTab.id}
             onClick={() => setActive(tab.id)}
             className={cn(
-              "-mb-px border-b-2 pb-3 font-ui text-sm font-medium",
-              tab.id === activeTab.id ? "border-green text-ink" : "border-transparent text-muted",
+              "shrink-0 whitespace-nowrap rounded px-4 py-2 font-['Open_Sans',sans-serif] text-xs font-semibold capitalize sm:px-6 sm:py-3 sm:text-sm",
+              tab.id === activeTab.id ? "bg-[#F48721] text-white" : "bg-[#F5F5F5] text-[#666666]",
             )}
           >
             {tab.label}

@@ -10,6 +10,8 @@ export interface CarouselProps {
   autoplayMs?: number;
   /** Center the row when its content doesn't fill the width. Default true (matches product-collection carousels); set false to always left-align, e.g. next to a fixed-position promo tile. */
   centerWhenFits?: boolean;
+  /** Show the left/right scroll-arrow buttons. Default true; set false for a swipe-only carousel with no visible arrows. */
+  showArrows?: boolean;
 }
 
 const chevronLeft = (
@@ -23,7 +25,7 @@ const chevronRight = (
   </svg>
 );
 
-export function Carousel({ children, className, autoplayMs, centerWhenFits = true }: CarouselProps) {
+export function Carousel({ children, className, autoplayMs, centerWhenFits = true, showArrows = true }: CarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -75,7 +77,7 @@ export function Carousel({ children, className, autoplayMs, centerWhenFits = tru
 
   return (
     <div className={cn("relative px-1", className)}>
-      {canScrollLeft && (
+      {showArrows && canScrollLeft && (
         <button
           type="button"
           aria-label="Scroll left"
@@ -89,13 +91,13 @@ export function Carousel({ children, className, autoplayMs, centerWhenFits = tru
         ref={rowRef}
         onScroll={updateScrollState}
         className={cn(
-          "flex gap-4.5 overflow-x-auto scroll-smooth px-0.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "flex snap-x snap-mandatory gap-4.5 overflow-x-auto scroll-smooth px-0.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           !hasOverflow && centerWhenFits && "justify-center",
         )}
       >
         {children}
       </div>
-      {canScrollRight && (
+      {showArrows && canScrollRight && (
         <button
           type="button"
           aria-label="Scroll right"

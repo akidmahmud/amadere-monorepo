@@ -15,7 +15,7 @@ import { ProductSeoTab } from "./ProductSeoTab";
 import { ProductAnalyticsTab } from "./ProductAnalyticsTab";
 import { ProductActivityTab } from "./ProductActivityTab";
 import { CrossSellFields } from "./CrossSellFields";
-import { ComparisonTableFields } from "./ComparisonTableFields";
+import { FrequentlyBoughtTogetherFields } from "./FrequentlyBoughtTogetherFields";
 import { ExistingVariantsManager } from "./ExistingVariantsManager";
 import { NewVariantsBuilder } from "./NewVariantsBuilder";
 
@@ -201,8 +201,6 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   </label>
                 </div>
               </div>
-
-              <ComparisonTableFields form={form} />
             </div>
 
             <div className="flex flex-col gap-4">
@@ -212,6 +210,7 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           </div>
 
           {productId && <CrossSellFields productId={productId} />}
+          {productId && <FrequentlyBoughtTogetherFields productId={productId} />}
         </div>
       )}
 

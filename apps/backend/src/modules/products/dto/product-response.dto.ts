@@ -6,7 +6,6 @@ import {
   StockStatus,
 } from '@amader/db';
 import { ResolvedSeoDto } from '../../seo/seo.mapper';
-import { ProductComparisonTableDto } from './product-comparison.dto';
 
 export class AdminProductTranslationDto {
   locale!: Locale;
@@ -16,7 +15,6 @@ export class AdminProductTranslationDto {
   keyBenefits!: string | null;
   benefitPoints!: string | null;
   howToUse!: string | null;
-  comparisonTable!: ProductComparisonTableDto | null;
 }
 
 export class AdminProductMediaDto {
@@ -160,7 +158,6 @@ export class PublicProductDto {
   keyBenefits!: string | null;
   benefitPoints!: string | null;
   howToUse!: string | null;
-  comparisonTable!: ProductComparisonTableDto | null;
   brand!: PublicProductBrandDto | null;
   categories!: PublicProductCategorySummaryDto[];
   tags!: PublicProductTagSummaryDto[];
@@ -171,4 +168,9 @@ export class PublicProductDto {
 export class PublicProductDetailDto extends PublicProductDto {
   seo!: ResolvedSeoDto;
   structuredData!: Record<string, unknown>[];
+  // Admin-configured via ProductRelation (see AdminProductsController's
+  // cross-sell/frequently-bought-together endpoints) — published products
+  // only, empty array when nothing's configured or every pick got unpublished.
+  crossSell!: PublicProductDto[];
+  frequentlyBoughtTogether!: PublicProductDto[];
 }

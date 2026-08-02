@@ -1,11 +1,6 @@
 import { Locale, Prisma } from '@amader/db';
 import { PRODUCT_INCLUDE } from './product-includes';
 import { AdminProductDto, PublicProductDto } from './dto/product-response.dto';
-import { ProductComparisonTableDto } from './dto/product-comparison.dto';
-
-function toComparisonTable(value: Prisma.JsonValue | null): ProductComparisonTableDto | null {
-  return value ? (value as unknown as ProductComparisonTableDto) : null;
-}
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof PRODUCT_INCLUDE;
@@ -53,7 +48,6 @@ export function toAdminProductDto(
       keyBenefits: t.keyBenefits,
       benefitPoints: t.benefitPoints,
       howToUse: t.howToUse,
-      comparisonTable: toComparisonTable(t.comparisonTable),
     })),
     categoryIds: product.categories.map((c) => c.categoryId),
     tagIds: product.tags.map((t) => t.tagId),
@@ -120,7 +114,6 @@ export function toPublicProductDto(
     keyBenefits: translation?.keyBenefits ?? null,
     benefitPoints: translation?.benefitPoints ?? null,
     howToUse: translation?.howToUse ?? null,
-    comparisonTable: translation ? toComparisonTable(translation.comparisonTable) : null,
     brand: product.brand
       ? {
           id: product.brand.id,

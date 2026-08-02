@@ -181,4 +181,19 @@ export class AdminProductsController {
   ): Promise<number[]> {
     return this.products.updateCrossSell(id, dto.productIds);
   }
+
+  @Get(':id/frequently-bought-together')
+  @RequirePermission('product.view')
+  getFrequentlyBoughtTogether(@Param('id', ParseIntPipe) id: number): Promise<number[]> {
+    return this.products.getFrequentlyBoughtTogether(id);
+  }
+
+  @Patch(':id/frequently-bought-together')
+  @RequirePermission('product.update')
+  updateFrequentlyBoughtTogether(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCrossSellDto,
+  ): Promise<number[]> {
+    return this.products.updateFrequentlyBoughtTogether(id, dto.productIds);
+  }
 }

@@ -35,20 +35,6 @@ import {
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
 
-// class-transformer produces a real ProductComparisonTableDto instance (via
-// @Type on ProductTranslationDto.comparisonTable), but Prisma's Json input
-// type wants a plain object with a string index signature — this round-trips
-// through plain-object spread so the shape matches structurally without
-// changing any actual values.
-function toTranslationCreateInput(translations: ProductTranslationDto[]) {
-  return translations.map((t) => ({
-    ...t,
-    comparisonTable: t.comparisonTable
-      ? ({ ...t.comparisonTable } as Prisma.InputJsonValue)
-      : undefined,
-  }));
-}
-
 @Injectable()
 export class ProductsService {
   constructor(
@@ -245,7 +231,7 @@ export class ProductsService {
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
-        translations: { create: toTranslationCreateInput(dto.translations) },
+        translations: { create: dto.translations },
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
           : undefined,
@@ -342,7 +328,7 @@ export class ProductsService {
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
         translations: dto.translations
-          ? { create: toTranslationCreateInput(dto.translations) }
+          ? { create: dto.translations }
           : undefined,
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
@@ -524,10 +510,11 @@ export class ProductsService {
     });
   }
 
-  // Cross-sell ("You May Also Like" in the cart drawer) — ProductRelation is
-  // a generic table (RELATED/CROSS_SELL/UP_SELL/FREQUENTLY_BOUGHT_TOGETHER)
-  // but only CROSS_SELL has a real consumer today (cart.service.ts), so this
-  // admin surface is scoped to that one type rather than exposing all four.
+  // Cross-sell ("You May Also Like" in the cart drawer, and the PDP's Cross
+  // Sell Products section) and Frequently Bought Together (the PDP's
+  // checkbox bundle widget) — ProductRelation is a generic table
+  // (RELATED/CROSS_SELL/UP_SELL/FREQUENTLY_BOUGHT_TOGETHER); RELATED and
+  // UP_SELL have no consumer yet, so only these two admin surfaces exist.
   async getCrossSell(productId: number): Promise<number[]> {
     const rows = await this.prisma.client.productRelation.findMany({
       where: { fromProductId: productId, type: 'CROSS_SELL' },
@@ -555,6 +542,55 @@ export class ProductsService {
       });
     }
     return this.getCrossSell(productId);
+  }
+
+  async getFrequentlyBoughtTogether(productId: number): Promise<number[]> {
+    const rows = await this.prisma.client.productRelation.findMany({
+      where: { fromProductId: productId, type: 'FREQUENTLY_BOUGHT_TOGETHER' },
+      select: { toProductId: true },
+    });
+    return rows.map((r) => r.toProductId);
+  }
+
+  async updateFrequentlyBoughtTogether(productId: number, productIds: number[]): Promise<number[]> {
+    await this.adminGet(productId);
+    const targetIds = productIds.filter((id) => id !== productId);
+    if (targetIds.length) {
+      const count = await this.prisma.client.product.count({
+        where: { id: { in: targetIds }, deletedAt: null },
+      });
+      if (count !== targetIds.length) throw new BadRequestException('One or more products not found');
+    }
+
+    await this.prisma.client.productRelation.deleteMany({
+      where: { fromProductId: productId, type: 'FREQUENTLY_BOUGHT_TOGETHER' },
+    });
+    if (targetIds.length) {
+      await this.prisma.client.productRelation.createMany({
+        data: targetIds.map((toProductId) => ({ fromProductId: productId, toProductId, type: 'FREQUENTLY_BOUGHT_TOGETHER' })),
+      });
+    }
+    return this.getFrequentlyBoughtTogether(productId);
+  }
+
+  // Published-only, locale-resolved product summaries for a relation type —
+  // the public PDP's Cross Sell Products / Frequently Bought Together
+  // sections (unlike the two admin methods above, which return raw ids
+  // regardless of publish status since the admin needs to see what it picked).
+  private async getPublicRelation(
+    productId: number,
+    type: 'CROSS_SELL' | 'FREQUENTLY_BOUGHT_TOGETHER',
+    locale: Locale,
+  ): Promise<PublicProductDto[]> {
+    const relations = await this.prisma.client.productRelation.findMany({
+      where: {
+        fromProductId: productId,
+        type,
+        toProduct: { deletedAt: null, status: 'PUBLISHED' },
+      },
+      include: { toProduct: { include: PRODUCT_INCLUDE } },
+    });
+    return relations.map((r) => toPublicProductDto(r.toProduct, locale));
   }
 
   async publicList(
@@ -651,6 +687,11 @@ export class ProductsService {
       imageUrl: imageUrls[0] ?? null,
     });
 
+    const [crossSell, frequentlyBoughtTogether] = await Promise.all([
+      this.getPublicRelation(product.id, 'CROSS_SELL', locale),
+      this.getPublicRelation(product.id, 'FREQUENTLY_BOUGHT_TOGETHER', locale),
+    ]);
+
     const aggregateRating = await this.reviews.getAggregateRating(product.id);
     // ponytail: salePrice ?? price is the display price for structured data,
     // not a full re-run of PricingService's sale-window logic — revisit if
@@ -695,7 +736,7 @@ export class ProductsService {
         : []),
     ];
 
-    return { ...dto, seo, structuredData };
+    return { ...dto, seo, structuredData, crossSell, frequentlyBoughtTogether };
   }
 
   private buildWhere(

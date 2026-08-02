@@ -5,7 +5,13 @@
 @source "../../../../packages/ui/src";
 
 body {
-  background: var(--color-background);
+  /* Storefront-only page background, hardcoded rather than overriding
+     --color-background — Tailwind v4's `@theme inline` in tokens.css
+     re-derives that variable from --background/--color-cream at a higher
+     precedence than a plain :root override here, so a variable-based
+     override doesn't actually win (confirmed live). tokens.css's own
+     --color-cream stays the shared default for other apps (e.g. admin). */
+  background: #f9f9f9;
   color: var(--color-foreground);
   font-family: var(--font-body);
 }

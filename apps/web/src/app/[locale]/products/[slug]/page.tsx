@@ -4,19 +4,16 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import {
   Carousel,
-  ComboCard,
   ProductGallery,
   ProductTabs,
   RatingStars,
-  SectionHeading,
-  WatchingNowBadge,
-  ProductComparisonTable,
 } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
 import { WriteReviewForm } from "@/components/WriteReviewForm";
-import { ProductCarouselSectionClient } from "@/components/ProductCarouselSectionClient";
+import { RelatedProductCard } from "@/components/RelatedProductCard";
+import { FrequentlyBoughtTogether } from "@/components/FrequentlyBoughtTogether";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
@@ -33,23 +30,12 @@ import type { WhatsappConfig } from "@/lib/whatsapp";
 export const revalidate = 3600;
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
-type PublicBundleDto = components["schemas"]["PublicBundleDto"];
 
 async function getProduct(slug: string, locale: string, previewToken?: string) {
   const res = await safeGet("/api/v1/products/{slug}", {
     params: { path: { slug }, query: { locale, previewToken } },
   });
   return res.data as PublicProductDetailDto | undefined;
-}
-
-function toComboCardData(bundle: PublicBundleDto) {
-  return {
-    href: `/combos/${bundle.slug}`,
-    name: bundle.name,
-    price: bundle.price,
-    originalPrice: bundle.originalPrice ?? undefined,
-    imageUrl: toDisplayImageUrl(bundle.imageUrl),
-  };
 }
 
 export async function generateMetadata({
@@ -100,7 +86,7 @@ export default async function ProductPage({
 
   const category = product.categories[0];
 
-  const [reviewsRes, relatedRes, combosRes, whatsappRes] = await Promise.all([
+  const [reviewsRes, relatedRes, whatsappRes] = await Promise.all([
     safeGet("/api/v1/products/{productId}/reviews", {
       params: { path: { productId: product.id }, query: { pageSize: 10 } },
     }),
@@ -109,9 +95,6 @@ export default async function ProductPage({
           params: { query: { locale: localeParam, categoryId: category.id, pageSize: 9 } },
         })
       : Promise.resolve({ data: undefined }),
-    safeGet("/api/v1/product-bundles", {
-      params: { query: { locale: localeParam, productId: product.id, pageSize: 8 } },
-    }),
     // Same config on every product page too — powers the WhatsApp order button.
     safeGet("/api/v1/whatsapp/config"),
   ]);
@@ -121,7 +104,7 @@ export default async function ProductPage({
     .filter((p) => p.id !== product.id)
     .slice(0, 8)
     .map(toProductCardData);
-  const combos = (combosRes.data?.items ?? []).map(toComboCardData);
+  const crossSellProducts = product.crossSell.map(toProductCardData);
 
   const images = product.media
     .filter((m) => (m.type as unknown as string) !== "VIDEO")
@@ -198,12 +181,17 @@ export default async function ProductPage({
 
         {/* Card look matched to ghorerbazar.com's PDP hero card: no border,
             a tighter/darker shadow than this app's default shadow-brand
-            token, ~12px radius, flat 24px padding, 40px gap before the next
-            card — measured directly off that reference page rather than
-            reusing @amader/ui's Card (its border+shadow-brand defaults
-            don't match and can't be reliably overridden via plain string
-            concatenation, since `cn` here is clsx without tailwind-merge). */}
-        <div className="mb-10 rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-xl">
+            token, 12px radius, 8px padding on mobile growing to 24px at
+            sm+, a small ~2-4px mobile side margin (not truly flush — an
+            earlier pass here assumed 0/flush on mobile, but re-measuring
+            both black-seed-honey and gawa-ghee at a real 375px viewport
+            shows the reference keeps a tiny inset + full radius + shadow
+            even on mobile) — measured directly off that reference page
+            rather than reusing @amader/ui's Card (its border+shadow-brand
+            defaults don't match and can't be reliably overridden via plain
+            string concatenation, since `cn` here is clsx without
+            tailwind-merge). */}
+        <div className="mx-1 mb-10 rounded-xl bg-white p-2 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0 sm:p-6">
           <div className="grid grid-cols-[6fr_5fr] items-start gap-11 max-lg:grid-cols-1">
             <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
@@ -213,119 +201,164 @@ export default async function ProductPage({
                   {category.name}
                 </div>
               )}
-              {/* Compact on mobile (18px, matching ghorerbazar's mobile PDP
-                  hero) — full size on desktop, unchanged. */}
-              <h1 className="mb-2 font-serif text-lg font-semibold text-ink md:mb-3 md:text-3xl">{product.name}</h1>
+              <h1 className="mb-4 font-['Open_Sans',sans-serif] text-2xl font-medium tracking-[-0.6px] text-[#222831]">
+                {product.name}
+              </h1>
               {reviews && reviews.reviewCount > 0 && (
                 <RatingStars rating={reviews.averageRating ?? 0} count={reviews.reviewCount} className="mb-3" />
               )}
-              {product.description && (
-                // Admin-authored WYSIWYG HTML, not user-generated — safe per
-                // backend's own content.util.ts docs (same pattern already
-                // used for blog post content). Was previously rendered as
-                // plain text, showing raw `<p><strong>` tags on the page.
-                // Hidden on mobile — the fuller "About This Product" section
-                // further down covers the same content there.
-                // eslint-disable-next-line react/no-danger
-                <div
-                  className="mb-5 hidden font-body text-sm leading-relaxed text-muted [&_strong]:font-semibold [&_strong]:text-ink md:block"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
-                />
-              )}
-
-              <WatchingNowBadge productId={product.id} />
 
               <PdpPurchasePanel product={product} whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null} />
             </div>
           </div>
         </div>
 
-        {product.description && (
-          <div className="mx-auto max-w-[820px] py-14 text-center">
-            <SectionHeading>About This Product</SectionHeading>
-            <div
-              className="font-body text-sm leading-loose text-text"
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
-            />
-          </div>
-        )}
+        <FrequentlyBoughtTogether mainProduct={product} items={product.frequentlyBoughtTogether} />
 
-        <div className="rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-lg">
+        {/* Unlike the hero card above (deliberately flush/edge-to-edge on
+            mobile, matching the reference), the reference's tab-pane card
+            keeps a real side gutter + rounded corners even on mobile
+            (confirmed via computed style: hero ~2px inset vs tab-pane's
+            ~12-16px) — so this one needs its own mx-4/sm:mx-0 instead of
+            relying on the shared wrapper's mobile px-0. */}
+        <div className="mx-4 rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0">
           <ProductTabs tabs={tabs} />
         </div>
-      </div>
 
-      <ProductComparisonTable
-        title={product.comparisonTable?.title}
-        ownLabel={product.comparisonTable?.ownLabel || product.name}
-        competitorLabel={product.comparisonTable?.competitorLabel}
-        rows={(product.comparisonTable?.rows ?? [])
-          .filter((row) => row.feature)
-          .map((row) => ({ feature: row.feature!, own: row.own ?? false, competitor: row.competitor ?? false }))}
-      />
-
-      {/* ProductCarouselSection has no built-in max-width/gutter of its own
-          (shared with the homepage's edge-to-edge usage) — capped here to
-          match every other section's containment on this page. */}
-      <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5">
-        <ProductCarouselSectionClient
-          heading="Related Products"
-          products={relatedProducts}
-          visibleCount={4}
-          autoplayMs={4000}
-        />
-      </div>
-
-      <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5 py-14">
-        <SectionHeading>Customer Reviews</SectionHeading>
-
-        {reviews && reviews.items.length > 0 && (
-          <div className="mx-auto mb-6 max-w-2xl space-y-4">
-            {reviews.items.map((review) => (
-              <div key={review.id} className="rounded-brand border border-line bg-white p-4">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="font-ui text-sm font-semibold text-ink">{review.customerName}</span>
-                  <RatingStars rating={review.rating} />
-                </div>
-                {review.comment && <p className="font-body text-sm text-muted">{review.comment}</p>}
-                {review.images.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {review.images.map((url) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={url}
-                        src={toDisplayImageUrl(url) ?? url}
-                        alt=""
-                        className="h-16 w-16 rounded-lg border border-line object-cover"
-                      />
-                    ))}
-                  </div>
-                )}
-                {review.reply && (
-                  <p className="mt-2 border-l-2 border-green pl-3 font-body text-xs text-muted">
-                    <span className="font-semibold text-ink">Reply: </span>
-                    {review.reply.message}
-                  </p>
-                )}
-              </div>
-            ))}
+        {/* Standalone section, not a tab — per explicit request. Same card
+            treatment as the tabs card above (mobile gutter + rounded
+            corners), positioned directly under it. */}
+        {product.videoUrl && (
+          <div className="mx-4 mt-10 rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0">
+            <h2 className="mb-4 text-xl font-bold text-[#222831]">Product Video</h2>
+            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+              <iframe
+                src={toEmbeddableVideoUrl(product.videoUrl) ?? undefined}
+                title="Product video"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full"
+              />
+            </div>
           </div>
         )}
-
-        <WriteReviewForm productId={product.id} />
       </div>
 
-      {combos.length > 0 && (
-        <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5 py-14">
-          <SectionHeading>Frequently Bought Together</SectionHeading>
-          <Carousel>
-            {combos.map((combo: ReturnType<typeof toComboCardData>) => (
-              <ComboCard key={combo.href} {...combo} linkComponent={AppLink} />
+      {relatedProducts.length > 0 && (
+        <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-[#222831]">Related Products</h2>
+            {category && (
+              <AppLink href={`/categories/${category.slug}`} className="text-sm font-medium text-green hover:underline">
+                More Products →
+              </AppLink>
+            )}
+          </div>
+          {/* No arrows (swipe/autoplay only, per explicit request) and a
+              slower autoplay. Card widths mirror Cross Sell Products' grid
+              breakpoints exactly (2/3/5 columns) so both sections show the
+              same card size — computed against this Carousel's own 18px gap
+              (gap-4.5), not Cross Sell's 16px grid gap, so the math differs
+              slightly even though the resulting column count matches.
+              snap-start (paired with the Carousel's own snap-x snap-mandatory)
+              is what actually guarantees exactly N full cards show at rest —
+              without it, autoplay/swipes can stop at any scroll offset and
+              show partial cards peeking on both edges. */}
+          <Carousel autoplayMs={7000} centerWhenFits={false} showArrows={false}>
+            {relatedProducts.map((p) => (
+              <div key={p.href} className="w-[calc(50%-9px)] shrink-0 snap-start sm:w-[calc(33.333%-12px)] lg:w-[calc(20%-14.4px)]">
+                <RelatedProductCard {...p} accent="green" />
+              </div>
             ))}
           </Carousel>
         </div>
       )}
+
+      {crossSellProducts.length > 0 && (
+        <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-[#222831]">Cross Sell Products</h2>
+            <AppLink href="/products" className="text-sm font-medium text-green hover:underline">
+              More Products →
+            </AppLink>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {crossSellProducts.map((p) => (
+              <RelatedProductCard key={p.href} {...p} accent="green" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
+        <div className="rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-lg">
+          <h2 className="mb-4 text-xl font-bold text-[#222831]">Customer Reviews</h2>
+
+          {reviews && (
+            <div className="mb-8 grid gap-8 md:grid-cols-[auto_1fr]">
+              <div>
+                <div className="text-4xl font-bold text-[#222831]">{(reviews.averageRating ?? 0).toFixed(1)}</div>
+                <RatingStars rating={reviews.averageRating ?? 0} />
+                <p className="mt-1 text-sm text-muted">({reviews.reviewCount} Reviews)</p>
+              </div>
+              {/* Breakdown is computed from the currently-fetched review page
+                  (up to `pageSize` items), not a true all-time aggregate — no
+                  backend aggregate endpoint exists for this yet. Good enough for
+                  the review volume this site sees today without adding one. */}
+              <div className="flex flex-col justify-center gap-1.5">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const countAtStar = reviews.items.filter((r) => r.rating === star).length;
+                  const pct = reviews.items.length > 0 ? Math.round((countAtStar / reviews.items.length) * 100) : 0;
+                  return (
+                    <div key={star} className="flex items-center gap-3 text-sm">
+                      <span className="w-16 shrink-0 text-[#F48721]">{"★".repeat(star)}</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#eee]">
+                        <div className="h-full rounded-full bg-[#F48721]" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-10 shrink-0 text-right text-muted">{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {reviews && reviews.items.length > 0 && (
+            <div className="mb-8 space-y-4">
+              {reviews.items.map((review) => (
+                <div key={review.id} className="rounded-brand border border-line bg-white p-4">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="font-ui text-sm font-semibold text-ink">{review.customerName}</span>
+                    <RatingStars rating={review.rating} />
+                  </div>
+                  {review.comment && <p className="font-body text-sm text-muted">{review.comment}</p>}
+                  {review.images.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {review.images.map((url) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={url}
+                          src={toDisplayImageUrl(url) ?? url}
+                          alt=""
+                          className="h-16 w-16 rounded-lg border border-line object-cover"
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {review.reply && (
+                    <p className="mt-2 border-l-2 border-green pl-3 font-body text-xs text-muted">
+                      <span className="font-semibold text-ink">Reply: </span>
+                      {review.reply.message}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <WriteReviewForm productId={product.id} />
+        </div>
+      </div>
     </main>
   );
 }

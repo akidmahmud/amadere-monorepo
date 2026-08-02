@@ -160,9 +160,13 @@ export function WriteReviewForm({ productId }: { productId: number }) {
           </p>
         )}
 
-        <Button type="submit" variant="green" disabled={rating < 1 || createReview.isPending} className="self-start">
+        <button
+          type="submit"
+          disabled={rating < 1 || createReview.isPending}
+          className="self-start rounded-md bg-[#041F1E] px-6 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-[#0a2f2d] disabled:cursor-not-allowed disabled:opacity-50"
+        >
           {createReview.isPending ? "Submitting…" : "Submit Review"}
-        </Button>
+        </button>
       </form>
     </div>
   );
