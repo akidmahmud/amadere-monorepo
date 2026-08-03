@@ -197,22 +197,23 @@ export default async function ProductPage({
             <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
             {/* Experimental: info column (everything below the gallery)
-                scaled 1.2x smaller on mobile, per explicit request to test —
+                scaled 1.5x smaller on mobile, per explicit request to test —
                 the gallery/swiper image itself is deliberately outside this
                 wrapper so it stays full size. `zoom` (not `transform: scale`)
                 so the box actually shrinks instead of leaving reserved
                 whitespace. */}
-            <div className="max-lg:[zoom:83.33%]">
+            <div className="max-lg:[zoom:66.67%]">
               {category && (
-                <div className="mb-1 font-ui text-xs font-semibold uppercase tracking-wide text-gold-dark">
+                <div className="mb-1 font-ui text-sm font-semibold uppercase tracking-wide text-gold-dark">
                   {category.name}
                 </div>
               )}
               {/* 18px/500 re-measured directly against the reference's mobile
                   product-single row (was 24px, too large there) — kept at
                   24px from md up, matching the reference's larger desktop
-                  title. */}
-              <h1 className="mb-4 font-['Open_Sans',sans-serif] text-lg font-medium tracking-[-0.6px] text-[#222831] md:text-2xl">
+                  title. Bumped a step (18→20px) per explicit request once
+                  the whole info column started rendering at 1.5x zoom-out. */}
+              <h1 className="mb-4 font-['Open_Sans',sans-serif] text-xl font-medium tracking-[-0.6px] text-[#222831] md:text-2xl">
                 {product.name}
               </h1>
               {reviews && reviews.reviewCount > 0 && (

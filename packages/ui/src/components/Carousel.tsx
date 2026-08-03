@@ -12,20 +12,35 @@ export interface CarouselProps {
   centerWhenFits?: boolean;
   /** Show the left/right scroll-arrow buttons. Default true; set false for a swipe-only carousel with no visible arrows. */
   showArrows?: boolean;
+  /** Shrink the arrow buttons on mobile (36px instead of 46px) — for
+   * carousels whose cards are narrow enough that the default 46px arrows
+   * look oversized there. Unchanged from md up either way. */
+  compactArrowsOnMobile?: boolean;
 }
 
-const chevronLeft = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-[22px] w-[22px]">
-    <path d="m15 18-6-6 6-6" />
-  </svg>
-);
-const chevronRight = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-[22px] w-[22px]">
-    <path d="m9 6 6 6-6 6" />
-  </svg>
-);
+function chevronLeft(compact: boolean) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className={compact ? "h-4 w-4 md:h-[22px] md:w-[22px]" : "h-[22px] w-[22px]"}>
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+function chevronRight(compact: boolean) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className={compact ? "h-4 w-4 md:h-[22px] md:w-[22px]" : "h-[22px] w-[22px]"}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
 
-export function Carousel({ children, className, autoplayMs, centerWhenFits = true, showArrows = true }: CarouselProps) {
+export function Carousel({
+  children,
+  className,
+  autoplayMs,
+  centerWhenFits = true,
+  showArrows = true,
+  compactArrowsOnMobile = false,
+}: CarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -82,9 +97,12 @@ export function Carousel({ children, className, autoplayMs, centerWhenFits = tru
           type="button"
           aria-label="Scroll left"
           onClick={() => scroll(-1)}
-          className="absolute left-[-6px] top-[30%] z-[6] grid h-[46px] w-[46px] -translate-y-1/2 place-items-center rounded-[10px] bg-green text-white shadow-brand hover:bg-green-dark"
+          className={cn(
+            "absolute left-[-6px] top-[30%] z-[6] -translate-y-1/2 grid place-items-center bg-green text-white shadow-brand hover:bg-green-dark",
+            compactArrowsOnMobile ? "h-9 w-9 rounded-lg md:h-[46px] md:w-[46px] md:rounded-[10px]" : "h-[46px] w-[46px] rounded-[10px]",
+          )}
         >
-          {chevronLeft}
+          {chevronLeft(compactArrowsOnMobile)}
         </button>
       )}
       <div
@@ -102,9 +120,12 @@ export function Carousel({ children, className, autoplayMs, centerWhenFits = tru
           type="button"
           aria-label="Scroll right"
           onClick={() => scroll(1)}
-          className="absolute right-[-6px] top-[30%] z-[6] grid h-[46px] w-[46px] -translate-y-1/2 place-items-center rounded-[10px] bg-green text-white shadow-brand hover:bg-green-dark"
+          className={cn(
+            "absolute right-[-6px] top-[30%] z-[6] -translate-y-1/2 grid place-items-center bg-green text-white shadow-brand hover:bg-green-dark",
+            compactArrowsOnMobile ? "h-9 w-9 rounded-lg md:h-[46px] md:w-[46px] md:rounded-[10px]" : "h-[46px] w-[46px] rounded-[10px]",
+          )}
         >
-          {chevronRight}
+          {chevronRight(compactArrowsOnMobile)}
         </button>
       )}
     </div>

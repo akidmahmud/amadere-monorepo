@@ -49,8 +49,10 @@ function ReelSlide({
   return (
     <div ref={ref} className="relative h-full w-full shrink-0 snap-start bg-black">
       {active && <PlayingMedia card={card} muted={false} />}
+      {/* Raised on mobile to clear MobileStickyFooter's fixed bottom nav
+          (~55px tall) — was bottom-6, which sat underneath/behind it. */}
       {product && (
-        <div className="absolute inset-x-4 bottom-6 flex items-center gap-3 rounded-2xl bg-white p-3 shadow-lg">
+        <div className="absolute inset-x-4 bottom-[76px] flex items-center gap-3 rounded-2xl bg-white p-3 shadow-lg md:bottom-6">
           {product.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-[10px] object-cover" />

@@ -227,11 +227,14 @@ function PromoVideoCardTile({ card, onClick }: { card: PromoVideoCard; onClick: 
   return (
     <div
       ref={ref}
-      // Mobile: ~2 cards visible per screen width (a reel-row feel, matching
-      // FB/IG/TikTok's preview strip), aspect-ratio scaling the height so a
-      // narrower card isn't disproportionately tall. sm+ (640px) reverts to
-      // the original fixed reel dimensions.
-      className="relative aspect-[377/600] w-[46vw] shrink-0 overflow-hidden rounded-2xl bg-black sm:aspect-auto sm:h-[600px] sm:w-[377px]"
+      // Mobile: exactly 2 cards visible per screen width (a reel-row feel,
+      // matching FB/IG/TikTok's preview strip) — calc() against the
+      // Carousel's own 18px gap, not an approximate vw guess, plus
+      // snap-start so it actually rests on a full card instead of settling
+      // mid-card. aspect-ratio scales the height so a narrower card isn't
+      // disproportionately tall. sm+ (640px) reverts to the original fixed
+      // reel dimensions.
+      className="relative aspect-[377/600] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:aspect-auto sm:h-[600px] sm:w-[377px]"
     >
       {isInView ? (
         <PlayingMedia card={card} />
@@ -287,7 +290,9 @@ export function PromoVideoSection({
   return (
     <div className="py-9">
       {heading && <SectionHeading>{heading}</SectionHeading>}
-      <Carousel autoplayMs={autoplayMs}>
+      {/* Mobile: touch-swipe only, no arrow buttons — autoplay stays on
+          regardless (autoplayMs is unaffected by showArrows). */}
+      <Carousel autoplayMs={autoplayMs} showArrows={!isMobile}>
         {items.map((card, i) => (
           <PromoVideoCardTile key={`${card.url}-${i}`} card={card} onClick={() => setOpenIndex(i)} />
         ))}

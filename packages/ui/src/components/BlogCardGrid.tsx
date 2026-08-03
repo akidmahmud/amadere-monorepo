@@ -68,9 +68,14 @@ export function BlogCardGrid({ posts, viewAllHref, viewAllLabel = "View All", li
       </div>
 
       <div className="md:hidden">
-        <Carousel>
+        <Carousel compactArrowsOnMobile>
           {posts.map((post) => (
-            <BlogCard key={post.href} post={post} className="w-[78%] shrink-0 sm:w-[45%]" linkComponent={Link} />
+            <BlogCard
+              key={post.href}
+              post={post}
+              className="w-full shrink-0 snap-start sm:w-[calc(33.333%-12px)]"
+              linkComponent={Link}
+            />
           ))}
         </Carousel>
       </div>

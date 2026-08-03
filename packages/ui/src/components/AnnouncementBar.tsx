@@ -11,8 +11,6 @@ export interface AnnouncementItem {
 
 export interface AnnouncementBarProps {
   items: AnnouncementItem[];
-  /** Only relevant with 2+ announcements — how often it auto-advances. */
-  autoplayMs?: number;
   dismissLabel?: string;
   linkComponent?: LinkComponent;
 }
@@ -62,17 +60,13 @@ function renderMessage(message: string) {
 }
 
 // Dismissing hides the bar until the announcement copy itself changes — the
-// persisted value is the *current set* of messages (so rotating through
-// several items and adding/removing/editing any of them all correctly
-// reset the dismissal), not an actual hash algorithm; string equality does
-// the same job here with no extra code.
+// persisted value is the *current set* of messages, not an actual hash
+// algorithm; string equality does the same job here with no extra code.
 export function AnnouncementBar({
   items,
-  autoplayMs = 4000,
   dismissLabel = "Dismiss announcement",
   linkComponent: Link = DefaultLink,
 }: AnnouncementBarProps) {
-  const [index, setIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const signature = items.map((item) => item.message).join("|");
 
@@ -82,37 +76,44 @@ export function AnnouncementBar({
     }
   }, [signature]);
 
-  useEffect(() => {
-    if (items.length <= 1) return;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % items.length), autoplayMs);
-    return () => clearInterval(timer);
-  }, [items.length, autoplayMs]);
-
   if (items.length === 0 || dismissed) return null;
-
-  const current = items[Math.min(index, items.length - 1)];
-  const content = (
-    <span className="flex min-w-0 items-center justify-center gap-2 truncate font-header text-[11.5px] font-medium text-white md:whitespace-normal md:text-[0.8rem]">
-      {truckIcon}
-      <span className="truncate md:whitespace-normal">{renderMessage(current.message)}</span>
-    </span>
-  );
 
   function handleDismiss() {
     window.localStorage.setItem(DISMISS_KEY, signature);
     setDismissed(true);
   }
 
-  return (
-    <div className="relative flex h-10 items-center bg-header-green">
-      <div className="mx-auto min-w-0 max-w-[1440px] flex-1 overflow-hidden px-8 text-center md:px-6">
-        {current.linkUrl ? (
-          <Link href={current.linkUrl} className="hover:underline">
-            {content}
+  function segment(item: AnnouncementItem, key: string) {
+    const text = (
+      <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap font-header text-[11.5px] font-medium text-white md:text-[0.8rem]">
+        {truckIcon}
+        {renderMessage(item.message)}
+      </span>
+    );
+    return (
+      <span key={key} className="inline-flex shrink-0 items-center pr-12">
+        {item.linkUrl ? (
+          <Link href={item.linkUrl} className="hover:underline">
+            {text}
           </Link>
         ) : (
-          content
+          text
         )}
+      </span>
+    );
+  }
+
+  return (
+    <div className="relative flex h-10 items-center bg-header-green">
+      {/* News-ticker marquee: content duplicated once (same recipe as
+          CertificationRow's mobile auto-scroll) so `animate-marquee`'s
+          0 → -50% translate loops seamlessly — a single announcement
+          scrolls past on repeat, several scroll past back-to-back. */}
+      <div className="mx-auto min-w-0 max-w-[1440px] flex-1 overflow-hidden px-8 md:px-6">
+        <div className="flex w-max animate-marquee">
+          {items.map((item, i) => segment(item, `a-${i}`))}
+          {items.map((item, i) => segment(item, `b-${i}`))}
+        </div>
       </div>
       <button
         type="button"

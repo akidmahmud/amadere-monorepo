@@ -27,7 +27,7 @@ const starIcon = (filled: boolean) => (
 function ReviewCard({ review }: { review: TestimonialReview }) {
   const rating = review.rating ?? 5;
   return (
-    <div className="flex w-[340px] shrink-0 flex-col rounded-brand border border-line bg-white p-6 sm:w-[380px]">
+    <div className="flex w-full shrink-0 snap-start flex-col rounded-brand border border-line bg-white p-4 sm:w-[340px] sm:p-6 lg:w-[380px]">
       <p className="min-h-[78px] text-sm leading-relaxed text-muted">{review.quote}</p>
       <div className="mt-3.5 mb-3.5 flex gap-0.5">
         {Array.from({ length: 5 }, (_, i) => (
@@ -62,7 +62,7 @@ export function TestimonialsBento({ reviews = [], autoplayMs = 4500 }: Testimoni
   if (reviews.length === 0) return null;
 
   return (
-    <Carousel autoplayMs={autoplayMs}>
+    <Carousel autoplayMs={autoplayMs} compactArrowsOnMobile>
       {reviews.map((review, i) => (
         <ReviewCard key={i} review={review} />
       ))}
