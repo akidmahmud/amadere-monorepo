@@ -638,6 +638,15 @@ enum StockStatus {
   ON_BACKORDER
 }
 
+// Storefront corner "flag" badge text (ghorerbazar.com's `.flag-name`) — a
+// deliberate admin-editable choice, distinct from `isFeatured` (a separate
+// pre-existing filter/curation flag with its own admin checkbox).
+enum ProductFlagLabel {
+  BEST_SELLING
+  NEW_ARRIVAL
+  FEATURED
+}
+
 model Product {
   id         Int     @id @default(autoincrement())
   slug       String  @unique
@@ -645,10 +654,11 @@ model Product {
   sku        String? @unique
   brandId    Int?    @map("brand_id")
 
-  productType ProductType   @default(PHYSICAL) @map("product_type")
-  status      ContentStatus @default(DRAFT)
-  isFeatured  Boolean       @default(false) @map("is_featured")
-  sortOrder   Int           @default(0) @map("sort_order")
+  productType ProductType       @default(PHYSICAL) @map("product_type")
+  status      ContentStatus     @default(DRAFT)
+  isFeatured  Boolean           @default(false) @map("is_featured")
+  flagLabel   ProductFlagLabel? @map("flag_label")
+  sortOrder   Int               @default(0) @map("sort_order")
   viewCount   Int           @default(0) @map("view_count")
   videoUrl    String?       @map("video_url") // embedded video reference (product detail gallery)
 

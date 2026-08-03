@@ -5,6 +5,19 @@ import { sanitizeHtml } from "./sanitize-html";
 
 type PublicProductDto = components["schemas"]["PublicProductDto"];
 
+// Same swagger enum-erasure as productType/status elsewhere (plain response
+// DTO classes lose imported-enum literal types) — PublicProductDto.flagLabel
+// comes out as Record<string, never> instead of the real union.
+type ProductFlagLabel = "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED";
+
+// Display text for the storefront's corner "flag" badge — admin-editable
+// per product (Product.flagLabel).
+const FLAG_LABEL_TEXT: Record<ProductFlagLabel, string> = {
+  BEST_SELLING: "Best Selling",
+  NEW_ARRIVAL: "New Arrival",
+  FEATURED: "Featured",
+};
+
 export interface ProductCardData {
   href: string;
   productId: number;
@@ -12,6 +25,7 @@ export interface ProductCardData {
   imageUrl?: string;
   price: string;
   originalPrice?: string;
+  flagLabel?: string;
   packOptions?: { value: string; label: string; price: string; originalPrice?: string }[];
   defaultPackValue?: string;
 }
@@ -49,6 +63,7 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
     imageUrl: toDisplayImageUrl(primaryMedia?.url),
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
+    flagLabel: product.flagLabel ? FLAG_LABEL_TEXT[product.flagLabel as unknown as ProductFlagLabel] : undefined,
     packOptions,
     defaultPackValue: packOptions ? defaultVariantId(product) : undefined,
   };

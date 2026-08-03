@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts";
+import type { ProductFlagLabel, ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts";
 import type { PublishStatus } from "@/hooks/useBrands";
 import type { GalleryImage } from "./ProductMediaGallery";
 
@@ -15,6 +15,7 @@ export interface ProductFormSnapshot {
   productType: ProductType;
   status: PublishStatus;
   isFeatured: boolean;
+  flagLabel: ProductFlagLabel | null;
   videoUrl: string;
   hasVariants: boolean;
   trackInventory: boolean;
@@ -48,6 +49,7 @@ export function useProductFormState(initial?: AdminProduct) {
   const [productType, setProductType] = useState<ProductType>(initial?.productType ?? "PHYSICAL");
   const [status, setStatus] = useState<PublishStatus>(initial?.status ?? "DRAFT");
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
+  const [flagLabel, setFlagLabel] = useState<ProductFlagLabel | null>(initial?.flagLabel ?? null);
   const [videoUrl, setVideoUrl] = useState(initial?.videoUrl ?? "");
   const [hasVariants, setHasVariants] = useState(initial?.hasVariants ?? false);
   const [trackInventory, setTrackInventory] = useState(initial?.trackInventory ?? true);
@@ -83,6 +85,7 @@ export function useProductFormState(initial?: AdminProduct) {
       productType,
       status,
       isFeatured,
+      flagLabel,
       videoUrl: videoUrl || undefined,
       hasVariants,
       trackInventory,
@@ -136,6 +139,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setProductType(product.productType);
     setStatus(product.status);
     setIsFeatured(product.isFeatured);
+    setFlagLabel(product.flagLabel);
     setVideoUrl(product.videoUrl ?? "");
     setHasVariants(product.hasVariants);
     setTrackInventory(product.trackInventory);
@@ -164,7 +168,7 @@ export function useProductFormState(initial?: AdminProduct) {
 
   function getSnapshot(): ProductFormSnapshot {
     return {
-      slug, sku, brandId, productType, status, isFeatured, videoUrl, hasVariants, trackInventory, allowBackorder,
+      slug, sku, brandId, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
       stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, shippableWeight,
       minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
       categoryIds, tagIds, attributeIds, images,
@@ -178,6 +182,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setProductType(s.productType);
     setStatus(s.status);
     setIsFeatured(s.isFeatured);
+    setFlagLabel(s.flagLabel);
     setVideoUrl(s.videoUrl);
     setHasVariants(s.hasVariants);
     setTrackInventory(s.trackInventory);
@@ -211,6 +216,7 @@ export function useProductFormState(initial?: AdminProduct) {
     productType, setProductType,
     status, setStatus,
     isFeatured, setIsFeatured,
+    flagLabel, setFlagLabel,
     videoUrl, setVideoUrl,
     hasVariants, setHasVariants,
     trackInventory, setTrackInventory,

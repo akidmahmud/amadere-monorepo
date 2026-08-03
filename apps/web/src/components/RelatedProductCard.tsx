@@ -10,7 +10,11 @@ export interface RelatedProductCardProps {
   price: string;
   originalPrice?: string | null;
   discountLabel?: string;
-  /** "orange" (default) matches Related Products' reference styling. "green"
+  /** Corner "flag" badge text (e.g. "Best Selling") — Product.flagLabel. */
+  flagLabel?: string;
+  /** Drives price/Add To Cart button color only — badge colors are always
+   * the reference's exact flag-name/save-label values regardless of accent.
+   * "orange" (default) matches Related Products' reference styling. "green"
    * is our own brand color (#1F703C, i.e. `--color-green`), used by the Cross
    * Sell Products section per explicit request — the reference site has no
    * brand-color equivalent to copy for that section. */
@@ -18,8 +22,8 @@ export interface RelatedProductCardProps {
 }
 
 const ACCENT_CLASSES = {
-  orange: { badge: "bg-[#F48721]", price: "text-[#F48721]", button: "border-[#F48721] text-[#F48721] hover:bg-[#fdf1e8]" },
-  green: { badge: "bg-green", price: "text-green", button: "border-green text-green hover:bg-cream" },
+  orange: { price: "text-[#F48721]", button: "border-[#F48721] text-[#F48721] hover:bg-[#fdf1e8]" },
+  green: { price: "text-green", button: "border-green text-green hover:bg-cream" },
 };
 
 // Reference's Related Products card: plain grid tile (no shadow/border), a
@@ -27,8 +31,25 @@ const ACCENT_CLASSES = {
 // links through to the product page — this section dropped its carousel/
 // inline-add-to-cart behavior when it became a static grid, so "Add To Cart"
 // here navigates rather than mutating the cart directly.
-export function RelatedProductCard({ href, name, imageUrl, price, originalPrice, discountLabel, accent = "orange" }: RelatedProductCardProps) {
+export function RelatedProductCard({
+  href,
+  name,
+  imageUrl,
+  price,
+  originalPrice,
+  discountLabel,
+  flagLabel,
+  accent = "orange",
+}: RelatedProductCardProps) {
   const colors = ACCENT_CLASSES[accent];
+  // ghorerbazar.com's `.save-label` shows a percent-off pill whenever a card
+  // has a strike-through price — computed here so every caller gets it for
+  // free instead of having to pass pre-formatted text.
+  const computedDiscountLabel =
+    discountLabel ??
+    (originalPrice && Number(originalPrice) > Number(price)
+      ? `${Math.round((1 - Number(price) / Number(originalPrice)) * 100)}% OFF`
+      : undefined);
   return (
     <div className="flex h-full flex-col">
       <AppLink href={href} className="relative block aspect-square overflow-hidden rounded bg-white">
@@ -36,9 +57,15 @@ export function RelatedProductCard({ href, name, imageUrl, price, originalPrice,
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-contain" />
         )}
-        {discountLabel && (
-          <span className={`absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[10px] text-white ${colors.badge}`}>
-            {discountLabel}
+        {/* Pixel-matched to ghorerbazar.com's `.flag-name` / `.save-label`. */}
+        {flagLabel && (
+          <span className="absolute left-1.5 top-1.5 rounded bg-[#F48721] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+            {flagLabel}
+          </span>
+        )}
+        {computedDiscountLabel && (
+          <span className="absolute right-1.5 top-1.5 rounded bg-[#34BE82] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+            {computedDiscountLabel}
           </span>
         )}
       </AppLink>

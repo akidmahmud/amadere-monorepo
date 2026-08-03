@@ -239,7 +239,7 @@ export function PdpPurchasePanel({
               type="button"
               disabled={addToCart.isPending}
               onClick={handleAddToCart}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-green text-xs font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md border-2 border-green bg-transparent text-xs font-semibold uppercase text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               Add To Cart
             </button>
@@ -247,7 +247,7 @@ export function PdpPurchasePanel({
               type="button"
               disabled={addToCart.isPending}
               onClick={handleBuyNow}
-              className="flex h-11 w-full animate-[wiggle_2.5s_ease-in-out_infinite] items-center justify-center gap-2 rounded-md bg-[#041F1E] text-xs font-semibold uppercase text-white transition-colors hover:bg-[#0a2f2d] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full animate-[wiggle_2.5s_ease-in-out_infinite] items-center justify-center gap-2 rounded-md bg-green text-xs font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               Buy Now
             </button>

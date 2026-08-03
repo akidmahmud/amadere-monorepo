@@ -32,15 +32,16 @@ const playIcon = (
 );
 
 // Layout matches the reference PDP exactly: a vertical thumbnail column to the
-// left (80x80px tiles, 10px gap, 1px border — always-visible faint border on
-// inactive tiles, orange on the active one) and the main image to the right
-// (4px radius, no container chrome), with plain (no button-circle/shadow)
-// prev/next arrows overlaid 10px in from the main image's edges — all
-// measured directly against the reference's own Swiper markup
-// (.p-details-big-img / .p-thumb-img-slider), including its literal
-// unstyled-Swiper-default arrow blue (#007AFF), not a brand color. Unchanged
-// down to mobile widths — the reference keeps this side-by-side layout at
-// 390px too, no stacking breakpoint.
+// left (50x50px tiles — re-measured at mobile width, was wrongly 80x80,
+// which starved the main image of width — 10px gap, 1px border —
+// always-visible faint border on inactive tiles, orange on the active one)
+// and the main image to the right (4px radius, no container chrome), with
+// plain (no button-circle/shadow) prev/next arrows overlaid 10px in from the
+// main image's edges — all measured directly against the reference's own
+// Swiper markup (.p-details-big-img / .p-thumb-img-slider), including its
+// literal unstyled-Swiper-default arrow blue (#007AFF), not a brand color.
+// Unchanged down to mobile widths — the reference keeps this side-by-side
+// layout at 390px too, no stacking breakpoint.
 export function ProductGallery({ images, videoUrl, className }: ProductGalleryProps) {
   const [active, setActive] = useState(0);
   const slideCount = images.length + (videoUrl ? 1 : 0);
@@ -50,7 +51,7 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
   return (
     <div className={cn("flex gap-4", className)}>
       {(images.length > 1 || videoUrl) && (
-        <div className="flex w-20 shrink-0 flex-col gap-2.5">
+        <div className="flex w-[50px] shrink-0 flex-col gap-2.5">
           {images.map((image, i) => (
             <button
               key={image.url + i}
@@ -58,7 +59,7 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
               aria-label={`View image ${i + 1}`}
               onClick={() => setActive(i)}
               className={cn(
-                "h-20 w-20 shrink-0 overflow-hidden rounded border bg-white",
+                "h-[50px] w-[50px] shrink-0 overflow-hidden rounded border bg-white",
                 active === i ? "border-[#F48721]" : "border-[rgba(34,40,49,0.11)]",
               )}
             >
@@ -71,7 +72,7 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
               aria-label="Play product video"
               onClick={() => setActive(images.length)}
               className={cn(
-                "grid h-20 w-20 shrink-0 place-items-center rounded border bg-white",
+                "grid h-[50px] w-[50px] shrink-0 place-items-center rounded border bg-white",
                 active === images.length ? "border-[#F48721]" : "border-[rgba(34,40,49,0.11)]",
               )}
             >
@@ -81,7 +82,13 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
         </div>
       )}
 
-      <div className="relative aspect-square min-w-0 flex-1">
+      {/* Fixed height (not aspect-square) on mobile: shrinking the thumbnail
+          column above made this flex-1 area wider, which under aspect-square
+          also made it *taller* — fighting the "fit the first mobile screen"
+          goal. A fixed height matching the reference's own ~280-290px
+          decouples height from the available width. Square again from md up,
+          where the wider column was already correctly proportioned. */}
+      <div className="relative h-[280px] min-w-0 flex-1 md:aspect-square md:h-auto">
         {showVideo ? (
           <iframe
             src={videoUrl}

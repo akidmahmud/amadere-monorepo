@@ -51,8 +51,6 @@ const meta: Meta<typeof Footer> = {
     ],
     copyrightLabel: "Copyright © 2026 Amader Ltd. All rights reserved.",
     payWithLabel: "Pay With",
-    sslBadgeLine1: "Verified by",
-    sslBadgeLine2: "SSLCOMMERZ",
   },
 };
 export default meta;

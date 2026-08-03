@@ -169,12 +169,13 @@ export default async function ProductPage({
           convention elsewhere is unchanged. */}
       <div className="mx-auto max-w-full px-0 sm:max-w-[80%] sm:px-5">
         <div className="pl-4 sm:pl-0">
+          {/* Just Home + category, per explicit request — the full
+              Home/Shop/Category/Product-name chain repeated the H1 right
+              below it and wrapped to two lines on mobile. */}
           <AppBreadcrumb
             items={[
               { label: "Home", href: "/" },
-              { label: "Shop", href: "/products" },
               ...(category ? [{ label: category.name, href: `/categories/${category.slug}` }] : []),
-              { label: product.name },
             ]}
           />
         </div>
@@ -195,13 +196,23 @@ export default async function ProductPage({
           <div className="grid grid-cols-[6fr_5fr] items-start gap-11 max-lg:grid-cols-1">
             <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
-            <div>
+            {/* Experimental: info column (everything below the gallery)
+                scaled 1.2x smaller on mobile, per explicit request to test —
+                the gallery/swiper image itself is deliberately outside this
+                wrapper so it stays full size. `zoom` (not `transform: scale`)
+                so the box actually shrinks instead of leaving reserved
+                whitespace. */}
+            <div className="max-lg:[zoom:83.33%]">
               {category && (
                 <div className="mb-1 font-ui text-xs font-semibold uppercase tracking-wide text-gold-dark">
                   {category.name}
                 </div>
               )}
-              <h1 className="mb-4 font-['Open_Sans',sans-serif] text-2xl font-medium tracking-[-0.6px] text-[#222831]">
+              {/* 18px/500 re-measured directly against the reference's mobile
+                  product-single row (was 24px, too large there) — kept at
+                  24px from md up, matching the reference's larger desktop
+                  title. */}
+              <h1 className="mb-4 font-['Open_Sans',sans-serif] text-lg font-medium tracking-[-0.6px] text-[#222831] md:text-2xl">
                 {product.name}
               </h1>
               {reviews && reviews.reviewCount > 0 && (

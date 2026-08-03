@@ -227,7 +227,7 @@ function renderSection(
         .map((item, i) => {
           const product = resolvedProducts[i];
           if (!product) return null;
-          return { ...toProductCardData(product), isFeatured: item.showBadge };
+          return { ...toProductCardData(product), flagLabel: item.showBadge ? "Best Selling" : undefined };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
       if (items.length === 0) return null;
@@ -332,10 +332,7 @@ function renderSection(
     // collectionId FK as PRODUCT_COLLECTION now instead of config.tabs).
     case "TABBED_COLLECTION_CAROUSEL": {
       if (!section.collection || section.collection.products.length === 0) return null;
-      const items = section.collection.products.map((product) => ({
-        ...toProductCardData(product),
-        isFeatured: product.isFeatured,
-      }));
+      const items = section.collection.products.map((product) => toProductCardData(product));
       return (
         <TabbedCollectionCarouselSection
           key={section.id}

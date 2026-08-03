@@ -2,7 +2,6 @@
 
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
-import { Badge } from "./Badge";
 import { PriceTag } from "./PriceTag";
 
 export interface ProductCardPackOption {
@@ -19,8 +18,10 @@ export interface ProductCardProps {
   price: string;
   originalPrice?: string | null;
   discountLabel?: string;
-  isFeatured?: boolean;
-  bestBadgeLabel?: string;
+  /** Corner "flag" badge text (e.g. "Best Selling", "New Arrival") — admin
+   * editable per-product (Product.flagLabel) or curated per homepage
+   * placement, depending on the caller. Absent = no flag badge. */
+  flagLabel?: string;
   /** Variant products: Add to Cart adds this pack directly, no inline
    * picker — matches ghorerbazar.com's card (name/price/button only).
    * Choosing a different pack size happens on the product detail page. */
@@ -40,8 +41,7 @@ export function ProductCard({
   price,
   originalPrice,
   discountLabel,
-  isFeatured,
-  bestBadgeLabel = "Best Selling",
+  flagLabel,
   packOptions,
   defaultPackValue,
   onAddToCart,
@@ -54,6 +54,14 @@ export function ProductCard({
   const defaultOption = packOptions?.find((o) => o.value === defaultPack);
   const displayPrice = defaultOption?.price ?? price;
   const displayOriginalPrice = defaultOption ? defaultOption.originalPrice : (originalPrice ?? undefined);
+  // ghorerbazar.com's `.save-label` shows a percent-off pill whenever a card
+  // has a strike-through price — computed here so every caller gets it for
+  // free instead of having to pass pre-formatted text.
+  const computedDiscountLabel =
+    discountLabel ??
+    (displayOriginalPrice && Number(displayOriginalPrice) > Number(displayPrice)
+      ? `${Math.round((1 - Number(displayPrice) / Number(displayOriginalPrice)) * 100)}% OFF`
+      : undefined);
 
   return (
     // Size/layout matched to ghorerbazar.com's grid product card (4px
@@ -62,15 +70,19 @@ export function ProductCard({
     // Add to Cart button) — colors are Amader's own (green/beige/ink), not
     // copied from their orange.
     <div className={cn("group relative flex h-full flex-col justify-between rounded border border-header-line bg-white p-2 text-[#020101] font-sans transition-shadow duration-300", className)}>
-      {isFeatured && (
-        <Badge variant="red" className="absolute left-[6px] top-[6px] z-10 rounded bg-[#e6342e] px-2.5 py-1 text-[11px] font-medium text-white">
-          {bestBadgeLabel}
-        </Badge>
+      {/* Pixel-matched to ghorerbazar.com's `.flag-name` / `.save-label`:
+          plain elements (not the shared Badge, whose own base classes would
+          fight these exact values under plain clsx) — 10px/400, 2px 6px
+          padding, 4px radius, 6px inset from each top corner. */}
+      {flagLabel && (
+        <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#F48721] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+          {flagLabel}
+        </span>
       )}
-      {discountLabel && (
-        <Badge variant="green" className="absolute right-[6px] top-[6px] z-10 rounded bg-[#34be82] px-2.5 py-1 text-[11px] font-medium text-white">
-          {discountLabel}
-        </Badge>
+      {computedDiscountLabel && (
+        <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#34BE82] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+          {computedDiscountLabel}
+        </span>
       )}
       <Link href={href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
         {imageUrl ? (

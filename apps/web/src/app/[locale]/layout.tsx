@@ -10,6 +10,7 @@ import { SiteCartDrawer } from "@/components/SiteCartDrawer";
 import { WhatsappFloatingButton } from "@/components/WhatsappFloatingButton";
 import { CartSummaryWidget } from "@/components/CartSummaryWidget";
 import { BackToTopButton } from "@/components/BackToTopButton";
+import { MobileStickyFooter } from "@/components/MobileStickyFooter";
 import { QueryProvider } from "@/components/QueryProvider";
 import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/AnalyticsScripts";
 import type { WhatsappConfig } from "@/lib/whatsapp";
@@ -86,7 +87,7 @@ export default async function LocaleLayout({
           a stylesheet registers that exact literal name here. Same list as
           apps/admin's layout.tsx (shared via @amader/shared). */}
       <link rel="stylesheet" href={ckeditorGoogleFontsUrl()} precedence="default" />
-      <body className="min-h-full flex flex-col font-body">
+      <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
         <AnalyticsScripts
           config={
             (analyticsConfig as PublicAnalyticsConfig | undefined) ?? {
@@ -114,6 +115,7 @@ export default async function LocaleLayout({
             <WhatsappFloatingButton config={(whatsappConfig as WhatsappConfig | undefined) ?? null} />
             <CartSummaryWidget />
             <BackToTopButton />
+            <MobileStickyFooter />
           </QueryProvider>
         </NextIntlClientProvider>
       </body>

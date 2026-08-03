@@ -38,7 +38,10 @@ const nextIcon = (
 // aspect ratio would make the side banner (which stretches to match the
 // slider's height) resize unpredictably per slide.
 const sliderAspect = "aspect-[5/2] max-lg:aspect-[16/7] max-md:aspect-[16/9]";
-const bannerRadius = "rounded-[14px] shadow-[0_6px_22px_rgba(30,43,34,.08)]";
+// 5px radius at mobile (re-measured against the reference's `.hero.style-7`
+// mobile slide — was the same 14px as desktop, notably more rounded than
+// the reference's subtle 5px there).
+const bannerRadius = "rounded-[14px] shadow-[0_6px_22px_rgba(30,43,34,.08)] max-md:rounded-[5px]";
 
 // Both empty-state backgrounds (#e9dfcd tan, #dfe8d9 sage) are light, unlike
 // the reference's own placeholder slides (dark gradients) — dark text/border
@@ -74,7 +77,7 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-6 py-6 max-md:py-4">
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-6 max-md:px-3 max-md:pb-4 max-md:pt-5">
       {/* Main slider (~972px, flex:1) + fixed 400px side banner, equal
           heights (items-stretch) — stacks to a single column at ≤1024px. */}
       <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1fr_400px]">
@@ -128,7 +131,11 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
                   >
                     {nextIcon}
                   </button>
-                  <div className="absolute bottom-4 left-6 z-[3] flex gap-2">
+                  {/* Overlaid on the image at md+ (matches the reference's
+                      desktop hero) — hidden at mobile, where the reference
+                      instead puts a separate dot row below the image
+                      (own row, 15px margin-top, centered, not overlaid). */}
+                  <div className="absolute bottom-4 left-6 z-[3] hidden gap-2 md:flex">
                     {validSlides.map((_, i) => (
                       <button
                         key={i}
@@ -147,6 +154,23 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
             </>
           )}
         </div>
+
+        {slideTotal > 1 && (
+          <div className="flex justify-center gap-2 pt-[15px] md:hidden">
+            {validSlides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Go to slide ${i + 1}`}
+                onClick={() => setIndex(i)}
+                className={cn(
+                  "h-[9px] rounded-full transition-[width,background-color] duration-200",
+                  i === index ? "w-[22px] rounded-[5px] bg-[#F48721]" : "w-[9px] bg-[#dddddd]",
+                )}
+              />
+            ))}
+          </div>
+        )}
 
         {stripImageUrl ? (
           (() => {

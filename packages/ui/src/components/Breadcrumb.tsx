@@ -17,7 +17,7 @@ export interface BreadcrumbProps {
 
 export function Breadcrumb({ items, className }: BreadcrumbProps) {
   return (
-    <nav aria-label="Breadcrumb" className={cn("py-4 font-body text-[13px] text-muted", className)}>
+    <nav aria-label="Breadcrumb" className={cn("py-2 font-body text-[13px] text-muted", className)}>
       {items.map((item, i) => {
         const isLast = i === items.length - 1;
         const content =

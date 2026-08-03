@@ -7,17 +7,6 @@ export interface FooterLinkColumn {
   links: { label: string; href: string }[];
 }
 
-export interface FooterPaymentTile {
-  label: string;
-  /** Real brand color as background — a relevant, recognizable badge without
-   * reproducing trademarked logo artwork (see the component's own note). */
-  bg: string;
-  textColor?: string;
-  /** Swap in a real official logo image later (MediaPicker-style upload) —
-   * renders instead of the colored text badge when set. */
-  imageUrl?: string;
-}
-
 export interface FooterProps {
   brandMark: string;
   logoUrl?: string;
@@ -34,43 +23,44 @@ export interface FooterProps {
   columns: FooterLinkColumn[];
   copyrightLabel: string;
   payWithLabel: string;
-  paymentTiles?: FooterPaymentTile[];
-  sslBadgeLine1: string;
-  sslBadgeLine2: string;
+  /** Single banner image (payment method logos + payment-gateway badge, same
+   * as ghorerbazar.com's own `.footer-payment-img` — one image, not
+   * individually-rendered icons) — a placeholder renders until this is set. */
+  paymentImageUrl?: string;
   linkComponent?: LinkComponent;
 }
 
 const pinIcon = (
-  <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
     <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" />
     <circle cx="12" cy="10" r="3" />
   </svg>
 );
 const phoneIcon = (
-  <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
   </svg>
 );
 const mailIcon = (
-  <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
     <rect x="2" y="4" width="20" height="16" rx="2" />
     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </svg>
 );
 const facebookIcon = (
-  <svg viewBox="0 0 24 24" width={17} height={17} fill="currentColor">
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
     <path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5h1.3V4.9c-.3 0-1.1-.1-2-.1-2 0-3.4 1.2-3.4 3.5V11H8.5v3H11v7Z" />
   </svg>
 );
 const instagramIcon = (
-  <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="2" width="20" height="20" rx="5" />
     <circle cx="12" cy="12" r="4" />
     <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 );
 const youtubeIcon = (
-  <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
     <path d="m10 15 5-3-5-3z" fill="currentColor" stroke="none" />
   </svg>
@@ -86,25 +76,12 @@ const appStoreIcon = (
   </svg>
 );
 
-// Real, recognizable brand colors as text badges rather than reproduced logo
-// artwork (card-network/bank logos are trademarked; these tiles name the
-// real relevant payment methods without redrawing anyone's mark) — a
-// `paymentTiles` override with `imageUrl` swaps in an official asset later.
-const DEFAULT_PAYMENT_TILES: FooterPaymentTile[] = [
-  { label: "VISA", bg: "#1a1f71", textColor: "#fff" },
-  { label: "Mastercard", bg: "#f4f4f4", textColor: "#1a1f71" },
-  { label: "AMEX", bg: "#006fcf", textColor: "#fff" },
-  { label: "bKash", bg: "#e2136e", textColor: "#fff" },
-  { label: "Nagad", bg: "#f7941e", textColor: "#fff" },
-  { label: "Rocket", bg: "#8c3494", textColor: "#fff" },
-  { label: "Upay", bg: "#00a651", textColor: "#fff" },
-  { label: "DBBL", bg: "#004990", textColor: "#fff" },
-  { label: "BRAC Bank", bg: "#5cb246", textColor: "#fff" },
-  { label: "City Bank", bg: "#c8102e", textColor: "#fff" },
-  { label: "MTB", bg: "#00539f", textColor: "#fff" },
-  { label: "tCash", bg: "#e6007e", textColor: "#fff" },
-];
-
+// Pixel-matched to ghorerbazar.com's `footer.style-3`: a 2-column grid for
+// the four link columns on mobile (About spans both, matching the
+// reference's col-6 tiles), one unified row at lg (About wider + 4 link
+// columns), and a payment-banner + copyright bottom bar that stacks
+// (payment banner on top, centered) on mobile and sits side-by-side on
+// desktop — all measured directly against the reference.
 export function Footer({
   brandMark,
   logoUrl,
@@ -121,40 +98,38 @@ export function Footer({
   columns,
   copyrightLabel,
   payWithLabel,
-  paymentTiles = DEFAULT_PAYMENT_TILES,
-  sslBadgeLine1,
-  sslBadgeLine2,
+  paymentImageUrl,
   linkComponent: Link = DefaultLink,
 }: FooterProps) {
   return (
     <footer className="border-t border-header-line bg-white">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <div className="grid grid-cols-1 gap-8 py-10 md:grid-cols-2 md:gap-10 md:pb-10 md:pt-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
-          <div className="md:col-span-2 lg:col-span-1">
-            <Link href="/" className="mb-[18px] flex items-center">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:gap-x-8">
+          <div className="col-span-2 lg:col-span-1">
+            <Link href="/" className="mb-4 flex items-center">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt={brandMark} className="h-10 w-auto" />
+                <img src={logoUrl} alt={brandMark} className="h-12 w-auto" />
               ) : (
                 <span className="font-bengali text-2xl font-bold text-header-green">{brandMark}</span>
               )}
             </Link>
-            <p className="max-w-[340px] font-header text-[0.85rem] leading-[1.65] text-header-muted">{description}</p>
-            <ul className="mt-5 flex flex-col gap-3">
-              <li className="flex items-center gap-[11px] font-header text-[0.85rem] font-semibold text-header-text">
+            <p className="max-w-[425px] font-header text-sm leading-[1.5] text-header-muted">{description}</p>
+            <ul className="mt-5 flex flex-col gap-2.5">
+              <li className="flex items-center gap-2.5 font-header text-base text-header-text">
                 {pinIcon}
                 {address}
               </li>
-              <li className="flex items-center gap-[11px] font-header text-[0.85rem] font-semibold text-header-text">
+              <li className="flex items-center gap-2.5 font-header text-base text-header-text">
                 {phoneIcon}
                 {phone}
               </li>
-              <li className="flex items-center gap-[11px] font-header text-[0.85rem] font-semibold text-header-text">
+              <li className="flex items-center gap-2.5 font-header text-base text-header-text">
                 {mailIcon}
                 {email}
               </li>
             </ul>
-            <div className="mt-[22px] flex gap-2.5">
+            <div className="mt-5 flex gap-2">
               {facebookHref && (
                 <a href={facebookHref} aria-label="Facebook" className="grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-header-green text-header-green transition-colors hover:bg-header-green hover:text-white">
                   {facebookIcon}
@@ -173,7 +148,7 @@ export function Footer({
             </div>
             {(googlePlayHref || appStoreHref) && (
               <>
-                <div className="mt-[26px] font-header text-[0.9rem] font-extrabold text-header-ink">{appDownloadLabel}</div>
+                <div className="mt-6 font-header text-base font-medium text-header-ink">{appDownloadLabel}</div>
                 <div className="mt-3 flex flex-wrap gap-2.5">
                   {googlePlayHref && (
                     <a href={googlePlayHref} aria-label="Get it on Google Play" className="inline-flex h-11 items-center gap-[9px] rounded-lg bg-[#111] px-3.5 text-white">
@@ -200,11 +175,11 @@ export function Footer({
 
           {columns.map((column) => (
             <div key={column.heading}>
-              <h4 className="mb-[18px] font-header text-[0.95rem] font-extrabold text-header-ink">{column.heading}</h4>
-              <ul className="flex flex-col gap-3">
+              <h4 className="mb-4 font-header text-base font-medium text-header-ink">{column.heading}</h4>
+              <ul className="flex flex-col gap-1 md:gap-2">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="font-header text-[0.85rem] font-semibold text-header-muted transition-colors hover:text-header-green">
+                    <Link href={link.href} className="font-header text-sm leading-none text-header-muted transition-colors hover:text-header-green md:leading-normal">
                       {link.label}
                     </Link>
                   </li>
@@ -214,31 +189,18 @@ export function Footer({
           ))}
         </div>
 
-        <div className="flex flex-col items-start gap-5 border-t border-header-line py-[22px] md:flex-row md:items-center md:justify-between">
-          <div className="font-header text-[0.82rem] font-semibold text-header-muted">{copyrightLabel}</div>
-          <div className="flex flex-wrap items-center gap-3.5">
-            <span className="font-header text-[0.85rem] font-extrabold text-header-ink">{payWithLabel}</span>
-            <div className="flex max-w-[560px] flex-wrap gap-1.5">
-              {paymentTiles.map((tile) => (
-                <span
-                  key={tile.label}
-                  title={tile.label}
-                  className="flex h-[30px] w-[46px] items-center justify-center overflow-hidden rounded-[5px] border border-header-line text-[0.5rem] font-extrabold tracking-[0.02em]"
-                  style={{ background: tile.imageUrl ? undefined : tile.bg, color: tile.imageUrl ? undefined : tile.textColor }}
-                >
-                  {tile.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={tile.imageUrl} alt={tile.label} className="h-full w-full object-contain p-[3px]" />
-                  ) : (
-                    tile.label
-                  )}
-                </span>
-              ))}
-            </div>
-            <span className="inline-flex h-[30px] flex-col justify-center rounded-[5px] bg-[#1a3e6e] px-2.5 leading-[1.15] text-white">
-              <span className="text-[0.45rem] opacity-85">{sslBadgeLine1}</span>
-              <span className="text-[0.6rem] font-extrabold tracking-[0.03em]">{sslBadgeLine2}</span>
-            </span>
+        <div className="flex flex-col-reverse items-center gap-3 border-t border-header-line py-4 text-center md:flex-row md:justify-between md:py-6 md:text-left">
+          <div className="font-header text-sm text-header-muted">{copyrightLabel}</div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <span className="font-header text-sm font-medium text-header-ink">{payWithLabel}</span>
+            {paymentImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={paymentImageUrl} alt={payWithLabel} className="h-[58px] w-auto max-w-[359px] object-contain md:h-[80px] md:max-w-[500px]" />
+            ) : (
+              <div className="flex h-[58px] w-[220px] items-center justify-center rounded border border-dashed border-header-line text-center font-header text-xs text-header-muted md:h-[80px] md:w-[400px]">
+                Payment methods placeholder
+              </div>
+            )}
           </div>
         </div>
       </div>

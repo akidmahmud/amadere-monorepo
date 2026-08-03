@@ -1,5 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ContentStatus, ProductType, StockStatus } from '@amader/db';
+import {
+  ContentStatus,
+  ProductFlagLabel,
+  ProductType,
+  StockStatus,
+} from '@amader/db';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -47,6 +52,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ enum: ProductFlagLabel, nullable: true })
+  @IsOptional()
+  @IsEnum(ProductFlagLabel)
+  flagLabel?: ProductFlagLabel | null;
 
   @ApiPropertyOptional()
   @IsOptional()

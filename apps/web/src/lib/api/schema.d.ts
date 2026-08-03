@@ -5593,6 +5593,7 @@ export interface components {
             sku: string | null;
             productType: Record<string, never>;
             isFeatured: boolean;
+            flagLabel: Record<string, never> | null;
             videoUrl: string | null;
             hasVariants: boolean;
             stock: number;
@@ -5620,6 +5621,7 @@ export interface components {
             sku: string | null;
             productType: Record<string, never>;
             isFeatured: boolean;
+            flagLabel: Record<string, never> | null;
             videoUrl: string | null;
             hasVariants: boolean;
             stock: number;
@@ -5682,6 +5684,7 @@ export interface components {
             productType: Record<string, never>;
             status: Record<string, never>;
             isFeatured: boolean;
+            flagLabel: Record<string, never> | null;
             videoUrl: string | null;
             hasVariants: boolean;
             trackInventory: boolean;
@@ -5758,6 +5761,8 @@ export interface components {
             status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
             /** @default false */
             isFeatured: boolean;
+            /** @enum {string|null} */
+            flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
             videoUrl?: string;
             /**
              * @description If true, price/stock live on variants instead of the product itself
@@ -5815,6 +5820,8 @@ export interface components {
             status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
             /** @default false */
             isFeatured: boolean;
+            /** @enum {string|null} */
+            flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
             videoUrl?: string;
             /**
              * @description If true, price/stock live on variants instead of the product itself

@@ -77,8 +77,6 @@ export function SiteFooter({ initialLogoUrl, initialCategoriesNav }: SiteFooterP
       ]}
       copyrightLabel={t("copyright", { year: new Date().getFullYear() })}
       payWithLabel={t("payWith")}
-      sslBadgeLine1={t("sslLine1")}
-      sslBadgeLine2={t("sslLine2")}
       linkComponent={Link}
     />
   );

@@ -5,27 +5,33 @@ import type { PublishStatus } from "@/hooks/useBrands";
 
 export type ProductType = "PHYSICAL" | "DIGITAL";
 export type StockStatus = "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+export type ProductFlagLabel = "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED";
 
 // Same swagger enum-erasure fix as every other module — productType/status/
-// stockStatus on the response DTO come out as Record<string, never>.
+// stockStatus/flagLabel on the response DTO come out as Record<string, never>.
 export type AdminProduct = Omit<
   components["schemas"]["AdminProductDto"],
-  "productType" | "status" | "stockStatus" | "variants"
+  "productType" | "status" | "stockStatus" | "variants" | "flagLabel"
 > & {
   productType: ProductType;
   status: PublishStatus;
   stockStatus: StockStatus;
   variants: AdminProductVariant[];
+  flagLabel: ProductFlagLabel | null;
 };
 
 export type AdminProductVariant = Omit<components["schemas"]["AdminProductVariantDto"], "stockStatus"> & {
   stockStatus: StockStatus;
 };
 
-export type ProductInput = Omit<components["schemas"]["CreateProductDto"], "productType" | "status" | "stockStatus"> & {
+export type ProductInput = Omit<
+  components["schemas"]["CreateProductDto"],
+  "productType" | "status" | "stockStatus" | "flagLabel"
+> & {
   productType: ProductType;
   status: PublishStatus;
   stockStatus: StockStatus;
+  flagLabel?: ProductFlagLabel | null;
 };
 
 export type VariantInput = components["schemas"]["CreateProductVariantDto"];

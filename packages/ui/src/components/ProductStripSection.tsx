@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
-import { Badge } from "./Badge";
 
 export interface ProductStripItem {
   href: string;
@@ -15,9 +14,9 @@ export interface ProductStripItem {
   price: string;
   /** Decimal string — present only when the product is on sale. */
   originalPrice?: string;
-  /** Drives the "Best Selling" badge — Product.isFeatured, an existing
-   * admin-editable flag that had no storefront consumer until this section. */
-  isFeatured?: boolean;
+  /** Corner "flag" badge text (e.g. "Best Selling") — Product.flagLabel, or a
+   * per-placement curated override depending on the caller. */
+  flagLabel?: string;
   /** Variant products: the variant id Add to Cart must send — without it
    * the backend rejects the request ("requires a variantId"). No inline
    * picker here (matches the reference design), so this is always the
@@ -33,7 +32,6 @@ export interface ProductStripSectionProps {
   onAddToCart?: (productId: number, packValue?: string) => void;
   addToCartPendingId?: number;
   addToCartLabel?: string;
-  bestBadgeLabel?: string;
   linkComponent?: LinkComponent;
 }
 
@@ -77,7 +75,6 @@ export function ProductStripSection({
   onAddToCart,
   addToCartPendingId,
   addToCartLabel = "Add To Cart",
-  bestBadgeLabel = "Best Selling",
   linkComponent: Link = DefaultLink,
 }: ProductStripSectionProps) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -178,15 +175,16 @@ export function ProductStripSection({
                   key={item.productId}
                   className="group relative flex min-w-[150px] flex-none basis-[calc((100%-12px)/2)] snap-start flex-col justify-between rounded border border-header-line bg-white p-2 font-sans text-[#020101] transition-shadow duration-300 sm:basis-[calc((100%-40px)/3)] lg:basis-[calc((100%-60px)/4)] xl:basis-[calc((100%-80px)/5)]"
                 >
-                  {item.isFeatured && (
-                    <Badge variant="red" className="absolute left-[6px] top-[6px] z-10 rounded bg-[#e6342e] px-2.5 py-1 text-[11px] font-medium text-white">
-                      {bestBadgeLabel}
-                    </Badge>
+                  {/* Pixel-matched to ghorerbazar.com's `.flag-name` / `.save-label`. */}
+                  {item.flagLabel && (
+                    <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#F48721] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+                      {item.flagLabel}
+                    </span>
                   )}
                   {hasDiscount && (
-                    <Badge variant="green" className="absolute right-[6px] top-[6px] z-10 rounded bg-[#34be82] px-2.5 py-1 text-[11px] font-medium text-white">
-                      Save {savePercent}%
-                    </Badge>
+                    <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#34BE82] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+                      {savePercent}% OFF
+                    </span>
                   )}
 
                   <Link href={item.href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">

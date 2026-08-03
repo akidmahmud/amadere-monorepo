@@ -2,6 +2,7 @@ import {
   ContentStatus,
   Locale,
   MediaType,
+  ProductFlagLabel,
   ProductType,
   StockStatus,
 } from '@amader/db';
@@ -53,6 +54,7 @@ export class AdminProductDto {
   productType!: ProductType;
   status!: ContentStatus;
   isFeatured!: boolean;
+  flagLabel!: ProductFlagLabel | null;
   videoUrl!: string | null;
   hasVariants!: boolean;
   trackInventory!: boolean;
@@ -143,6 +145,7 @@ export class PublicProductDto {
   sku!: string | null;
   productType!: ProductType;
   isFeatured!: boolean;
+  flagLabel!: ProductFlagLabel | null;
   videoUrl!: string | null;
   hasVariants!: boolean;
   stock!: number;

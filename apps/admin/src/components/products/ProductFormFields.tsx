@@ -226,6 +226,19 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
             <input type="checkbox" checked={form.isFeatured} onChange={(e) => form.setIsFeatured(e.target.checked)} className="accent-brand-500" />
             Featured
           </label>
+          <label className="mt-3.5 flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-text">Product Badge (optional)</span>
+            <select
+              value={form.flagLabel ?? ""}
+              onChange={(e) => form.setFlagLabel(e.target.value === "" ? null : (e.target.value as typeof form.flagLabel))}
+              className={inputClass}
+            >
+              <option value="">None</option>
+              <option value="BEST_SELLING">Best Selling</option>
+              <option value="NEW_ARRIVAL">New Arrival</option>
+              <option value="FEATURED">Featured</option>
+            </select>
+          </label>
         </div>
       )}
 

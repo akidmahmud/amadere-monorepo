@@ -67,6 +67,7 @@ export interface MobileDrawerProps {
   wishlistLabel?: string;
   localeSwitchLabel: string;
   onLocaleSwitch: () => void;
+  quickLinksLabel?: string;
   linkComponent?: LinkComponent;
 }
 
@@ -91,6 +92,7 @@ export function MobileDrawer({
   wishlistLabel,
   localeSwitchLabel,
   onLocaleSwitch,
+  quickLinksLabel = "Quick Links",
   linkComponent: Link = DefaultLink,
 }: MobileDrawerProps) {
   const isOpen = useMobileNavDrawerStore((s) => s.isOpen);
@@ -125,10 +127,10 @@ export function MobileDrawer({
         <Dialog.Overlay className="fixed inset-0 z-[60] bg-[rgba(0,0,0,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
         <Dialog.Content
           id={MOBILE_DRAWER_ID}
-          className="fixed left-0 top-0 z-[70] flex h-full w-[300px] max-w-[85vw] flex-col bg-white font-header"
+          className="fixed left-0 top-0 z-[70] flex h-full w-[300px] max-w-[85vw] flex-col gap-4 overflow-y-auto bg-white p-4 pb-20 font-header"
           aria-describedby={undefined}
         >
-          <div className="flex h-10 shrink-0 items-center justify-between px-4">
+          <div className="flex shrink-0 items-center justify-between">
             <Dialog.Title asChild>
               <Link href={brandHref} className="flex items-center" onClick={close}>
                 {logoUrl ? (
@@ -147,93 +149,101 @@ export function MobileDrawer({
             </Dialog.Close>
           </div>
 
-          <nav className="flex flex-1 flex-col overflow-y-auto">
-            <ul>
-              <li>
-                <Link
-                  href={allProductsHref}
-                  onClick={close}
-                  className="block px-4 py-3 text-[13.5px] font-semibold text-header-ink hover:bg-header-line/30"
-                >
-                  {allProductsLabel}
+          {/* Pixel-matched to ghorerbazar.com's `.sidebar-menu-head` (orange
+              card, avatar + greeting) — recolored to brand green per
+              explicit request. */}
+          <div className="flex shrink-0 items-center gap-3 rounded-xl bg-green p-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 text-white">{accountIcon}</div>
+            <div className="min-w-0">
+              <p className="text-[15px] font-medium text-white">Hello there!</p>
+              {accountHref && accountLabel && (
+                <Link href={accountHref} onClick={close} className="text-sm text-white/85 hover:text-white hover:underline">
+                  {accountLabel}
                 </Link>
-              </li>
-              {categories.map((category) => {
-                const hasChildren = !!category.children?.length;
-                const isExpanded = expanded.has(category.key);
-                return (
-                  <li key={category.key}>
-                    <div className="flex items-stretch">
-                      <Link
-                        href={category.href}
-                        onClick={close}
-                        className="flex-1 px-4 py-3 text-[13.5px] font-semibold text-header-ink hover:bg-header-line/30"
+              )}
+            </div>
+          </div>
+
+          {/* Pixel-matched to ghorerbazar.com's `.mobile-menu` card (light
+              card, per-row divider, chevron accordion for submenus). */}
+          <ul className="shrink-0 rounded-lg bg-header-line/15 px-2">
+            <li className="border-b border-header-line/60">
+              <Link
+                href={allProductsHref}
+                onClick={close}
+                className="block px-2 py-3 text-[13.5px] font-semibold text-header-ink hover:text-header-green"
+              >
+                {allProductsLabel}
+              </Link>
+            </li>
+            {categories.map((category, i) => {
+              const hasChildren = !!category.children?.length;
+              const isExpanded = expanded.has(category.key);
+              return (
+                <li key={category.key} className={cn(i < categories.length - 1 && "border-b border-header-line/60")}>
+                  <div className="flex items-stretch">
+                    <Link
+                      href={category.href}
+                      onClick={close}
+                      className="flex-1 px-2 py-3 text-[13.5px] font-semibold text-header-ink hover:text-header-green"
+                    >
+                      {category.label}
+                    </Link>
+                    {hasChildren && (
+                      <button
+                        type="button"
+                        aria-expanded={isExpanded}
+                        aria-label={category.label}
+                        onClick={() => toggle(category.key)}
+                        className="grid w-9 place-items-center"
                       >
-                        {category.label}
-                      </Link>
-                      {hasChildren && (
-                        <button
-                          type="button"
-                          aria-expanded={isExpanded}
-                          aria-label={category.label}
-                          onClick={() => toggle(category.key)}
-                          className="grid w-11 place-items-center"
-                        >
-                          <span className={cn("transition-transform duration-150", isExpanded && "rotate-180")}>{chevronIcon}</span>
-                        </button>
-                      )}
-                    </div>
-                    {hasChildren && isExpanded && (
-                      <ul className="bg-header-line/15 pb-1">
-                        {category.children!.map((child) => (
-                          <li key={child.key}>
-                            <Link
-                              href={child.href}
-                              onClick={close}
-                              className="block px-8 py-2.5 text-[13px] font-medium text-header-text hover:text-header-green"
-                            >
-                              {child.label}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
+                        <span className={cn("transition-transform duration-150", isExpanded && "rotate-180")}>{chevronIcon}</span>
+                      </button>
                     )}
-                  </li>
-                );
-              })}
-            </ul>
+                  </div>
+                  {hasChildren && isExpanded && (
+                    <ul className="pb-1">
+                      {category.children!.map((child) => (
+                        <li key={child.key}>
+                          <Link
+                            href={child.href}
+                            onClick={close}
+                            className="block px-4 py-2.5 text-[13px] font-medium text-header-muted hover:text-header-green"
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
-            <div className="my-2 border-t border-header-line" />
-
-            <ul className="pb-4">
+          {/* Pixel-matched to ghorerbazar.com's `.sidebar-more-menu-widget`
+              ("Quick Links" heading + icon-row card). */}
+          <div className="shrink-0">
+            <p className="relative mb-3 inline-block text-[15px] font-semibold text-header-ink after:absolute after:-bottom-1.5 after:left-0 after:h-[3px] after:w-8 after:rounded-full after:bg-header-green after:content-['']">
+              {quickLinksLabel}
+            </p>
+            <ul className="rounded-lg bg-header-line/15 p-1">
               <li>
                 <Link
                   href={trackOrderHref}
                   onClick={close}
-                  className="flex items-center gap-2.5 px-4 py-3 text-[13.5px] font-medium text-header-ink hover:text-header-green"
+                  className="flex items-center gap-2.5 px-2 py-2.5 text-[13.5px] font-medium text-header-ink hover:text-header-green"
                 >
                   {trackIcon}
                   {trackOrderLabel}
                 </Link>
               </li>
-              {accountHref && accountLabel && (
-                <li>
-                  <Link
-                    href={accountHref}
-                    onClick={close}
-                    className="flex items-center gap-2.5 px-4 py-3 text-[13.5px] font-medium text-header-ink hover:text-header-green"
-                  >
-                    {accountIcon}
-                    {accountLabel}
-                  </Link>
-                </li>
-              )}
               {wishlistHref && wishlistLabel && (
                 <li>
                   <Link
                     href={wishlistHref}
                     onClick={close}
-                    className="flex items-center gap-2.5 px-4 py-3 text-[13.5px] font-medium text-header-ink hover:text-header-green"
+                    className="flex items-center gap-2.5 px-2 py-2.5 text-[13.5px] font-medium text-header-ink hover:text-header-green"
                   >
                     {wishlistIcon}
                     {wishlistLabel}
@@ -247,14 +257,14 @@ export function MobileDrawer({
                     onLocaleSwitch();
                     close();
                   }}
-                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-medium text-header-ink hover:text-header-green"
+                  className="flex w-full items-center gap-2.5 px-2 py-2.5 text-left text-[13.5px] font-medium text-header-ink hover:text-header-green"
                 >
                   {globeIcon}
                   {localeSwitchLabel}
                 </button>
               </li>
             </ul>
-          </nav>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

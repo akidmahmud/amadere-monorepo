@@ -35,7 +35,7 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
             onClick={() => setActive(tab.id)}
             className={cn(
               "shrink-0 whitespace-nowrap rounded px-4 py-2 font-['Open_Sans',sans-serif] text-xs font-semibold capitalize sm:px-6 sm:py-3 sm:text-sm",
-              tab.id === activeTab.id ? "bg-[#F48721] text-white" : "bg-[#F5F5F5] text-[#666666]",
+              tab.id === activeTab.id ? "bg-green text-white" : "bg-[#F5F5F5] text-[#666666]",
             )}
           >
             {tab.label}

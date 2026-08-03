@@ -4,7 +4,6 @@ import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
 import { cn } from "../lib/cn";
 import { ProductCard } from "./ProductCard";
-import { Badge } from "./Badge";
 
 export interface TopSellingProductItem {
   href: string;
@@ -84,25 +83,22 @@ export function TopSellingProductsSection({
         </h2>
 
         <div className="grid grid-cols-2 gap-3 md:hidden">
-          {items.map((item) => {
-            const hasDiscount = item.originalPrice != null && Number(item.originalPrice) > Number(item.price);
-            return (
-              <ProductCard
-                key={item.productId}
-                href={item.href}
-                name={item.name}
-                imageUrl={item.imageUrl}
-                price={item.price}
-                originalPrice={item.originalPrice}
-                discountLabel={hasDiscount ? saveLabel : item.showBadge ? bestBadgeLabel : undefined}
-                defaultPackValue={item.defaultPackValue}
-                onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
-                addToCartLabel={addToCartLabel}
-                addToCartPending={addToCartPendingId === item.productId}
-                linkComponent={Link}
-              />
-            );
-          })}
+          {items.map((item) => (
+            <ProductCard
+              key={item.productId}
+              href={item.href}
+              name={item.name}
+              imageUrl={item.imageUrl}
+              price={item.price}
+              originalPrice={item.originalPrice}
+              flagLabel={item.showBadge ? bestBadgeLabel : undefined}
+              defaultPackValue={item.defaultPackValue}
+              onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
+              addToCartLabel={addToCartLabel}
+              addToCartPending={addToCartPendingId === item.productId}
+              linkComponent={Link}
+            />
+          ))}
         </div>
 
         <div className="hidden grid-cols-1 gap-6 md:grid lg:grid-cols-2">
@@ -116,11 +112,14 @@ export function TopSellingProductsSection({
                 key={item.productId}
                 className="group relative flex min-h-0 flex-col gap-4 rounded-[14px] border border-transparent bg-white p-6 shadow-[0_3px_14px_rgba(30,43,34,.06)] transition-[box-shadow,border-color] duration-200 hover:border-header-green hover:shadow-[0_10px_26px_rgba(33,113,61,.14)] md:min-h-[300px] md:flex-row md:items-center md:gap-6"
               >
+                {/* Pixel-matched to ghorerbazar.com's `.tp-product-badge`:
+                    plain element (not the shared Badge), ribbon-shaped
+                    asymmetric radius, exact red/weight/padding. */}
                 {item.showBadge && (
-                  <Badge variant="red" className="absolute right-3 top-3 z-[2] md:right-3.5 md:top-3.5">
+                  <span className="absolute right-3 top-3 z-[2] flex items-center gap-1 rounded-tl-[2px] rounded-tr-[8px] rounded-br-[2px] rounded-bl-[8px] bg-[#FF3F33] px-2 py-1 text-xs font-bold text-white md:right-3.5 md:top-3.5">
                     {badgeIcon}
                     {bestBadgeLabel}
-                  </Badge>
+                  </span>
                 )}
 
                 <Link href={item.href} className="flex h-[220px] w-full shrink-0 items-center justify-center overflow-hidden md:h-[240px] md:w-[240px] lg:h-[300px] lg:w-[300px]">
@@ -151,8 +150,9 @@ export function TopSellingProductsSection({
                       </span>
                     )}
                   </div>
+                  {/* Pixel-matched to ghorerbazar.com's `.save-price`. */}
                   {hasDiscount && (
-                    <span className="mt-3 inline-flex rounded-full bg-gold px-3 py-[5px] text-[0.72rem] font-extrabold text-[#3d3410]">
+                    <span className="mt-3 inline-flex rounded-full bg-[#BFDB38] px-2 py-1 text-xs font-semibold text-[#222831]">
                       {saveLabel} {formatMoney(String(Number(item.originalPrice) - Number(item.price)))}
                     </span>
                   )}

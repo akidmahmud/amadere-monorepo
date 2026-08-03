@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { useCartDrawerStore } from "../stores/cartDrawerStore";
@@ -87,15 +87,33 @@ export interface HeaderProps {
   className?: string;
 }
 
-// Spec 5.1's badge (remeasured from ghorerbazar.com): yellow pill, dark ink
-// text, 16px min, 2px white ring, top-right of the icon.
+// Spec 5.1's badge (remeasured from ghorerbazar.com's cart-count pill),
+// recolored to brand green + white per explicit request.
 function Badge({ count }: { count?: number }) {
   if (count === undefined || count <= 0) return null;
   return (
-    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-extrabold text-[#3d3410] ring-2 ring-white">
+    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-green px-1 text-[10px] font-extrabold text-white ring-2 ring-white">
       {count}
     </span>
   );
+}
+
+// ghorerbazar.com's cart icon plays a bounce animation whenever an item is
+// added — this reproduces that by watching cartCount for an increase (not
+// just "> 0", so it also fires on the 2nd/3rd add, not only the very first).
+function useCartBounce(cartCount?: number) {
+  const [bouncing, setBouncing] = useState(false);
+  const prevRef = useRef(cartCount);
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = cartCount;
+    if (cartCount !== undefined && prev !== undefined && cartCount > prev) {
+      setBouncing(true);
+      const timer = setTimeout(() => setBouncing(false), 700);
+      return () => clearTimeout(timer);
+    }
+  }, [cartCount]);
+  return bouncing;
 }
 
 export function Header({
@@ -128,6 +146,7 @@ export function Header({
   const openCart = useCartDrawerStore((s) => s.open);
   const isDrawerOpen = useMobileNavDrawerStore((s) => s.isOpen);
   const openDrawer = useMobileNavDrawerStore((s) => s.open);
+  const cartBouncing = useCartBounce(cartCount);
 
   function handleQueryChange(value: string) {
     setQuery(value);
@@ -193,9 +212,11 @@ export function Header({
   // md/lg (no separate 44×44 "compact" tier, no padded hover box — just a
   // bare icon that shifts color on hover), then auto-width icon+label
   // stacks (~44px tall, no fixed min-width column) at xl. Replaces the
-  // earlier 44×44/74×64 padded-box tiers.
+  // earlier 44×44/74×64 padded-box tiers. Colored brand green (not the
+  // reference's dark ink) per explicit request — cart-toggle/label-down-link
+  // items specifically.
   const desktopActionClass =
-    "relative flex h-[22px] w-[22px] items-center justify-center text-header-ink hover:text-header-green xl:h-11 xl:w-auto xl:flex-col xl:justify-center xl:gap-1";
+    "relative flex h-[22px] w-[22px] items-center justify-center text-green hover:text-green-dark xl:h-11 xl:w-auto xl:flex-col xl:justify-center xl:gap-1";
   const desktopActionLabelClass = "hidden font-header text-[11px] font-semibold xl:inline";
 
   return (
@@ -240,10 +261,12 @@ export function Header({
             type="button"
             onClick={openCart}
             aria-label={`${cartLabel}, ${cartCount ?? 0} items`}
-            className="relative col-start-4 flex h-full w-11 flex-col items-center justify-center justify-self-end gap-0.5 text-header-ink"
+            className="relative col-start-4 flex h-full w-11 flex-col items-center justify-center justify-self-end gap-0.5 text-green"
           >
-            {smallCartIcon}
-            <Badge count={cartCount} />
+            <span className={cn("relative", cartBouncing && "animate-bounce")}>
+              {smallCartIcon}
+              <Badge count={cartCount} />
+            </span>
             <span className="font-header text-[10px] font-semibold">{cartLabel}</span>
           </button>
         </div>
@@ -323,8 +346,10 @@ export function Header({
             </Link>
           )}
           <button type="button" onClick={openCart} aria-label={`${cartLabel}, ${cartCount ?? 0} items`} className={desktopActionClass}>
-            {cartIcon}
-            <Badge count={cartCount} />
+            <span className={cn("relative flex items-center justify-center", cartBouncing && "animate-bounce")}>
+              {cartIcon}
+              <Badge count={cartCount} />
+            </span>
             <span className={desktopActionLabelClass}>{cartLabel}</span>
           </button>
         </div>

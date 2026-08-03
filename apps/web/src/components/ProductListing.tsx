@@ -38,7 +38,7 @@ export interface ProductListingProps {
   pageSize: number;
   products: (Pick<
     ProductCardProps,
-    "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "packOptions" | "defaultPackValue"
+    "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "flagLabel" | "packOptions" | "defaultPackValue"
   > & { productId: number })[];
   categories?: ProductListingCategory[];
   tags: ProductListingTag[];
