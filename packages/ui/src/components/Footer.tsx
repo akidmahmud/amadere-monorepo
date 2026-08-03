@@ -116,15 +116,15 @@ export function Footer({
             </Link>
             <p className="max-w-[425px] font-header text-sm leading-[1.5] text-header-muted">{description}</p>
             <ul className="mt-5 flex flex-col gap-2.5">
-              <li className="flex items-center gap-2.5 font-header text-base text-header-text">
+              <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                 {pinIcon}
                 {address}
               </li>
-              <li className="flex items-center gap-2.5 font-header text-base text-header-text">
+              <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                 {phoneIcon}
                 {phone}
               </li>
-              <li className="flex items-center gap-2.5 font-header text-base text-header-text">
+              <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                 {mailIcon}
                 {email}
               </li>

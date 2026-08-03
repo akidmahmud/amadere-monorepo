@@ -171,7 +171,7 @@ export function MobileDrawer({
               <Link
                 href={allProductsHref}
                 onClick={close}
-                className="block px-2 py-3 text-[13.5px] font-semibold text-header-ink hover:text-header-green"
+                className="block px-2 py-3 text-[13.5px] font-normal text-header-ink hover:text-header-green"
               >
                 {allProductsLabel}
               </Link>
@@ -185,7 +185,7 @@ export function MobileDrawer({
                     <Link
                       href={category.href}
                       onClick={close}
-                      className="flex-1 px-2 py-3 text-[13.5px] font-semibold text-header-ink hover:text-header-green"
+                      className="flex-1 px-2 py-3 text-[13.5px] font-normal text-header-ink hover:text-header-green"
                     >
                       {category.label}
                     </Link>

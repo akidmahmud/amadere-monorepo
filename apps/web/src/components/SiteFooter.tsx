@@ -77,6 +77,10 @@ export function SiteFooter({ initialLogoUrl, initialCategoriesNav }: SiteFooterP
       ]}
       copyrightLabel={t("copyright", { year: new Date().getFullYear() })}
       payWithLabel={t("payWith")}
+      // Placeholder set of generic card/bank/mobile-wallet marks (no
+      // verification/certification badge baked in) — swap for Amader's own
+      // real payment-partner set later.
+      paymentImageUrl="/images/payment-methods-placeholder.png"
       linkComponent={Link}
     />
   );
