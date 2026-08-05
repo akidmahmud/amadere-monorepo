@@ -4,7 +4,7 @@ import { Footer } from "@amader/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
-import { useCategoriesNav } from "@/hooks/useCategoriesNav";
+import { useNavMenu } from "@/hooks/useNavMenu";
 import { toApiLocale } from "@/lib/api-locale";
 
 export interface SiteFooterProps {
@@ -12,19 +12,19 @@ export interface SiteFooterProps {
    * — reused here so the footer's logo/Shop-By column don't wait on a
    * second client-side fetch of data the layout already has. */
   initialLogoUrl?: string | null;
-  initialCategoriesNav?: Parameters<typeof useCategoriesNav>[1];
+  initialNavMenu?: Parameters<typeof useNavMenu>[1];
 }
 
-export function SiteFooter({ initialLogoUrl, initialCategoriesNav }: SiteFooterProps = {}) {
+export function SiteFooter({ initialLogoUrl, initialNavMenu }: SiteFooterProps = {}) {
   const t = useTranslations("footer");
   const locale = useLocale();
   const { data: siteInfo } = useSiteInfo();
-  const { data: categoriesNav } = useCategoriesNav(toApiLocale(locale), initialCategoriesNav);
+  const { data: navMenu } = useNavMenu(toApiLocale(locale), initialNavMenu);
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
 
-  const shopByLinks = (categoriesNav ?? [])
+  const shopByLinks = (navMenu ?? [])
     .slice(0, 6)
-    .map((category) => ({ label: category.name, href: `/categories/${category.slug}` }));
+    .map((item) => ({ label: item.label, href: item.href }));
 
   return (
     <Footer

@@ -26,6 +26,12 @@ export interface ProductCardData {
   price: string;
   originalPrice?: string;
   flagLabel?: string;
+  /** ISO date string, only set while a sale is actually active (see
+   * `inSaleWindow` below) — drives ProductCard's live "Offer ends in"
+   * countdown. Same start/end-window rule cart pricing already enforces
+   * (pricing.service.ts's `effectivePrice`), so the countdown and the
+   * discounted price it sits next to never disagree. */
+  saleEndsAt?: string;
   packOptions?: { value: string; label: string; price: string; originalPrice?: string }[];
   defaultPackValue?: string;
 }
@@ -38,7 +44,11 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
 
   const price = product.price ?? defaultVariant?.price ?? "0";
   const salePrice = product.salePrice ?? defaultVariant?.salePrice ?? null;
-  const onSale = salePrice != null && Number(salePrice) < Number(price);
+  const now = Date.now();
+  const inSaleWindow =
+    (!product.saleStartsAt || new Date(product.saleStartsAt).getTime() <= now) &&
+    (!product.saleEndsAt || new Date(product.saleEndsAt).getTime() >= now);
+  const onSale = salePrice != null && Number(salePrice) < Number(price) && inSaleWindow;
 
   const primaryMedia =
     product.media.find((m) => m.isPrimary) ?? product.media[0];
@@ -64,6 +74,7 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
     flagLabel: product.flagLabel ? FLAG_LABEL_TEXT[product.flagLabel as unknown as ProductFlagLabel] : undefined,
+    saleEndsAt: onSale ? product.saleEndsAt ?? undefined : undefined,
     packOptions,
     defaultPackValue: packOptions ? defaultVariantId(product) : undefined,
   };

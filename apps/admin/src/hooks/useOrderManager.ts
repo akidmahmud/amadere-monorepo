@@ -32,6 +32,8 @@ export interface OrderManagerRow {
   staffNote: string | null;
   utmSource: string | null;
   utmCampaign: string | null;
+  /** Set only in the "Deleted Orders" tab's listing — null everywhere else. */
+  deletedAt: string | null;
 }
 
 interface Paginated<T> {
@@ -79,6 +81,16 @@ export function useOrderManagerList(filters: OrderManagerFilters) {
   });
 }
 
+// "Deleted Orders" tab — same filters/shape as the main list, just the
+// soft-deleted set. No polling (unlike the live working list above): this
+// view isn't something anyone watches in real time.
+export function useDeletedOrdersList(filters: OrderManagerFilters) {
+  return useQuery({
+    queryKey: [...KEY, "trash", filters],
+    queryFn: () => proxyFetch<Paginated<OrderManagerRow>>(`/admin/net-profit/orders/trash${toQueryString(filters)}`),
+  });
+}
+
 // Counts per status honoring every OTHER active filter — powers the
 // status pill-tabs' live counts (Order Manager parity).
 export function useOrderManagerStatusCounts(filters: Omit<OrderManagerFilters, "status" | "page" | "pageSize">) {
@@ -113,8 +125,14 @@ export function useUpdateOrderNote(id: number) {
 export function useBulkOrderAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { orderIds: number[]; action: "consign" | "block" | "hold" | "export"; courierProvider?: string }) =>
-      proxyFetch<BulkActionResult>("/admin/net-profit/orders/bulk", { method: "POST", body: JSON.stringify(input) }),
+    mutationFn: (input: {
+      orderIds: number[];
+      action: "consign" | "block" | "hold" | "export" | "delete" | "restore";
+      courierProvider?: string;
+    }) => proxyFetch<BulkActionResult>("/admin/net-profit/orders/bulk", { method: "POST", body: JSON.stringify(input) }),
+    // Both the working list and the trash list move rows between each other
+    // on delete/restore — invalidating just KEY (which the trash query key
+    // extends via [...KEY, "trash", ...]) covers both in one call.
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

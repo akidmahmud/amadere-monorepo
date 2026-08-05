@@ -27,11 +27,11 @@ import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { MediaService } from './media.service';
 import { UploadMediaDto } from './dto/upload-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
+import { MediaQueryDto } from './dto/media-query.dto';
 import { MediaDto } from './media.mapper';
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20MB
@@ -47,10 +47,8 @@ export class AdminMediaController {
   @Get()
   @RequirePermission('media.view')
   @ApiPaginatedResponse(MediaDto)
-  list(
-    @Query() { page, pageSize }: PaginationQueryDto,
-  ): Promise<PaginatedResult<MediaDto>> {
-    return this.media.list(page ?? 1, pageSize ?? 20);
+  list(@Query() query: MediaQueryDto): Promise<PaginatedResult<MediaDto>> {
+    return this.media.list(query);
   }
 
   @Post()
@@ -70,9 +68,9 @@ export class AdminMediaController {
     return this.media.upload(file, dto.altText);
   }
 
-  // Same permission tier as upload — editing alt text is completing the
-  // upload's own metadata, not a distinct capability worth its own
-  // permission key (and role) to seed.
+  // Same permission tier as upload — editing alt text or moving between
+  // folders is completing/organizing the upload, not a distinct capability
+  // worth its own permission key (and role) to seed.
   @Patch(':id')
   @RequirePermission('media.upload')
   @ApiOkResponse({ type: MediaDto })
@@ -80,7 +78,7 @@ export class AdminMediaController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMediaDto,
   ): Promise<MediaDto> {
-    return this.media.updateAltText(id, dto.altText ?? '');
+    return this.media.update(id, dto);
   }
 
   @Delete(':id')

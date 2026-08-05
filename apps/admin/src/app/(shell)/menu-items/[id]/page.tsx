@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { useMenuItems, useUpdateMenuItem } from "@/hooks/useMenuItems";
+import { MenuItemLinkFields } from "@/components/menu-items/MenuItemLinkFields";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -15,6 +16,10 @@ export default function EditMenuItemPage({ params }: { params: Promise<{ id: str
   const { data: items, isLoading } = useMenuItems();
   const item = items?.find((i) => i.id === itemId);
   const update = useUpdateMenuItem(itemId);
+  // Nesting is capped at one level — only other root items are valid parents,
+  // and an item that already has children can't become someone's child itself.
+  const hasChildren = items?.some((i) => i.parentId === itemId) ?? false;
+  const rootItems = items?.filter((i) => i.parentId === null && i.id !== itemId) ?? [];
 
   const [label, setLabel] = useState("");
   const [href, setHref] = useState("");
@@ -33,7 +38,7 @@ export default function EditMenuItemPage({ params }: { params: Promise<{ id: str
     e.preventDefault();
     await update.mutateAsync({
       href,
-      parentId,
+      parentId: parentId ?? null,
       isActive,
       translations: [{ locale: "EN", label }, { locale: "BN", label }],
     });
@@ -45,22 +50,33 @@ export default function EditMenuItemPage({ params }: { params: Promise<{ id: str
   return (
     <Card className="max-w-xl">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <MenuItemLinkFields
+          href={href}
+          onHrefChange={setHref}
+          onLabelSuggestion={(suggested) => {
+            if (!label.trim()) setLabel(suggested);
+          }}
+        />
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-secondary">Label</span>
           <input required value={label} onChange={(e) => setLabel(e.target.value)} className={inputClass} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Link</span>
-          <input required value={href} onChange={(e) => setHref(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-secondary">Parent item (optional)</span>
-          <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : undefined)} className={inputClass}>
+          <select
+            value={parentId ?? ""}
+            disabled={hasChildren}
+            onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : undefined)}
+            className={inputClass}
+          >
             <option value="">None (top-level)</option>
-            {items?.filter((i) => i.id !== itemId).map((i) => (
+            {rootItems.map((i) => (
               <option key={i.id} value={i.id}>{i.translations[0]?.label}</option>
             ))}
           </select>
+          {hasChildren && (
+            <span className="text-xs text-muted">This item has its own children, so it can&apos;t be nested under another item.</span>
+          )}
         </label>
         <label className="flex items-center gap-2 text-sm text-text">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />

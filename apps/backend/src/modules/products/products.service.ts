@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Locale, Prisma, SeoEntityType } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -21,6 +23,7 @@ import { ProductFilterQueryDto, ProductSort } from './dto/product-filter-query.d
 import { AdminProductQueryDto } from './dto/admin-product-query.dto';
 import { computeSeoScore } from './seo-score.util';
 import {
+  AdminDeletedProductDto,
   AdminProductDto,
   AdminProductPickerItemDto,
   PublicProductDetailDto,
@@ -31,12 +34,15 @@ import { ReviewsService } from '../reviews/reviews.service';
 import { TokenService } from '../../common/auth/token.service';
 import {
   buildBreadcrumbJsonLd,
+  buildFaqPageJsonLd,
   buildProductJsonLd,
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly seo: SeoService,
@@ -226,13 +232,29 @@ export class ProductsService {
         stockStatus: dto.stockStatus,
         price: dto.hasVariants ? undefined : dto.price,
         salePrice: dto.salePrice,
-        saleStartsAt: dto.saleStartsAt,
-        saleEndsAt: dto.saleEndsAt,
+        // dto values are bare "YYYY-MM-DD" from <input type="date">, not
+        // full ISO-8601 datetimes — Prisma 7's DateTime scalar rejects a
+        // date-only string outright ("premature end of input. Expected
+        // ISO-8601 DateTime"), so this 500'd on every save that touched
+        // either field. new Date(...) normalizes to midnight UTC first.
+        saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : dto.saleStartsAt,
+        saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : dto.saleEndsAt,
         costPerItem: dto.costPerItem,
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
-        translations: { create: dto.translations },
+        translations: {
+          create: dto.translations.map((t) => ({
+            locale: t.locale,
+            name: t.name,
+            description: t.description,
+            content: t.content,
+            keyBenefits: t.keyBenefits,
+            benefitPoints: t.benefitPoints,
+            howToUse: t.howToUse,
+            faqs: t.faqs ? { create: t.faqs } : undefined,
+          })),
+        },
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
           : undefined,
@@ -323,14 +345,30 @@ export class ProductsService {
         stockStatus: dto.stockStatus,
         price: dto.price,
         salePrice: dto.salePrice,
-        saleStartsAt: dto.saleStartsAt,
-        saleEndsAt: dto.saleEndsAt,
+        // dto values are bare "YYYY-MM-DD" from <input type="date">, not
+        // full ISO-8601 datetimes — Prisma 7's DateTime scalar rejects a
+        // date-only string outright ("premature end of input. Expected
+        // ISO-8601 DateTime"), so this 500'd on every save that touched
+        // either field. new Date(...) normalizes to midnight UTC first.
+        saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : dto.saleStartsAt,
+        saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : dto.saleEndsAt,
         costPerItem: dto.costPerItem,
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
         translations: dto.translations
-          ? { create: dto.translations }
+          ? {
+              create: dto.translations.map((t) => ({
+                locale: t.locale,
+                name: t.name,
+                description: t.description,
+                content: t.content,
+                keyBenefits: t.keyBenefits,
+                benefitPoints: t.benefitPoints,
+                howToUse: t.howToUse,
+                faqs: t.faqs ? { create: t.faqs } : undefined,
+              })),
+            }
           : undefined,
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
@@ -362,6 +400,73 @@ export class ProductsService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  private static readonly TRASH_RETENTION_DAYS = 30;
+
+  // Trash listing — soft-deleted products still within the retention window
+  // (the nightly purge job below removes anything older, so `deletedAt: not
+  // null` alone is equivalent to "within 30 days" in practice).
+  async listDeleted(page = 1, pageSize = 20): Promise<PaginatedResult<AdminDeletedProductDto>> {
+    const where = { deletedAt: { not: null } };
+    const [total, products] = await Promise.all([
+      this.prisma.client.product.count({ where }),
+      this.prisma.client.product.findMany({
+        where,
+        select: {
+          id: true,
+          slug: true,
+          deletedAt: true,
+          translations: { select: { name: true }, take: 1 },
+          media: { orderBy: { sortOrder: 'asc' }, take: 1, select: { media: { select: { url: true } } } },
+        },
+        orderBy: { deletedAt: 'desc' },
+        ...paginationArgs(page, pageSize),
+      }),
+    ]);
+
+    const items = products.map((p) => {
+      const deletedAt = p.deletedAt!;
+      const daysElapsed = Math.floor((Date.now() - deletedAt.getTime()) / 86_400_000);
+      return {
+        id: p.id,
+        slug: p.slug,
+        name: p.translations[0]?.name ?? p.slug,
+        imageUrl: p.media[0]?.media.url ?? null,
+        deletedAt,
+        daysRemaining: Math.max(0, ProductsService.TRASH_RETENTION_DAYS - daysElapsed),
+      };
+    });
+    return toPaginatedResult(items, total, page, pageSize);
+  }
+
+  async restore(id: number): Promise<AdminProductDto> {
+    const product = await this.prisma.client.product.findUnique({
+      where: { id },
+      select: { deletedAt: true },
+    });
+    if (!product || product.deletedAt === null) {
+      throw new NotFoundException('Product not found in trash');
+    }
+    await this.prisma.client.product.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+    return this.adminGet(id);
+  }
+
+  // Runs daily — anything soft-deleted more than 30 days ago is gone for
+  // good. Safe to hard-delete: OrderItem.productId is onDelete: SetNull and
+  // already carries its own productNameSnapshot/skuSnapshot, so historical
+  // orders keep displaying correctly with no live Product row behind them.
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async purgeExpiredTrash(): Promise<number> {
+    const cutoff = new Date(Date.now() - ProductsService.TRASH_RETENTION_DAYS * 86_400_000);
+    const { count } = await this.prisma.client.product.deleteMany({
+      where: { deletedAt: { lt: cutoff } },
+    });
+    if (count > 0) this.logger.log(`Purged ${count} product(s) from trash (past 30-day retention).`);
+    return count;
   }
 
   // Variants are managed one at a time (not wholesale-replaced on product
@@ -694,6 +799,13 @@ export class ProductsService {
       this.getPublicRelation(product.id, 'FREQUENTLY_BOUGHT_TOGETHER', locale),
     ]);
 
+    const translation =
+      product.translations.find((t) => t.locale === locale) ?? product.translations[0];
+    const faqs = (translation?.faqs ?? []).map((f) => ({
+      question: f.question,
+      answer: f.answer,
+    }));
+
     const aggregateRating = await this.reviews.getAggregateRating(product.id);
     // ponytail: salePrice ?? price is the display price for structured data,
     // not a full re-run of PricingService's sale-window logic — revisit if
@@ -737,8 +849,10 @@ export class ProductsService {
           ]
         : []),
     ];
+    const faqJsonLd = buildFaqPageJsonLd(faqs);
+    if (faqJsonLd) structuredData.push(faqJsonLd);
 
-    return { ...dto, seo, structuredData, crossSell, frequentlyBoughtTogether };
+    return { ...dto, seo, structuredData, faqs, crossSell, frequentlyBoughtTogether };
   }
 
   private buildWhere(

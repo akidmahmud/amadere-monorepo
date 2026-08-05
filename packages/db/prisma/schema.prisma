@@ -93,11 +93,27 @@ model Media {
   altText   String?   @map("alt_text")
   width     Int?
   height    Int?
+  folderId  Int?      @map("folder_id")
   createdAt DateTime  @default(now()) @map("created_at")
 
   productMedia ProductMedia[]
+  folder       MediaFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
+  @@index([folderId])
   @@map("media")
+}
+
+// Flat (no nesting) organizational grouping for the media library — deleting
+// a folder un-files its media (SetNull) rather than deleting the files
+// themselves, since Media rows can still be attached to products.
+model MediaFolder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  media Media[]
+
+  @@map("media_folders")
 }
 
 // Every admin/staff write records here (AGENTS.md §4.2). adminUserId is
@@ -749,12 +765,27 @@ model ProductTranslation {
   comparisonTable Json? @map("comparison_table")
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  faqs    ProductFaq[]
 
   @@unique([productId, locale])
   // Trigram GIN index backs typo-tolerant search (pg_trgm similarity/ILIKE),
   // added via a manual migration (CREATE EXTENSION pg_trgm) — see B4.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("product_translations")
+}
+
+// Per-product FAQ tab (mirrors BlogPostFaq) — hangs off the translation
+// since Q&A text is locale-specific.
+model ProductFaq {
+  id            Int    @id @default(autoincrement())
+  translationId Int    @map("translation_id")
+  question      String
+  answer        String
+  sortOrder     Int    @default(0) @map("sort_order")
+
+  translation ProductTranslation @relation(fields: [translationId], references: [id], onDelete: Cascade)
+
+  @@map("product_faqs")
 }
 
 model ProductCategory {
@@ -1086,6 +1117,11 @@ model Order {
   canceledAt  DateTime? @map("canceled_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
+  // Soft delete — Order Manager's "Deleted Orders" tab. Deliberately no
+  // retention/auto-purge cron like Product's trash: an order is a financial
+  // record, so it stays restorable indefinitely until a human explicitly
+  // does something else with it.
+  deletedAt   DateTime? @map("deleted_at")
 
   customer       Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items          OrderItem[]
@@ -1102,6 +1138,7 @@ model Order {
   profit         OrderProfit?
 
   @@index([status])
+  @@index([deletedAt])
   @@map("orders")
 }
 

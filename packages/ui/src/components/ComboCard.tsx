@@ -2,7 +2,6 @@
 
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
-import { Badge } from "./Badge";
 
 export interface ComboCardProps {
   href: string;
@@ -19,11 +18,12 @@ export interface ComboCardProps {
 }
 
 // Matches ghorerbazar.com's "Exclusive Combo Deals" card: image, a "Save X%"
-// badge (green, left) + "Combo Offer" badge (amber, right) — same dual-badge-
-// corner convention already used for product cards elsewhere on this
-// storefront (ProductStripSection) — name, current + struck-through original
-// price, and a "View Details" link instead of "Add to Cart" (a combo adds
-// several products at once, handled on its own detail page).
+// badge (green, left) + "Combo Offer" badge (orange, right) — flush at the
+// card's top corners with only the inner-bottom corner rounded, exactly
+// like their `.combo-saving`/`.combo-label` — name, current + struck-through
+// original price, and a filled "View Details" button (brand green, not
+// their orange) instead of "Add to Cart" (a combo adds several products at
+// once, handled on its own detail page).
 export function ComboCard({
   href,
   imageUrl,
@@ -43,14 +43,14 @@ export function ComboCard({
     // Carousel, so it needs 18px-based fractions or rows fall a couple px
     // short of the full row width.
     <article className="group relative flex min-w-[150px] flex-none basis-[calc((100%-18px)/2)] snap-start flex-col justify-between rounded border border-header-line bg-white p-2 font-sans text-[#020101] transition-shadow duration-300 sm:basis-[calc((100%-36px)/3)] lg:basis-[calc((100%-54px)/4)] xl:basis-[calc((100%-72px)/5)]">
-      <Badge variant="orange" className="absolute left-[6px] top-[6px] z-10 rounded bg-[#e07b1a] px-2.5 py-1 text-[11px] font-medium text-white">
-        {comboLabel}
-      </Badge>
       {hasDiscount && (
-        <Badge variant="green" className="absolute right-[6px] top-[6px] z-10 rounded bg-[#34be82] px-2.5 py-1 text-[11px] font-medium text-white">
+        <span className="absolute left-0 top-0 z-10 rounded-br-xl bg-[#34be82] px-2 py-1 text-[10px] font-semibold leading-normal text-white">
           Save {savePercent}%
-        </Badge>
+        </span>
       )}
+      <span className="absolute right-0 top-0 z-10 rounded-bl-xl bg-[#F48721] px-2 py-1 text-[10px] font-semibold leading-normal text-white">
+        {comboLabel}
+      </span>
 
       <Link href={href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
         {imageUrl ? (
@@ -80,7 +80,7 @@ export function ComboCard({
         <div className="mt-3">
           <Link
             href={href}
-            className="flex h-[34px] w-full items-center justify-center gap-1.5 rounded border border-header-green bg-transparent font-sans text-xs font-semibold text-header-green transition-all duration-400 hover:bg-header-green hover:text-white md:h-[40px] md:text-sm"
+            className="flex h-[34px] w-full items-center justify-center gap-1.5 rounded bg-header-green font-sans text-xs font-semibold text-white transition-colors hover:bg-header-green-dark md:h-[40px] md:text-sm"
           >
             {viewDetailsLabel}
           </Link>

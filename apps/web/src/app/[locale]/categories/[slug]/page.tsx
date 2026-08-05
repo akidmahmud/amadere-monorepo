@@ -65,6 +65,7 @@ export default async function CategoryPage({
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
   const filters = parsePlpSearchParams(await searchParams);
+  const pageSize = filters.pageSize ?? PAGE_SIZE;
 
   const category = await getCategory(slug, localeParam);
   if (!category) {
@@ -78,7 +79,7 @@ export default async function CategoryPage({
         query: {
           locale: localeParam,
           page: filters.page,
-          pageSize: PAGE_SIZE,
+          pageSize,
           categoryIds: [category.id],
           tagIds: filters.tagIds,
           minPrice: filters.minPrice,
@@ -119,7 +120,7 @@ export default async function CategoryPage({
           // centered block of short justified-looking lines.
           // eslint-disable-next-line react/no-danger
           <div
-            className="prose prose-sm mb-6 max-w-2xl text-left font-body text-sm text-muted [&_a]:text-green [&_a]:underline [&_p]:mb-2"
+            className="prose prose-sm mb-6 max-w-none text-left font-body text-sm text-muted [&_a]:text-green [&_a]:underline [&_p]:mb-2"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(category.description) }}
           />
         )}
@@ -128,7 +129,7 @@ export default async function CategoryPage({
         basePath={`/categories/${slug}`}
         filters={filters}
         total={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         products={products}
         tags={tags}
         hidePlaceholderBanner

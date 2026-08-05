@@ -77,6 +77,35 @@ export function useCustomers(filters: CustomerListFilters = {}) {
   });
 }
 
+// "Deleted Customers" tab — same filters/shape as the main list, just the
+// soft-deleted set. No polling (unlike the live list above): this view
+// isn't something anyone watches in real time.
+export function useDeletedCustomers(filters: CustomerListFilters = {}) {
+  return useQuery({
+    queryKey: [...LIST_KEY, "trash", filters],
+    queryFn: () =>
+      proxyFetch<{ items: AdminCustomerListItem[]; total: number }>(`/admin/customers/trash${toQueryString(filters)}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export interface BulkCustomerActionResult {
+  succeeded: number[];
+  failed: { customerId: number; error: string }[];
+}
+
+export function useBulkCustomerAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { customerIds: number[]; action: "delete" | "restore" }) =>
+      proxyFetch<BulkCustomerActionResult>("/admin/customers/bulk", { method: "POST", body: JSON.stringify(input) }),
+    // Both the working list and the trash list move rows between each other
+    // on delete/restore — invalidating just LIST_KEY (which the trash query
+    // key extends via [...LIST_KEY, "trash", ...]) covers both in one call.
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
+  });
+}
+
 export type CustomerStats = components["schemas"]["AdminCustomerStatsDto"];
 
 export function useCustomerStats() {
@@ -168,8 +197,15 @@ export function useUpdateCustomerTiers() {
 export function useCreateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { phone: string; firstName?: string; lastName?: string; email?: string }) =>
-      proxyFetch<AdminCustomer>("/admin/customers", { method: "POST", body: JSON.stringify(input) }),
+    mutationFn: (input: {
+      phone: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      addressLine?: string;
+      division?: string;
+      district?: string;
+    }) => proxyFetch<AdminCustomer>("/admin/customers", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
   });
 }

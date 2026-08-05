@@ -13,11 +13,10 @@ import { hashPassword, verifyPassword } from '../../common/auth/password.util';
 import { OtpService } from './otp.service';
 import { isEmailFormat } from './identifier.util';
 import { RegisterDto } from './dto/register.dto';
+import { RegisterPendingDto } from './dto/register-pending.dto';
 import { LoginDto } from './dto/login.dto';
 import { OtpRequestDto } from './dto/otp-request.dto';
 import { OtpVerifyDto } from './dto/otp-verify.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { CustomerProfileDto, toCustomerProfileDto } from './customer.mapper';
 import { SOCIAL_LOGIN_VERIFIER } from './notification/social-login-verifier.interface';
@@ -38,30 +37,54 @@ export class CustomerAuthService {
     private readonly socialVerifier: SocialLoginVerifier,
   ) {}
 
-  async register(dto: RegisterDto): Promise<TokenPair> {
-    const existing = await this.prisma.client.customer.findUnique({
-      where: { email: dto.email },
+  // Doesn't sign the customer in — the account is only real once the phone
+  // OTP is verified (verifyOtp() below). Until then this upserts a
+  // *pending* (phoneVerifiedAt: null) Customer row keyed on phone, so:
+  //   - resubmitting the same phone (e.g. the OTP expired, or they mistyped
+  //     a field) updates the pending row and re-sends a code, instead of
+  //     permanently squatting the phone number on a customer who never
+  //     finishes signing up (Customer.phone is @unique).
+  //   - a phone that already belongs to a *verified* account still 409s.
+  async register(dto: RegisterDto): Promise<RegisterPendingDto> {
+    const existingPhone = await this.prisma.client.customer.findUnique({
+      where: { phone: dto.phone },
     });
-    if (existing) throw new ConflictException('Email already registered');
+    if (existingPhone?.phoneVerifiedAt) {
+      throw new ConflictException('Phone number already registered');
+    }
+    if (dto.email) {
+      const existingEmail = await this.prisma.client.customer.findUnique({
+        where: { email: dto.email },
+      });
+      if (existingEmail && existingEmail.id !== existingPhone?.id) {
+        throw new ConflictException('Email already registered');
+      }
+    }
 
     const passwordHash = await hashPassword(dto.password);
-    const customer = await this.prisma.client.customer.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-      },
-    });
-    this.events.emit(CUSTOMER_REGISTERED_EVENT, {
-      customerId: customer.id,
-    } satisfies CustomerRegisteredEvent);
-    return this.tokens.signCustomerTokens(customer.id);
+    const data = {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      passwordHash,
+    };
+    if (existingPhone) {
+      await this.prisma.client.customer.update({
+        where: { id: existingPhone.id },
+        data,
+      });
+    } else {
+      await this.prisma.client.customer.create({
+        data: { ...data, phone: dto.phone },
+      });
+    }
+    await this.otp.request(dto.phone, 'REGISTER');
+    return { pending: true };
   }
 
   async login(dto: LoginDto): Promise<TokenPair> {
     const customer = await this.prisma.client.customer.findUnique({
-      where: { email: dto.email },
+      where: { phone: dto.phone },
     });
     if (
       !customer?.passwordHash ||
@@ -94,19 +117,28 @@ export class CustomerAuthService {
       return this.tokens.signCustomerTokens(customer.id);
     }
 
-    // REGISTER
-    const existing = await this.findByIdentifier(dto.identifier);
-    if (existing) throw new ConflictException('Identifier already registered');
-
+    // REGISTER — activates the pending Customer row register() created
+    // (sets phoneVerifiedAt, making the account real). Falls back to a bare
+    // create for any caller that requests a REGISTER OTP for an identifier
+    // with no pending row at all (the older passwordless-signup shape) —
+    // cheap safety net, not the primary path anymore.
     const isEmail = isEmailFormat(dto.identifier);
-    const customer = await this.prisma.client.customer.create({
-      data: {
-        email: isEmail ? dto.identifier : undefined,
-        phone: isEmail ? undefined : dto.identifier,
-        emailVerifiedAt: isEmail ? new Date() : undefined,
-        phoneVerifiedAt: isEmail ? undefined : new Date(),
-      },
-    });
+    let customer = await this.findByIdentifier(dto.identifier);
+    if (customer) {
+      customer = await this.prisma.client.customer.update({
+        where: { id: customer.id },
+        data: isEmail ? { emailVerifiedAt: new Date() } : { phoneVerifiedAt: new Date() },
+      });
+    } else {
+      customer = await this.prisma.client.customer.create({
+        data: {
+          email: isEmail ? dto.identifier : undefined,
+          phone: isEmail ? undefined : dto.identifier,
+          emailVerifiedAt: isEmail ? new Date() : undefined,
+          phoneVerifiedAt: isEmail ? undefined : new Date(),
+        },
+      });
+    }
     this.events.emit(CUSTOMER_REGISTERED_EVENT, {
       customerId: customer.id,
     } satisfies CustomerRegisteredEvent);
@@ -123,26 +155,6 @@ export class CustomerAuthService {
       where: { id: customerId },
     });
     return toCustomerProfileDto(customer);
-  }
-
-  async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
-    const customer = await this.findByIdentifier(dto.identifier);
-    if (customer) {
-      await this.otp.request(dto.identifier, 'RESET_PASSWORD');
-    }
-    // Same response regardless of whether the account exists (no enumeration).
-  }
-
-  async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    await this.otp.verify(dto.identifier, dto.code, 'RESET_PASSWORD');
-    const customer = await this.findByIdentifier(dto.identifier);
-    if (!customer)
-      throw new NotFoundException('No account with this identifier');
-    const passwordHash = await hashPassword(dto.newPassword);
-    await this.prisma.client.customer.update({
-      where: { id: customer.id },
-      data: { passwordHash },
-    });
   }
 
   async socialLogin(dto: SocialLoginDto): Promise<TokenPair> {

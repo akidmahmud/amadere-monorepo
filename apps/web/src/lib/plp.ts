@@ -7,6 +7,11 @@ export const SORT_OPTIONS = [
 
 export type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
+// Pixel-matched to ghorerbazar.com's "Show" per-page select
+// (offer-zone collection page) — "Default" (undefined) falls back to
+// whatever page size the calling route already uses.
+export const PAGE_SIZE_OPTIONS = [16, 20, 24, 36] as const;
+
 export interface PlpSearchParams {
   categoryId?: string | string[];
   tagId?: string | string[];
@@ -14,6 +19,7 @@ export interface PlpSearchParams {
   maxPrice?: string;
   sort?: string;
   page?: string;
+  pageSize?: string;
 }
 
 export interface PlpFilters {
@@ -23,9 +29,12 @@ export interface PlpFilters {
   maxPrice?: number;
   sort: SortValue;
   page: number;
+  /** Undefined = the route's own default page size. */
+  pageSize?: number;
 }
 
 const VALID_SORTS = new Set(SORT_OPTIONS.map((o) => o.value));
+const VALID_PAGE_SIZES = new Set<number>(PAGE_SIZE_OPTIONS);
 
 function parseIds(value: string | string[] | undefined): number[] {
   if (value === undefined) return [];
@@ -36,6 +45,8 @@ function parseIds(value: string | string[] | undefined): number[] {
 export function parsePlpSearchParams(params: PlpSearchParams): PlpFilters {
   const sort = params.sort && VALID_SORTS.has(params.sort as SortValue) ? (params.sort as SortValue) : "NEWEST";
   const page = Math.max(1, Number(params.page) || 1);
+  const parsedPageSize = params.pageSize ? Number(params.pageSize) : undefined;
+  const pageSize = parsedPageSize && VALID_PAGE_SIZES.has(parsedPageSize) ? parsedPageSize : undefined;
   return {
     categoryIds: parseIds(params.categoryId),
     tagIds: parseIds(params.tagId),
@@ -43,6 +54,7 @@ export function parsePlpSearchParams(params: PlpSearchParams): PlpFilters {
     maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
     sort,
     page,
+    pageSize,
   };
 }
 
@@ -58,6 +70,7 @@ export function buildPlpHref(base: string, filters: Partial<PlpFilters>): string
   if (filters.minPrice !== undefined) search.set("minPrice", String(filters.minPrice));
   if (filters.maxPrice !== undefined) search.set("maxPrice", String(filters.maxPrice));
   if (filters.sort && filters.sort !== "NEWEST") search.set("sort", filters.sort);
+  if (filters.pageSize) search.set("pageSize", String(filters.pageSize));
   if (filters.page && filters.page > 1) search.set("page", String(filters.page));
   const qs = search.toString();
   return qs ? `${base}?${qs}` : base;
@@ -72,6 +85,7 @@ export function isFilteredView(filters: PlpFilters): boolean {
     filters.minPrice !== undefined ||
     filters.maxPrice !== undefined ||
     filters.sort !== "NEWEST" ||
+    filters.pageSize !== undefined ||
     filters.page !== 1
   );
 }

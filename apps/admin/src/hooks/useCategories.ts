@@ -3,7 +3,18 @@ import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 import type { PublishStatus } from "@/hooks/useBrands";
 
-export type AdminCategory = Omit<components["schemas"]["AdminCategoryDto"], "status"> & { status: PublishStatus };
+// `locale` on the generated translation DTO comes out as `Record<string, never>`
+// — same OpenAPI-codegen quirk `status` has (an enum nested inside an array
+// item type doesn't reflect correctly) — patched here the same way.
+export interface AdminCategoryTranslation {
+  locale: "EN" | "BN";
+  name: string;
+  description: string | null;
+}
+export type AdminCategory = Omit<components["schemas"]["AdminCategoryDto"], "status" | "translations"> & {
+  status: PublishStatus;
+  translations: AdminCategoryTranslation[];
+};
 export type CategoryInput = Omit<components["schemas"]["CreateCategoryDto"], "status"> & { status: PublishStatus };
 
 type Paginated<T> = { items?: T[]; total?: number };

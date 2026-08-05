@@ -34,6 +34,7 @@ export default async function ProductsPage({
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
   const filters = parsePlpSearchParams(await searchParams);
+  const pageSize = filters.pageSize ?? PAGE_SIZE;
 
   const [productsRes, categoriesRes, tagsRes] = await Promise.all([
     safeGet("/api/v1/products", {
@@ -41,7 +42,7 @@ export default async function ProductsPage({
         query: {
           locale: localeParam,
           page: filters.page,
-          pageSize: PAGE_SIZE,
+          pageSize,
           categoryIds: filters.categoryIds,
           tagIds: filters.tagIds,
           minPrice: filters.minPrice,
@@ -71,10 +72,12 @@ export default async function ProductsPage({
         basePath="/products"
         filters={filters}
         total={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         products={products}
         categories={categories}
         tags={tags}
+        title="All Products"
+        breadcrumbItems={[{ label: "Home", href: "/" }, { label: "All Products" }]}
       />
     </main>
   );

@@ -13,7 +13,9 @@ import { OrderManagerFilterBar, type OrderFilterState } from "@/components/net-p
 import { OrderManagerTable, OPTIONAL_COLUMNS, type OptionalColumn } from "@/components/net-profit/OrderManagerTable";
 import { ORDER_MANAGER_KEY, useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderStatusesTab } from "./OrderStatusesTab";
+import { DeletedOrdersTab } from "./DeletedOrdersTab";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -34,7 +36,11 @@ const COLUMN_LABELS: Record<OptionalColumn, string> = {
 
 const DEFAULT_FILTERS: OrderFilterState = { q: "" };
 
-function resolveDateRange(value: string | undefined): { from?: string; to?: string } {
+function resolveDateRange(value: string | undefined, customFrom?: string, customTo?: string): { from?: string; to?: string } {
+  if (value === "custom") {
+    if (!customFrom || !customTo) return {};
+    return { from: new Date(customFrom).toISOString(), to: new Date(`${customTo}T23:59:59.999`).toISOString() };
+  }
   if (!value) return {};
   const days = value === "today" ? 1 : value === "7d" ? 7 : 30;
   const to = new Date();
@@ -148,7 +154,14 @@ function SymbologyModal({ onClose }: { onClose: () => void }) {
 }
 
 function HeaderButton({ children, onClick, href }: { children: React.ReactNode; onClick?: () => void; href?: string }) {
-  const className = "inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold";
+  // No hover/focus feedback at all before this — the button gave no visual
+  // cue it was interactive until the browser's own (jarring, blue) default
+  // focus ring appeared after a click. hover:bg gives real hover feedback;
+  // focus:outline-none + focus-visible:ring swaps that default ring for a
+  // subtle brand-green one, and only for keyboard focus (a mouse click no
+  // longer leaves a ring stuck on the button).
+  const className =
+    "inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold transition-colors duration-150 hover:bg-[#f2f6f3] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2e7d43] focus-visible:ring-offset-1";
   const style = { borderColor: LINE, color: TEXT } as const;
   if (href) {
     return (
@@ -165,7 +178,7 @@ function HeaderButton({ children, onClick, href }: { children: React.ReactNode; 
 }
 
 export default function OrderManagerPage() {
-  const [section, setSection] = useState<"orders" | "statuses">("orders");
+  const [section, setSection] = useState<"orders" | "statuses" | "deleted">("orders");
   const [uiFilters, setUiFilters] = useState<OrderFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(20);
@@ -221,7 +234,10 @@ export default function OrderManagerPage() {
   // rate-limited (429s), which is what made the date filters look like they
   // "don't load" / "take too long." Memoized so it only recomputes when the
   // selected range actually changes.
-  const dateRange = useMemo(() => resolveDateRange(uiFilters.dateRange), [uiFilters.dateRange]);
+  const dateRange = useMemo(
+    () => resolveDateRange(uiFilters.dateRange, uiFilters.dateFrom, uiFilters.dateTo),
+    [uiFilters.dateRange, uiFilters.dateFrom, uiFilters.dateTo],
+  );
 
   const filters: OrderManagerFilters = {
     q: uiFilters.q || undefined,
@@ -245,6 +261,9 @@ export default function OrderManagerPage() {
   const [consignOrder, setConsignOrder] = useState<{ order: OrderManagerRow; provider: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER" } | null>(null);
   const [detailOrder, setDetailOrder] = useState<OrderManagerRow | null>(null);
   const [riskPhone, setRiskPhone] = useState<string | null>(null);
+  // Single-row target xor "bulk" (current `selected` set) — one ConfirmDialog
+  // covers both the per-row trash icon and the bulk-action-bar Delete button.
+  const [deleteTarget, setDeleteTarget] = useState<OrderManagerRow | "bulk" | null>(null);
 
   const totalCount = Object.values(statusCounts ?? {}).reduce((a, b) => a + b, 0);
   const countFor = (statuses: string[]) => statuses.reduce((sum, s) => sum + (statusCounts?.[s] ?? 0), 0);
@@ -263,7 +282,7 @@ export default function OrderManagerPage() {
     setSelected((prev) => (prev.size === data.items.length ? new Set() : new Set(data.items.map((o) => o.id))));
   }
 
-  function runBulk(action: "hold" | "block" | "export" | "consign", courierProvider?: string) {
+  function runBulk(action: "hold" | "block" | "export" | "consign" | "delete", courierProvider?: string) {
     if (selected.size === 0) return;
     bulk.mutate(
       { orderIds: [...selected], action, courierProvider },
@@ -277,6 +296,15 @@ export default function OrderManagerPage() {
         },
       },
     );
+  }
+
+  function confirmDelete() {
+    if (deleteTarget === "bulk") {
+      runBulk("delete");
+    } else if (deleteTarget) {
+      bulk.mutate({ orderIds: [deleteTarget.id], action: "delete" });
+    }
+    setDeleteTarget(null);
   }
 
   return (
@@ -293,6 +321,9 @@ export default function OrderManagerPage() {
         <div className="flex items-center gap-2.5">
           <HeaderButton onClick={() => setSection(section === "statuses" ? "orders" : "statuses")}>
             {section === "statuses" ? "Back to Orders" : "Order Statuses"}
+          </HeaderButton>
+          <HeaderButton onClick={() => setSection(section === "deleted" ? "orders" : "deleted")}>
+            {section === "deleted" ? "Back to Orders" : "Deleted Orders"}
           </HeaderButton>
           <HeaderButton onClick={() => setShowScreenOptions(true)}>Screen Options</HeaderButton>
           <HeaderButton onClick={() => setShowSymbology(true)}>Symbology</HeaderButton>
@@ -315,6 +346,8 @@ export default function OrderManagerPage() {
 
       {section === "statuses" ? (
         <OrderStatusesTab />
+      ) : section === "deleted" ? (
+        <DeletedOrdersTab />
       ) : (
         <>
           <OrderManagerStatsStrip
@@ -403,6 +436,15 @@ export default function OrderManagerPage() {
             >
               Block Phone
             </button>
+            <button
+              type="button"
+              disabled={selected.size === 0 || bulk.isPending}
+              onClick={() => setDeleteTarget("bulk")}
+              className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
+              style={{ borderColor: "#f8ccd3", background: "#feeaec", color: "#e5484d" }}
+            >
+              Delete
+            </button>
             <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
               {data?.total ?? 0} orders
             </span>
@@ -424,6 +466,7 @@ export default function OrderManagerPage() {
             onConsign={(order, provider) => setConsignOrder({ order, provider })}
             onCheckRisk={setRiskPhone}
             isLoading={isLoading}
+            onDelete={setDeleteTarget}
           />
         </>
       )}
@@ -439,6 +482,14 @@ export default function OrderManagerPage() {
         open={newOrderModalOpen}
         onClose={() => setNewOrderModalOpen(false)}
         onCreated={() => qc.invalidateQueries({ queryKey: ORDER_MANAGER_KEY })}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        pending={bulk.isPending}
+        title={deleteTarget === "bulk" ? `Delete ${selected.size} order(s)?` : `Delete order #${deleteTarget?.orderNumber}?`}
+        description="This moves the order to Deleted Orders, not a permanent delete — it can be restored from there at any time."
       />
     </div>
   );

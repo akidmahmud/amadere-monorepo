@@ -18,27 +18,22 @@ export interface CreateCustomerModalProps {
   open: boolean;
   /** Prefills the phone field with whatever the staff already typed into the search box. */
   initialPhone?: string;
-  /** Hides the Address/Country/State/City section — there's nowhere for that
-   * data to be saved outside the order-creation flow (see the comment on
-   * `onCreated` below), so callers with no address destination (e.g. the
-   * standalone Customer Management "Add Customer" modal) should pass false
-   * rather than collect fields that would silently be discarded. Defaults to
-   * true to keep existing callers (NewOrderForm) unchanged. */
+  /** Hides the Address/Country/State/City section. Defaults to true. */
   showAddress?: boolean;
   onClose: () => void;
   /** `address` is only populated when the staff filled it in (and showAddress
-   * is true) — /admin/customers itself has no address field, so this is
-   * handed back purely for the caller to prefill the order's own Shipping
-   * Address section with. */
+   * is true) — the address is already saved on the customer by this point
+   * (see handleSave), this is handed back purely so callers like NewOrderForm
+   * can also prefill the order's own separate Shipping Address section
+   * without making the staff retype it. */
   onCreated: (customer: AdminCustomer, address: CreateCustomerModalAddress | null) => void;
 }
 
-// Name/Phone/Email map straight onto /admin/customers POST. Address/
-// Country/State/City don't — this system is Bangladesh-only (so "Country"
-// is fixed) and has no admin-facing "create a saved address for this
-// customer" endpoint, so Address/State(Division)/City(District) are instead
-// handed back to the order form to prefill its Shipping Address section
-// (see onCreated above), the same place this data would end up either way.
+// Name/Phone/Email/Address all map straight onto /admin/customers POST —
+// Address/State(Division)/City(District) upsert the customer's default
+// CustomerAddress row server-side (same as the Customer Management table's
+// inline address-cell PATCH). "Country" has no field to send since this
+// system is Bangladesh-only.
 export function CreateCustomerModal({ open, initialPhone, showAddress = true, onClose, onCreated }: CreateCustomerModalProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -69,13 +64,15 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
       return;
     }
     setPhoneError(null);
+    const hasAddress = showAddress && addressLine.trim() && division && district;
     const customer = await create.mutateAsync({
       phone,
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       email: email || undefined,
+      ...(hasAddress ? { addressLine, division, district } : {}),
     });
-    const address = showAddress && addressLine.trim() && division && district ? { addressLine, division, district } : null;
+    const address = hasAddress ? { addressLine, division, district } : null;
     reset();
     onCreated(customer, address);
   }

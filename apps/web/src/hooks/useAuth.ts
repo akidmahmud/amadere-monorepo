@@ -16,14 +16,27 @@ async function localAuthCall(path: string, body: unknown): Promise<void> {
   if (!json.success) throw new Error(json.error?.message ?? "Request failed");
 }
 
-// Every successful login/register/OTP-verify needs the same follow-up: the
-// account query becomes valid, and anything added to the cart as a guest
-// should fold into the now-known customer's cart (the merge function itself
-// was written back in F6, waiting for this exact call site).
+// Every successful login/OTP-verify needs the same follow-up: the account
+// query becomes valid, and anything added to the cart as a guest should
+// fold into the now-known customer's cart (the merge function itself was
+// written back in F6, waiting for this exact call site). Plain register()
+// does NOT get this — it only sends an OTP and doesn't sign anyone in;
+// verifying that OTP (useVerifyOtp, purpose=REGISTER) is what actually
+// authenticates.
 function useAfterAuthSuccess(locale: string) {
   const queryClient = useQueryClient();
   return async () => {
-    await mergeGuestCartOnLogin(locale);
+    // Cart-merge is a convenience, not a login requirement — a stale/
+    // already-consumed guest token (e.g. this isn't the first login on this
+    // browser) throwing here must never block the sign-in itself from
+    // completing (previously an unhandled rejection here silently stopped
+    // the caller's own onSuccess, e.g. the post-login redirect, from
+    // running at all — login *looked* broken when only the merge failed).
+    try {
+      await mergeGuestCartOnLogin(locale);
+    } catch {
+      // Ignored — see above.
+    }
     await queryClient.invalidateQueries({ queryKey: ["me"] });
     await queryClient.invalidateQueries({ queryKey: ["cart"] });
   };
@@ -32,7 +45,7 @@ function useAfterAuthSuccess(locale: string) {
 export function useLogin(locale: string) {
   const onAuthed = useAfterAuthSuccess(locale);
   return useMutation({
-    mutationFn: (args: { email: string; password: string }) => localAuthCall("/auth/login", args),
+    mutationFn: (args: { phone: string; password: string }) => localAuthCall("/auth/login", args),
     onSuccess: onAuthed,
   });
 }
@@ -46,12 +59,13 @@ export function useSocialLogin(locale: string) {
   });
 }
 
-export function useRegister(locale: string) {
-  const onAuthed = useAfterAuthSuccess(locale);
+// Sends the registration OTP — does not create a session. Safe to call
+// again with the same phone (e.g. "Resend code" or fixing a typo before the
+// code arrives): the backend upserts the same pending row and re-sends.
+export function useRegister() {
   return useMutation({
-    mutationFn: (args: { email: string; password: string; firstName?: string; lastName?: string }) =>
+    mutationFn: (args: { firstName: string; lastName: string; phone: string; email?: string; password: string }) =>
       localAuthCall("/auth/register", args),
-    onSuccess: onAuthed,
   });
 }
 
@@ -70,24 +84,6 @@ export function useVerifyOtp(locale: string) {
     mutationFn: (args: { identifier: string; code: string; purpose: "REGISTER" | "LOGIN" }) =>
       localAuthCall("/auth/otp/verify", args),
     onSuccess: onAuthed,
-  });
-}
-
-export function useForgotPassword() {
-  return useMutation({
-    mutationFn: async (identifier: string) => {
-      const { error } = await api.POST("/api/v1/auth/password/forgot", { body: { identifier } });
-      if (error) throw error;
-    },
-  });
-}
-
-export function useResetPassword() {
-  return useMutation({
-    mutationFn: async (args: { identifier: string; code: string; newPassword: string }) => {
-      const { error } = await api.POST("/api/v1/auth/password/reset", { body: args });
-      if (error) throw error;
-    },
   });
 }
 

@@ -1,19 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { useCreateMenuItem, useMenuItems } from "@/hooks/useMenuItems";
+import { MenuItemLinkFields } from "@/components/menu-items/MenuItemLinkFields";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
 export default function NewMenuItemPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledParentId = searchParams.get("parentId");
   const { data: items } = useMenuItems();
+  // Nesting is capped at one level (top item + dropdown children — see
+  // menus.service.ts's assertParentExists) — only root items are valid parents.
+  const rootItems = items?.filter((i) => i.parentId === null) ?? [];
+
   const [label, setLabel] = useState("");
   const [href, setHref] = useState("");
-  const [parentId, setParentId] = useState<number | undefined>();
+  const [parentId, setParentId] = useState<number | undefined>(prefilledParentId ? Number(prefilledParentId) : undefined);
   const [isActive, setIsActive] = useState(true);
   const create = useCreateMenuItem();
 
@@ -32,19 +39,22 @@ export default function NewMenuItemPage() {
   return (
     <Card className="max-w-xl">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <MenuItemLinkFields
+          href={href}
+          onHrefChange={setHref}
+          onLabelSuggestion={(suggested) => {
+            if (!label.trim()) setLabel(suggested);
+          }}
+        />
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-secondary">Label</span>
           <input required value={label} onChange={(e) => setLabel(e.target.value)} className={inputClass} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Link (e.g. /categories/spices)</span>
-          <input required value={href} onChange={(e) => setHref(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-secondary">Parent item (optional)</span>
           <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : undefined)} className={inputClass}>
             <option value="">None (top-level)</option>
-            {items?.map((i) => (
+            {rootItems.map((i) => (
               <option key={i.id} value={i.id}>{i.translations[0]?.label}</option>
             ))}
           </select>

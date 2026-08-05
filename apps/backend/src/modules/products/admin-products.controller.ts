@@ -18,6 +18,7 @@ import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
+import { SuperAdminGuard } from '../../common/auth/super-admin.guard';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
@@ -26,7 +27,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { AdminProductQueryDto } from './dto/admin-product-query.dto';
-import { AdminProductDto, AdminProductPickerItemDto } from './dto/product-response.dto';
+import { AdminDeletedProductDto, AdminProductDto, AdminProductPickerItemDto } from './dto/product-response.dto';
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
 import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
@@ -76,6 +77,18 @@ export class AdminProductsController {
     res.send(csv);
   }
 
+  // Super-admin only regardless of granted permissions — see SuperAdminGuard.
+  // Declared before `:id` so Nest's route matching doesn't try to parse
+  // "trash" as a numeric id first.
+  @Get('trash')
+  @UseGuards(SuperAdminGuard)
+  @ApiPaginatedResponse(AdminDeletedProductDto)
+  listDeleted(
+    @Query() { page, pageSize }: PaginationQueryDto,
+  ): Promise<PaginatedResult<AdminDeletedProductDto>> {
+    return this.products.listDeleted(page ?? 1, pageSize ?? 20);
+  }
+
   @Get(':id')
   @RequirePermission('product.view')
   @ApiOkResponse({ type: AdminProductDto })
@@ -116,6 +129,14 @@ export class AdminProductsController {
   @RequirePermission('product.delete')
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.products.delete(id);
+  }
+
+  // Super-admin only regardless of granted permissions — see SuperAdminGuard.
+  @Post(':id/restore')
+  @UseGuards(SuperAdminGuard)
+  @ApiOkResponse({ type: AdminProductDto })
+  restore(@Param('id', ParseIntPipe) id: number): Promise<AdminProductDto> {
+    return this.products.restore(id);
   }
 
   @Post(':id/variants')

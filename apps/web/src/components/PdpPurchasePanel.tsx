@@ -40,10 +40,6 @@ const checkIcon = (
   </svg>
 );
 
-// Static, same on every product page — no admin config, per explicit
-// request. Desktop only (mockup's trust-row) — mobile stays compact.
-const TRUST_ITEMS = ["100% Organic", "Chemical Free", "Premium Quality", "Fast Delivery"];
-
 const heartIcon = (filled: boolean) => (
   <svg
     viewBox="0 0 24 24"
@@ -76,6 +72,11 @@ export function PdpPurchasePanel({
   const addToWishlist = useAddToWishlist(locale);
   const removeFromWishlist = useRemoveFromWishlist(locale);
   const isWishlisted = wishlist?.some((item) => item.productId === product.id) ?? false;
+
+  const badges = (product.keyBenefits ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   const selectedVariant = product.hasVariants
     ? product.variants.find((v) => String(v.id) === selectedVariantId)
@@ -270,14 +271,16 @@ export function PdpPurchasePanel({
         )}
       </div>
 
-      <div className="mt-6 hidden flex-wrap gap-5 md:flex">
-        {TRUST_ITEMS.map((item) => (
-          <span key={item} className="flex items-center gap-2 font-ui text-xs font-bold text-text">
-            {checkIcon}
-            {item}
-          </span>
-        ))}
-      </div>
+      {badges.length > 0 && (
+        <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2.5">
+          {badges.map((item) => (
+            <span key={item} className="flex items-center gap-2 font-ui text-xs font-bold text-text">
+              {checkIcon}
+              {item}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

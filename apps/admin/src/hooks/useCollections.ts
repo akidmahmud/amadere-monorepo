@@ -3,7 +3,17 @@ import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 import type { PublishStatus } from "@/hooks/useBrands";
 
-export type AdminCollection = Omit<components["schemas"]["AdminCollectionDto"], "status"> & { status: PublishStatus };
+// Same nested-enum codegen quirk as AdminCategoryTranslation (useCategories.ts)
+// — `locale` on the generated translation DTO comes out as `Record<string, never>`.
+export interface AdminCollectionTranslation {
+  locale: "EN" | "BN";
+  name: string;
+  description: string | null;
+}
+export type AdminCollection = Omit<components["schemas"]["AdminCollectionDto"], "status" | "translations"> & {
+  status: PublishStatus;
+  translations: AdminCollectionTranslation[];
+};
 export type CollectionInput = Omit<components["schemas"]["CreateCollectionDto"], "status"> & { status: PublishStatus };
 
 type Paginated<T> = { items?: T[]; total?: number };

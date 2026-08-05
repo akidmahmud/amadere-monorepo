@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CourierProviderName } from '@amader/db';
 import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional } from 'class-validator';
 
-export const BULK_ORDER_ACTIONS = ['consign', 'block', 'hold', 'export'] as const;
+export const BULK_ORDER_ACTIONS = ['consign', 'block', 'hold', 'export', 'delete', 'restore'] as const;
 export type BulkOrderAction = (typeof BULK_ORDER_ACTIONS)[number];
 
 export class BulkOrderActionDto {

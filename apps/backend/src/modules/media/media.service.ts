@@ -15,7 +15,9 @@ import {
 } from '../../common/pagination.util';
 import { MEDIA_STORAGE } from './storage/media-storage.interface';
 import type { MediaStorage } from './storage/media-storage.interface';
-import { MediaDto, toMediaDto } from './media.mapper';
+import { MediaDto, MediaFolderDto, toMediaDto, toMediaFolderDto } from './media.mapper';
+import { MediaQueryDto } from './dto/media-query.dto';
+import { UpdateMediaDto } from './dto/update-media.dto';
 
 function mediaTypeFromMime(mimeType: string): MediaType {
   if (mimeType.startsWith('image/')) return 'IMAGE';
@@ -64,25 +66,52 @@ export class MediaService {
     return url;
   }
 
-  async list(page: number, pageSize: number) {
+  async list(query: MediaQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const where = query.folderId !== undefined ? { folderId: query.folderId } : query.unfiled ? { folderId: null } : {};
     const [items, total] = await Promise.all([
       this.prisma.client.media.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         ...paginationArgs(page, pageSize),
       }),
-      this.prisma.client.media.count(),
+      this.prisma.client.media.count({ where }),
     ]);
     return toPaginatedResult(items.map(toMediaDto), total, page, pageSize);
   }
 
-  async updateAltText(id: number, altText: string): Promise<MediaDto> {
+  async update(id: number, dto: UpdateMediaDto): Promise<MediaDto> {
     const media = await this.prisma.client.media.findUnique({ where: { id } });
     if (!media) throw new NotFoundException('Media not found');
+    if (dto.folderId != null) {
+      const folder = await this.prisma.client.mediaFolder.findUnique({ where: { id: dto.folderId } });
+      if (!folder) throw new NotFoundException('Folder not found');
+    }
     const updated = await this.prisma.client.media.update({
       where: { id },
-      data: { altText },
+      data: { altText: dto.altText, folderId: dto.folderId },
     });
     return toMediaDto(updated);
+  }
+
+  async listFolders(): Promise<MediaFolderDto[]> {
+    const folders = await this.prisma.client.mediaFolder.findMany({ orderBy: { name: 'asc' } });
+    return folders.map(toMediaFolderDto);
+  }
+
+  async createFolder(name: string): Promise<MediaFolderDto> {
+    const folder = await this.prisma.client.mediaFolder.create({ data: { name } });
+    return toMediaFolderDto(folder);
+  }
+
+  async deleteFolder(id: number): Promise<void> {
+    const folder = await this.prisma.client.mediaFolder.findUnique({ where: { id } });
+    if (!folder) throw new NotFoundException('Folder not found');
+    // Media inside is un-filed (schema's onDelete: SetNull), never deleted —
+    // a folder is just an organizational label, not a container that owns
+    // the files' lifecycle.
+    await this.prisma.client.mediaFolder.delete({ where: { id } });
   }
 
   async delete(id: number): Promise<void> {

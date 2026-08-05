@@ -21,6 +21,15 @@ export function Pager({ page, totalPages, buildHref, linkComponent: Link = Defau
 
   return (
     <div className="mt-8 flex justify-center gap-2">
+      {page > 1 && (
+        <Link
+          href={buildHref(page - 1)}
+          aria-label="Previous page"
+          className="grid h-[38px] w-[38px] place-items-center rounded-[9px] border border-line bg-white text-ink"
+        >
+          ‹
+        </Link>
+      )}
       {pages.map((n) => (
         <Link
           key={n}
@@ -39,7 +48,7 @@ export function Pager({ page, totalPages, buildHref, linkComponent: Link = Defau
           aria-label="Next page"
           className="grid h-[38px] w-[38px] place-items-center rounded-[9px] border border-line bg-white text-ink"
         >
-          →
+          ›
         </Link>
       )}
     </div>

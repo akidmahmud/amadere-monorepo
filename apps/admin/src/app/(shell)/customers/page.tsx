@@ -1,13 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useAssignableStaff, useCustomers, useCustomerStats, useCustomerTiers, type CustomerListFilters } from "@/hooks/useCustomers";
+import {
+  useAssignableStaff,
+  useBulkCustomerAction,
+  useCustomers,
+  useCustomerStats,
+  useCustomerTiers,
+  type AdminCustomerListItem,
+  type CustomerListFilters,
+} from "@/hooks/useCustomers";
 import { CustomerStatsStrip } from "@/components/customers/CustomerStatsStrip";
 import { CustomerFilters, type CustomerFilterState } from "@/components/customers/CustomerFilters";
 import { CustomersTable } from "@/components/customers/CustomersTable";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 import { CreateCustomerModal } from "@/components/orders/CreateCustomerModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DeletedCustomersTab } from "./DeletedCustomersTab";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -18,19 +28,65 @@ const TEXT = "#374840";
 
 const DEFAULT_FILTERS: CustomerFilterState = { q: "" };
 
+function HeaderButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold transition-colors duration-150 hover:bg-[#f2f6f3] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2e7d43] focus-visible:ring-offset-1"
+      style={{ borderColor: LINE, color: TEXT }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function CustomersPage() {
+  const [section, setSection] = useState<"customers" | "deleted">("customers");
   const [uiFilters, setUiFilters] = useState<CustomerFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Single-row target xor "bulk" (current `selected` set) — one ConfirmDialog
+  // covers both the per-row trash icon and the bulk-action-bar Delete button.
+  const [deleteTarget, setDeleteTarget] = useState<AdminCustomerListItem | "bulk" | null>(null);
 
   const queryFilters: CustomerListFilters = { ...uiFilters, page, pageSize };
   const { data: stats } = useCustomerStats();
   const { data } = useCustomers(queryFilters);
   const { data: tiers } = useCustomerTiers();
   const { data: staff } = useAssignableStaff();
+  const bulk = useBulkCustomerAction();
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (!data) return;
+    setSelected((prev) => (prev.size === data.items.length ? new Set() : new Set(data.items.map((c) => c.id))));
+  }
+
+  function confirmDelete() {
+    const customerIds = deleteTarget === "bulk" ? [...selected] : deleteTarget ? [deleteTarget.id] : [];
+    if (customerIds.length === 0) {
+      setDeleteTarget(null);
+      return;
+    }
+    bulk.mutate(
+      { customerIds, action: "delete" },
+      { onSuccess: () => setSelected(new Set()) },
+    );
+    setDeleteTarget(null);
+  }
 
   function exportHref() {
     const params = new URLSearchParams();
@@ -63,6 +119,9 @@ export default function CustomersPage() {
           </div>
         </div>
         <div className="flex items-center gap-2.5">
+          <HeaderButton onClick={() => setSection(section === "deleted" ? "customers" : "deleted")}>
+            {section === "deleted" ? "Back to Customers" : "Deleted Customers"}
+          </HeaderButton>
           <a
             href={exportHref()}
             className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold"
@@ -105,41 +164,76 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <CustomerStatsStrip stats={stats} />
+      {section === "deleted" ? (
+        <DeletedCustomersTab />
+      ) : (
+        <>
+          <CustomerStatsStrip stats={stats} />
 
-      <CustomerFilters
-        filters={uiFilters}
-        onChange={(next) => {
-          setUiFilters(next);
-          setPage(1);
-        }}
-        onReset={() => {
-          setUiFilters(DEFAULT_FILTERS);
-          setPage(1);
-        }}
-        tiers={tiers}
-        staff={staff}
-      />
+          <CustomerFilters
+            filters={uiFilters}
+            onChange={(next) => {
+              setUiFilters(next);
+              setPage(1);
+            }}
+            onReset={() => {
+              setUiFilters(DEFAULT_FILTERS);
+              setPage(1);
+            }}
+            tiers={tiers}
+            staff={staff}
+          />
 
-      <CustomersTable
-        customers={data?.items ?? []}
-        total={data?.total ?? 0}
-        filters={{ ...queryFilters }}
-        onFiltersChange={handleFiltersChange}
-        staff={staff}
-        onView={setSelectedId}
-      />
+          <div className="flex flex-wrap items-center gap-2.5 rounded-card border p-[12px_16px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+            <span className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+              {selected.size > 0 ? `${selected.size} selected` : "Select customers to act on"}
+            </span>
+            <button
+              type="button"
+              disabled={selected.size === 0 || bulk.isPending}
+              onClick={() => setDeleteTarget("bulk")}
+              className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
+              style={{ borderColor: "#f8ccd3", background: "#feeaec", color: "#e5484d" }}
+            >
+              Delete
+            </button>
+            <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+              {data?.total ?? 0} customers
+            </span>
+          </div>
+
+          <CustomersTable
+            customers={data?.items ?? []}
+            total={data?.total ?? 0}
+            filters={{ ...queryFilters }}
+            onFiltersChange={handleFiltersChange}
+            staff={staff}
+            onView={setSelectedId}
+            selected={selected}
+            onToggle={toggle}
+            onToggleAll={toggleAll}
+            onDelete={setDeleteTarget}
+          />
+        </>
+      )}
 
       {selectedId && <CustomerDetailModal customerId={selectedId} onClose={() => setSelectedId(null)} />}
       {importOpen && <CustomerImportModal onClose={() => setImportOpen(false)} />}
       <CreateCustomerModal
         open={addOpen}
-        showAddress={false}
         onClose={() => setAddOpen(false)}
         onCreated={(customer) => {
           setAddOpen(false);
           setSelectedId(customer.id);
         }}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        pending={bulk.isPending}
+        title={deleteTarget === "bulk" ? `Delete ${selected.size} customer(s)?` : `Delete ${deleteTarget?.name}?`}
+        description="This moves the customer to Deleted Customers, not a permanent delete — it can be restored from there at any time."
       />
     </div>
   );

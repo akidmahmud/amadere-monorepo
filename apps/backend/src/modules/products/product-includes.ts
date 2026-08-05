@@ -1,7 +1,9 @@
 // Shared Prisma `include` shape for a fully-loaded product, used by both the
 // admin and public mappers so the query and the types they map from stay in sync.
 export const PRODUCT_INCLUDE = {
-  translations: true,
+  translations: {
+    include: { faqs: { orderBy: { sortOrder: 'asc' as const } } },
+  },
   brand: { include: { translations: true } },
   categories: { include: { category: { include: { translations: true } } } },
   tags: { include: { tag: { include: { translations: true } } } },

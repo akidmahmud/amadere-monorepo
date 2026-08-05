@@ -7,6 +7,7 @@ import { Carousel } from "./Carousel";
 import { SectionHeading } from "./SectionHeading";
 import { PromoVideoModal, type PromoVideoProduct } from "./PromoVideoModal";
 import { PromoVideoReelView } from "./PromoVideoReelView";
+import { formatMoney } from "./PriceTag";
 
 export type PromoVideoSource = "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "R2" | "GIF";
 
@@ -221,7 +222,15 @@ function useIsMobile(breakpointPx = 768): boolean {
   return isMobile;
 }
 
-function PromoVideoCardTile({ card, onClick }: { card: PromoVideoCard; onClick: () => void }) {
+function PromoVideoCardTile({
+  card,
+  product,
+  onClick,
+}: {
+  card: PromoVideoCard;
+  product?: PromoVideoProduct | null;
+  onClick: () => void;
+}) {
   const [ref, isInView] = useInView(0, "1000px 400px 1000px 400px");
 
   return (
@@ -268,6 +277,28 @@ function PromoVideoCardTile({ card, onClick }: { card: PromoVideoCard; onClick: 
           </span>
         </span>
       </button>
+      {/* Persistent frosted product card, bottom-left thumbnail + name/price —
+          pointer-events-none so it never steals the click from the
+          full-tile button above; the tile stays a single click target that
+          opens the modal/reel, this is purely informational. */}
+      {product && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3">
+          <div className="flex items-stretch overflow-hidden rounded-lg bg-white/10 backdrop-blur-md">
+            {product.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.imageUrl}
+                alt=""
+                className="h-20 w-20 shrink-0 object-cover"
+              />
+            )}
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2">
+              <div className="line-clamp-1 font-ui text-sm font-medium text-white drop-shadow">{product.name}</div>
+              <span className="font-serif text-sm font-bold text-white">{formatMoney(product.price)}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -294,7 +325,12 @@ export function PromoVideoSection({
           regardless (autoplayMs is unaffected by showArrows). */}
       <Carousel autoplayMs={autoplayMs} showArrows={!isMobile}>
         {items.map((card, i) => (
-          <PromoVideoCardTile key={`${card.url}-${i}`} card={card} onClick={() => setOpenIndex(i)} />
+          <PromoVideoCardTile
+            key={`${card.url}-${i}`}
+            card={card}
+            product={products?.[i]}
+            onClick={() => setOpenIndex(i)}
+          />
         ))}
       </Carousel>
       {openIndex !== null &&

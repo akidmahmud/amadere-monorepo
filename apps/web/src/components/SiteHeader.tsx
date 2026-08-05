@@ -10,7 +10,7 @@ import { useMe } from "@/hooks/useAuth";
 import { useWishlist } from "@/hooks/useAccount";
 import { useSearchSuggestions } from "@/hooks/useSearch";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
-import { useCategoriesNav } from "@/hooks/useCategoriesNav";
+import { useNavMenu } from "@/hooks/useNavMenu";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { toDisplayImageUrl } from "@/lib/media";
 
@@ -27,15 +27,15 @@ export interface SiteHeaderProps {
   /** Server-fetched logo URL, so the real logo is in the first paint instead
    * of flashing the fallback mark while the client-side fetch is in flight. */
   initialLogoUrl?: string | null;
-  /** Server-fetched category nav, so the header/drawer's category list is in
-   * the first paint instead of appearing after a client-side fetch resolves. */
-  initialCategoriesNav?: Parameters<typeof useCategoriesNav>[1];
+  /** Server-fetched nav menu, so the header/drawer's nav is in the first
+   * paint instead of appearing after a client-side fetch resolves. */
+  initialNavMenu?: Parameters<typeof useNavMenu>[1];
   /** Server-fetched announcements, so the bar is in the first paint instead
    * of flashing in after a client-side fetch resolves. */
   initialAnnouncements?: Parameters<typeof useAnnouncements>[1];
 }
 
-export function SiteHeader({ initialLogoUrl, initialCategoriesNav, initialAnnouncements }: SiteHeaderProps = {}) {
+export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncements }: SiteHeaderProps = {}) {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -45,7 +45,7 @@ export function SiteHeader({ initialLogoUrl, initialCategoriesNav, initialAnnoun
   const { data: me } = useMe();
   const { data: wishlist } = useWishlist(toApiLocale(locale), !!me);
   const { data: siteInfo } = useSiteInfo();
-  const { data: categoriesNav } = useCategoriesNav(toApiLocale(locale), initialCategoriesNav);
+  const { data: navMenu } = useNavMenu(toApiLocale(locale), initialNavMenu);
   const { data: announcements } = useAnnouncements(toApiLocale(locale), initialAnnouncements);
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
 
@@ -63,16 +63,16 @@ export function SiteHeader({ initialLogoUrl, initialCategoriesNav, initialAnnoun
     closeDrawer();
   }, [pathname, closeDrawer]);
 
-  // Categories already come back sorted by sortOrder (ascending) from the
-  // backend — array order IS spec 6.1's "priority" order, no separate field needed.
-  const categories = (categoriesNav ?? []).map((category) => ({
-    key: `category-${category.slug}`,
-    href: `/categories/${category.slug}`,
-    label: category.name,
-    children: category.children.map((child) => ({
-      key: `category-${child.slug}`,
-      href: `/categories/${child.slug}`,
-      label: child.name,
+  // Items already come back sorted by sortOrder (ascending) from the backend
+  // — array order IS spec 6.1's "priority" order, no separate field needed.
+  const categories = (navMenu ?? []).map((item) => ({
+    key: `nav-${item.id}`,
+    href: item.href,
+    label: item.label,
+    children: item.children.map((child) => ({
+      key: `nav-${child.id}`,
+      href: child.href,
+      label: child.label,
     })),
   }));
 

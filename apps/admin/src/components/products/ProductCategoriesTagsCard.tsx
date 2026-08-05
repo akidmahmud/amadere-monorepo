@@ -185,9 +185,16 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
             }
           }}
           disabled={createTag.isPending}
-          placeholder="Search or add tags — separate multiple with commas, press Enter"
-          className="mb-2.5 h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500 disabled:opacity-60"
+          placeholder="Search or add tags…"
+          className="h-9 w-full rounded-inner border border-border bg-surface px-2.5 text-[0.74rem] text-text outline-none focus:border-brand-500 disabled:opacity-60"
         />
+        {/* Persistent, unlike the old placeholder-only hint — a placeholder
+            disappears the moment you start typing, which is exactly when
+            someone mid-way through "wallet, bags" most needs the reminder
+            that commas split it into separate tags. */}
+        <p className="mb-2.5 mt-1 text-[0.68rem] text-muted">
+          Tip: separate multiple tags with a comma, then press Enter to add them all at once.
+        </p>
         <div className="flex max-h-[210px] flex-col gap-1 overflow-y-auto rounded-inner border border-border p-2">
           {filteredTags.map((t) => (
             <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-2 py-2 text-[0.74rem] font-semibold text-text hover:bg-surface-2">

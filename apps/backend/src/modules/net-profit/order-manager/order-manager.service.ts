@@ -39,6 +39,7 @@ interface RawOrderManagerRow {
   staff_note: string | null;
   utm_source: string | null;
   utm_campaign: string | null;
+  deleted_at: Date | null;
 }
 
 // A raw join (Order ⋈ latest Payment ⋈ latest Shipment ⋈ FraudCheck-by-phone)
@@ -60,8 +61,10 @@ export class OrderManagerService {
   // Shared by list() and statusCounts() — every filter except `status`
   // itself, so the counts reflect "how many would show for each status tab
   // given the other active filters" rather than an unfiltered global count.
-  private buildConditions(query: OrderManagerQueryDto, includeStatus: boolean): Prisma.Sql[] {
-    const conditions: Prisma.Sql[] = [];
+  private buildConditions(query: OrderManagerQueryDto, includeStatus: boolean, deletedOnly = false): Prisma.Sql[] {
+    const conditions: Prisma.Sql[] = [
+      deletedOnly ? Prisma.sql`o.deleted_at IS NOT NULL` : Prisma.sql`o.deleted_at IS NULL`,
+    ];
     if (includeStatus && query.status) conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
     if (query.paymentProvider) conditions.push(Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`);
     if (query.courierProvider) conditions.push(Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`);
@@ -77,7 +80,7 @@ export class OrderManagerService {
   }
 
   async statusCounts(query: OrderManagerQueryDto): Promise<Record<string, number>> {
-    const conditions = this.buildConditions(query, false);
+    const conditions = this.buildConditions(query, false, false);
     const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
 
     const rows = await this.prisma.client.$queryRaw<{ status: OrderStatus; count: bigint }[]>`
@@ -99,16 +102,17 @@ export class OrderManagerService {
     return counts;
   }
 
-  async list(query: OrderManagerQueryDto): Promise<PaginatedResult<OrderManagerRowDto>> {
+  async list(query: OrderManagerQueryDto, deletedOnly = false): Promise<PaginatedResult<OrderManagerRowDto>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
-    const conditions = this.buildConditions(query, true);
-    const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
+    const conditions = this.buildConditions(query, true, deletedOnly);
+    const where = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
+    const orderBy = deletedOnly ? Prisma.sql`o.deleted_at DESC` : Prisma.sql`o.created_at DESC`;
 
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
       SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
-             o.utm_source, o.utm_campaign,
+             o.utm_source, o.utm_campaign, o.deleted_at,
              oa.recipient_name, oa.phone, oa.address_line, oa.district, oa.division, oa.post_code,
              thumb.url AS thumbnail_url,
              p.provider AS payment_provider,
@@ -144,7 +148,7 @@ export class OrderManagerService {
       ) thumb ON true
       LEFT JOIN fraud_checks fc ON fc.phone = '+88' || oa.phone
       ${where}
-      ORDER BY o.created_at DESC
+      ORDER BY ${orderBy}
       LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
     `;
 
@@ -188,9 +192,22 @@ export class OrderManagerService {
       staffNote: r.staff_note,
       utmSource: r.utm_source,
       utmCampaign: r.utm_campaign,
+      deletedAt: r.deleted_at,
     }));
 
     return toPaginatedResult(items, Number(countRows[0]?.count ?? 0), page, pageSize);
+  }
+
+  // Order Manager's "Deleted Orders" tab — same shape/filters as list(),
+  // just flipped to the soft-deleted set (see buildConditions' deletedOnly).
+  listDeleted(query: OrderManagerQueryDto): Promise<PaginatedResult<OrderManagerRowDto>> {
+    return this.list(query, true);
+  }
+
+  async restore(orderId: number): Promise<void> {
+    const order = await this.prisma.client.order.findUnique({ where: { id: orderId }, select: { deletedAt: true } });
+    if (!order || order.deletedAt === null) throw new NotFoundException('Order not found in Deleted Orders');
+    await this.prisma.client.order.update({ where: { id: orderId }, data: { deletedAt: null } });
   }
 
   async updateNote(orderId: number, note: string): Promise<void> {
@@ -227,6 +244,10 @@ export class OrderManagerService {
           const phone = order?.addresses[0]?.phone;
           if (!phone) throw new NotFoundException('Order has no shipping phone to block');
           await this.blocker.create({ type: 'PHONE', value: phone, reason: `Blocked from order #${orderId}` }, adminUserId);
+        } else if (dto.action === 'delete') {
+          await this.prisma.client.order.update({ where: { id: orderId }, data: { deletedAt: new Date() } });
+        } else if (dto.action === 'restore') {
+          await this.restore(orderId);
         }
         succeeded.push(orderId);
       } catch (err) {

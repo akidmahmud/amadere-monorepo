@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
-import { Button } from "@amader/admin-ui";
+import { useRef, useState } from "react";
+import { Button, Modal } from "@amader/admin-ui";
 import { useUpdateMediaAltText, useUploadMedia } from "@/hooks/useMedia";
+import { MediaLibraryBrowser } from "@/components/media/MediaLibraryBrowser";
 
 export interface GalleryImage {
   id: number;
@@ -20,6 +21,7 @@ export interface ProductMediaGalleryProps {
 // URL — so this is its own component, not a reuse of MediaPicker.
 export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
   const upload = useUploadMedia();
   const updateAlt = useUpdateMediaAltText();
 
@@ -28,6 +30,18 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
     e.target.value = "";
     const uploaded = await Promise.all(files.map((f) => upload.mutateAsync(f)));
     onChange([...images, ...uploaded.map((m) => ({ id: m.id, url: m.url }))]);
+  }
+
+  // Toggle, not add-only — clicking an already-added item in the library
+  // browser removes it again. This is what actually fixes "no way to
+  // unselect": the old grid disabled the button once added, so the only way
+  // off was to close the modal and use the gallery's own × button.
+  function toggleFromLibrary(media: { id: number; url: string; altText?: string | null }) {
+    if (images.some((img) => img.id === media.id)) {
+      remove(media.id);
+    } else {
+      onChange([...images, { id: media.id, url: media.url, alt: media.altText }]);
+    }
   }
 
   function remove(id: number) {
@@ -52,7 +66,7 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
     <div>
       <div className="flex flex-wrap gap-3">
         {images.map((img, i) => (
-          <div key={img.id} className="relative w-48">
+          <div key={img.id} className="group relative w-48 overflow-hidden rounded-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={img.url}
@@ -75,9 +89,18 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
               </svg>
             </button>
             {i !== 0 && (
-              <button type="button" className="mt-1 block w-full text-center text-[11px] text-brand-500" onClick={() => moveToFront(img.id)}>
-                Make primary
-              </button>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-6 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => moveToFront(img.id)}
+                  className="pointer-events-auto inline-flex items-center gap-1 rounded-pill bg-white px-2.5 py-1 text-[11px] font-semibold text-text shadow-sm transition-colors hover:bg-brand-500 hover:text-white"
+                >
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+                    <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 6.9L12 17.3 5.8 20.8l1.6-6.9L2 9.2l7.1-.6z" />
+                  </svg>
+                  Make primary
+                </button>
+              </div>
             )}
             <input
               value={img.alt ?? ""}
@@ -90,15 +113,17 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
         ))}
       </div>
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
-      <Button
-        type="button"
-        variant="ghost"
-        className="mt-2"
-        disabled={upload.isPending}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        {upload.isPending ? "Uploading…" : "Add images"}
-      </Button>
+      <div className="mt-2 flex gap-2">
+        <Button type="button" variant="ghost" disabled={upload.isPending} onClick={() => fileInputRef.current?.click()}>
+          {upload.isPending ? "Uploading…" : "Add images"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setShowLibrary(true)}>
+          Browse library
+        </Button>
+      </div>
+      <Modal open={showLibrary} onClose={() => setShowLibrary(false)} title="Browse media library" className="max-w-5xl">
+        <MediaLibraryBrowser onSelect={toggleFromLibrary} isSelected={(media) => images.some((img) => img.id === media.id)} />
+      </Modal>
     </div>
   );
 }

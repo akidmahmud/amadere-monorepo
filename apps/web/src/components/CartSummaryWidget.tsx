@@ -5,6 +5,7 @@ import { useLocale } from "next-intl";
 import { formatMoney, useCartDrawerStore } from "@amader/ui";
 import { toApiLocale } from "@/lib/api-locale";
 import { useCartQuery } from "@/hooks/useCart";
+import { usePathname } from "@/i18n/navigation";
 
 // Same cart glyph as the header's own cart icon, for consistency. Sized via
 // className (not width/height props) so it can be 16px on mobile / 20px on
@@ -28,10 +29,23 @@ const cartIcon = (
 // padding/icon size but very slightly WIDER overall (71px vs 66px) than
 // desktop — both values below are the reference's own literal measurements,
 // mobile-first (base classes), with `md:` overrides for desktop.
+// A blog POST specifically ("reading" a blog) — not the /blog listing or its
+// /blog/category|tag|author sub-listings, which still want the widget.
+// `usePathname` here is next-intl's locale-aware version (@/i18n/navigation),
+// which always returns the path with the locale prefix already stripped —
+// unlike plain next/navigation, this is correct even when the current
+// locale has no visible URL prefix (this app's default locale).
+function useIsBlogPost(): boolean {
+  const pathname = usePathname();
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "blog" && parts.length === 2 && !["category", "tag", "author"].includes(parts[1]);
+}
+
 export function CartSummaryWidget() {
   const locale = toApiLocale(useLocale());
   const { data: cart } = useCartQuery(locale);
   const openCart = useCartDrawerStore((s) => s.open);
+  const isBlogPost = useIsBlogPost();
 
   const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
@@ -55,7 +69,7 @@ export function CartSummaryWidget() {
       type="button"
       onClick={openCart}
       aria-label="Open cart"
-      className={`fixed right-0 top-1/2 z-40 flex w-[70px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-md shadow-[0_12px_24px_rgba(34,87,122,0.24)] transition-transform hover:-translate-x-[3px] md:w-[66px] ${bouncing ? "animate-bounce" : ""}`}
+      className={`fixed right-0 top-1/2 z-40 ${isBlogPost ? "hidden md:flex" : "flex"} w-[70px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-md shadow-[0_12px_24px_rgba(34,87,122,0.24)] transition-transform hover:-translate-x-[3px] md:w-[66px] ${bouncing ? "animate-bounce" : ""}`}
     >
       <span className="flex w-full flex-col items-center gap-1 bg-green p-2 text-white md:p-3">
         {cartIcon}

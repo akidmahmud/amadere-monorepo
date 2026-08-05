@@ -49,6 +49,13 @@ export class AdminMenuItemsController {
     return this.menus.create(dto);
   }
 
+  @Post('import-from-categories')
+  @RequirePermission('menu_item.create')
+  @ApiOkResponse({ type: AdminMenuItemDto, isArray: true })
+  importFromCategories(): Promise<AdminMenuItemDto[]> {
+    return this.menus.importFromCategories();
+  }
+
   @Patch(':id')
   @RequirePermission('menu_item.update')
   @ApiOkResponse({ type: AdminMenuItemDto })

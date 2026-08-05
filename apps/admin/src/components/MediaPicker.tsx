@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
-import { useMediaLibrary, useUploadMedia } from "@/hooks/useMedia";
+import { useUploadMedia } from "@/hooks/useMedia";
+import { MediaLibraryBrowser } from "@/components/media/MediaLibraryBrowser";
 
 export interface MediaPickerProps {
   value: string | undefined;
@@ -20,7 +21,6 @@ export function MediaPicker({ value, onChange, label = "Image" }: MediaPickerPro
   const [showLibrary, setShowLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadMedia();
-  const library = useMediaLibrary();
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -45,28 +45,19 @@ export function MediaPicker({ value, onChange, label = "Image" }: MediaPickerPro
         <Button type="button" variant="ghost" onClick={() => setShowLibrary((v) => !v)}>
           Browse library
         </Button>
-      </div>
-      <Modal open={showLibrary} onClose={() => setShowLibrary(false)} title="Browse media library">
-        {library.isLoading && <p className="text-sm text-muted">Loading…</p>}
-        {!library.isLoading && library.data?.length === 0 && (
-          <p className="text-sm text-muted">No media uploaded yet — use "Upload image" to add one.</p>
+        {value && (
+          <Button type="button" variant="ghost" style={{ color: "var(--danger)" }} onClick={() => onChange("")}>
+            Remove
+          </Button>
         )}
-        <div className="grid grid-cols-4 gap-3 max-sm:grid-cols-3">
-          {library.data?.map((media) => (
-            <button
-              key={media.id}
-              type="button"
-              onClick={() => {
-                onChange(media.url);
-                setShowLibrary(false);
-              }}
-              className="overflow-hidden rounded-inner border border-border transition-colors hover:border-brand-500"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={media.url} alt={media.altText ?? ""} className="aspect-square w-full object-cover" />
-            </button>
-          ))}
-        </div>
+      </div>
+      <Modal open={showLibrary} onClose={() => setShowLibrary(false)} title="Browse media library" className="max-w-5xl">
+        <MediaLibraryBrowser
+          onSelect={(media) => {
+            onChange(media.url);
+            setShowLibrary(false);
+          }}
+        />
       </Modal>
     </div>
   );

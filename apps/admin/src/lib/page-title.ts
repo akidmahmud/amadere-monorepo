@@ -41,6 +41,7 @@ const SECTIONS: { base: string; label: string }[] = [
 export function pageTitleFor(pathname: string): string {
   if (pathname === "/") return "Overview";
   if (pathname.startsWith("/orders/")) return "Order Details"; // viewed/actioned, not "edited"
+  if (pathname === "/products/trash") return "Deleted Products";
 
   const section = SECTIONS.find((s) => pathname === s.base || pathname.startsWith(`${s.base}/`));
   if (!section) return "Amader Admin";

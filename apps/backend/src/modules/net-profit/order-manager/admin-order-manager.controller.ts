@@ -30,6 +30,15 @@ export class AdminOrderManagerController {
     return this.orderManager.statusCounts(query);
   }
 
+  // "Deleted Orders" tab — soft-deleted orders only, same filters/shape as
+  // the main list. Declared as a static segment so it can never collide with
+  // a future GET(':id') on this controller.
+  @Get('trash')
+  @RequirePermission('net_profit_orders.view')
+  listDeleted(@Query() query: OrderManagerQueryDto) {
+    return this.orderManager.listDeleted(query);
+  }
+
   @Post('bulk')
   @RequirePermission('net_profit_orders.manage')
   bulk(@Body() dto: BulkOrderActionDto, @CurrentAdmin() admin: { id: number }) {

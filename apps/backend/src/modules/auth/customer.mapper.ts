@@ -6,6 +6,7 @@ export class CustomerProfileDto {
   phone!: string | null;
   firstName!: string | null;
   lastName!: string | null;
+  dob!: Date | null;
   emailVerifiedAt!: Date | null;
   phoneVerifiedAt!: Date | null;
 }
@@ -17,6 +18,7 @@ export function toCustomerProfileDto(customer: Customer): CustomerProfileDto {
     phone: customer.phone,
     firstName: customer.firstName,
     lastName: customer.lastName,
+    dob: customer.dob,
     emailVerifiedAt: customer.emailVerifiedAt,
     phoneVerifiedAt: customer.phoneVerifiedAt,
   };

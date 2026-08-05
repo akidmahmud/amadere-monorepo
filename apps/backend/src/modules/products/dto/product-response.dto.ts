@@ -8,6 +8,12 @@ import {
 } from '@amader/db';
 import { ResolvedSeoDto } from '../../seo/seo.mapper';
 
+export class AdminProductFaqDto {
+  question!: string;
+  answer!: string;
+  sortOrder!: number;
+}
+
 export class AdminProductTranslationDto {
   locale!: Locale;
   name!: string;
@@ -16,6 +22,7 @@ export class AdminProductTranslationDto {
   keyBenefits!: string | null;
   benefitPoints!: string | null;
   howToUse!: string | null;
+  faqs!: AdminProductFaqDto[];
 }
 
 export class AdminProductMediaDto {
@@ -97,6 +104,19 @@ export class AdminProductPickerItemDto {
   name!: string;
 }
 
+// Trash listing — deliberately minimal, same rationale as the picker item
+// above (a 100-row trash list doesn't need every variant/category/tag).
+export class AdminDeletedProductDto {
+  id!: number;
+  slug!: string;
+  name!: string;
+  imageUrl!: string | null;
+  deletedAt!: Date;
+  /** Days until the nightly purge job permanently deletes this row (see
+   * ProductsService.purgeExpiredTrash) — floored at 0, never negative. */
+  daysRemaining!: number;
+}
+
 export class PublicProductBrandDto {
   id!: number;
   slug!: string;
@@ -152,6 +172,8 @@ export class PublicProductDto {
   stockStatus!: StockStatus;
   price!: string | null;
   salePrice!: string | null;
+  saleStartsAt!: Date | null;
+  saleEndsAt!: Date | null;
   shippableWeight!: string | null;
   minOrderQuantity!: number;
   maxOrderQuantity!: number | null;
@@ -168,9 +190,15 @@ export class PublicProductDto {
   variants!: PublicProductVariantDto[];
 }
 
+export class ProductFaqPublicDto {
+  question!: string;
+  answer!: string;
+}
+
 export class PublicProductDetailDto extends PublicProductDto {
   seo!: ResolvedSeoDto;
   structuredData!: Record<string, unknown>[];
+  faqs!: ProductFaqPublicDto[];
   // Admin-configured via ProductRelation (see AdminProductsController's
   // cross-sell/frequently-bought-together endpoints) — published products
   // only, empty array when nothing's configured or every pick got unpublished.

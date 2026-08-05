@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Locale } from '@amader/db';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsEnum, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { ProductFaqDto } from './product-faq.dto';
 
 export class ProductTranslationDto {
   @ApiProperty({ enum: Locale })
@@ -39,4 +41,11 @@ export class ProductTranslationDto {
   @IsOptional()
   @IsString()
   howToUse?: string;
+
+  @ApiPropertyOptional({ type: [ProductFaqDto], description: 'PDP "FAQ" tab — list of question/answer pairs' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductFaqDto)
+  faqs?: ProductFaqDto[];
 }

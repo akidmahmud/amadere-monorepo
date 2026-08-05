@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
@@ -135,6 +135,27 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
   const [address, setAddress] = useState<CreateManualOrderAddress>(EMPTY_ADDRESS);
   const [sameBilling, setSameBilling] = useState(true);
   const [billingAddress, setBillingAddress] = useState<CreateManualOrderAddress>(EMPTY_ADDRESS);
+
+  // Arriving via "New Order" from a customer's detail popup only preselected
+  // `customerId` before this — the shipping fields stayed blank, so staff
+  // had to retype a customer's own name/phone/email/address right after
+  // clicking into their record. Runs once per customer (the ref guards
+  // against re-clobbering fields the staff has since edited by hand if
+  // `preselected` happens to re-render).
+  const prefilledCustomerId = useRef<number | null>(null);
+  useEffect(() => {
+    if (!preselected || prefilledCustomerId.current === preselected.id) return;
+    prefilledCustomerId.current = preselected.id;
+    setAddress((a) => ({
+      ...a,
+      recipientName: preselected.name,
+      phone: preselected.phone ?? a.phone,
+      email: preselected.email ?? a.email,
+      addressLine: preselected.defaultAddress?.addressLine ?? a.addressLine,
+      division: preselected.defaultAddress?.division ?? a.division,
+      district: preselected.defaultAddress?.district ?? a.district,
+    }));
+  }, [preselected]);
 
   const [productQuery, setProductQuery] = useState("");
   const { data: productResults } = useProductSearch(productQuery);

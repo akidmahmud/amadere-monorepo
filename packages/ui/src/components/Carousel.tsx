@@ -16,6 +16,12 @@ export interface CarouselProps {
    * carousels whose cards are narrow enough that the default 46px arrows
    * look oversized there. Unchanged from md up either way. */
   compactArrowsOnMobile?: boolean;
+  /** Show a row of "page" dots below the track (pixel-matched to
+   * ghorerbazar.com's combo-deals swiper pagination) — approximate, not a
+   * per-slide-group index like Swiper's: pages are computed from viewport
+   * widths (scrollWidth / clientWidth), which is exact when every card is
+   * the same width and close enough otherwise. Off by default. */
+  showDots?: boolean;
 }
 
 function chevronLeft(compact: boolean) {
@@ -40,6 +46,7 @@ export function Carousel({
   centerWhenFits = true,
   showArrows = true,
   compactArrowsOnMobile = false,
+  showDots = false,
 }: CarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -50,6 +57,8 @@ export function Carousel({
   // left-aligned (overflows, so centering would clip the start — same bug
   // class as the site nav's justify-center fix).
   const [hasOverflow, setHasOverflow] = useState(false);
+  const [pageCount, setPageCount] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
 
   function updateScrollState() {
     const row = rowRef.current;
@@ -57,6 +66,16 @@ export function Carousel({
     setCanScrollLeft(row.scrollLeft > 4);
     setCanScrollRight(row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
     setHasOverflow(row.scrollWidth > row.clientWidth + 4);
+    if (showDots && row.clientWidth > 0) {
+      setPageCount(Math.max(1, Math.round(row.scrollWidth / row.clientWidth)));
+      setCurrentPage(Math.round(row.scrollLeft / row.clientWidth));
+    }
+  }
+
+  function goToPage(page: number) {
+    const row = rowRef.current;
+    if (!row) return;
+    row.scrollTo({ left: page * row.clientWidth, behavior: "smooth" });
   }
 
   useEffect(() => {
@@ -127,6 +146,22 @@ export function Carousel({
         >
           {chevronRight(compactArrowsOnMobile)}
         </button>
+      )}
+      {showDots && hasOverflow && pageCount > 1 && (
+        <div className="mt-3 flex justify-center gap-2">
+          {Array.from({ length: pageCount }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Go to page ${i + 1}`}
+              onClick={() => goToPage(i)}
+              className={cn(
+                "h-2 rounded-full transition-[width,background-color] duration-200",
+                i === currentPage ? "w-5 bg-header-green" : "w-2 bg-line",
+              )}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { Media } from '@amader/db';
+import { Media, MediaFolder } from '@amader/db';
 
 export class MediaDto {
   id!: number;
@@ -7,6 +7,7 @@ export class MediaDto {
   altText!: string | null;
   width!: number | null;
   height!: number | null;
+  folderId!: number | null;
 }
 
 export function toMediaDto(media: Media): MediaDto {
@@ -17,5 +18,20 @@ export function toMediaDto(media: Media): MediaDto {
     altText: media.altText,
     width: media.width,
     height: media.height,
+    folderId: media.folderId,
+  };
+}
+
+export class MediaFolderDto {
+  id!: number;
+  name!: string;
+  createdAt!: Date;
+}
+
+export function toMediaFolderDto(folder: MediaFolder): MediaFolderDto {
+  return {
+    id: folder.id,
+    name: folder.name,
+    createdAt: folder.createdAt,
   };
 }

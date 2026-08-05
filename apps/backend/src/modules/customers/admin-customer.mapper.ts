@@ -20,6 +20,10 @@ export const ADMIN_CUSTOMER_DETAIL_INCLUDE = {
     orderBy: { createdAt: 'desc' as const },
     include: { statusHistory: { orderBy: { createdAt: 'asc' as const } } },
   },
+  // Same "isDefault first" pick CustomersService.adminUpdate() uses to
+  // decide which saved address is "the" one — exposed here so the New Order
+  // form can prefill shipping fields for a preselected customer.
+  addresses: { orderBy: { isDefault: 'desc' as const } },
 } as const;
 
 export type CustomerWithDetail = Prisma.CustomerGetPayload<{
@@ -166,6 +170,12 @@ type ActivityEntry =
   | { type: 'NOTE'; noteId: number; noteType: string; body: string; occurredAt: Date }
   | { type: 'CALL'; callId: number; outcome: string; occurredAt: Date };
 
+export class AdminCustomerAddressSummaryDto {
+  addressLine!: string;
+  division!: string;
+  district!: string;
+}
+
 export class AdminCustomerDto {
   id!: number;
   name!: string;
@@ -175,6 +185,7 @@ export class AdminCustomerDto {
   tier!: string | null;
   completedOrderCount!: number;
   createdAt!: Date;
+  defaultAddress!: AdminCustomerAddressSummaryDto | null;
   orders!: AdminCustomerOrderSummaryDto[];
   notes!: AdminCustomerNoteDto[];
   callLogs!: AdminCustomerCallLogDto[];
@@ -233,6 +244,9 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
     tier: c.tier?.label ?? null,
     completedOrderCount: c.completedOrderCount,
     createdAt: c.createdAt,
+    defaultAddress: c.addresses[0]
+      ? { addressLine: c.addresses[0].addressLine, division: c.addresses[0].division, district: c.addresses[0].district }
+      : null,
     orders: c.orders.map((o) => ({
       id: o.id,
       orderNumber: o.orderNumber,

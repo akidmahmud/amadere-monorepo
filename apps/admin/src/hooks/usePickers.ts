@@ -25,7 +25,7 @@ export function usePickerCollections() {
       const res = await proxyFetch<Paginated<components["schemas"]["AdminCollectionDto"]>>(
         "/admin/collections?pageSize=100",
       );
-      return (res.items ?? []).map((c) => ({ id: c.id, label: firstTranslationLabel(c.translations, c.slug) }));
+      return (res.items ?? []).map((c) => ({ id: c.id, slug: c.slug, label: firstTranslationLabel(c.translations, c.slug) }));
     },
   });
 }
@@ -37,7 +37,7 @@ export function usePickerCategories() {
       const res = await proxyFetch<Paginated<components["schemas"]["AdminCategoryDto"]>>(
         "/admin/categories?pageSize=100",
       );
-      return (res.items ?? []).map((c) => ({ id: c.id, label: firstTranslationLabel(c.translations, c.slug) }));
+      return (res.items ?? []).map((c) => ({ id: c.id, slug: c.slug, label: firstTranslationLabel(c.translations, c.slug) }));
     },
   });
 }

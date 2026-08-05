@@ -49,12 +49,12 @@ export default async function LocaleLayout({
     { data: siteInfo },
     { data: analyticsConfig },
     { data: whatsappConfig },
-    // Fetched server-side so the nav's categories are in the very first HTML
-    // response instead of appearing after a client-side fetch completes
+    // Fetched server-side so the nav menu is in the very first HTML response
+    // instead of appearing after a client-side fetch completes
     // post-hydration — that round trip was the "navbar takes too long to
     // load" delay.
-    { data: categoriesNav },
-    // Same fix as categories nav — the announcement bar was flashing in late
+    { data: navMenu },
+    // Same fix as the nav menu — the announcement bar was flashing in late
     // after a client-side fetch; server-fetching it here puts it in the
     // first HTML response instead.
     { data: announcements },
@@ -62,7 +62,7 @@ export default async function LocaleLayout({
     safeGet("/api/v1/settings/site"),
     safeGet("/api/v1/analytics/config"),
     safeGet("/api/v1/whatsapp/config"),
-    safeGet("/api/v1/categories/nav", { params: { query: { locale: locale.toUpperCase() } } }),
+    safeGet("/api/v1/menu", { params: { query: { locale: locale.toUpperCase() } } }),
     safeGet("/api/v1/announcements", { params: { query: { locale: locale.toUpperCase() } } }),
   ]);
 
@@ -106,11 +106,11 @@ export default async function LocaleLayout({
           <QueryProvider>
             <SiteHeader
               initialLogoUrl={siteInfo?.logoUrl}
-              initialCategoriesNav={categoriesNav}
+              initialNavMenu={navMenu}
               initialAnnouncements={announcements}
             />
             <div className="flex flex-1 flex-col">{children}</div>
-            <SiteFooter initialLogoUrl={siteInfo?.logoUrl} initialCategoriesNav={categoriesNav} />
+            <SiteFooter initialLogoUrl={siteInfo?.logoUrl} initialNavMenu={navMenu} />
             <SiteCartDrawer />
             <WhatsappFloatingButton config={(whatsappConfig as WhatsappConfig | undefined) ?? null} />
             <CartSummaryWidget />

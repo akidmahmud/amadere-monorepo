@@ -64,6 +64,7 @@ export default async function BrandPage({
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
   const filters = parsePlpSearchParams(await searchParams);
+  const pageSize = filters.pageSize ?? PAGE_SIZE;
 
   const brand = await getBrand(slug, localeParam);
   if (!brand) {
@@ -77,7 +78,7 @@ export default async function BrandPage({
         query: {
           locale: localeParam,
           page: filters.page,
-          pageSize: PAGE_SIZE,
+          pageSize,
           brandId: brand.id,
           tagIds: filters.tagIds,
           minPrice: filters.minPrice,
@@ -110,7 +111,7 @@ export default async function BrandPage({
         basePath={`/brands/${slug}`}
         filters={filters}
         total={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         products={products}
         tags={tags}
       />

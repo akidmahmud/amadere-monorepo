@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { ReactElement } from "react";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import {
@@ -7,6 +6,7 @@ import {
   ProductGallery,
   ProductTabs,
   RatingStars,
+  type ProductTab,
 } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
@@ -129,6 +129,27 @@ export default async function ProductPage({
 
   const tabs = [
     product.content && { id: "description", label: "Description", content: htmlBlock(product.content) },
+    // Jump-link, not a content tab — clicking it scrolls down to the
+    // Customer Reviews section (id="reviews") further down this same page
+    // rather than switching the pane here. Placed right after Description
+    // per explicit request. Always shown: the review form below renders
+    // unconditionally even with zero reviews yet, so there's always
+    // somewhere real to land.
+    { id: "reviews", label: "Reviews", content: null, scrollTargetId: "reviews" },
+    product.faqs.length > 0 && {
+      id: "faq",
+      label: "FAQ",
+      content: (
+        <div className="flex flex-col gap-4">
+          {product.faqs.map((faq, i) => (
+            <div key={i}>
+              <p className="font-body text-sm font-bold text-text">{faq.question}</p>
+              <p className="mt-1 font-body text-sm text-secondary">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      ),
+    },
     benefitPoints.length > 0 && {
       id: "key-benefits",
       label: "Key Benefits",
@@ -146,7 +167,7 @@ export default async function ProductPage({
       ),
     },
     product.howToUse && { id: "how-to-use", label: "How to Use", content: htmlBlock(product.howToUse) },
-  ].filter((tab): tab is { id: string; label: string; content: ReactElement } => Boolean(tab));
+  ].filter(Boolean) as ProductTab[];
 
   return (
     <main className="flex-1">
@@ -302,7 +323,10 @@ export default async function ProductPage({
         </div>
       )}
 
-      <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
+      {/* Target of the tab bar's "Reviews" jump-link (scrollTargetId="reviews"
+          above) — scroll-margin so the sticky header (if any) doesn't cover
+          the heading when the browser lands here. */}
+      <div id="reviews" className="mx-auto max-w-full scroll-mt-20 px-5 py-10 sm:max-w-[80%]">
         <div className="rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-lg">
           <h2 className="mb-4 text-xl font-bold text-[#222831]">Customer Reviews</h2>
 

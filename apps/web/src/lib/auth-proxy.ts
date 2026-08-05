@@ -4,9 +4,15 @@ import { setAuthCookies } from "@/lib/auth-cookies";
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
 // Shared by every Route Handler that exchanges credentials for a token pair
-// (login, register, otp/verify, social-login, refresh) — calls the backend,
-// and on success stores the tokens as httpOnly cookies instead of ever
-// putting them in a client-readable response body.
+// (login, otp/verify, social-login, refresh) — calls the backend, and on
+// success stores the tokens as httpOnly cookies instead of ever putting
+// them in a client-readable response body.
+//
+// register() is also routed through here even though it doesn't issue a
+// session anymore (it only sends an OTP — see customer-auth.service.ts) —
+// its response is `{ pending: true }`, no accessToken/refreshToken, so
+// cookie-setting is skipped for it. The real session starts at the
+// subsequent otp/verify call.
 export async function proxyTokenIssuingCall(backendPath: string, body: unknown): Promise<NextResponse> {
   const res = await fetch(`${BACKEND_URL}/api/v1${backendPath}`, {
     method: "POST",
@@ -17,6 +23,8 @@ export async function proxyTokenIssuingCall(backendPath: string, body: unknown):
   if (!res.ok || !json.success) {
     return NextResponse.json(json, { status: res.status });
   }
-  await setAuthCookies(json.data.accessToken, json.data.refreshToken);
+  if (json.data?.accessToken) {
+    await setAuthCookies(json.data.accessToken, json.data.refreshToken);
+  }
   return NextResponse.json({ success: true });
 }

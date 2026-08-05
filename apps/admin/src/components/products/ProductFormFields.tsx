@@ -10,6 +10,8 @@ import { ProductMediaGallery } from "./ProductMediaGallery";
 import { ProductTabs, type ProductTab } from "./ProductTabs";
 import { ProductPricingCard } from "./ProductPricingCard";
 import { ProductCategoriesTagsCard } from "./ProductCategoriesTagsCard";
+import { ProductFaqCard } from "./ProductFaqCard";
+import { ProductBadgesField } from "./ProductBadgesField";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ProductSeoTab } from "./ProductSeoTab";
 import { ProductAnalyticsTab } from "./ProductAnalyticsTab";
@@ -187,8 +189,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               <div className="rounded-card border border-border bg-surface p-[18px]">
                 <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Other Details</h3>
                 <label className="mb-3.5 flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">Benefit Badges (optional, one per line, up to 4)</span>
-                  <textarea value={form.keyBenefits} onChange={(e) => form.setKeyBenefits(e.target.value)} rows={4} className={textareaClass} />
+                  <span className="text-xs font-bold text-text">Badges (optional, up to 5 — shown under the buy box, including on mobile)</span>
+                  <ProductBadgesField value={form.keyBenefits} onChange={form.setKeyBenefits} />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <StatusSelect value={form.status} onChange={form.setStatus} />
@@ -201,6 +203,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   </label>
                 </div>
               </div>
+
+              <ProductFaqCard form={form} />
             </div>
 
             <div className="flex flex-col gap-4">

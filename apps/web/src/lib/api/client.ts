@@ -37,7 +37,13 @@ const unwrapEnvelope: Middleware = {
       throw new ApiError(response.status, body.error.code, body.error.message, body.error.details);
     }
 
-    return new Response(JSON.stringify(body.data), {
+    // `?? null`: a void-returning endpoint (e.g. POST /auth/otp/request)
+    // serializes as `data: undefined`, and JSON.stringify(undefined) is the
+    // JS value `undefined`, not a string — passed to Response() that makes
+    // an EMPTY body, which callers' own `.json()` then fails to parse
+    // ("Unexpected end of input"). `null` stringifies to the valid JSON
+    // literal "null" instead.
+    return new Response(JSON.stringify(body.data ?? null), {
       status: response.status,
       headers: response.headers,
     });

@@ -34,6 +34,18 @@ export const OnSaleWithBadge: Story = {
   ),
 };
 
+export const OnSaleWithCountdown: Story = {
+  render: (args) => (
+    <div className="w-52">
+      <ProductCard
+        {...args}
+        originalPrice="610.00"
+        saleEndsAt={new Date(Date.now() + 28 * 86400000 + 5 * 3600000 + 13 * 60000).toISOString()}
+      />
+    </div>
+  ),
+};
+
 export const WithPackSelector: Story = {
   render: (args) => (
     <div className="w-52">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Input } from "@amader/ui";
 import { useMe } from "@/hooks/useAuth";
 import { useChangePassword, useUpdateProfile } from "@/hooks/useAccount";
+import { BirthdayPopup } from "@/components/BirthdayPopup";
 
 export function ProfileForm() {
   const { data: me } = useMe();
@@ -12,13 +13,22 @@ export function ProfileForm() {
 
   const [firstName, setFirstName] = useState(me?.firstName ?? "");
   const [lastName, setLastName] = useState(me?.lastName ?? "");
+  const [dob, setDob] = useState(me?.dob ? me.dob.slice(0, 10) : "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Non-blocking birthday nudge: resets to visible on every fresh mount of
+  // this page (no dismiss-tracking storage) — closing it only hides it for
+  // this visit. Once `me.dob` is actually set, the gate itself goes false
+  // and it stops appearing for good.
+  const [birthdayPopupClosed, setBirthdayPopupClosed] = useState(false);
 
   if (!me) return null;
 
   return (
     <div className="space-y-6">
+      {!me.dob && !birthdayPopupClosed && <BirthdayPopup onClose={() => setBirthdayPopupClosed(true)} />}
+
       <div className="rounded-brand border border-line bg-white p-5">
         <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Profile</h2>
         <div className="mb-3.5 grid grid-cols-2 gap-3">
@@ -29,11 +39,23 @@ export function ProfileForm() {
           <Input value={me.email ?? ""} disabled placeholder="Email" />
           <Input value={me.phone ?? ""} disabled placeholder="Phone" />
         </div>
+        <label className="mb-3.5 block">
+          <span className="mb-1.5 block font-body text-xs text-muted">Birthday</span>
+          <Input
+            type="date"
+            value={dob}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setDob(e.target.value)}
+            className="max-w-[200px]"
+          />
+        </label>
         {updateProfile.isSuccess && <p className="mb-2 font-body text-xs text-green">Saved!</p>}
         <Button
           variant="green"
           disabled={updateProfile.isPending}
-          onClick={() => updateProfile.mutate({ firstName: firstName || undefined, lastName: lastName || undefined })}
+          onClick={() =>
+            updateProfile.mutate({ firstName: firstName || undefined, lastName: lastName || undefined, dob: dob || undefined })
+          }
         >
           Save Changes
         </Button>

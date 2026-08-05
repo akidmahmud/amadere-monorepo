@@ -132,38 +132,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/password/forgot": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_forgotPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/password/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_resetPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/me": {
         parameters: {
             query?: never;
@@ -596,6 +564,38 @@ export interface paths {
         patch: operations["AdminMediaController_update"];
         trace?: never;
     };
+    "/api/v1/admin/media-folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminMediaFoldersController_list"];
+        put?: never;
+        post: operations["AdminMediaFoldersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/media-folders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminMediaFoldersController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brands": {
         parameters: {
             query?: never;
@@ -996,6 +996,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_listDeleted"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}": {
         parameters: {
             query?: never;
@@ -1038,6 +1054,22 @@ export interface paths {
         get: operations["AdminProductsController_statsFor"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProductsController_restore"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2350,6 +2382,38 @@ export interface paths {
         get: operations["AdminCustomersController_listAssignableStaff"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_listDeleted"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/customers/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCustomersController_bulk"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3716,6 +3780,22 @@ export interface paths {
         patch: operations["AdminMenuItemsController_update"];
         trace?: never;
     };
+    "/api/v1/admin/menu-items/import-from-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminMenuItemsController_importFromCategories"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/menu": {
         parameters: {
             query?: never;
@@ -3948,6 +4028,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminOrderManagerController_statusCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/orders/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminOrderManagerController_listDeleted"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5049,18 +5145,22 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         RegisterDto: {
+            firstName: string;
+            lastName: string;
+            phone: string;
             /** Format: email */
-            email: string;
+            email?: string;
             password: string;
-            firstName?: string;
-            lastName?: string;
+        };
+        RegisterPendingDto: {
+            /** @enum {number} */
+            pending: true;
+        };
+        LoginDto: {
+            phone: string;
+            password: string;
         };
         TokenPair: Record<string, never>;
-        LoginDto: {
-            /** Format: email */
-            email: string;
-            password: string;
-        };
         OtpRequestDto: {
             /** @description Phone number or email */
             identifier: string;
@@ -5082,22 +5182,14 @@ export interface components {
         RefreshTokenDto: {
             refreshToken: string;
         };
-        ForgotPasswordDto: {
-            /** @description Phone number or email */
-            identifier: string;
-        };
-        ResetPasswordDto: {
-            /** @description Phone number or email */
-            identifier: string;
-            code: string;
-            newPassword: string;
-        };
         CustomerProfileDto: {
             id: number;
             email: string | null;
             phone: string | null;
             firstName: string | null;
             lastName: string | null;
+            /** Format: date-time */
+            dob: string | null;
             /** Format: date-time */
             emailVerifiedAt: string | null;
             /** Format: date-time */
@@ -5258,12 +5350,24 @@ export interface components {
             altText: string | null;
             width: number | null;
             height: number | null;
+            folderId: number | null;
         };
         UploadMediaDto: {
             altText?: string;
         };
         UpdateMediaDto: {
             altText?: string;
+            /** @description Move into this folder, or null to un-file it */
+            folderId?: number | null;
+        };
+        MediaFolderDto: {
+            id: number;
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateMediaFolderDto: {
+            name: string;
         };
         PublicBrandDto: {
             id: number;
@@ -5600,6 +5704,10 @@ export interface components {
             stockStatus: Record<string, never>;
             price: string | null;
             salePrice: string | null;
+            /** Format: date-time */
+            saleStartsAt: string | null;
+            /** Format: date-time */
+            saleEndsAt: string | null;
             shippableWeight: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
@@ -5615,6 +5723,10 @@ export interface components {
             media: components["schemas"]["PublicProductMediaDto"][];
             variants: components["schemas"]["PublicProductVariantDto"][];
         };
+        ProductFaqPublicDto: {
+            question: string;
+            answer: string;
+        };
         PublicProductDetailDto: {
             id: number;
             slug: string;
@@ -5628,6 +5740,10 @@ export interface components {
             stockStatus: Record<string, never>;
             price: string | null;
             salePrice: string | null;
+            /** Format: date-time */
+            saleStartsAt: string | null;
+            /** Format: date-time */
+            saleEndsAt: string | null;
             shippableWeight: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
@@ -5644,8 +5760,14 @@ export interface components {
             variants: components["schemas"]["PublicProductVariantDto"][];
             seo: components["schemas"]["ResolvedSeoDto"];
             structuredData: Record<string, never>[];
+            faqs: components["schemas"]["ProductFaqPublicDto"][];
             crossSell: components["schemas"]["PublicProductDto"][];
             frequentlyBoughtTogether: components["schemas"]["PublicProductDto"][];
+        };
+        AdminProductFaqDto: {
+            question: string;
+            answer: string;
+            sortOrder: number;
         };
         AdminProductTranslationDto: {
             locale: Record<string, never>;
@@ -5655,6 +5777,7 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
+            faqs: components["schemas"]["AdminProductFaqDto"][];
         };
         AdminProductMediaDto: {
             id: number;
@@ -5717,6 +5840,21 @@ export interface components {
             slug: string;
             name: string;
         };
+        AdminDeletedProductDto: {
+            id: number;
+            slug: string;
+            name: string;
+            imageUrl: string | null;
+            /** Format: date-time */
+            deletedAt: string;
+            daysRemaining: number;
+        };
+        ProductFaqDto: {
+            question: string;
+            answer: string;
+            /** @default 0 */
+            sortOrder: number;
+        };
         ProductTranslationDto: {
             /** @enum {string} */
             locale: "EN" | "BN";
@@ -5731,6 +5869,8 @@ export interface components {
             benefitPoints?: string;
             /** @description PDP "How to Use" tab */
             howToUse?: string;
+            /** @description PDP "FAQ" tab — list of question/answer pairs */
+            faqs?: components["schemas"]["ProductFaqDto"][];
         };
         CreateProductVariantDto: {
             sku?: string;
@@ -6652,6 +6792,14 @@ export interface components {
             lastName?: string;
             /** Format: email */
             email?: string;
+            addressLine?: string;
+            division?: string;
+            district?: string;
+        };
+        AdminCustomerAddressSummaryDto: {
+            addressLine: string;
+            division: string;
+            district: string;
         };
         AdminCustomerOrderSummaryDto: {
             id: number;
@@ -6692,6 +6840,7 @@ export interface components {
             completedOrderCount: number;
             /** Format: date-time */
             createdAt: string;
+            defaultAddress: components["schemas"]["AdminCustomerAddressSummaryDto"] | null;
             orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
             notes: components["schemas"]["AdminCustomerNoteDto"][];
             callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
@@ -6757,6 +6906,11 @@ export interface components {
             activeCustomers: number;
             repeatCustomers: number;
             averageOrderValue: number;
+        };
+        BulkCustomerActionDto: {
+            customerIds: number[];
+            /** @enum {string} */
+            action: "delete" | "restore";
         };
         UpdateCustomerDto: {
             firstName?: string;
@@ -7655,7 +7809,7 @@ export interface components {
         BulkOrderActionDto: {
             orderIds: number[];
             /** @enum {string} */
-            action: "consign" | "block" | "hold" | "export";
+            action: "consign" | "block" | "hold" | "export" | "delete" | "restore";
             /**
              * @description Required for action=consign
              * @enum {string}
@@ -8077,7 +8231,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenPair"];
+                    "application/json": components["schemas"]["RegisterPendingDto"];
                 };
             };
             201: {
@@ -8085,7 +8239,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenPair"];
+                    "application/json": components["schemas"]["RegisterPendingDto"];
                 };
             };
         };
@@ -8232,48 +8386,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TokenPair"];
                 };
-            };
-        };
-    };
-    AuthController_forgotPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ForgotPasswordDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AuthController_resetPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ResetPasswordDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -9008,6 +9120,10 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                /** @description Only media inside this folder */
+                folderId?: number;
+                /** @description Only media not assigned to any folder — ignored if folderId is set */
+                unfiled?: boolean;
             };
             header?: never;
             path?: never;
@@ -9102,6 +9218,75 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MediaDto"];
                 };
+            };
+        };
+    };
+    AdminMediaFoldersController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFolderDto"][];
+                };
+            };
+        };
+    };
+    AdminMediaFoldersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMediaFolderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFolderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFolderDto"];
+                };
+            };
+        };
+    };
+    AdminMediaFoldersController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10149,6 +10334,33 @@ export interface operations {
             };
         };
     };
+    AdminProductsController_listDeleted: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminDeletedProductDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
     AdminProductsController_get: {
         parameters: {
             query?: never;
@@ -10249,6 +10461,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminProductsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductDto"];
+                };
             };
         };
     };
@@ -12907,6 +13148,63 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>[];
                 };
+            };
+        };
+    };
+    AdminCustomersController_listDeleted: {
+        parameters: {
+            query?: {
+                q?: string;
+                tierId?: number;
+                /** @description CustomerAddress.district of the customer's default (or first) address */
+                district?: string;
+                priority?: "HIGH" | "MEDIUM" | "LOW";
+                crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE";
+                assignedAdminId?: number;
+                /** @description Only customers whose birthday (month+day, any year) is today */
+                birthdayToday?: boolean;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminCustomerListItemDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminCustomersController_bulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkCustomerActionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -15730,6 +16028,33 @@ export interface operations {
             };
         };
     };
+    AdminMenuItemsController_importFromCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMenuItemDto"][];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMenuItemDto"][];
+                };
+            };
+        };
+    };
     MenuController_getTree: {
         parameters: {
             query?: {
@@ -16302,6 +16627,38 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    AdminOrderManagerController_listDeleted: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "COMPLETED" | "CANCELED" | "PARTIALLY_RETURNED" | "RETURNED" | "HOLD";
+                paymentProvider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+                courierProvider?: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+                risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+                /** @description Shipping address division, e.g. "Dhaka" */
+                division?: string;
+                /** @description Free-text search — order number, recipient name, or phone */
+                q?: string;
+                /** @description ISO date — orders created on/after this instant */
+                from?: string;
+                /** @description ISO date — orders created on/before this instant */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

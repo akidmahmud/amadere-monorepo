@@ -91,6 +91,14 @@ type HomepageSection = Omit<
 // above it. One container for the whole homepage now.
 const WRAPPER = "mx-auto w-full max-w-[1440px] px-4 md:px-6";
 
+const giftIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="8" width="18" height="4" />
+    <path d="M12 8v13M3 12v7a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-7" />
+    <path d="M12 8H7.5a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8ZM12 8h4.5a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8Z" />
+  </svg>
+);
+
 function renderSection(
   section: HomepageSection,
   ctx: {
@@ -399,23 +407,35 @@ export default async function Home({
   const comboSection = bundles.length > 0 && (
     <section className="pt-10 md:pt-14" key="super-saver-combos">
       <div className={WRAPPER}>
-        <div className="mb-6 flex items-end justify-between gap-4 border-b border-header-line pb-3.5">
-          <h2 className="relative font-header text-base font-extrabold text-[#227840] after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:text-[1.35rem]">
-            Super Saver Combos
-          </h2>
-          <AppLink
-            href="/combos"
-            className="inline-flex shrink-0 items-center gap-1.5 font-header text-[0.8rem] font-extrabold uppercase tracking-[0.04em] text-header-green hover:text-header-green-dark hover:underline"
-          >
-            View All Combos
-          </AppLink>
-        </div>
+        {/* Pixel-matched to ghorerbazar.com's `.combo-section-inner`: a
+            gradient card (their peach, ours a soft brand-green wash)
+            wrapping a gift-icon heading + a filled "View All Combos"
+            button + the combo carousel — colors recolored to brand green,
+            structure/spacing kept 1:1. */}
+        <div className="rounded-2xl bg-gradient-to-br from-green/10 to-cream p-4 md:p-8">
+          <div className="mb-5 flex items-center justify-between gap-4 md:mb-6">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-header-green text-white">
+                {giftIcon}
+              </span>
+              <h2 className="font-header text-base font-extrabold text-header-ink sm:text-xl">
+                Exclusive Combo Deals
+              </h2>
+            </div>
+            <AppLink
+              href="/combos"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded bg-header-green px-3 py-2 font-header text-xs font-semibold text-white transition-colors hover:bg-header-green-dark"
+            >
+              View All Combos →
+            </AppLink>
+          </div>
 
-        <Carousel>
-          {bundles.map((bundle: ReturnType<typeof toComboCardData>) => (
-            <ComboCard key={bundle.href} {...bundle} linkComponent={AppLink} />
-          ))}
-        </Carousel>
+          <Carousel showDots>
+            {bundles.map((bundle: ReturnType<typeof toComboCardData>) => (
+              <ComboCard key={bundle.href} {...bundle} linkComponent={AppLink} />
+            ))}
+          </Carousel>
+        </div>
       </div>
     </section>
   );

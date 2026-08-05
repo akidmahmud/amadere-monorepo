@@ -85,7 +85,6 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending }: V
         <span className="text-[11px] font-semibold text-secondary">Price</span>
         <input
           type="number"
-          required
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           className="num h-9 w-20 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500"

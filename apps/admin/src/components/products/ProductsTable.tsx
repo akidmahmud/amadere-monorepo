@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
 import { useDeleteProduct, type AdminProduct, type AdminProductFilters } from "@/hooks/useProducts";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const STATUS_PILL: Record<string, string> = {
   PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
@@ -76,6 +77,21 @@ export function ProductsTable({
   }
   const [bulkAction, setBulkAction] = useState("");
   const deleteProduct = useDeleteProduct();
+  // Single-row target xor bulk (selected.size products) — never both at
+  // once, so one ConfirmDialog instance covers both delete entry points.
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | "bulk" | null>(null);
+
+  async function confirmDelete() {
+    if (deleteTarget === "bulk") {
+      await Promise.all([...selected].map((id) => deleteProduct.mutateAsync(id)));
+      setSelected(new Set());
+      setBulkAction("");
+      router.refresh();
+    } else if (deleteTarget) {
+      await deleteProduct.mutateAsync(deleteTarget.id);
+    }
+    setDeleteTarget(null);
+  }
 
   // Debounced search — typing updates local state instantly, but only pushes
   // into `filters` (and triggers a refetch) 350ms after the user stops typing,
@@ -106,8 +122,8 @@ export function ProductsTable({
     if (!bulkAction || selected.size === 0) return;
     const ids = [...selected];
     if (bulkAction === "delete") {
-      if (!confirm(`Delete ${ids.length} product(s)?`)) return;
-      await Promise.all(ids.map((id) => deleteProduct.mutateAsync(id)));
+      setDeleteTarget("bulk");
+      return;
     } else if (bulkAction === "activate" || bulkAction === "draft") {
       const status = bulkAction === "activate" ? "PUBLISHED" : "DRAFT";
       await Promise.all(
@@ -270,7 +286,7 @@ export function ProductsTable({
                         <button
                           type="button"
                           aria-label="Delete"
-                          onClick={() => confirm(`Delete "${name}"?`) && deleteProduct.mutate(p.id)}
+                          onClick={() => setDeleteTarget({ id: p.id, name })}
                           className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2"
                         >
                           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -384,6 +400,15 @@ export function ProductsTable({
           </select>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        pending={deleteProduct.isPending}
+        title={deleteTarget === "bulk" ? `Delete ${selected.size} product(s)?` : `Delete "${deleteTarget?.name}"?`}
+        description="This moves the product to Trash, not a permanent delete — a super admin can restore it from Product Management → Deleted Products within 30 days. After that it's gone for good."
+      />
     </div>
   );
 }

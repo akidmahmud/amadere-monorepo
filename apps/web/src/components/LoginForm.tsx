@@ -17,7 +17,7 @@ export function LoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
   const requestOtp = useRequestOtp();
@@ -96,9 +96,9 @@ export function LoginForm() {
           <h4 className="mb-3.5 font-ui text-sm font-semibold text-ink">Login With Credentials</h4>
           <Input
             className="mb-3.5"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="017***********"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
           />
           <Input
             type="password"
@@ -106,12 +106,9 @@ export function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <div className="my-3 flex items-center justify-between font-body text-xs text-muted">
-            <span />
-            <Link href="/forgot-password" className="text-green">
-              Forgotten password?
-            </Link>
-          </div>
+          <p className="my-3 font-body text-xs text-muted">
+            Forgot your password? Use the mobile OTP login instead — no password needed.
+          </p>
           {login.isError && (
             <p className="mb-2 font-body text-xs text-red-600">
               {login.error instanceof Error ? login.error.message : "Invalid credentials"}
@@ -120,8 +117,8 @@ export function LoginForm() {
           <Button
             variant="green"
             block
-            disabled={!email || !password || login.isPending}
-            onClick={() => login.mutate({ email, password }, { onSuccess: goToRedirect })}
+            disabled={!phone || !password || login.isPending}
+            onClick={() => login.mutate({ phone, password }, { onSuccess: goToRedirect })}
           >
             Login
           </Button>

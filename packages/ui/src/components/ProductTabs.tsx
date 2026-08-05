@@ -7,6 +7,15 @@ export interface ProductTab {
   id: string;
   label: string;
   content: ReactNode;
+  /**
+   * Turns this tab into a jump-link instead of a content switch: clicking it
+   * scrolls to the element with this id (e.g. a "Reviews" tab that jumps to
+   * the page's own review section further down) rather than showing
+   * `content` here. A plain id string, not an onClick function, because
+   * tabs are typically built in a Server Component and functions can't
+   * cross that boundary as props — only serializable values like this can.
+   */
+  scrollTargetId?: string;
 }
 
 export interface ProductTabsProps {
@@ -31,11 +40,17 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
             key={tab.id}
             type="button"
             role="tab"
-            aria-selected={tab.id === activeTab.id}
-            onClick={() => setActive(tab.id)}
+            aria-selected={!tab.scrollTargetId && tab.id === activeTab.id}
+            onClick={() => {
+              if (tab.scrollTargetId) {
+                document.getElementById(tab.scrollTargetId)?.scrollIntoView({ behavior: "smooth" });
+                return;
+              }
+              setActive(tab.id);
+            }}
             className={cn(
               "shrink-0 whitespace-nowrap rounded px-4 py-2 font-['Open_Sans',sans-serif] text-xs font-semibold capitalize sm:px-6 sm:py-3 sm:text-sm",
-              tab.id === activeTab.id ? "bg-green text-white" : "bg-[#F5F5F5] text-[#666666]",
+              !tab.scrollTargetId && tab.id === activeTab.id ? "bg-green text-white" : "bg-[#F5F5F5] text-[#666666]",
             )}
           >
             {tab.label}

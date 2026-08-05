@@ -29,4 +29,6 @@ export class OrderManagerRowDto {
   staffNote!: string | null;
   utmSource!: string | null;
   utmCampaign!: string | null;
+  /** Set only in the "Deleted Orders" tab's listing — null everywhere else. */
+  deletedAt!: Date | null;
 }

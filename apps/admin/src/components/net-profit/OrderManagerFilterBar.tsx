@@ -29,6 +29,7 @@ const DATE_RANGES = [
   { value: "today", label: "Today" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
+  { value: "custom", label: "Custom" },
 ] as const;
 
 export interface OrderFilterState {
@@ -39,6 +40,8 @@ export interface OrderFilterState {
   risk?: RiskLevel;
   division?: string;
   dateRange?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export function OrderManagerFilterBar({
@@ -125,6 +128,26 @@ export function OrderManagerFilterBar({
           </option>
         ))}
       </select>
+
+      {filters.dateRange === "custom" && (
+        <>
+          <input
+            type="date"
+            value={filters.dateFrom ?? ""}
+            onChange={(e) => set("dateFrom", e.target.value || undefined)}
+            className="h-[38px] rounded-[9px] border px-2.5 text-[0.76rem] outline-none"
+            style={{ borderColor: LINE, color: "#374840" }}
+          />
+          <span style={{ color: FAINT }}>to</span>
+          <input
+            type="date"
+            value={filters.dateTo ?? ""}
+            onChange={(e) => set("dateTo", e.target.value || undefined)}
+            className="h-[38px] rounded-[9px] border px-2.5 text-[0.76rem] outline-none"
+            style={{ borderColor: LINE, color: "#374840" }}
+          />
+        </>
+      )}
 
       <button
         type="button"

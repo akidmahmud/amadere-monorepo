@@ -12,6 +12,7 @@ const categoriesIcon = <Icon name="category" />;
 const tagsIcon = <Icon name="sell" />;
 const attributesIcon = <Icon name="tune" />;
 const collectionsIcon = <Icon name="collections_bookmark" />;
+const trashIcon = <Icon name="delete" />;
 const bundlesIcon = <Icon name="inventory" />;
 const newOrderIcon = <Icon name="add_shopping_cart" />;
 const shipmentsIcon = <Icon name="local_shipping" />;
@@ -69,6 +70,7 @@ export const adminNav: AppNavEntry[] = [
 
   label("catalog-label", "Product Management"),
   { key: "products", label: "Products", href: "/products", icon: productsIcon },
+  { key: "products-trash", label: "Deleted Products", href: "/products/trash", icon: trashIcon },
   { key: "collections", label: "Collections", href: "/collections", icon: collectionsIcon },
   { key: "product-bundles", label: "Product Bundles", href: "/product-bundles", icon: bundlesIcon },
   { key: "brands", label: "Brands", href: "/brands", icon: brandsIcon },

@@ -88,6 +88,19 @@ const editIcon = (
     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
   </svg>
 );
+const deleteIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+  </svg>
+);
+const restoreIcon = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v5h5" />
+  </svg>
+);
 
 const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1 | 2; style?: React.CSSProperties }) => (
   <th
@@ -111,6 +124,12 @@ export function CustomersTable({
   onFiltersChange,
   staff,
   onView,
+  selected,
+  onToggle,
+  onToggleAll,
+  onDelete,
+  onRestore,
+  restoringId,
 }: {
   customers: AdminCustomerListItem[];
   total: number;
@@ -118,6 +137,14 @@ export function CustomersTable({
   onFiltersChange: (next: CustomerListFilters) => void;
   staff?: AssignableStaff[];
   onView: (id: number) => void;
+  selected: Set<number>;
+  onToggle: (id: number) => void;
+  onToggleAll: () => void;
+  /** Present on the main (active-customers) table — renders a red trash icon per row. */
+  onDelete?: (customer: AdminCustomerListItem) => void;
+  /** Present on the Deleted Customers tab's table — renders a Restore button per row instead. */
+  onRestore?: (customer: AdminCustomerListItem) => void;
+  restoringId?: number | null;
 }) {
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 10;
@@ -132,7 +159,13 @@ export function CustomersTable({
           <thead>
             <tr>
               <TH sticky={1}>
-                <input type="checkbox" className="h-[15px] w-[15px] accent-[color:var(--green)]" style={{ accentColor: GREEN }} />
+                <input
+                  type="checkbox"
+                  checked={customers.length > 0 && customers.every((c) => selected.has(c.id))}
+                  onChange={onToggleAll}
+                  className="h-[15px] w-[15px] accent-[color:var(--green)]"
+                  style={{ accentColor: GREEN }}
+                />
               </TH>
               <TH sticky={2} style={{ minWidth: 200 }}>
                 Name
@@ -175,7 +208,17 @@ export function CustomersTable({
               </tr>
             )}
             {customers.map((c) => (
-              <CustomerRow key={c.id} customer={c} staff={staff} onView={onView} />
+              <CustomerRow
+                key={c.id}
+                customer={c}
+                staff={staff}
+                onView={onView}
+                selected={selected.has(c.id)}
+                onToggle={() => onToggle(c.id)}
+                onDelete={onDelete}
+                onRestore={onRestore}
+                restoringId={restoringId}
+              />
             ))}
           </tbody>
         </table>
@@ -250,7 +293,25 @@ export function CustomersTable({
   );
 }
 
-function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerListItem; staff?: AssignableStaff[]; onView: (id: number) => void }) {
+function CustomerRow({
+  customer: c,
+  staff,
+  onView,
+  selected,
+  onToggle,
+  onDelete,
+  onRestore,
+  restoringId,
+}: {
+  customer: AdminCustomerListItem;
+  staff?: AssignableStaff[];
+  onView: (id: number) => void;
+  selected: boolean;
+  onToggle: () => void;
+  onDelete?: (customer: AdminCustomerListItem) => void;
+  onRestore?: (customer: AdminCustomerListItem) => void;
+  restoringId?: number | null;
+}) {
   const update = useUpdateCustomer(c.id);
   const [name, setName] = useState(c.name);
   const [address, setAddress] = useState(c.address ?? "");
@@ -283,7 +344,7 @@ function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerLi
   return (
     <tr className="[&:hover>td]:bg-[#f7fbf8]">
       <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }}>
-        <input type="checkbox" className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
+        <input type="checkbox" checked={selected} onChange={onToggle} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
       </td>
       <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
         <input
@@ -301,9 +362,14 @@ function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerLi
           className="h-[26px] w-[170px] rounded-[7px] border border-transparent bg-transparent px-1.5 font-bold outline-none hover:border-[color:var(--line)] hover:bg-white focus:border-[color:var(--green)] focus:bg-white"
           style={{ color: INK }}
         />
-        <div className="mt-[3px] text-[0.66rem] font-medium" style={{ color: FAINT }}>
+        <button
+          type="button"
+          onClick={() => onView(c.id)}
+          className="mt-[3px] block text-[0.66rem] font-medium hover:underline"
+          style={{ color: FAINT }}
+        >
           #CUST-{c.id} {c.tier ? `· ${c.tier}` : ""}
-        </div>
+        </button>
       </td>
       <td className={td} style={tdStyle}>
         <button type="button" onClick={() => update.mutate({ isFavorite: !c.isFavorite })} aria-label="Toggle favorite">
@@ -564,6 +630,30 @@ function CustomerRow({ customer: c, staff, onView }: { customer: AdminCustomerLi
           >
             {editIcon}
           </Link>
+          {onRestore && (
+            <button
+              type="button"
+              disabled={restoringId === c.id}
+              onClick={() => onRestore(c)}
+              className="inline-flex h-[29px] items-center gap-1.5 rounded-[8px] border px-2 text-[0.7rem] font-bold disabled:opacity-50"
+              style={{ borderColor: GREEN, color: GREEN }}
+            >
+              {restoreIcon}
+              {restoringId === c.id ? "Restoring…" : "Restore"}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              aria-label="Delete customer"
+              title="Delete customer"
+              onClick={() => onDelete(c)}
+              className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
+              style={{ borderColor: "#f8ccd3" }}
+            >
+              {deleteIcon}
+            </button>
+          )}
         </div>
       </td>
     </tr>

@@ -187,4 +187,27 @@ export function useGenerateProductPreviewToken() {
   });
 }
 
+export type AdminDeletedProduct = components["schemas"]["AdminDeletedProductDto"];
+
+const TRASH_KEY = ["admin-products-trash"];
+
+export function useDeletedProducts(page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: [...TRASH_KEY, page, pageSize],
+    queryFn: () =>
+      proxyFetch<Required<Paginated<AdminDeletedProduct>>>(`/admin/products/trash?page=${page}&pageSize=${pageSize}`),
+  });
+}
+
+export function useRestoreProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<AdminProduct>(`/admin/products/${id}/restore`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TRASH_KEY });
+      qc.invalidateQueries({ queryKey: KEY });
+    },
+  });
+}
+
 export { KEY as PRODUCTS_KEY };

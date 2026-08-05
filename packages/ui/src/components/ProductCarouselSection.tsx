@@ -9,7 +9,7 @@ import { SectionHeading, ViewAllLink } from "./SectionHeading";
 
 export type ProductCarouselItem = Pick<
   ProductCardProps,
-  "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "flagLabel" | "packOptions" | "defaultPackValue"
+  "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "flagLabel" | "saleEndsAt" | "packOptions" | "defaultPackValue"
 >;
 
 export interface ProductCarouselSectionProps {

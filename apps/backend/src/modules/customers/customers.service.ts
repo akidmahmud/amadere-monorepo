@@ -28,6 +28,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
+import { BulkCustomerActionDto } from './dto/bulk-customer-action.dto';
 import {
   ADMIN_CUSTOMER_LIST_INCLUDE,
   ADMIN_CUSTOMER_DETAIL_INCLUDE,
@@ -177,7 +178,7 @@ export class CustomersService {
   // "Import Test" is never a substring of firstName="Import" alone or
   // lastName="Test One" alone; it only shows up once the two are
   // concatenated, which nothing here does.
-  private async buildAdminWhere(query: AdminCustomerQueryDto): Promise<Prisma.CustomerWhereInput> {
+  private async buildAdminWhere(query: AdminCustomerQueryDto, deletedOnly = false): Promise<Prisma.CustomerWhereInput> {
     let birthdayIds: number[] | undefined;
     if (query.birthdayToday) {
       // Bangladesh is a fixed UTC+6, no DST — "today" for this feature means
@@ -193,6 +194,7 @@ export class CustomersService {
       birthdayIds = rows.map((r) => r.id);
     }
     return {
+      deletedAt: deletedOnly ? { not: null } : null,
       ...(query.tierId ? { tierId: query.tierId } : {}),
       ...(birthdayIds ? { id: { in: birthdayIds } } : {}),
       ...(query.priority ? { priority: query.priority } : {}),
@@ -217,13 +219,13 @@ export class CustomersService {
     };
   }
 
-  async adminList(query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
-    const where = await this.buildAdminWhere(query);
+  async adminList(query: AdminCustomerQueryDto, deletedOnly = false): Promise<PaginatedResult<AdminCustomerListItemDto>> {
+    const where = await this.buildAdminWhere(query, deletedOnly);
     const [items, total] = await Promise.all([
       this.prisma.client.customer.findMany({
         where,
         include: ADMIN_CUSTOMER_LIST_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        orderBy: deletedOnly ? { deletedAt: 'desc' } : { createdAt: 'desc' },
         ...paginationArgs(query.page, query.pageSize),
       }),
       this.prisma.client.customer.count({ where }),
@@ -235,6 +237,29 @@ export class CustomersService {
       query.page,
       query.pageSize,
     );
+  }
+
+  // "Deleted Customers" tab — soft-deleted customers only, same filters/
+  // shape as the main list.
+  adminListDeleted(query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
+    return this.adminList(query, true);
+  }
+
+  async adminBulkAction(dto: BulkCustomerActionDto): Promise<{ succeeded: number[]; failed: { customerId: number; error: string }[] }> {
+    const succeeded: number[] = [];
+    const failed: { customerId: number; error: string }[] = [];
+    for (const customerId of dto.customerIds) {
+      try {
+        await this.prisma.client.customer.update({
+          where: { id: customerId },
+          data: { deletedAt: dto.action === 'delete' ? new Date() : null },
+        });
+        succeeded.push(customerId);
+      } catch {
+        failed.push({ customerId, error: 'Customer not found' });
+      }
+    }
+    return { succeeded, failed };
   }
 
   // Default address, last order date, lifetime spend, and top-purchased
@@ -392,6 +417,22 @@ export class CustomersService {
         email: dto.email,
       },
     });
+
+    if (dto.addressLine) {
+      const recipientName = `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() || 'Customer';
+      await this.prisma.client.customerAddress.create({
+        data: {
+          customerId: customer.id,
+          recipientName,
+          phone: dto.phone,
+          division: dto.division ?? '',
+          district: dto.district ?? '',
+          addressLine: dto.addressLine,
+          isDefault: true,
+        },
+      });
+    }
+
     return this.adminGet(customer.id);
   }
 

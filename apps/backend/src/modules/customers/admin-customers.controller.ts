@@ -15,6 +15,7 @@ import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { BulkCustomerActionDto } from './dto/bulk-customer-action.dto';
 import { AdminCustomerDto, AdminCustomerListItemDto, AdminCustomerStatsDto } from './admin-customer.mapper';
 import { AssignableStaffDto } from './customers.service';
 
@@ -59,6 +60,22 @@ export class AdminCustomersController {
   @RequirePermission('customer.view')
   listAssignableStaff(): Promise<AssignableStaffDto[]> {
     return this.customers.listAssignableStaff();
+  }
+
+  // "Deleted Customers" tab — soft-deleted customers only, same filters/
+  // shape as the main list. Declared as a static segment so it can never
+  // collide with GET(':id') below.
+  @Get('trash')
+  @RequirePermission('customer.view')
+  @ApiPaginatedResponse(AdminCustomerListItemDto)
+  listDeleted(@Query() query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
+    return this.customers.adminListDeleted(query);
+  }
+
+  @Post('bulk')
+  @RequirePermission('customer.manage')
+  bulk(@Body() dto: BulkCustomerActionDto) {
+    return this.customers.adminBulkAction(dto);
   }
 
   @Post('import')

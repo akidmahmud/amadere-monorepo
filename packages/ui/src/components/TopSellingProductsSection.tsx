@@ -14,6 +14,10 @@ export interface TopSellingProductItem {
   price: string;
   /** Decimal string — present only when the product is on sale. */
   originalPrice?: string;
+  /** ISO date string — passed through to the mobile grid's ProductCard for
+   * its live countdown. Not shown on the desktop horizontal card (a fully
+   * custom layout, out of scope for this pass). */
+  saleEndsAt?: string;
   showBadge?: boolean;
   /** Variant products: the variant id Add to Cart/Buy Now must send —
    * without it the backend rejects the request ("requires a variantId").
@@ -91,6 +95,7 @@ export function TopSellingProductsSection({
               imageUrl={item.imageUrl}
               price={item.price}
               originalPrice={item.originalPrice}
+              saleEndsAt={item.saleEndsAt}
               flagLabel={item.showBadge ? bestBadgeLabel : undefined}
               defaultPackValue={item.defaultPackValue}
               onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}

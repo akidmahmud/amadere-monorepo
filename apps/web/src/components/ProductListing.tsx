@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { FilterCheckboxGroup, FilterDrawer, PlaceholderBanner, ProductCard, type ProductCardProps } from "@amader/ui";
+import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { AppLink } from "@/components/AppLink";
+import { PerPageSelect } from "@/components/PerPageSelect";
 import { PlpPager } from "@/components/PlpPager";
 import { PriceFilter } from "@/components/PriceFilter";
 import { SortSelect } from "@/components/SortSelect";
@@ -38,7 +40,7 @@ export interface ProductListingProps {
   pageSize: number;
   products: (Pick<
     ProductCardProps,
-    "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "flagLabel" | "packOptions" | "defaultPackValue"
+    "href" | "name" | "imageUrl" | "price" | "originalPrice" | "discountLabel" | "flagLabel" | "saleEndsAt" | "packOptions" | "defaultPackValue"
   > & { productId: number })[];
   categories?: ProductListingCategory[];
   tags: ProductListingTag[];
@@ -48,7 +50,17 @@ export interface ProductListingProps {
    * this listing — skip the decorative placeholder there so the page
    * doesn't show two gray boxes, one real and one dead. */
   hidePlaceholderBanner?: boolean;
+  /** Pixel-matched to ghorerbazar.com's offer-zone collection page: a page
+   * title + "Home › X" breadcrumb above the toolbar. Omitted (no header)
+   * when a caller doesn't pass one, rather than guessing a title. */
+  title?: string;
+  breadcrumbItems?: { label: string; href?: string }[];
+  /** Overrides the outer wrapper's max-width/side-padding classes — default
+   * matches every other PLP route (`/products`, `/categories/*`, etc.). */
+  containerClassName?: string;
 }
+
+const DEFAULT_CONTAINER_CLASSNAME = "mx-auto max-w-[1180px] px-5";
 
 export function ProductListing({
   basePath,
@@ -60,6 +72,9 @@ export function ProductListing({
   tags,
   priceBounds,
   hidePlaceholderBanner,
+  title,
+  breadcrumbItems,
+  containerClassName = DEFAULT_CONTAINER_CLASSNAME,
 }: ProductListingProps) {
   const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -107,28 +122,39 @@ export function ProductListing({
   );
 
   return (
-    <div className="mx-auto max-w-[1180px] px-5">
+    <div className={containerClassName}>
       {!hidePlaceholderBanner && <PlaceholderBanner variant="shopban" className="my-5.5" />}
 
-      <div className="flex items-center gap-9 py-2 font-ui text-sm font-medium">
-        <button
-          type="button"
-          onClick={() => setFilterOpen(true)}
-          className="flex items-center gap-1.5 lg:hidden"
-        >
-          {hamburgerIcon}
-          Filter
-        </button>
-        <span className="max-lg:hidden">Filter</span>
-        <span className="flex items-center gap-2">
-          Sort by :
-          <SortSelect basePath={basePath} filters={filters} />
-        </span>
-      </div>
+      {/* Pixel-matched to ghorerbazar.com's `.breadcrumb-nav`: 12px padding
+          top and bottom, no background of its own. */}
+      {title && (
+        <div className="py-3">
+          <h1 className="font-header text-base font-semibold text-header-ink sm:text-xl">{title}</h1>
+          {breadcrumbItems && <AppBreadcrumb items={breadcrumbItems} />}
+        </div>
+      )}
 
-      <h3 className="my-6 text-center font-ui text-lg font-semibold">
-        {total === 0 ? "No Products Found" : `Showing ${rangeStart} - ${rangeEnd} of ${total} Products`}
-      </h3>
+      {/* Pixel-matched to ghorerbazar.com's `.toolbox` (offer-zone collection
+          page): bordered white bar, outlined Filters button + Sort select on
+          the left, per-page Show select on the right — colors are Amader's
+          own green, not their orange. */}
+      <div className="mb-6 flex items-center justify-between gap-2 rounded border border-line bg-white p-2.5 sm:p-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded border-2 border-header-green px-2 py-1.5 font-ui text-[11px] font-semibold text-header-green sm:gap-2 sm:px-2.5 sm:py-2 sm:text-xs lg:hidden"
+          >
+            {hamburgerIcon}
+            Filters
+          </button>
+          <span className="flex min-w-0 items-center gap-2 font-ui text-xs text-muted">
+            <span className="max-sm:hidden">Sort By :</span>
+            <SortSelect basePath={basePath} filters={filters} />
+          </span>
+        </div>
+        <PerPageSelect basePath={basePath} filters={filters} />
+      </div>
 
       <FilterDrawer open={filterOpen} onOpenChange={setFilterOpen} title="Filter" closeLabel="Close filters">
         <div onClick={() => setFilterOpen(false)} className="flex flex-col gap-5">
@@ -136,7 +162,9 @@ export function ProductListing({
         </div>
       </FilterDrawer>
 
-      <div className="grid grid-cols-[250px_1fr] gap-7 pb-16 max-lg:grid-cols-1">
+      {/* Pixel-matched to ghorerbazar.com's `.shop-content.row.pb-8`: 40px
+          bottom padding on the sidebar+grid row. */}
+      <div className="grid grid-cols-[260px_1fr] gap-7 pb-10 max-lg:grid-cols-1">
         <aside className="sticky top-[130px] self-start rounded-brand bg-beige p-5 max-lg:hidden">
           {filterGroups}
         </aside>
@@ -158,6 +186,11 @@ export function ProductListing({
             </div>
           )}
           <PlpPager basePath={basePath} filters={filters} totalPages={totalPages} />
+          {products.length > 0 && (
+            <p className="mt-3 text-center font-ui text-[11px] text-muted">
+              Showing {rangeStart} - {rangeEnd} of {total} results
+            </p>
+          )}
         </div>
       </div>
     </div>

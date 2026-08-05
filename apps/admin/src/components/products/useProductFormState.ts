@@ -36,6 +36,7 @@ export interface ProductFormSnapshot {
   keyBenefits: string;
   benefitPoints: string;
   howToUse: string;
+  faqs: { question: string; answer: string }[];
   categoryIds: number[];
   tagIds: number[];
   attributeIds: number[];
@@ -72,12 +73,18 @@ export function useProductFormState(initial?: AdminProduct) {
   const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
   const [benefitPoints, setBenefitPoints] = useState(initial?.translations[0]?.benefitPoints ?? "");
   const [howToUse, setHowToUse] = useState(initial?.translations[0]?.howToUse ?? "");
+  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
+    initial?.translations[0]?.faqs?.map((f) => ({ question: f.question, answer: f.answer })) ?? [],
+  );
   const [categoryIds, setCategoryIds] = useState<number[]>(initial?.categoryIds ?? []);
   const [tagIds, setTagIds] = useState<number[]>(initial?.tagIds ?? []);
   const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
   const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })) ?? []);
 
   function toBasePayload() {
+    const cleanFaqs = faqs
+      .map((f, i) => ({ question: f.question.trim(), answer: f.answer.trim(), sortOrder: i }))
+      .filter((f) => f.question && f.answer);
     return {
       slug,
       sku: sku || undefined,
@@ -109,6 +116,7 @@ export function useProductFormState(initial?: AdminProduct) {
           keyBenefits: keyBenefits || undefined,
           benefitPoints: benefitPoints || undefined,
           howToUse: howToUse || undefined,
+          faqs: cleanFaqs,
         },
         {
           locale: "BN" as const,
@@ -118,6 +126,7 @@ export function useProductFormState(initial?: AdminProduct) {
           keyBenefits: keyBenefits || undefined,
           benefitPoints: benefitPoints || undefined,
           howToUse: howToUse || undefined,
+          faqs: cleanFaqs,
         },
       ],
       categoryIds,
@@ -160,6 +169,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setKeyBenefits(product.translations[0]?.keyBenefits ?? "");
     setBenefitPoints(product.translations[0]?.benefitPoints ?? "");
     setHowToUse(product.translations[0]?.howToUse ?? "");
+    setFaqs(product.translations[0]?.faqs?.map((f) => ({ question: f.question, answer: f.answer })) ?? []);
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
@@ -170,7 +180,7 @@ export function useProductFormState(initial?: AdminProduct) {
     return {
       slug, sku, brandId, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
       stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, shippableWeight,
-      minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
+      minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse, faqs,
       categoryIds, tagIds, attributeIds, images,
     };
   }
@@ -203,6 +213,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setKeyBenefits(s.keyBenefits);
     setBenefitPoints(s.benefitPoints);
     setHowToUse(s.howToUse);
+    setFaqs(s.faqs);
     setCategoryIds(s.categoryIds);
     setTagIds(s.tagIds);
     setAttributeIds(s.attributeIds);
@@ -237,6 +248,7 @@ export function useProductFormState(initial?: AdminProduct) {
     keyBenefits, setKeyBenefits,
     benefitPoints, setBenefitPoints,
     howToUse, setHowToUse,
+    faqs, setFaqs,
     categoryIds, setCategoryIds,
     tagIds, setTagIds,
     attributeIds, setAttributeIds,

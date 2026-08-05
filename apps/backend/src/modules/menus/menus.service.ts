@@ -80,6 +80,61 @@ export class MenusService {
     await this.prisma.client.menuItem.delete({ where: { id } });
   }
 
+  // One-time bootstrap for the drag-and-drop tree editor: before this
+  // existed, the storefront navbar was auto-derived from the category tree
+  // (CategoriesService.publicNavList) rather than from MenuItem rows, so a
+  // brand-new install (or this app's own production DB today) has an empty
+  // menu_items table. Recreates that same nav as real, editable MenuItem
+  // rows — same categories, same order, same EN/BN labels — so switching the
+  // storefront over to MenuItem-backed nav doesn't blank out the navbar.
+  // Guarded to only run once (see the empty-table check) since re-running it
+  // after an admin has customized the tree would duplicate everything.
+  async importFromCategories(): Promise<AdminMenuItemDto[]> {
+    const existing = await this.prisma.client.menuItem.count();
+    if (existing > 0) {
+      throw new BadRequestException('Menu already has items — import only runs on an empty menu');
+    }
+
+    const categories = await this.prisma.client.category.findMany({
+      where: { deletedAt: null, status: 'PUBLISHED', parentId: null },
+      include: {
+        translations: true,
+        children: {
+          where: { deletedAt: null, status: 'PUBLISHED' },
+          include: { translations: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    for (const [index, category] of categories.entries()) {
+      const parent = await this.prisma.client.menuItem.create({
+        data: {
+          href: `/categories/${category.slug}`,
+          sortOrder: index,
+          translations: {
+            create: category.translations.map((t) => ({ locale: t.locale, label: t.name })),
+          },
+        },
+      });
+      for (const [childIndex, child] of category.children.entries()) {
+        await this.prisma.client.menuItem.create({
+          data: {
+            parentId: parent.id,
+            href: `/categories/${child.slug}`,
+            sortOrder: childIndex,
+            translations: {
+              create: child.translations.map((t) => ({ locale: t.locale, label: t.name })),
+            },
+          },
+        });
+      }
+    }
+
+    return this.adminList();
+  }
+
   async publicTree(locale: Locale): Promise<PublicMenuItemDto[]> {
     const topLevel = await this.prisma.client.menuItem.findMany({
       where: { parentId: null, isActive: true },
@@ -97,11 +152,17 @@ export class MenusService {
       where: { id: parentId },
     });
     if (!parent) throw new BadRequestException('Parent menu item not found');
+    // The tree is exactly 2 levels deep (top item + dropdown children, same
+    // as toPublicMenuItemDto's shape) — a parent that itself has a parent
+    // would make a 3rd level nothing renders. Enforced here, not just left
+    // as an admin-UI convention, since this is the one place both the tree
+    // editor's drag-and-drop and the plain create/update form funnel through.
+    if (parent.parentId !== null) {
+      throw new BadRequestException('Menu items can only be nested one level deep');
+    }
   }
 
-  // Same self-reference cycle guard as CategoriesService — a menu tree is
-  // only ever 2 levels deep in practice, but nothing stops an admin from
-  // trying to nest deeper, so the guard still matters.
+  // Same self-reference cycle guard as CategoriesService.
   private async assertValidParent(
     id: number,
     parentId: number | null,

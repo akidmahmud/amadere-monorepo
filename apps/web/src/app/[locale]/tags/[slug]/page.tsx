@@ -58,6 +58,7 @@ export default async function TagPage({
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
   const filters = parsePlpSearchParams(await searchParams);
+  const pageSize = filters.pageSize ?? PAGE_SIZE;
 
   const tag = await getTag(slug, localeParam);
   if (!tag) {
@@ -70,7 +71,7 @@ export default async function TagPage({
       query: {
         locale: localeParam,
         page: filters.page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         tagIds: [tag.id],
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
@@ -94,7 +95,7 @@ export default async function TagPage({
         basePath={`/tags/${slug}`}
         filters={filters}
         total={total}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         products={products}
         tags={[]}
       />

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { SectionHeading } from "@amader/ui";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
@@ -15,6 +14,18 @@ type PublicProductDto = components["schemas"]["PublicProductDto"];
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
 export const revalidate = 3600;
+
+// Pixel-matched to ghorerbazar.com's offer-zone collection page, which shows
+// 16 per page by default — this collection endpoint has no server-side
+// pagination (see the comment on `effectivePrice` below), so paging happens
+// here against the already-fetched full set instead.
+const DEFAULT_PAGE_SIZE = 16;
+
+// Explicit request: 207px side margin/gap on this page specifically (not
+// site-wide — /products, /categories, etc. keep their existing px-5). Only
+// applied from lg up; at 207px a side it would leave nothing for content on
+// a phone screen.
+const CONTAINER_CLASSNAME = "mx-auto max-w-[1920px] px-5 lg:px-[207px]";
 
 async function getCollection(slug: string, locale: string) {
   const res = await safeGet("/api/v1/collections/{slug}", {
@@ -87,26 +98,30 @@ export default async function CollectionPage({
     return true;
   });
 
-  const products = filteredProducts.map(toProductCardData);
+  const total = filteredProducts.length;
+  const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE;
+  const start = (filters.page - 1) * pageSize;
+  const products = filteredProducts.slice(start, start + pageSize).map(toProductCardData);
 
   return (
     <main className="flex-1">
-      <div className="mx-auto max-w-[1180px] px-5 pt-9">
-        <SectionHeading>{collection.name}</SectionHeading>
-        {collection.description && (
-          <p className="mx-auto -mt-4 mb-6 max-w-2xl text-center font-body text-sm text-muted">
-            {collection.description}
-          </p>
-        )}
-      </div>
+      {collection.description && (
+        <div className={`${CONTAINER_CLASSNAME} pt-5`}>
+          <p className="max-w-2xl font-body text-sm text-muted">{collection.description}</p>
+        </div>
+      )}
       <ProductListing
         basePath={`/collections/${slug}`}
         filters={filters}
-        total={products.length}
-        pageSize={Math.max(products.length, 1)}
+        total={total}
+        pageSize={pageSize}
         products={products}
         tags={[]}
         priceBounds={priceBounds}
+        hidePlaceholderBanner
+        title={collection.name}
+        breadcrumbItems={[{ label: "Home", href: "/" }, { label: collection.name }]}
+        containerClassName={CONTAINER_CLASSNAME}
       />
     </main>
   );

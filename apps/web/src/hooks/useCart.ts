@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { proxyFetch } from "@/lib/api/proxy-client";
 import { getGuestToken, setGuestToken } from "@/lib/guest-token";
 import type { components } from "@/lib/api/schema";
 
@@ -130,14 +131,17 @@ export function useRemoveCoupon(locale: string) {
   });
 }
 
-// Not called anywhere yet — F8 (login) calls this once a customer
-// authenticates, so the items they added as a guest survive into their
-// account cart. Wired here now so F8 doesn't have to touch the cart layer.
+// Called once a customer authenticates (see useAuth.ts's useAfterAuthSuccess)
+// so items they added as a guest survive into their account cart.
+// /cart/merge is CustomerJwtGuard-protected — it has to go through this
+// app's own authenticated proxy (which attaches the Bearer token from the
+// httpOnly cookie) rather than the raw typed `api` client, which talks to
+// the backend directly with no Authorization header and 401s every time.
 export async function mergeGuestCartOnLogin(locale: string): Promise<void> {
   const guestToken = getGuestToken();
   if (!guestToken) return;
-  await api.POST("/api/v1/cart/merge", {
-    params: { query: { locale: locale as "EN" | "BN" } },
-    body: { guestToken },
+  await proxyFetch(`/cart/merge?locale=${locale}`, {
+    method: "POST",
+    body: JSON.stringify({ guestToken }),
   });
 }

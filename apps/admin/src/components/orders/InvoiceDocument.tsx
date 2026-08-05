@@ -4,10 +4,57 @@ import { useInvoiceSettings, type InvoiceDateFormat } from "@/hooks/useInvoiceSe
 import { useInvoiceTemplateSettings } from "@/hooks/useInvoiceTemplateSettings";
 import { buildInvoiceMergeTags, renderInvoiceTemplate } from "@/lib/invoice-template";
 
+// Brand green, matching the storefront's own palette (packages/ui/src/tokens.css
+// --color-green/-dark) — the invoice is a customer-facing document reflecting
+// the store's brand, not the admin dashboard's own (blue) accent color.
+const GREEN = "#1F703C";
+const GREEN_DARK = "#175A2F";
+const GREEN_TINT = "#EAF3EC";
+
 const COURIER_DISPLAY_NAME: Record<string, string> = {
   STEADFAST: "SteadFast Courier",
   PATHAO: "Pathao Courier",
   REDX: "RedX",
+};
+
+const PAYMENT_PROVIDER_DISPLAY_NAME: Record<string, string> = {
+  COD: "Cash on Delivery (COD)",
+  BKASH: "bKash",
+  NAGAD: "Nagad",
+  ROCKET: "Rocket",
+  UPAY: "Upay",
+  SSLCOMMERZ: "SSLCommerz",
+  BANK_TRANSFER: "Bank Transfer",
+};
+
+const PAYMENT_STATUS_STYLE: Record<string, string> = {
+  PENDING: "bg-[#fdf3d9] text-[#a9740a]",
+  AUTHORIZED: "bg-[#e6f4ff] text-[#1a5fa8]",
+  CAPTURED: "bg-[#1f703c] text-white",
+  FAILED: "bg-[#fbe7e7] text-[#c53030]",
+  REFUNDED: "bg-[#eef0f3] text-[#4a5568]",
+  PARTIALLY_REFUNDED: "bg-[#eef0f3] text-[#4a5568]",
+};
+
+const PAYMENT_STATUS_DISPLAY_NAME: Record<string, string> = {
+  PENDING: "PENDING",
+  AUTHORIZED: "AUTHORIZED",
+  CAPTURED: "PAID",
+  FAILED: "FAILED",
+  REFUNDED: "REFUNDED",
+  PARTIALLY_REFUNDED: "PARTIALLY REFUNDED",
+};
+
+// Gateway wordmark badges — factual "here's which payment method was used"
+// labeling (same convention as card-network logos on any e-commerce
+// invoice), not a certification/endorsement claim.
+const PAYMENT_PROVIDER_BADGE_STYLE: Record<string, string> = {
+  BKASH: "bg-[#E2136E] text-white",
+  NAGAD: "bg-[#EC1D25] text-white",
+  ROCKET: "bg-[#8C3494] text-white",
+  UPAY: "bg-[#00A99D] text-white",
+  SSLCOMMERZ: "bg-[#1F3B70] text-white",
+  BANK_TRANSFER: "bg-[#4a5568] text-white",
 };
 
 function formatInvoiceDate(value: string | Date, format: InvoiceDateFormat): string {
@@ -27,6 +74,71 @@ const LANGUAGE_FONT_STACK: Record<string, string> = {
   default: "Inter, Arial, sans-serif",
 };
 
+const boxIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 8 12 3 3 8l9 5 9-5Z" />
+    <path d="M3 8v8l9 5 9-5V8M12 13v8" />
+  </svg>
+);
+const cashIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <circle cx="12" cy="12" r="3" />
+    <path d="M6 6v.01M18 18v-.01" />
+  </svg>
+);
+const cardIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <path d="M2 10h20" />
+  </svg>
+);
+const shieldCheckIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3 4.5 6v6c0 4.5 3 7.5 7.5 9 4.5-1.5 7.5-4.5 7.5-9V6L12 3Z" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+);
+function checkCircleIcon(color: string) {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+    </svg>
+  );
+}
+const warningIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#a9740a" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3 2 20h20L12 3Z" />
+    <path d="M12 10v4M12 17v.01" />
+  </svg>
+);
+const headsetIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
+    <rect x="2" y="13" width="5" height="7" rx="1.5" />
+    <rect x="17" y="13" width="5" height="7" rx="1.5" />
+    <path d="M20 20v1a2 2 0 0 1-2 2h-3" />
+  </svg>
+);
+const globeIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.3 2.3 3.6 5.4 3.6 9s-1.3 6.7-3.6 9c-2.3-2.3-3.6-5.4-3.6-9s1.3-6.7 3.6-9Z" />
+  </svg>
+);
+const facebookIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill={GREEN}>
+    <path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5h1.3V4.9c-.3 0-1.1-.1-2-.1-2 0-3.4 1.2-3.4 3.5V11H8.5v3H11v7Z" />
+  </svg>
+);
+const leafIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 20c8 0 13-5 13-13V5h-2C7 5 4 10 4 18Z" />
+    <path d="M4 20c3-6 6-9 13-13" />
+  </svg>
+);
+
 // Shared by the single-order print page (print/orders/[id]/invoice) and the
 // bulk print page (print/orders/bulk-invoice) — same invoice layout either
 // way, just one-per-page vs. stacked-with-page-breaks. Company info, date
@@ -35,9 +147,9 @@ const LANGUAGE_FONT_STACK: Record<string, string> = {
 // wherever it's printed from, reflects the same site-wide configuration.
 // Renders the site-wide custom template from Settings > Invoice Template
 // when one is configured and enabled; otherwise falls back to this
-// built-in layout (styled after the real Amader/SteadFast invoice
-// reference: rounded card, Invoice To / Pay To columns, bordered item
-// table, totals footer, terms box).
+// built-in layout (pixel-matched to the confirmed Amader/SteadFast invoice
+// reference design — green brand accents, Payment Information box with
+// paid/due breakdown, thank-you banner, footer contact bar).
 export function InvoiceDocument({ order }: { order: AdminOrder }) {
   const { data: settings } = useInvoiceSettings();
   const { data: templateSettings } = useInvoiceTemplateSettings();
@@ -83,7 +195,20 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
 
   const shipment = order.shipment;
   const courierName = shipment ? COURIER_DISPLAY_NAME[shipment.provider as unknown as string] ?? String(shipment.provider) : null;
-  const isCod = (latestPayment?.provider as unknown as string) === "COD";
+  const paymentProvider = latestPayment ? String(latestPayment.provider) : null;
+  const paymentStatus = latestPayment ? String(latestPayment.status) : null;
+  const isCod = paymentProvider === "COD";
+
+  // Paid = sum of actually-captured payments (net of refunds); due = whatever
+  // of the grand total that leaves outstanding. For the common COD case
+  // nothing is captured until the courier remits, so paid is 0 and due is
+  // the full total — matching the reference invoice's "pay the delivery
+  // person the due amount" framing.
+  const paidAmount = order.payments.reduce((sum, p) => {
+    if ((p.status as unknown as string) !== "CAPTURED") return sum;
+    return sum + Number(p.amount) - Number(p.refundedAmount ?? 0);
+  }, 0);
+  const dueAmount = Math.max(0, Number(order.totalAmount) - paidAmount);
 
   return (
     <div
@@ -91,6 +216,12 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
       style={{ fontFamily: bodyFontStack, background: "#f5f6fa" }}
       className="p-10 text-sm text-[#666] print:p-0"
     >
+      {/* Browsers drop background-color/background-image/box-shadow when
+          printing by default (an ink-saving default, not a bug) — without
+          this, every colored badge/pill/bar here (and the white text that
+          depends on them for contrast) disappears on Print/Save-as-PDF
+          regardless of the print dialog's own "Background graphics" toggle. */}
+      <style>{`@media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }`}</style>
       {settings?.customFontEnabled && settings.customFontFamily && (
         <style>{`@import url('https://fonts.googleapis.com/css2?family=${encodeURIComponent(settings.customFontFamily)}&display=swap');`}</style>
       )}
@@ -100,29 +231,35 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={settings.companyLogoUrl} alt={companyName} className="h-[50px] object-contain" />
           ) : (
-            <div className="text-xl font-bold text-[#111]">{companyName}</div>
+            <div className="rounded-md px-4 py-2 text-xl font-bold text-white" style={{ backgroundColor: GREEN }}>
+              {companyName}
+            </div>
           )}
           <div className="text-[30px] font-bold uppercase text-[#111]">Invoice</div>
         </div>
 
         <div className="mb-5 flex items-center">
-          <div className="mr-5 h-0.5 flex-1 rounded-full bg-[#111]" />
+          <div className="mr-5 h-[3px] flex-1 rounded-full" style={{ backgroundColor: GREEN }} />
           <div className="flex gap-5 whitespace-nowrap text-[#111]">
-            <p className="m-0">Invoice No: <strong>{settings?.invoicePrefix}{order.orderNumber}</strong></p>
-            <p className="m-0">Date: <strong>{formatInvoiceDate(order.createdAt, dateFormat)}</strong></p>
+            <p className="m-0">
+              Invoice No: <strong style={{ color: GREEN }}>{settings?.invoicePrefix}{order.orderNumber}</strong>
+            </p>
+            <p className="m-0">
+              Date: <strong style={{ color: GREEN }}>{formatInvoiceDate(order.createdAt, dateFormat)}</strong>
+            </p>
           </div>
         </div>
 
         <div className="mb-5 grid grid-cols-2 gap-5">
           <div>
-            <p className="mb-1 font-bold text-[#111]">Invoice To:</p>
+            <p className="mb-1 font-bold" style={{ color: GREEN }}>Invoice To:</p>
             <p className="m-0">{billing?.recipientName}</p>
             <p className="m-0">{billing?.addressLine}</p>
             <p className="m-0">{[billing?.area, billing?.district, billing?.division, billing?.postCode].filter(Boolean).join(", ")}</p>
             <p className="m-0">{billing?.phone}</p>
           </div>
           <div className="text-right">
-            <p className="mb-1 font-bold text-[#111]">Pay To:</p>
+            <p className="mb-1 font-bold" style={{ color: GREEN }}>Pay To:</p>
             <p className="m-0">{companyName}</p>
             {companyAddress && <p className="m-0">{companyAddress}</p>}
             {settings?.companyEmail && <p className="m-0">{settings.companyEmail}</p>}
@@ -132,16 +269,28 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
         </div>
 
         {shipment && courierName && (
-          <div className="mb-5 rounded-md border border-[#dbdfea] px-5 py-4">
-            <h3 className="m-0 mb-2.5 font-bold text-[#111]">For {courierName}</h3>
-            <hr className="m-0 border-[#dbdfea]" />
+          <div className="mb-5 rounded-md border px-5 py-4" style={{ borderColor: GREEN_TINT, backgroundColor: GREEN_TINT }}>
+            <h3 className="m-0 mb-2.5 font-bold" style={{ color: GREEN }}>For {courierName}</h3>
+            <hr className="m-0" style={{ borderColor: "rgba(31,112,60,0.25)" }} />
             <div className="mt-2.5 flex items-center justify-between gap-5">
-              <h5 className="m-0 font-bold text-[#111]">Parcel ID: #{shipment.trackingCode ?? shipment.consignmentId ?? order.orderNumber}</h5>
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white">{boxIcon}</span>
+                <h5 className="m-0 font-bold text-[#111]">
+                  Parcel ID: <span style={{ color: GREEN }}>#{shipment.trackingCode ?? shipment.consignmentId ?? order.orderNumber}</span>
+                </h5>
+              </div>
               {shipment.trackingCode && (
-                <QRCodeSVG value={shipment.trackingCode} size={70} />
+                <div className="shrink-0 rounded-md bg-white p-1.5">
+                  <QRCodeSVG value={shipment.trackingCode} size={64} />
+                </div>
               )}
               {isCod && shipment.codAmount && Number(shipment.codAmount) > 0 && (
-                <h5 className="m-0 font-bold text-[#111]">COD Amount: {order.currency} {shipment.codAmount}</h5>
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white">{cashIcon}</span>
+                  <h5 className="m-0 font-bold text-[#111]">
+                    COD Amount: <span style={{ color: GREEN }}>{order.currency} {shipment.codAmount}</span>
+                  </h5>
+                </div>
               )}
             </div>
           </div>
@@ -150,7 +299,7 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
         <div className="mb-5 overflow-hidden rounded-md border border-[#dbdfea]">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="bg-[#f5f6fa]">
+              <tr style={{ backgroundColor: GREEN_TINT }}>
                 <th className="px-4 py-2.5 text-[#111]">Item</th>
                 <th className="px-4 py-2.5 text-[#111]">Price</th>
                 <th className="px-4 py-2.5 text-[#111]">Qty</th>
@@ -171,16 +320,57 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
         </div>
 
         <div className="flex items-start justify-between gap-5">
-          <div className="w-[55%]">
-            <p className="mb-1 font-bold text-[#111]">Payment info:</p>
-            <p className="m-0">{latestPayment ? String(latestPayment.provider) : "—"}</p>
-            <p className="m-0 text-xs text-[#b5b5b5]">{latestPayment ? String(latestPayment.status) : ""}</p>
+          <div className="flex w-[48%] flex-col gap-2.5 rounded-md border border-[#dbdfea] px-5 py-4">
+            <div className="flex items-center gap-2">
+              {cardIcon}
+              <p className="m-0 font-bold" style={{ color: GREEN }}>Payment Information</p>
+            </div>
+            <div className="flex items-center justify-between text-[#111]">
+              <span className="font-semibold">Payment Method</span>
+              {paymentProvider && !isCod ? (
+                <span className={`rounded-sm px-2 py-0.5 text-xs font-bold ${PAYMENT_PROVIDER_BADGE_STYLE[paymentProvider] ?? "bg-[#4a5568] text-white"}`}>
+                  {PAYMENT_PROVIDER_DISPLAY_NAME[paymentProvider] ?? paymentProvider}
+                </span>
+              ) : (
+                <span>{paymentProvider ? PAYMENT_PROVIDER_DISPLAY_NAME[paymentProvider] ?? paymentProvider : "—"}</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-[#111]">
+              <span className="font-semibold">Payment Status</span>
+              {paymentStatus && (
+                <span className={`rounded-pill px-2.5 py-0.5 text-xs font-bold uppercase ${PAYMENT_STATUS_STYLE[paymentStatus] ?? "bg-[#eef0f3] text-[#4a5568]"}`}>
+                  {PAYMENT_STATUS_DISPLAY_NAME[paymentStatus] ?? paymentStatus}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between text-[#111]">
+              <span className="font-semibold">Paid Amount</span>
+              <span className={paidAmount > 0 ? "font-bold" : ""} style={paidAmount > 0 ? { color: GREEN } : undefined}>
+                {order.currency} {paidAmount.toFixed(0)}
+              </span>
+            </div>
+            <div className="flex justify-between font-bold" style={{ color: dueAmount > 0 ? "#c53030" : GREEN }}>
+              <span>Due Amount</span>
+              <span>{order.currency} {dueAmount.toFixed(0)}</span>
+            </div>
+            {isCod && dueAmount > 0 && (
+              <div className="mt-1 flex items-center gap-2 rounded-md bg-[#fdf3d9] px-3 py-2 text-xs text-[#a9740a]">
+                {warningIcon}
+                Please pay the delivery person the due amount.
+              </div>
+            )}
+            {!isCod && paidAmount > 0 && dueAmount === 0 && (
+              <div className="mt-1 flex items-center gap-2 rounded-md bg-[#e6f7ee] px-3 py-2 text-xs" style={{ color: GREEN }}>
+                {checkCircleIcon(GREEN)}
+                Payment completed successfully. Thank you!
+              </div>
+            )}
             {settings?.stampEnabled && settings.stampImageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={settings.stampImageUrl} alt="Stamp" className="mt-5 h-24 w-24 object-contain opacity-90" />
+              <img src={settings.stampImageUrl} alt="Stamp" className="mt-2 h-24 w-24 object-contain opacity-90" />
             )}
           </div>
-          <div className="flex w-[45%] flex-col gap-1 text-[#111]">
+          <div className="flex w-[48%] flex-col gap-1 text-[#111]">
             <div className="flex justify-between"><span>Subtotal</span><span>{order.currency} {order.subTotal}</span></div>
             {displayDiscount > 0 && (
               <div className="flex justify-between">
@@ -196,10 +386,28 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
               </div>
             )}
             {Number(order.codFee) > 0 && <div className="flex justify-between"><span>COD Fee</span><span>{order.currency} {order.codFee}</span></div>}
-            <div className="flex justify-between border-y-2 border-[#111] py-1.5 text-base font-bold">
-              <span>Grand Total</span><span>{order.currency} {order.totalAmount}</span>
+            <div className="mt-1 flex justify-between border-t border-dashed border-[#c7ccd6] pt-2.5 text-base font-bold">
+              <span className="text-[#111]">Grand Total</span>
+              <span style={{ color: GREEN }}>{order.currency} {order.totalAmount}</span>
             </div>
+            {paidAmount > 0 && (
+              <>
+                <div className="mt-1 flex justify-between rounded-sm px-2 py-1.5 font-semibold" style={{ backgroundColor: GREEN_TINT, color: GREEN }}>
+                  <span>Paid Amount</span>
+                  <span>- {order.currency} {paidAmount.toFixed(0)}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-sm px-2 py-2 text-base font-bold text-white" style={{ backgroundColor: GREEN_DARK }}>
+                  <span className="flex items-center gap-1.5">{checkCircleIcon("#fff")} Total Paid</span>
+                  <span>{order.currency} {dueAmount.toFixed(0)}</span>
+                </div>
+              </>
+            )}
           </div>
+        </div>
+
+        <div className="mt-5 flex items-center justify-center gap-2 rounded-md py-3 text-sm font-semibold text-white" style={{ backgroundColor: GREEN_DARK }}>
+          {shieldCheckIcon}
+          Thank you for shopping with <span style={{ color: "#f0c419" }}>{companyName}</span>!
         </div>
 
         {settings?.termsAndConditions && (
@@ -208,6 +416,37 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
             <p className="m-0 whitespace-pre-wrap">{settings.termsAndConditions}</p>
           </div>
         )}
+
+        <div className="mt-5 grid grid-cols-4 gap-4 rounded-md bg-[#f5f6fa] px-5 py-4 text-xs text-[#111]">
+          <div className="flex items-center gap-2">
+            {headsetIcon}
+            <div>
+              <p className="m-0 font-semibold">Need Help?</p>
+              <p className="m-0 text-[#666]">{settings?.companyPhone || "—"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {globeIcon}
+            <div>
+              <p className="m-0 font-semibold">Visit Our Website</p>
+              <p className="m-0 text-[#666]">www.amadere.com</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {facebookIcon}
+            <div>
+              <p className="m-0 font-semibold">Like Our Page</p>
+              <p className="m-0 text-[#666]">fb.com/amadere</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {leafIcon}
+            <div>
+              <p className="m-0 font-semibold">100% Natural &amp; Healthy</p>
+              <p className="m-0 text-[#666]">Trusted by Thousands</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -23,4 +23,22 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  // Same upsert-a-CustomerAddress-row pattern as UpdateCustomerDto.addressLine
+  // (see CustomersService.createCustomer()) — Customer itself has no address
+  // columns.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  addressLine?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  division?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  district?: string;
 }
