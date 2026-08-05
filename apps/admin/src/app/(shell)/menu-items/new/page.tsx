@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
@@ -9,7 +9,7 @@ import { MenuItemLinkFields } from "@/components/menu-items/MenuItemLinkFields";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
-export default function NewMenuItemPage() {
+function NewMenuItemPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledParentId = searchParams.get("parentId");
@@ -74,5 +74,17 @@ export default function NewMenuItemPage() {
         </div>
       </form>
     </Card>
+  );
+}
+
+// useSearchParams() (for the ?parentId= prefill) opts this page out of static
+// rendering unless it's wrapped in Suspense — Next.js fails the production
+// build otherwise ("useSearchParams() should be wrapped in a suspense
+// boundary"). Same fix as apps/(shell)/orders/new/page.tsx.
+export default function NewMenuItemPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>
+      <NewMenuItemPageInner />
+    </Suspense>
   );
 }
