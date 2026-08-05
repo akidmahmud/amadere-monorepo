@@ -13,6 +13,13 @@ jobs:
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
+          # Port 22 times out from GitHub-hosted runners specifically — almost
+          # certainly Hostinger's network-level abuse filtering blackholing
+          # SSH from datacenter/cloud ASNs (which is what GH Actions runners
+          # are). 2222 is a second sshd listener added for exactly this (see
+          # /etc/systemd/system/ssh.socket.d/listen.conf on the VPS) — regular
+          # SSH access on 22 is untouched, this only changes what CI uses.
+          port: 2222
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
