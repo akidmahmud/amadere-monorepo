@@ -5,7 +5,7 @@ import { PrismaService } from '../../../common/prisma/prisma.service';
 import { CredentialsService } from '../../../common/credentials/credentials.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
-import { BulkSmsBdProvider, SMS_API_KEY_CREDENTIAL } from './providers/bulk-sms-bd.provider';
+import { HttpSmsProvider, SMS_API_KEY_CREDENTIAL, SMS_SECRET_KEY_CREDENTIAL } from './providers/http-sms.provider';
 import { UpdateSmsTemplateDto } from './dto/update-sms-template.dto';
 import { SmsLogDto, SmsTemplateDto, toSmsLogDto, toSmsTemplateDto } from './sms.mapper';
 
@@ -57,7 +57,7 @@ export class SmsService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly settings: NetProfitSettingsService,
     private readonly credentials: CredentialsService,
-    private readonly provider: BulkSmsBdProvider,
+    private readonly provider: HttpSmsProvider,
   ) {}
 
   // Idempotent in-app seeding (upsert on unique `key`) rather than a
@@ -73,16 +73,19 @@ export class SmsService implements OnModuleInit {
     }
   }
 
-  async getSettings(): Promise<SmsSettings & { hasApiKey: boolean }> {
-    const [settings, hasApiKey] = await Promise.all([
+  async getSettings(): Promise<SmsSettings & { hasApiKey: boolean; hasSecretKey: boolean }> {
+    const [settings, hasApiKey, hasSecretKey] = await Promise.all([
       this.settings.getNamespace(SETTINGS_NAMESPACE, SMS_SETTINGS_DEFAULTS),
       this.credentials.hasCredential(SMS_API_KEY_CREDENTIAL),
+      this.credentials.hasCredential(SMS_SECRET_KEY_CREDENTIAL),
     ]);
-    return { ...settings, hasApiKey };
+    return { ...settings, hasApiKey, hasSecretKey };
   }
 
-  async updateSettings(dto: Partial<SmsSettings> & { apiKey?: string }): Promise<SmsSettings & { hasApiKey: boolean }> {
-    const { apiKey, ...rest } = dto;
+  async updateSettings(
+    dto: Partial<SmsSettings> & { apiKey?: string; secretKey?: string },
+  ): Promise<SmsSettings & { hasApiKey: boolean; hasSecretKey: boolean }> {
+    const { apiKey, secretKey, ...rest } = dto;
     const merged: Partial<SmsSettings> = { ...rest };
     if (dto.statusTriggers) {
       const current = await this.getSettings();
@@ -93,11 +96,17 @@ export class SmsService implements OnModuleInit {
     // own guard) — matches the masked "leave blank to keep" UX everywhere
     // else credentials are edited.
     await this.credentials.saveCredential(SMS_API_KEY_CREDENTIAL, apiKey);
+    await this.credentials.saveCredential(SMS_SECRET_KEY_CREDENTIAL, secretKey);
     return this.getSettings();
   }
 
-  async clearApiKey(): Promise<SmsSettings & { hasApiKey: boolean }> {
+  async clearApiKey(): Promise<SmsSettings & { hasApiKey: boolean; hasSecretKey: boolean }> {
     await this.credentials.deleteCredential(SMS_API_KEY_CREDENTIAL);
+    return this.getSettings();
+  }
+
+  async clearSecretKey(): Promise<SmsSettings & { hasApiKey: boolean; hasSecretKey: boolean }> {
+    await this.credentials.deleteCredential(SMS_SECRET_KEY_CREDENTIAL);
     return this.getSettings();
   }
 

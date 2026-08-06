@@ -49,7 +49,7 @@ export class AdminSmsController {
 
   @Put('settings')
   @RequirePermission('net_profit_sms.manage')
-  updateSettings(@Body() dto: Partial<SmsSettings> & { apiKey?: string }) {
+  updateSettings(@Body() dto: Partial<SmsSettings> & { apiKey?: string; secretKey?: string }) {
     return this.sms.updateSettings(dto);
   }
 
@@ -57,6 +57,12 @@ export class AdminSmsController {
   @RequirePermission('net_profit_sms.manage')
   clearApiKey() {
     return this.sms.clearApiKey();
+  }
+
+  @Delete('settings/secret-key')
+  @RequirePermission('net_profit_sms.manage')
+  clearSecretKey() {
+    return this.sms.clearSecretKey();
   }
 
   @Get('balance')

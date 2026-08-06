@@ -78,6 +78,7 @@ export interface SmsSettings {
   senderIdMasked: boolean;
   statusTriggers: { CONFIRMED: boolean; PROCESSING: boolean; COMPLETED: boolean };
   hasApiKey: boolean;
+  hasSecretKey: boolean;
 }
 
 export function useSmsSettings() {
@@ -87,7 +88,7 @@ export function useSmsSettings() {
 export function useUpdateSmsSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<SmsSettings> & { apiKey?: string }) =>
+    mutationFn: (input: Partial<SmsSettings> & { apiKey?: string; secretKey?: string }) =>
       proxyFetch<SmsSettings>("/admin/net-profit/sms/settings", { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
   });
@@ -97,6 +98,14 @@ export function useClearSmsApiKey() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => proxyFetch<SmsSettings>("/admin/net-profit/sms/settings/api-key", { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
+  });
+}
+
+export function useClearSmsSecretKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => proxyFetch<SmsSettings>("/admin/net-profit/sms/settings/secret-key", { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
   });
 }

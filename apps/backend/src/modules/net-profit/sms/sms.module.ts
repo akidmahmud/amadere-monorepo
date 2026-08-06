@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { NetProfitSettingsModule } from '../settings/net-profit-settings.module';
 import { AdminSmsController } from './admin-sms.controller';
 import { SmsService } from './sms.service';
-import { BulkSmsBdProvider } from './providers/bulk-sms-bd.provider';
+import { HttpSmsProvider } from './providers/http-sms.provider';
 import { SmsEventListener } from './sms-event.listener';
 
 @Module({
   imports: [NetProfitSettingsModule],
   controllers: [AdminSmsController],
-  providers: [SmsService, BulkSmsBdProvider, SmsEventListener],
+  providers: [SmsService, HttpSmsProvider, SmsEventListener],
   exports: [SmsService],
 })
 export class SmsModule {}

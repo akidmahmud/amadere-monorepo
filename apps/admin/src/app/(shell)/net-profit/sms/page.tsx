@@ -11,6 +11,7 @@ import {
   useSmsTemplates,
   useTestSendSms,
   useClearSmsApiKey,
+  useClearSmsSecretKey,
   useUpdateSmsSettings,
   useUpdateSmsTemplate,
 } from "@/hooks/useSms";
@@ -203,8 +204,10 @@ function SettingsTab() {
   const { data, isLoading } = useSmsSettings();
   const update = useUpdateSmsSettings();
   const clearApiKey = useClearSmsApiKey();
+  const clearSecretKey = useClearSmsSecretKey();
   const { data: balance, refetch: checkBalance, isFetching: checkingBalance } = useSmsBalance();
   const [apiKey, setApiKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
   const { data: otpSettings, isLoading: otpLoading } = useOtpSecuritySettings();
   const updateOtp = useUpdateOtpSecuritySettings();
 
@@ -220,12 +223,23 @@ function SettingsTab() {
               <span className="text-xs font-semibold text-secondary">API Key {data.hasApiKey && <span className="text-success">(configured)</span>}</span>
               <input
                 type="password"
-                placeholder={data.hasApiKey ? "••••••••" : "Enter your Bulk SMS BD API key"}
+                placeholder={data.hasApiKey ? "••••••••" : "Enter your SMS gateway API key"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
               />
-              <span className="text-xs text-muted">Your Bulk SMS BD API key. Get it from your bulksmsbd.net dashboard.</span>
+              <span className="text-xs text-muted">Your SMS gateway's apikey, from its dashboard.</span>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-secondary">Secret Key {data.hasSecretKey && <span className="text-success">(configured)</span>}</span>
+              <input
+                type="password"
+                placeholder={data.hasSecretKey ? "••••••••" : "Enter your SMS gateway secret key"}
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+              />
+              <span className="text-xs text-muted">Your SMS gateway's secretkey, from its dashboard.</span>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-secondary">Sender ID</span>
@@ -235,7 +249,7 @@ function SettingsTab() {
                 placeholder="e.g. 8809xxxxxxx or a masked brand name"
                 className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
               />
-              <span className="text-xs text-muted">Your approved Sender ID from the gateway.</span>
+              <span className="text-xs text-muted">Your approved Sender ID (callerID) from the gateway.</span>
             </label>
           </div>
           <ToggleSwitch
@@ -244,19 +258,29 @@ function SettingsTab() {
             label="This sender ID is masked (custom brand name, not a numeric shortcode)"
           />
           <div className="flex items-center gap-2">
-            {apiKey && (
+            {(apiKey || secretKey) && (
               <Button
                 type="button"
                 variant="primary"
                 disabled={update.isPending}
-                onClick={() => update.mutate({ apiKey }, { onSuccess: () => setApiKey("") })}
+                onClick={() =>
+                  update.mutate(
+                    { apiKey: apiKey || undefined, secretKey: secretKey || undefined },
+                    { onSuccess: () => { setApiKey(""); setSecretKey(""); } },
+                  )
+                }
               >
-                {update.isPending ? "Saving…" : "Save API key"}
+                {update.isPending ? "Saving…" : "Save credentials"}
               </Button>
             )}
             {data.hasApiKey && !apiKey && (
               <Button type="button" variant="ghost" disabled={clearApiKey.isPending} onClick={() => clearApiKey.mutate()}>
                 {clearApiKey.isPending ? "Clearing…" : "Clear API key"}
+              </Button>
+            )}
+            {data.hasSecretKey && !secretKey && (
+              <Button type="button" variant="ghost" disabled={clearSecretKey.isPending} onClick={() => clearSecretKey.mutate()}>
+                {clearSecretKey.isPending ? "Clearing…" : "Clear secret key"}
               </Button>
             )}
           </div>
