@@ -3204,6 +3204,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/blog-posts/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_listDeleted"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/blog-posts/{id}": {
         parameters: {
             query?: never;
@@ -3246,6 +3262,22 @@ export interface paths {
         get: operations["AdminBlogPostsController_revisions"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/blog-posts/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminBlogPostsController_restore"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7341,6 +7373,15 @@ export interface components {
             translations: components["schemas"]["AdminBlogPostTranslationDto"][];
             /** Format: date-time */
             createdAt: string;
+        };
+        AdminDeletedBlogPostDto: {
+            id: number;
+            slug: string;
+            title: string;
+            imageUrl: string | null;
+            /** Format: date-time */
+            deletedAt: string;
+            daysRemaining: number;
         };
         BlogPostTranslationDto: {
             /** @enum {string} */
@@ -14678,6 +14719,33 @@ export interface operations {
             };
         };
     };
+    AdminBlogPostsController_listDeleted: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminDeletedBlogPostDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
     AdminBlogPostsController_get: {
         parameters: {
             query?: never;
@@ -14779,6 +14847,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BlogPostRevisionDto"][];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBlogPostDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBlogPostDto"];
                 };
             };
         };

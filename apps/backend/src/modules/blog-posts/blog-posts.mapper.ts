@@ -61,6 +61,20 @@ export class AdminBlogPostDto {
   createdAt!: Date;
 }
 
+// Trash listing — deliberately minimal, same rationale as
+// AdminDeletedProductDto (a 100-row trash list doesn't need every
+// translation/category/tag).
+export class AdminDeletedBlogPostDto {
+  id!: number;
+  slug!: string;
+  title!: string;
+  imageUrl!: string | null;
+  deletedAt!: Date;
+  /** Days until the nightly purge job permanently deletes this row (see
+   * BlogPostsService.purgeExpiredTrash) — floored at 0, never negative. */
+  daysRemaining!: number;
+}
+
 export class BlogPostRevisionDto {
   id!: number;
   field!: string;

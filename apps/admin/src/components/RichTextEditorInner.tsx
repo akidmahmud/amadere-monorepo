@@ -35,7 +35,6 @@ import {
   TableColumnResize,
   HorizontalLine,
   Code,
-  CodeBlock,
   Subscript,
   Superscript,
   SpecialCharacters,
@@ -127,7 +126,6 @@ const CONFIG: EditorConfig = {
     TableColumnResize,
     HorizontalLine,
     Code,
-    CodeBlock,
     Subscript,
     Superscript,
     SpecialCharacters,
@@ -141,6 +139,13 @@ const CONFIG: EditorConfig = {
   toolbar: [
     "undo",
     "redo",
+    "|",
+    // Pinned right up front, not buried at the toolbar's far end (where a
+    // long toolbar collapses items into a "⋮" overflow menu) — this is the
+    // ONLY button that actually parses typed/pasted HTML into real content;
+    // everything else (including the removed CodeBlock feature) just
+    // displays text as text.
+    "sourceEditing",
     "|",
     "heading",
     "|",
@@ -167,7 +172,6 @@ const CONFIG: EditorConfig = {
     "indent",
     "|",
     "blockQuote",
-    "codeBlock",
     "horizontalLine",
     "link",
     "uploadImage",
@@ -177,8 +181,6 @@ const CONFIG: EditorConfig = {
     "|",
     "findAndReplace",
     "showBlocks",
-    "|",
-    "sourceEditing",
   ],
   heading: {
     options: [
@@ -214,12 +216,28 @@ const CONFIG: EditorConfig = {
   // General HTML Support (still free/open-source, same `ckeditor5` package)
   // — without it CKEditor strips any class/style/element it doesn't already
   // have a dedicated feature for, so hand-authored HTML/CSS typed via
-  // Source view would just vanish again on the next edit. `name: /.*/`
-  // allows every element; admin-only content, already sanitized again on
-  // the storefront before render, so this is a deliberate trust boundary,
-  // not a new one.
+  // Source view would just vanish again on the next edit. Admin-only
+  // content, already sanitized again on the storefront before render, so
+  // this is a deliberate trust boundary, not a new one.
+  //
+  // Deliberately NOT a catch-all `name: /.*/` — scoped to tags with no
+  // dedicated feature above (embeds, generic layout wrappers), plus `pre`
+  // as a safety net now that the CodeBlock feature (which used to own it)
+  // is gone — without an owner, a `<pre>` block would silently disappear on
+  // the next save instead of just staying inert. (The earlier <h1>-shows-
+  // as-a-gray-chip report turned out to be the CodeBlock feature itself,
+  // not a GHS conflict — its default "HTML"/"Plain text" per-block language
+  // label was mistaken for Source Editing's icon; CodeBlock has since been
+  // removed from the toolbar entirely to stop that mix-up at the source.)
   htmlSupport: {
-    allow: [{ name: /.*/, attributes: true, classes: true, styles: true }],
+    allow: [
+      {
+        name: /^(div|span|section|article|figure|figcaption|iframe|video|audio|source|details|summary|mark|small|abbr|cite|time|address|nav|aside|header|footer|main|pre)$/,
+        attributes: true,
+        classes: true,
+        styles: true,
+      },
+    ],
   },
 };
 

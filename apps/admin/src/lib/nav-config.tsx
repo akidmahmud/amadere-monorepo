@@ -102,6 +102,7 @@ export const adminNav: AppNavEntry[] = [
 
   label("content-label", "Content"),
   { key: "blog-posts", label: "Blog Posts", href: "/blog-posts", icon: blogIcon },
+  { key: "blog-posts-trash", label: "Deleted Blog Posts", href: "/blog-posts/trash", icon: trashIcon },
   { key: "blog-categories", label: "Blog Categories", href: "/blog-categories", icon: blogCategoriesIcon },
   { key: "blog-tags", label: "Blog Tags", href: "/blog-tags", icon: blogTagsIcon },
   { key: "pages", label: "Pages", href: "/pages", icon: pagesIcon },

@@ -52,6 +52,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       return;
     }
     clearDraft(draftKey);
+    toast.push(`"${product?.translations[0]?.name ?? product?.slug ?? "Product"}" deleted.`);
     router.push("/products");
   }
 

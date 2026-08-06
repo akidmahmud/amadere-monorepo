@@ -8,6 +8,7 @@ import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
 import { BlogStatsStrip } from "@/components/blog/BlogStatsStrip";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
+import { useToast } from "@/components/ToastProvider";
 
 const selectClass =
   "h-[38px] appearance-none rounded-inner border border-border bg-surface px-2.5 pr-7 text-[0.75rem] font-semibold text-secondary outline-none focus:border-brand-500";
@@ -33,6 +34,7 @@ export default function BlogPostsPage() {
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.translations[0]?.name ?? c.slug]));
   const deletePost = useDeleteBlogPost();
   const storefrontUrl = useStorefrontUrl();
+  const toast = useToast();
 
   const posts = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -183,7 +185,10 @@ export default function BlogPostsPage() {
                         <button
                           type="button"
                           aria-label="Delete"
-                          onClick={() => confirm(`Delete "${title}"?`) && deletePost.mutate(p.id)}
+                          onClick={() =>
+                            confirm(`Delete "${title}"?`) &&
+                            deletePost.mutate(p.id, { onSuccess: () => toast.push(`"${title}" deleted.`) })
+                          }
                           className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2"
                         >
                           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

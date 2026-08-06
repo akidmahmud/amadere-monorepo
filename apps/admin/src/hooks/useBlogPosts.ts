@@ -114,3 +114,26 @@ export function useGenerateBlogPreviewToken() {
     mutationFn: (id: number) => proxyFetch<{ token: string }>(`/admin/blog-posts/${id}/preview-token`, { method: "POST" }),
   });
 }
+
+export type AdminDeletedBlogPost = components["schemas"]["AdminDeletedBlogPostDto"];
+
+const TRASH_KEY = ["admin-blog-posts-trash"];
+
+export function useDeletedBlogPosts(page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: [...TRASH_KEY, page, pageSize],
+    queryFn: () =>
+      proxyFetch<Required<Paginated<AdminDeletedBlogPost>>>(`/admin/blog-posts/trash?page=${page}&pageSize=${pageSize}`),
+  });
+}
+
+export function useRestoreBlogPost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<AdminBlogPost>(`/admin/blog-posts/${id}/restore`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TRASH_KEY });
+      qc.invalidateQueries({ queryKey: KEY });
+    },
+  });
+}

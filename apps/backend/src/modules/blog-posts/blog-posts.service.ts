@@ -2,9 +2,12 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ContentStatus, Locale } from '@amader/db';
+import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -14,6 +17,7 @@ import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import {
   AdminBlogPostDto,
+  AdminDeletedBlogPostDto,
   BLOG_POST_INCLUDE,
   BlogAuthorProfileDto,
   BlogPostRevisionDto,
@@ -40,6 +44,8 @@ const RELATED_POSTS_LIMIT = 5;
 
 @Injectable()
 export class BlogPostsService {
+  private readonly logger = new Logger(BlogPostsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly seo: SeoService,
@@ -302,6 +308,73 @@ export class BlogPostsService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  private static readonly TRASH_RETENTION_DAYS = 30;
+
+  // Trash listing — soft-deleted posts still within the retention window
+  // (the nightly purge job below removes anything older, so `deletedAt: not
+  // null` alone is equivalent to "within 30 days" in practice). Same pattern
+  // as ProductsService.listDeleted.
+  async listDeleted(page = 1, pageSize = 20): Promise<PaginatedResult<AdminDeletedBlogPostDto>> {
+    const where = { deletedAt: { not: null } };
+    const [total, posts] = await Promise.all([
+      this.prisma.client.blogPost.count({ where }),
+      this.prisma.client.blogPost.findMany({
+        where,
+        select: {
+          id: true,
+          slug: true,
+          imageUrl: true,
+          deletedAt: true,
+          translations: { select: { title: true }, take: 1 },
+        },
+        orderBy: { deletedAt: 'desc' },
+        ...paginationArgs(page, pageSize),
+      }),
+    ]);
+
+    const items = posts.map((p) => {
+      const deletedAt = p.deletedAt!;
+      const daysElapsed = Math.floor((Date.now() - deletedAt.getTime()) / 86_400_000);
+      return {
+        id: p.id,
+        slug: p.slug,
+        title: p.translations[0]?.title ?? p.slug,
+        imageUrl: p.imageUrl,
+        deletedAt,
+        daysRemaining: Math.max(0, BlogPostsService.TRASH_RETENTION_DAYS - daysElapsed),
+      };
+    });
+    return toPaginatedResult(items, total, page, pageSize);
+  }
+
+  async restore(id: number): Promise<AdminBlogPostDto> {
+    const post = await this.prisma.client.blogPost.findUnique({
+      where: { id },
+      select: { deletedAt: true },
+    });
+    if (!post || post.deletedAt === null) {
+      throw new NotFoundException('Blog post not found in trash');
+    }
+    await this.prisma.client.blogPost.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+    return this.adminGet(id);
+  }
+
+  // Runs daily — anything soft-deleted more than 30 days ago is gone for
+  // good. Safe to hard-delete: cascades to BlogPostTranslation/Category/Tag/
+  // Revision rows via each relation's onDelete: Cascade.
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async purgeExpiredTrash(): Promise<number> {
+    const cutoff = new Date(Date.now() - BlogPostsService.TRASH_RETENTION_DAYS * 86_400_000);
+    const { count } = await this.prisma.client.blogPost.deleteMany({
+      where: { deletedAt: { lt: cutoff } },
+    });
+    if (count > 0) this.logger.log(`Purged ${count} blog post(s) from trash (past 30-day retention).`);
+    return count;
   }
 
   async publicList(
