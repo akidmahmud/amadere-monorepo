@@ -70,6 +70,11 @@ export class PublicHomepageSectionDto {
    * order/length, null for an item whose product no longer resolves
    * (deleted/unpublished) rather than dropping the item silently. */
   justForYouProducts!: (PublicProductDto | null)[] | null;
+  /** FEATURED_DEALS only — same admin-picked `config.items` shape as
+   * TOP_SELLING_PRODUCTS/JUST_FOR_YOU, rendered in the gradient promo card
+   * (replaces the old bundle-driven "Exclusive Combo Deals" section —
+   * plain hand-picked products now, no bundle/combo pricing entity). */
+  featuredDealsProducts!: (PublicProductDto | null)[] | null;
 }
 
 export function toPublicHomepageSectionDto(
@@ -79,6 +84,7 @@ export function toPublicHomepageSectionDto(
   promoVideoProducts: (PublicProductDto | null)[] | null = null,
   topSellingProducts: (PublicProductDto | null)[] | null = null,
   justForYouProducts: (PublicProductDto | null)[] | null = null,
+  featuredDealsProducts: (PublicProductDto | null)[] | null = null,
 ): PublicHomepageSectionDto {
   const translation =
     section.translations.find((t) => t.locale === locale) ??
@@ -94,5 +100,6 @@ export function toPublicHomepageSectionDto(
     promoVideoProducts,
     topSellingProducts,
     justForYouProducts,
+    featuredDealsProducts,
   };
 }

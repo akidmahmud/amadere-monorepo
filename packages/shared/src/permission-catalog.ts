@@ -52,11 +52,6 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('product', 'update'),
   perm('product', 'delete'),
 
-  perm('product_bundle', 'view'),
-  perm('product_bundle', 'create'),
-  perm('product_bundle', 'update'),
-  perm('product_bundle', 'delete'),
-
   perm('search_synonym', 'view'),
   perm('search_synonym', 'create'),
   perm('search_synonym', 'update'),

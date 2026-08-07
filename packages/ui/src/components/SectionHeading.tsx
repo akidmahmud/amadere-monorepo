@@ -12,7 +12,7 @@ export interface SectionHeadingProps {
 export function SectionHeading({ children, className }: SectionHeadingProps) {
   return (
     <div className={cn("mb-6 text-center", className)}>
-      <h2 className="font-serif text-[30px] font-semibold text-green">
+      <h2 className="font-serif text-[22px] font-semibold text-green md:text-[30px]">
         {children}
       </h2>
     </div>

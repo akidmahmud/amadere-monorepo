@@ -5,7 +5,7 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { toProductCardData } from "@/lib/product-card-mapper";
-import { parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
+import { parsePlpSearchParams, type FlagLabelValue, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
 import { ProductListing } from "@/components/ProductListing";
 import type { components } from "@/lib/api/schema";
@@ -79,7 +79,7 @@ export default async function CollectionPage({
 
   // The collection endpoint returns every product in one shot (no
   // server-side pagination or filtering, unlike /products, /categories,
-  // /tags, /brands) — so price filtering happens here against the full set
+  // /tags, /brands) — so all filtering happens here against the full set
   // instead. Same "base price, defaulting to the default variant's price"
   // resolution as the backend's own minPrice/maxPrice filter and as
   // toProductCardData's own price display use, so the slider and the price
@@ -91,10 +91,28 @@ export default async function CollectionPage({
   const priceBounds =
     allPrices.length > 0 ? { min: Math.min(...allPrices), max: Math.max(...allPrices) } : undefined;
 
+  // Derived from this collection's own product set (not a separate API
+  // call) — category/brand counts only make sense scoped to what's actually
+  // in this collection, same reasoning as the price bounds above.
+  const categoryMap = new Map<number, { id: number; slug: string; name: string; productCount: number }>();
+  const brandMap = new Map<number, { id: number; slug: string; name: string }>();
+  for (const p of collection.products as PublicProductDto[]) {
+    for (const c of p.categories) {
+      const existing = categoryMap.get(c.id);
+      if (existing) existing.productCount += 1;
+      else categoryMap.set(c.id, { id: c.id, slug: c.slug, name: c.name, productCount: 1 });
+    }
+    if (p.brand) brandMap.set(p.brand.id, p.brand);
+  }
+
   const filteredProducts = collection.products.filter((p: PublicProductDto) => {
     const price = effectivePrice(p);
     if (filters.minPrice !== undefined && price < filters.minPrice) return false;
     if (filters.maxPrice !== undefined && price > filters.maxPrice) return false;
+    if (filters.categoryIds.length > 0 && !p.categories.some((c) => filters.categoryIds.includes(c.id))) return false;
+    if (filters.brandId !== undefined && p.brand?.id !== filters.brandId) return false;
+    if (filters.flagLabels.length > 0 && !(p.flagLabel && filters.flagLabels.includes(p.flagLabel as unknown as FlagLabelValue)))
+      return false;
     return true;
   });
 
@@ -116,6 +134,8 @@ export default async function CollectionPage({
         total={total}
         pageSize={pageSize}
         products={products}
+        categories={Array.from(categoryMap.values())}
+        brands={Array.from(brandMap.values())}
         tags={[]}
         priceBounds={priceBounds}
         hidePlaceholderBanner

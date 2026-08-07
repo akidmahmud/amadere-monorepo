@@ -170,6 +170,11 @@ export class PublicProductDto {
   hasVariants!: boolean;
   stock!: number;
   stockStatus!: StockStatus;
+  /** Whether `stock`/variant stock actually gate purchasing — false means
+   * unlimited/untracked, so the storefront must not show "Out of Stock"
+   * based on stock hitting 0 for these products. */
+  trackInventory!: boolean;
+  allowBackorder!: boolean;
   price!: string | null;
   salePrice!: string | null;
   saleStartsAt!: Date | null;

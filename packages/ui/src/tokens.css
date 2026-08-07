@@ -82,6 +82,15 @@
      once, so -50% is precisely one full set's width, giving a seamless loop
      with no JS and no library. */
   --animate-marquee: marquee 18s linear infinite;
+
+  /* AnnouncementBar's ticker — a distinct animation from `marquee` above
+     (which starts pre-visible at its natural position, fine for
+     CertificationRow's gapless badge loop but wrong for a "news ticker"
+     read as entering from the right). `100%`/`-100%` are relative to the
+     element's own width, so the content is fully off-screen at both ends —
+     a real enter-from-right, exit-left sweep with a brief blank pause
+     between cycles, instead of always-visible content that merely shifts. */
+  --animate-announcement-ticker: announcement-ticker 20s linear infinite;
 }
 
 @keyframes marquee {
@@ -90,5 +99,14 @@
   }
   to {
     transform: translateX(-50%);
+  }
+}
+
+@keyframes announcement-ticker {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-100%);
   }
 }

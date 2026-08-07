@@ -1,5 +1,5 @@
 export class CartDiscountDto {
-  source!: 'COUPON' | 'PROMOTION' | 'BUNDLE';
+  source!: 'COUPON' | 'PROMOTION';
   label!: string;
   amount!: string;
   freeShipping!: boolean;

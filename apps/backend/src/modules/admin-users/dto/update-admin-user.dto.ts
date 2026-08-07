@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AdminUserStatus } from '@amader/db';
 import { IsArray, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
-import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class UpdateAdminUserDto {
   @ApiProperty({ required: false })
@@ -17,6 +17,7 @@ export class UpdateAdminUserDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @NormalizeBdPhone()
   @IsBdPhone()
   phone?: string;
 

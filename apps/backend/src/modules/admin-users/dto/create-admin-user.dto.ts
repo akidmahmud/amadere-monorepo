@@ -7,7 +7,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class CreateAdminUserDto {
   @ApiProperty()
@@ -30,6 +30,7 @@ export class CreateAdminUserDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @NormalizeBdPhone()
   @IsBdPhone()
   phone?: string;
 

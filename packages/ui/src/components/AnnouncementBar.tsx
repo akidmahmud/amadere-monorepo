@@ -105,14 +105,13 @@ export function AnnouncementBar({
 
   return (
     <div className="relative flex h-10 items-center bg-header-green">
-      {/* News-ticker marquee: content duplicated once (same recipe as
-          CertificationRow's mobile auto-scroll) so `animate-marquee`'s
-          0 → -50% translate loops seamlessly — a single announcement
-          scrolls past on repeat, several scroll past back-to-back. */}
+      {/* News-ticker: enters fully off-screen from the right edge and
+          exits off-screen at the left (see `announcement-ticker` keyframe),
+          then pauses briefly before re-entering — a single announcement
+          sweeps past once per cycle, several sweep past back-to-back. */}
       <div className="mx-auto min-w-0 max-w-[1440px] flex-1 overflow-hidden px-8 md:px-6">
-        <div className="flex w-max animate-marquee">
+        <div className="flex w-max animate-announcement-ticker">
           {items.map((item, i) => segment(item, `a-${i}`))}
-          {items.map((item, i) => segment(item, `b-${i}`))}
         </div>
       </div>
       <button

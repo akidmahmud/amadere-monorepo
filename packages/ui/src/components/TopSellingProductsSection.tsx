@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
 import { cn } from "../lib/cn";
+import { PackPickerModal, type PackPickerOption } from "./PackPickerModal";
 import { ProductCard } from "./ProductCard";
 
 export interface TopSellingProductItem {
@@ -19,11 +21,17 @@ export interface TopSellingProductItem {
    * custom layout, out of scope for this pass). */
   saleEndsAt?: string;
   showBadge?: boolean;
-  /** Variant products: the variant id Add to Cart/Buy Now must send —
-   * without it the backend rejects the request ("requires a variantId").
-   * No inline picker here (matches the reference design), so this is
-   * always the product's own default variant. */
+  /** Variant products with more than one pack: Add to Cart/Buy Now opens a
+   * PackPickerModal to choose first (on both the mobile ProductCard grid and
+   * the desktop custom card). A single pack (or none) still adds directly
+   * via defaultPackValue below — nothing to pick. */
+  packOptions?: PackPickerOption[];
+  /** The variant id Add to Cart/Buy Now sends when there's no pack choice to
+   * make — without it the backend rejects the request ("requires a variantId"). */
   defaultPackValue?: string;
+  /** Simple (non-variant) products only — variant stock lives per-pack on
+   * packOptions[].outOfStock instead. */
+  outOfStock?: boolean;
 }
 
 export interface TopSellingProductsSectionProps {
@@ -77,12 +85,24 @@ export function TopSellingProductsSection({
   saveLabel = "Save",
   linkComponent: Link = DefaultLink,
 }: TopSellingProductsSectionProps) {
+  const [picker, setPicker] = useState<{ item: TopSellingProductItem; action: "cart" | "buyNow" } | null>(null);
+
   if (items.length === 0) return null;
+
+  function handleDesktopClick(item: TopSellingProductItem, action: "cart" | "buyNow") {
+    if ((item.packOptions?.length ?? 0) > 1) {
+      setPicker({ item, action });
+    } else if (action === "cart") {
+      onAddToCart?.(item.productId, item.defaultPackValue);
+    } else {
+      onBuyNow?.(item.productId, item.defaultPackValue);
+    }
+  }
 
   return (
     <section className="py-10 md:py-14">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <h2 className="mb-[22px] text-center font-header text-[1.3rem] font-extrabold tracking-[-0.01em] text-[#227840] md:mb-[30px] md:text-[1.6rem]">
+        <h2 className="mb-6 text-center font-serif text-[22px] font-semibold text-green md:text-[30px]">
           {heading}
         </h2>
 
@@ -97,7 +117,9 @@ export function TopSellingProductsSection({
               originalPrice={item.originalPrice}
               saleEndsAt={item.saleEndsAt}
               flagLabel={item.showBadge ? bestBadgeLabel : undefined}
+              packOptions={item.packOptions}
               defaultPackValue={item.defaultPackValue}
+              outOfStock={item.outOfStock}
               onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
               addToCartLabel={addToCartLabel}
               addToCartPending={addToCartPendingId === item.productId}
@@ -111,6 +133,7 @@ export function TopSellingProductsSection({
             const hasDiscount = item.originalPrice != null && Number(item.originalPrice) > Number(item.price);
             const isAddingToCart = addToCartPendingId === item.productId;
             const isBuyingNow = buyNowPendingId === item.productId;
+            const isOutOfStock = item.packOptions ? item.packOptions.every((o) => o.outOfStock) : !!item.outOfStock;
 
             return (
               <article
@@ -163,30 +186,38 @@ export function TopSellingProductsSection({
                   )}
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      disabled={isAddingToCart}
-                      onClick={() => onAddToCart?.(item.productId, item.defaultPackValue)}
-                      className={cn(
-                        "inline-flex h-11 items-center gap-[9px] rounded-[9px] border-[1.5px] border-header-green bg-white px-[18px] font-header text-[0.84rem] font-bold text-header-green transition-colors hover:bg-beige",
-                        isAddingToCart && "opacity-60",
-                      )}
-                    >
-                      {cartIcon}
-                      {isAddingToCart ? "…" : addToCartLabel}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isBuyingNow}
-                      onClick={() => onBuyNow?.(item.productId, item.defaultPackValue)}
-                      className={cn(
-                        "inline-flex h-11 items-center gap-[9px] rounded-[9px] bg-header-green px-5 font-header text-[0.84rem] font-bold text-white transition-colors hover:bg-header-green-dark",
-                        isBuyingNow && "opacity-60",
-                      )}
-                    >
-                      {buyIcon}
-                      {isBuyingNow ? "…" : buyNowLabel}
-                    </button>
+                    {isOutOfStock ? (
+                      <span className="inline-flex h-11 items-center rounded-[9px] border-[1.5px] border-header-line bg-beige px-[18px] font-header text-[0.84rem] font-bold text-[#9b9b9b]">
+                        Out of Stock
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isAddingToCart}
+                          onClick={() => handleDesktopClick(item, "cart")}
+                          className={cn(
+                            "inline-flex h-11 items-center gap-[9px] rounded-[9px] border-[1.5px] border-header-green bg-white px-[18px] font-header text-[0.84rem] font-bold text-header-green transition-colors hover:bg-beige",
+                            isAddingToCart && "opacity-60",
+                          )}
+                        >
+                          {cartIcon}
+                          {isAddingToCart ? "…" : addToCartLabel}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isBuyingNow}
+                          onClick={() => handleDesktopClick(item, "buyNow")}
+                          className={cn(
+                            "inline-flex h-11 items-center gap-[9px] rounded-[9px] bg-header-green px-5 font-header text-[0.84rem] font-bold text-white transition-colors hover:bg-header-green-dark",
+                            isBuyingNow && "opacity-60",
+                          )}
+                        >
+                          {buyIcon}
+                          {isBuyingNow ? "…" : buyNowLabel}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </article>
@@ -194,6 +225,21 @@ export function TopSellingProductsSection({
           })}
         </div>
       </div>
+      {picker && picker.item.packOptions && (
+        <PackPickerModal
+          productName={picker.item.name}
+          options={picker.item.packOptions}
+          defaultValue={picker.item.defaultPackValue}
+          onConfirm={(value) => {
+            if (picker.action === "cart") onAddToCart?.(picker.item.productId, value);
+            else onBuyNow?.(picker.item.productId, value);
+            setPicker(null);
+          }}
+          onClose={() => setPicker(null)}
+          confirmLabel={picker.action === "cart" ? addToCartLabel : buyNowLabel}
+          confirmPending={picker.action === "cart" ? addToCartPendingId === picker.item.productId : buyNowPendingId === picker.item.productId}
+        />
+      )}
     </section>
   );
 }

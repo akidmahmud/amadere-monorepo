@@ -32,8 +32,18 @@ export interface ProductCardData {
    * (pricing.service.ts's `effectivePrice`), so the countdown and the
    * discounted price it sits next to never disagree. */
   saleEndsAt?: string;
-  packOptions?: { value: string; label: string; price: string; originalPrice?: string }[];
+  packOptions?: { value: string; label: string; price: string; originalPrice?: string; outOfStock?: boolean }[];
   defaultPackValue?: string;
+  outOfStock: boolean;
+}
+
+// Mirrors the backend's real purchase gate (cart.service.ts's validateLine):
+// stock only blocks a purchase when trackInventory is on AND allowBackorder
+// is off. Products with trackInventory: false (untracked/unlimited) must
+// never show "Out of Stock" just because `stock` happens to read 0 — that's
+// a stale/unused number for them, not a real signal.
+function isOutOfStock(trackInventory: boolean, allowBackorder: boolean, stock: number): boolean {
+  return trackInventory && !allowBackorder && stock < 1;
 }
 
 // Variant-only products (hasVariants: true) carry no price on the product
@@ -63,6 +73,7 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
           label: p.label,
           price: p.price,
           originalPrice: p.originalPrice ?? undefined,
+          outOfStock: isOutOfStock(product.trackInventory, product.allowBackorder, p.stock),
         }))
       : undefined;
 
@@ -75,6 +86,9 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
     originalPrice: onSale ? price : undefined,
     flagLabel: product.flagLabel ? FLAG_LABEL_TEXT[product.flagLabel as unknown as ProductFlagLabel] : undefined,
     saleEndsAt: onSale ? product.saleEndsAt ?? undefined : undefined,
+    outOfStock: packOptions
+      ? packOptions.every((p) => p.outOfStock)
+      : isOutOfStock(product.trackInventory, product.allowBackorder, product.stock),
     packOptions,
     defaultPackValue: packOptions ? defaultVariantId(product) : undefined,
   };

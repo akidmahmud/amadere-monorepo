@@ -340,6 +340,9 @@ export function PromoVideoSection({
             products={products ?? items.map(() => null)}
             openIndex={openIndex}
             onClose={() => setOpenIndex(null)}
+            onAddToCart={onAddToCart}
+            addToCartPending={addToCartPending}
+            pendingProductId={pendingProductId}
             linkComponent={linkComponent}
           />
         ) : (

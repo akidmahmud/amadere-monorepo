@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CustomerBehaviour, CustomerCrmStatus, CustomerPriority } from '@amader/db';
 import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsOptional, IsString, IsUrl } from 'class-validator';
-import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class UpdateCustomerDto {
   @ApiPropertyOptional()
@@ -21,6 +21,7 @@ export class UpdateCustomerDto {
   // customer-order-event.listener.ts), not just a display value.
   @ApiPropertyOptional()
   @IsOptional()
+  @NormalizeBdPhone()
   @IsBdPhone()
   phone?: string;
 

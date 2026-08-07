@@ -19,7 +19,10 @@ export function sanitizeHomepageSectionConfig(
   if (type === "CERTIFICATION_ROW" && Array.isArray(config.items)) {
     return { ...config, items: config.items.filter((item) => item?.imageUrl) };
   }
-  if ((type === "TOP_SELLING_PRODUCTS" || type === "JUST_FOR_YOU") && Array.isArray(config.items)) {
+  if (
+    (type === "TOP_SELLING_PRODUCTS" || type === "JUST_FOR_YOU" || type === "FEATURED_DEALS") &&
+    Array.isArray(config.items)
+  ) {
     return { ...config, items: config.items.filter((item) => item?.productId) };
   }
   return config;

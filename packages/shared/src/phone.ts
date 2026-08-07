@@ -18,7 +18,7 @@ export function normalizeBdPhone(raw: string): string | null {
     local = digits;
   } else if (digits.length === 13 && digits.startsWith('8801')) {
     local = digits.slice(2);
-  } else if (digits.length === 14 && digits.startsWith('008801')) {
+  } else if (digits.length === 15 && digits.startsWith('008801')) {
     local = digits.slice(4);
   }
   if (!local || !LOCAL_RE.test(local)) return null;
@@ -28,4 +28,18 @@ export function normalizeBdPhone(raw: string): string | null {
 /** Same acceptance rule as {@link normalizeBdPhone}, without the +88 reshape — for inline form validation where the raw input should stay as typed. */
 export function isValidBdPhone(raw: string): boolean {
   return normalizeBdPhone(raw) !== null;
+}
+
+/**
+ * Same normalization as {@link normalizeBdPhone}, minus the leading "+" —
+ * the flat 880XXXXXXXXXX shape (no +, no spaces, no hyphens) used as the
+ * site-wide storage format for newly entered/updated phone numbers, and as
+ * the shape the SMS gateway's `toUser` field expects (its published API
+ * doc's own example: "880XXXXXXXXXX"). Also used to reformat already-
+ * stored legacy local-format numbers (01XXXXXXXXX) right before an SMS is
+ * actually dispatched, without touching how they're stored.
+ */
+export function toBdCompact(raw: string): string | null {
+  const e164 = normalizeBdPhone(raw);
+  return e164 ? e164.slice(1) : null;
 }

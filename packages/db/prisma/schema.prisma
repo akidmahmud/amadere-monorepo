@@ -1752,6 +1752,7 @@ enum HomepageSectionType {
   FEATURED_CATEGORIES
   TOP_SELLING_PRODUCTS
   JUST_FOR_YOU
+  FEATURED_DEALS
 }
 
 model HomepageSection {

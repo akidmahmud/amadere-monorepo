@@ -48,7 +48,11 @@ export function PriceFilter({
 
   return (
     <div>
-      <div className="mb-3.5 font-ui text-[15px] font-semibold text-ink">Price</div>
+      <div className="mb-3 border-b border-line pb-3.5">
+        <span className="inline-block border-b-2 border-header-green pb-[10px] font-ui text-[13px] font-bold uppercase tracking-[0.06em] text-ink">
+          Price Range
+        </span>
+      </div>
       <PriceRangeSlider
         min={min}
         max={max}

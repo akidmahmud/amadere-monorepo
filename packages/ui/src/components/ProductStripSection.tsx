@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
+import { PackPickerModal, type PackPickerOption } from "./PackPickerModal";
 import { formatMoney } from "./PriceTag";
 
 export interface ProductStripItem {
@@ -17,11 +18,16 @@ export interface ProductStripItem {
   /** Corner "flag" badge text (e.g. "Best Selling") — Product.flagLabel, or a
    * per-placement curated override depending on the caller. */
   flagLabel?: string;
-  /** Variant products: the variant id Add to Cart must send — without it
-   * the backend rejects the request ("requires a variantId"). No inline
-   * picker here (matches the reference design), so this is always the
-   * product's own default variant. */
+  /** Variant products with more than one pack: Add to Cart opens a
+   * PackPickerModal to choose first. A single pack (or none) still adds
+   * directly via defaultPackValue below — nothing to pick. */
+  packOptions?: PackPickerOption[];
+  /** The variant id Add to Cart sends when there's no pack choice to make —
+   * without it the backend rejects the request ("requires a variantId"). */
   defaultPackValue?: string;
+  /** Simple (non-variant) products only — variant stock lives per-pack on
+   * packOptions[].outOfStock instead. */
+  outOfStock?: boolean;
 }
 
 export interface ProductStripSectionProps {
@@ -80,6 +86,15 @@ export function ProductStripSection({
   const trackRef = useRef<HTMLDivElement>(null);
   const [pageCount, setPageCount] = useState(1);
   const [activePage, setActivePage] = useState(0);
+  const [pickerItem, setPickerItem] = useState<ProductStripItem | null>(null);
+
+  function handleAddToCartClick(item: ProductStripItem) {
+    if ((item.packOptions?.length ?? 0) > 1) {
+      setPickerItem(item);
+    } else {
+      onAddToCart?.(item.productId, item.defaultPackValue);
+    }
+  }
 
   useEffect(() => {
     const track = trackRef.current;
@@ -137,7 +152,7 @@ export function ProductStripSection({
     <section className="pt-10 md:pt-14">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
         <div className="mb-6 flex items-end justify-between gap-4 border-b border-header-line pb-3.5">
-          <h2 className="relative font-header text-base font-extrabold text-[#227840] after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:text-[1.35rem]">
+          <h2 className="relative font-serif text-[22px] font-semibold text-green after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] md:text-[30px]">
             {title}
           </h2>
           <Link
@@ -170,6 +185,7 @@ export function ProductStripSection({
               const hasDiscount = item.originalPrice != null && Number(item.originalPrice) > Number(item.price);
               const savePercent = hasDiscount ? Math.round((1 - Number(item.price) / Number(item.originalPrice)) * 100) : 0;
               const isPending = addToCartPendingId === item.productId;
+              const isOutOfStock = item.packOptions ? item.packOptions.every((o) => o.outOfStock) : !!item.outOfStock;
               return (
                 <article
                   key={item.productId}
@@ -177,12 +193,12 @@ export function ProductStripSection({
                 >
                   {/* Pixel-matched to ghorerbazar.com's `.flag-name` / `.save-label`. */}
                   {item.flagLabel && (
-                    <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#F48721] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+                    <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#FF4900] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
                       {item.flagLabel}
                     </span>
                   )}
                   {hasDiscount && (
-                    <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#34BE82] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+                    <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#008400] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
                       {savePercent}% OFF
                     </span>
                   )}
@@ -215,15 +231,22 @@ export function ProductStripSection({
                     <div className="mt-3">
                       <button
                         type="button"
-                        disabled={isPending}
-                        onClick={() => onAddToCart?.(item.productId, item.defaultPackValue)}
+                        disabled={isPending || isOutOfStock}
+                        onClick={() => handleAddToCartClick(item)}
                         className={cn(
-                          "flex h-[34px] w-full items-center justify-center gap-1.5 rounded border border-header-green bg-transparent font-sans text-xs font-semibold text-header-green transition-all duration-400 hover:bg-header-green hover:text-white md:h-[40px] md:text-sm",
+                          "flex h-[34px] w-full items-center justify-center gap-1.5 rounded border font-sans text-xs font-semibold transition-all duration-400 md:h-[40px] md:text-sm",
+                          isOutOfStock
+                            ? "cursor-not-allowed border-header-line bg-beige text-[#9b9b9b] hover:bg-beige"
+                            : "border-header-green bg-transparent text-header-green hover:bg-header-green hover:text-white",
                           isPending && "opacity-60",
                         )}
                       >
-                        {cartIcon}
-                        {isPending ? "…" : addToCartLabel}
+                        {isOutOfStock ? "Out of Stock" : (
+                          <>
+                            {cartIcon}
+                            {isPending ? "…" : addToCartLabel}
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -261,6 +284,20 @@ export function ProductStripSection({
           </div>
         )}
       </div>
+      {pickerItem && pickerItem.packOptions && (
+        <PackPickerModal
+          productName={pickerItem.name}
+          options={pickerItem.packOptions}
+          defaultValue={pickerItem.defaultPackValue}
+          onConfirm={(value) => {
+            onAddToCart?.(pickerItem.productId, value);
+            setPickerItem(null);
+          }}
+          onClose={() => setPickerItem(null)}
+          confirmLabel={addToCartLabel}
+          confirmPending={addToCartPendingId === pickerItem.productId}
+        />
+      )}
     </section>
   );
 }

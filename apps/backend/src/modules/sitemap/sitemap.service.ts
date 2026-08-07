@@ -7,7 +7,6 @@ import {
   brandPath,
   categoryPath,
   pagePath,
-  productBundlePath,
   productPath,
   tagPath,
 } from '@amader/shared';
@@ -111,7 +110,6 @@ export class SitemapService {
       categories,
       brands,
       tags,
-      bundles,
       posts,
       blogCategories,
       blogTags,
@@ -131,10 +129,6 @@ export class SitemapService {
       }),
       this.prisma.client.tag.findMany({
         where: { ...PUBLISHED, deletedAt: null },
-        select: { slug: true, updatedAt: true },
-      }),
-      this.prisma.client.productBundle.findMany({
-        where: PUBLISHED,
         select: { slug: true, updatedAt: true },
       }),
       this.prisma.client.blogPost.findMany({
@@ -167,10 +161,6 @@ export class SitemapService {
       })),
       ...brands.map((b) => ({ path: brandPath(b.slug), lastmod: b.updatedAt })),
       ...tags.map((t) => ({ path: tagPath(t.slug), lastmod: t.updatedAt })),
-      ...bundles.map((b) => ({
-        path: productBundlePath(b.slug),
-        lastmod: b.updatedAt,
-      })),
       ...posts.map((p) => ({
         path: blogPostPath(p.slug),
         lastmod: p.updatedAt,

@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Locale } from '@amader/db';
-import { PaginatedResult } from '@amader/shared';
+import { PaginatedResult, toBdCompact } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { CredentialsService } from '../../../common/credentials/credentials.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
@@ -134,17 +134,24 @@ export class SmsService implements OnModuleInit {
   // that triggered it (§3.4).
   async send(to: string, body: string, templateKey?: string): Promise<SmsLogDto> {
     const settings = await this.getSettings();
+    // Reshapes to the gateway's required 880XXXXXXXXXX `toUser` format
+    // regardless of how the number is actually stored — covers legacy
+    // local-format (01XXXXXXXXX) numbers from before the site-wide 880
+    // storage format, without needing a data migration. Falls back to the
+    // raw value if it isn't a recognizable BD number at all, so the gateway
+    // (not this code) is what reports "Invalid Dest No." for real garbage.
+    const target = toBdCompact(to) ?? to;
     if (!settings.enabled) {
       const row = await this.prisma.client.smsLog.create({
-        data: { to, body, templateKey, status: 'FAILED', provider: this.provider.name, meta: { reason: 'sms_disabled' } },
+        data: { to: target, body, templateKey, status: 'FAILED', provider: this.provider.name, meta: { reason: 'sms_disabled' } },
       });
       return toSmsLogDto(row);
     }
 
-    const result = await this.provider.send(to, body, settings.senderId || undefined);
+    const result = await this.provider.send(target, body, settings.senderId || undefined);
     const row = await this.prisma.client.smsLog.create({
       data: {
-        to,
+        to: target,
         body,
         templateKey,
         status: result.failed ? 'FAILED' : 'SENT',
@@ -155,7 +162,7 @@ export class SmsService implements OnModuleInit {
           : { id: result.id, code: result.code, codeMessage: result.codeMessage },
       },
     });
-    if (result.failed) this.logger.warn(`SMS to ${to} failed: ${result.error}`);
+    if (result.failed) this.logger.warn(`SMS to ${target} failed: ${result.error}`);
     return toSmsLogDto(row);
   }
 

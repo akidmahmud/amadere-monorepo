@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
+import { PackPickerModal } from "./PackPickerModal";
 import { PriceTag } from "./PriceTag";
 
 const COUNTDOWN_UNITS = [
@@ -46,6 +47,7 @@ export interface ProductCardPackOption {
   label: string;
   price: string;
   originalPrice?: string;
+  outOfStock?: boolean;
 }
 
 export interface ProductCardProps {
@@ -62,11 +64,14 @@ export interface ProductCardProps {
   /** ISO date string — while set and in the future, shows a live "Offer
    * ends in" countdown overlaid on the image's bottom edge. */
   saleEndsAt?: string;
-  /** Variant products: Add to Cart adds this pack directly, no inline
-   * picker — matches ghorerbazar.com's card (name/price/button only).
-   * Choosing a different pack size happens on the product detail page. */
+  /** Variant products with more than one pack: Add to Cart opens a small
+   * blurred-backdrop popup to pick the pack first, instead of guessing the
+   * default. A single pack (or none) still adds directly — nothing to pick. */
   packOptions?: ProductCardPackOption[];
   defaultPackValue?: string;
+  /** Simple (non-variant) products only — for variant products, stock is
+   * per-pack (see ProductCardPackOption.outOfStock) and this is ignored. */
+  outOfStock?: boolean;
   onAddToCart?: (packValue?: string) => void;
   addToCartLabel?: string;
   addToCartPending?: boolean;
@@ -85,6 +90,7 @@ export function ProductCard({
   saleEndsAt,
   packOptions,
   defaultPackValue,
+  outOfStock,
   onAddToCart,
   addToCartLabel = "Add to Cart",
   addToCartPending,
@@ -95,6 +101,22 @@ export function ProductCard({
   const defaultOption = packOptions?.find((o) => o.value === defaultPack);
   const displayPrice = defaultOption?.price ?? price;
   const displayOriginalPrice = defaultOption ? defaultOption.originalPrice : (originalPrice ?? undefined);
+  const hasPackChoice = (packOptions?.length ?? 0) > 1;
+  const isOutOfStock = packOptions ? packOptions.every((o) => o.outOfStock) : !!outOfStock;
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  function handleAddToCartClick() {
+    if (hasPackChoice) {
+      setPickerOpen(true);
+    } else {
+      onAddToCart?.(defaultPack);
+    }
+  }
+
+  function confirmPickedPack(value: string) {
+    onAddToCart?.(value);
+    setPickerOpen(false);
+  }
   // ghorerbazar.com's `.save-label` shows a percent-off pill whenever a card
   // has a strike-through price — computed here so every caller gets it for
   // free instead of having to pass pre-formatted text.
@@ -117,12 +139,12 @@ export function ProductCard({
           fight these exact values under plain clsx) — 10px/400, 2px 6px
           padding, 4px radius, 6px inset from each top corner. */}
       {flagLabel && (
-        <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#F48721] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+        <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#FF4900] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
           {flagLabel}
         </span>
       )}
       {computedDiscountLabel && (
-        <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#34BE82] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
+        <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#008400] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
           {computedDiscountLabel}
         </span>
       )}
@@ -157,14 +179,30 @@ export function ProductCard({
         <div className="mt-3">
           <button
             type="button"
-            disabled={addToCartPending}
-            onClick={() => onAddToCart?.(defaultPack)}
-            className="flex h-[34px] md:h-[40px] w-full items-center justify-center gap-1.5 rounded border border-header-green bg-transparent font-sans text-xs md:text-sm font-semibold text-header-green transition-all duration-400 hover:bg-header-green hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={addToCartPending || isOutOfStock}
+            onClick={handleAddToCartClick}
+            className={cn(
+              "flex h-[34px] md:h-[40px] w-full items-center justify-center gap-1.5 rounded border font-sans text-xs md:text-sm font-semibold transition-all duration-400",
+              isOutOfStock
+                ? "cursor-not-allowed border-header-line bg-beige text-[#9b9b9b] hover:bg-beige"
+                : "border-header-green bg-transparent text-header-green hover:bg-header-green hover:text-white disabled:cursor-not-allowed disabled:opacity-50",
+            )}
           >
-            {addToCartPending ? "Adding…" : addToCartLabel}
+            {isOutOfStock ? "Out of Stock" : addToCartPending ? "Adding…" : addToCartLabel}
           </button>
         </div>
       </div>
+      {pickerOpen && packOptions && (
+        <PackPickerModal
+          productName={name}
+          options={packOptions}
+          defaultValue={defaultPack}
+          onConfirm={confirmPickedPack}
+          onClose={() => setPickerOpen(false)}
+          confirmLabel={addToCartLabel}
+          confirmPending={addToCartPending}
+        />
+      )}
     </div>
   );
 }

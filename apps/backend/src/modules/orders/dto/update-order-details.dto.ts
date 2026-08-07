@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderChannel } from '@amader/db';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 // The list-view fields (Origin/Phone/Address/Division/Source) that have real
 // backing columns but no write path yet — Internal Note already has its own
@@ -14,6 +14,7 @@ export class UpdateOrderDetailsDto {
 
   @ApiPropertyOptional({ description: "Shipping address's phone" })
   @IsOptional()
+  @NormalizeBdPhone()
   @IsBdPhone()
   phone?: string;
 

@@ -10,7 +10,6 @@ const SECTIONS: { base: string; label: string }[] = [
   { base: "/tags", label: "Tags" },
   { base: "/attributes", label: "Attributes" },
   { base: "/collections", label: "Collections" },
-  { base: "/product-bundles", label: "Product Bundles" },
   { base: "/discounts", label: "Discounts" },
   { base: "/gift-vouchers", label: "Gift Vouchers" },
   { base: "/reviews", label: "Reviews" },

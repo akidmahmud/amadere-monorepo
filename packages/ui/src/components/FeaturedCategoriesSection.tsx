@@ -63,7 +63,7 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
   return (
     <section className="py-4">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <h2 className="mb-4 text-center font-header text-lg font-medium text-[#222831] md:mb-3 md:text-[22px]">
+        <h2 className="mb-6 text-center font-serif text-[22px] font-semibold text-green md:text-[30px]">
           {heading}
         </h2>
 
@@ -91,7 +91,7 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
                     <div className="h-full w-full rounded-[20px] bg-beige" />
                   )}
                 </div>
-                <div className="mt-2.5 font-header text-base font-medium text-header-ink group-hover:text-header-green">
+                <div className="mt-2.5 font-body text-sm font-medium text-header-ink group-hover:text-header-green">
                   {item.name}
                 </div>
               </Link>

@@ -8,7 +8,7 @@ export * from "./components/IconButton";
 export * from "./components/Skeleton";
 
 export * from "./components/ProductCard";
-export * from "./components/ComboCard";
+export * from "./components/PackPickerModal";
 export * from "./components/PriceTag";
 export * from "./components/QtyStepper";
 export * from "./components/PillTabs";
@@ -30,6 +30,7 @@ export * from "./components/ProductCarouselSection";
 export * from "./components/CategoryCard";
 export * from "./components/FeaturedCategoriesSection";
 export * from "./components/TopSellingProductsSection";
+export * from "./components/FeaturedDealsSection";
 export * from "./components/CircleBadgeBar";
 export * from "./components/PromoVideoSection";
 export * from "./components/CertificationRow";

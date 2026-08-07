@@ -865,6 +865,9 @@ export class ProductsService {
       ...(filters.isFeatured !== undefined
         ? { isFeatured: filters.isFeatured }
         : {}),
+      ...(filters.flagLabels?.length
+        ? { flagLabel: { in: filters.flagLabels } }
+        : {}),
       ...(filters.categoryIds?.length
         ? { categories: { some: { categoryId: { in: filters.categoryIds } } } }
         : {}),

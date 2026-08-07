@@ -11,7 +11,7 @@ import { usePathname } from "@/i18n/navigation";
 // className (not width/height props) so it can be 16px on mobile / 20px on
 // desktop, matching the reference's own two distinct icon sizes.
 const cartIcon = (
-  <svg viewBox="0 0 24 24" className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
+  <svg viewBox="0 0 24 24" className="h-[11px] w-[11px] md:h-5 md:w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
     <circle cx="8" cy="21" r="1" />
     <circle cx="19" cy="21" r="1" />
     <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
@@ -69,13 +69,13 @@ export function CartSummaryWidget() {
       type="button"
       onClick={openCart}
       aria-label="Open cart"
-      className={`fixed right-0 top-1/2 z-40 ${isBlogPost ? "hidden md:flex" : "flex"} w-[70px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-md shadow-[0_12px_24px_rgba(34,87,122,0.24)] transition-transform hover:-translate-x-[3px] md:w-[66px] ${bouncing ? "animate-bounce" : ""}`}
+      className={`fixed right-0 top-1/2 z-40 ${isBlogPost ? "hidden md:flex" : "flex"} w-[47px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-md shadow-[0_12px_24px_rgba(34,87,122,0.24)] transition-transform hover:-translate-x-[3px] md:w-[66px] ${bouncing ? "animate-bounce" : ""}`}
     >
-      <span className="flex w-full flex-col items-center gap-1 bg-green p-2 text-white md:p-3">
+      <span className="flex w-full flex-col items-center gap-[3px] bg-green p-[5px] text-white md:gap-1 md:p-3">
         {cartIcon}
-        <span className="text-center font-ui text-xs font-semibold">{itemCount} Items</span>
+        <span className="text-center font-ui text-[8px] font-semibold md:text-xs">{itemCount} Items</span>
       </span>
-      <span className="w-full bg-white px-0.5 py-[5px] text-center font-ui text-sm font-semibold text-green">
+      <span className="w-full bg-white px-[1px] py-[3px] text-center font-ui text-[9px] font-semibold text-green md:px-0.5 md:py-[5px] md:text-sm">
         {formatMoney(cart?.total ?? "0")}
       </span>
     </button>

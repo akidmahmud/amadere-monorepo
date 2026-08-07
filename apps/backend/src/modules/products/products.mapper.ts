@@ -110,6 +110,8 @@ export function toPublicProductDto(
     hasVariants: product.hasVariants,
     stock: product.stock,
     stockStatus: product.stockStatus,
+    trackInventory: product.trackInventory,
+    allowBackorder: product.allowBackorder,
     price: decimalToString(product.price),
     salePrice: decimalToString(product.salePrice),
     saleStartsAt: product.saleStartsAt,

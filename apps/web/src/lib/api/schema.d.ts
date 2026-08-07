@@ -372,6 +372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/sms/settings/secret-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminSmsController_clearSecretKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/sms/balance": {
         parameters: {
             query?: never;
@@ -1298,70 +1314,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/api/v1/product-bundles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ProductBundlesController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/product-bundles/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ProductBundlesController_getBySlug"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/product-bundles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminProductBundlesController_list"];
-        put?: never;
-        post: operations["AdminProductBundlesController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/product-bundles/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminProductBundlesController_get"];
-        put?: never;
-        post?: never;
-        delete: operations["AdminProductBundlesController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["AdminProductBundlesController_update"];
         trace?: never;
     };
     "/api/v1/search/products": {
@@ -3204,6 +3156,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/blog-posts/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_listDeleted"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/blog-posts/{id}": {
         parameters: {
             query?: never;
@@ -3246,6 +3214,22 @@ export interface paths {
         get: operations["AdminBlogPostsController_revisions"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/blog-posts/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminBlogPostsController_restore"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5702,6 +5686,8 @@ export interface components {
             hasVariants: boolean;
             stock: number;
             stockStatus: Record<string, never>;
+            trackInventory: boolean;
+            allowBackorder: boolean;
             price: string | null;
             salePrice: string | null;
             /** Format: date-time */
@@ -5738,6 +5724,8 @@ export interface components {
             hasVariants: boolean;
             stock: number;
             stockStatus: Record<string, never>;
+            trackInventory: boolean;
+            allowBackorder: boolean;
             price: string | null;
             salePrice: string | null;
             /** Format: date-time */
@@ -6068,95 +6056,6 @@ export interface components {
         };
         ReplyReviewDto: {
             message: string;
-        };
-        PublicBundleItemDto: {
-            productId: number;
-            variantId: number | null;
-            quantity: number;
-            productSlug: string;
-            productName: string;
-        };
-        PublicBundleDto: {
-            id: number;
-            slug: string;
-            imageUrl: string | null;
-            bundlePrice: string | null;
-            discountPct: string | null;
-            price: string;
-            originalPrice: string | null;
-            name: string;
-            description: string | null;
-            items: components["schemas"]["PublicBundleItemDto"][];
-        };
-        PublicBundleDetailDto: {
-            id: number;
-            slug: string;
-            imageUrl: string | null;
-            bundlePrice: string | null;
-            discountPct: string | null;
-            price: string;
-            originalPrice: string | null;
-            name: string;
-            description: string | null;
-            items: components["schemas"]["PublicBundleItemDto"][];
-            seo: components["schemas"]["ResolvedSeoDto"];
-        };
-        AdminBundleTranslationDto: {
-            locale: Record<string, never>;
-            name: string;
-            description: string | null;
-        };
-        AdminBundleItemDto: {
-            id: number;
-            productId: number;
-            variantId: number | null;
-            quantity: number;
-        };
-        AdminBundleDto: {
-            id: number;
-            slug: string;
-            imageUrl: string | null;
-            bundlePrice: string | null;
-            discountPct: string | null;
-            status: Record<string, never>;
-            translations: components["schemas"]["AdminBundleTranslationDto"][];
-            items: components["schemas"]["AdminBundleItemDto"][];
-        };
-        CreateProductBundleItemDto: {
-            productId: number;
-            variantId?: number;
-            /** @default 1 */
-            quantity: number;
-        };
-        CreateProductBundleDto: {
-            slug: string;
-            imageUrl?: string;
-            /** @description Fixed total price for the bundle (overrides discountPct if both given) */
-            bundlePrice?: number;
-            /** @description Percentage off the sum of item prices */
-            discountPct?: number;
-            /**
-             * @default DRAFT
-             * @enum {string}
-             */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
-            translations: components["schemas"]["NameDescriptionTranslationDto"][];
-            items: components["schemas"]["CreateProductBundleItemDto"][];
-        };
-        UpdateProductBundleDto: {
-            slug?: string;
-            imageUrl?: string;
-            /** @description Fixed total price for the bundle (overrides discountPct if both given) */
-            bundlePrice?: number;
-            /** @description Percentage off the sum of item prices */
-            discountPct?: number;
-            /**
-             * @default DRAFT
-             * @enum {string}
-             */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
-            translations?: components["schemas"]["NameDescriptionTranslationDto"][];
-            items?: components["schemas"]["CreateProductBundleItemDto"][];
         };
         ProductSearchHit: {
             id: number;
@@ -7342,6 +7241,15 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        AdminDeletedBlogPostDto: {
+            id: number;
+            slug: string;
+            title: string;
+            imageUrl: string | null;
+            /** Format: date-time */
+            deletedAt: string;
+            daysRemaining: number;
+        };
         BlogPostTranslationDto: {
             /** @enum {string} */
             locale: "EN" | "BN";
@@ -7756,6 +7664,7 @@ export interface components {
             promoVideoProducts: Record<string, never>[] | null;
             topSellingProducts: Record<string, never>[] | null;
             justForYouProducts: Record<string, never>[] | null;
+            featuredDealsProducts: Record<string, never>[] | null;
         };
         AdminHomepageSectionTranslationDto: {
             locale: Record<string, never>;
@@ -7779,7 +7688,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -7795,7 +7704,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -8722,6 +8631,25 @@ export interface operations {
         };
     };
     AdminSmsController_clearApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSmsController_clearSecretKey: {
         parameters: {
             query?: never;
             header?: never;
@@ -10131,6 +10059,8 @@ export interface operations {
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
+                /** @description Matches products carrying ANY of the given flag labels. */
+                flagLabels?: ("BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED")[];
                 /** @description Filters on the simple-product price column only — hasVariants products (null price on the parent row) are excluded from a price-range filter, same known limitation as elsewhere in this module. */
                 minPrice?: number;
                 maxPrice?: number;
@@ -10195,6 +10125,8 @@ export interface operations {
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
+                /** @description Matches products carrying ANY of the given flag labels. */
+                flagLabels?: ("BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED")[];
                 /** @description Filters on the simple-product price column only — hasVariants products (null price on the parent row) are excluded from a price-range filter, same known limitation as elsewhere in this module. */
                 minPrice?: number;
                 maxPrice?: number;
@@ -10306,6 +10238,8 @@ export interface operations {
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
+                /** @description Matches products carrying ANY of the given flag labels. */
+                flagLabels?: ("BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED")[];
                 /** @description Filters on the simple-product price column only — hasVariants products (null price on the parent row) are excluded from a price-range filter, same known limitation as elsewhere in this module. */
                 minPrice?: number;
                 maxPrice?: number;
@@ -10891,182 +10825,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewDto"];
-                };
-            };
-        };
-    };
-    ProductBundlesController_list: {
-        parameters: {
-            query?: {
-                locale?: "EN" | "BN";
-                page?: number;
-                pageSize?: number;
-                /** @description Only bundles that include this product — powers PDP "combo suggestions". */
-                productId?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        items?: components["schemas"]["PublicBundleDto"][];
-                        total?: number;
-                        page?: number;
-                        pageSize?: number;
-                    };
-                };
-            };
-        };
-    };
-    ProductBundlesController_getBySlug: {
-        parameters: {
-            query?: {
-                locale?: "EN" | "BN";
-            };
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PublicBundleDetailDto"];
-                };
-            };
-        };
-    };
-    AdminProductBundlesController_list: {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        items?: components["schemas"]["AdminBundleDto"][];
-                        total?: number;
-                        page?: number;
-                        pageSize?: number;
-                    };
-                };
-            };
-        };
-    };
-    AdminProductBundlesController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateProductBundleDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminBundleDto"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminBundleDto"];
-                };
-            };
-        };
-    };
-    AdminProductBundlesController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminBundleDto"];
-                };
-            };
-        };
-    };
-    AdminProductBundlesController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminProductBundlesController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateProductBundleDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminBundleDto"];
                 };
             };
         };
@@ -14678,6 +14436,33 @@ export interface operations {
             };
         };
     };
+    AdminBlogPostsController_listDeleted: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminDeletedBlogPostDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
     AdminBlogPostsController_get: {
         parameters: {
             query?: never;
@@ -14779,6 +14564,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BlogPostRevisionDto"][];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBlogPostDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBlogPostDto"];
                 };
             };
         };

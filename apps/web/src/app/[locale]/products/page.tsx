@@ -36,7 +36,7 @@ export default async function ProductsPage({
   const filters = parsePlpSearchParams(await searchParams);
   const pageSize = filters.pageSize ?? PAGE_SIZE;
 
-  const [productsRes, categoriesRes, tagsRes] = await Promise.all([
+  const [productsRes, categoriesRes, tagsRes, brandsRes] = await Promise.all([
     safeGet("/api/v1/products", {
       params: {
         query: {
@@ -45,6 +45,8 @@ export default async function ProductsPage({
           pageSize,
           categoryIds: filters.categoryIds,
           tagIds: filters.tagIds,
+          brandId: filters.brandId,
+          flagLabels: filters.flagLabels,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
           sort: filters.sort,
@@ -57,6 +59,9 @@ export default async function ProductsPage({
     safeGet("/api/v1/tags", {
       params: { query: { locale: localeParam, pageSize: 20 } },
     }),
+    safeGet("/api/v1/brands", {
+      params: { query: { locale: localeParam, pageSize: 50 } },
+    }),
   ]);
 
   const products = (productsRes.data?.items ?? []).map(toProductCardData);
@@ -65,6 +70,8 @@ export default async function ProductsPage({
     []) as components["schemas"]["PublicCategoryDto"][];
   const tags = (tagsRes.data?.items ??
     []) as components["schemas"]["PublicTagDto"][];
+  const brands = (brandsRes.data?.items ??
+    []) as components["schemas"]["PublicBrandDto"][];
 
   return (
     <main className="flex-1">
@@ -76,6 +83,7 @@ export default async function ProductsPage({
         products={products}
         categories={categories}
         tags={tags}
+        brands={brands}
         title="All Products"
         breadcrumbItems={[{ label: "Home", href: "/" }, { label: "All Products" }]}
       />

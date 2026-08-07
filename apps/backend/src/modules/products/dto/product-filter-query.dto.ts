@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { ProductFlagLabel } from '@amader/db';
 
 export enum ProductSort {
   BEST_SELLING = 'BEST_SELLING',
@@ -41,6 +42,12 @@ export class ProductFilterQueryDto {
   @Type(() => Boolean)
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ type: [String], enum: ProductFlagLabel, description: 'Matches products carrying ANY of the given flag labels.' })
+  @IsOptional()
+  @Transform(toArray)
+  @IsEnum(ProductFlagLabel, { each: true })
+  flagLabels?: ProductFlagLabel[];
 
   @ApiPropertyOptional({
     description:

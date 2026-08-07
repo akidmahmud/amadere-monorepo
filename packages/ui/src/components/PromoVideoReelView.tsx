@@ -10,6 +10,9 @@ export interface PromoVideoReelViewProps {
   products: (PromoVideoProduct | null)[];
   openIndex: number;
   onClose: () => void;
+  onAddToCart?: (productId: number) => void;
+  addToCartPending?: boolean;
+  pendingProductId?: number;
   linkComponent?: LinkComponent;
 }
 
@@ -27,15 +30,38 @@ function ReelSlide({
   product,
   active,
   onActive,
+  onAddToCart,
+  addToCartPending,
+  pendingProductId,
   linkComponent: Link = DefaultLink,
 }: {
   card: PromoVideoCard;
   product: PromoVideoProduct | null;
   active: boolean;
   onActive: () => void;
+  onAddToCart?: (productId: number) => void;
+  addToCartPending?: boolean;
+  pendingProductId?: number;
   linkComponent?: LinkComponent;
 }) {
+  const isPending = !!(addToCartPending && product != null && pendingProductId === product.productId);
   const ref = useRef<HTMLDivElement>(null);
+
+  // No visible cart drawer to confirm the add here (the reel is a full-screen
+  // z-[100] overlay above CartDrawer's z-[60]/[70], and it deliberately stays
+  // open — this isn't a PDP navigation) — so the button briefly says
+  // "Added ✓" itself, right when isPending flips back to false.
+  const [justAdded, setJustAdded] = useState(false);
+  const wasPendingRef = useRef(false);
+  useEffect(() => {
+    if (wasPendingRef.current && !isPending) {
+      setJustAdded(true);
+      const timer = setTimeout(() => setJustAdded(false), 1500);
+      wasPendingRef.current = isPending;
+      return () => clearTimeout(timer);
+    }
+    wasPendingRef.current = isPending;
+  }, [isPending]);
 
   useEffect(() => {
     const el = ref.current;
@@ -52,19 +78,31 @@ function ReelSlide({
       {/* Raised on mobile to clear MobileStickyFooter's fixed bottom nav
           (~55px tall) — was bottom-6, which sat underneath/behind it. */}
       {product && (
-        <div className="absolute inset-x-4 bottom-[76px] flex items-center gap-3 rounded-2xl bg-white p-3 shadow-lg md:bottom-6">
-          {product.imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-[10px] object-cover" />
-          )}
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="font-ui text-sm font-semibold text-ink">{product.name}</span>
+        <div className="absolute inset-x-4 bottom-[76px] flex flex-col gap-2 rounded-2xl bg-white p-3 shadow-lg md:bottom-6">
+          <div className="flex items-center gap-3">
+            {product.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-[10px] object-cover" />
+            )}
+            <span className="line-clamp-2 min-w-0 flex-1 font-ui text-sm font-semibold text-ink">{product.name}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
             <Link
               href={`/products/${product.slug}`}
-              className="font-ui text-xs font-semibold text-green underline underline-offset-2"
+              className="shrink-0 font-ui text-xs font-semibold text-green underline underline-offset-2"
             >
               আরো জানুন
             </Link>
+            {onAddToCart && (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => onAddToCart(product.productId)}
+                className="h-8 shrink-0 rounded-full bg-green px-4 font-ui text-xs font-semibold text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPending ? "Adding…" : justAdded ? "Added ✓" : "Add to Cart"}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -74,9 +112,18 @@ function ReelSlide({
 
 // Facebook/Instagram/TikTok-style full-screen reel viewer: one video per
 // full-height snapped section, swipe up/down between them, product overlay
-// (image, name, learn-more link only — no add-to-cart here, that stays a
-// PDP action) pinned to the bottom of whichever slide has one.
-export function PromoVideoReelView({ items, products, openIndex, onClose, linkComponent }: PromoVideoReelViewProps) {
+// (image, name, learn-more link, and a small Add to Cart CTA) pinned to the
+// bottom of whichever slide has one.
+export function PromoVideoReelView({
+  items,
+  products,
+  openIndex,
+  onClose,
+  onAddToCart,
+  addToCartPending,
+  pendingProductId,
+  linkComponent,
+}: PromoVideoReelViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(openIndex);
 
@@ -114,6 +161,9 @@ export function PromoVideoReelView({ items, products, openIndex, onClose, linkCo
             product={products[i] ?? null}
             active={activeIndex === i}
             onActive={() => setActiveIndex(i)}
+            onAddToCart={onAddToCart}
+            addToCartPending={addToCartPending}
+            pendingProductId={pendingProductId}
             linkComponent={linkComponent}
           />
         ))}

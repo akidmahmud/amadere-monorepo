@@ -133,6 +133,10 @@ export class HomepageSectionsService {
           section.type === 'JUST_FOR_YOU'
             ? await this.resolveConfigItemProducts(section.config, locale)
             : null;
+        const featuredDealsProducts =
+          section.type === 'FEATURED_DEALS'
+            ? await this.resolveConfigItemProducts(section.config, locale)
+            : null;
         return toPublicHomepageSectionDto(
           section,
           collection,
@@ -140,6 +144,7 @@ export class HomepageSectionsService {
           promoVideoProducts,
           topSellingProducts,
           justForYouProducts,
+          featuredDealsProducts,
         );
       }),
     );
@@ -155,9 +160,9 @@ export class HomepageSectionsService {
     return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
   }
 
-  // Shared by TOP_SELLING_PRODUCTS and JUST_FOR_YOU — both store an
-  // admin-picked `config.items: {productId, showBadge}[]` and need the same
-  // "resolve ids, preserve order/length" treatment.
+  // Shared by TOP_SELLING_PRODUCTS, JUST_FOR_YOU, and FEATURED_DEALS — all
+  // three store an admin-picked `config.items: {productId, showBadge}[]`
+  // and need the same "resolve ids, preserve order/length" treatment.
   private async resolveConfigItemProducts(
     config: unknown,
     locale: Locale,

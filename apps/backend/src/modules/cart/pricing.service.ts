@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Discount, Locale, Prisma } from '@amader/db';
+import { Discount, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 const Decimal = Prisma.Decimal;
@@ -14,7 +14,7 @@ export interface PricedLine {
 }
 
 export interface AppliedDiscount {
-  source: 'COUPON' | 'PROMOTION' | 'BUNDLE';
+  source: 'COUPON' | 'PROMOTION';
   label: string;
   amount: DecimalValue;
   freeShipping?: boolean;
@@ -67,7 +67,6 @@ export class PricingService {
     const discounts: AppliedDiscount[] = [];
     let couponError: string | null = null;
 
-    discounts.push(...(await this.bundleDiscounts(pricedLines)));
     discounts.push(...(await this.promotionDiscounts(pricedLines, subTotal)));
 
     if (options.couponCode) {
@@ -149,55 +148,6 @@ export class PricingService {
         lineTotal: unitPrice.times(line.quantity),
       };
     });
-  }
-
-  // "Buy together save" — a bundle applies when every one of its items is in
-  // the cart with sufficient quantity. Applied once per bundle (no stacking
-  // multiples of the same bundle; keep the engine predictable).
-  private async bundleDiscounts(
-    lines: PricedLine[],
-  ): Promise<AppliedDiscount[]> {
-    if (lines.length < 2) return [];
-
-    const bundles = await this.prisma.client.productBundle.findMany({
-      where: { status: 'PUBLISHED' },
-      include: { items: true, translations: true },
-    });
-
-    const applied: AppliedDiscount[] = [];
-    for (const bundle of bundles) {
-      const matchedLines: { line: PricedLine; needed: number }[] = [];
-      const matches = bundle.items.every((item) => {
-        const line = lines.find(
-          (l) =>
-            l.productId === item.productId &&
-            (item.variantId === null || l.variantId === item.variantId),
-        );
-        if (!line || line.quantity < item.quantity) return false;
-        matchedLines.push({ line, needed: item.quantity });
-        return true;
-      });
-      if (!matches) continue;
-
-      const itemsSum = matchedLines.reduce(
-        (sum, { line, needed }) => sum.plus(line.unitPrice.times(needed)),
-        new Decimal(0),
-      );
-
-      let amount = new Decimal(0);
-      if (bundle.bundlePrice && itemsSum.greaterThan(bundle.bundlePrice)) {
-        amount = itemsSum.minus(bundle.bundlePrice);
-      } else if (bundle.discountPct) {
-        amount = itemsSum.times(bundle.discountPct).dividedBy(100);
-      }
-      if (amount.lessThanOrEqualTo(0)) continue;
-
-      const name =
-        bundle.translations.find((t) => t.locale === Locale.EN)?.name ??
-        bundle.slug;
-      applied.push({ source: 'BUNDLE', label: name, amount });
-    }
-    return applied;
   }
 
   private async promotionDiscounts(

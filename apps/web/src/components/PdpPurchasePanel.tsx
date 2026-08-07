@@ -94,12 +94,12 @@ export function PdpPurchasePanel({
   const stockStatus = selectedVariant ? selectedVariant.stockStatus : product.stockStatus;
   const stockCount = selectedVariant ? selectedVariant.stock : product.stock;
   const isBackorder = (stockStatus as unknown as string) === "ON_BACKORDER";
-  // The real stock count, not the `stockStatus` label — that field is a
-  // manually-set admin column (products.mapper.ts passes it through as-is)
-  // that nothing recomputes when `stock` actually hits 0, so it can go
-  // stale. ON_BACKORDER stays an explicit admin override that keeps buying
-  // open even at 0 stock (unchanged pre-existing behavior).
-  const outOfStock = stockCount < 1 && !isBackorder;
+  // Mirrors the backend's real purchase gate (cart.service.ts's
+  // validateLine): stock only blocks a purchase when trackInventory is on
+  // AND allowBackorder is off. Previously used `stockCount < 1 &&
+  // !isBackorder` alone, which showed "Out of Stock" even for untracked
+  // products (trackInventory: false) whose `stock` column is unused/stale.
+  const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
 
   function addItem(onSuccess: () => void) {
     addToCart.mutate(

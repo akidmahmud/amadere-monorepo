@@ -1,6 +1,6 @@
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
-import { IsBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class CreateAddressDto {
   @ApiPropertyOptional({ description: 'e.g. "Home", "Office"' })
@@ -14,6 +14,7 @@ export class CreateAddressDto {
 
   @ApiProperty()
   @IsString()
+  @NormalizeBdPhone()
   @IsBdPhone()
   phone!: string;
 

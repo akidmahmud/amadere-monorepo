@@ -15,46 +15,78 @@ export interface FilterCheckboxGroupProps {
   heading: ReactNode;
   options: FilterCheckboxOption[];
   linkComponent?: LinkComponent;
+  /** Renders as a native <details>/<summary> instead of an always-open div —
+   * pixel-matched to ghorerbazar.com's collapsible sidebar widgets. */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }
 
-const checkIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-2.5 w-2.5">
-    <path d="m5 12 5 5 9-11" />
+const chevronIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-3.5 w-3.5">
+    <path d="m6 9 6 6 6-6" />
   </svg>
 );
 
-// Multi-select: each option's `href` is computed by the caller as the
-// resulting filter set with this one toggled on/off (see ProductListing's
-// toggleId), so clicking any number of these composes rather than replaces.
-export function FilterCheckboxGroup({ heading, options, linkComponent: Link = DefaultLink }: FilterCheckboxGroupProps) {
+// Pixel-matched to ghorerbazar.com's sidebar facet widgets (`.widget-title`):
+// uppercase 13px/700 heading with a green underline sized to the text itself
+// (their orange, replaced with Amader's own green) plus a full-width light
+// divider below the title row, +/- collapse via native <details>.
+export function FilterCheckboxGroup({
+  heading,
+  options,
+  linkComponent: Link = DefaultLink,
+  collapsible,
+  defaultOpen = true,
+}: FilterCheckboxGroupProps) {
+  const titleRow = (
+    <>
+      <span className="inline-block border-b-2 border-header-green pb-[10px] font-ui text-[13px] font-bold uppercase tracking-[0.06em] text-ink">
+        {heading}
+      </span>
+      <span className="shrink-0 transition-transform group-open:rotate-180">{chevronIcon}</span>
+    </>
+  );
+
+  const list = options.map((option) => (
+    <Link
+      key={option.href}
+      href={option.href}
+      className="flex items-center gap-2 py-1.5 font-body text-[13.5px] text-ink"
+    >
+      <span
+        className={cn(
+          "grid h-4 w-4 shrink-0 place-items-center rounded-[4px] border",
+          option.active ? "border-header-green bg-header-green text-white" : "border-line",
+        )}
+      >
+        {option.active && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="h-2.5 w-2.5">
+            <path d="m5 12 5 5 9-11" />
+          </svg>
+        )}
+      </span>
+      <span className={cn(option.active && "underline")}>{option.label}</span>
+      {option.count !== undefined && <span className="text-xs text-muted">({option.count})</span>}
+    </Link>
+  ));
+
+  if (collapsible) {
+    return (
+      <details className="group" open={defaultOpen}>
+        <summary className="mb-3 flex cursor-pointer list-none items-end justify-between border-b border-line pb-3.5 text-header-green [&::-webkit-details-marker]:hidden">
+          {titleRow}
+        </summary>
+        {list}
+      </details>
+    );
+  }
+
   return (
     <div>
-      <div className="mb-3.5 flex items-center justify-between font-ui text-[15px] font-semibold text-ink">
-        {heading}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-4 w-4">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+      <div className="mb-3 flex items-end justify-between border-b border-line pb-3.5 text-header-green">
+        {titleRow}
       </div>
-      {options.map((option) => (
-        <Link
-          key={option.href}
-          href={option.href}
-          className="flex items-center gap-2 py-1.5 font-body text-[13.5px] text-ink"
-        >
-          <span
-            className={cn(
-              "grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[3px] border",
-              option.active ? "border-green bg-green text-white" : "border-line",
-            )}
-          >
-            {option.active && checkIcon}
-          </span>
-          <span className={cn(option.active && "underline")}>{option.label}</span>
-          {option.count !== undefined && (
-            <span className="text-xs text-muted">({option.count})</span>
-          )}
-        </Link>
-      ))}
+      {list}
     </div>
   );
 }

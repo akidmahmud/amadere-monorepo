@@ -19,10 +19,6 @@ export function tagPath(slug: string): string {
   return `/tags/${slug}`;
 }
 
-export function productBundlePath(slug: string): string {
-  return `/product-bundles/${slug}`;
-}
-
 export function blogPostPath(slug: string): string {
   return `/blog/${slug}`;
 }
