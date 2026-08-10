@@ -10,7 +10,16 @@ export interface BlogCardData {
   categoryLabel?: string;
   authorName?: string;
   publishedAtLabel?: string;
+  /** Real tracked views, or a stable per-post placeholder if the post has none yet — see toBlogCardData(). */
+  viewCount?: number;
 }
+
+const eyeIcon = (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 
 export interface BlogCardProps {
   post: BlogCardData;
@@ -33,11 +42,19 @@ export function BlogCard({ post, linkComponent: Link = DefaultLink }: BlogCardPr
           {post.title}
         </Link>
         {post.excerpt && <p className="mb-3 line-clamp-2 font-body text-sm text-muted">{post.excerpt}</p>}
-        {(post.authorName || post.publishedAtLabel) && (
-          <p className="font-ui text-xs text-muted">
-            {post.authorName}
-            {post.authorName && post.publishedAtLabel && " · "}
-            {post.publishedAtLabel}
+        {(post.authorName || post.publishedAtLabel || post.viewCount != null) && (
+          <p className="flex items-center justify-between gap-2 font-ui text-xs text-muted">
+            <span>
+              {post.authorName}
+              {post.authorName && post.publishedAtLabel && " · "}
+              {post.publishedAtLabel}
+            </span>
+            {post.viewCount != null && (
+              <span className="flex shrink-0 items-center gap-1">
+                {eyeIcon}
+                {post.viewCount.toLocaleString()}
+              </span>
+            )}
           </p>
         )}
       </div>

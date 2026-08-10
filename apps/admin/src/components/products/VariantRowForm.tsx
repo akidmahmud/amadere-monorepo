@@ -10,19 +10,24 @@ export interface VariantRowFormProps {
   onSubmit: (variant: VariantInput) => void;
   submitLabel: string;
   pending?: boolean;
+  /** Product-wide default cost price — variants have no cost of their own, so this is the only basis for a per-variant profit figure. undefined = no cost entered. */
+  costPerItem?: number;
 }
 
 // One attribute-value picker per selected axis (e.g. Size, Color) plus the
 // variant's own sku/price/stock — shared between the "build variants before
 // the product exists yet" flow (new product) and the "add one more variant"
 // flow (existing product), since the row shape is identical either way.
-export function VariantRowForm({ attributes, onSubmit, submitLabel, pending }: VariantRowFormProps) {
+export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, costPerItem }: VariantRowFormProps) {
   const [valueByAttribute, setValueByAttribute] = useState<Record<number, number>>({});
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [stock, setStock] = useState("0");
   const [isDefault, setIsDefault] = useState(false);
+
+  const profit = costPerItem !== undefined && price ? Number(price) - costPerItem : null;
+  const saleProfit = costPerItem !== undefined && salePrice ? Number(salePrice) - costPerItem : null;
 
   const canSubmit = attributes.length > 0 && attributes.every((a) => valueByAttribute[a.id]) && price;
 
@@ -99,6 +104,30 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending }: V
           className="num h-9 w-20 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500"
         />
       </label>
+      {costPerItem !== undefined && (
+        <>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-secondary">Profit</span>
+            <span
+              className={`flex h-9 w-20 items-center rounded-sm border border-border bg-surface-2 px-2 text-xs font-semibold ${
+                profit !== null && profit < 0 ? "text-danger" : "text-success"
+              }`}
+            >
+              {profit !== null ? `৳${profit.toFixed(2)}` : "—"}
+            </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-secondary">Sale profit</span>
+            <span
+              className={`flex h-9 w-20 items-center rounded-sm border border-border bg-surface-2 px-2 text-xs font-semibold ${
+                saleProfit !== null && saleProfit < 0 ? "text-danger" : "text-success"
+              }`}
+            >
+              {saleProfit !== null ? `৳${saleProfit.toFixed(2)}` : "—"}
+            </span>
+          </label>
+        </>
+      )}
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold text-secondary">Stock</span>
         <input

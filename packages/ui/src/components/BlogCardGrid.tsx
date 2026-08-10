@@ -9,7 +9,16 @@ export interface BlogCardGridItem {
   imageUrl?: string;
   categoryLabel?: string;
   publishedAtLabel?: string;
+  /** Real tracked views, or a stable per-post placeholder if the post has none yet — see toBlogCardData(). */
+  viewCount?: number;
 }
+
+const eyeIcon = (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 
 export interface BlogCardGridProps {
   posts: BlogCardGridItem[];
@@ -43,7 +52,18 @@ function BlogCard({
       <h3 className="mb-1.5 line-clamp-2 font-serif text-lg font-semibold leading-snug text-ink group-hover:text-green">
         {post.title}
       </h3>
-      {post.publishedAtLabel && <p className="font-ui text-sm text-muted">{post.publishedAtLabel}</p>}
+      {(post.publishedAtLabel || post.viewCount != null) && (
+        <p className="flex items-center justify-center gap-2 font-ui text-sm text-muted">
+          {post.publishedAtLabel}
+          {post.publishedAtLabel && post.viewCount != null && <span aria-hidden>·</span>}
+          {post.viewCount != null && (
+            <span className="inline-flex items-center gap-1">
+              {eyeIcon}
+              {post.viewCount.toLocaleString()}
+            </span>
+          )}
+        </p>
+      )}
     </Link>
   );
 }
@@ -53,9 +73,7 @@ function BlogCard({
 // layout. Desktop is a static grid; mobile switches to the same horizontal
 // Carousel used elsewhere on this page (Related Products, Categories) since
 // a 1-per-row stacked list of these bigger cards would make the section
-// very tall. No view-count shown — this codebase doesn't track post views
-// (confirmed against blog-mapper.ts), and a fabricated number would be
-// worse than omitting it.
+// very tall.
 export function BlogCardGrid({ posts, viewAllHref, viewAllLabel = "View All", linkComponent: Link = DefaultLink }: BlogCardGridProps) {
   if (posts.length === 0) return null;
 

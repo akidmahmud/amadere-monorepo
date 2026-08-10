@@ -42,10 +42,14 @@ const recoveryIcon = <Icon name="shopping_cart_checkout" />;
 const reportsIcon = <Icon name="bar_chart" />;
 const accountsIcon = <Icon name="account_balance" />;
 const newsletterIcon = <Icon name="mail" />;
+const newsletterCampaignsIcon = <Icon name="campaign" />;
+const newsletterTemplatesIcon = <Icon name="dashboard_customize" />;
+const newsletterSegmentsIcon = <Icon name="groups" />;
 const customersIcon = <Icon name="people" />;
 const customerTiersIcon = <Icon name="military_tech" />;
 const analyticsIcon = <Icon name="monitoring" />;
 const whatsappIcon = <Icon name="chat" />;
+const promoVideosIcon = <Icon name="smart_display" />;
 
 function label(key: string, text: string): AppNavEntry {
   return { type: "label", key, label: text };
@@ -77,7 +81,11 @@ export const adminNav: AppNavEntry[] = [
   { key: "attributes", label: "Attributes", href: "/attributes", icon: attributesIcon },
 
   label("marketing-label", "Marketing"),
+  { key: "newsletter-campaigns", label: "Newsletter Campaigns", href: "/newsletter-campaigns", icon: newsletterCampaignsIcon },
+  { key: "newsletter-templates", label: "Newsletter Templates", href: "/newsletter-templates", icon: newsletterTemplatesIcon },
+  { key: "newsletter-segments", label: "Newsletter Segments", href: "/newsletter-segments", icon: newsletterSegmentsIcon },
   { key: "homepage-sections", label: "Homepage Sections", href: "/homepage-sections", icon: homepageSectionsIcon },
+  { key: "promo-videos", label: "Promo Videos", href: "/promo-videos", icon: promoVideosIcon },
   { key: "discounts", label: "Discounts", href: "/discounts", icon: discountsIcon },
   { key: "gift-vouchers", label: "Gift Vouchers", href: "/gift-vouchers", icon: giftVouchersIcon },
   { key: "whatsapp", label: "WhatsApp", href: "/whatsapp", icon: whatsappIcon },

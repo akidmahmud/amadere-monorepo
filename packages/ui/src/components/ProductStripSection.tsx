@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
-import { PackPickerModal, type PackPickerOption } from "./PackPickerModal";
-import { formatMoney } from "./PriceTag";
+import type { PackPickerOption } from "./PackPickerModal";
+import { SiteProductCard } from "./SiteProductCard";
 
 export interface ProductStripItem {
   href: string;
@@ -57,13 +57,6 @@ const viewAllIcon = (
     <polyline points="12 5 19 12 12 19" />
   </svg>
 );
-const cartIcon = (
-  <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="21" r="1" />
-    <circle cx="19" cy="21" r="1" />
-    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-  </svg>
-);
 
 // Pixel-matched to amader-home-top.html's "Amader Modhu — Natural Honey"
 // category product strip — used by TABBED_COLLECTION_CAROUSEL, which is no
@@ -86,15 +79,6 @@ export function ProductStripSection({
   const trackRef = useRef<HTMLDivElement>(null);
   const [pageCount, setPageCount] = useState(1);
   const [activePage, setActivePage] = useState(0);
-  const [pickerItem, setPickerItem] = useState<ProductStripItem | null>(null);
-
-  function handleAddToCartClick(item: ProductStripItem) {
-    if ((item.packOptions?.length ?? 0) > 1) {
-      setPickerItem(item);
-    } else {
-      onAddToCart?.(item.productId, item.defaultPackValue);
-    }
-  }
 
   useEffect(() => {
     const track = trackRef.current;
@@ -150,9 +134,9 @@ export function ProductStripSection({
 
   return (
     <section className="pt-10 md:pt-14">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-6">
+      <div className="mx-auto max-w-[1440px] px-[2px] md:px-[3px]">
         <div className="mb-6 flex items-end justify-between gap-4 border-b border-header-line pb-3.5">
-          <h2 className="relative font-serif text-[22px] font-semibold text-green after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] md:text-[30px]">
+          <h2 className="relative min-w-0 whitespace-nowrap font-serif text-[14px] font-semibold text-green after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:text-[22px] md:text-[30px]">
             {title}
           </h2>
           <Link
@@ -181,78 +165,28 @@ export function ProductStripSection({
             onScroll={handleScroll}
             className="flex snap-x snap-mandatory gap-5 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {items.map((item) => {
-              const hasDiscount = item.originalPrice != null && Number(item.originalPrice) > Number(item.price);
-              const savePercent = hasDiscount ? Math.round((1 - Number(item.price) / Number(item.originalPrice)) * 100) : 0;
-              const isPending = addToCartPendingId === item.productId;
-              const isOutOfStock = item.packOptions ? item.packOptions.every((o) => o.outOfStock) : !!item.outOfStock;
-              return (
-                <article
-                  key={item.productId}
-                  className="group relative flex min-w-[150px] flex-none basis-[calc((100%-12px)/2)] snap-start flex-col justify-between rounded border border-header-line bg-white p-2 font-sans text-[#020101] transition-shadow duration-300 sm:basis-[calc((100%-40px)/3)] lg:basis-[calc((100%-60px)/4)] xl:basis-[calc((100%-80px)/5)]"
-                >
-                  {/* Pixel-matched to ghorerbazar.com's `.flag-name` / `.save-label`. */}
-                  {item.flagLabel && (
-                    <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#FF4900] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
-                      {item.flagLabel}
-                    </span>
-                  )}
-                  {hasDiscount && (
-                    <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#008400] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
-                      {savePercent}% OFF
-                    </span>
-                  )}
-
-                  <Link href={item.href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
-                    {item.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]" />
-                    ) : (
-                      <div className="h-full w-full bg-beige" />
-                    )}
-                  </Link>
-
-                  <div className="flex flex-1 flex-col justify-between pt-3">
-                    <h3 className="mb-2 line-clamp-2 min-h-[34px] font-sans text-sm font-medium text-[#020101] transition-colors hover:text-header-green md:min-h-[38px] md:text-base">
-                      <Link href={item.href}>
-                        {item.name}
-                      </Link>
-                    </h3>
-
-                    <div className="my-1 flex items-center gap-2">
-                      <span className="font-sans text-sm font-bold text-header-green md:text-[18px]">{formatMoney(item.price)}</span>
-                      {hasDiscount && (
-                        <span className="font-sans text-sm font-medium text-[#767a7a] line-through md:text-[18px]">
-                          {formatMoney(item.originalPrice!)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        disabled={isPending || isOutOfStock}
-                        onClick={() => handleAddToCartClick(item)}
-                        className={cn(
-                          "flex h-[34px] w-full items-center justify-center gap-1.5 rounded border font-sans text-xs font-semibold transition-all duration-400 md:h-[40px] md:text-sm",
-                          isOutOfStock
-                            ? "cursor-not-allowed border-header-line bg-beige text-[#9b9b9b] hover:bg-beige"
-                            : "border-header-green bg-transparent text-header-green hover:bg-header-green hover:text-white",
-                          isPending && "opacity-60",
-                        )}
-                      >
-                        {isOutOfStock ? "Out of Stock" : (
-                          <>
-                            {cartIcon}
-                            {isPending ? "…" : addToCartLabel}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+            {items.map((item) => (
+              <div
+                key={item.productId}
+                className="min-w-[150px] flex-none basis-[calc((100%-12px)/2)] snap-start sm:basis-[calc((100%-40px)/3)] lg:basis-[calc((100%-60px)/4)] xl:basis-[calc((100%-80px)/5)]"
+              >
+                <SiteProductCard
+                  href={item.href}
+                  name={item.name}
+                  imageUrl={item.imageUrl}
+                  price={item.price}
+                  originalPrice={item.originalPrice}
+                  flagLabel={item.flagLabel}
+                  packOptions={item.packOptions}
+                  defaultPackValue={item.defaultPackValue}
+                  outOfStock={item.outOfStock}
+                  addToCartLabel={addToCartLabel}
+                  addToCartPending={addToCartPendingId === item.productId}
+                  onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
+                  linkComponent={Link}
+                />
+              </div>
+            ))}
           </div>
 
           {pageCount > 1 && (
@@ -284,20 +218,6 @@ export function ProductStripSection({
           </div>
         )}
       </div>
-      {pickerItem && pickerItem.packOptions && (
-        <PackPickerModal
-          productName={pickerItem.name}
-          options={pickerItem.packOptions}
-          defaultValue={pickerItem.defaultPackValue}
-          onConfirm={(value) => {
-            onAddToCart?.(pickerItem.productId, value);
-            setPickerItem(null);
-          }}
-          onClose={() => setPickerItem(null)}
-          confirmLabel={addToCartLabel}
-          confirmPending={addToCartPendingId === pickerItem.productId}
-        />
-      )}
     </section>
   );
 }

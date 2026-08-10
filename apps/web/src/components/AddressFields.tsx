@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Input, Select } from "@amader/ui";
 import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
@@ -10,9 +11,16 @@ import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 export function AddressFields({
   prefix,
   onFraudResult,
+  noteField,
 }: {
   prefix: "shippingAddress" | "billingAddress";
   onFraudResult?: (result: FraudPreflightResult | null) => void;
+  // Order-level note has no per-address equivalent (there's only one
+  // customerNote per order) — CheckoutForm renders it into the shipping
+  // address's slot only, keeping the note in the customer's requested
+  // field order (…thana, note, alternative phone, recipient email) without
+  // duplicating a note field on the billing address form.
+  noteField?: ReactNode;
 }) {
   const {
     register,
@@ -30,13 +38,7 @@ export function AddressFields({
 
   return (
     <div>
-      <div className="mb-3.5 grid grid-cols-2 gap-3">
-        <div>
-          <Input placeholder="Your Full Name *" {...register(`${prefix}.recipientName`)} />
-          {fieldErrors?.recipientName && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.recipientName.message}</p>
-          )}
-        </div>
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Input placeholder="017*********" {...register(`${prefix}.phone`)} />
           {fieldErrors?.phone && (
@@ -44,11 +46,12 @@ export function AddressFields({
           )}
           {onFraudResult && <CheckoutFraudBadge phone={watch(`${prefix}.phone`) ?? ""} onResult={onFraudResult} />}
         </div>
-      </div>
-
-      <div className="mb-3.5">
-        <Input placeholder="Email (optional)" {...register(`${prefix}.email`)} />
-        {fieldErrors?.email && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.email.message}</p>}
+        <div>
+          <Input placeholder="Your Full Name *" {...register(`${prefix}.recipientName`)} />
+          {fieldErrors?.recipientName && (
+            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.recipientName.message}</p>
+          )}
+        </div>
       </div>
 
       <div className="mb-3.5">
@@ -58,7 +61,7 @@ export function AddressFields({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Controller
             name={`${prefix}.division`}
@@ -95,9 +98,27 @@ export function AddressFields({
         </div>
       </div>
 
-      <div className="mt-3.5 grid grid-cols-2 gap-3">
-        <Input placeholder="Thana / Area (optional)" {...register(`${prefix}.area`)} />
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <Input placeholder="Thana / Area *" {...register(`${prefix}.area`)} />
+          {fieldErrors?.area && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.area.message}</p>}
+        </div>
         <Input placeholder="Landmark (optional)" {...register(`${prefix}.landmark`)} />
+      </div>
+
+      {noteField}
+
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <Input placeholder="Alternative Phone (optional)" {...register(`${prefix}.alternativePhone`)} />
+          {fieldErrors?.alternativePhone && (
+            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.alternativePhone.message}</p>
+          )}
+        </div>
+        <div>
+          <Input placeholder="Recipient Email (optional)" {...register(`${prefix}.email`)} />
+          {fieldErrors?.email && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.email.message}</p>}
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 // Client-side mirror of apps/backend/.../seo-score.util.ts — duplicated
 // (not imported) because it's small, pure logic with no DB access, and
 // needs to run on every keystroke for live feedback without a network
-// round-trip. Deterministic, rule-based — no AI involved.
+// round-trip. Deterministic, rule-based — no AI involved. Shared by
+// ProductSeoTab and SeoMetaCard (categories/collections/etc).
 export interface SeoCheck {
   label: string;
   passed: boolean;

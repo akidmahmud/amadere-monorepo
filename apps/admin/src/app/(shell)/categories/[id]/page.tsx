@@ -145,7 +145,14 @@ export default function EditCategoryPage({ params }: { params: Promise<{ id: str
         />
       </form>
 
-      <SeoMetaCard entityType="CATEGORY" entityId={categoryId} />
+      <SeoMetaCard
+        entityType="CATEGORY"
+        entityId={categoryId}
+        slug={slug}
+        previewPath="/categories"
+        fallbackTitle={nameEn}
+        fallbackDescription={descriptionEn}
+      />
     </div>
   );
 }

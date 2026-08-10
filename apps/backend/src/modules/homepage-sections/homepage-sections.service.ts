@@ -121,10 +121,6 @@ export class HomepageSectionsService {
           section.collectionId
             ? await this.collections.getResolvedById(section.collectionId, locale)
             : null;
-        const promoVideoProducts =
-          section.type === 'PROMO_VIDEO'
-            ? await this.resolvePromoVideoProducts(section.config, locale)
-            : null;
         const topSellingProducts =
           section.type === 'TOP_SELLING_PRODUCTS'
             ? await this.resolveConfigItemProducts(section.config, locale)
@@ -141,23 +137,12 @@ export class HomepageSectionsService {
           section,
           collection,
           locale,
-          promoVideoProducts,
           topSellingProducts,
           justForYouProducts,
           featuredDealsProducts,
         );
       }),
     );
-  }
-
-  private async resolvePromoVideoProducts(
-    config: unknown,
-    locale: Locale,
-  ): Promise<(PublicProductDto | null)[]> {
-    const productIds = extractPromoVideoProductIds(config);
-    const uniqueIds = [...new Set(productIds.filter((id): id is number => id !== null))];
-    const resolved = await this.products.getManyByIds(uniqueIds, locale);
-    return productIds.map((id) => (id !== null ? (resolved.get(id) ?? null) : null));
   }
 
   // Shared by TOP_SELLING_PRODUCTS, JUST_FOR_YOU, and FEATURED_DEALS — all
@@ -190,16 +175,6 @@ export class HomepageSectionsService {
     });
     if (!collection) throw new BadRequestException('Collection not found');
   }
-}
-
-function extractPromoVideoProductIds(config: unknown): (number | null)[] {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) return [];
-  const videos = (config as Record<string, unknown>).videos;
-  if (!Array.isArray(videos)) return [];
-  return videos.map((v) => {
-    const id = v && typeof v === 'object' ? (v as Record<string, unknown>).productId : undefined;
-    return typeof id === 'number' ? id : null;
-  });
 }
 
 function extractConfigItemProductIds(config: unknown): (number | null)[] {

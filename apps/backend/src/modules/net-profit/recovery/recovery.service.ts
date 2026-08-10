@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@amader/db';
-import { PaginatedResult } from '@amader/shared';
+import { PaginatedResult, phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
@@ -235,8 +235,8 @@ export class RecoveryService {
         select: { id: true },
       });
       where.OR = [
-        { phone: { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
+        ...phoneLookupCandidates(q).map((c) => ({ phone: { contains: c, mode: 'insensitive' as const } })),
+        { email: { contains: q, mode: 'insensitive' as const } },
         ...(matchingCustomers.length > 0 ? [{ customerId: { in: matchingCustomers.map((c) => c.id) } }] : []),
       ];
     }

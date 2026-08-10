@@ -10,6 +10,7 @@ import {
   Carousel,
   FeaturedCategoriesSection,
   HeroCarousel,
+  HomeBannerTwo,
   SectionHeading,
   TestimonialsBento,
   ViewAllLink,
@@ -55,24 +56,30 @@ type HomepageSectionType =
   | "CERTIFICATION_ROW"
   | "TESTIMONIAL_BENTO"
   | "CIRCLE_BADGE_BAR"
-  | "PROMO_VIDEO"
   | "TABBED_COLLECTION_CAROUSEL"
   | "AD_BANNER"
   | "FEATURED_CATEGORIES"
   | "TOP_SELLING_PRODUCTS"
   | "JUST_FOR_YOU"
-  | "FEATURED_DEALS";
+  | "FEATURED_DEALS"
+  | "HOME_BANNER_TWO";
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
-  "type" | "config" | "promoVideoProducts" | "topSellingProducts" | "justForYouProducts" | "featuredDealsProducts"
+  "type" | "config" | "topSellingProducts" | "justForYouProducts" | "featuredDealsProducts"
 > & {
   type: HomepageSectionType;
   config: Record<string, unknown>;
-  promoVideoProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
   topSellingProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
   justForYouProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
   featuredDealsProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
+};
+
+// Fixed homepage position now (§ "Promo Videos" is no longer a reorderable
+// HomepageSection type) — its own type, its own fetch, spliced into the
+// section render list at a fixed index rather than sorted in by sortOrder.
+type PublicPromoVideo = components["schemas"]["PublicPromoVideoDto"] & {
+  source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "FACEBOOK" | "CUSTOM_URL" | "R2" | "GIF";
 };
 
 // Same 1440px container / 16px-mobile-24px-desktop gutter as the header, nav,
@@ -82,6 +89,10 @@ type HomepageSection = Omit<
 // and more inset than the header/hero/Featured-Categories/Top-Selling rows
 // above it. One container for the whole homepage now.
 const WRAPPER = "mx-auto w-full max-w-[1440px] px-4 md:px-6";
+// 1/8 of WRAPPER's side padding (halved three times) — Ad Banner/
+// Certification Row/Blog Teaser/Testimonial Bento/Exclusive Deals only, per
+// request; every other WRAPPER section keeps the full px-4/md:px-6.
+const WRAPPER_HALF = "mx-auto w-full max-w-[1440px] px-[2px] md:px-[3px]";
 
 function renderSection(
   section: HomepageSection,
@@ -106,6 +117,16 @@ function renderSection(
             stripLinkUrl={config.stripLinkUrl as string | undefined}
             linkComponent={AppLink}
           />
+        </div>
+      );
+    }
+
+    case "HOME_BANNER_TWO": {
+      const slides = config.slides as { imageUrl: string; mobileImageUrl?: string; linkUrl?: string }[] | undefined;
+      if (!slides || slides.length === 0) return null;
+      return (
+        <div className="mx-auto w-full max-w-[1920px]" key={section.id}>
+          <HomeBannerTwo slides={slides} linkComponent={AppLink} />
         </div>
       );
     }
@@ -250,7 +271,7 @@ function renderSection(
         .filter((item): item is NonNullable<typeof item> => item !== null);
       if (items.length === 0) return null;
       return (
-        <div className={`${WRAPPER} pt-10 md:pt-14`} key={section.id}>
+        <div className={`${WRAPPER_HALF} pt-10 md:pt-14`} key={section.id}>
           <FeaturedDealsSectionClient
             heading={section.heading ?? "Exclusive Deals"}
             viewAllHref="/products"
@@ -273,7 +294,7 @@ function renderSection(
       );
       if (selected.length === 0) return null;
       return (
-        <div className={`${WRAPPER} py-9`} key={section.id}>
+        <div className={`${WRAPPER_HALF} py-9`} key={section.id}>
           <SectionHeading className="mb-10">{section.heading ?? "আমাদের ব্লগ"}</SectionHeading>
           <BlogCardGrid
             posts={selected.map((post) => toBlogCardData(post))}
@@ -289,7 +310,7 @@ function renderSection(
       const rawItems = config.items as { imageUrl?: string; label?: string }[] | undefined;
       const items = rawItems?.map((item) => ({ imageUrl: toDisplayImageUrl(item.imageUrl), label: item.label }));
       return (
-        <div className={`${WRAPPER} py-9`} key={section.id}>
+        <div className={`${WRAPPER_HALF} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "Our Certification"}</SectionHeading>
           <CertificationRow items={items} />
         </div>
@@ -303,7 +324,7 @@ function renderSection(
       const reviews = rawReviews?.map((r) => ({ ...r, avatarUrl: toDisplayImageUrl(r.avatarUrl) }));
       if (!reviews || reviews.length === 0) return null;
       return (
-        <div className={`${WRAPPER} py-9`} key={section.id}>
+        <div className={`${WRAPPER_HALF} py-9`} key={section.id}>
           <SectionHeading>{section.heading ?? "500+ Happy Clients"}</SectionHeading>
           <TestimonialsBento reviews={reviews} />
         </div>
@@ -320,26 +341,11 @@ function renderSection(
       );
     }
 
-    case "PROMO_VIDEO": {
-      const items = config.videos as
-        | { source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "R2" | "GIF"; url: string; thumbnailUrl?: string }[]
-        | undefined;
-      if (!items || items.length === 0) return null;
-      const products = (section.promoVideoProducts ?? items.map(() => null)).map((p) =>
-        p ? toPromoVideoProductData(p) : null,
-      );
-      return (
-        <div className={WRAPPER} key={section.id}>
-          <PromoVideoSectionClient heading={section.heading ?? undefined} items={items} products={products} />
-        </div>
-      );
-    }
-
     case "AD_BANNER": {
       const images = config.images as { imageUrl: string; linkUrl?: string }[] | undefined;
       if (!images || images.length === 0) return null;
       return (
-        <div className={`${WRAPPER} py-5`} key={section.id}>
+        <div className={`${WRAPPER_HALF} py-5`} key={section.id}>
           <AdBannerSection images={images} linkComponent={AppLink} />
         </div>
       );
@@ -365,6 +371,24 @@ function renderSection(
     default:
       return null;
   }
+}
+
+// No longer a HomepageSection type (fixed position now, own admin page under
+// Marketing → Promo Videos) — rendered from its own fetch below, spliced
+// into the section list at a fixed index rather than sorted in by sortOrder.
+function renderPromoVideos(videos: PublicPromoVideo[]): ReactNode {
+  if (videos.length === 0) return null;
+  const items = videos.map((v) => ({ source: v.source, url: v.url, thumbnailUrl: v.thumbnailUrl ?? undefined }));
+  const products = videos.map((v) => (v.product ? toPromoVideoProductData(v.product) : null));
+  return (
+    <div className={WRAPPER} key="promo-videos">
+      <PromoVideoSectionClient items={items} products={products} />
+      {videos.flatMap((v) => v.structuredData).map((item, i) => (
+        // eslint-disable-next-line react/no-danger
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }} />
+      ))}
+    </div>
+  );
 }
 
 export default async function Home({
@@ -393,7 +417,7 @@ export default async function Home({
       })
     : Promise.resolve({ data: undefined });
 
-  const [sectionsRes, categoriesRes, blogRes, firstTagProductsRes] = await Promise.all([
+  const [sectionsRes, categoriesRes, blogRes, promoVideosRes, firstTagProductsRes] = await Promise.all([
     safeGet("/api/v1/homepage-sections", { params: { query: { locale: localeParam } } }),
     safeGet("/api/v1/categories", {
       params: { query: { locale: localeParam, pageSize: 10 } },
@@ -401,6 +425,7 @@ export default async function Home({
     safeGet("/api/v1/blog-posts", {
       params: { query: { locale: localeParam, pageSize: 8 } },
     }),
+    safeGet("/api/v1/promo-videos", { params: { query: { locale: localeParam } } }),
     firstTagProductsPromise,
   ]);
 
@@ -409,11 +434,23 @@ export default async function Home({
     []) as components["schemas"]["PublicCategoryDto"][];
   const blogPosts = (blogRes.data?.items ??
     []) as components["schemas"]["PublicBlogPostSummaryDto"][];
+  const promoVideos = (promoVideosRes.data ?? []) as unknown as PublicPromoVideo[];
   const firstTagProducts = firstTagProductsRes.data?.items ?? [];
+
+  // Promo Videos has a fixed homepage position (no longer a reorderable
+  // HomepageSection) — kept at the same visual slot it occupied before the
+  // switch: the 5th section on the page (previously sortOrder 4).
+  const PROMO_VIDEOS_SLOT = 4;
+  const beforePromoVideos = sections.slice(0, PROMO_VIDEOS_SLOT);
+  const afterPromoVideos = sections.slice(PROMO_VIDEOS_SLOT);
 
   return (
     <main className="flex-1">
-      {sections.map((section) => (
+      {beforePromoVideos.map((section) => (
+        <Fragment key={section.id}>{renderSection(section, { categories, blogPosts })}</Fragment>
+      ))}
+      {renderPromoVideos(promoVideos)}
+      {afterPromoVideos.map((section) => (
         <Fragment key={section.id}>{renderSection(section, { categories, blogPosts })}</Fragment>
       ))}
 

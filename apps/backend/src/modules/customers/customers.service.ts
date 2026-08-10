@@ -18,7 +18,7 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { AddressDto, toAddressDto } from './address.mapper';
 import { Prisma } from '@amader/db';
-import { PaginatedResult } from '@amader/shared';
+import { PaginatedResult, phoneLookupCandidates, toBdCompact } from '@amader/shared';
 import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
 import { toE164Bd } from '../../common/phone.util';
 import { CALL_PROVIDER } from './providers/call-provider.interface';
@@ -210,7 +210,11 @@ export class CustomersService {
                 OR: [
                   { firstName: { contains: word, mode: 'insensitive' as const } },
                   { lastName: { contains: word, mode: 'insensitive' as const } },
-                  { phone: { contains: word } },
+                  // Searches every stored phone format, not just whichever
+                  // one the admin happened to type — phoneLookupCandidates
+                  // falls back to [word] unchanged for a non-phone-shaped
+                  // search term, so name/email searches are unaffected.
+                  ...phoneLookupCandidates(word).map((c) => ({ phone: { contains: c } })),
                   { email: { contains: word, mode: 'insensitive' as const } },
                 ],
               })),
@@ -403,8 +407,8 @@ export class CustomersService {
   }
 
   async createCustomer(dto: CreateCustomerDto): Promise<AdminCustomerDto> {
-    const existing = await this.prisma.client.customer.findUnique({
-      where: { phone: dto.phone },
+    const existing = await this.prisma.client.customer.findFirst({
+      where: { phone: { in: phoneLookupCandidates(dto.phone) } },
     });
     if (existing) {
       throw new ConflictException(`A customer with phone "${dto.phone}" already exists`);
@@ -444,7 +448,7 @@ export class CustomersService {
     // would otherwise throw an uncaught unique-constraint error (P2002)
     // instead of a friendly message.
     if (dto.phone !== undefined && dto.phone !== existing.phone) {
-      const conflict = await this.prisma.client.customer.findUnique({ where: { phone: dto.phone } });
+      const conflict = await this.prisma.client.customer.findFirst({ where: { phone: { in: phoneLookupCandidates(dto.phone) } } });
       if (conflict && conflict.id !== id) {
         throw new ConflictException(`A customer with phone "${dto.phone}" already exists`);
       }
@@ -576,9 +580,15 @@ export class CustomersService {
     let imported = 0;
     let skipped = 0;
     for (const row of rows) {
-      const [name, phone, email, dob] = row;
-      if (!phone || phone.toLowerCase() === 'phone') continue;
-      const existing = await this.prisma.client.customer.findUnique({ where: { phone } });
+      const [name, rawPhone, email, dob] = row;
+      if (!rawPhone || rawPhone.toLowerCase() === 'phone') continue;
+      // Unlike every DTO-driven write, a CSV cell never passes through
+      // @NormalizeBdPhone() — normalize here so an import doesn't create
+      // rows in whatever ad-hoc format the source spreadsheet happened to
+      // use, and so the existence check below catches a legacy-format
+      // duplicate too.
+      const phone = toBdCompact(rawPhone) ?? rawPhone;
+      const existing = await this.prisma.client.customer.findFirst({ where: { phone: { in: phoneLookupCandidates(rawPhone) } } });
       if (existing) {
         skipped++;
         continue;

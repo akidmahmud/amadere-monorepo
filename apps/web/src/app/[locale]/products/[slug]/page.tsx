@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import {
-  Carousel,
   ProductGallery,
   ProductTabs,
   RatingStars,
@@ -12,7 +11,8 @@ import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
 import { WriteReviewForm } from "@/components/WriteReviewForm";
-import { RelatedProductCard } from "@/components/RelatedProductCard";
+import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
+import { CrossSellProductGrid } from "@/components/CrossSellProductGrid";
 import { FrequentlyBoughtTogether } from "@/components/FrequentlyBoughtTogether";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
@@ -214,7 +214,7 @@ export default async function ProductPage({
             string concatenation, since `cn` here is clsx without
             tailwind-merge). */}
         <div className="mx-1 mb-10 rounded-xl bg-white p-2 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0 sm:p-6">
-          <div className="grid grid-cols-[6fr_5fr] items-start gap-11 max-lg:grid-cols-1">
+          <div className="grid grid-cols-2 items-start gap-5 max-lg:grid-cols-1 max-lg:gap-3">
             <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
             {/* Experimental: info column (everything below the gallery)
@@ -297,13 +297,7 @@ export default async function ProductPage({
               is what actually guarantees exactly N full cards show at rest —
               without it, autoplay/swipes can stop at any scroll offset and
               show partial cards peeking on both edges. */}
-          <Carousel autoplayMs={7000} centerWhenFits={false} showArrows={false}>
-            {relatedProducts.map((p) => (
-              <div key={p.href} className="w-[calc(50%-9px)] shrink-0 snap-start sm:w-[calc(33.333%-12px)] lg:w-[calc(20%-14.4px)]">
-                <RelatedProductCard {...p} accent="green" />
-              </div>
-            ))}
-          </Carousel>
+          <RelatedProductsCarousel products={relatedProducts} />
         </div>
       )}
 
@@ -315,11 +309,7 @@ export default async function ProductPage({
               More Products →
             </AppLink>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {crossSellProducts.map((p) => (
-              <RelatedProductCard key={p.href} {...p} accent="green" />
-            ))}
-          </div>
+          <CrossSellProductGrid products={crossSellProducts} />
         </div>
       )}
 

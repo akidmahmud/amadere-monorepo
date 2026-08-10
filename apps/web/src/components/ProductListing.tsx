@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { FilterCheckboxGroup, FilterDrawer, PlaceholderBanner } from "@amader/ui";
+import { FilterCheckboxGroup, FilterDrawer, PlaceholderBanner, SiteProductCard } from "@amader/ui";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { AppLink } from "@/components/AppLink";
 import { PerPageSelect } from "@/components/PerPageSelect";
 import { PlpPager } from "@/components/PlpPager";
-import { PlpProductCard } from "@/components/PlpProductCard";
 import { PriceFilter } from "@/components/PriceFilter";
 import { SortSelect } from "@/components/SortSelect";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
@@ -74,8 +73,9 @@ const DEFAULT_CONTAINER_CLASSNAME = "mx-auto max-w-[1180px] px-5";
 // Pixel-matched to ghorerbazar.com/collections/honey-2: each sidebar facet is
 // its own boxed white widget (not one shared card), a toolbar that sits
 // beside the sidebar (not spanning its width) with a plain "Sort By :" +
-// per-page select, a 4-col/16px-gap grid of PlpProductCard, and a bottom
-// "Showing X - Y of Z results" line under pagination.
+// per-page select, a grid of the site's one shared ProductCard (same
+// component homepage/search/PDP use), and a bottom "Showing X - Y of Z
+// results" line under pagination.
 export function ProductListing({
   basePath,
   filters,
@@ -222,11 +222,12 @@ export function ProductListing({
           ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
               {products.map((product) => (
-                <PlpProductCard
+                <SiteProductCard
                   key={product.href}
                   {...product}
+                  linkComponent={AppLink}
                   addToCartPending={isPending && pendingProductId === product.productId}
-                  onAddToCart={handleAddToCart}
+                  onAddToCart={(packValue) => handleAddToCart(product.productId, packValue)}
                 />
               ))}
             </div>

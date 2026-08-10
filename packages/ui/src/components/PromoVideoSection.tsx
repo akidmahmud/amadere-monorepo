@@ -9,7 +9,7 @@ import { PromoVideoModal, type PromoVideoProduct } from "./PromoVideoModal";
 import { PromoVideoReelView } from "./PromoVideoReelView";
 import { formatMoney } from "./PriceTag";
 
-export type PromoVideoSource = "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "R2" | "GIF";
+export type PromoVideoSource = "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "FACEBOOK" | "CUSTOM_URL" | "R2" | "GIF";
 
 export interface PromoVideoCard {
   source: PromoVideoSource;
@@ -21,7 +21,7 @@ export interface PromoVideoSectionProps {
   heading?: string;
   items: PromoVideoCard[];
   products?: (PromoVideoProduct | null)[];
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, variantId?: string) => void;
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
@@ -53,7 +53,9 @@ function instagramCode(url: string): string | null {
 // embed's own play button rather than truly autoplaying — a platform
 // restriction, not something fixable from this side.
 export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; muted?: boolean }) {
-  if (card.source === "R2") {
+  // CUSTOM_URL is a direct-to-file link (like R2, just not uploaded through
+  // this app's own media library) — same native <video> treatment.
+  if (card.source === "R2" || card.source === "CUSTOM_URL") {
     return (
       <video
         key={card.url}
@@ -93,6 +95,12 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
     const id = tiktokId(card.url);
     const src = id ? `https://www.tiktok.com/embed/v2/${id}?autoplay=1` : card.url;
     return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} />;
+  }
+  if (card.source === "FACEBOOK") {
+    // Facebook's plugin embed (no oEmbed ID extraction needed — it takes the
+    // post/reel URL itself as a query param, unlike YouTube/TikTok/Instagram).
+    const src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(card.url)}&autoplay=1&mute=${muted ? 1 : 0}`;
+    return <EmbedFrame src={src} allow="autoplay; encrypted-media" thumbnailUrl={card.thumbnailUrl} />;
   }
   // INSTAGRAM
   const code = instagramCode(card.url);
@@ -243,7 +251,7 @@ function PromoVideoCardTile({
       // mid-card. aspect-ratio scales the height so a narrower card isn't
       // disproportionately tall. sm+ (640px) reverts to the original fixed
       // reel dimensions.
-      className="relative aspect-[377/600] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:aspect-auto sm:h-[600px] sm:w-[377px]"
+      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:aspect-auto sm:h-[600px] sm:w-[377px]"
     >
       {isInView ? (
         <PlayingMedia card={card} />

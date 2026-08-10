@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Pager, ProductCard } from "@amader/ui";
+import { Pager, SiteProductCard } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
@@ -64,7 +64,7 @@ export function SearchResults() {
           </p>
           <div className="grid grid-cols-4 gap-4.5 max-lg:grid-cols-3 max-sm:grid-cols-2">
             {products.map((product) => (
-              <ProductCard
+              <SiteProductCard
                 key={product.href}
                 {...product}
                 addToCartPending={isPending && pendingProductId === product.productId}

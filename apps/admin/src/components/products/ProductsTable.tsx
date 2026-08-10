@@ -226,6 +226,10 @@ export function ProductsTable({
               // always-zero parent fields, which is what produced the confusing
               // "0 stock, yet In Stock" pill combination.
               const variantStock = p.hasVariants ? p.variants.reduce((sum, v) => sum + v.stock, 0) : p.stock;
+              // Reserved = held by pending (not yet COMPLETED) orders — stock itself
+              // only decrements on completion, so this is the only place that shows
+              // a marketer/salesperson what's actually still sellable right now.
+              const variantReserved = p.hasVariants ? p.variants.reduce((sum, v) => sum + v.reservedStock, 0) : p.reservedStock;
               const displayPrice = p.hasVariants ? (p.variants.find((v) => v.isDefault) ?? p.variants[0])?.price : p.price;
               const isExpanded = expanded.has(p.id);
               return (
@@ -265,6 +269,11 @@ export function ProductsTable({
                     <td className="px-2.5 py-3.5 align-middle whitespace-nowrap">
                       <div className="font-bold text-text">{variantStock}</div>
                       <Pill className={`mt-[5px] ${STOCK_PILL[p.stockStatus] ?? "bg-surface-2 text-secondary"}`}>{STOCK_LABEL[p.stockStatus] ?? p.stockStatus}</Pill>
+                      {variantReserved > 0 && (
+                        <div className="mt-[3px] text-[0.68rem] font-semibold text-[#e0821c]">
+                          {variantReserved} on hold &middot; {variantStock - variantReserved} available
+                        </div>
+                      )}
                     </td>
                     <td className="px-2.5 py-3.5 align-middle whitespace-nowrap font-bold text-text">৳{displayPrice ?? "—"}</td>
                     <td className="px-2.5 py-3.5 align-middle whitespace-nowrap">
@@ -316,7 +325,14 @@ export function ProductsTable({
                             {p.variants.map((v) => (
                               <tr key={v.id}>
                                 <td className="px-2.5 py-1.5 text-[0.75rem] font-bold text-text">{v.sku ?? `Variant #${v.id}`}</td>
-                                <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">{v.stock}</td>
+                                <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
+                                  {v.stock}
+                                  {v.reservedStock > 0 && (
+                                    <span className="ml-1 font-semibold text-[#e0821c]">
+                                      ({v.reservedStock} on hold &middot; {v.stock - v.reservedStock} available)
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="px-2.5 py-1.5">
                                   <Pill className={STOCK_PILL[v.stockStatus] ?? "bg-surface-2 text-secondary"}>{STOCK_LABEL[v.stockStatus] ?? v.stockStatus}</Pill>
                                 </td>

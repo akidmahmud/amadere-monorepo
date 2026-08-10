@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { phoneLookupCandidates, toBdCompact } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TokenService } from '../../common/auth/token.service';
 import { TokenPair } from '../../common/auth/token.types';
@@ -46,18 +47,28 @@ export class CustomerAuthService {
   //     finishes signing up (Customer.phone is @unique).
   //   - a phone that already belongs to a *verified* account still 409s.
   async register(dto: RegisterDto): Promise<RegisterPendingDto> {
-    const existingPhone = await this.prisma.client.customer.findUnique({
-      where: { phone: dto.phone },
+    const existingPhone = await this.prisma.client.customer.findFirst({
+      where: { phone: { in: phoneLookupCandidates(dto.phone) } },
     });
     if (existingPhone?.phoneVerifiedAt) {
-      throw new ConflictException('Phone number already registered');
+      // `details.field` lets the client show this under the phone input
+      // specifically instead of a generic form-level banner — same
+      // structured-extras mechanism the Blocker Manager popup already uses
+      // (see HttpExceptionFilter's `details` passthrough).
+      throw new ConflictException({
+        message: 'Phone number already registered',
+        details: { field: 'phone' },
+      });
     }
     if (dto.email) {
       const existingEmail = await this.prisma.client.customer.findUnique({
         where: { email: dto.email },
       });
       if (existingEmail && existingEmail.id !== existingPhone?.id) {
-        throw new ConflictException('Email already registered');
+        throw new ConflictException({
+          message: 'Email already registered',
+          details: { field: 'email' },
+        });
       }
     }
 
@@ -83,8 +94,8 @@ export class CustomerAuthService {
   }
 
   async login(dto: LoginDto): Promise<TokenPair> {
-    const customer = await this.prisma.client.customer.findUnique({
-      where: { phone: dto.phone },
+    const customer = await this.prisma.client.customer.findFirst({
+      where: { phone: { in: phoneLookupCandidates(dto.phone) } },
     });
     if (
       !customer?.passwordHash ||
@@ -133,7 +144,11 @@ export class CustomerAuthService {
       customer = await this.prisma.client.customer.create({
         data: {
           email: isEmail ? dto.identifier : undefined,
-          phone: isEmail ? undefined : dto.identifier,
+          // This is the passwordless-signup fallback path, so unlike every
+          // other Customer.phone write, `dto.identifier` never went through
+          // a @NormalizeBdPhone()-decorated DTO field — normalize it here
+          // instead, same compact storage format as everywhere else.
+          phone: isEmail ? undefined : (toBdCompact(dto.identifier) ?? dto.identifier),
           emailVerifiedAt: isEmail ? new Date() : undefined,
           phoneVerifiedAt: isEmail ? undefined : new Date(),
         },
@@ -195,11 +210,17 @@ export class CustomerAuthService {
   }
 
   private async findByIdentifier(identifier: string) {
-    return isEmailFormat(identifier)
-      ? this.prisma.client.customer.findUnique({ where: { email: identifier } })
-      : this.prisma.client.customer.findUnique({
-          where: { phone: identifier },
-        });
+    if (isEmailFormat(identifier)) {
+      return this.prisma.client.customer.findUnique({ where: { email: identifier } });
+    }
+    // otp-request/otp-verify DTOs don't run @NormalizeBdPhone() on
+    // `identifier` (it's ambiguously phone-or-email, so it can't be) —
+    // phoneLookupCandidates() normalizes internally regardless of which
+    // raw shape the client actually sent, same as everywhere else a phone
+    // is looked up rather than freshly written.
+    return this.prisma.client.customer.findFirst({
+      where: { phone: { in: phoneLookupCandidates(identifier) } },
+    });
   }
 
   private async markVerified(

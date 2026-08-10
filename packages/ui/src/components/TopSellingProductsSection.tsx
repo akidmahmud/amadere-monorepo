@@ -5,7 +5,7 @@ import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
 import { cn } from "../lib/cn";
 import { PackPickerModal, type PackPickerOption } from "./PackPickerModal";
-import { ProductCard } from "./ProductCard";
+import { SiteProductCard } from "./SiteProductCard";
 
 export interface TopSellingProductItem {
   href: string;
@@ -108,7 +108,7 @@ export function TopSellingProductsSection({
 
         <div className="grid grid-cols-2 gap-3 md:hidden">
           {items.map((item) => (
-            <ProductCard
+            <SiteProductCard
               key={item.productId}
               href={item.href}
               name={item.name}

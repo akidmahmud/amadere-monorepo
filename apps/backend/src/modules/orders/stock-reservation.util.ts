@@ -13,18 +13,27 @@ export async function reserveStock(
 ): Promise<void> {
   if (quantity <= 0) return;
 
+  // trackInventory/allowBackorder are product-wide settings (the admin form
+  // only ever edits them once, at the product level — ProductVariant has no
+  // columns of its own for either) — so a variant's availability must honor
+  // its PARENT's flags, not just its own stock column. Bug fixed here: the
+  // variant branch previously ignored both flags entirely and unconditionally
+  // required stock - reservedStock >= quantity, so a backorder-enabled (or
+  // even trackInventory-disabled) variant with 0 stock could never be
+  // reserved — checkout always 409'd regardless of the product's settings,
+  // while the simple-product branch below already honored them correctly.
+  const product = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+  if (!product.trackInventory) return;
+
   if (variantId) {
     const affected = await tx.$executeRaw`
       UPDATE product_variants SET reserved_stock = reserved_stock + ${quantity}
-      WHERE id = ${variantId} AND stock - reserved_stock >= ${quantity}
+      WHERE id = ${variantId} AND (${product.allowBackorder} OR stock - reserved_stock >= ${quantity})
     `;
     if (affected === 0)
       throw new ConflictException(`Insufficient stock for variant #${variantId}`);
     return;
   }
-
-  const product = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-  if (!product.trackInventory) return;
 
   const affected = await tx.$executeRaw`
     UPDATE products SET reserved_stock = reserved_stock + ${quantity}

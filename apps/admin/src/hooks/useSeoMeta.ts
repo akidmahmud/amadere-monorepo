@@ -11,7 +11,8 @@ export type SeoEntityType =
   | "BLOG_POST"
   | "BLOG_CATEGORY"
   | "PAGE"
-  | "COLLECTION";
+  | "COLLECTION"
+  | "PROMO_VIDEO";
 export const SEO_ENTITY_TYPES: SeoEntityType[] = [
   "PRODUCT",
   "CATEGORY",
@@ -22,6 +23,7 @@ export const SEO_ENTITY_TYPES: SeoEntityType[] = [
   "BLOG_CATEGORY",
   "PAGE",
   "COLLECTION",
+  "PROMO_VIDEO",
 ];
 
 export type SeoMeta = components["schemas"]["SeoMetaDto"];

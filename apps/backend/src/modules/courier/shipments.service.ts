@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CourierProviderName, Prisma, ShipmentStatus } from '@amader/db';
-import { mapRawCourierStatus } from '@amader/shared';
+import { mapRawCourierStatus, phoneLookupCandidates } from '@amader/shared';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -150,11 +150,14 @@ export class ShipmentsService {
       invoiceNumber: order.orderNumber,
       recipientName: shippingAddress.recipientName,
       recipientPhone: shippingAddress.phone,
+      alternativePhone: shippingAddress.alternativePhone ?? undefined,
+      recipientEmail: shippingAddress.email ?? undefined,
       recipientAddress: addressParts.join(', '),
       codAmount,
       weightKg: weight,
       note: order.customerNote ?? undefined,
       itemDescription,
+      deliveryType: 0,
       pathao: pathaoOptions,
       redx: dto.redx,
     });
@@ -340,8 +343,8 @@ export class ShipmentsService {
                 some: {
                   type: 'SHIPPING',
                   OR: [
-                    { phone: { contains: search } },
-                    { recipientName: { contains: search, mode: 'insensitive' } },
+                    ...phoneLookupCandidates(search).map((c) => ({ phone: { contains: c } })),
+                    { recipientName: { contains: search, mode: 'insensitive' as const } },
                   ],
                 },
               },

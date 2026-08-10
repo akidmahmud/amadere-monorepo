@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button, Card, Icon } from "@amader/admin-ui";
 import { useSettings, useUpsertSetting, type Setting } from "@/hooks/useSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+import { ProductCardStyleSettings } from "@/components/ProductCardStyleSettings";
 
 const SETTINGS_LINKS = [
   { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
@@ -135,6 +136,7 @@ export default function SettingsPage() {
     <>
       <SettingsLinksGrid />
       <TwoFactorSettings />
+      <ProductCardStyleSettings />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-secondary">{settings?.length ?? 0} settings</p>

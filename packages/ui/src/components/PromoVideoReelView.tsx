@@ -10,7 +10,7 @@ export interface PromoVideoReelViewProps {
   products: (PromoVideoProduct | null)[];
   openIndex: number;
   onClose: () => void;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, variantId?: string) => void;
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
@@ -39,7 +39,7 @@ function ReelSlide({
   product: PromoVideoProduct | null;
   active: boolean;
   onActive: () => void;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, variantId?: string) => void;
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
@@ -97,7 +97,7 @@ function ReelSlide({
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => onAddToCart(product.productId)}
+                onClick={() => onAddToCart(product.productId, product.defaultVariantId)}
                 className="h-8 shrink-0 rounded-full bg-green px-4 font-ui text-xs font-semibold text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPending ? "Adding…" : justAdded ? "Added ✓" : "Add to Cart"}

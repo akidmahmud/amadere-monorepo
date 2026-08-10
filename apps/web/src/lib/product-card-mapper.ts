@@ -35,6 +35,21 @@ export interface ProductCardData {
   packOptions?: { value: string; label: string; price: string; originalPrice?: string; outOfStock?: boolean }[];
   defaultPackValue?: string;
   outOfStock: boolean;
+  /** Simple (non-variant) products only — ProductCardTwo's static label in
+   * its variant/pack slot when there's nothing to actually pick from.
+   * Formatted from the product's required shippableWeight (kg). */
+  weightLabel?: string;
+}
+
+// Simple-product weight/size display, shown on ProductCardTwo's variant
+// slot when there's nothing to pick from — under 1kg reads better in grams
+// than as a decimal ("250g" vs "0.25kg").
+function formatShippableWeight(kg: string): string | undefined {
+  const value = Number(kg);
+  if (!Number.isFinite(value) || value <= 0) return undefined;
+  if (value < 1) return `${Math.round(value * 1000)}g`;
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded % 1 === 0 ? rounded : rounded.toFixed(2)}kg`;
 }
 
 // Mirrors the backend's real purchase gate (cart.service.ts's validateLine):
@@ -91,6 +106,7 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
       : isOutOfStock(product.trackInventory, product.allowBackorder, product.stock),
     packOptions,
     defaultPackValue: packOptions ? defaultVariantId(product) : undefined,
+    weightLabel: packOptions ? undefined : formatShippableWeight(product.shippableWeight ?? ""),
   };
 }
 
@@ -102,6 +118,7 @@ export interface PromoVideoProductData {
   price: string;
   originalPrice?: string;
   imageUrl?: string;
+  defaultVariantId?: string;
 }
 
 // Same price/sale/thumbnail logic as toProductCardData above, plus the
@@ -129,5 +146,10 @@ export function toPromoVideoProductData(product: PublicProductDto): PromoVideoPr
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
     imageUrl: toDisplayImageUrl(primaryMedia?.url),
+    // Variant-only products reject a bare productId add ("This product
+    // requires a variantId") — same defaultVariantId() used by
+    // toProductCardData above, so the modal's one-click Add to Cart works
+    // the same way a product card's does instead of always 400ing.
+    defaultVariantId: product.hasVariants ? defaultVariantId(product) : undefined,
   };
 }

@@ -58,10 +58,6 @@ export class PublicHomepageSectionDto {
    * per-tab collectionIds in config.tabs; it's now a single-collection
    * strip, no tabs, using this same field). */
   collection!: PublicCollectionDto | null;
-  /** PROMO_VIDEO only — one resolved product per config.videos entry, same
-   * order/length, null for a video with no productId or whose product no
-   * longer resolves (deleted/unpublished) rather than dropping the video. */
-  promoVideoProducts!: (PublicProductDto | null)[] | null;
   /** TOP_SELLING_PRODUCTS only — one resolved product per config.items
    * entry, same order/length, null for an item whose product no longer
    * resolves (deleted/unpublished) rather than dropping the item silently. */
@@ -81,7 +77,6 @@ export function toPublicHomepageSectionDto(
   section: HomepageSectionWithTranslations,
   collection: PublicCollectionDto | null,
   locale: Locale,
-  promoVideoProducts: (PublicProductDto | null)[] | null = null,
   topSellingProducts: (PublicProductDto | null)[] | null = null,
   justForYouProducts: (PublicProductDto | null)[] | null = null,
   featuredDealsProducts: (PublicProductDto | null)[] | null = null,
@@ -97,7 +92,6 @@ export function toPublicHomepageSectionDto(
     subheading: translation?.subheading ?? null,
     config: section.config,
     collection,
-    promoVideoProducts,
     topSellingProducts,
     justForYouProducts,
     featuredDealsProducts,

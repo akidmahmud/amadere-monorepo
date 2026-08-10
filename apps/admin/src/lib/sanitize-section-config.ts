@@ -9,7 +9,7 @@ export function sanitizeHomepageSectionConfig(
   type: HomepageSectionType,
   config: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (type === "HERO_BANNER" && Array.isArray(config.slides)) {
+  if ((type === "HERO_BANNER" || type === "HOME_BANNER_TWO") && Array.isArray(config.slides)) {
     return { ...config, slides: config.slides.filter((slide) => slide?.imageUrl) };
   }
   if (type === "TESTIMONIAL_BENTO") {

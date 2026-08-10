@@ -88,6 +88,29 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('review', 'reply'),
 
   perm('newsletter', 'view'),
+  perm('newsletter', 'create'),
+  perm('newsletter', 'update'),
+  perm('newsletter', 'delete'), // pre-existing gap: used in admin-newsletter.controller.ts since B8 but never catalogued
+
+  perm('newsletter_campaign', 'view'),
+  perm('newsletter_campaign', 'create'),
+  perm('newsletter_campaign', 'update'),
+  perm('newsletter_campaign', 'delete'),
+  perm('newsletter_campaign', 'send'),
+
+  perm('newsletter_template', 'view'),
+  perm('newsletter_template', 'create'),
+  perm('newsletter_template', 'update'),
+  perm('newsletter_template', 'delete'),
+
+  perm('newsletter_tag', 'view'),
+  perm('newsletter_tag', 'create'),
+  perm('newsletter_tag', 'delete'),
+
+  perm('newsletter_segment', 'view'),
+  perm('newsletter_segment', 'create'),
+  perm('newsletter_segment', 'update'),
+  perm('newsletter_segment', 'delete'),
 
   perm('blog_category', 'view'),
   perm('blog_category', 'create'),
@@ -141,6 +164,11 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('homepage_section', 'create'),
   perm('homepage_section', 'update'),
   perm('homepage_section', 'delete'),
+
+  perm('promo_video', 'view'),
+  perm('promo_video', 'create'),
+  perm('promo_video', 'update'),
+  perm('promo_video', 'delete'),
 
   perm('dashboard', 'view'),
 

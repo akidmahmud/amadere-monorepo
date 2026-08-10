@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ckeditorGoogleFontsUrl } from "@amader/shared";
+import { ProductCardStyleProvider, type ProductCardStyle } from "@amader/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -111,7 +112,9 @@ export default async function LocaleLayout({
                 initialNavMenu={navMenu}
                 initialAnnouncements={announcements}
               />
-              <div className="flex flex-1 flex-col">{children}</div>
+              <ProductCardStyleProvider value={(siteInfo?.productCardStyle as ProductCardStyle | undefined) ?? "ONE"}>
+                <div className="flex flex-1 flex-col">{children}</div>
+              </ProductCardStyleProvider>
               <SiteFooter initialLogoUrl={siteInfo?.logoUrl} initialNavMenu={navMenu} />
               <SiteCartDrawer />
               <WhatsappFloatingButton config={(whatsappConfig as WhatsappConfig | undefined) ?? null} />

@@ -78,6 +78,7 @@ export function useRefundOrder(id: number) {
 export interface CreateManualOrderAddress {
   recipientName: string;
   phone: string;
+  alternativePhone?: string;
   email?: string;
   division: string;
   district: string;
@@ -112,6 +113,33 @@ export function useCreateManualOrder() {
     mutationFn: (input: CreateManualOrderInput) =>
       proxyFetch<AdminOrder>("/admin/orders", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => invalidateOrder(qc),
+  });
+}
+
+export interface PreviewCouponResult {
+  amount: string;
+  error?: string;
+}
+
+// Live coupon preview for the New Order form — same discount rules
+// (expiry, usage limits, min order amount, product/category scope) the
+// real create() call validates against, so the previewed Total amount
+// never disagrees with what actually gets charged.
+export function usePreviewCoupon(input: {
+  couponCode: string;
+  items: { productId: number; variantId?: number; quantity: number }[];
+  customerId?: number;
+}) {
+  const enabled = input.couponCode.trim().length > 0 && input.items.length > 0;
+  return useQuery({
+    queryKey: ["order-coupon-preview", input.couponCode, input.items, input.customerId],
+    queryFn: () =>
+      proxyFetch<PreviewCouponResult>("/admin/orders/preview-coupon", {
+        method: "POST",
+        body: JSON.stringify({ couponCode: input.couponCode, items: input.items, customerId: input.customerId }),
+      }),
+    enabled,
+    retry: false,
   });
 }
 

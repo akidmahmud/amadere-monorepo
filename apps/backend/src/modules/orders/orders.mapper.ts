@@ -74,6 +74,7 @@ export class OrderAddressDto {
   type!: OrderAddressType;
   recipientName!: string;
   phone!: string;
+  alternativePhone!: string | null;
   email!: string | null;
   division!: string;
   district!: string;
@@ -228,6 +229,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       type: a.type,
       recipientName: a.recipientName,
       phone: a.phone,
+      alternativePhone: a.alternativePhone,
       email: a.email,
       division: a.division,
       district: a.district,

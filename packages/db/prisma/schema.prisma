@@ -42,6 +42,7 @@ enum SeoEntityType {
   BLOG_CATEGORY
   PAGE
   COLLECTION
+  PROMO_VIDEO
 }
 
 // Uniform SEO surface for every public entity (AGENTS.md §5/§9) so new
@@ -696,7 +697,12 @@ model Product {
   costPerItem    Decimal?    @map("cost_per_item") @db.Decimal(10, 2)
 
   // Accurate shippable weight for courier charging (AGENTS.md §5/§11),
-  // editable — not just a label/box-volume figure. Kilograms.
+  // editable — not just a label/box-volume figure. Kilograms. Also the
+  // single source for the storefront card's weight display on simple
+  // (non-variant) products — see toProductCardData's formatShippableWeight —
+  // so it's surfaced in two places in the admin form (Pricing card for
+  // visibility, Shipping tab for completeness) but is one required field,
+  // not two.
   shippableWeight Decimal? @map("shippable_weight") @db.Decimal(10, 3)
 
   minOrderQuantity Int  @default(1) @map("min_order_quantity")
@@ -728,6 +734,7 @@ model Product {
   discountScopes DiscountProduct[]
   wishlistItems  WishlistItem[]
   collections    CollectionProduct[]
+  promoVideos    PromoVideo[]
 
   @@index([status])
   // The admin list query always filters deletedAt (soft-delete) and always
@@ -1179,6 +1186,9 @@ model OrderAddress {
   type          OrderAddressType
   recipientName String           @map("recipient_name")
   phone         String
+  // Steadfast's alternative_phone — a second contact number for the
+  // recipient, distinct from `phone`. Optional everywhere phone is required.
+  alternativePhone String?       @map("alternative_phone")
   email         String?
   division      String
   district      String
@@ -1694,13 +1704,178 @@ enum NewsletterStatus {
 }
 
 model NewsletterSubscriber {
-  id             Int              @id @default(autoincrement())
-  email          String           @unique
-  status         NewsletterStatus @default(SUBSCRIBED)
-  subscribedAt   DateTime         @default(now()) @map("subscribed_at")
-  unsubscribedAt DateTime?        @map("unsubscribed_at")
+  id     Int              @id @default(autoincrement())
+  email  String           @unique
+  name   String?
+  status NewsletterStatus @default(SUBSCRIBED)
+  // One-click unsubscribe from an email footer (AGENTS.md/newsletter spec §24
+  // — never require login, never expose the raw numeric id). Stable per
+  // subscriber (not per-send), generated once and never rotated.
+  unsubscribeToken String    @unique @default(uuid()) @map("unsubscribe_token")
+  subscribedAt     DateTime  @default(now()) @map("subscribed_at")
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+
+  campaignRecipients NewsletterCampaignRecipient[]
+  tags               NewsletterSubscriberTag[]
 
   @@map("newsletter_subscribers")
+}
+
+enum NewsletterCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  PARTIALLY_SENT
+  FAILED
+}
+
+// P1: a fixed set of "basic" segment kinds (spec §17 explicitly warns
+// against an "extremely complicated segment builder") rather than an
+// arbitrary AND/OR rule tree. INACTIVE ("no purchase within 90 days") is
+// deliberately not included — it needs an email-based join against Order/
+// Customer data that a newsletter subscriber isn't guaranteed to have any
+// relationship to (someone can subscribe via the footer without ever
+// placing an order), a real step up from "basic" — add it if it's actually
+// needed rather than guessing at the join now.
+enum NewsletterSegmentType {
+  ALL
+  TAG
+  NEW_SUBSCRIBERS
+}
+
+model NewsletterSegment {
+  id   Int                   @id @default(autoincrement())
+  name String
+  type NewsletterSegmentType
+
+  // TAG only.
+  tagId Int? @map("tag_id")
+  // NEW_SUBSCRIBERS only — subscribed within this many days.
+  days  Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tag       NewsletterTag?       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  campaigns NewsletterCampaign[]
+
+  @@map("newsletter_segments")
+}
+
+model NewsletterTag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  subscribers NewsletterSubscriberTag[]
+  segments    NewsletterSegment[]
+
+  @@map("newsletter_tags")
+}
+
+model NewsletterSubscriberTag {
+  subscriberId Int @map("subscriber_id")
+  tagId        Int @map("tag_id")
+
+  subscriber NewsletterSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  tag        NewsletterTag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([subscriberId, tagId])
+  @@map("newsletter_subscriber_tags")
+}
+
+// Reusable saved designs (spec §8) — a campaign created "from template"
+// just copies contentJson in; no live link back to the template afterward
+// (editing a template later shouldn't retroactively change campaigns
+// already built from it).
+model NewsletterTemplate {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  contentJson Json     @default("{\"version\":1,\"blocks\":[]}") @map("content_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("newsletter_templates")
+}
+
+// V1 scope (spec §39 P0/P1): fromName/fromEmail/replyTo fall back to
+// EmailSettingsService's sender identity when left blank (reuses the same
+// admin-configured identity the abandoned-cart recovery emails already
+// use). segmentId null = "all SUBSCRIBED subscribers" (the only audience
+// P0 supported); scheduledAt null = send immediately.
+model NewsletterCampaign {
+  id          Int                      @id @default(autoincrement())
+  name        String
+  subject     String
+  previewText String?                  @map("preview_text")
+  fromName    String?                  @map("from_name")
+  fromEmail   String?                  @map("from_email")
+  replyTo     String?                  @map("reply_to")
+  // { version: 1, blocks: [{ type, content }] } — rendered to email-safe
+  // HTML at send time by common/newsletter/email-renderer.util.ts.
+  contentJson Json                     @default("{\"version\":1,\"blocks\":[]}") @map("content_json")
+  status      NewsletterCampaignStatus @default(DRAFT)
+  segmentId   Int?                     @map("segment_id")
+  // A cron tick (same worker family as the send queue below) promotes a
+  // SCHEDULED campaign to SENDING once this passes — spec §28 "do not
+  // depend only on a browser being open".
+  scheduledAt DateTime?                @map("scheduled_at")
+
+  // Denormalized counters (spec §13) — cheap dashboard/list reads without
+  // aggregating newsletter_campaign_recipients on every request.
+  totalRecipients Int @default(0) @map("total_recipients")
+  totalSent       Int @default(0) @map("total_sent")
+  totalFailed     Int @default(0) @map("total_failed")
+  totalOpened     Int @default(0) @map("total_opened")
+  totalClicked    Int @default(0) @map("total_clicked")
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  segment    NewsletterSegment?            @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  recipients NewsletterCampaignRecipient[]
+
+  @@map("newsletter_campaigns")
+}
+
+// One row per recipient, created when a campaign is sent (snapshotting the
+// email so the record survives a subscriber being deleted later — same
+// snapshot pattern as OrderItem). Reuses QueueStatus (PENDING/SENT/FAILED/
+// SKIPPED) rather than inventing a parallel enum — same 4 states apply.
+// No DELIVERED/BOUNCED status: those need provider delivery webhooks, which
+// plain SMTP doesn't have (a real, disclosed P0 limitation — see AGENTS.md
+// changelog when this lands).
+model NewsletterCampaignRecipient {
+  id           Int      @id @default(autoincrement())
+  campaignId   Int      @map("campaign_id")
+  subscriberId Int?     @map("subscriber_id")
+  email        String
+
+  status            QueueStatus @default(PENDING)
+  attempts          Int         @default(0)
+  // Worker claim lock, same double-send guard as CartCampaignQueue.lockedAt.
+  lockedAt          DateTime?   @map("locked_at")
+  providerMessageId String?     @map("provider_message_id")
+  errorMessage      String?     @map("error_message")
+  sentAt            DateTime?   @map("sent_at")
+
+  // Self-hosted open pixel / click redirect (spec §23) — one opaque token
+  // per recipient, not per link, since P0 has no per-link click breakdown.
+  trackingToken String    @unique @default(uuid()) @map("tracking_token")
+  openedAt      DateTime? @map("opened_at")
+  clickedAt     DateTime? @map("clicked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campaign   NewsletterCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subscriber NewsletterSubscriber? @relation(fields: [subscriberId], references: [id], onDelete: SetNull)
+
+  @@index([status, lockedAt])
+  @@map("newsletter_campaign_recipients")
 }
 
 // ---------------------------------------------------------------------
@@ -1746,13 +1921,17 @@ enum HomepageSectionType {
   CERTIFICATION_ROW
   TESTIMONIAL_BENTO
   CIRCLE_BADGE_BAR
-  PROMO_VIDEO
   TABBED_COLLECTION_CAROUSEL
   AD_BANNER
   FEATURED_CATEGORIES
   TOP_SELLING_PRODUCTS
   JUST_FOR_YOU
   FEATURED_DEALS
+  // Full-bleed promo carousel styled after organicindia.com's hero slider —
+  // unlike HERO_BANNER (slider + fixed side banner grid), this is a single
+  // full-width rounded banner with dot pagination below and per-slide
+  // desktop/mobile image swap. No side banner slot.
+  HOME_BANNER_TWO
 }
 
 model HomepageSection {
@@ -1790,6 +1969,42 @@ model HomepageSectionTranslation {
 
   @@unique([sectionId, locale])
   @@map("homepage_section_translations")
+}
+
+// No longer a HomepageSection config blob (was PROMO_VIDEO type) — promo
+// videos have a fixed homepage position now, not a reorderable slot among
+// other section types, and need their own real id for per-video SeoMeta
+// (SeoEntityType.PROMO_VIDEO) to attach to.
+enum PromoVideoSource {
+  YOUTUBE
+  TIKTOK
+  INSTAGRAM
+  FACEBOOK
+  CUSTOM_URL
+  R2 // "My Server" in the admin UI — an uploaded file (MediaPicker), not a platform link
+  GIF
+}
+
+model PromoVideo {
+  id     Int              @id @default(autoincrement())
+  title  String
+  source PromoVideoSource
+  url    String
+  // Manually entered by the admin (shown as the "0:28" badge in the video
+  // list) — no video source here has a reliable, free duration API (YouTube
+  // does via oEmbed-adjacent endpoints, but TikTok/Instagram/Facebook Reels
+  // and a raw Custom URL don't), so this isn't auto-detected.
+  durationSeconds Int?     @map("duration_seconds")
+  thumbnailUrl    String?  @map("thumbnail_url")
+  productId       Int?     @map("product_id")
+  sortOrder       Int      @default(0) @map("sort_order")
+  showInHomepage  Boolean  @default(true) @map("show_in_homepage")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("promo_videos")
 }
 
 // Admin-curated product groupings for merchandising display (e.g. "Diwali

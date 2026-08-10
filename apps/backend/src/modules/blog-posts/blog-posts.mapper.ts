@@ -139,6 +139,7 @@ export class PublicBlogPostSummaryDto {
   excerpt!: string | null;
   imageUrl!: string | null;
   publishedAt!: Date | null;
+  viewCount!: number;
   author!: PublicBlogPostAuthorDto;
   categories!: BlogPostCategorySummaryDto[];
   tags!: BlogPostTagSummaryDto[];
@@ -156,6 +157,7 @@ export function toPublicBlogPostSummaryDto(
     excerpt: translation?.excerpt ?? null,
     imageUrl: post.imageUrl,
     publishedAt: post.publishedAt,
+    viewCount: post.viewCount,
     author: {
       id: post.author.id,
       firstName: post.author.firstName,

@@ -19,4 +19,8 @@ export function toSettingDto(setting: Setting): SettingDto {
 export class SiteInfoDto {
   siteName!: string;
   logoUrl!: string | null;
+  /** Which product card component the storefront renders everywhere a
+   * product card appears (homepage, search, PLP, PDP related/cross-sell) —
+   * admin-configurable, see SettingsService.PRODUCT_CARD_STYLE_KEY. */
+  productCardStyle!: 'ONE' | 'TWO';
 }

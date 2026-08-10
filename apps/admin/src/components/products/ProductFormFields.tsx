@@ -29,6 +29,14 @@ function toggle(list: number[], id: number, set: (ids: number[]) => void) {
   set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 }
 
+// Short Description is plain text typed by an admin, but products migrated
+// from the old WooCommerce catalog can carry a literal "<p>...</p>" wrapper
+// in the raw string — counting those tag characters against the 350 cap
+// both inflates the displayed count and eats into the actual usable length.
+function stripHtml(str: string): string {
+  return str.replace(/<[^>]+>/g, "");
+}
+
 // Product names in this catalog are commonly bilingual — "Amader Fiber Mix
 // ( আমাদের ফাইবার মিক্স )" or "Name | বাংলা নাম" — and the slug should come
 // from the English part only, not a mixed-script URL. Strips parenthetical
@@ -91,6 +99,10 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
   // slug field directly — same pattern as BlogPostFormFields.tsx.
   const slugEdited = useRef(false);
   const storefrontUrl = useStorefrontUrl();
+  // undefined (not 0) means "no cost entered" — same distinction
+  // ProductPricingCard's own hasCost flag makes, so a variant with no cost
+  // basis shows "—" instead of a misleading ৳0 profit.
+  const variantCostPerItem = form.costPerItem.trim() !== "" ? Number(form.costPerItem) : undefined;
 
   function handleNameChange(v: string) {
     form.setName(v);
@@ -117,7 +129,7 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   <span className="text-xs font-bold text-text">
                     Product Name<span className="ml-0.5 text-danger">*</span>
                   </span>
-                  <input required value={form.name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
+                  <input value={form.name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
                 </label>
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">
@@ -126,7 +138,6 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   <div className="flex h-10 items-center overflow-hidden rounded-sm border border-border bg-surface focus-within:border-brand-500">
                     <span className="select-none whitespace-nowrap pl-3 text-sm text-muted">{storefrontUrl}/products/</span>
                     <input
-                      required
                       value={form.slug}
                       onChange={(e) => {
                         slugEdited.current = true;
@@ -162,9 +173,16 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="flex items-center justify-between text-xs font-bold text-text">
                     Short Description
-                    <span className="font-semibold text-muted">{form.description.length}/350</span>
+                    <span className="font-semibold text-muted">{stripHtml(form.description).length}/350</span>
                   </span>
-                  <textarea value={form.description} onChange={(e) => form.setDescription(e.target.value)} maxLength={350} rows={3} className={textareaClass} />
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => {
+                      if (stripHtml(e.target.value).length <= 350) form.setDescription(e.target.value);
+                    }}
+                    rows={3}
+                    className={textareaClass}
+                  />
                 </label>
                 {/* A plain div, not <label> — RichTextEditor renders its own
                     toolbar full of buttons, and a bare <label> with no
@@ -220,7 +238,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
 
       {tab === "Media" && (
         <div className="rounded-card border border-border bg-surface p-[18px]">
-          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Media</h3>
+          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">
+            Media<span className="ml-0.5 text-danger">*</span>
+          </h3>
           <ProductMediaGallery images={form.images} onChange={form.setImages} />
           <label className="mt-4 flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">Video URL (optional)</span>
@@ -251,7 +271,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Inventory</h3>
           <div className="mb-3.5 grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">SKU (optional)</span>
+              <span className="text-xs font-bold text-text">
+                SKU<span className="ml-0.5 text-danger">*</span>
+              </span>
               <input value={form.sku} onChange={(e) => form.setSku(e.target.value)} className={inputClass} />
             </label>
           </div>
@@ -260,7 +282,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           ) : (
             <div className="mb-3.5 grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">Stock</span>
+                <span className="text-xs font-bold text-text">
+                  Stock<span className="ml-0.5 text-danger">*</span>
+                </span>
                 <input type="number" value={form.stock} onChange={(e) => form.setStock(e.target.value)} className={numInputClass} />
               </label>
               <label className="flex flex-col gap-1.5">
@@ -307,9 +331,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               </div>
 
               {productId && variants ? (
-                <ExistingVariantsManager productId={productId} attributes={selectedAttributes} variants={variants} />
+                <ExistingVariantsManager productId={productId} attributes={selectedAttributes} variants={variants} costPerItem={variantCostPerItem} />
               ) : (
-                <NewVariantsBuilder attributes={selectedAttributes} variants={newVariants ?? []} onChange={onNewVariantsChange ?? (() => {})} />
+                <NewVariantsBuilder attributes={selectedAttributes} variants={newVariants ?? []} onChange={onNewVariantsChange ?? (() => {})} costPerItem={variantCostPerItem} />
               )}
             </>
           )}
@@ -319,15 +343,46 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
       {tab === "Shipping" && (
         <div className="rounded-card border border-border bg-surface p-[18px]">
           <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Shipping</h3>
+          {/* How courier weight is actually calculated (shipments.service.ts):
+              a variant's own weightOverride is used when it has one; only
+              when it doesn't does the product-level Shippable weight below
+              step in as the fallback. Written out for admins in both
+              languages since it's not obvious from the field alone, and this
+              is the one place in the form where "why does this number
+              matter" needed explaining. */}
+          <div
+            className="mb-3.5 flex flex-col gap-2 rounded-sm px-3 py-2.5 text-xs"
+            style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
+          >
+            <p>
+              <strong>Same value as &quot;Weight (kg)&quot; on the General tab (Pricing)</strong> — editing either one
+              updates both. For products with variants: each variant can have its own shipping weight (set per
+              variant in the Variants tab); when a variant doesn&apos;t have one, this product-level weight is used
+              for it instead when the courier shipment is calculated.
+            </p>
+            <p lang="bn">
+              <strong>জেনারেল ট্যাবের (প্রাইসিং) &quot;Weight (kg)&quot; ফিল্ডের সাথে এটি একই মান</strong> — যেকোনো
+              একটিতে পরিবর্তন করলে দুটোই আপডেট হয়। ভ্যারিয়েন্ট থাকা পণ্যের ক্ষেত্রে: প্রতিটি ভ্যারিয়েন্টের নিজস্ব
+              শিপিং ওজন থাকতে পারে (ভ্যারিয়েন্টস ট্যাবে সেট করা যায়); কোনো ভ্যারিয়েন্টের নিজস্ব ওজন সেট না থাকলে,
+              কুরিয়ার শিপমেন্ট হিসাব করার সময় এই প্রোডাক্ট-লেভেল ওজনটি সেই ভ্যারিয়েন্টের জন্য ব্যবহৃত হবে।
+            </p>
+          </div>
+          {/* Also editable from the Pricing card on the General tab (same
+              state) — surfaced there too since it's easy to miss tucked away
+              in this tab, and it's a required field. */}
           <div className="mb-3.5 grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">Shippable weight, kg (optional)</span>
+              <span className="text-xs font-bold text-text">
+                Shippable weight, kg<span className="ml-0.5 text-danger">*</span>
+              </span>
               <input type="number" value={form.shippableWeight} onChange={(e) => form.setShippableWeight(e.target.value)} className={numInputClass} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">Min order quantity</span>
+              <span className="text-xs font-bold text-text">
+                Min order quantity<span className="ml-0.5 text-danger">*</span>
+              </span>
               <input type="number" value={form.minOrderQuantity} onChange={(e) => form.setMinOrderQuantity(e.target.value)} className={numInputClass} />
             </label>
             <label className="flex flex-col gap-1.5">

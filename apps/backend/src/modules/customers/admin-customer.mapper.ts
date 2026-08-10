@@ -174,6 +174,9 @@ export class AdminCustomerAddressSummaryDto {
   addressLine!: string;
   division!: string;
   district!: string;
+  area!: string | null;
+  landmark!: string | null;
+  postCode!: string | null;
 }
 
 export class AdminCustomerDto {
@@ -245,7 +248,14 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
     completedOrderCount: c.completedOrderCount,
     createdAt: c.createdAt,
     defaultAddress: c.addresses[0]
-      ? { addressLine: c.addresses[0].addressLine, division: c.addresses[0].division, district: c.addresses[0].district }
+      ? {
+          addressLine: c.addresses[0].addressLine,
+          division: c.addresses[0].division,
+          district: c.addresses[0].district,
+          area: c.addresses[0].area,
+          landmark: c.addresses[0].landmark,
+          postCode: c.addresses[0].postCode,
+        }
       : null,
     orders: c.orders.map((o) => ({
       id: o.id,

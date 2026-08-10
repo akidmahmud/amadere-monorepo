@@ -8,6 +8,7 @@ export function toOrderAddressCreate(address: CheckoutAddressDto, type: OrderAdd
     type,
     recipientName: address.recipientName,
     phone: address.phone,
+    alternativePhone: address.alternativePhone,
     email: address.email,
     division: address.division,
     district: address.district,

@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { normalizeBdPhone } from '@amader/shared';
 import {
   BalanceOutcome,
   CancelReturnResult,
@@ -45,6 +46,19 @@ interface SteadfastBalanceResponse {
 
 const BASE_URL = 'https://portal.packzy.com/api/v1';
 
+// Steadfast wants the local 11-digit shape (01XXXXXXXXX) on every phone
+// field, regardless of how it's stored internally (this app's site-wide
+// storage format is 880XXXXXXXXXX, see packages/shared/src/phone.ts) —
+// normalizeBdPhone() handles any input shape (already-local, +880, 880,
+// spaces) and returns a clean +8801XXXXXXXXX, then this just drops the
+// leading '+880' for '0'. Falls back to the raw input if it doesn't even
+// look like a BD number, so a bad value still gets sent (and Steadfast's
+// own validation rejects it with a real error) rather than silently vanishing.
+function toLocalPhone(phone: string): string {
+  const normalized = normalizeBdPhone(phone);
+  return normalized ? '0' + normalized.slice(4) : phone;
+}
+
 // Real implementation — endpoints, payload shape and auth headers verified
 // against the reference codebase's working integration (public_html
 // platform/plugins/steadfast), not guessed from generic docs. Steadfast's
@@ -65,11 +79,21 @@ export class SteadfastCourierProvider implements CourierProvider {
     const payload = {
       invoice: input.invoiceNumber,
       recipient_name: input.recipientName,
-      recipient_phone: input.recipientPhone,
-      recipient_address: input.recipientAddress,
+      // Steadfast expects the local 11-digit shape (01XXXXXXXXX), not this
+      // app's site-wide storage format (880XXXXXXXXXX, see phoneLookupCandidates
+      // elsewhere) — same conversion fraudCheck() already does below, applied
+      // here too since this call site never had it (recipient_phone was
+      // being sent 13-digit, which Steadfast's real API rejects/mishandles).
+      recipient_phone: toLocalPhone(input.recipientPhone),
+      alternative_phone: input.alternativePhone ? toLocalPhone(input.alternativePhone) : '',
+      recipient_email: input.recipientEmail ?? '',
+      // Steadfast's documented 250-char cap on recipient_address — truncate
+      // rather than let a long address get rejected outright.
+      recipient_address: input.recipientAddress.slice(0, 250),
       cod_amount: Number(input.codAmount),
       note: input.note ?? '',
       item_description: input.itemDescription ?? '',
+      delivery_type: input.deliveryType ?? 0,
     };
 
     const response = await this.request<SteadfastResponse>(
@@ -134,9 +158,7 @@ export class SteadfastCourierProvider implements CourierProvider {
   // so one unreachable courier can't break the whole aggregation.
   async fraudCheck(phoneMsisdn: string): Promise<FraudCheckOutcome> {
     try {
-      const localPhone = phoneMsisdn.startsWith('+880')
-        ? '0' + phoneMsisdn.slice(4)
-        : phoneMsisdn;
+      const localPhone = toLocalPhone(phoneMsisdn);
       const response = await this.request<SteadfastFraudCheckResponse>(
         `/fraud_check/${localPhone}`,
         'GET',

@@ -6,11 +6,19 @@ export interface CreateConsignmentInput {
   invoiceNumber: string;
   recipientName: string;
   recipientPhone: string;
+  // Steadfast's alternative_phone/recipient_email — optional, both
+  // currently only actually forwarded by the Steadfast provider (see
+  // SteadfastCourierProvider.createConsignment).
+  alternativePhone?: string;
+  recipientEmail?: string;
   recipientAddress: string;
   codAmount: Prisma.Decimal;
   weightKg?: Prisma.Decimal;
   note?: string;
   itemDescription?: string;
+  // Steadfast's delivery_type (0 = Home, 1 = Point) — defaults to Home
+  // (0) at the call site; no equivalent concept for Pathao/RedX.
+  deliveryType?: 0 | 1;
   // Pathao/RedX both require a location selection at consignment-create
   // time (Pathao: store + city/zone/area; RedX: delivery area + pickup
   // store) that has no equivalent on Steadfast — optional here so the

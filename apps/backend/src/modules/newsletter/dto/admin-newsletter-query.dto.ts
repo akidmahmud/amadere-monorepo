@@ -8,6 +8,12 @@ export class AdminNewsletterQueryDto {
   @IsString()
   q?: string;
 
+  @ApiPropertyOptional({ description: 'Filter to subscribers with this tag' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  tagId?: number;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

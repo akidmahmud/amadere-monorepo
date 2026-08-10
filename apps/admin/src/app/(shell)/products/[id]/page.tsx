@@ -75,6 +75,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   // every single change. "Save & Exit" is the old always-redirect behavior,
   // kept as its own explicit action for when the edit really is done.
   async function handleSave(exit: boolean) {
+    const missing = form.validate(product?.variants.length ?? 0);
+    if (missing.length > 0) {
+      toast.push(`Missing required fields: ${missing.join(", ")}.`);
+      return;
+    }
     try {
       await update.mutateAsync(form.toBasePayload());
     } catch (err) {

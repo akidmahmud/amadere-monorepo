@@ -17,13 +17,13 @@ export type HomepageSectionType =
   | "CERTIFICATION_ROW"
   | "TESTIMONIAL_BENTO"
   | "CIRCLE_BADGE_BAR"
-  | "PROMO_VIDEO"
   | "TABBED_COLLECTION_CAROUSEL"
   | "AD_BANNER"
   | "FEATURED_CATEGORIES"
   | "TOP_SELLING_PRODUCTS"
   | "JUST_FOR_YOU"
-  | "FEATURED_DEALS";
+  | "FEATURED_DEALS"
+  | "HOME_BANNER_TWO";
 
 export const HOMEPAGE_SECTION_TYPES: HomepageSectionType[] = [
   "HERO_BANNER",
@@ -34,13 +34,13 @@ export const HOMEPAGE_SECTION_TYPES: HomepageSectionType[] = [
   "CERTIFICATION_ROW",
   "TESTIMONIAL_BENTO",
   "CIRCLE_BADGE_BAR",
-  "PROMO_VIDEO",
   "TABBED_COLLECTION_CAROUSEL",
   "AD_BANNER",
   "FEATURED_CATEGORIES",
   "TOP_SELLING_PRODUCTS",
   "JUST_FOR_YOU",
   "FEATURED_DEALS",
+  "HOME_BANNER_TWO",
 ];
 
 export type AdminHomepageSection = Omit<components["schemas"]["AdminHomepageSectionDto"], "type" | "config"> & {

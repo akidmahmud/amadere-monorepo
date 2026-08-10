@@ -2877,7 +2877,7 @@ export interface paths {
         };
         get: operations["AdminNewsletterController_list"];
         put?: never;
-        post?: never;
+        post: operations["AdminNewsletterController_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2900,6 +2900,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/newsletter/subscribers/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterController_importCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/newsletter/subscribers/bulk-delete": {
         parameters: {
             query?: never;
@@ -2916,6 +2932,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/newsletter/subscribers/{id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterController_addTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/subscribers/{id}/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminNewsletterController_removeTag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/newsletter/subscribers/{id}": {
         parameters: {
             query?: never;
@@ -2927,6 +2975,262 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["AdminNewsletterController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterTagsController_list"];
+        put?: never;
+        post: operations["AdminNewsletterTagsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminNewsletterTagsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterCampaignsController_list"];
+        put?: never;
+        post: operations["AdminNewsletterCampaignsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterCampaignsController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminNewsletterCampaignsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminNewsletterCampaignsController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/{id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterCampaignsController_analytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterCampaignsController_previewContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterCampaignsController_sendTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterCampaignsController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/{id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterCampaignsController_schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/campaigns/{id}/cancel-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterCampaignsController_cancelSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterSegmentsController_list"];
+        put?: never;
+        post: operations["AdminNewsletterSegmentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/segments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterSegmentsController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminNewsletterSegmentsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminNewsletterSegmentsController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/segments/{id}/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterSegmentsController_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterTemplatesController_list"];
+        put?: never;
+        post: operations["AdminNewsletterTemplatesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNewsletterTemplatesController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminNewsletterTemplatesController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminNewsletterTemplatesController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/newsletter/templates/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNewsletterTemplatesController_duplicate"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3102,6 +3406,22 @@ export interface paths {
         get: operations["BlogPostsController_getBySlug"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/blog-posts/{slug}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BlogPostsController_recordView"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3986,6 +4306,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminHomepageSectionsController_reorder"];
+        trace?: never;
+    };
+    "/api/v1/promo-videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PromoVideosController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promo-videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPromoVideosController_list"];
+        put?: never;
+        post: operations["AdminPromoVideosController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/promo-videos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPromoVideosController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminPromoVideosController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminPromoVideosController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/promo-videos/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminPromoVideosController_reorder"];
         trace?: never;
     };
     "/api/v1/admin/net-profit/orders": {
@@ -5447,7 +5831,7 @@ export interface components {
         };
         UpsertSeoMetaDto: {
             /** @enum {string} */
-            entityType: "PRODUCT" | "CATEGORY" | "BRAND" | "TAG" | "PRODUCT_BUNDLE" | "BLOG_POST" | "BLOG_CATEGORY" | "PAGE" | "COLLECTION";
+            entityType: "PRODUCT" | "CATEGORY" | "BRAND" | "TAG" | "PRODUCT_BUNDLE" | "BLOG_POST" | "BLOG_CATEGORY" | "PAGE" | "COLLECTION" | "PROMO_VIDEO";
             entityId: number;
             /** @enum {string} */
             locale: "EN" | "BN";
@@ -6269,12 +6653,13 @@ export interface components {
         CheckoutAddressDto: {
             recipientName: string;
             phone: string;
+            alternativePhone?: string;
             /** Format: email */
             email?: string;
             division: string;
             district: string;
             /** @description Thana/upazila */
-            area?: string;
+            area: string;
             landmark?: string;
             addressLine: string;
             postCode?: string;
@@ -6321,6 +6706,7 @@ export interface components {
             type: Record<string, never>;
             recipientName: string;
             phone: string;
+            alternativePhone: string | null;
             email: string | null;
             division: string;
             district: string;
@@ -6976,17 +7362,193 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        NewsletterSubscriberTagDto: {
+            id: number;
+            name: string;
+        };
         NewsletterSubscriberDto: {
             id: number;
             email: string;
-            status: Record<string, never>;
+            name: string | null;
+            /** @enum {string} */
+            status: "SUBSCRIBED" | "UNSUBSCRIBED";
             /** Format: date-time */
             subscribedAt: string;
             /** Format: date-time */
             unsubscribedAt: string | null;
+            tags: components["schemas"]["NewsletterSubscriberTagDto"][];
+        };
+        CreateNewsletterSubscriberDto: {
+            /** Format: email */
+            email: string;
+            name?: string;
         };
         BulkDeleteNewsletterDto: {
             ids: number[];
+        };
+        AddSubscriberTagDto: {
+            tagId: number;
+        };
+        AdminNewsletterTagDto: {
+            id: number;
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateNewsletterTagDto: {
+            name: string;
+        };
+        AdminNewsletterCampaignDto: {
+            id: number;
+            name: string;
+            subject: string;
+            previewText: string | null;
+            fromName: string | null;
+            fromEmail: string | null;
+            replyTo: string | null;
+            contentJson: Record<string, never>;
+            status: Record<string, never>;
+            totalRecipients: number;
+            totalSent: number;
+            totalFailed: number;
+            totalOpened: number;
+            totalClicked: number;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            scheduledAt: string | null;
+            segmentId: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        EmailBlockDto: {
+            /** @enum {string} */
+            type: "heading" | "text" | "image" | "button" | "divider" | "spacer";
+            content: Record<string, never>;
+        };
+        CreateCampaignDto: {
+            name: string;
+            subject: string;
+            previewText?: string;
+            /** @description Falls back to Settings > Email sender identity when unset */
+            fromName?: string;
+            /** Format: email */
+            fromEmail?: string;
+            /** Format: email */
+            replyTo?: string;
+            blocks?: components["schemas"]["EmailBlockDto"][];
+            /**
+             * @description Defaults to "blocks"
+             * @enum {string}
+             */
+            mode?: "blocks" | "html";
+            /** @description Full HTML design, used when mode = "html". Sanitized on save. */
+            html?: string;
+            /** @description Audience segment id, or null for all subscribed subscribers */
+            segmentId?: number | null;
+        };
+        PreviewContentDto: {
+            blocks?: components["schemas"]["EmailBlockDto"][];
+            /**
+             * @description Defaults to "blocks"
+             * @enum {string}
+             */
+            mode?: "blocks" | "html";
+            html?: string;
+        };
+        UpdateCampaignDto: {
+            name?: string;
+            subject?: string;
+            previewText?: string;
+            /** @description Falls back to Settings > Email sender identity when unset */
+            fromName?: string;
+            /** Format: email */
+            fromEmail?: string;
+            /** Format: email */
+            replyTo?: string;
+            blocks?: components["schemas"]["EmailBlockDto"][];
+            /**
+             * @description Defaults to "blocks"
+             * @enum {string}
+             */
+            mode?: "blocks" | "html";
+            /** @description Full HTML design, used when mode = "html". Sanitized on save. */
+            html?: string;
+            /** @description Audience segment id, or null for all subscribed subscribers */
+            segmentId?: number | null;
+        };
+        SendTestCampaignDto: {
+            /** Format: email */
+            email: string;
+        };
+        ScheduleCampaignDto: {
+            /** @description ISO datetime, must be in the future */
+            scheduledAt: string;
+        };
+        AdminNewsletterSegmentDto: {
+            id: number;
+            name: string;
+            type: Record<string, never>;
+            tagId: number | null;
+            days: number | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateSegmentDto: {
+            name: string;
+            /** @enum {string} */
+            type: "ALL" | "TAG" | "NEW_SUBSCRIBERS";
+            /** @description Required when type = TAG */
+            tagId?: number;
+            /** @description Required when type = NEW_SUBSCRIBERS — subscribed within this many days */
+            days?: number;
+        };
+        UpdateSegmentDto: {
+            name?: string;
+            /** @enum {string} */
+            type?: "ALL" | "TAG" | "NEW_SUBSCRIBERS";
+            /** @description Required when type = TAG */
+            tagId?: number;
+            /** @description Required when type = NEW_SUBSCRIBERS — subscribed within this many days */
+            days?: number;
+        };
+        AdminNewsletterTemplateDto: {
+            id: number;
+            name: string;
+            description: string | null;
+            contentJson: Record<string, never>;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateTemplateDto: {
+            name: string;
+            description?: string;
+            blocks?: components["schemas"]["EmailBlockDto"][];
+            /**
+             * @description Defaults to "blocks"
+             * @enum {string}
+             */
+            mode?: "blocks" | "html";
+            /** @description Full HTML design, used when mode = "html". Sanitized on save. */
+            html?: string;
+        };
+        UpdateTemplateDto: {
+            name?: string;
+            description?: string;
+            blocks?: components["schemas"]["EmailBlockDto"][];
+            /**
+             * @description Defaults to "blocks"
+             * @enum {string}
+             */
+            mode?: "blocks" | "html";
+            /** @description Full HTML design, used when mode = "html". Sanitized on save. */
+            html?: string;
         };
         PeriodStatsDto: {
             orders: number;
@@ -7157,6 +7719,7 @@ export interface components {
             imageUrl: string | null;
             /** Format: date-time */
             publishedAt: string | null;
+            viewCount: number;
             author: components["schemas"]["PublicBlogPostAuthorDto"];
             categories: components["schemas"]["BlogPostCategorySummaryDto"][];
             tags: components["schemas"]["BlogPostTagSummaryDto"][];
@@ -7178,6 +7741,7 @@ export interface components {
             imageUrl: string | null;
             /** Format: date-time */
             publishedAt: string | null;
+            viewCount: number;
             author: components["schemas"]["PublicBlogPostAuthorDto"];
             categories: components["schemas"]["BlogPostCategorySummaryDto"][];
             tags: components["schemas"]["BlogPostTagSummaryDto"][];
@@ -7492,6 +8056,7 @@ export interface components {
         SiteInfoDto: {
             siteName: string;
             logoUrl: string | null;
+            productCardStyle: Record<string, never>;
         };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
@@ -7661,7 +8226,6 @@ export interface components {
             subheading: string | null;
             config: Record<string, never>;
             collection: components["schemas"]["PublicCollectionDto"] | null;
-            promoVideoProducts: Record<string, never>[] | null;
             topSellingProducts: Record<string, never>[] | null;
             justForYouProducts: Record<string, never>[] | null;
             featuredDealsProducts: Record<string, never>[] | null;
@@ -7688,7 +8252,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -7704,7 +8268,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "PROMO_VIDEO" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -7714,6 +8278,59 @@ export interface components {
             /** @description Required when type = PRODUCT_COLLECTION */
             collectionId?: number;
             translations?: components["schemas"]["HomepageSectionTranslationDto"][];
+        };
+        PublicPromoVideoDto: {
+            id: number;
+            title: string;
+            source: Record<string, never>;
+            url: string;
+            durationSeconds: number | null;
+            thumbnailUrl: string | null;
+            product: components["schemas"]["PublicProductDto"] | null;
+            seo: components["schemas"]["ResolvedSeoDto"];
+            structuredData: Record<string, never>[];
+        };
+        AdminPromoVideoDto: {
+            id: number;
+            title: string;
+            source: Record<string, never>;
+            url: string;
+            durationSeconds: number | null;
+            thumbnailUrl: string | null;
+            productId: number | null;
+            sortOrder: number;
+            showInHomepage: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreatePromoVideoDto: {
+            title: string;
+            /** @enum {string} */
+            source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "FACEBOOK" | "CUSTOM_URL" | "R2" | "GIF";
+            /** Format: uri */
+            url: string;
+            /** @description Shown as the duration badge in the video list — no source here exposes a free/reliable duration API, so this is admin-entered. */
+            durationSeconds?: number;
+            thumbnailUrl?: string;
+            productId?: number;
+            /** @default true */
+            showInHomepage: boolean;
+        };
+        ReorderPromoVideosDto: {
+            ids: number[];
+        };
+        UpdatePromoVideoDto: {
+            title?: string;
+            /** @enum {string} */
+            source?: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "FACEBOOK" | "CUSTOM_URL" | "R2" | "GIF";
+            /** Format: uri */
+            url?: string;
+            /** @description Shown as the duration badge in the video list — no source here exposes a free/reliable duration API, so this is admin-entered. */
+            durationSeconds?: number;
+            thumbnailUrl?: string;
+            productId?: number;
+            /** @default true */
+            showInHomepage: boolean;
         };
         BulkOrderActionDto: {
             orderIds: number[];
@@ -9395,7 +10012,7 @@ export interface operations {
     AdminSeoController_get: {
         parameters: {
             query: {
-                entityType: "PRODUCT" | "CATEGORY" | "BRAND" | "TAG" | "PRODUCT_BUNDLE" | "BLOG_POST" | "BLOG_CATEGORY" | "PAGE" | "COLLECTION";
+                entityType: "PRODUCT" | "CATEGORY" | "BRAND" | "TAG" | "PRODUCT_BUNDLE" | "BLOG_POST" | "BLOG_CATEGORY" | "PAGE" | "COLLECTION" | "PROMO_VIDEO";
                 entityId: number;
                 locale: "EN" | "BN";
             };
@@ -9441,7 +10058,7 @@ export interface operations {
     AdminSeoController_remove: {
         parameters: {
             query: {
-                entityType: "PRODUCT" | "CATEGORY" | "BRAND" | "TAG" | "PRODUCT_BUNDLE" | "BLOG_POST" | "BLOG_CATEGORY" | "PAGE" | "COLLECTION";
+                entityType: "PRODUCT" | "CATEGORY" | "BRAND" | "TAG" | "PRODUCT_BUNDLE" | "BLOG_POST" | "BLOG_CATEGORY" | "PAGE" | "COLLECTION" | "PROMO_VIDEO";
                 entityId: number;
                 locale: "EN" | "BN";
             };
@@ -13824,6 +14441,8 @@ export interface operations {
             query?: {
                 /** @description Search by email */
                 q?: string;
+                /** @description Filter to subscribers with this tag */
+                tagId?: number;
                 page?: number;
                 pageSize?: number;
             };
@@ -13848,6 +14467,29 @@ export interface operations {
             };
         };
     };
+    AdminNewsletterController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNewsletterSubscriberDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsletterSubscriberDto"];
+                };
+            };
+        };
+    };
     AdminNewsletterController_export: {
         parameters: {
             query?: never;
@@ -13862,6 +14504,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminNewsletterController_importCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -13886,6 +14547,49 @@ export interface operations {
             };
         };
     };
+    AdminNewsletterController_addTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSubscriberTagDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterController_removeTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                tagId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminNewsletterController_delete: {
         parameters: {
             query?: never;
@@ -13902,6 +14606,632 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminNewsletterTagsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTagDto"][];
+                };
+            };
+        };
+    };
+    AdminNewsletterTagsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNewsletterTagDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTagDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTagDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterTagsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminNewsletterCampaignDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCampaignDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCampaignDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_analytics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_previewContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewContentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_sendTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendTestCampaignDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleCampaignDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterCampaignsController_cancelSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterCampaignDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterSegmentsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterSegmentDto"][];
+                };
+            };
+        };
+    };
+    AdminNewsletterSegmentsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSegmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterSegmentDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterSegmentDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterSegmentsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterSegmentDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterSegmentsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterSegmentsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSegmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterSegmentDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterSegmentsController_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterTemplatesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"][];
+                };
+            };
+        };
+    };
+    AdminNewsletterTemplatesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterTemplatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterTemplatesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNewsletterTemplatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminNewsletterTemplatesController_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsletterTemplateDto"];
+                };
             };
         };
     };
@@ -14326,6 +15656,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicBlogPostDetailDto"];
+                };
+            };
+        };
+    };
+    BlogPostsController_recordView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
                 };
             };
         };
@@ -16367,6 +17718,163 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReorderHomepageSectionsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PromoVideosController_list: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPromoVideoDto"][];
+                };
+            };
+        };
+    };
+    AdminPromoVideosController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPromoVideoDto"][];
+                };
+            };
+        };
+    };
+    AdminPromoVideosController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePromoVideoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPromoVideoDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPromoVideoDto"];
+                };
+            };
+        };
+    };
+    AdminPromoVideosController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPromoVideoDto"];
+                };
+            };
+        };
+    };
+    AdminPromoVideosController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPromoVideosController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePromoVideoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPromoVideoDto"];
+                };
+            };
+        };
+    };
+    AdminPromoVideosController_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderPromoVideosDto"];
             };
         };
         responses: {

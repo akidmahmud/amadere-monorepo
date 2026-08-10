@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { isValidBdPhone } from "@amader/shared";
 import {
   useUpdateCustomer,
@@ -67,6 +66,18 @@ function toDateInputValue(iso: string | null | undefined): string {
   return iso ? iso.slice(0, 10) : "";
 }
 
+// Non-dropdown cells are read-only until the row's edit icon is clicked
+// (typed fields are too easy to fat-finger while just scrolling/browsing
+// the table) — this renders the read-only view; the input it stands in for
+// is rendered instead once `editing` is true.
+function ReadOnlyText({ value, placeholder, width }: { value: string; placeholder?: string; width?: number }) {
+  return (
+    <span className="inline-block truncate px-2.5 align-middle" style={{ width, color: value ? TEXT : FAINT }} title={value || undefined}>
+      {value || placeholder || "—"}
+    </span>
+  );
+}
+
 const starIcon = (filled: boolean) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? "#f5a623" : "#dfe5e0"}>
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -86,6 +97,11 @@ const eyeIcon = (
 const editIcon = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
+const checkIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 const deleteIcon = (
@@ -147,7 +163,7 @@ export function CustomersTable({
   restoringId?: number | null;
 }) {
   const page = filters.page ?? 1;
-  const pageSize = filters.pageSize ?? 10;
+  const pageSize = filters.pageSize ?? 6;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
@@ -171,6 +187,7 @@ export function CustomersTable({
                 Name
               </TH>
               <TH>Fav</TH>
+              <TH>Actions</TH>
               <TH>B-Day</TH>
               <TH style={{ minWidth: 220 }}>Address</TH>
               <TH>Phone</TH>
@@ -196,7 +213,6 @@ export function CustomersTable({
               <TH>M Score</TH>
               <TH>RFM Score</TH>
               <TH>Facebook Profile</TH>
-              <TH>Actions</TH>
             </tr>
           </thead>
           <tbody>
@@ -281,7 +297,7 @@ export function CustomersTable({
             className="h-[30px] rounded-[8px] border bg-white px-2 text-[0.72rem] font-semibold outline-none"
             style={{ borderColor: LINE, color: MUTED }}
           >
-            {[10, 25, 50].map((s) => (
+            {[6, 10, 25, 50].map((s) => (
               <option key={s} value={s}>
                 {s} / page
               </option>
@@ -313,6 +329,7 @@ function CustomerRow({
   restoringId?: number | null;
 }) {
   const update = useUpdateCustomer(c.id);
+  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
   const [address, setAddress] = useState(c.address ?? "");
   const [phone, setPhone] = useState(c.phone ?? "");
@@ -347,21 +364,27 @@ function CustomerRow({
         <input type="checkbox" checked={selected} onChange={onToggle} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
       </td>
       <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => {
-            if (name === c.name) return;
-            // The list only carries a combined display name (no separate
-            // firstName/lastName here) — same first-word/rest split
-            // customer-order-event.listener.ts already uses when deriving a
-            // name from a shipping address's recipientName.
-            const [firstName, ...rest] = name.trim().split(/\s+/);
-            update.mutate({ firstName: firstName || "", lastName: rest.length ? rest.join(" ") : "" });
-          }}
-          className="h-[26px] w-[170px] rounded-[7px] border border-transparent bg-transparent px-1.5 font-bold outline-none hover:border-[color:var(--line)] hover:bg-white focus:border-[color:var(--green)] focus:bg-white"
-          style={{ color: INK }}
-        />
+        {editing ? (
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              if (name === c.name) return;
+              // The list only carries a combined display name (no separate
+              // firstName/lastName here) — same first-word/rest split
+              // customer-order-event.listener.ts already uses when deriving a
+              // name from a shipping address's recipientName.
+              const [firstName, ...rest] = name.trim().split(/\s+/);
+              update.mutate({ firstName: firstName || "", lastName: rest.length ? rest.join(" ") : "" });
+            }}
+            className="h-[26px] w-[170px] rounded-[7px] border border-transparent bg-transparent px-1.5 font-bold outline-none hover:border-[color:var(--line)] hover:bg-white focus:border-[color:var(--green)] focus:bg-white"
+            style={{ color: INK }}
+          />
+        ) : (
+          <span className="block w-[170px] truncate px-1.5 font-bold" style={{ color: INK }}>
+            {name || "—"}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => onView(c.id)}
@@ -377,48 +400,113 @@ function CustomerRow({
         </button>
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          type="date"
-          defaultValue={toDateInputValue(c.dob)}
-          onChange={(e) => update.mutate({ dob: e.target.value || null })}
-          className={cellInputClass}
-          style={{ width: 140 }}
-        />
+        <div className="flex items-center gap-[5px]">
+          <button
+            type="button"
+            onClick={() => onView(c.id)}
+            aria-label="View"
+            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border border-transparent hover:border-[color:var(--line)]"
+            style={{ color: FAINT }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = GREEN)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = FAINT)}
+          >
+            {eyeIcon}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            aria-label={editing ? "Done editing" : "Edit"}
+            title={editing ? "Done editing" : "Edit"}
+            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border"
+            style={editing ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" } : { color: FAINT, borderColor: "transparent" }}
+          >
+            {editing ? checkIcon : editIcon}
+          </button>
+          {onRestore && (
+            <button
+              type="button"
+              disabled={restoringId === c.id}
+              onClick={() => onRestore(c)}
+              className="inline-flex h-[29px] items-center gap-1.5 rounded-[8px] border px-2 text-[0.7rem] font-bold disabled:opacity-50"
+              style={{ borderColor: GREEN, color: GREEN }}
+            >
+              {restoreIcon}
+              {restoringId === c.id ? "Restoring…" : "Restore"}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              aria-label="Delete customer"
+              title="Delete customer"
+              onClick={() => onDelete(c)}
+              className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
+              style={{ borderColor: "#f8ccd3" }}
+            >
+              {deleteIcon}
+            </button>
+          )}
+        </div>
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          onBlur={() => address !== (c.address ?? "") && update.mutate({ addressLine: address })}
-          placeholder="Add address..."
-          className={cellInputClass}
-          style={{ width: 220 }}
-        />
+        {editing ? (
+          <input
+            type="date"
+            defaultValue={toDateInputValue(c.dob)}
+            onChange={(e) => update.mutate({ dob: e.target.value || null })}
+            className={cellInputClass}
+            style={{ width: 140 }}
+          />
+        ) : (
+          <ReadOnlyText value={formatDate(c.dob)} width={140} />
+        )}
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          value={phone}
-          onChange={(e) => {
-            setPhone(e.target.value);
-            setPhoneError(false);
-          }}
-          onBlur={commitPhone}
-          placeholder="Phone"
-          title={phoneError ? "Enter a valid Bangladeshi mobile number, e.g. 01712345678" : undefined}
-          className={cellInputClass}
-          style={{ width: 130, borderColor: phoneError ? RED : undefined }}
-        />
+        {editing ? (
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onBlur={() => address !== (c.address ?? "") && update.mutate({ addressLine: address })}
+            placeholder="Add address..."
+            className={cellInputClass}
+            style={{ width: 220 }}
+          />
+        ) : (
+          <ReadOnlyText value={address} placeholder="Add address..." width={220} />
+        )}
+      </td>
+      <td className={td} style={tdStyle}>
+        {editing ? (
+          <input
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setPhoneError(false);
+            }}
+            onBlur={commitPhone}
+            placeholder="Phone"
+            title={phoneError ? "Enter a valid Bangladeshi mobile number, e.g. 01712345678" : undefined}
+            className={cellInputClass}
+            style={{ width: 130, borderColor: phoneError ? RED : undefined }}
+          />
+        ) : (
+          <ReadOnlyText value={phone} placeholder="Phone" width={130} />
+        )}
       </td>
       <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => email !== (c.email ?? "") && update.mutate({ email })}
-          placeholder="Email"
-          className={cellInputClass}
-          style={{ width: 190 }}
-        />
+        {editing ? (
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => email !== (c.email ?? "") && update.mutate({ email })}
+            placeholder="Email"
+            className={cellInputClass}
+            style={{ width: 190 }}
+          />
+        ) : (
+          <ReadOnlyText value={email} placeholder="Email" width={190} />
+        )}
       </td>
       <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
         {c.completedOrderCount}
@@ -450,13 +538,17 @@ function CustomerRow({
         {formatDate(c.lastOrderDate)}
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          type="date"
-          defaultValue={toDateInputValue(c.nextCallTarget)}
-          onChange={(e) => update.mutate({ nextCallTarget: e.target.value || null })}
-          className={cellInputClass}
-          style={{ width: 140 }}
-        />
+        {editing ? (
+          <input
+            type="date"
+            defaultValue={toDateInputValue(c.nextCallTarget)}
+            onChange={(e) => update.mutate({ nextCallTarget: e.target.value || null })}
+            className={cellInputClass}
+            style={{ width: 140 }}
+          />
+        ) : (
+          <ReadOnlyText value={formatDate(c.nextCallTarget)} width={140} />
+        )}
       </td>
       <td className={td} style={tdStyle}>
         {daysLeft !== null ? <span className="font-extrabold" style={{ color: daysLeftColor(daysLeft) }}>{daysLeft}</span> : <span style={{ color: FAINT }}>—</span>}
@@ -487,13 +579,17 @@ function CustomerRow({
       </td>
       <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
         {c.hasNewOrder ? (
-          <input
-            type="date"
-            defaultValue={toDateInputValue(c.newOrderAt)}
-            onChange={(e) => update.mutate({ newOrderAt: e.target.value || null })}
-            className={cellInputClass}
-            style={{ width: 140 }}
-          />
+          editing ? (
+            <input
+              type="date"
+              defaultValue={toDateInputValue(c.newOrderAt)}
+              onChange={(e) => update.mutate({ newOrderAt: e.target.value || null })}
+              className={cellInputClass}
+              style={{ width: 140 }}
+            />
+          ) : (
+            <ReadOnlyText value={formatDate(c.newOrderAt)} width={140} />
+          )
         ) : (
           "—"
         )}
@@ -537,43 +633,59 @@ function CustomerRow({
         </select>
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          onBlur={() => feedback !== (c.customerFeedback ?? "") && update.mutate({ customerFeedback: feedback })}
-          placeholder="Add feedback..."
-          className={cellInputClass}
-          style={{ width: 190 }}
-        />
+        {editing ? (
+          <input
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            onBlur={() => feedback !== (c.customerFeedback ?? "") && update.mutate({ customerFeedback: feedback })}
+            placeholder="Add feedback..."
+            className={cellInputClass}
+            style={{ width: 190 }}
+          />
+        ) : (
+          <ReadOnlyText value={feedback} placeholder="Add feedback..." width={190} />
+        )}
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          value={amaderFeedback}
-          onChange={(e) => setAmaderFeedback(e.target.value)}
-          onBlur={() => amaderFeedback !== (c.amaderFeedback ?? "") && update.mutate({ amaderFeedback })}
-          placeholder="Add note..."
-          className={cellInputClass}
-          style={{ width: 190 }}
-        />
+        {editing ? (
+          <input
+            value={amaderFeedback}
+            onChange={(e) => setAmaderFeedback(e.target.value)}
+            onBlur={() => amaderFeedback !== (c.amaderFeedback ?? "") && update.mutate({ amaderFeedback })}
+            placeholder="Add note..."
+            className={cellInputClass}
+            style={{ width: 190 }}
+          />
+        ) : (
+          <ReadOnlyText value={amaderFeedback} placeholder="Add note..." width={190} />
+        )}
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          value={family}
-          onChange={(e) => setFamily(e.target.value)}
-          onBlur={() => family !== (c.familyDetails ?? "") && update.mutate({ familyDetails: family })}
-          placeholder="Add details..."
-          className={cellInputClass}
-          style={{ width: 190 }}
-        />
+        {editing ? (
+          <input
+            value={family}
+            onChange={(e) => setFamily(e.target.value)}
+            onBlur={() => family !== (c.familyDetails ?? "") && update.mutate({ familyDetails: family })}
+            placeholder="Add details..."
+            className={cellInputClass}
+            style={{ width: 190 }}
+          />
+        ) : (
+          <ReadOnlyText value={family} placeholder="Add details..." width={190} />
+        )}
       </td>
       <td className={td} style={tdStyle}>
-        <input
-          value={reason}
-          onChange={(e) => setPurchaseReason(e.target.value)}
-          onBlur={() => reason !== (c.purchaseReason ?? "") && update.mutate({ purchaseReason: reason })}
-          placeholder="Reason..."
-          className={cellInputClass}
-        />
+        {editing ? (
+          <input
+            value={reason}
+            onChange={(e) => setPurchaseReason(e.target.value)}
+            onBlur={() => reason !== (c.purchaseReason ?? "") && update.mutate({ purchaseReason: reason })}
+            placeholder="Reason..."
+            className={cellInputClass}
+          />
+        ) : (
+          <ReadOnlyText value={reason} placeholder="Reason..." />
+        )}
       </td>
       <td className={td} style={tdStyle}>
         <span className="inline-flex h-6 min-w-[26px] items-center justify-center rounded-[7px] px-[7px] text-[0.7rem] font-extrabold" style={{ background: scoreBadgeStyle(c.fScore).bg, color: scoreBadgeStyle(c.fScore).color }}>
@@ -592,67 +704,22 @@ function CustomerRow({
       </td>
       <td className={td} style={tdStyle}>
         <div className="flex items-center gap-1.5">
-          <input
-            value={fbUrl}
-            onChange={(e) => setFbUrl(e.target.value)}
-            onBlur={() => fbUrl !== (c.facebookProfileUrl ?? "") && update.mutate({ facebookProfileUrl: fbUrl })}
-            placeholder="Profile URL..."
-            className={cellInputClass}
-            style={{ width: 130 }}
-          />
+          {editing ? (
+            <input
+              value={fbUrl}
+              onChange={(e) => setFbUrl(e.target.value)}
+              onBlur={() => fbUrl !== (c.facebookProfileUrl ?? "") && update.mutate({ facebookProfileUrl: fbUrl })}
+              placeholder="Profile URL..."
+              className={cellInputClass}
+              style={{ width: 130 }}
+            />
+          ) : (
+            <ReadOnlyText value={fbUrl} placeholder="Profile URL..." width={130} />
+          )}
           {c.facebookProfileUrl && (
             <a href={c.facebookProfileUrl} target="_blank" rel="noreferrer" style={{ color: BLUE }} aria-label="Open Facebook profile">
               {fbIcon}
             </a>
-          )}
-        </div>
-      </td>
-      <td className={td} style={tdStyle}>
-        <div className="flex items-center gap-[5px]">
-          <button
-            type="button"
-            onClick={() => onView(c.id)}
-            aria-label="View"
-            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border border-transparent hover:border-[color:var(--line)]"
-            style={{ color: FAINT }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = GREEN)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = FAINT)}
-          >
-            {eyeIcon}
-          </button>
-          <Link
-            href={`/customers/${c.id}`}
-            aria-label="Edit"
-            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border border-transparent hover:border-[color:var(--line)]"
-            style={{ color: FAINT }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = GREEN)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = FAINT)}
-          >
-            {editIcon}
-          </Link>
-          {onRestore && (
-            <button
-              type="button"
-              disabled={restoringId === c.id}
-              onClick={() => onRestore(c)}
-              className="inline-flex h-[29px] items-center gap-1.5 rounded-[8px] border px-2 text-[0.7rem] font-bold disabled:opacity-50"
-              style={{ borderColor: GREEN, color: GREEN }}
-            >
-              {restoreIcon}
-              {restoringId === c.id ? "Restoring…" : "Restore"}
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              aria-label="Delete customer"
-              title="Delete customer"
-              onClick={() => onDelete(c)}
-              className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
-              style={{ borderColor: "#f8ccd3" }}
-            >
-              {deleteIcon}
-            </button>
           )}
         </div>
       </td>

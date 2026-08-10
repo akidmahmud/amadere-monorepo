@@ -120,7 +120,14 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
         />
       </form>
 
-      <SeoMetaCard entityType="COLLECTION" entityId={collectionId} />
+      <SeoMetaCard
+        entityType="COLLECTION"
+        entityId={collectionId}
+        slug={slug}
+        previewPath="/collections"
+        fallbackTitle={nameEn}
+        fallbackDescription={descriptionEn}
+      />
     </div>
   );
 }

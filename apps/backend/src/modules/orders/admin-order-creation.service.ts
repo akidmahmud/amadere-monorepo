@@ -7,6 +7,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
 import { COD_FEE_DEFAULTS } from '../net-profit/accounts/accounts.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
+import { PreviewCouponDto, PreviewCouponResultDto } from './dto/preview-coupon.dto';
 import { generateOrderNumber } from './order-number.util';
 import { reserveStock } from './stock-reservation.util';
 import { toOrderAddressCreate } from './order-address.util';
@@ -34,6 +35,22 @@ export class AdminOrderCreationService {
     private readonly orders: OrdersService,
     private readonly netProfitSettings: NetProfitSettingsService,
   ) {}
+
+  // Preview-only — reuses the exact same coupon validation the real create()
+  // below runs (expiry, usage limits, min order amount, product/category
+  // scope), so the New Order form's Total amount can reflect a real coupon
+  // discount before the staff member actually submits the order.
+  async previewCoupon(dto: PreviewCouponDto): Promise<PreviewCouponResultDto> {
+    const pricing = await this.pricing.price(
+      dto.items.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
+      { couponCode: dto.couponCode, customerId: dto.customerId },
+    );
+    if (pricing.couponError) {
+      return { amount: '0', error: pricing.couponError };
+    }
+    const coupon = pricing.discounts.find((d) => d.source === 'COUPON');
+    return { amount: (coupon?.amount ?? new Decimal(0)).toString() };
+  }
 
   async create(dto: CreateManualOrderDto, adminId: number): Promise<OrderDto> {
     const products = await this.prisma.client.product.findMany({
@@ -237,10 +254,16 @@ export class AdminOrderCreationService {
     const toAddressDto = (a: typeof shipping) => ({
       recipientName: a.recipientName,
       phone: a.phone,
+      alternativePhone: a.alternativePhone ?? undefined,
       email: a.email ?? undefined,
       division: a.division,
       district: a.district,
-      area: a.area ?? undefined,
+      // area (thana) is required going forward, but a pre-existing order
+      // from before that requirement could still have a null one on file —
+      // fall back to '' rather than fail to compile; an empty thana will
+      // still get caught by CheckoutAddressDto's own validation on reorder,
+      // same as any other blank required field would.
+      area: a.area ?? '',
       landmark: a.landmark ?? undefined,
       addressLine: a.addressLine,
       postCode: a.postCode ?? undefined,

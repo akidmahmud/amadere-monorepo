@@ -43,3 +43,29 @@ export function toBdCompact(raw: string): string | null {
   const e164 = normalizeBdPhone(raw);
   return e164 ? e164.slice(1) : null;
 }
+
+/**
+ * Every plausible stored representation of a BD phone, for lookups — this
+ * DB has THREE live formats for the same real-world number, confirmed
+ * against real `customers.phone` data (grouped by length): legacy local
+ * (01XXXXXXXXX, 11 chars, ~2300 rows — never backfilled), the current
+ * site-wide compact form (880XXXXXXXXXX, 13 chars, what {@link toBdCompact}
+ * now writes for every new/updated entry), and a smaller batch already
+ * stored as E.164 (+8801XXXXXXXXX, 14 chars, ~30 rows — an earlier import/
+ * integration wrote these directly). A lookup that only tries one misses
+ * every row still in either of the other two — e.g. a returning customer
+ * whose original record is "01734113189" checking out again with the same
+ * number, now normalized to "8801734113189" by `@NormalizeBdPhone()`,
+ * would otherwise silently create a duplicate `Customer` instead of
+ * matching their real one. Use as `where: { phone: { in:
+ * phoneLookupCandidates(input) } }` (or `.includes()` for an in-memory
+ * comparison) anywhere a phone is looked up rather than freshly written.
+ * Falls back to `[raw]` for a non-BD-phone-shaped input so an email (or
+ * garbage) passed in by mistake still gets *a* candidate to search
+ * against instead of silently matching nothing.
+ */
+export function phoneLookupCandidates(raw: string): string[] {
+  const e164 = normalizeBdPhone(raw);
+  if (!e164) return [raw];
+  return [e164.slice(1), e164.slice(3), e164]; // ["880...", "01...", "+8801..."]
+}

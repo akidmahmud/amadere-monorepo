@@ -13,6 +13,14 @@ export class CheckoutAddressDto {
   @IsBdPhone()
   phone!: string;
 
+  // Steadfast's alternative_phone — a second contact number, optional
+  // everywhere `phone` (the primary) is required.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @NormalizeBdPhone()
+  @IsBdPhone()
+  alternativePhone?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsEmail()
@@ -26,10 +34,9 @@ export class CheckoutAddressDto {
   @IsString()
   district!: string;
 
-  @ApiPropertyOptional({ description: 'Thana/upazila' })
-  @IsOptional()
+  @ApiProperty({ description: 'Thana/upazila' })
   @IsString()
-  area?: string;
+  area!: string;
 
   @ApiPropertyOptional()
   @IsOptional()

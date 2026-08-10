@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@amader/admin-ui";
 import { useSeoMeta, useUpsertSeoMeta } from "@/hooks/useSeoMeta";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
-import { computeSeoChecks, computeSeoScore } from "./seo-score";
+import { SeoScoreRing } from "@/components/SeoScoreRing";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -23,6 +23,10 @@ export function ProductSeoTab({
 }) {
   const [title, setTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  // Ephemeral, not derived from upsert.isSuccess — react-query doesn't reset
+  // that flag on its own, so it would stay true forever after the first save
+  // instead of confirming *this* save just happened.
+  const [justSaved, setJustSaved] = useState(false);
   const query = useSeoMeta("PRODUCT", productId ?? 0, "EN", !!productId);
   const upsert = useUpsertSeoMeta();
   const storefrontUrl = useStorefrontUrl();
@@ -45,18 +49,6 @@ export function ProductSeoTab({
 
   const effectiveTitle = title || name;
   const effectiveDescription = metaDescription || description;
-  const checks = computeSeoChecks({
-    metaTitle: effectiveTitle,
-    metaDescription: effectiveDescription,
-    slug,
-    primaryImageAlt,
-    description,
-  });
-  const score = computeSeoScore(checks);
-  const r = 45;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference * (1 - score / 100);
-  const ringColor = score >= 80 ? "#22c087" : score >= 50 ? "#f7941d" : "#ef4b62";
 
   async function handleSave() {
     await upsert.mutateAsync({
@@ -67,6 +59,8 @@ export function ProductSeoTab({
       description: metaDescription || undefined,
       robots: "index,follow",
     });
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 3000);
   }
 
   return (
@@ -99,46 +93,29 @@ export function ProductSeoTab({
               className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500"
             />
           </label>
-          <Button type="button" variant="primary" className="mt-3.5" disabled={upsert.isPending} onClick={handleSave}>
-            {upsert.isPending ? "Saving…" : "Save SEO"}
-          </Button>
+          <div className="mt-3.5 flex items-center gap-3">
+            <Button type="button" variant="primary" disabled={upsert.isPending} onClick={handleSave}>
+              {upsert.isPending ? "Saving…" : "Save SEO"}
+            </Button>
+            {justSaved && (
+              <span className="flex items-center gap-1.5 text-xs font-bold text-success">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Saved
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="rounded-card border border-border bg-surface p-[18px]">
-        <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">SEO Score</h3>
-        <div className="flex items-start gap-[18px]">
-          <div className="relative h-[104px] w-[104px] flex-none">
-            <svg width="104" height="104" viewBox="0 0 104 104" className="-rotate-90">
-              <circle cx="52" cy="52" r={r} fill="none" stroke="#e9eef5" strokeWidth="9" />
-              <circle cx="52" cy="52" r={r} fill="none" stroke={ringColor} strokeWidth="9" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-2xl font-extrabold leading-none text-text">{score}</div>
-              <div className="mt-1 text-[0.68rem] font-semibold text-muted">/100</div>
-            </div>
-          </div>
-          <ul className="flex flex-1 flex-col gap-2.5 pt-1">
-            {checks.map((c) => (
-              <li key={c.label} className="flex items-center gap-2 text-[0.74rem] font-semibold text-text">
-                <span
-                  className="grid h-[17px] w-[17px] flex-none place-items-center rounded-full text-white"
-                  style={{ background: c.passed ? "#22c087" : "#f5a623" }}
-                >
-                  {c.passed ? (
-                    <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    "!"
-                  )}
-                </span>
-                {c.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      <SeoScoreRing
+        metaTitle={effectiveTitle}
+        metaDescription={effectiveDescription}
+        slug={slug}
+        primaryImageAlt={primaryImageAlt}
+        description={description}
+      />
     </div>
   );
 }

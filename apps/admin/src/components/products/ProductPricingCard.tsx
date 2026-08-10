@@ -12,6 +12,11 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
   const profit = price - cost;
   const margin = price > 0 ? (profit / price) * 100 : 0;
 
+  const salePrice = Number(form.salePrice) || 0;
+  const hasSalePrice = form.salePrice.trim() !== "";
+  const saleProfit = salePrice - cost;
+  const saleMargin = salePrice > 0 ? (saleProfit / salePrice) * 100 : 0;
+
   return (
     <div className="rounded-card border border-border bg-surface p-[18px]">
       <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Pricing</h3>
@@ -27,7 +32,7 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
             <span className="text-xs font-bold text-text">
               Regular Price (৳)<span className="ml-0.5 text-danger">*</span>
             </span>
-            <input type="number" required value={form.price} onChange={(e) => form.setPrice(e.target.value)} className={inputClass} />
+            <input type="number" value={form.price} onChange={(e) => form.setPrice(e.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">Sale Price (৳)</span>
@@ -36,6 +41,19 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-bold text-text">Cost Price (৳)</span>
             <input type="number" value={form.costPerItem} onChange={(e) => form.setCostPerItem(e.target.value)} className={inputClass} />
+          </label>
+          {/* Same field as "Shippable weight, kg" on the Shipping tab (one
+              piece of state, edit either and both stay in sync) — surfaced
+              here too since it's easy to miss on its own tab, and it's
+              required to save. Also what the storefront card shows in its
+              pack/weight slot for a simple product with no variants to pick
+              from — see toProductCardData's formatShippableWeight. */}
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-text">
+              Weight (kg)<span className="ml-0.5 text-danger">*</span>
+            </span>
+            <input type="number" value={form.shippableWeight} onChange={(e) => form.setShippableWeight(e.target.value)} className={inputClass} />
+            <span className="text-xs text-muted">Used for courier charging and shown on the product card.</span>
           </label>
         </div>
       )}
@@ -62,7 +80,7 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
 
       {!form.hasVariants && (
         <>
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-muted">Profit</span>
               <input readOnly value={hasCost ? `৳ ${profit.toFixed(2)}` : "—"} className={readonlyClass} />
@@ -72,6 +90,19 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
               <input readOnly value={hasCost && price > 0 ? `${margin.toFixed(2)}%` : "—"} className={readonlyClass} />
             </label>
           </div>
+
+          {hasSalePrice && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-muted">Sale Profit</span>
+                <input readOnly value={hasCost ? `৳ ${saleProfit.toFixed(2)}` : "—"} className={readonlyClass} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-muted">Sale Margin</span>
+                <input readOnly value={hasCost && salePrice > 0 ? `${saleMargin.toFixed(2)}%` : "—"} className={readonlyClass} />
+              </label>
+            </div>
+          )}
 
           {hasCost && price > 0 && (
             <div
@@ -86,8 +117,26 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               {profit >= 0
-                ? `You will earn ৳${profit.toFixed(2)} profit on each sale`
+                ? `You will earn ৳${profit.toFixed(2)} profit on each sale at regular price`
                 : `This is a loss of ৳${Math.abs(profit).toFixed(2)} per sale at the current cost`}
+            </div>
+          )}
+
+          {hasCost && hasSalePrice && salePrice > 0 && (
+            <div
+              className="mt-2 flex items-center gap-1.5 rounded-sm px-3 py-2.5 text-[0.73rem] font-bold"
+              style={{
+                background: saleProfit >= 0 ? "#e6f8ef" : "#feeaec",
+                color: saleProfit >= 0 ? "#16a06d" : "#e8465e",
+                border: `1px solid ${saleProfit >= 0 ? "#c8eeda" : "#f6c8ce"}`,
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {saleProfit >= 0
+                ? `You will earn ৳${saleProfit.toFixed(2)} profit on each sale at the sale price`
+                : `This is a loss of ৳${Math.abs(saleProfit).toFixed(2)} per sale at the sale price`}
             </div>
           )}
         </>

@@ -12,6 +12,8 @@ export interface ExistingVariantsManagerProps {
   productId: number;
   attributes: Attribute[];
   variants: AdminProductVariant[];
+  /** Product-wide default cost price — variants have no cost of their own, so this is the only basis for a per-variant profit figure. undefined = no cost entered. */
+  costPerItem?: number;
 }
 
 function labelFor(attributes: Attribute[], attributeValueIds: number[]): string {
@@ -44,12 +46,14 @@ function VariantEditRow({
   attributes,
   onRemove,
   removePending,
+  costPerItem,
 }: {
   productId: number;
   variant: AdminProductVariant;
   attributes: Attribute[];
   onRemove: () => void;
   removePending: boolean;
+  costPerItem?: number;
 }) {
   const qc = useQueryClient();
   const updatePrice = useUpdateVariantPrice(productId);
@@ -59,6 +63,9 @@ function VariantEditRow({
   const [salePrice, setSalePrice] = useState(variant.salePrice != null ? String(variant.salePrice) : "");
   const [stock, setStock] = useState(String(variant.stock));
   const [sku, setSku] = useState(variant.sku ?? "");
+
+  const profit = costPerItem !== undefined && price ? Number(price) - costPerItem : null;
+  const saleProfit = costPerItem !== undefined && salePrice ? Number(salePrice) - costPerItem : null;
 
   const dirty =
     price !== String(variant.price) ||
@@ -105,6 +112,30 @@ function VariantEditRow({
         <span className="text-[11px] font-semibold text-secondary">Sale price</span>
         <input type="number" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} className={editInputClass} />
       </label>
+      {costPerItem !== undefined && (
+        <>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-secondary">Profit</span>
+            <span
+              className={`flex h-8 w-20 items-center rounded-sm border border-border bg-surface px-2 text-xs font-semibold ${
+                profit !== null && profit < 0 ? "text-danger" : "text-success"
+              }`}
+            >
+              {profit !== null ? `৳${profit.toFixed(2)}` : "—"}
+            </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-secondary">Sale profit</span>
+            <span
+              className={`flex h-8 w-20 items-center rounded-sm border border-border bg-surface px-2 text-xs font-semibold ${
+                saleProfit !== null && saleProfit < 0 ? "text-danger" : "text-success"
+              }`}
+            >
+              {saleProfit !== null ? `৳${saleProfit.toFixed(2)}` : "—"}
+            </span>
+          </label>
+        </>
+      )}
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold text-secondary">Stock</span>
         <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} className={editInputClass} />
@@ -139,7 +170,7 @@ function VariantEditRow({
 // mutations fire immediately, same pattern already proven on the Attributes
 // page). Price, stock, and SKU DO have real update endpoints (see
 // VariantEditRow above), so those are edited in place instead.
-export function ExistingVariantsManager({ productId, attributes, variants }: ExistingVariantsManagerProps) {
+export function ExistingVariantsManager({ productId, attributes, variants, costPerItem }: ExistingVariantsManagerProps) {
   const addVariant = useAddVariant(productId);
   const removeVariant = useRemoveVariant(productId);
 
@@ -155,6 +186,7 @@ export function ExistingVariantsManager({ productId, attributes, variants }: Exi
             attributes={attributes}
             onRemove={() => removeVariant.mutate(v.id)}
             removePending={removeVariant.isPending && removeVariant.variables === v.id}
+            costPerItem={costPerItem}
           />
         ))}
         {variants.length === 0 && <p className="text-xs text-muted">No variants yet.</p>}
@@ -165,6 +197,7 @@ export function ExistingVariantsManager({ productId, attributes, variants }: Exi
           submitLabel={addVariant.isPending ? "Adding…" : "Add variant"}
           pending={addVariant.isPending}
           onSubmit={(v) => addVariant.mutate(v)}
+          costPerItem={costPerItem}
         />
       ) : (
         <p className="text-xs text-muted">Select at least one attribute above to add variants.</p>

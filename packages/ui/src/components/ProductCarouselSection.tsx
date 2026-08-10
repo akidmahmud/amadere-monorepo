@@ -4,7 +4,8 @@ import { ReactNode } from "react";
 import type { LinkComponent } from "../lib/link-component";
 import { Carousel } from "./Carousel";
 import { PillTabs, type PillTabOption } from "./PillTabs";
-import { ProductCard, type ProductCardProps } from "./ProductCard";
+import type { ProductCardProps } from "./ProductCard";
+import { SiteProductCard } from "./SiteProductCard";
 import { SectionHeading, ViewAllLink } from "./SectionHeading";
 
 export type ProductCarouselItem = Pick<
@@ -77,7 +78,7 @@ export function ProductCarouselSection({
             }
             style={cardStyle}
           >
-            <ProductCard
+            <SiteProductCard
               {...product}
               addToCartLabel={addToCartLabel}
               addToCartPending={addToCartPendingHref === product.href}

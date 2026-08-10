@@ -51,6 +51,11 @@ export default function NewProductPage() {
   // the list lets that continue in one flow. "Save & Exit" is the old
   // always-back-to-the-list behavior, kept for when there's nothing more to add.
   async function handleSave(exit: boolean) {
+    const missing = form.validate(variants.length);
+    if (missing.length > 0) {
+      toast.push(`Missing required fields: ${missing.join(", ")}.`);
+      return;
+    }
     let created;
     try {
       created = await create.mutateAsync({

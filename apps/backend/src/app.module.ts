@@ -30,6 +30,10 @@ import { CourierModule } from './modules/courier/courier.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
+import { NewsletterCampaignsModule } from './modules/newsletter-campaigns/newsletter-campaigns.module';
+import { NewsletterSegmentsModule } from './modules/newsletter-segments/newsletter-segments.module';
+import { NewsletterTemplatesModule } from './modules/newsletter-templates/newsletter-templates.module';
+import { NewsletterTagsModule } from './modules/newsletter-tags/newsletter-tags.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BlogCategoriesModule } from './modules/blog-categories/blog-categories.module';
 import { BlogTagsModule } from './modules/blog-tags/blog-tags.module';
@@ -49,6 +53,7 @@ import { MenusModule } from './modules/menus/menus.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
+import { PromoVideosModule } from './modules/promo-videos/promo-videos.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
 
 @Module({
@@ -121,6 +126,10 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     CustomersModule,
     ReviewsModule,
     NewsletterModule,
+    NewsletterCampaignsModule,
+    NewsletterSegmentsModule,
+    NewsletterTemplatesModule,
+    NewsletterTagsModule,
     DashboardModule,
     BlogCategoriesModule,
     BlogTagsModule,
@@ -140,6 +149,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     AnnouncementsModule,
     CollectionsModule,
     HomepageSectionsModule,
+    PromoVideosModule,
     NetProfitModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

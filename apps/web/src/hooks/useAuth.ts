@@ -6,6 +6,19 @@ import type { components } from "@/lib/api/schema";
 
 type CustomerProfileDto = components["schemas"]["CustomerProfileDto"];
 
+// `details` carries structured extras the backend attaches to some errors
+// (e.g. register()'s duplicate-phone/email conflict sets `details.field` so
+// the UI can place the message under the right input instead of a generic
+// banner) — a plain Error has nowhere to put that, so callers that care
+// narrow on this subclass instead of just reading `.message`.
+export class LocalAuthError extends Error {
+  details?: unknown;
+  constructor(message: string, details?: unknown) {
+    super(message);
+    this.details = details;
+  }
+}
+
 async function localAuthCall(path: string, body: unknown): Promise<void> {
   const res = await fetch(`/api${path}`, {
     method: "POST",
@@ -13,7 +26,7 @@ async function localAuthCall(path: string, body: unknown): Promise<void> {
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Request failed");
+  if (!json.success) throw new LocalAuthError(json.error?.message ?? "Request failed", json.error?.details);
 }
 
 // Every successful login/OTP-verify needs the same follow-up: the account

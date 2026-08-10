@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderAddressType, Prisma } from '@amader/db';
-import { PaginatedResult } from '@amader/shared';
+import { PaginatedResult, phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -449,7 +449,8 @@ export class OrdersService {
       where: { orderNumber: dto.orderNumber },
       include: { ...ORDER_INCLUDE, addresses: true },
     });
-    if (!order || !order.addresses.some((a) => a.phone === dto.phone)) {
+    const candidates = phoneLookupCandidates(dto.phone);
+    if (!order || !order.addresses.some((a) => candidates.includes(a.phone))) {
       throw new NotFoundException('Order not found');
     }
     return toOrderDto(order);

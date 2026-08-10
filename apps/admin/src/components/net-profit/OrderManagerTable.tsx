@@ -97,9 +97,11 @@ const SEND_PROVIDERS: { provider: "STEADFAST" | "REDX"; label: string; letter: s
   { provider: "REDX", label: "RedX", letter: "R" },
 ];
 
-function InternalNoteCell({ order }: { order: OrderManagerRow }) {
+function InternalNoteCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
   const [value, setValue] = useState(order.staffNote ?? "");
   const updateNote = useUpdateOrderNote(order.id);
+
+  if (!editing) return <ReadOnlyCell value={value} placeholder="Add a note..." width={160} />;
 
   return (
     <input
@@ -115,7 +117,20 @@ function InternalNoteCell({ order }: { order: OrderManagerRow }) {
   );
 }
 
-function PhoneCell({ order }: { order: OrderManagerRow }) {
+// Non-dropdown cells (Phone/Address/Internal Note/Source) are read-only
+// until the row's Edit icon is clicked — typed fields sitting directly in
+// the table were too easy to fat-finger while just scrolling/browsing.
+// Dropdown cells (Status/Payment/Division) have no equivalent risk and stay
+// directly editable at all times.
+function ReadOnlyCell({ value, placeholder, width }: { value: string; placeholder?: string; width?: number }) {
+  return (
+    <span className="inline-block truncate px-2.5 align-middle text-[0.72rem] font-semibold" style={{ width, color: value ? TEXT : FAINT }} title={value || undefined}>
+      {value || placeholder || "—"}
+    </span>
+  );
+}
+
+function PhoneCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
   const [value, setValue] = useState(order.shippingPhone ?? "");
   const [error, setError] = useState(false);
   const updateDetails = useUpdateOrderDetails(order.id);
@@ -129,6 +144,8 @@ function PhoneCell({ order }: { order: OrderManagerRow }) {
     setError(false);
     updateDetails.mutate({ phone: value });
   }
+
+  if (!editing) return <ReadOnlyCell value={value} placeholder="Phone" width={128} />;
 
   return (
     <input
@@ -148,9 +165,12 @@ function PhoneCell({ order }: { order: OrderManagerRow }) {
   );
 }
 
-function AddressCell({ order }: { order: OrderManagerRow }) {
+function AddressCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
   const [value, setValue] = useState(order.addressLine ?? "");
   const updateDetails = useUpdateOrderDetails(order.id);
+  const title = [order.district, order.division, order.postCode].filter(Boolean).join(", ") || undefined;
+
+  if (!editing) return <ReadOnlyCell value={value} placeholder="Address line" width={200} />;
 
   return (
     <input
@@ -159,7 +179,7 @@ function AddressCell({ order }: { order: OrderManagerRow }) {
       onBlur={() => value !== (order.addressLine ?? "") && updateDetails.mutate({ addressLine: value })}
       onClick={(e) => e.stopPropagation()}
       placeholder="Address line"
-      title={[order.district, order.division, order.postCode].filter(Boolean).join(", ") || undefined}
+      title={title}
       className="h-9 w-full rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
       style={{ borderColor: "transparent", minWidth: 200 }}
       onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
@@ -167,9 +187,11 @@ function AddressCell({ order }: { order: OrderManagerRow }) {
   );
 }
 
-function SourceCell({ order }: { order: OrderManagerRow }) {
+function SourceCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
   const [value, setValue] = useState(order.utmSource ?? "");
   const updateDetails = useUpdateOrderDetails(order.id);
+
+  if (!editing) return <ReadOnlyCell value={value} placeholder="e.g. facebook" width={112} />;
 
   return (
     <input
@@ -276,6 +298,16 @@ const deleteIcon = (
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
   </svg>
 );
+const editIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
+const checkIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
 const restoreIcon = (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 12a9 9 0 1 0 3-6.7" />
@@ -327,7 +359,7 @@ export function OrderManagerTable({
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
 
-  const colCount = 14 + columns.size;
+  const colCount = 15 + columns.size;
   const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
   const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
@@ -350,6 +382,7 @@ export function OrderManagerTable({
                 Order
               </TH>
               <TH>Date</TH>
+              <TH>Edit</TH>
               <TH>Status</TH>
               <TH>Total</TH>
               <TH>Phone</TH>
@@ -381,120 +414,24 @@ export function OrderManagerTable({
                 </td>
               </tr>
             )}
-            {orders.map((o) => {
-              const { date, time } = formatDate(o.createdAt);
-              return (
-                <tr key={o.id} className="[&:hover>td]:bg-[#f7fbf8]">
-                  <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }} onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={selected.has(o.id)} onChange={() => onToggle(o.id)} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
-                  </td>
-                  <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
-                    <button type="button" className="group block text-left" onClick={() => onView(o)}>
-                      <span className="block font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
-                        #{o.id} · {o.orderNumber}
-                      </span>
-                      <span className="mt-[3px] block text-[0.68rem] font-medium text-[#94a69a] transition-colors duration-150 group-hover:text-[#1d5230]">
-                        {o.recipientName ?? "—"}
-                      </span>
-                    </button>
-                  </td>
-                  <td className={td} style={tdStyle}>
-                    <div>{date}</div>
-                    <div className="text-[0.66rem]" style={{ color: FAINT }}>
-                      {time}
-                    </div>
-                  </td>
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <StatusCell order={o} statusByKey={statusByKey} />
-                  </td>
-                  <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
-                    ৳{Number(o.totalAmount).toLocaleString()}
-                  </td>
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <PhoneCell order={o} />
-                  </td>
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <AddressCell order={o} />
-                  </td>
-                  <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
-                    {o.origin}
-                  </td>
-                  {columns.has("payment") && (
-                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                      <PaymentCell order={o} />
-                    </td>
-                  )}
-                  {columns.has("division") && (
-                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                      <DivisionCell order={o} />
-                    </td>
-                  )}
-                  {columns.has("internalNote") && (
-                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                      <InternalNoteCell order={o} />
-                    </td>
-                  )}
-                  {columns.has("source") && (
-                    <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                      <SourceCell order={o} />
-                    </td>
-                  )}
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <a
-                      href={`/print/orders/${o.id}/invoice`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold"
-                      style={{ borderColor: LINE, color: TEXT }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 9V2h12v7" />
-                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                        <rect x="6" y="14" width="12" height="8" />
-                      </svg>
-                      Invoice
-                    </a>
-                  </td>
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}>
-                      Check
-                    </Button>
-                  </td>
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <CourierSendCell order={o} onConsign={(provider) => onConsign(o, provider)} />
-                  </td>
-                  <td className={td} style={tdStyle}>
-                    <CourierStatusCell order={o} />
-                  </td>
-                  <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    {onRestore && (
-                      <button
-                        type="button"
-                        disabled={restoringId === o.id}
-                        onClick={() => onRestore(o)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold disabled:opacity-50"
-                        style={{ borderColor: GREEN, color: GREEN }}
-                      >
-                        {restoreIcon}
-                        {restoringId === o.id ? "Restoring…" : "Restore"}
-                      </button>
-                    )}
-                    {onDelete && (
-                      <button
-                        type="button"
-                        aria-label="Delete order"
-                        title="Delete order"
-                        onClick={() => onDelete(o)}
-                        className="grid h-8 w-8 place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
-                        style={{ borderColor: "#f8ccd3" }}
-                      >
-                        {deleteIcon}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {orders.map((o) => (
+              <OrderRow
+                key={o.id}
+                order={o}
+                statusByKey={statusByKey}
+                columns={columns}
+                selected={selected.has(o.id)}
+                onToggle={() => onToggle(o.id)}
+                onView={onView}
+                onConsign={onConsign}
+                onCheckRisk={onCheckRisk}
+                onDelete={onDelete}
+                onRestore={onRestore}
+                restoringId={restoringId}
+                td={td}
+                tdStyle={tdStyle}
+              />
+            ))}
           </tbody>
         </table>
       </div>
@@ -565,6 +502,163 @@ export function OrderManagerTable({
         </div>
       </div>
     </div>
+  );
+}
+
+function OrderRow({
+  order: o,
+  statusByKey,
+  columns,
+  selected,
+  onToggle,
+  onView,
+  onConsign,
+  onCheckRisk,
+  onDelete,
+  onRestore,
+  restoringId,
+  td,
+  tdStyle,
+}: {
+  order: OrderManagerRow;
+  statusByKey: Map<string, { labelEn: string; color: string }>;
+  columns: Set<OptionalColumn>;
+  selected: boolean;
+  onToggle: () => void;
+  onView: (order: OrderManagerRow) => void;
+  onConsign: (order: OrderManagerRow, provider: "STEADFAST" | "REDX") => void;
+  onCheckRisk: (phone: string) => void;
+  onDelete?: (order: OrderManagerRow) => void;
+  onRestore?: (order: OrderManagerRow) => void;
+  restoringId?: number | null;
+  td: string;
+  tdStyle: { color: string; borderColor: string; background: string };
+}) {
+  const [editing, setEditing] = useState(false);
+  const { date, time } = formatDate(o.createdAt);
+
+  return (
+    <tr className="[&:hover>td]:bg-[#f7fbf8]">
+      <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }} onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={selected} onChange={onToggle} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
+      </td>
+      <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
+        <button type="button" className="group block text-left" onClick={() => onView(o)}>
+          <span className="block font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
+            #{o.id} · {o.orderNumber}
+          </span>
+          <span className="mt-[3px] block text-[0.68rem] font-medium text-[#94a69a] transition-colors duration-150 group-hover:text-[#1d5230]">
+            {o.recipientName ?? "—"}
+          </span>
+        </button>
+      </td>
+      <td className={td} style={tdStyle}>
+        <div>{date}</div>
+        <div className="text-[0.66rem]" style={{ color: FAINT }}>
+          {time}
+        </div>
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          aria-label={editing ? "Done editing" : "Edit"}
+          title={editing ? "Done editing" : "Edit"}
+          className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border"
+          style={editing ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" } : { color: FAINT, borderColor: "transparent" }}
+        >
+          {editing ? checkIcon : editIcon}
+        </button>
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <StatusCell order={o} statusByKey={statusByKey} />
+      </td>
+      <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
+        ৳{Number(o.totalAmount).toLocaleString()}
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <PhoneCell order={o} editing={editing} />
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <AddressCell order={o} editing={editing} />
+      </td>
+      <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
+        {o.origin}
+      </td>
+      {columns.has("payment") && (
+        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+          <PaymentCell order={o} />
+        </td>
+      )}
+      {columns.has("division") && (
+        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+          <DivisionCell order={o} />
+        </td>
+      )}
+      {columns.has("internalNote") && (
+        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+          <InternalNoteCell order={o} editing={editing} />
+        </td>
+      )}
+      {columns.has("source") && (
+        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+          <SourceCell order={o} editing={editing} />
+        </td>
+      )}
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <a
+          href={`/print/orders/${o.id}/invoice`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold"
+          style={{ borderColor: LINE, color: TEXT }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9V2h12v7" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Invoice
+        </a>
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}>
+          Check
+        </Button>
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <CourierSendCell order={o} onConsign={(provider) => onConsign(o, provider)} />
+      </td>
+      <td className={td} style={tdStyle}>
+        <CourierStatusCell order={o} />
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        {onRestore && (
+          <button
+            type="button"
+            disabled={restoringId === o.id}
+            onClick={() => onRestore(o)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold disabled:opacity-50"
+            style={{ borderColor: GREEN, color: GREEN }}
+          >
+            {restoreIcon}
+            {restoringId === o.id ? "Restoring…" : "Restore"}
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            aria-label="Delete order"
+            title="Delete order"
+            onClick={() => onDelete(o)}
+            className="grid h-8 w-8 place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
+            style={{ borderColor: "#f8ccd3" }}
+          >
+            {deleteIcon}
+          </button>
+        )}
+      </td>
+    </tr>
   );
 }
 

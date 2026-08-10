@@ -80,9 +80,10 @@ export function CheckoutFraudBadge({ phone, onResult }: { phone: string; onResul
   const result = preflight.data;
   if (!result) return null;
 
-  if (!result.hasHistory) {
-    return <p className="mt-1.5 font-body text-xs text-muted">ℹ No delivery history yet — first order from this number.</p>;
-  }
+  // No delivery history is the common case for a legitimate new customer —
+  // it's an internal fraud-scoring detail, not something worth surfacing
+  // (and unnecessarily alarming) to someone placing their first order.
+  if (!result.hasHistory) return null;
 
   if (result.verdict === "block") {
     return (

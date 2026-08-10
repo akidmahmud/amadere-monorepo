@@ -9,6 +9,8 @@ export interface NewVariantsBuilderProps {
   attributes: Attribute[];
   variants: VariantInput[];
   onChange: (variants: VariantInput[]) => void;
+  /** Product-wide default cost price — variants have no cost of their own, so this is the only basis for a per-variant profit figure. undefined = no cost entered. */
+  costPerItem?: number;
 }
 
 function labelFor(attributes: Attribute[], attributeValueIds: number[]): string {
@@ -30,7 +32,7 @@ function labelFor(attributes: Attribute[], attributeValueIds: number[]): string 
 // directly). Editing an existing product's variants uses
 // ExistingVariantsManager instead, which calls the real add/remove
 // endpoints immediately.
-export function NewVariantsBuilder({ attributes, variants, onChange }: NewVariantsBuilderProps) {
+export function NewVariantsBuilder({ attributes, variants, onChange, costPerItem }: NewVariantsBuilderProps) {
   return (
     <div>
       <span className="mb-2 block text-xs font-semibold text-secondary">Variants</span>
@@ -38,20 +40,27 @@ export function NewVariantsBuilder({ attributes, variants, onChange }: NewVarian
         <p className="text-xs text-muted">Select at least one attribute above to define variants.</p>
       )}
       <div className="mb-2 flex flex-col gap-1.5">
-        {variants.map((v, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm text-text">
-            <span className="flex-1">
-              {labelFor(attributes, v.attributeValueIds)} — ৳{v.price}
-              {v.isDefault && " (default)"}
-            </span>
-            <Button type="button" variant="link" className="text-danger" onClick={() => onChange(variants.filter((_, j) => j !== i))}>
-              Remove
-            </Button>
-          </div>
-        ))}
+        {variants.map((v, i) => {
+          const profit = costPerItem !== undefined ? v.price - costPerItem : null;
+          const saleProfit = costPerItem !== undefined && v.salePrice != null ? v.salePrice - costPerItem : null;
+          return (
+            <div key={i} className="flex items-center gap-2 text-sm text-text">
+              <span className="flex-1">
+                {labelFor(attributes, v.attributeValueIds)} — ৳{v.price}
+                {v.salePrice != null && ` (sale ৳${v.salePrice})`}
+                {v.isDefault && " (default)"}
+                {profit !== null && ` · profit ৳${profit.toFixed(2)}`}
+                {saleProfit !== null && ` · sale profit ৳${saleProfit.toFixed(2)}`}
+              </span>
+              <Button type="button" variant="link" className="text-danger" onClick={() => onChange(variants.filter((_, j) => j !== i))}>
+                Remove
+              </Button>
+            </div>
+          );
+        })}
       </div>
       {attributes.length > 0 && (
-        <VariantRowForm attributes={attributes} submitLabel="Add variant" onSubmit={(v) => onChange([...variants, v])} />
+        <VariantRowForm attributes={attributes} submitLabel="Add variant" onSubmit={(v) => onChange([...variants, v])} costPerItem={costPerItem} />
       )}
     </div>
   );

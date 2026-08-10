@@ -7,7 +7,7 @@ import {
   RiskLevel,
   ShipmentStatus,
 } from '@amader/db';
-import { PaginatedResult } from '@amader/shared';
+import { PaginatedResult, phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { OrdersService } from '../../orders/orders.service';
@@ -45,10 +45,19 @@ interface RawOrderManagerRow {
 // A raw join (Order ⋈ latest Payment ⋈ latest Shipment ⋈ FraudCheck-by-phone)
 // rather than N+1 Prisma queries or an in-memory risk filter after
 // pagination — a `WHERE risk = 'HIGH'` filter has to happen *before*
-// LIMIT/OFFSET or page 2 silently drops real rows. Phone join assumes the
-// local-11-digit format confirmed against real `order_addresses.phone`
-// (same assumption `normalizeBdPhone` encodes) rather than re-normalizing
-// row-by-row in SQL.
+// LIMIT/OFFSET or page 2 silently drops real rows. `order_addresses.phone`
+// is stored in any of THREE live formats, confirmed against real data
+// (grouped by length) — legacy local (01XXXXXXXXX, 11 chars, ~3000 rows),
+// the current compact form (880XXXXXXXXXX, 13 chars, what every checkout
+// writes since the @NormalizeBdPhone() rollout), and E.164 as-is
+// (+8801XXXXXXXXX, 14 chars, ~50 rows from an earlier import) — while
+// `fraud_checks.phone` is always `+8801XXXXXXXXX`. FRAUD_CHECK_JOIN builds
+// the right `+88...` form from whichever length oa.phone actually has,
+// instead of assuming it's always local (that assumption used to hold but
+// broke silently for every order created after the rollout — this join
+// returned RiskLevel.UNKNOWN for all of them).
+const FRAUD_CHECK_JOIN = Prisma.sql`LEFT JOIN fraud_checks fc ON fc.phone = CASE length(oa.phone) WHEN 11 THEN '+88' || oa.phone WHEN 13 THEN '+' || oa.phone WHEN 14 THEN oa.phone ELSE NULL END`;
+
 @Injectable()
 export class OrderManagerService {
   constructor(
@@ -72,7 +81,15 @@ export class OrderManagerService {
     if (query.risk) conditions.push(Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`);
     if (query.q) {
       const like = `%${query.q}%`;
-      conditions.push(Prisma.sql`(o.order_number ILIKE ${like} OR oa.phone ILIKE ${like} OR oa.recipient_name ILIKE ${like})`);
+      // Searches both stored phone formats (see FRAUD_CHECK_JOIN's comment
+      // above) — phoneLookupCandidates falls back to [query.q] unchanged
+      // for a non-phone-shaped search term, same as everywhere else.
+      const phoneLikes = phoneLookupCandidates(query.q).map((c) => `%${c}%`);
+      const phoneOr = Prisma.join(
+        phoneLikes.map((p) => Prisma.sql`oa.phone ILIKE ${p}`),
+        ' OR ',
+      );
+      conditions.push(Prisma.sql`(o.order_number ILIKE ${like} OR ${phoneOr} OR oa.recipient_name ILIKE ${like})`);
     }
     if (query.from) conditions.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
     if (query.to) conditions.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
@@ -93,7 +110,7 @@ export class OrderManagerService {
       LEFT JOIN LATERAL (
         SELECT provider FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) s ON true
-      LEFT JOIN fraud_checks fc ON fc.phone = '+88' || oa.phone
+      ${FRAUD_CHECK_JOIN}
       ${where}
       GROUP BY o.status
     `;
@@ -146,7 +163,7 @@ export class OrderManagerService {
         ORDER BY oi.id ASC
         LIMIT 1
       ) thumb ON true
-      LEFT JOIN fraud_checks fc ON fc.phone = '+88' || oa.phone
+      ${FRAUD_CHECK_JOIN}
       ${where}
       ORDER BY ${orderBy}
       LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
@@ -162,7 +179,7 @@ export class OrderManagerService {
       LEFT JOIN LATERAL (
         SELECT provider FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) s ON true
-      LEFT JOIN fraud_checks fc ON fc.phone = '+88' || oa.phone
+      ${FRAUD_CHECK_JOIN}
       ${where}
     `;
 

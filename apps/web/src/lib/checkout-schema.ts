@@ -7,10 +7,14 @@ export const addressSchema = z.object({
     .string()
     .min(1, "Phone number is required")
     .refine(isValidBdPhone, "Enter a valid Bangladeshi mobile number (e.g. 01712345678)"),
+  alternativePhone: z
+    .string()
+    .optional()
+    .refine((v) => !v || isValidBdPhone(v), "Enter a valid Bangladeshi mobile number (e.g. 01712345678)"),
   email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   division: z.string().min(1, "Select a division"),
   district: z.string().min(1, "Select a district"),
-  area: z.string().optional(),
+  area: z.string().min(1, "Thana/Area is required"),
   landmark: z.string().optional(),
   addressLine: z.string().min(1, "Address is required"),
   postCode: z.string().optional(),

@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
-import { useCreateManualOrder, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
+import { useCreateManualOrder, usePreviewCoupon, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
 import { CreateCustomerModal, type CreateCustomerModalAddress } from "@/components/orders/CreateCustomerModal";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 
 const EMPTY_ADDRESS: CreateManualOrderAddress = {
   recipientName: "",
   phone: "",
+  alternativePhone: "",
   email: "",
   division: "",
   district: "",
@@ -79,9 +80,13 @@ function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; o
   function set(key: keyof CreateManualOrderAddress, v: string) {
     onChange({ ...value, [key]: v });
   }
+  // Field order mirrors the storefront checkout page (CheckoutForm/
+  // AddressFields): phone, name, address, division/district, thana/
+  // landmark, alternative phone/email, post code — same fields, same
+  // sequence, so staff filling this in isn't relearning a different layout
+  // from what customers see.
   return (
     <div className="grid grid-cols-2 gap-2">
-      <input value={value.recipientName} onChange={(e) => set("recipientName", e.target.value)} placeholder="Recipient name" className={cardInputClass} />
       <input
         type="tel"
         value={value.phone}
@@ -91,12 +96,7 @@ function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; o
         title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
         className={cardInputClass}
       />
-      <input value={value.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="Email (optional)" className={cardInputClass} />
-      <input value={value.division} onChange={(e) => set("division", e.target.value)} placeholder="Division" className={cardInputClass} />
-      <input value={value.district} onChange={(e) => set("district", e.target.value)} placeholder="District" className={cardInputClass} />
-      <input value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} placeholder="Area/Thana (optional)" className={cardInputClass} />
-      <input value={value.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} placeholder="Landmark (optional)" className={cardInputClass} />
-      <input value={value.postCode ?? ""} onChange={(e) => set("postCode", e.target.value)} placeholder="Post code (optional)" className={cardInputClass} />
+      <input value={value.recipientName} onChange={(e) => set("recipientName", e.target.value)} placeholder="Recipient name" className={cardInputClass} />
       <textarea
         value={value.addressLine}
         onChange={(e) => set("addressLine", e.target.value)}
@@ -104,6 +104,21 @@ function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; o
         rows={2}
         className="col-span-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
       />
+      <input value={value.division} onChange={(e) => set("division", e.target.value)} placeholder="Division" className={cardInputClass} />
+      <input value={value.district} onChange={(e) => set("district", e.target.value)} placeholder="District" className={cardInputClass} />
+      <input value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} placeholder="Area/Thana (optional)" className={cardInputClass} />
+      <input value={value.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} placeholder="Landmark (optional)" className={cardInputClass} />
+      <input
+        type="tel"
+        value={value.alternativePhone ?? ""}
+        onChange={(e) => set("alternativePhone", e.target.value)}
+        placeholder="Alternative phone (optional)"
+        pattern="(?:\+?880|0)?1\d{9}"
+        title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+        className={cardInputClass}
+      />
+      <input value={value.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="Email (optional)" className={cardInputClass} />
+      <input value={value.postCode ?? ""} onChange={(e) => set("postCode", e.target.value)} placeholder="Post code (optional)" className={cardInputClass} />
     </div>
   );
 }
@@ -121,12 +136,12 @@ export interface NewOrderFormProps {
 // page or embedded in a modal (e.g. from the Order Manager) — callers own
 // all navigation via onCreated/onCancel.
 export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrderFormProps) {
-  // Cleared once the staff member dismisses a preselected customer via
-  // "Change" — keeps that button working without needing to touch the URL.
-  const [customerDismissed, setCustomerDismissed] = useState(false);
-  const { data: preselected } = useCustomer(!customerDismissed && initialCustomerId ? initialCustomerId : NaN);
-
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId ?? null);
+  // Fetches the full record for whichever customer is currently selected —
+  // arriving preselected, picked from the search dropdown, or just created —
+  // so the prefill effect below always has the real saved address to draw
+  // on. Disabled (NaN) once "Change customer" clears customerId.
+  const { data: customerDetail } = useCustomer(customerId ?? NaN);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const { data: customerResults } = useCustomers({ q: customerQuery || undefined, pageSize: 5 });
@@ -136,26 +151,31 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
   const [sameBilling, setSameBilling] = useState(true);
   const [billingAddress, setBillingAddress] = useState<CreateManualOrderAddress>(EMPTY_ADDRESS);
 
-  // Arriving via "New Order" from a customer's detail popup only preselected
-  // `customerId` before this — the shipping fields stayed blank, so staff
-  // had to retype a customer's own name/phone/email/address right after
-  // clicking into their record. Runs once per customer (the ref guards
-  // against re-clobbering fields the staff has since edited by hand if
-  // `preselected` happens to re-render).
+  // Selecting an existing customer — whether arriving preselected (e.g. from
+  // a customer's detail popup), picked from the search dropdown, or right
+  // after creating one — prefills the full saved address (division,
+  // district, thana/area, landmark, post code), not just name/phone/email,
+  // leaving anything the customer doesn't have on file blank rather than
+  // guessing. Runs once per customer id (the ref guards against
+  // re-clobbering fields the staff has since edited by hand if
+  // `customerDetail` happens to re-render for the same customer).
   const prefilledCustomerId = useRef<number | null>(null);
   useEffect(() => {
-    if (!preselected || prefilledCustomerId.current === preselected.id) return;
-    prefilledCustomerId.current = preselected.id;
+    if (!customerDetail || prefilledCustomerId.current === customerDetail.id) return;
+    prefilledCustomerId.current = customerDetail.id;
     setAddress((a) => ({
       ...a,
-      recipientName: preselected.name,
-      phone: preselected.phone ?? a.phone,
-      email: preselected.email ?? a.email,
-      addressLine: preselected.defaultAddress?.addressLine ?? a.addressLine,
-      division: preselected.defaultAddress?.division ?? a.division,
-      district: preselected.defaultAddress?.district ?? a.district,
+      recipientName: customerDetail.name,
+      phone: customerDetail.phone ?? a.phone,
+      email: customerDetail.email ?? a.email,
+      addressLine: customerDetail.defaultAddress?.addressLine ?? a.addressLine,
+      division: customerDetail.defaultAddress?.division ?? a.division,
+      district: customerDetail.defaultAddress?.district ?? a.district,
+      area: customerDetail.defaultAddress?.area ?? a.area,
+      landmark: customerDetail.defaultAddress?.landmark ?? a.landmark,
+      postCode: customerDetail.defaultAddress?.postCode ?? a.postCode,
     }));
-  }, [preselected]);
+  }, [customerDetail]);
 
   const [productQuery, setProductQuery] = useState("");
   const { data: productResults } = useProductSearch(productQuery);
@@ -184,7 +204,7 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
     tier: string | null;
   } | null>(null);
 
-  const selectedCustomer = preselected ?? selectedCustomerInfo ?? undefined;
+  const selectedCustomer = customerDetail ?? selectedCustomerInfo ?? undefined;
 
   function selectCustomer(c: {
     id: number;
@@ -193,23 +213,14 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
     completedOrderCount: number;
     tier: string | null;
     email?: string | null;
-    address?: string | null;
   }) {
     setCustomerId(c.id);
     setSelectedCustomerInfo(c);
     setCustomerQuery("");
     setCustomerDropdownOpen(false);
-    // Customers have no structured (division/district) saved address in
-    // this system — `address` here is just a flat display string (usually
-    // derived from their most recent order), so it's the best available
-    // autofill for addressLine, not a guarantee of a full match.
-    setAddress((a) => ({
-      ...a,
-      recipientName: c.name,
-      phone: c.phone ?? a.phone,
-      email: c.email ?? a.email,
-      addressLine: c.address ?? a.addressLine,
-    }));
+    // Address fields are filled by the customerDetail effect above once the
+    // full record loads — it has the real structured division/district/
+    // area/landmark/post code, not just this list row's flat display string.
   }
 
   function handleCustomerCreated(c: AdminCustomer, newAddress: CreateCustomerModalAddress | null) {
@@ -246,7 +257,21 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
   const promotionAmountNum = Number(promotionAmount) || 0;
   const discountAmountNum = Number(discountAmount) || 0;
   const shippingAmountNum = Number(shippingAmount) || 0;
-  const totalAmount = Math.max(0, subAmount - discountAmountNum - promotionAmountNum + taxAmountNum + shippingAmountNum);
+
+  // Previews the real coupon discount (same rules the actual create() call
+  // validates against) so Total amount reflects it before submission —
+  // previously this only showed up after the order was already created.
+  const couponPreview = usePreviewCoupon({
+    couponCode: couponCode.trim(),
+    items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })),
+    customerId: customerId ?? undefined,
+  });
+  const couponAmountNum = couponPreview.data && !couponPreview.data.error ? Number(couponPreview.data.amount) || 0 : 0;
+
+  const totalAmount = Math.max(
+    0,
+    subAmount - discountAmountNum - promotionAmountNum - couponAmountNum + taxAmountNum + shippingAmountNum,
+  );
 
   // Blank optional fields default to "" for controlled inputs, but the
   // backend's CheckoutAddressDto validates email/area/landmark/postCode as
@@ -256,15 +281,28 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
     return {
       ...a,
       email: a.email || undefined,
+      alternativePhone: a.alternativePhone || undefined,
       area: a.area || undefined,
       landmark: a.landmark || undefined,
       postCode: a.postCode || undefined,
     };
   }
 
+  // Non-COD payment methods (bKash/Nagad/Rocket/Upay) are always staff
+  // typing in a reference they already have from the customer — unlike COD,
+  // there's no later verification step, so a missing transaction ID here
+  // means the payment is unrecorded/unreferenced forever.
+  const transactionIdRequired = paymentProvider !== "COD";
+  const [transactionIdError, setTransactionIdError] = useState(false);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (lines.length === 0) return;
+    if (transactionIdRequired && !transactionId.trim()) {
+      setTransactionIdError(true);
+      return;
+    }
+    setTransactionIdError(false);
     let order;
     try {
       order = await create.mutateAsync({
@@ -501,9 +539,15 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                   placeholder="e.g. SAVE10"
                   className={cardInputClass}
                 />
-                <span className="text-xs text-muted">
-                  Validated on create — expiry, usage limits, and minimum order amount are checked against the real coupon.
-                </span>
+                {couponCode.trim() && couponPreview.data ? (
+                  <span className="text-xs font-semibold" style={{ color: couponPreview.data.error ? RED : GREEN }}>
+                    {couponPreview.data.error ?? `Valid — ৳${couponAmountNum.toFixed(2)} off, already reflected in Total amount`}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted">
+                    Validated live — expiry, usage limits, and minimum order amount are checked against the real coupon.
+                  </span>
+                )}
               </label>
 
               <div className="flex items-center justify-between">
@@ -564,16 +608,30 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
               </label>
 
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">Transaction ID</span>
+                <span className="text-xs font-bold text-text">
+                  Transaction ID{transactionIdRequired && <span className="ml-0.5 text-danger">*</span>}
+                </span>
                 <input
                   value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
+                  onChange={(e) => {
+                    setTransactionId(e.target.value);
+                    if (transactionIdError) setTransactionIdError(false);
+                  }}
                   placeholder="e.g. bKash/Nagad/Rocket/Upay reference"
                   className={cardInputClass}
+                  style={transactionIdError ? { borderColor: RED } : undefined}
                 />
-                <span className="text-xs font-medium" style={{ color: GREEN }}>
-                  You can leave this field empty if the payment method is Cash on delivery (COD)
-                </span>
+                {transactionIdError ? (
+                  <span className="text-xs font-medium" style={{ color: RED }}>
+                    Required for {PAYMENT_PROVIDER_LABELS[paymentProvider]} — enter the reference the customer gave you.
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium" style={{ color: GREEN }}>
+                    {transactionIdRequired
+                      ? `Required for ${PAYMENT_PROVIDER_LABELS[paymentProvider]}`
+                      : "You can leave this field empty if the payment method is Cash on delivery (COD)"}
+                  </span>
+                )}
               </label>
 
               <label className="flex flex-col gap-1.5">
@@ -626,7 +684,6 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                 onClick={() => {
                   setCustomerId(null);
                   setSelectedCustomerInfo(null);
-                  setCustomerDismissed(true);
                 }}
                 className="self-start text-xs font-semibold"
                 style={{ color: GREEN }}

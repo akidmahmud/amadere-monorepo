@@ -19,6 +19,10 @@ interface Slide {
   linkUrl?: string;
 }
 
+interface HomeBannerTwoSlide extends Slide {
+  mobileImageUrl?: string;
+}
+
 // Real editor forms for the 4 most-used section types (per the confirmed
 // design scope); every other type falls back to a plain JSON textarea over
 // the same `config` field the backend already expects — functional, not
@@ -48,7 +52,6 @@ export function SectionConfigFields({
     return <TopSellingProductsFields config={config} onConfigChange={onConfigChange} />;
   }
   if (type === "BLOG_TEASER") return <BlogTeaserFields config={config} onConfigChange={onConfigChange} />;
-  if (type === "PROMO_VIDEO") return <PromoVideoFields config={config} onConfigChange={onConfigChange} />;
   if (type === "TESTIMONIAL_BENTO") return <TestimonialBentoFields config={config} onConfigChange={onConfigChange} />;
   if (type === "CERTIFICATION_ROW") return <CertificationRowFields config={config} onConfigChange={onConfigChange} />;
   // No longer tabbed — a single-collection product strip now (see
@@ -58,6 +61,7 @@ export function SectionConfigFields({
     return <ProductCollectionFields collectionId={collectionId} onCollectionIdChange={onCollectionIdChange} />;
   }
   if (type === "AD_BANNER") return <AdBannerFields config={config} onConfigChange={onConfigChange} />;
+  if (type === "HOME_BANNER_TWO") return <HomeBannerTwoFields config={config} onConfigChange={onConfigChange} />;
   return <JsonConfigFields config={config} onConfigChange={onConfigChange} />;
 }
 
@@ -139,6 +143,67 @@ function HeroBannerFields({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Full-bleed promo carousel (no side-banner slot, unlike Hero Banner) — each
+// slide is one flat promo image (like organicindia.com's hero) with an
+// optional separate mobile crop, since a wide desktop banner rarely reads
+// well shrunk to a phone width as-is.
+function HomeBannerTwoFields({
+  config,
+  onConfigChange,
+}: {
+  config: Record<string, unknown>;
+  onConfigChange: (config: Record<string, unknown>) => void;
+}) {
+  const slides = (config.slides as HomeBannerTwoSlide[] | undefined) ?? [];
+
+  function updateSlides(next: HomeBannerTwoSlide[]) {
+    onConfigChange({ ...config, slides: next });
+  }
+
+  return (
+    <div>
+      <span className="mb-2 block text-xs font-semibold text-secondary">
+        Slides <span className="font-normal text-muted">— recommended image size: 1690 × 575px (desktop)</span>
+      </span>
+      <div className="flex flex-col gap-4">
+        {slides.map((slide, i) => (
+          <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
+            <MediaPicker
+              value={slide.imageUrl}
+              onChange={(url) => updateSlides(slides.map((s, j) => (j === i ? { ...s, imageUrl: url } : s)))}
+              label={`Slide ${i + 1} image (1690×575px)`}
+            />
+            <MediaPicker
+              value={slide.mobileImageUrl}
+              onChange={(url) => updateSlides(slides.map((s, j) => (j === i ? { ...s, mobileImageUrl: url } : s)))}
+              label="Mobile image (optional, 800×450px — skipping this crops the desktop image on mobile)"
+            />
+            <div className="flex flex-1 flex-col gap-1.5">
+              <span className="text-xs font-semibold text-secondary">Link URL (optional)</span>
+              <input
+                value={slide.linkUrl ?? ""}
+                onChange={(e) => updateSlides(slides.map((s, j) => (j === i ? { ...s, linkUrl: e.target.value } : s)))}
+                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+              />
+              <Button
+                type="button"
+                variant="link"
+                className="self-start text-danger"
+                onClick={() => updateSlides(slides.filter((_, j) => j !== i))}
+              >
+                Remove slide
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button type="button" variant="ghost" className="mt-2" onClick={() => updateSlides([...slides, { imageUrl: "" }])}>
+        Add slide
+      </Button>
     </div>
   );
 }
@@ -297,135 +362,6 @@ function TopSellingProductsFields({
       </div>
       <Button type="button" variant="ghost" className="self-start" onClick={() => updateItems([...items, {}])}>
         Add product
-      </Button>
-    </div>
-  );
-}
-
-const PROMO_VIDEO_SOURCES = ["YOUTUBE", "TIKTOK", "INSTAGRAM", "R2", "GIF"] as const;
-type PromoVideoSource = (typeof PROMO_VIDEO_SOURCES)[number];
-
-interface PromoVideoCard {
-  source: PromoVideoSource;
-  url: string;
-  thumbnailUrl?: string;
-  productId?: number;
-}
-
-// Card size on the storefront is fixed at 377×600 (reel/shorts shape).
-// Source determines how the "url" field is captured: R2/GIF are files we
-// host (MediaPicker, same widget as everywhere else), YOUTUBE/TIKTOK/
-// INSTAGRAM are just a link to the post on that platform.
-function PromoVideoFields({
-  config,
-  onConfigChange,
-}: {
-  config: Record<string, unknown>;
-  onConfigChange: (config: Record<string, unknown>) => void;
-}) {
-  const videos = (config.videos as PromoVideoCard[] | undefined) ?? [];
-  const { data: products } = usePickerProducts();
-
-  function updateVideos(next: PromoVideoCard[]) {
-    onConfigChange({ ...config, videos: next });
-  }
-  function updateCard(i: number, patch: Partial<PromoVideoCard>) {
-    updateVideos(videos.map((v, j) => (j === i ? { ...v, ...patch } : v)));
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <span className="text-xs font-semibold text-secondary">
-        Videos{" "}
-        <span className="font-normal text-muted">
-          — cards render at 377 × 600px, autoplay when scrolled into view, click opens a product modal
-        </span>
-      </span>
-      <div className="flex flex-col gap-4">
-        {videos.map((card, i) => (
-          <div key={i} className="flex flex-col gap-3 rounded-inner bg-surface-2 p-3">
-            <div className="flex items-center gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-secondary">Source</span>
-                <select
-                  value={card.source}
-                  onChange={(e) => updateCard(i, { source: e.target.value as PromoVideoSource, url: "" })}
-                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-                >
-                  {PROMO_VIDEO_SOURCES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button
-                type="button"
-                variant="link"
-                className="ml-auto self-end text-danger"
-                onClick={() => updateVideos(videos.filter((_, j) => j !== i))}
-              >
-                Remove
-              </Button>
-            </div>
-
-            {card.source === "R2" || card.source === "GIF" ? (
-              <MediaPicker
-                value={card.url}
-                onChange={(url) => updateCard(i, { url })}
-                label={card.source === "GIF" ? "GIF file" : "Video file"}
-              />
-            ) : (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-secondary">{card.source} URL</span>
-                <input
-                  value={card.url}
-                  onChange={(e) => updateCard(i, { url: e.target.value })}
-                  placeholder={
-                    card.source === "YOUTUBE"
-                      ? "https://youtube.com/watch?v=..."
-                      : card.source === "TIKTOK"
-                        ? "https://tiktok.com/@user/video/..."
-                        : "https://instagram.com/reel/..."
-                  }
-                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-                />
-              </label>
-            )}
-
-            <MediaPicker
-              value={card.thumbnailUrl}
-              onChange={(url) => updateCard(i, { thumbnailUrl: url })}
-              label="Thumbnail (shown until scrolled into view, then autoplays muted)"
-            />
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-secondary">Linked product (optional)</span>
-              <select
-                value={card.productId ?? ""}
-                onChange={(e) =>
-                  updateCard(i, { productId: e.target.value ? Number(e.target.value) : undefined })
-                }
-                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-              >
-                <option value="">— None —</option>
-                {products?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        ))}
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        className="self-start"
-        onClick={() => updateVideos([...videos, { source: "YOUTUBE", url: "" }])}
-      >
-        Add video
       </Button>
     </div>
   );

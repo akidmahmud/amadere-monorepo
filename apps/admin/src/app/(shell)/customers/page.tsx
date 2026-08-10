@@ -45,7 +45,7 @@ export default function CustomersPage() {
   const [section, setSection] = useState<"customers" | "deleted">("customers");
   const [uiFilters, setUiFilters] = useState<CustomerFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(6);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);

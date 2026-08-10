@@ -445,13 +445,6 @@ export class BlogPostsService {
       throw new NotFoundException('Post not found');
     }
 
-    if (post.status === 'PUBLISHED') {
-      await this.prisma.client.blogPost.update({
-        where: { id: post.id },
-        data: { viewCount: { increment: 1 } },
-      });
-    }
-
     const translation =
       post.translations.find((t) => t.locale === locale) ??
       post.translations[0];
@@ -500,6 +493,21 @@ export class BlogPostsService {
       seo,
       structuredData,
     };
+  }
+
+  // Fired once per visitor per post by a client-side beacon (see
+  // BlogViewTracker in apps/web), gated by a cookie there — NOT tied to
+  // publicGetBySlug anymore. That used to increment on every fetch of this
+  // method, but apps/web's blog detail page is ISR-cached (revalidate =
+  // 3600s), so it only actually fired on whatever cadence the cache
+  // happened to revalidate — nowhere close to real visitor counts. Silently
+  // no-ops on an unknown/unpublished slug (a stale tab or a bot poking a
+  // deleted post shouldn't 404-spam the client).
+  async recordView(slug: string): Promise<void> {
+    await this.prisma.client.blogPost.updateMany({
+      where: { slug, status: 'PUBLISHED', deletedAt: null },
+      data: { viewCount: { increment: 1 } },
+    });
   }
 
   async internalLinkSuggestions(

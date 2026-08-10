@@ -15,6 +15,11 @@ export interface PromoVideoProduct {
   price: string;
   originalPrice?: string;
   imageUrl?: string;
+  /** Variant-only products (hasVariants: true) reject a bare productId add
+   * with "This product requires a variantId" — this is that product's
+   * default (or first) variant, resolved once server-side so the modal's
+   * one-click Add to Cart works the same way a product card's does. */
+  defaultVariantId?: string;
 }
 
 export interface PromoVideoModalProps {
@@ -23,7 +28,7 @@ export interface PromoVideoModalProps {
   openIndex: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, variantId?: string) => void;
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
@@ -50,13 +55,13 @@ const unmutedIcon = (
   </svg>
 );
 
-// Only R2 (native <video> — a real DOM property) and YOUTUBE (documented
-// `mute` embed param) actually respond to the mute toggle. TikTok/Instagram
-// have no verified mute query param in their public embed APIs, so the
-// toggle button is hidden for those — showing a control that silently does
-// nothing would be worse than not showing one.
+// R2/CUSTOM_URL (native <video> — a real DOM property) and YOUTUBE/FACEBOOK
+// (documented `mute` embed param) actually respond to the mute toggle.
+// TikTok/Instagram have no verified mute query param in their public embed
+// APIs, so the toggle button is hidden for those — showing a control that
+// silently does nothing would be worse than not showing one.
 function mutableSource(source: PromoVideoCard["source"]): boolean {
-  return source === "R2" || source === "YOUTUBE";
+  return source === "R2" || source === "CUSTOM_URL" || source === "YOUTUBE" || source === "FACEBOOK";
 }
 
 function ProductPanel({
@@ -67,7 +72,7 @@ function ProductPanel({
   linkComponent: Link = DefaultLink,
 }: {
   product: PromoVideoProduct;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productId: number, variantId?: string) => void;
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
@@ -121,7 +126,7 @@ function ProductPanel({
           variant="green"
           className="flex-1 rounded-[30px]"
           disabled={isPending}
-          onClick={() => onAddToCart?.(product.productId)}
+          onClick={() => onAddToCart?.(product.productId, product.defaultVariantId)}
         >
           {isPending ? "Adding…" : "Add to cart"}
         </Button>
@@ -194,7 +199,7 @@ export function PromoVideoModal({
             type="button"
             aria-label="Previous video"
             onClick={() => onNavigate(prevIndex)}
-            className="absolute left-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-ink hover:bg-white"
+            className="absolute left-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-green text-white hover:bg-green-dark"
           >
             <span className="rotate-180">{chevronIcon}</span>
           </button>
@@ -226,7 +231,7 @@ export function PromoVideoModal({
             type="button"
             aria-label="Next video"
             onClick={() => onNavigate(nextIndex)}
-            className="absolute right-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-ink hover:bg-white"
+            className="absolute right-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-green text-white hover:bg-green-dark"
           >
             {chevronIcon}
           </button>
@@ -244,13 +249,19 @@ export function PromoVideoModal({
 // more than one video/iframe actually loaded and playing at once. Hidden
 // below xl (not enough width to fit two peeks + an 820px modal without
 // overflowing smaller laptop/tablet viewports).
+//
+// aspect-[377/600], not a fixed h-[70%] — that forced a 110px-wide box into
+// whatever height 70% of the viewport happened to be (often 3x+ taller than
+// 110px could ever match at a 377:600 ratio), so object-cover cropped away
+// most of the thumbnail's width to fill it, showing only a thin vertical
+// sliver of the actual video instead of the full frame.
 function PeekThumb({ card, label, onClick }: { card: PromoVideoCard; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="hidden h-[70%] w-[110px] shrink-0 overflow-hidden rounded-2xl opacity-50 transition-opacity hover:opacity-90 xl:block"
+      className="hidden aspect-[377/600] w-[150px] shrink-0 overflow-hidden rounded-2xl opacity-50 transition-opacity hover:opacity-90 xl:block"
     >
       {card.thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element

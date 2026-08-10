@@ -25,6 +25,7 @@ import { AdminOrderCreationService } from './admin-order-creation.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
+import { PreviewCouponDto, PreviewCouponResultDto } from './dto/preview-coupon.dto';
 import { AddOrderItemDto } from './dto/add-order-item.dto';
 import { UpdateOrderItemDto } from './dto/update-order-item.dto';
 import { UpdateOrderDetailsDto } from './dto/update-order-details.dto';
@@ -62,6 +63,13 @@ export class AdminOrdersController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<OrderDto> {
     return this.orderCreation.create(dto, admin.id);
+  }
+
+  @Post('preview-coupon')
+  @RequirePermission('order.create')
+  @ApiOkResponse({ type: PreviewCouponResultDto })
+  previewCoupon(@Body() dto: PreviewCouponDto): Promise<PreviewCouponResultDto> {
+    return this.orderCreation.previewCoupon(dto);
   }
 
   @Get(':id')

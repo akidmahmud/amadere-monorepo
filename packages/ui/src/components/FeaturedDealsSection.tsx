@@ -3,7 +3,8 @@
 import type { LinkComponent } from "../lib/link-component";
 import { DefaultLink } from "../lib/link-component";
 import { Carousel } from "./Carousel";
-import { ProductCard, type ProductCardProps } from "./ProductCard";
+import type { ProductCardProps } from "./ProductCard";
+import { SiteProductCard } from "./SiteProductCard";
 
 export type FeaturedDealsItem = Pick<
   ProductCardProps,
@@ -64,7 +65,7 @@ export function FeaturedDealsSection({
       <Carousel showDots>
         {items.map((item) => (
           <div key={item.href} className="w-[calc((100%-18px)/2)] shrink-0 md:w-[200px]">
-            <ProductCard
+            <SiteProductCard
               {...item}
               addToCartPending={addToCartPendingHref === item.href}
               onAddToCart={(packValue) => onAddToCart?.(item.href, packValue)}

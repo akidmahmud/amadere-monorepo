@@ -16,7 +16,7 @@ export function PromoVideoSectionClient(props: Props) {
     <PromoVideoSection
       {...props}
       linkComponent={AppLink}
-      onAddToCart={(productId) => handleAddToCart(productId)}
+      onAddToCart={(productId, variantId) => handleAddToCart(productId, variantId)}
       addToCartPending={isPending}
       pendingProductId={pendingProductId}
     />

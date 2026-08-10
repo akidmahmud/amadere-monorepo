@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@amader/db';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { normalizeBdPhone } from '@amader/shared';
+import { normalizeBdPhone, phoneLookupCandidates } from '@amader/shared';
 import { FraudService } from '../fraud/fraud.service';
 import { OtpSecurityService } from '../otp-security/otp-security.service';
 import { RULE_KEYS, RuleKey, BlockerSettings } from './blocker-settings.types';
@@ -109,7 +109,7 @@ export class BlockerRulesService {
   private async matchingOrderIds(ctx: BlockCheckoutContext, statuses: OrderStatus[], sinceMinutes: number, take = 10): Promise<number[]> {
     const since = new Date(Date.now() - sinceMinutes * 60_000);
     const or: Prisma.OrderWhereInput[] = [];
-    if (ctx.phone) or.push({ addresses: { some: { type: 'SHIPPING', phone: ctx.phone } } });
+    if (ctx.phone) or.push({ addresses: { some: { type: 'SHIPPING', phone: { in: phoneLookupCandidates(ctx.phone) } } } });
     if (ctx.email) or.push({ addresses: { some: { type: 'SHIPPING', email: { equals: ctx.email, mode: 'insensitive' } } } });
     if (ctx.ip) or.push({ ipAddress: ctx.ip });
     if (or.length === 0) return [];
@@ -128,7 +128,7 @@ export class BlockerRulesService {
     const minutes = Math.max(1, settings.thresholds.duplicateWindowMinutes);
     const since = new Date(Date.now() - minutes * 60_000);
     const or: Prisma.OrderWhereInput[] = [];
-    if (ctx.phone) or.push({ addresses: { some: { type: 'SHIPPING', phone: ctx.phone } } });
+    if (ctx.phone) or.push({ addresses: { some: { type: 'SHIPPING', phone: { in: phoneLookupCandidates(ctx.phone) } } } });
     if (ctx.email) or.push({ addresses: { some: { type: 'SHIPPING', email: { equals: ctx.email, mode: 'insensitive' } } } });
     if (or.length === 0) return null;
 

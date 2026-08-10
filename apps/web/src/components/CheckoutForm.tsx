@@ -25,7 +25,7 @@ import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useCartQuery, useRemoveCartItem, useUpdateCartItem } from "@/hooks/useCart";
-import { useGiftVoucherCheck, usePlaceOrder, useRequestCodOtp } from "@/hooks/useCheckout";
+import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 import type { components } from "@/lib/api/schema";
@@ -45,7 +45,8 @@ function cleanAddress(address: components["schemas"]["CheckoutAddressDto"]) {
   return {
     ...address,
     email: address.email?.trim() ? address.email : undefined,
-    area: address.area?.trim() || undefined,
+    alternativePhone: address.alternativePhone?.trim() || undefined,
+    area: address.area.trim(),
     landmark: address.landmark?.trim() || undefined,
     postCode: address.postCode?.trim() || undefined,
   };
@@ -55,7 +56,6 @@ export function CheckoutForm() {
   const locale = toApiLocale(useLocale());
   const router = useRouter();
   const [placedOrder, setPlacedOrder] = useState<components["schemas"]["OrderDto"] | null>(null);
-  const [codOtpSent, setCodOtpSent] = useState(false);
   const [voucherInput, setVoucherInput] = useState("");
   const [blockPopupDismissed, setBlockPopupDismissed] = useState(false);
   const [fraudResult, setFraudResult] = useState<FraudPreflightResult | null>(null);
@@ -70,6 +70,7 @@ export function CheckoutForm() {
       shippingAddress: {
         recipientName: "",
         phone: "",
+        alternativePhone: "",
         email: "",
         division: "",
         district: "",
@@ -100,7 +101,6 @@ export function CheckoutForm() {
   const { data: cart } = useCartQuery(locale, paymentProvider);
   const updateItem = useUpdateCartItem(locale);
   const removeItem = useRemoveCartItem(locale);
-  const requestCodOtp = useRequestCodOtp();
   const placeOrder = usePlaceOrder(locale);
   const voucherCheck = useGiftVoucherCheck(voucherInput);
   const { data: methodConfigs } = usePaymentMethodConfigs();
@@ -161,18 +161,17 @@ export function CheckoutForm() {
     );
   }
 
-  // Below `lg`, jump the customer straight to whatever's blocking
-  // submission instead of leaving them stuck on the "Place Order" button
-  // with no clue why nothing happened: missing shipping fields scroll into
-  // view (checked first — it's earlier in the form and more fundamental),
-  // otherwise a missing/invalid COD OTP opens as a popup since that field
-  // is hidden inline on mobile (see the `max-lg:hidden` OTP block below).
+  // There's no inline COD-OTP field anywhere in the form — clicking "Place
+  // Order" for a COD order always fails this specific zod check first try
+  // (codOtpCode starts empty), which is exactly what opens the popup below.
+  // Missing shipping fields take priority (checked first — earlier in the
+  // form and more fundamental) and scroll into view instead.
   function onInvalid(errors: FieldErrors<CheckoutFormValues>) {
     if (errors.shippingAddress) {
       shippingAddressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if (errors.codOtpCode && typeof window !== "undefined" && window.innerWidth < 1024) {
+    if (errors.codOtpCode) {
       setShowOtpPopup(true);
     }
   }
@@ -223,7 +222,23 @@ export function CheckoutForm() {
 
             <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
-              <AddressFields prefix="shippingAddress" onFraudResult={setFraudResult} />
+              <AddressFields
+                prefix="shippingAddress"
+                onFraudResult={setFraudResult}
+                noteField={
+                  <div className="mb-3.5">
+                    <textarea
+                      rows={2}
+                      placeholder="Note for your order (optional)"
+                      className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 font-body text-sm outline-none focus:border-green"
+                      {...register("customerNote")}
+                    />
+                    {formState.errors.customerNote && (
+                      <p className="mt-1 font-body text-xs text-red-600">{formState.errors.customerNote.message}</p>
+                    )}
+                  </div>
+                }
+              />
             </div>
 
             <div className="rounded-brand border border-line bg-white p-5">
@@ -292,31 +307,6 @@ export function CheckoutForm() {
                   </p>
                 </div>
               )}
-
-              {paymentProvider === "COD" && (
-                // Hidden below `lg` — mobile shows this same field as a
-                // popup instead (see onInvalid/showOtpPopup + CodOtpPopup),
-                // triggered only once the customer tries to place the order.
-                <div className="mt-4 border-t border-line pt-4 max-lg:hidden">
-                  <p className="mb-2 font-body text-xs text-muted">
-                    We&apos;ll text a verification code to {shippingPhone || "your shipping phone number"}.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input placeholder="Enter OTP code" {...register("codOtpCode")} />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={!shippingPhone || requestCodOtp.isPending}
-                      onClick={() => requestCodOtp.mutate(shippingPhone, { onSuccess: () => setCodOtpSent(true) })}
-                    >
-                      {codOtpSent ? "Resend OTP" : "Send OTP"}
-                    </Button>
-                  </div>
-                  {formState.errors.codOtpCode && (
-                    <p className="mt-1 font-body text-xs text-red-600">{formState.errors.codOtpCode.message}</p>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
@@ -363,15 +353,6 @@ export function CheckoutForm() {
                 </div>
               </div>
             )}
-
-            <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
-              <h2 className="mb-3 font-ui text-[15px] font-semibold text-green">Special notes (Optional)</h2>
-              <textarea
-                rows={2}
-                className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 font-body text-sm outline-none focus:border-green"
-                {...register("customerNote")}
-              />
-            </div>
 
             <div className="mb-4 flex items-start gap-2.5">
               <Controller

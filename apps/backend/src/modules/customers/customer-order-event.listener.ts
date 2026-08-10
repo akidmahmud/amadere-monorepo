@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Prisma } from '@amader/db';
+import { phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CustomerTiersService } from './customer-tiers.service';
 import {
@@ -43,16 +45,31 @@ export class CustomerOrderEventListener {
     if (!customerId) {
       if (!address?.phone) return;
       const [firstName, ...rest] = address.recipientName.trim().split(/\s+/);
-      const customer = await this.prisma.client.customer.upsert({
-        where: { phone: address.phone },
-        update: {},
-        create: {
-          phone: address.phone,
-          email: address.email ?? undefined,
-          firstName: firstName || address.recipientName,
-          lastName: rest.length ? rest.join(' ') : null,
-        },
-      });
+      // Prisma's upsert() requires a single unique-field `where`, but a
+      // real match here could be stored in either phone format (see
+      // phoneLookupCandidates) — findFirst-then-create/update instead of
+      // one atomic upsert, so a returning customer whose original row is
+      // still legacy-format gets matched instead of silently duplicated.
+      const candidates = phoneLookupCandidates(address.phone);
+      let customer = await this.prisma.client.customer.findFirst({ where: { phone: { in: candidates } } });
+      if (!customer) {
+        try {
+          customer = await this.prisma.client.customer.create({
+            data: {
+              phone: address.phone,
+              email: address.email ?? undefined,
+              firstName: firstName || address.recipientName,
+              lastName: rest.length ? rest.join(' ') : null,
+            },
+          });
+        } catch (err) {
+          // Unique-constraint race: a concurrent guest checkout with the
+          // same phone created the row between our findFirst and this
+          // create — fall back to fetching what the other request wrote.
+          if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') throw err;
+          customer = await this.prisma.client.customer.findFirstOrThrow({ where: { phone: { in: candidates } } });
+        }
+      }
       customerId = customer.id;
       await this.prisma.client.order.update({
         where: { id: event.orderId },

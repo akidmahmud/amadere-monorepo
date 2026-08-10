@@ -176,6 +176,32 @@ export function useProductFormState(initial?: AdminProduct) {
     setImages(product.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })));
   }
 
+  // Pure client-side gate before a save request ever goes out — the backend
+  // itself treats nearly all of these as optional (see CreateProductDto), so
+  // this is an admin-panel business rule, not a data-integrity one. Returns
+  // every missing field at once so the caller can show one consolidated
+  // toast instead of failing fields one at a time across repeated save clicks.
+  function validate(variantCount: number): string[] {
+    const missing: string[] = [];
+    if (!name.trim()) missing.push("Product Name");
+    if (!slug.trim()) missing.push("Permalink");
+    if (categoryIds.length === 0) missing.push("Category");
+    if (images.length === 0) missing.push("Media");
+    if (!sku.trim()) missing.push("SKU");
+    if (!shippableWeight.trim()) missing.push("Shippable weight");
+    if (!minOrderQuantity.trim() || Number(minOrderQuantity) < 1) missing.push("Min order quantity");
+    if (hasVariants) {
+      if (variantCount === 0) missing.push("Variants (add at least one)");
+    } else {
+      if (!price.trim() || Number(price) <= 0) missing.push("Price");
+      // Only required when inventory is actually being tracked — unchecking
+      // "Track inventory" means stock isn't meaningful for this product, so
+      // it shouldn't block Save/Save & Exit.
+      if (trackInventory && !stock.trim()) missing.push("Stock");
+    }
+    return missing;
+  }
+
   function getSnapshot(): ProductFormSnapshot {
     return {
       slug, sku, brandId, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
@@ -257,6 +283,7 @@ export function useProductFormState(initial?: AdminProduct) {
     seedFrom,
     getSnapshot,
     applySnapshot,
+    validate,
   };
 }
 

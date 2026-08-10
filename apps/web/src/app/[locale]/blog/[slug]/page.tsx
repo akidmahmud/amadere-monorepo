@@ -4,6 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { BlogCard, FaqAccordion, SectionHeading } from "@amader/ui";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { AppLink } from "@/components/AppLink";
+import { BlogViewTracker } from "@/components/BlogViewTracker";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
@@ -80,6 +81,11 @@ export default async function BlogPostPage({
 
   return (
     <main className="flex-1">
+      {/* Previewing a draft/unpublished revision shouldn't inflate real
+          view-count analytics — same rule the backend itself already
+          enforces (recordView no-ops on a non-PUBLISHED post), skipped
+          here too so a preview link never even fires the beacon. */}
+      {!previewToken && <BlogViewTracker postId={post.id} slug={post.slug} />}
       {previewToken && (
         <div className="sticky top-0 z-50 bg-[#7c3aed] py-2 text-center font-ui text-xs font-bold text-white">
           Preview mode — this post is not published yet
