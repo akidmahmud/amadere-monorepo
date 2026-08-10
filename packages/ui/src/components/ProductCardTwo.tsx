@@ -98,15 +98,21 @@ export function ProductCardTwo({
             className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
           />
         ) : null}
-        {flagLabel && (
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-gold px-3 py-1 text-[11px] leading-normal text-ink">
-            {flagLabel}
-          </span>
-        )}
-        {computedDiscountLabel && (
-          <span className="absolute right-1.5 top-1.5 rounded-full bg-gold px-3 py-1 text-[11px] leading-normal text-ink">
-            {computedDiscountLabel}
-          </span>
+        {(flagLabel || computedDiscountLabel) && (
+          // flex + justify-between (not two independently left/right-absolute
+          // spans) — a real gap between the two badges. Sized small enough
+          // that both stay on the same row on the narrowest mobile card
+          // instead of ever wrapping or truncating with an ellipsis. Always
+          // renders both slots so justify-between still pushes a lone badge
+          // to its correct side.
+          <div className="absolute inset-x-1.5 top-1.5 flex items-start justify-between gap-1">
+            <span className={flagLabel ? "shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink" : undefined}>
+              {flagLabel}
+            </span>
+            <span className={computedDiscountLabel ? "shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink" : undefined}>
+              {computedDiscountLabel}
+            </span>
+          </div>
         )}
       </Link>
 

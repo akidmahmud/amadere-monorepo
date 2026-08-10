@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@amader/admin-ui";
+import { useRef, useState } from "react";
+import { Button, Icon, Modal } from "@amader/admin-ui";
 import { MediaPicker } from "@/components/MediaPicker";
+import { MediaLibraryBrowser } from "@/components/media/MediaLibraryBrowser";
+import { useUploadMedia } from "@/hooks/useMedia";
 import { usePickerBlogPosts, usePickerCategories, usePickerCollections, usePickerProducts } from "@/hooks/usePickers";
 import type { HomepageSectionType } from "@/hooks/useHomepageSections";
 
@@ -147,6 +149,77 @@ function HeroBannerFields({
   );
 }
 
+// A slot that's either "has an image" (thumbnail + a single destructive
+// Remove) or "empty" (Upload + Browse library, stacked) — never both at
+// once, matching the redesigned Slides card (image picking and image
+// removal read as two different actions, not one combined widget).
+function ImageSlot({
+  value,
+  onChange,
+  aspectClassName = "aspect-[1690/575]",
+}: {
+  value: string | undefined;
+  onChange: (url: string) => void;
+  aspectClassName?: string;
+}) {
+  const [showLibrary, setShowLibrary] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const upload = useUploadMedia();
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const media = await upload.mutateAsync(file);
+    onChange(media.url);
+  }
+
+  if (value) {
+    return (
+      <div className="flex flex-col gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={value} alt="" className={`w-full ${aspectClassName} rounded-inner border border-border object-cover`} />
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="inline-flex items-center gap-1 self-start rounded-sm border border-danger/30 px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger/5"
+        >
+          <Icon name="delete" size={15} /> Remove image
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <button
+        type="button"
+        disabled={upload.isPending}
+        onClick={() => fileInputRef.current?.click()}
+        className="inline-flex items-center justify-center gap-1.5 rounded-sm border border-brand-500 px-3 py-2 text-xs font-semibold text-brand-500 hover:bg-brand-50 disabled:opacity-50"
+      >
+        <Icon name="upload" size={15} /> {upload.isPending ? "Uploading…" : "Upload image"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowLibrary(true)}
+        className="inline-flex items-center justify-center gap-1.5 rounded-sm border border-brand-500 px-3 py-2 text-xs font-semibold text-brand-500 hover:bg-brand-50"
+      >
+        <Icon name="folder" size={15} /> Browse library
+      </button>
+      <Modal open={showLibrary} onClose={() => setShowLibrary(false)} title="Browse media library" className="max-w-5xl">
+        <MediaLibraryBrowser
+          onSelect={(media) => {
+            onChange(media.url);
+            setShowLibrary(false);
+          }}
+        />
+      </Modal>
+    </div>
+  );
+}
+
 // Full-bleed promo carousel (no side-banner slot, unlike Hero Banner) — each
 // slide is one flat promo image (like organicindia.com's hero) with an
 // optional separate mobile crop, since a wide desktop banner rarely reads
@@ -166,44 +239,83 @@ function HomeBannerTwoFields({
 
   return (
     <div>
-      <span className="mb-2 block text-xs font-semibold text-secondary">
-        Slides <span className="font-normal text-muted">— recommended image size: 1690 × 575px (desktop)</span>
-      </span>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="grid h-9 w-9 place-items-center rounded-inner bg-brand-50 text-brand-500">
+            <Icon name="image" size={18} />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-text">Slides</div>
+            <div className="text-xs text-muted">Recommended image size: 1690 × 575px (desktop)</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => updateSlides([...slides, { imageUrl: "" }])}
+          className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-brand-500 px-3 text-xs font-bold text-brand-500 hover:bg-brand-50"
+        >
+          <Icon name="add" size={16} /> Add slide
+        </button>
+      </div>
+
       <div className="flex flex-col gap-4">
         {slides.map((slide, i) => (
-          <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
-            <MediaPicker
-              value={slide.imageUrl}
-              onChange={(url) => updateSlides(slides.map((s, j) => (j === i ? { ...s, imageUrl: url } : s)))}
-              label={`Slide ${i + 1} image (1690×575px)`}
-            />
-            <MediaPicker
-              value={slide.mobileImageUrl}
-              onChange={(url) => updateSlides(slides.map((s, j) => (j === i ? { ...s, mobileImageUrl: url } : s)))}
-              label="Mobile image (optional, 800×450px — skipping this crops the desktop image on mobile)"
-            />
-            <div className="flex flex-1 flex-col gap-1.5">
-              <span className="text-xs font-semibold text-secondary">Link URL (optional)</span>
-              <input
-                value={slide.linkUrl ?? ""}
-                onChange={(e) => updateSlides(slides.map((s, j) => (j === i ? { ...s, linkUrl: e.target.value } : s)))}
-                className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-              />
-              <Button
-                type="button"
-                variant="link"
-                className="self-start text-danger"
-                onClick={() => updateSlides(slides.filter((_, j) => j !== i))}
-              >
-                Remove slide
-              </Button>
+          <div key={i} className="flex gap-4 rounded-inner border border-border p-4">
+            <div className="flex flex-none flex-col items-center gap-2 pt-1">
+              <Icon name="drag_indicator" size={18} className="cursor-grab text-muted" />
+              <span className="grid h-7 w-9 place-items-center rounded-sm bg-brand-50 text-xs font-bold text-brand-500">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+            </div>
+
+            <div className="grid flex-1 grid-cols-1 gap-5 sm:grid-cols-3">
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-text">Desktop image (1690×575px)</span>
+                <div className="w-[170px]">
+                  <ImageSlot
+                    value={slide.imageUrl}
+                    onChange={(url) => updateSlides(slides.map((s, j) => (j === i ? { ...s, imageUrl: url } : s)))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-text">Mobile image (optional)</span>
+                <span className="-mt-1 text-[0.7rem] leading-snug text-muted">
+                  800×450px — skipping this crops the desktop image on mobile
+                </span>
+                <div className="w-[170px]">
+                  <ImageSlot
+                    value={slide.mobileImageUrl}
+                    onChange={(url) => updateSlides(slides.map((s, j) => (j === i ? { ...s, mobileImageUrl: url } : s)))}
+                    aspectClassName="aspect-[800/450]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-text">Link URL (optional)</span>
+                <div className="relative">
+                  <Icon name="public" size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    value={slide.linkUrl ?? ""}
+                    onChange={(e) => updateSlides(slides.map((s, j) => (j === i ? { ...s, linkUrl: e.target.value } : s)))}
+                    placeholder="https://example.com"
+                    className="h-10 w-full rounded-sm border border-border bg-surface pl-8 pr-3 text-sm text-text outline-none focus:border-brand-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateSlides(slides.filter((_, j) => j !== i))}
+                  className="inline-flex items-center gap-1 self-start text-xs font-semibold text-danger hover:underline"
+                >
+                  <Icon name="delete" size={15} /> Remove slide
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
-      <Button type="button" variant="ghost" className="mt-2" onClick={() => updateSlides([...slides, { imageUrl: "" }])}>
-        Add slide
-      </Button>
     </div>
   );
 }

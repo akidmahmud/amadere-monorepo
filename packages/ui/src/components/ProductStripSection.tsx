@@ -136,7 +136,7 @@ export function ProductStripSection({
     <section className="pt-10 md:pt-14">
       <div className="mx-auto max-w-[1440px] px-[2px] md:px-[3px]">
         <div className="mb-6 flex items-end justify-between gap-4 border-b border-header-line pb-3.5">
-          <h2 className="relative min-w-0 whitespace-nowrap font-serif text-[14px] font-semibold text-green after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:text-[22px] md:text-[30px]">
+          <h2 className="relative ml-1 min-w-0 whitespace-nowrap font-serif text-[14px] font-semibold text-green after:absolute after:-bottom-[15px] after:left-0 after:h-[3.5px] after:w-11 after:rounded-[3px] after:bg-gold after:content-[''] sm:ml-0 sm:text-[22px] md:text-[30px]">
             {title}
           </h2>
           <Link

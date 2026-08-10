@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, FormProvider, useForm, type FieldErrors } from "react-hook-form";
@@ -11,6 +11,7 @@ import {
   Input,
   PaymentMethodSelector,
   formatMoney,
+  useCartDrawerStore,
 } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
@@ -24,7 +25,7 @@ import { getDeviceId } from "@/lib/device-id";
 import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
-import { useCartQuery, useRemoveCartItem, useUpdateCartItem } from "@/hooks/useCart";
+import { useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
@@ -57,12 +58,23 @@ export function CheckoutForm() {
   const router = useRouter();
   const [placedOrder, setPlacedOrder] = useState<components["schemas"]["OrderDto"] | null>(null);
   const [voucherInput, setVoucherInput] = useState("");
+  const [couponInput, setCouponInput] = useState("");
   const [blockPopupDismissed, setBlockPopupDismissed] = useState(false);
   const [fraudResult, setFraudResult] = useState<FraudPreflightResult | null>(null);
   const [preflightBlock, setPreflightBlock] = useState<BlockPopupDetails | null>(null);
   const [showOtpPopup, setShowOtpPopup] = useState(false);
   const checkoutStartedAtRef = useRef(Math.floor(Date.now() / 1000));
   const shippingAddressRef = useRef<HTMLDivElement>(null);
+  const closeCartDrawer = useCartDrawerStore((s) => s.close);
+
+  // The cart drawer can be left open from wherever the customer clicked
+  // through to checkout from (e.g. "View Cart" inside it) — it has no
+  // reason to still be open once they're on the checkout page itself, and
+  // sitting open on top of/behind the form is just visual clutter.
+  useEffect(() => {
+    closeCartDrawer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -103,6 +115,8 @@ export function CheckoutForm() {
   const removeItem = useRemoveCartItem(locale);
   const placeOrder = usePlaceOrder(locale);
   const voucherCheck = useGiftVoucherCheck(voucherInput);
+  const applyCoupon = useApplyCoupon(locale);
+  const removeCoupon = useRemoveCoupon(locale);
   const { data: methodConfigs } = usePaymentMethodConfigs();
   const [copied, setCopied] = useState(false);
 
@@ -306,6 +320,40 @@ export function CheckoutForm() {
                     You&apos;ll enter your transaction ID on the confirmation page after placing this order.
                   </p>
                 </div>
+              )}
+            </div>
+
+            <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
+              <h2 className="mb-3 font-ui text-[15px] font-semibold text-green">Have a coupon or discount code?</h2>
+              {cart?.couponCode ? (
+                <div className="flex items-center justify-between rounded-lg bg-beige px-3 py-2">
+                  <span className="font-ui text-xs font-medium text-ink">{cart.couponCode}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeCoupon.mutate(undefined)}
+                    className="font-ui text-xs text-muted underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (couponInput.trim()) applyCoupon.mutate({ code: couponInput.trim() });
+                  }}
+                >
+                  <Input placeholder="Coupon / discount code" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} />
+                  <Button type="submit" variant="ghost">
+                    Apply
+                  </Button>
+                </form>
+              )}
+              {applyCoupon.isError && (
+                <p className="mt-2 font-body text-xs text-red-600">
+                  {applyCoupon.error instanceof Error ? applyCoupon.error.message : "Invalid coupon"}
+                </p>
               )}
             </div>
 

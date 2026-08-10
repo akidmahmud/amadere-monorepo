@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCancelShipment,
   useCourierBalance,
@@ -12,7 +13,9 @@ import {
   type ShipmentQueueRow,
 } from "@/hooks/useShipments";
 import { useFraudCheck } from "@/hooks/useFraud";
+import { useBulkOrderAction } from "@/hooks/useOrderManager";
 import { OrderDetailModal, type OrderDetailModalRow } from "@/components/OrderDetailModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const PAGE_SIZES = [10, 30, 50, 100];
 
@@ -126,13 +129,23 @@ export function DispatchQueueTable() {
   const [balanceProvider] = useState<ShipmentProvider>("STEADFAST");
   const [bulkProvider, setBulkProvider] = useState<ShipmentProvider>("STEADFAST");
   const [detailRow, setDetailRow] = useState<OrderDetailModalRow | null>(null);
+  // Single-row target xor "bulk" (current `selected` set) — one
+  // ConfirmDialog covers both the per-row trash icon and the toolbar's
+  // Delete button, same pattern as Order Manager's own delete flow.
+  const [deleteTarget, setDeleteTarget] = useState<ShipmentQueueRow | "bulk" | null>(null);
 
+  const qc = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useShipmentQueue({ page, pageSize, search });
   const balance = useCourierBalance(balanceProvider);
   const dispatch = useDispatchShipment();
   const dispatchBulk = useDispatchBulkShipment();
   const track = useTrackShipment();
   const cancel = useCancelShipment();
+  // A dispatch-queue row IS an order — deleting one here means the exact
+  // same soft-delete Order Manager's own Delete does (moves it to this
+  // page's "Deleted Orders" tab, same underlying Order.deletedAt, nothing
+  // purged). Reuses that hook/endpoint rather than a second delete path.
+  const bulkOrderAction = useBulkOrderAction();
 
   const rows = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -172,6 +185,21 @@ export function DispatchQueueTable() {
     window.open(`${path}?ids=${[...selected].join(",")}`, "_blank");
   }
 
+  function confirmDelete() {
+    const orderIds = deleteTarget === "bulk" ? [...selected] : deleteTarget ? [deleteTarget.id] : [];
+    if (orderIds.length === 0) return;
+    bulkOrderAction.mutate(
+      { orderIds, action: "delete" },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: ["admin-shipments"] });
+          setSelected(new Set());
+          setDeleteTarget(null);
+        },
+      },
+    );
+  }
+
   return (
     <div className="rounded-card border border-border bg-surface p-[18px_18px_14px] shadow-card">
       <div className="flex flex-wrap items-center gap-2.5">
@@ -207,6 +235,14 @@ export function DispatchQueueTable() {
           className="h-[38px] rounded-inner border border-border px-3 text-[0.76rem] font-bold text-text hover:bg-surface-2 disabled:opacity-40"
         >
           Print labels
+        </button>
+        <button
+          type="button"
+          disabled={selected.size === 0}
+          onClick={() => setDeleteTarget("bulk")}
+          className="h-[38px] rounded-inner border border-danger/30 bg-danger/5 px-3 text-[0.76rem] font-bold text-danger hover:bg-danger/10 disabled:opacity-40"
+        >
+          Delete selected
         </button>
 
         <input
@@ -257,13 +293,14 @@ export function DispatchQueueTable() {
                   {h}
                 </th>
               ))}
-              <th className="rounded-r-[8px] whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Total</th>
+              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Total</th>
+              <th className="rounded-r-[8px] whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Actions</th>
             </tr>
           </thead>
           <tbody>
             {!isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-2.5 py-8 text-center text-sm text-muted">
+                <td colSpan={12} className="px-2.5 py-8 text-center text-sm text-muted">
                   No orders match these filters.
                 </td>
               </tr>
@@ -358,6 +395,20 @@ export function DispatchQueueTable() {
                   )}
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap font-bold text-text">৳{row.totalAmount}</td>
+                <td className="px-2.5 py-3 align-middle whitespace-nowrap">
+                  <button
+                    type="button"
+                    title="Delete order"
+                    onClick={() => setDeleteTarget(row)}
+                    className="grid h-8 w-8 place-items-center rounded-inner border border-danger/30 text-danger hover:bg-danger/10"
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                    </svg>
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -410,6 +461,14 @@ export function DispatchQueueTable() {
       </div>
 
       {detailRow && <OrderDetailModal row={detailRow} onClose={() => setDetailRow(null)} />}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        pending={bulkOrderAction.isPending}
+        title={deleteTarget === "bulk" ? `Delete ${selected.size} order(s)?` : `Delete order #${deleteTarget?.orderNumber}?`}
+        description="This moves the order to Deleted Orders, not a permanent delete — it can be restored from there at any time."
+      />
     </div>
   );
 }

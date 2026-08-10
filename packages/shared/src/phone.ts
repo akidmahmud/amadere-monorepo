@@ -45,6 +45,22 @@ export function toBdCompact(raw: string): string | null {
 }
 
 /**
+ * Local 11-digit display shape (01XXXXXXXXX) — what admins/customers
+ * actually recognize as "their number" and what Steadfast's own API
+ * requires on every phone field (verified live against the real endpoint,
+ * see SteadfastCourierProvider). Internal storage/lookup keys (fraud
+ * checks, blocker rules) normalize to +8801XXXXXXXXX via
+ * {@link normalizeBdPhone} — that's correct for lookups, but returning that
+ * shape in an admin-facing response reads as "checking the wrong number"
+ * even when the underlying check ran on the right one. Use this whenever a
+ * phone is being displayed or sent to Steadfast, not stored or looked up.
+ */
+export function toLocalBdPhone(raw: string): string | null {
+  const e164 = normalizeBdPhone(raw);
+  return e164 ? '0' + e164.slice(4) : null;
+}
+
+/**
  * Every plausible stored representation of a BD phone, for lookups — this
  * DB has THREE live formats for the same real-world number, confirmed
  * against real `customers.phone` data (grouped by length): legacy local

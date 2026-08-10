@@ -1,6 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { normalizeBdPhone } from '@amader/shared';
+import { toLocalBdPhone } from '@amader/shared';
 import {
   BalanceOutcome,
   CancelReturnResult,
@@ -49,14 +49,12 @@ const BASE_URL = 'https://portal.packzy.com/api/v1';
 // Steadfast wants the local 11-digit shape (01XXXXXXXXX) on every phone
 // field, regardless of how it's stored internally (this app's site-wide
 // storage format is 880XXXXXXXXXX, see packages/shared/src/phone.ts) —
-// normalizeBdPhone() handles any input shape (already-local, +880, 880,
-// spaces) and returns a clean +8801XXXXXXXXX, then this just drops the
-// leading '+880' for '0'. Falls back to the raw input if it doesn't even
-// look like a BD number, so a bad value still gets sent (and Steadfast's
-// own validation rejects it with a real error) rather than silently vanishing.
+// toLocalBdPhone() handles any input shape (already-local, +880, 880,
+// spaces). Falls back to the raw input if it doesn't even look like a BD
+// number, so a bad value still gets sent (and Steadfast's own validation
+// rejects it with a real error) rather than silently vanishing.
 function toLocalPhone(phone: string): string {
-  const normalized = normalizeBdPhone(phone);
-  return normalized ? '0' + normalized.slice(4) : phone;
+  return toLocalBdPhone(phone) ?? phone;
 }
 
 // Real implementation — endpoints, payload shape and auth headers verified

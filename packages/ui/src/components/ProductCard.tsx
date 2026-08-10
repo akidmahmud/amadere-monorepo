@@ -138,15 +138,24 @@ export function ProductCard({
           plain elements (not the shared Badge, whose own base classes would
           fight these exact values under plain clsx) — 10px/400, 2px 6px
           padding, 4px radius, 6px inset from each top corner. */}
-      {flagLabel && (
-        <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#FF4900] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
-          {flagLabel}
-        </span>
-      )}
-      {computedDiscountLabel && (
-        <span className="absolute right-1.5 top-1.5 z-10 rounded bg-[#008400] px-1.5 py-0.5 text-[10px] font-normal leading-normal text-white">
-          {computedDiscountLabel}
-        </span>
+      {(flagLabel || computedDiscountLabel) && (
+        // flex + justify-between (not two independently left/right-absolute
+        // spans) — a real gap-1 between the two badges instead of them
+        // sitting flush against whatever text each happens to have. Sized
+        // small enough (9px/px-1) that even "Best Selling" + a 3-digit
+        // "100% OFF" both fit on the same row on the narrowest (2-per-row
+        // mobile grid) card — no ellipsis, no wrap, both always readable.
+        // Always renders both <span> slots (empty/unstyled when that label
+        // is absent) so justify-between still pushes a lone badge to its
+        // correct side.
+        <div className="absolute inset-x-1.5 top-1.5 z-10 flex items-start justify-between gap-1">
+          <span className={flagLabel ? "shrink-0 rounded bg-[#FF4900] px-1 py-0.5 text-[9px] font-normal leading-normal text-white" : undefined}>
+            {flagLabel}
+          </span>
+          <span className={computedDiscountLabel ? "shrink-0 rounded bg-[#008400] px-1 py-0.5 text-[9px] font-normal leading-normal text-white" : undefined}>
+            {computedDiscountLabel}
+          </span>
+        </div>
       )}
       <Link href={href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
         {imageUrl ? (

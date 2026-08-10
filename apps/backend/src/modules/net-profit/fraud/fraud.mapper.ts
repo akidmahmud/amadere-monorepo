@@ -1,4 +1,5 @@
 import { FraudCheck, FraudSaving } from '@amader/db';
+import { toLocalBdPhone } from '@amader/shared';
 
 export class FraudCheckDto {
   id!: number;
@@ -17,7 +18,11 @@ export class FraudCheckDto {
 export function toFraudCheckDto(row: FraudCheck): FraudCheckDto {
   return {
     id: row.id,
-    phone: row.phone,
+    // Stored/looked-up as +8801XXXXXXXXX (see FraudService), but that reads
+    // as "the wrong number" to an admin — reshaped to the local 01... form
+    // they actually recognize (and the same shape Steadfast itself expects)
+    // for display only; the cache key underneath is untouched.
+    phone: toLocalBdPhone(row.phone) ?? row.phone,
     totalOrders: row.totalOrders,
     delivered: row.delivered,
     cancelled: row.cancelled,
@@ -43,7 +48,7 @@ export function toFraudSavingDto(row: FraudSaving): FraudSavingDto {
   return {
     id: row.id,
     orderId: row.orderId,
-    phone: row.phone,
+    phone: toLocalBdPhone(row.phone) ?? row.phone,
     amount: row.amount.toString(),
     reason: row.reason,
     createdAt: row.createdAt,

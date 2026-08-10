@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Card, Tabs } from "@amader/admin-ui";
 import { DispatchQueueTable } from "@/components/shipments/DispatchQueueTable";
+import { DeletedOrdersTab } from "@/app/(shell)/net-profit/orders/DeletedOrdersTab";
 import {
   usePathaoSettings,
   useRedxSettings,
@@ -226,12 +227,18 @@ export default function ShipmentsPage() {
       <Tabs
         options={[
           { value: "shipments", label: "Shipments" },
+          { value: "deleted", label: "Deleted Orders" },
           { value: "settings", label: "Courier Settings" },
         ]}
         value={tab}
         onChange={setTab}
       />
       {tab === "shipments" && <DispatchQueueTable />}
+      {/* Same soft-deleted Order pool Order Manager's trash tab shows — a
+          dispatch-queue row IS an order, so deleting/restoring one here
+          means the exact same thing it does there. Reusing that tab instead
+          of building a second bespoke trash view. */}
+      {tab === "deleted" && <DeletedOrdersTab />}
       {tab === "settings" && <SettingsTab />}
     </div>
   );

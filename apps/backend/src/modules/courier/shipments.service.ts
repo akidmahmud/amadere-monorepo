@@ -334,24 +334,31 @@ export class ShipmentsService {
   // adminList() above (which is shipment-record-centric) rather than a
   // shared helper — the two return fundamentally different row shapes.
   async adminQueue(page: number, pageSize: number, search?: string): Promise<PaginatedResult<ShipmentQueueRowDto>> {
-    const where: Prisma.OrderWhereInput = search
-      ? {
-          OR: [
-            { orderNumber: { contains: search, mode: 'insensitive' } },
-            {
-              addresses: {
-                some: {
-                  type: 'SHIPPING',
-                  OR: [
-                    ...phoneLookupCandidates(search).map((c) => ({ phone: { contains: c } })),
-                    { recipientName: { contains: search, mode: 'insensitive' as const } },
-                  ],
+    // Soft-deleted orders (Order Manager / this page's own "Deleted Orders"
+    // tab, both writing/clearing Order.deletedAt) previously still showed up
+    // here — this queue's own `where` never excluded them, unlike Order
+    // Manager's own working-list query (`deleted_at IS NULL`).
+    const where: Prisma.OrderWhereInput = {
+      deletedAt: null,
+      ...(search
+        ? {
+            OR: [
+              { orderNumber: { contains: search, mode: 'insensitive' } },
+              {
+                addresses: {
+                  some: {
+                    type: 'SHIPPING',
+                    OR: [
+                      ...phoneLookupCandidates(search).map((c) => ({ phone: { contains: c } })),
+                      { recipientName: { contains: search, mode: 'insensitive' as const } },
+                    ],
+                  },
                 },
               },
-            },
-          ],
-        }
-      : {};
+            ],
+          }
+        : {}),
+    };
 
     const [orders, total] = await Promise.all([
       this.prisma.client.order.findMany({

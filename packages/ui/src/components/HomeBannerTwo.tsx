@@ -21,13 +21,13 @@ export interface HomeBannerTwoProps {
 // pagination sits in its own row below the image at every breakpoint,
 // matching the reference's swiper (organicindia.com), instead of overlaid
 // bottom-left on desktop.
-// Mobile box widened from the original 4:3 to 16:9 — a wide desktop-style
-// banner (~2.4:1–2.94:1) forced into 4:3 without a dedicated mobile crop
-// (HomeBannerTwoFields' "Mobile image" is optional) was cropping ~45% of the
-// image off the sides; 16:9 keeps ~73% visible instead. Uploading a proper
-// mobile crop per slide still gives the best result — this only reduces the
-// damage when one isn't provided.
-const bannerAspect = "aspect-[2.94/1] max-md:aspect-[16/9]";
+// Mobile box: originally 4:3, widened to 16:9 to reduce side-cropping on a
+// wide desktop-style banner with no dedicated mobile crop, then increased
+// again to 3:2 on request (taller than 16:9, still short of 4:3) — a
+// height/crop trade-off either way for a slide with no mobile image
+// uploaded; a real per-slide mobile crop (HomeBannerTwoFields' "Mobile
+// image") avoids the trade-off entirely.
+const bannerAspect = "aspect-[2.94/1] max-md:aspect-[3/2]";
 
 export function HomeBannerTwo({ slides, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HomeBannerTwoProps) {
   const [index, setIndex] = useState(0);

@@ -217,13 +217,14 @@ export default async function ProductPage({
           <div className="grid grid-cols-2 items-start gap-5 max-lg:grid-cols-1 max-lg:gap-3">
             <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
-            {/* Experimental: info column (everything below the gallery)
-                scaled 1.5x smaller on mobile, per explicit request to test —
-                the gallery/swiper image itself is deliberately outside this
-                wrapper so it stays full size. `zoom` (not `transform: scale`)
-                so the box actually shrinks instead of leaving reserved
-                whitespace. */}
-            <div className="max-lg:[zoom:66.67%]">
+            {/* Info column (everything below the gallery) scaled down on
+                mobile — the gallery/swiper image itself is deliberately
+                outside this wrapper so it stays full size. `zoom` (not
+                `transform: scale`) so the box actually shrinks instead of
+                leaving reserved whitespace. Was 66.67%, bumped to 80% per
+                explicit request ("content too small, make it a little
+                bigger") — still smaller than full size, just less so. */}
+            <div className="max-lg:[zoom:80%]">
               {category && (
                 <div className="mb-1 font-ui text-sm font-semibold uppercase tracking-wide text-gold-dark">
                   {category.name}
