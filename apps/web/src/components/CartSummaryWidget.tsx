@@ -73,7 +73,7 @@ export function CartSummaryWidget() {
     >
       <span className="flex w-full flex-col items-center gap-[3px] bg-green p-[5px] text-white md:gap-1 md:p-3">
         {cartIcon}
-        <span className="text-center font-ui text-[8px] font-semibold md:text-xs">{itemCount} Items</span>
+        <span className="whitespace-nowrap text-center font-ui text-[8px] font-semibold md:text-xs">{itemCount} Items</span>
       </span>
       <span className="w-full bg-white px-[1px] py-[3px] text-center font-ui text-[9px] font-semibold text-green md:px-0.5 md:py-[5px] md:text-sm">
         {formatMoney(cart?.total ?? "0")}

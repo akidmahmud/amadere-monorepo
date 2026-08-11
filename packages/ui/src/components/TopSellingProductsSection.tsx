@@ -172,7 +172,21 @@ export function TopSellingProductsSection({
                     wraps to one line or two. */}
                 <div className="flex min-w-0 flex-1 flex-col md:justify-between">
                   <div>
-                    <h3 className="font-header text-[1.15rem] font-extrabold leading-[1.35] text-header-ink">
+                    {/* The "Best Selling" ribbon is absolutely positioned in
+                        the article's top-right corner, outside the normal
+                        content flow — it only visually clears the title when
+                        that particular title's first line happens to be
+                        short enough to not reach that corner (pure luck, not
+                        a fix). Reserving real top clearance here, only when
+                        the badge is actually showing, guarantees the title
+                        never starts underneath it regardless of text length
+                        or language. */}
+                    <h3
+                      className={cn(
+                        "font-header text-[1.15rem] font-extrabold leading-[1.35] text-header-ink",
+                        item.showBadge && "pt-7",
+                      )}
+                    >
                       <Link href={item.href} className="hover:text-header-green">
                         {item.name}
                       </Link>
