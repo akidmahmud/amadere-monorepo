@@ -23,4 +23,11 @@ export class SiteInfoDto {
    * product card appears (homepage, search, PLP, PDP related/cross-sell) —
    * admin-configurable, see SettingsService.PRODUCT_CARD_STYLE_KEY. */
   productCardStyle!: 'ONE' | 'TWO';
+  /** Inset space inside the logo's own box, shrinking the visible mark
+   * without changing the header slot it sits in — see
+   * SettingsService.SITE_LOGO_STYLE_KEY. */
+  logoPaddingPx!: number;
+  /** Extra space around the logo's box, pushing it away from neighboring
+   * header elements — see SettingsService.SITE_LOGO_STYLE_KEY. */
+  logoMarginPx!: number;
 }

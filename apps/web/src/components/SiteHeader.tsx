@@ -48,6 +48,8 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
   const { data: navMenu } = useNavMenu(toApiLocale(locale), initialNavMenu);
   const { data: announcements } = useAnnouncements(toApiLocale(locale), initialAnnouncements);
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
+  const logoPaddingPx = siteInfo?.logoPaddingPx ?? 0;
+  const logoMarginPx = siteInfo?.logoMarginPx ?? 0;
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebounced(searchQuery, 250);
@@ -83,6 +85,8 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
         brandHref="/"
         brandMark="আমাদের"
         logoUrl={logoUrl}
+        logoPaddingPx={logoPaddingPx}
+        logoMarginPx={logoMarginPx}
         searchPlaceholder={t("header.searchPlaceholder")}
         searchAriaLabel={t("header.searchAria")}
         onSearchSubmit={(query) => query.trim() && router.push(`/search?q=${encodeURIComponent(query.trim())}`)}
@@ -154,6 +158,8 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
         brandHref="/"
         brandMark="আমাদের"
         logoUrl={logoUrl}
+        logoPaddingPx={logoPaddingPx}
+        logoMarginPx={logoMarginPx}
         closeLabel={t("header.close")}
         allProductsHref="/products"
         allProductsLabel={t("nav.allProducts")}

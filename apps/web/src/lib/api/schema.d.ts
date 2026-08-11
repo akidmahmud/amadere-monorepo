@@ -2644,6 +2644,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/courier/settings/steadfast/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCourierSettingsController_getSteadfastWebhook"];
+        put: operations["AdminCourierSettingsController_updateSteadfastWebhook"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/courier/settings/pathao": {
         parameters: {
             query?: never;
@@ -7368,6 +7384,10 @@ export interface components {
             /** @description Leave blank to keep the existing stored key */
             secretKey?: string;
         };
+        UpdateSteadfastWebhookTokenDto: {
+            /** @description The bearer token Steadfast must send back — generate one client-side or paste your own */
+            token?: string;
+        };
         UpdatePathaoSettingsDto: {
             enabled?: boolean;
             /** @enum {string} */
@@ -8090,6 +8110,8 @@ export interface components {
             siteName: string;
             logoUrl: string | null;
             productCardStyle: Record<string, never>;
+            logoPaddingPx: number;
+            logoMarginPx: number;
         };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
@@ -13469,6 +13491,10 @@ export interface operations {
                 assignedAdminId?: number;
                 /** @description Only customers whose birthday (month+day, any year) is today */
                 birthdayToday?: boolean;
+                /** @description Only customers created on or after this date (YYYY-MM-DD) */
+                createdFrom?: string;
+                /** @description Only customers created on or before this date (YYYY-MM-DD) */
+                createdTo?: string;
                 page?: number;
                 pageSize?: number;
             };
@@ -13555,6 +13581,10 @@ export interface operations {
                 assignedAdminId?: number;
                 /** @description Only customers whose birthday (month+day, any year) is today */
                 birthdayToday?: boolean;
+                /** @description Only customers created on or after this date (YYYY-MM-DD) */
+                createdFrom?: string;
+                /** @description Only customers created on or before this date (YYYY-MM-DD) */
+                createdTo?: string;
                 page?: number;
                 pageSize?: number;
             };
@@ -13603,6 +13633,10 @@ export interface operations {
                 assignedAdminId?: number;
                 /** @description Only customers whose birthday (month+day, any year) is today */
                 birthdayToday?: boolean;
+                /** @description Only customers created on or after this date (YYYY-MM-DD) */
+                createdFrom?: string;
+                /** @description Only customers created on or before this date (YYYY-MM-DD) */
+                createdTo?: string;
                 page?: number;
                 pageSize?: number;
             };
@@ -14119,6 +14153,44 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    AdminCourierSettingsController_getSteadfastWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCourierSettingsController_updateSteadfastWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSteadfastWebhookTokenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

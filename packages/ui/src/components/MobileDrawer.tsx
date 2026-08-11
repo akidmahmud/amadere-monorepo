@@ -55,6 +55,9 @@ export interface MobileDrawerProps {
   brandHref: string;
   brandMark: string;
   logoUrl?: string;
+  /** Same meaning as Header's logoPaddingPx/logoMarginPx — see there. */
+  logoPaddingPx?: number;
+  logoMarginPx?: number;
   closeLabel: string;
   allProductsHref: string;
   allProductsLabel: string;
@@ -80,6 +83,8 @@ export function MobileDrawer({
   brandHref,
   brandMark,
   logoUrl,
+  logoPaddingPx = 0,
+  logoMarginPx = 0,
   closeLabel,
   allProductsHref,
   allProductsLabel,
@@ -135,7 +140,12 @@ export function MobileDrawer({
               <Link href={brandHref} className="flex items-center" onClick={close}>
                 {logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt={brandMark} className="h-10 w-auto" />
+                  <img
+                    src={logoUrl}
+                    alt={brandMark}
+                    className="h-10 w-auto"
+                    style={{ padding: logoPaddingPx, margin: logoMarginPx, boxSizing: "border-box" }}
+                  />
                 ) : (
                   <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
                 )}

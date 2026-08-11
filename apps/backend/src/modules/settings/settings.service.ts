@@ -4,6 +4,11 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { SettingDto, SiteInfoDto, toSettingDto } from './settings.mapper';
 
 const SITE_LOGO_MEDIA_ID_KEY = 'site_logo_media_id';
+// Value shape: { paddingPx: number, marginPx: number } — kept as its own key
+// (not folded into SITE_LOGO_MEDIA_ID_KEY's plain-number value) so "which
+// image" and "how it's styled" stay independently editable/upsertable via
+// the same generic PUT /admin/settings/:key every other setting uses.
+const SITE_LOGO_STYLE_KEY = 'site_logo_style';
 const SITE_NAME_KEY = 'site_name';
 const DEFAULT_SITE_NAME = 'আমাদের';
 
@@ -45,7 +50,7 @@ export class SettingsService {
   // not a raw mediaId it would have to look up separately.
   async getSiteInfo(): Promise<SiteInfoDto> {
     const rows = await this.prisma.client.setting.findMany({
-      where: { key: { in: [SITE_LOGO_MEDIA_ID_KEY, SITE_NAME_KEY, PRODUCT_CARD_STYLE_KEY] } },
+      where: { key: { in: [SITE_LOGO_MEDIA_ID_KEY, SITE_LOGO_STYLE_KEY, SITE_NAME_KEY, PRODUCT_CARD_STYLE_KEY] } },
     });
     const byKey = new Map(rows.map((r) => [r.key, r.value]));
 
@@ -67,10 +72,16 @@ export class SettingsService {
         ? 'TWO'
         : 'ONE';
 
+    const logoStyleValue = byKey.get(SITE_LOGO_STYLE_KEY) as { paddingPx?: unknown; marginPx?: unknown } | undefined;
+    const logoPaddingPx = typeof logoStyleValue?.paddingPx === 'number' ? logoStyleValue.paddingPx : 0;
+    const logoMarginPx = typeof logoStyleValue?.marginPx === 'number' ? logoStyleValue.marginPx : 0;
+
     return {
       siteName: typeof siteName === 'string' ? siteName : DEFAULT_SITE_NAME,
       logoUrl,
       productCardStyle,
+      logoPaddingPx,
+      logoMarginPx,
     };
   }
 }

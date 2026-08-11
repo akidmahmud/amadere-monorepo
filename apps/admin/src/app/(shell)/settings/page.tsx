@@ -8,6 +8,7 @@ import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { ProductCardStyleSettings } from "@/components/ProductCardStyleSettings";
 
 const SETTINGS_LINKS = [
+  { href: "/settings/logo", icon: "image", label: "Logo", description: "Upload the storefront logo and adjust its padding/margin." },
   { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
   { href: "/settings/invoice-template", icon: "description", label: "Invoice Template", description: "Custom raw-HTML layout for generated invoices." },
   { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },

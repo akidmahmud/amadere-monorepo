@@ -65,6 +65,13 @@ export interface HeaderProps {
   brandHref: string;
   brandMark: string;
   logoUrl?: string;
+  /** Inset space inside the logo's own box (shrinks the visible mark within
+   * its fixed-size slot) — admin-configurable, see SettingsService's
+   * SITE_LOGO_STYLE_KEY / SiteInfoDto.logoPaddingPx. */
+  logoPaddingPx?: number;
+  /** Extra space around the logo's box, pushing it away from neighboring
+   * header elements — see SiteInfoDto.logoMarginPx. */
+  logoMarginPx?: number;
   searchPlaceholder: string;
   searchAriaLabel: string;
   onSearchSubmit?: (query: string) => void;
@@ -120,6 +127,8 @@ export function Header({
   brandHref,
   brandMark,
   logoUrl,
+  logoPaddingPx = 0,
+  logoMarginPx = 0,
   searchPlaceholder,
   searchAriaLabel,
   onSearchSubmit,
@@ -140,6 +149,12 @@ export function Header({
   linkComponent: Link = DefaultLink,
   className,
 }: HeaderProps) {
+  // `boxSizing: border-box` so padding shrinks the visible logo *within* its
+  // fixed-height slot (h-[88px]/h-full below) instead of growing past it —
+  // a plain content-box padding would add on top of the slot's height and
+  // overflow it, same overflow problem explicit sizing already had to work
+  // around once this session.
+  const logoStyle = { padding: logoPaddingPx, margin: logoMarginPx, boxSizing: "border-box" as const };
   const [query, setQuery] = useState("");
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -249,7 +264,7 @@ export function Header({
           <Link href={brandHref} className="col-start-2 flex items-center justify-self-center">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={brandMark} className="h-[88px] w-auto" />
+              <img src={logoUrl} alt={brandMark} className="h-[88px] w-auto" style={logoStyle} />
             ) : (
               <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
             )}
@@ -318,7 +333,7 @@ export function Header({
         <Link href={brandHref} className="flex h-[120px] shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={brandMark} className="h-full w-auto" />
+            <img src={logoUrl} alt={brandMark} className="h-full w-auto" style={logoStyle} />
           ) : (
             <span className="font-bengali text-xl font-bold text-header-green">{brandMark}</span>
           )}

@@ -4,10 +4,18 @@ import { useRef, useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
 import { useUploadMedia } from "@/hooks/useMedia";
 import { MediaLibraryBrowser } from "@/components/media/MediaLibraryBrowser";
+import type { components } from "@/lib/api/schema";
+
+type MediaDto = components["schemas"]["MediaDto"];
 
 export interface MediaPickerProps {
   value: string | undefined;
   onChange: (url: string) => void;
+  /** Fires alongside onChange with the full record (id included) whenever a
+   * new image is uploaded or picked from the library — existing callers
+   * that only need the URL can ignore this. Added for settings that store a
+   * media id rather than a bare URL, e.g. the site logo. */
+  onSelectMedia?: (media: MediaDto) => void;
   label?: string;
 }
 
@@ -17,7 +25,7 @@ export interface MediaPickerProps {
 // uploaded images resolve fine; older migrated media stored as bare relative
 // paths (pre-R2 rollout, a known separate backend gap) may not render a
 // thumbnail here — not something this widget can fix.
-export function MediaPicker({ value, onChange, label = "Image" }: MediaPickerProps) {
+export function MediaPicker({ value, onChange, onSelectMedia, label = "Image" }: MediaPickerProps) {
   const [showLibrary, setShowLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadMedia();
@@ -28,6 +36,7 @@ export function MediaPicker({ value, onChange, label = "Image" }: MediaPickerPro
     if (!file) return;
     const media = await upload.mutateAsync(file);
     onChange(media.url);
+    onSelectMedia?.(media);
   }
 
   return (
@@ -55,6 +64,7 @@ export function MediaPicker({ value, onChange, label = "Image" }: MediaPickerPro
         <MediaLibraryBrowser
           onSelect={(media) => {
             onChange(media.url);
+            onSelectMedia?.(media);
             setShowLibrary(false);
           }}
         />
