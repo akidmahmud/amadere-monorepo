@@ -88,7 +88,7 @@ export function ProductCardTwo({
   }
 
   return (
-    <div className={cn("group flex flex-col rounded-[20px] border border-line bg-transparent p-2.5", className)}>
+    <div className={cn("group flex h-full flex-col rounded-[20px] border border-line bg-transparent p-2.5", className)}>
       <Link href={href} className="relative block aspect-square w-full overflow-hidden rounded-[20px] bg-beige">
         {imageUrl ? (
           <img
@@ -116,40 +116,49 @@ export function ProductCardTwo({
         )}
       </Link>
 
-      <div className="pt-2.5">
-        <Link href={href} className="block truncate font-sans text-[13px] leading-[130%] text-ink" title={name}>
-          {name}
-        </Link>
+      {/* flex-1 + justify-between (not a plain block div) — the button is a
+          separate flex child pinned to the card's bottom instead of just
+          trailing directly after the pack slot, so a card with no
+          pack/weight to show (no dropdown or label rendered above) doesn't
+          end up shorter than one that has one. Requires the root card div's
+          `h-full` above so there's actually spare height to distribute when
+          this card sits in the same grid row as a taller one. */}
+      <div className="flex flex-1 flex-col justify-between pt-2.5">
+        <div>
+          <Link href={href} className="block truncate font-sans text-[13px] leading-[130%] text-ink" title={name}>
+            {name}
+          </Link>
 
-        <p className="mt-1 flex items-baseline gap-2">
-          <span className="font-sans text-lg font-semibold text-ink">{formatMoney(displayPrice)}</span>
-          {displayOriginalPrice && Number(displayOriginalPrice) > Number(displayPrice) && (
-            <span className="font-sans text-sm text-muted line-through">{formatMoney(displayOriginalPrice)}</span>
-          )}
-        </p>
+          <p className="mt-1 flex items-baseline gap-2">
+            <span className="font-sans text-lg font-semibold text-ink">{formatMoney(displayPrice)}</span>
+            {displayOriginalPrice && Number(displayOriginalPrice) > Number(displayPrice) && (
+              <span className="font-sans text-sm text-muted line-through">{formatMoney(displayOriginalPrice)}</span>
+            )}
+          </p>
 
-        {hasChoice ? (
-          <select
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            className="mt-[5px] h-[33px] w-full rounded-full border border-ink/70 bg-cream px-3 font-sans text-sm text-ink outline-none"
-          >
-            {packOptions!.map((o) => (
-              <option key={o.value} value={o.value} disabled={o.outOfStock}>
-                {o.label}
-                {o.outOfStock ? " — Out of Stock" : ""}
-              </option>
-            ))}
-          </select>
-        ) : singleOption ? (
-          <div className="mt-[5px] flex h-[33px] w-full items-center rounded-full border border-ink/30 bg-cream px-3 font-sans text-sm text-ink">
-            {singleOption.label}
-          </div>
-        ) : weightLabel ? (
-          <div className="mt-[5px] flex h-[33px] w-full items-center rounded-full border border-ink/30 bg-cream px-3 font-sans text-sm text-ink">
-            {weightLabel}
-          </div>
-        ) : null}
+          {hasChoice ? (
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              className="mt-[5px] h-[33px] w-full rounded-full border border-ink/70 bg-cream px-3 font-sans text-sm text-ink outline-none"
+            >
+              {packOptions!.map((o) => (
+                <option key={o.value} value={o.value} disabled={o.outOfStock}>
+                  {o.label}
+                  {o.outOfStock ? " — Out of Stock" : ""}
+                </option>
+              ))}
+            </select>
+          ) : singleOption ? (
+            <div className="mt-[5px] flex h-[33px] w-full items-center rounded-full border border-ink/30 bg-cream px-3 font-sans text-sm text-ink">
+              {singleOption.label}
+            </div>
+          ) : weightLabel ? (
+            <div className="mt-[5px] flex h-[33px] w-full items-center rounded-full border border-ink/30 bg-cream px-3 font-sans text-sm text-ink">
+              {weightLabel}
+            </div>
+          ) : null}
+        </div>
 
         <button
           type="button"
