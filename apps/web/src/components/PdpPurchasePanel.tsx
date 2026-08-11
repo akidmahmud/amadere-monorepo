@@ -137,7 +137,7 @@ export function PdpPurchasePanel({
   }
 
   return (
-    <div className="font-['Open_Sans',sans-serif]">
+    <div className="font-ui">
       <PriceTag
         price={price}
         originalPrice={originalPrice}

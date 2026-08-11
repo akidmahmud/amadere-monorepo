@@ -171,7 +171,7 @@ function LoginForm() {
       >
         <div className="mt-1 text-center">
           <div className="flex justify-center">{leafBrandIcon}</div>
-          <div className="mt-2 text-[2.15rem] font-extrabold tracking-tight" style={{ fontFamily: "'Open Sans', 'Noto Sans Bengali', sans-serif", color: green900 }}>
+          <div className="mt-2 text-[2.15rem] font-extrabold tracking-tight" style={{ fontFamily: "'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif", color: green900 }}>
             Amader Ltd
           </div>
           <div className="mt-1.5 text-[0.95rem] font-semibold" style={{ color: green800 }}>

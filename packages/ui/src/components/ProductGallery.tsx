@@ -86,22 +86,24 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
           column above made this flex-1 area wider, which under aspect-square
           also made it *taller* — fighting the "fit the first mobile screen"
           goal. Capped at the smaller of 280px (the reference's own
-          ~280-290px) or 19% of the real device viewport height. A plain
+          ~280-290px) or 24% of the real device viewport height. A plain
           280px was consuming a bigger share of the screen — and this app's
           own fixed bottom nav bar (Home/Menu/Cart/Search/Account, ~59px)
           eats further into whatever's left — on phones with a shorter
           CSS-pixel viewport height (e.g. Galaxy S22 or Poco X6 Neo vs. Poco
-          X6 Pro, even at a "similar" advertised screen size), pushing the
-          Brand row below the fold on those specifically. 19vh (paired with
-          the trimmed spacing in PdpPurchasePanel) was measured live against
-          a real variant product page, accounting for that nav bar, down to
-          a 660px-tall viewport — a real Galaxy S22's on-load height with
-          Chrome's address bar showing — per explicit request to guarantee
-          Brand is on-screen there too, not just on taller phones, even at
-          the cost of a visibly more compact/rectangular product photo on
-          short devices. Square again from md up, where the wider column
-          was already correctly proportioned. */}
-      <div className="relative h-[min(280px,19vh)] min-w-0 flex-1 md:aspect-square md:h-auto">
+          X6 Pro, even at a "similar" advertised screen size).
+          24vh is a deliberate compromise, chosen over stricter options per
+          explicit request to prioritize a bigger photo: on a real Galaxy
+          S22-height viewport (660px) this renders ~35px taller than the
+          strictest-fit value (19vh, which kept Brand on-screen with 0
+          scrolling on every phone including that one) — Brand and the
+          bottom of the WhatsApp/Call Now row now need a small scroll on
+          that specific phone, everything through Buy Now still shows
+          without scrolling. Taller phones (Poco X6 Neo/Pro) still show
+          everything through Brand with no scrolling either way. Square
+          again from md up, where the wider column was already correctly
+          proportioned. */}
+      <div className="relative h-[min(280px,24vh)] min-w-0 flex-1 md:aspect-square md:h-auto">
         {showVideo ? (
           <iframe
             src={videoUrl}

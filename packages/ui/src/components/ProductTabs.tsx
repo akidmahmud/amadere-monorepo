@@ -49,7 +49,7 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
               setActive(tab.id);
             }}
             className={cn(
-              "shrink-0 whitespace-nowrap rounded px-4 py-2 font-['Open_Sans',sans-serif] text-xs font-semibold capitalize sm:px-6 sm:py-3 sm:text-sm",
+              "shrink-0 whitespace-nowrap rounded px-4 py-2 font-ui text-xs font-semibold capitalize sm:px-6 sm:py-3 sm:text-sm",
               !tab.scrollTargetId && tab.id === activeTab.id ? "bg-green text-white" : "bg-[#F5F5F5] text-[#666666]",
             )}
           >

@@ -140,14 +140,15 @@
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
 
-  /* Site-wide default: Open Sans (Google's open-source Google Font — see
-     packages/ui/src/tokens.css's comment for why proprietary "Google Sans"
-     itself can't be used) for Latin characters, falling through per-glyph to
-     Noto Sans Bengali for Bengali characters, generic sans-serif as the
-     final fallback — same reset as apps/web's tokens.css, applied here too
-     since the admin panel is in scope. */
-  --font-ui: 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-display: 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  /* Site-wide default: Google Sans Flex (free/open-source since Nov 2025 —
+     see packages/ui/src/tokens.css's comment for the full history) for
+     Latin characters, falling through to Open Sans for whatever Google Sans
+     Flex doesn't cover, then to Noto Sans Bengali for Bengali characters
+     (neither of the first two has Bengali glyphs), generic sans-serif as
+     the final fallback — same reset as apps/web's tokens.css, applied here
+     too since the admin panel is in scope. */
+  --font-ui: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-display: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
 }
 
 body {

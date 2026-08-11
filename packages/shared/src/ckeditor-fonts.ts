@@ -17,6 +17,7 @@ export interface CkeditorFontFamily {
 // plus every commonly-used Bangla Google Font, so there's real variety
 // without loading dozens of near-duplicate typefaces on every page view.
 export const CKEDITOR_FONT_FAMILIES: CkeditorFontFamily[] = [
+  { name: "Google Sans Flex", weights: "400;500;600;700", fallback: "sans-serif" },
   { name: "Inter", weights: "400;500;600;700", fallback: "sans-serif" },
   { name: "Poppins", weights: "400;500;600;700", fallback: "sans-serif" },
   { name: "Plus Jakarta Sans", weights: "400;500;600;700", fallback: "sans-serif" },

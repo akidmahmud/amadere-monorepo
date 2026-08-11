@@ -62,20 +62,23 @@
   --radius-brand: var(--radius-brand);
   --shadow-brand: var(--shadow-brand);
 
-  /* Site-wide default: Open Sans ("Google Sans" itself is a proprietary,
-     unlicensed-for-reuse Google trademark with no Bengali glyphs at all, so
-     it can't be used here — per explicit request, using Open Sans, a real
-     open Google Font, instead of the earlier Roboto substitute) for Latin
-     characters, falling through per-glyph to Noto Sans Bengali (Google's own
-     Bengali-script font) for Bengali characters Open Sans doesn't cover,
-     then a generic sans-serif as the final fallback. Loaded via a Google
-     Fonts <link> in each app's layout.tsx. Applies to every semantic token —
-     a deliberate full type-system reset, not per-token tuning. */
-  --font-serif: 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-ui: 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-body: 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-bengali: 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-header: 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  /* Site-wide default: Google Sans Flex (Google's own signature typeface —
+     restricted to Google's own products for years, but released free and
+     open-source under the OFL in Nov 2025, correcting the earlier note here
+     that called it proprietary) as the primary Latin font, falling through
+     to Open Sans for any Latin glyph Google Sans Flex doesn't cover, then to
+     Noto Sans Bengali (Google's own Bengali-script font) for Bengali
+     characters — neither Google Sans Flex nor Open Sans has Bengali glyphs
+     at all, so Bengali text always resolves to Noto Sans Bengali regardless
+     of where it sits in this list — then a generic sans-serif as the final
+     fallback. Loaded via a Google Fonts <link> in each app's layout.tsx.
+     Applies to every semantic token — a deliberate full type-system reset,
+     not per-token tuning. */
+  --font-serif: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-ui: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-body: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-bengali: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-header: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
 
   /* CertificationRow's mobile auto-scroll — content is duplicated exactly
      once, so -50% is precisely one full set's width, giving a seamless loop

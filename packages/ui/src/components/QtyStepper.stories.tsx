@@ -10,17 +10,10 @@ export default meta;
 
 type Story = StoryObj<typeof QtyStepper>;
 
-export const Green: Story = {
+export const Default: Story = {
   render: () => {
     const [value, setValue] = useState(1);
-    return <QtyStepper value={value} onChange={setValue} variant="green" />;
-  },
-};
-
-export const Gold: Story = {
-  render: () => {
-    const [value, setValue] = useState(1);
-    return <QtyStepper value={value} onChange={setValue} variant="gold" />;
+    return <QtyStepper value={value} onChange={setValue} />;
   },
 };
 
