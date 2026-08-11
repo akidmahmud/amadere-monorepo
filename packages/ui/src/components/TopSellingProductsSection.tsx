@@ -138,7 +138,7 @@ export function TopSellingProductsSection({
             return (
               <article
                 key={item.productId}
-                className="group relative flex min-h-0 flex-col gap-4 rounded-[14px] border border-transparent bg-white p-6 shadow-[0_3px_14px_rgba(30,43,34,.06)] transition-[box-shadow,border-color] duration-200 hover:border-header-green hover:shadow-[0_10px_26px_rgba(33,113,61,.14)] md:min-h-[300px] md:flex-row md:items-center md:gap-6"
+                className="group relative flex min-h-0 flex-col gap-4 rounded-[14px] border border-transparent bg-white p-6 shadow-[0_3px_14px_rgba(30,43,34,.06)] transition-[box-shadow,border-color] duration-200 hover:border-header-green hover:shadow-[0_10px_26px_rgba(33,113,61,.14)] md:min-h-[300px] md:flex-row md:items-stretch md:gap-6"
               >
                 {/* Pixel-matched to ghorerbazar.com's `.tp-product-badge`:
                     plain element (not the shared Badge), ribbon-shaped
@@ -150,7 +150,7 @@ export function TopSellingProductsSection({
                   </span>
                 )}
 
-                <Link href={item.href} className="flex h-[220px] w-full shrink-0 items-center justify-center overflow-hidden md:h-[240px] md:w-[240px] lg:h-[300px] lg:w-[300px]">
+                <Link href={item.href} className="flex h-[220px] w-full shrink-0 items-center justify-center overflow-hidden md:h-[240px] md:w-[240px] md:self-center lg:h-[300px] lg:w-[300px]">
                   {item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -163,27 +163,36 @@ export function TopSellingProductsSection({
                   )}
                 </Link>
 
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-header text-[1.15rem] font-extrabold leading-[1.35] text-header-ink">
-                    <Link href={item.href} className="hover:text-header-green">
-                      {item.name}
-                    </Link>
-                  </h3>
+                {/* flex-col + justify-between (not the old plain block div) —
+                    the button row is a separate flex child pinned to the
+                    bottom instead of just trailing whatever height the
+                    title/price block happens to need, so Add to
+                    Cart/Buy Now land on the same row across every card in a
+                    grid line regardless of whether a given product's name
+                    wraps to one line or two. */}
+                <div className="flex min-w-0 flex-1 flex-col md:justify-between">
+                  <div>
+                    <h3 className="font-header text-[1.15rem] font-extrabold leading-[1.35] text-header-ink">
+                      <Link href={item.href} className="hover:text-header-green">
+                        {item.name}
+                      </Link>
+                    </h3>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <span className="font-header text-[1.15rem] font-extrabold text-header-green">{formatMoney(item.price)}</span>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <span className="font-header text-[1.15rem] font-extrabold text-header-green">{formatMoney(item.price)}</span>
+                      {hasDiscount && (
+                        <span className="font-header text-[0.95rem] font-semibold text-header-muted line-through">
+                          {formatMoney(item.originalPrice!)}
+                        </span>
+                      )}
+                    </div>
+                    {/* Pixel-matched to ghorerbazar.com's `.save-price`. */}
                     {hasDiscount && (
-                      <span className="font-header text-[0.95rem] font-semibold text-header-muted line-through">
-                        {formatMoney(item.originalPrice!)}
+                      <span className="mt-3 inline-flex rounded-full bg-[#BFDB38] px-2 py-1 text-xs font-semibold text-[#222831]">
+                        {saveLabel} {formatMoney(String(Number(item.originalPrice) - Number(item.price)))}
                       </span>
                     )}
                   </div>
-                  {/* Pixel-matched to ghorerbazar.com's `.save-price`. */}
-                  {hasDiscount && (
-                    <span className="mt-3 inline-flex rounded-full bg-[#BFDB38] px-2 py-1 text-xs font-semibold text-[#222831]">
-                      {saveLabel} {formatMoney(String(Number(item.originalPrice) - Number(item.price)))}
-                    </span>
-                  )}
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     {isOutOfStock ? (

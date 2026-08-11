@@ -12,12 +12,23 @@ function NewVoucherForm({ onDone }: { onDone: () => void }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await create.mutateAsync({
-      code: code || undefined,
-      initialBalance: Number(initialBalance),
-      expiresAt: expiresAt || undefined,
-    });
-    onDone();
+    try {
+      await create.mutateAsync({
+        code: code || undefined,
+        initialBalance: Number(initialBalance),
+        expiresAt: expiresAt || undefined,
+      });
+      onDone();
+    } catch {
+      // Real bug this fixes: a rejected mutateAsync with no catch here was
+      // an unhandled promise rejection — the form just sat there with zero
+      // feedback (e.g. balance 0 fails the backend's @Min(1) with a 400
+      // "initialBalance must not be less than 1", or a duplicate code
+      // 409s), reading to the admin as "creation doesn't work" for any
+      // failure at all, not just this one. create.isError/create.error
+      // below now render the real message; the form deliberately stays
+      // open (not onDone()) so the admin can fix the input and retry.
+    }
   }
 
   return (
@@ -56,6 +67,11 @@ function NewVoucherForm({ onDone }: { onDone: () => void }) {
         <Button type="button" variant="ghost" onClick={onDone}>
           Cancel
         </Button>
+        {create.isError && (
+          <p className="w-full text-xs text-danger">
+            {create.error instanceof Error ? create.error.message : "Couldn't create voucher"}
+          </p>
+        )}
       </form>
     </Card>
   );

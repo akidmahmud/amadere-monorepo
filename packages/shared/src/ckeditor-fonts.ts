@@ -21,7 +21,7 @@ export const CKEDITOR_FONT_FAMILIES: CkeditorFontFamily[] = [
   { name: "Poppins", weights: "400;500;600;700", fallback: "sans-serif" },
   { name: "Plus Jakarta Sans", weights: "400;500;600;700", fallback: "sans-serif" },
   { name: "Roboto", weights: "400;500;700", fallback: "sans-serif" },
-  { name: "Open Sans", weights: "400;600;700", fallback: "sans-serif" },
+  { name: "Open Sans", weights: "400;500;600;700;800", fallback: "sans-serif" },
   { name: "Lato", weights: "400;700", fallback: "sans-serif" },
   { name: "Montserrat", weights: "400;500;600;700", fallback: "sans-serif" },
   { name: "Nunito", weights: "400;600;700", fallback: "sans-serif" },

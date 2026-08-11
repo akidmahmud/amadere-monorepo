@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         {/* Loaded under their real, literal family names — this is also how
             the site-wide default type stack (packages/admin-ui's
-            globals.css: Roboto + Noto Sans Bengali) actually gets its
+            globals.css: Open Sans + Noto Sans Bengali) actually gets its
             typefaces, since both happen to already be in this same list;
             no separate link needed for them. CKEditor5's FontFamily feature
             (a deliberately wider choice beyond the site's own default)

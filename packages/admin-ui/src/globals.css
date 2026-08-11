@@ -140,15 +140,14 @@
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
 
-  /* Site-wide default: Roboto (Google's open-source flagship UI font — see
+  /* Site-wide default: Open Sans (Google's open-source Google Font — see
      packages/ui/src/tokens.css's comment for why proprietary "Google Sans"
      itself can't be used) for Latin characters, falling through per-glyph to
      Noto Sans Bengali for Bengali characters, generic sans-serif as the
      final fallback — same reset as apps/web's tokens.css, applied here too
-     since the admin panel is in scope. Deprecates the previous Siyam Rupali
-     + Arial stack (which itself had replaced Inter/Manrope). */
-  --font-ui: 'Roboto', 'Noto Sans Bengali', sans-serif;
-  --font-display: 'Roboto', 'Noto Sans Bengali', sans-serif;
+     since the admin panel is in scope. */
+  --font-ui: 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-display: 'Open Sans', 'Noto Sans Bengali', sans-serif;
 }
 
 body {

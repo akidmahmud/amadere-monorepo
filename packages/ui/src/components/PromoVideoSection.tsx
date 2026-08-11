@@ -21,7 +21,11 @@ export interface PromoVideoSectionProps {
   heading?: string;
   items: PromoVideoCard[];
   products?: (PromoVideoProduct | null)[];
-  onAddToCart?: (productId: number, variantId?: string) => void;
+  /** May return a Promise<boolean> (resolving `true` on a real success) —
+   * when it does, the modal/reel auto-closes itself on success instead of
+   * staying open over the add. A plain `void` return (or no return at all)
+   * leaves the existing stay-open behavior unchanged. */
+  onAddToCart?: (productId: number, variantId?: string) => void | Promise<boolean>;
   addToCartPending?: boolean;
   pendingProductId?: number;
   linkComponent?: LinkComponent;
@@ -326,6 +330,22 @@ export function PromoVideoSection({
 
   if (items.length === 0) return null;
 
+  // Per explicit request: adding to cart from inside the video modal/reel
+  // should close it and surface the cart drawer, instead of leaving the
+  // video open over a cart the customer can't see. The drawer-open itself
+  // already happens inside onAddToCart (useCardAddToCart) on success — this
+  // only owns closing *this* modal, and only when the add actually
+  // succeeded (a stock/network error leaves the modal open so the error
+  // toast is visible against the product the customer was just looking at).
+  function handleAddToCart(productId: number, variantId?: string) {
+    const result = onAddToCart?.(productId, variantId);
+    if (result && typeof result.then === "function") {
+      result.then((success) => {
+        if (success) setOpenIndex(null);
+      });
+    }
+  }
+
   return (
     <div className="py-9">
       {heading && <SectionHeading>{heading}</SectionHeading>}
@@ -348,7 +368,7 @@ export function PromoVideoSection({
             products={products ?? items.map(() => null)}
             openIndex={openIndex}
             onClose={() => setOpenIndex(null)}
-            onAddToCart={onAddToCart}
+            onAddToCart={handleAddToCart}
             addToCartPending={addToCartPending}
             pendingProductId={pendingProductId}
             linkComponent={linkComponent}
@@ -360,7 +380,7 @@ export function PromoVideoSection({
             openIndex={openIndex}
             onClose={() => setOpenIndex(null)}
             onNavigate={setOpenIndex}
-            onAddToCart={onAddToCart}
+            onAddToCart={handleAddToCart}
             addToCartPending={addToCartPending}
             pendingProductId={pendingProductId}
             linkComponent={linkComponent}

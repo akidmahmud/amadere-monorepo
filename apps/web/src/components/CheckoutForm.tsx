@@ -337,18 +337,35 @@ export function CheckoutForm() {
                   </button>
                 </div>
               ) : (
-                <form
+                // Plain div, not a nested <form> — the whole checkout page is
+                // already one big <form> (react-hook-form's own submitForm,
+                // above), and a <form> inside a <form> is invalid HTML. The
+                // browser's parser dropped this inner form during the
+                // initial SSR-HTML parse, which the client then detected as
+                // a real hydration mismatch and reacted to by throwing away
+                // and regenerating the whole tree — the actual reason
+                // clicking Apply silently did nothing (no network request
+                // ever fired) instead of erroring visibly.
+                <div
                   className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (couponInput.trim()) applyCoupon.mutate({ code: couponInput.trim() });
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (couponInput.trim()) applyCoupon.mutate({ code: couponInput.trim() });
+                    }
                   }}
                 >
                   <Input placeholder="Coupon / discount code" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} />
-                  <Button type="submit" variant="ghost">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      if (couponInput.trim()) applyCoupon.mutate({ code: couponInput.trim() });
+                    }}
+                  >
                     Apply
                   </Button>
-                </form>
+                </div>
               )}
               {applyCoupon.isError && (
                 <p className="mt-2 font-body text-xs text-red-600">
@@ -393,6 +410,22 @@ export function CheckoutForm() {
                   <div className="flex justify-between py-1.5 font-body text-sm text-ink">
                     <span>Shipping fee</span>
                     <span>{formatMoney(cart.shippingFee)}</span>
+                  </div>
+                )}
+                {/* Both were already baked into grandTotal server-side
+                    (computeCheckoutFees) but never had their own row here —
+                    a real reported bug: the displayed rows didn't add up to
+                    Total, with no visible explanation for the gap. */}
+                {Number(cart.taxAmount) > 0 && (
+                  <div className="flex justify-between py-1.5 font-body text-sm text-ink">
+                    <span>Tax (VAT)</span>
+                    <span>{formatMoney(cart.taxAmount)}</span>
+                  </div>
+                )}
+                {Number(cart.codFee) > 0 && (
+                  <div className="flex justify-between py-1.5 font-body text-sm text-ink">
+                    <span>Cash on Delivery fee</span>
+                    <span>{formatMoney(cart.codFee)}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-line py-1.5 pt-2.5 font-ui font-bold text-ink">

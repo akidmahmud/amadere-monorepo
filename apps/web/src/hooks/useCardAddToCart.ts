@@ -17,14 +17,25 @@ export function useCardAddToCart() {
   const openCart = useCartDrawerStore((s) => s.open);
   const toast = useToast();
 
-  function handleAddToCart(productId: number, packValue?: string) {
-    addToCart.mutate(
-      { productId, variantId: packValue ? Number(packValue) : undefined },
-      {
-        onSuccess: () => openCart(),
-        onError: (error) => toast.push(error instanceof Error ? error.message : "Couldn't add to cart"),
-      },
-    );
+  // Returns a Promise<boolean> (never rejects) rather than void, so a caller
+  // that needs to know whether the add actually succeeded — e.g. the promo
+  // video modal, which should only auto-close itself on a real success, not
+  // silently close over a stock/network error — can await it. Every other
+  // call site just ignores the return value, same fire-and-forget behavior
+  // as before.
+  function handleAddToCart(productId: number, packValue?: string): Promise<boolean> {
+    return addToCart
+      .mutateAsync({ productId, variantId: packValue ? Number(packValue) : undefined })
+      .then(
+        () => {
+          openCart();
+          return true;
+        },
+        (error) => {
+          toast.push(error instanceof Error ? error.message : "Couldn't add to cart");
+          return false;
+        },
+      );
   }
 
   return { handleAddToCart, isPending: addToCart.isPending, pendingProductId: addToCart.variables?.productId };

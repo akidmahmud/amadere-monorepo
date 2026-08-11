@@ -79,8 +79,8 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
       {/* Loaded under their real, literal family names — this is also how
-          the site-wide default type stack (packages/ui's tokens.css: Roboto
-          + Noto Sans Bengali) actually gets its typefaces, since both happen
+          the site-wide default type stack (packages/ui's tokens.css: Open
+          Sans + Noto Sans Bengali) actually gets its typefaces, since both happen
           to already be in this same list; no separate link needed for them.
           Admin-authored content (product/blog descriptions) can also carry
           inline `font-family: "Poppins"` etc. styles from the admin's
