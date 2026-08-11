@@ -228,9 +228,14 @@ export function Header({
       {/* ===== Mobile (<768px) — single row + drawer + search overlay =====
           The search bar used to be a permanent second row; now it's a
           tap-to-open icon beside Cart (per explicit user request), so the
-          header stays a single 64px row on mobile. */}
+          header is a single row on mobile. Row height bumped from the
+          original 64px to 104px, and the logo from 48px to 88px, per
+          explicit request for a larger logo — 104px is that 88px logo plus
+          enough padding to actually fit inside the row (a straight
+          height-for-height swap would have made the logo taller than its
+          own row and spill out past the header's top/bottom edges). */}
       <div className="md:hidden">
-        <div className="grid h-16 grid-cols-[44px_1fr_44px_44px] items-center px-4">
+        <div className="grid h-[104px] grid-cols-[44px_1fr_44px_44px] items-center px-4">
           <button
             type="button"
             aria-label={mobileMenuLabel}
@@ -244,7 +249,7 @@ export function Header({
           <Link href={brandHref} className="col-start-2 flex items-center justify-self-center">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={brandMark} className="h-12 w-auto" />
+              <img src={logoUrl} alt={brandMark} className="h-[88px] w-auto" />
             ) : (
               <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
             )}
@@ -301,10 +306,16 @@ export function Header({
       </div>
 
       {/* ===== Tablet/laptop/desktop (>=768px) — single row, spec 5.1 =====
-          Header height (81/87/87) and logo height (48px, uniform across all
-          three tiers) are also remeasured from ghorerbazar.com. */}
-      <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[81px] md:grid-cols-[auto_1fr_auto] lg:h-[87px] lg:gap-x-6 xl:gap-x-8">
-        <Link href={brandHref} className="flex h-20 shrink-0 items-center">
+          Header height was originally 81/87/87 (tablet/laptop/desktop) with
+          a uniform 48px logo, both remeasured from ghorerbazar.com. Per
+          explicit request for a bigger logo, both are now a flat 136px
+          height / 120px logo across all three tiers instead — the previous
+          three-tier split doesn't matter as much once the logo itself is
+          this much bigger, and 136px is that 120px logo plus enough padding
+          to fit inside the row without spilling past its top/bottom edges
+          (a straight height-for-height swap would have overflowed it). */}
+      <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[136px] md:grid-cols-[auto_1fr_auto] lg:gap-x-6 xl:gap-x-8">
+        <Link href={brandHref} className="flex h-[120px] shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={brandMark} className="h-full w-auto" />
