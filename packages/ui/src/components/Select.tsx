@@ -26,6 +26,11 @@ const chevron = (
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
+const chevronUp = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-3 w-3">
+    <path d="m18 15-6-6-6 6" />
+  </svg>
+);
 
 export function Select({
   options,
@@ -64,7 +69,22 @@ export function Select({
           className="overflow-hidden rounded-[10px] border border-line bg-white shadow-brand"
           position="popper"
           sideOffset={4}
+          // Radix exposes --radix-select-content-available-height but
+          // doesn't apply it for you — without a real max-height, Content
+          // (and the district dropdown specifically, once it went from a
+          // ~10-item division-gated list to the full 64-district list) just
+          // renders at its natural full height instead of scrolling, with
+          // whatever doesn't fit silently clipped by overflow-hidden above
+          // rather than reachable. Capped at 300px (not just the raw
+          // available height) per explicit request — the available-height
+          // value alone could still stretch to ~590px on a tall screen,
+          // showing nearly the whole district list at once instead of a
+          // normal-sized scrollable dropdown.
+          style={{ maxHeight: "min(var(--radix-select-content-available-height), 300px)" }}
         >
+          <RadixSelect.ScrollUpButton className="flex items-center justify-center py-1 text-muted">
+            {chevronUp}
+          </RadixSelect.ScrollUpButton>
           <RadixSelect.Viewport className="p-1">
             {options.map((option) => (
               <RadixSelect.Item
@@ -76,6 +96,9 @@ export function Select({
               </RadixSelect.Item>
             ))}
           </RadixSelect.Viewport>
+          <RadixSelect.ScrollDownButton className="flex items-center justify-center py-1 text-muted">
+            {chevron}
+          </RadixSelect.ScrollDownButton>
         </RadixSelect.Content>
       </RadixSelect.Portal>
     </RadixSelect.Root>

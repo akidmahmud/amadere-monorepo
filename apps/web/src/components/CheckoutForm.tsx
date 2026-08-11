@@ -84,7 +84,6 @@ export function CheckoutForm() {
         phone: "",
         alternativePhone: "",
         email: "",
-        division: "",
         district: "",
         area: "",
         landmark: "",
@@ -180,10 +179,18 @@ export function CheckoutForm() {
   // Order" for a COD order always fails this specific zod check first try
   // (codOtpCode starts empty), which is exactly what opens the popup below.
   // Missing shipping fields take priority (checked first — earlier in the
-  // form and more fundamental) and scroll into view instead.
+  // form and more fundamental) and scroll into view instead. Not agreeing
+  // to the terms takes priority over that too — a real bug this fixed:
+  // codOtpCode is *always* invalid on a first COD submit regardless of the
+  // terms checkbox, so without this check the OTP popup opened anyway even
+  // with the terms error showing right there on the page, letting a
+  // customer complete COD verification without ever having agreed to them.
   function onInvalid(errors: FieldErrors<CheckoutFormValues>) {
     if (errors.shippingAddress) {
       shippingAddressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (errors.agreedToTerms) {
       return;
     }
     if (errors.codOtpCode) {

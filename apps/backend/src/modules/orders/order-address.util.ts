@@ -11,7 +11,13 @@ import { CheckoutAddressDto } from './dto/checkout-address.dto';
 // required (non-nullable) column, so an unrecognized district is a real
 // error, not something to silently guess at.
 export function toOrderAddressCreate(address: CheckoutAddressDto, type: OrderAddressType) {
-  const division = address.division ?? divisionForDistrict(address.district);
+  // `||`, not `??` — a real bug this fixed: CheckoutForm.tsx's react-hook-form
+  // defaultValues still had `division: ""` left over from before the field
+  // was removed from the UI, and `??` only falls through on null/undefined,
+  // not an empty string — so a real, valid district (e.g. "Rajshahi") was
+  // getting rejected with "isn't a recognized Bangladeshi district" purely
+  // because `address.division` was "" instead of actually absent.
+  const division = address.division || divisionForDistrict(address.district);
   if (!division) {
     throw new BadRequestException(`"${address.district}" isn't a recognized Bangladeshi district`);
   }

@@ -450,7 +450,10 @@ export class CustomersService {
       // division isn't collected from staff anymore (see CreateCustomerModal
       // — every BD district belongs to exactly one), so derive it from
       // district the same way toOrderAddressCreate does for orders.
-      const division = dto.division ?? (dto.district ? divisionForDistrict(dto.district) : null) ?? '';
+      // `||`, not `??` — same class of bug as toOrderAddressCreate's own
+      // fix: an empty-string division must fall through to derivation too,
+      // not just null/undefined.
+      const division = dto.division || (dto.district ? divisionForDistrict(dto.district) : null) || '';
       await this.prisma.client.customerAddress.create({
         data: {
           customerId: customer.id,
