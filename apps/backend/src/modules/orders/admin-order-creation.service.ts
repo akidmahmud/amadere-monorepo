@@ -130,6 +130,9 @@ export class AdminOrderCreationService {
     const codFee = new Decimal(0);
     const totalAmount = preFeeTotal.plus(taxAmount).plus(shippingAmount).plus(codFee);
 
+    const shippingAddressData = toOrderAddressCreate(dto.shippingAddress, OrderAddressType.SHIPPING);
+    const billingAddressData = toOrderAddressCreate(dto.billingAddress ?? dto.shippingAddress, OrderAddressType.BILLING);
+
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of dto.items) {
         await reserveStock(tx, item.productId, item.variantId ?? null, item.quantity);
@@ -167,16 +170,40 @@ export class AdminOrderCreationService {
             }),
           },
           addresses: {
-            create: [
-              toOrderAddressCreate(dto.shippingAddress, OrderAddressType.SHIPPING),
-              toOrderAddressCreate(dto.billingAddress ?? dto.shippingAddress, OrderAddressType.BILLING),
-            ],
+            create: [shippingAddressData, billingAddressData],
           },
           statusHistory: {
             create: { status: 'PENDING', note: 'Order created by staff', adminUserId: adminId },
           },
         },
       });
+
+      // Keep the customer's saved default address in sync with whatever the
+      // staff actually entered/edited on this order — otherwise it's frozen
+      // forever at whatever was captured on the customer's very first order
+      // (CustomerOrderEventListener's backfill only ever runs once), so a
+      // corrected or updated thana/address here would never show up next
+      // time this customer is picked in New Order.
+      if (dto.customerId) {
+        const existingDefault = await tx.customerAddress.findFirst({
+          where: { customerId: dto.customerId, isDefault: true },
+        });
+        const addressFields = {
+          recipientName: shippingAddressData.recipientName,
+          phone: shippingAddressData.phone,
+          division: shippingAddressData.division,
+          district: shippingAddressData.district,
+          area: shippingAddressData.area,
+          landmark: shippingAddressData.landmark,
+          addressLine: shippingAddressData.addressLine,
+          postCode: shippingAddressData.postCode,
+        };
+        if (existingDefault) {
+          await tx.customerAddress.update({ where: { id: existingDefault.id }, data: addressFields });
+        } else {
+          await tx.customerAddress.create({ data: { customerId: dto.customerId, isDefault: true, ...addressFields } });
+        }
+      }
 
       const authResult = await this.payments.resolve(dto.paymentProvider).authorize(created.id, totalAmount);
       await tx.payment.create({

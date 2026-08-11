@@ -201,6 +201,21 @@ export class CustomersService {
       ...(query.crmStatus ? { crmStatus: query.crmStatus } : {}),
       ...(query.assignedAdminId ? { assignedAdminId: query.assignedAdminId } : {}),
       ...(query.district ? { addresses: { some: { district: { equals: query.district, mode: 'insensitive' } } } } : {}),
+      ...(query.createdFrom || query.createdTo
+        ? {
+            createdAt: {
+              // Same fixed UTC+6 Dhaka-day reasoning as birthdayToday above —
+              // "2026-08-11" means that calendar day in Dhaka, not UTC, since
+              // that's the timezone the Start Date column is shown in.
+              ...(query.createdFrom ? { gte: new Date(`${query.createdFrom}T00:00:00+06:00`) } : {}),
+              // Exclusive upper bound one day past createdTo so the whole
+              // selected end day is included, not just its midnight instant.
+              ...(query.createdTo
+                ? { lt: new Date(new Date(`${query.createdTo}T00:00:00+06:00`).getTime() + 24 * 60 * 60 * 1000) }
+                : {}),
+            },
+          }
+        : {}),
       ...(query.q
         ? {
             AND: query.q

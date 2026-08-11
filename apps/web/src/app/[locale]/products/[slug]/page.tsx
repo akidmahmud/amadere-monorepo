@@ -235,7 +235,7 @@ export default async function ProductPage({
                   24px from md up, matching the reference's larger desktop
                   title. Bumped a step (18→20px) per explicit request once
                   the whole info column started rendering at 1.5x zoom-out. */}
-              <h1 className="mb-4 font-['Open_Sans',sans-serif] text-xl font-medium tracking-[-0.6px] text-[#222831] md:text-2xl">
+              <h1 className="mb-3 font-['Open_Sans',sans-serif] text-xl font-medium tracking-[-0.6px] text-[#222831] md:mb-4 md:text-2xl">
                 {product.name}
               </h1>
               {reviews && reviews.reviewCount > 0 && (

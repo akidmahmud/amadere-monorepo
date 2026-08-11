@@ -85,10 +85,23 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
       {/* Fixed height (not aspect-square) on mobile: shrinking the thumbnail
           column above made this flex-1 area wider, which under aspect-square
           also made it *taller* — fighting the "fit the first mobile screen"
-          goal. A fixed height matching the reference's own ~280-290px
-          decouples height from the available width. Square again from md up,
-          where the wider column was already correctly proportioned. */}
-      <div className="relative h-[280px] min-w-0 flex-1 md:aspect-square md:h-auto">
+          goal. Capped at the smaller of 280px (the reference's own
+          ~280-290px) or 19% of the real device viewport height. A plain
+          280px was consuming a bigger share of the screen — and this app's
+          own fixed bottom nav bar (Home/Menu/Cart/Search/Account, ~59px)
+          eats further into whatever's left — on phones with a shorter
+          CSS-pixel viewport height (e.g. Galaxy S22 or Poco X6 Neo vs. Poco
+          X6 Pro, even at a "similar" advertised screen size), pushing the
+          Brand row below the fold on those specifically. 19vh (paired with
+          the trimmed spacing in PdpPurchasePanel) was measured live against
+          a real variant product page, accounting for that nav bar, down to
+          a 660px-tall viewport — a real Galaxy S22's on-load height with
+          Chrome's address bar showing — per explicit request to guarantee
+          Brand is on-screen there too, not just on taller phones, even at
+          the cost of a visibly more compact/rectangular product photo on
+          short devices. Square again from md up, where the wider column
+          was already correctly proportioned. */}
+      <div className="relative h-[min(280px,19vh)] min-w-0 flex-1 md:aspect-square md:h-auto">
         {showVideo ? (
           <iframe
             src={videoUrl}

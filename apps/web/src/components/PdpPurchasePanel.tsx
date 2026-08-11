@@ -143,7 +143,7 @@ export function PdpPurchasePanel({
         originalPrice={originalPrice}
         align="left"
         size="lg"
-        className="mb-4 [&_span]:text-[26px] [&_span]:font-semibold [&_span]:tracking-[-1.3px] [&_span]:text-green"
+        className="mb-3 md:mb-4 [&_span]:text-[26px] [&_span]:font-semibold [&_span]:tracking-[-1.3px] [&_span]:text-green"
       />
 
       {/* Desktop keeps variants above the CTAs (normal convention). Mobile
@@ -181,9 +181,9 @@ export function PdpPurchasePanel({
 
       {/* Matches the reference's <hr> between the price/offer block and the
           quantity row — was missing entirely before. */}
-      <hr className="mb-4 border-line" />
+      <hr className="mb-3 border-line md:mb-4" />
 
-      <div className="mb-3 flex items-center gap-3">
+      <div className="mb-2 flex items-center gap-3 md:mb-3">
         {/* Slim, inline stand-in for the desktop PackSizeSelector card grid
             (kept above the CTAs, unchanged) — that card layout is too wide
             to sit next to the qty stepper on a phone, so mobile gets a
@@ -233,7 +233,7 @@ export function PdpPurchasePanel({
           2-col grid on mobile but `contents` on desktop so its two children
           fall directly into the parent grid's second row instead of being
           squeezed into a single cell. */}
-      <div className="mb-4 flex flex-col gap-3 md:grid md:grid-cols-2">
+      <div className="mb-3 flex flex-col gap-3 md:mb-4 md:grid md:grid-cols-2">
         {!outOfStock && (
           <>
             <button

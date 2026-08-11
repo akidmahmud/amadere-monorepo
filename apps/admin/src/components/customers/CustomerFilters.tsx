@@ -24,6 +24,8 @@ export interface CustomerFilterState {
   priority?: CustomerPriority;
   assignedAdminId?: number;
   birthdayToday?: boolean;
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 export function CustomerFilters({
@@ -101,6 +103,30 @@ export function CustomerFilters({
           </option>
         ))}
       </select>
+
+      <div className="flex items-center gap-1.5">
+        <input
+          type="date"
+          aria-label="Start date from"
+          value={filters.createdFrom ?? ""}
+          onChange={(e) => set("createdFrom", e.target.value || undefined)}
+          max={filters.createdTo}
+          className="h-[38px] rounded-[9px] border px-2.5 text-[0.75rem] font-semibold outline-none"
+          style={{ borderColor: LINE, color: MUTED }}
+        />
+        <span className="text-[0.75rem]" style={{ color: FAINT }}>
+          to
+        </span>
+        <input
+          type="date"
+          aria-label="Start date to"
+          value={filters.createdTo ?? ""}
+          onChange={(e) => set("createdTo", e.target.value || undefined)}
+          min={filters.createdFrom}
+          className="h-[38px] rounded-[9px] border px-2.5 text-[0.75rem] font-semibold outline-none"
+          style={{ borderColor: LINE, color: MUTED }}
+        />
+      </div>
 
       <button
         type="button"

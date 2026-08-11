@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CustomerCrmStatus, CustomerPriority } from '@amader/db';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class AdminCustomerQueryDto {
   @ApiPropertyOptional()
@@ -41,6 +41,16 @@ export class AdminCustomerQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   birthdayToday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Only customers created on or after this date (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({ description: 'Only customers created on or before this date (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

@@ -22,6 +22,8 @@ export interface CustomerListFilters {
   crmStatus?: CustomerCrmStatus;
   assignedAdminId?: number;
   birthdayToday?: boolean;
+  createdFrom?: string;
+  createdTo?: string;
   page?: number;
   pageSize?: number;
 }
