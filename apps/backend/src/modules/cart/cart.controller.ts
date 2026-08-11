@@ -42,9 +42,9 @@ export class CartController {
   @ApiOkResponse({ type: CartViewDto })
   getCart(
     @Req() req: RequestWithCartIdentity,
-    @Query() { locale, paymentProvider }: CartQueryDto,
+    @Query() { locale, paymentProvider, district }: CartQueryDto,
   ): Promise<CartViewDto> {
-    return this.cart.getView(req.cartIdentity, locale ?? 'EN', paymentProvider);
+    return this.cart.getView(req.cartIdentity, locale ?? 'EN', paymentProvider, district);
   }
 
   @Post('items')

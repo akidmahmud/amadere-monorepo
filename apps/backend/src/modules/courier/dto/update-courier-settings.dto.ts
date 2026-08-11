@@ -63,6 +63,13 @@ export class UpdatePathaoSettingsDto {
   storeId?: number;
 }
 
+export class UpdateSteadfastWebhookTokenDto {
+  @ApiPropertyOptional({ description: 'The bearer token Steadfast must send back — generate one client-side or paste your own' })
+  @IsOptional()
+  @IsString()
+  token?: string;
+}
+
 export class UpdateRedxSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()

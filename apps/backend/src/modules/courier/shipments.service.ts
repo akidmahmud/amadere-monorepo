@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CourierProviderName, Prisma, ShipmentStatus } from '@amader/db';
+import { CourierProviderName, OrderStatus, Prisma, ShipmentStatus } from '@amader/db';
 import { mapRawCourierStatus, phoneLookupCandidates } from '@amader/shared';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -42,10 +42,26 @@ const ACTIVE_STATUSES = new Set<ShipmentStatus>([
 
 // Same set as OrdersService's ITEM_EDITABLE_STATUSES (private to that file,
 // so not imported directly) — "order still holds a live, uncommitted stock
-// reservation." A delivered-webhook should only auto-complete orders still
-// in one of these; anything already CANCELED/RETURNED/COMPLETED is left to
-// whatever an admin already decided.
+// reservation." A courier-status webhook should only auto-update orders
+// still in one of these; anything already CANCELED/RETURNED/COMPLETED is
+// left to whatever an admin already decided.
 const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HOLD']);
+
+// What a courier-reported shipment status should do to the parent Order.
+// DELIVERED was the only one wired originally — RETURNED/CANCELED left the
+// Order sitting wherever an admin last left it forever, same as DELIVERED
+// used to, which meant a courier-returned order's stock reservation (only
+// released when Order.status itself moves to CANCELED/RETURNED — see
+// OrdersService's RELEASE_ON_CANCEL) could stay stuck indefinitely with
+// nothing ever prompting an admin to notice. PARTIALLY_DELIVERED/
+// IN_TRANSIT/DISPATCHED/PENDING deliberately have no entry — none of them
+// map cleanly onto a terminal Order status the way "the courier confirms
+// it's fully delivered/returned/canceled" does.
+const ORDER_STATUS_ON_SHIPMENT_STATUS: Partial<Record<ShipmentStatus, OrderStatus>> = {
+  DELIVERED: 'COMPLETED',
+  RETURNED: 'RETURNED',
+  CANCELED: 'CANCELED',
+};
 
 // Shared with the B12 migration script (packages/db/scripts/migrate/orders.ts)
 // so the legacy-status mapping is defined once, not duplicated.
@@ -529,13 +545,16 @@ export class ShipmentsService {
 
     // Previously this only updated the Shipment sub-record — the parent
     // Order stayed wherever an admin last left it (often PROCESSING)
-    // forever, even after the courier confirmed real-world delivery,
-    // leaving stock reservations uncommitted indefinitely. Only fires while
-    // the order is still in an active, pre-completion status — an order an
-    // admin already CANCELED/RETURNED (or already COMPLETED) is left alone,
-    // same guard OrdersService.updateStatus itself uses to decide whether a
-    // live reservation still exists to commit.
-    if (status === 'DELIVERED') {
+    // forever, even after the courier confirmed real-world delivery/return/
+    // cancellation, leaving stock reservations uncommitted (DELIVERED) or
+    // stuck reserved forever (RETURNED/CANCELED — see
+    // ORDER_STATUS_ON_SHIPMENT_STATUS's own comment). Only fires while the
+    // order is still in an active, pre-terminal status — an order an admin
+    // already moved to CANCELED/RETURNED/COMPLETED themselves is left
+    // alone, same guard OrdersService.updateStatus itself uses to decide
+    // whether a live reservation still exists to commit/release.
+    const orderStatus = ORDER_STATUS_ON_SHIPMENT_STATUS[status];
+    if (orderStatus) {
       const order = await this.prisma.client.order.findUnique({
         where: { id: shipment.orderId },
         select: { id: true, status: true },
@@ -543,7 +562,7 @@ export class ShipmentsService {
       if (order && ACTIVE_ORDER_STATUSES.has(order.status)) {
         await this.orders.updateStatus(
           order.id,
-          { status: 'COMPLETED', note: `Auto-completed — ${provider} confirmed delivery` },
+          { status: orderStatus, note: `Auto-updated — ${provider} reported ${rawStatus}` },
           null,
         );
       }

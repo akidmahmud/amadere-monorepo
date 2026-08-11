@@ -1652,6 +1652,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/orders/preview-coupon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminOrdersController_previewCoupon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/orders/{id}": {
         parameters: {
             query?: never;
@@ -6656,7 +6672,7 @@ export interface components {
             alternativePhone?: string;
             /** Format: email */
             email?: string;
-            division: string;
+            division?: string;
             district: string;
             /** @description Thana/upazila */
             area: string;
@@ -6840,6 +6856,20 @@ export interface components {
              */
             paymentStatus?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
             customerNote?: string;
+        };
+        PreviewCouponItemDto: {
+            productId: number;
+            variantId?: number;
+            quantity: number;
+        };
+        PreviewCouponDto: {
+            items: components["schemas"]["PreviewCouponItemDto"][];
+            couponCode: string;
+            customerId?: number;
+        };
+        PreviewCouponResultDto: {
+            amount: string;
+            error?: string;
         };
         UpdateOrderStatusDto: {
             /** @enum {string} */
@@ -7085,6 +7115,9 @@ export interface components {
             addressLine: string;
             division: string;
             district: string;
+            area: string | null;
+            landmark: string | null;
+            postCode: string | null;
         };
         AdminCustomerOrderSummaryDto: {
             id: number;
@@ -11829,6 +11862,7 @@ export interface operations {
             query?: {
                 locale?: "EN" | "BN";
                 paymentProvider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+                district?: string;
             };
             header?: {
                 /** @description Guest cart token (returned on first add-to-cart) */
@@ -12262,6 +12296,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    AdminOrdersController_previewCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewCouponDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewCouponResultDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewCouponResultDto"];
                 };
             };
         };

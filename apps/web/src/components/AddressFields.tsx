@@ -3,10 +3,18 @@
 import type { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Input, Select } from "@amader/ui";
-import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION } from "@amader/shared";
 import type { CheckoutFormValues } from "@/lib/checkout-schema";
 import { CheckoutFraudBadge } from "@/components/CheckoutFraudBadge";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
+
+// Flat, alphabetical — division is derived server-side from district (every
+// BD district belongs to exactly one), so it's no longer a separate field
+// the customer has to pick before district options even show up.
+const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
+  .flat()
+  .sort((a, b) => a.localeCompare(b))
+  .map((d) => ({ value: d, label: d }));
 
 export function AddressFields({
   prefix,
@@ -30,11 +38,6 @@ export function AddressFields({
   } = useFormContext<CheckoutFormValues>();
 
   const fieldErrors = errors[prefix];
-  const division = watch(`${prefix}.division`);
-  const districtOptions = (BD_DISTRICTS_BY_DIVISION[division ?? ""] ?? []).map((d) => ({
-    value: d,
-    label: d,
-  }));
 
   return (
     <div>
@@ -64,28 +67,11 @@ export function AddressFields({
       <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Controller
-            name={`${prefix}.division`}
-            control={control}
-            render={({ field }) => (
-              <Select
-                options={BD_DIVISIONS.map((d) => ({ value: d, label: d }))}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select Division"
-              />
-            )}
-          />
-          {fieldErrors?.division && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.division.message}</p>
-          )}
-        </div>
-        <div>
-          <Controller
             name={`${prefix}.district`}
             control={control}
             render={({ field }) => (
               <Select
-                options={districtOptions}
+                options={DISTRICT_OPTIONS}
                 value={field.value}
                 onValueChange={field.onChange}
                 placeholder="Select District"
@@ -96,13 +82,13 @@ export function AddressFields({
             <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.district.message}</p>
           )}
         </div>
-      </div>
-
-      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Input placeholder="Thana / Area *" {...register(`${prefix}.area`)} />
           {fieldErrors?.area && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.area.message}</p>}
         </div>
+      </div>
+
+      <div className="mb-3.5">
         <Input placeholder="Landmark (optional)" {...register(`${prefix}.landmark`)} />
       </div>
 

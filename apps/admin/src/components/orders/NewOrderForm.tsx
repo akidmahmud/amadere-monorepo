@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
+import { BD_DISTRICTS_BY_DIVISION, toLocalBdPhone } from "@amader/shared";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useCreateManualOrder, usePreviewCoupon, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
@@ -13,13 +14,19 @@ const EMPTY_ADDRESS: CreateManualOrderAddress = {
   phone: "",
   alternativePhone: "",
   email: "",
-  division: "",
   district: "",
   area: "",
   landmark: "",
   addressLine: "",
   postCode: "",
 };
+
+// Flat, alphabetical — division isn't a separate field here (see
+// CreateManualOrderAddress's own comment); every BD district belongs to
+// exactly one, so the backend derives it from whichever district is picked.
+const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
+  .flat()
+  .sort((a, b) => a.localeCompare(b));
 
 type Line = { productId: number; variantId?: number; name: string; sku: string | null; quantity: number; unitPrice: number; imageUrl?: string };
 
@@ -76,49 +83,94 @@ function PencilButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+const fieldLabelClass = "mb-1 block text-xs font-semibold text-secondary";
+
+// Placeholder text disappears the moment staff starts typing, which was the
+// actual root of the "phone number went into the wrong-looking field" (and
+// generally "which field is this") confusion — a persistent label above
+// each input fixes that regardless of what's typed into it.
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className={fieldLabelClass}>
+        {label}
+        {required && <span className="text-danger"> *</span>}
+      </span>
+      {children}
+    </label>
+  );
+}
+
 function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; onChange: (a: CreateManualOrderAddress) => void }) {
   function set(key: keyof CreateManualOrderAddress, v: string) {
     onChange({ ...value, [key]: v });
   }
   // Field order mirrors the storefront checkout page (CheckoutForm/
-  // AddressFields): phone, name, address, division/district, thana/
-  // landmark, alternative phone/email, post code — same fields, same
-  // sequence, so staff filling this in isn't relearning a different layout
-  // from what customers see.
+  // AddressFields): phone, name, address, district, thana/landmark,
+  // alternative phone/email, post code — same fields, same sequence, so
+  // staff filling this in isn't relearning a different layout from what
+  // customers see. No Division field — every BD district belongs to
+  // exactly one division, so the backend derives it from district instead
+  // of asking staff to pick both (Steadfast's own API never uses division
+  // either — recipient_address is one combined string).
   return (
     <div className="grid grid-cols-2 gap-2">
-      <input
-        type="tel"
-        value={value.phone}
-        onChange={(e) => set("phone", e.target.value)}
-        placeholder="Phone"
-        pattern="(?:\+?880|0)?1\d{9}"
-        title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
-        className={cardInputClass}
-      />
-      <input value={value.recipientName} onChange={(e) => set("recipientName", e.target.value)} placeholder="Recipient name" className={cardInputClass} />
-      <textarea
-        value={value.addressLine}
-        onChange={(e) => set("addressLine", e.target.value)}
-        placeholder="Address line"
-        rows={2}
-        className="col-span-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
-      />
-      <input value={value.division} onChange={(e) => set("division", e.target.value)} placeholder="Division" className={cardInputClass} />
-      <input value={value.district} onChange={(e) => set("district", e.target.value)} placeholder="District" className={cardInputClass} />
-      <input value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} placeholder="Area/Thana (optional)" className={cardInputClass} />
-      <input value={value.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} placeholder="Landmark (optional)" className={cardInputClass} />
-      <input
-        type="tel"
-        value={value.alternativePhone ?? ""}
-        onChange={(e) => set("alternativePhone", e.target.value)}
-        placeholder="Alternative phone (optional)"
-        pattern="(?:\+?880|0)?1\d{9}"
-        title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
-        className={cardInputClass}
-      />
-      <input value={value.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="Email (optional)" className={cardInputClass} />
-      <input value={value.postCode ?? ""} onChange={(e) => set("postCode", e.target.value)} placeholder="Post code (optional)" className={cardInputClass} />
+      <Field label="Phone" required>
+        <input
+          type="tel"
+          value={value.phone}
+          onChange={(e) => set("phone", e.target.value)}
+          placeholder="01XXXXXXXXX"
+          pattern="(?:\+?880|0)?1\d{9}"
+          title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+          className={cardInputClass + " w-full"}
+        />
+      </Field>
+      <Field label="Recipient name" required>
+        <input value={value.recipientName} onChange={(e) => set("recipientName", e.target.value)} placeholder="Full name" className={cardInputClass + " w-full"} />
+      </Field>
+      <div className="col-span-2">
+        <Field label="Address line" required>
+          <textarea
+            value={value.addressLine}
+            onChange={(e) => set("addressLine", e.target.value)}
+            placeholder="House no. / building / street / area"
+            rows={2}
+            className="w-full rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
+          />
+        </Field>
+      </div>
+      <Field label="District" required>
+        <select value={value.district} onChange={(e) => set("district", e.target.value)} className={cardInputClass + " w-full"}>
+          <option value="">Select district</option>
+          {DISTRICT_OPTIONS.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Thana / Area" required>
+        <input value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} placeholder="Thana / Area" className={cardInputClass + " w-full"} />
+      </Field>
+      <Field label="Landmark (optional)">
+        <input value={value.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} placeholder="Nearby landmark" className={cardInputClass + " w-full"} />
+      </Field>
+      <Field label="Alternative phone (optional)">
+        <input
+          type="tel"
+          value={value.alternativePhone ?? ""}
+          onChange={(e) => set("alternativePhone", e.target.value)}
+          placeholder="01XXXXXXXXX"
+          pattern="(?:\+?880|0)?1\d{9}"
+          title="Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+          className={cardInputClass + " w-full"}
+        />
+      </Field>
+      <Field label="Email (optional)">
+        <input value={value.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="name@example.com" className={cardInputClass + " w-full"} />
+      </Field>
+      <Field label="Post code (optional)">
+        <input value={value.postCode ?? ""} onChange={(e) => set("postCode", e.target.value)} placeholder="1200" className={cardInputClass + " w-full"} />
+      </Field>
     </div>
   );
 }
@@ -166,10 +218,13 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
     setAddress((a) => ({
       ...a,
       recipientName: customerDetail.name,
-      phone: customerDetail.phone ?? a.phone,
+      // customerDetail.phone is this app's compact storage shape
+      // (8801XXXXXXXXX) — a staff member editing this field needs the
+      // local 11-digit shape (01XXXXXXXXX) they'd actually recognize and
+      // type, same reshape used everywhere else a phone is displayed.
+      phone: (customerDetail.phone && toLocalBdPhone(customerDetail.phone)) || a.phone,
       email: customerDetail.email ?? a.email,
       addressLine: customerDetail.defaultAddress?.addressLine ?? a.addressLine,
-      division: customerDetail.defaultAddress?.division ?? a.division,
       district: customerDetail.defaultAddress?.district ?? a.district,
       area: customerDetail.defaultAddress?.area ?? a.area,
       landmark: customerDetail.defaultAddress?.landmark ?? a.landmark,
@@ -227,7 +282,7 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
     setCreateModalOpen(false);
     selectCustomer({ id: c.id, name: c.name, phone: c.phone ?? null, completedOrderCount: 0, tier: null, email: c.email });
     if (newAddress) {
-      setAddress((a) => ({ ...a, addressLine: newAddress.addressLine, division: newAddress.division, district: newAddress.district }));
+      setAddress((a) => ({ ...a, addressLine: newAddress.addressLine, district: newAddress.district }));
     }
   }
 
@@ -274,15 +329,17 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
   );
 
   // Blank optional fields default to "" for controlled inputs, but the
-  // backend's CheckoutAddressDto validates email/area/landmark/postCode as
+  // backend's CheckoutAddressDto validates email/landmark/postCode as
   // IsOptional() — which class-validator only treats as "not provided" for
   // undefined/null, not "". Sending "" for an unset email fails @IsEmail().
+  // area isn't touched here — it's required (see CreateManualOrderAddress's
+  // own comment), so an empty string should surface as a real validation
+  // error, not get silently converted to undefined.
   function cleanAddress(a: CreateManualOrderAddress): CreateManualOrderAddress {
     return {
       ...a,
       email: a.email || undefined,
       alternativePhone: a.alternativePhone || undefined,
-      area: a.area || undefined,
       landmark: a.landmark || undefined,
       postCode: a.postCode || undefined,
     };

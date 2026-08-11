@@ -4,8 +4,6 @@ import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from '../cart/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
-import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
-import { COD_FEE_DEFAULTS } from '../net-profit/accounts/accounts.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { PreviewCouponDto, PreviewCouponResultDto } from './dto/preview-coupon.dto';
 import { generateOrderNumber } from './order-number.util';
@@ -33,7 +31,6 @@ export class AdminOrderCreationService {
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
     private readonly orders: OrdersService,
-    private readonly netProfitSettings: NetProfitSettingsService,
   ) {}
 
   // Preview-only — reuses the exact same coupon validation the real create()
@@ -124,14 +121,13 @@ export class AdminOrderCreationService {
       lineItemsTotal.minus(explicitDiscount).minus(explicitPromotion).minus(couponAmount),
       new Decimal(0),
     );
-    // Same COD-fee rule real checkout applies (Settings > Accounts) — this
-    // path previously never charged it at all, so a manually-created COD
-    // order's totalAmount silently excluded the fee even when enabled.
-    const codFeeSettings = await this.netProfitSettings.getNamespace('cod_fee', COD_FEE_DEFAULTS);
-    const codFee =
-      codFeeSettings.enabled && dto.paymentProvider === 'COD'
-        ? preFeeTotal.times(codFeeSettings.percent).dividedBy(100).toDecimalPlaces(2)
-        : new Decimal(0);
+    // No automatic COD fee here — per explicit request, the COD fee (like
+    // tax) is an internal accounting-only figure and must never be added to
+    // what a customer is actually charged, on any order regardless of how
+    // it was created. `taxAmount` above stays staff-entered/optional (an
+    // admin explicitly typing a tax line for a manual invoice is a
+    // deliberate per-order choice, not an automatic silent charge).
+    const codFee = new Decimal(0);
     const totalAmount = preFeeTotal.plus(taxAmount).plus(shippingAmount).plus(codFee);
 
     const order = await this.prisma.client.$transaction(async (tx) => {

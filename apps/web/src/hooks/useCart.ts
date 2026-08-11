@@ -19,17 +19,17 @@ function persistGuestToken(cart: CartViewDto): void {
   if (cart.guestToken) setGuestToken(cart.guestToken);
 }
 
-function cartKey(locale: string, paymentProvider?: string) {
-  return ["cart", locale, paymentProvider] as const;
+function cartKey(locale: string, paymentProvider?: string, district?: string) {
+  return ["cart", locale, paymentProvider, district] as const;
 }
 
 type CartPaymentProvider = NonNullable<
   components["schemas"]["CheckoutDto"]["paymentProvider"]
 >;
 
-async function fetchCart(locale: string, paymentProvider?: string): Promise<CartViewDto> {
+async function fetchCart(locale: string, paymentProvider?: string, district?: string): Promise<CartViewDto> {
   const { data, error } = await api.GET("/api/v1/cart", {
-    params: { query: { locale: locale as "EN" | "BN", paymentProvider: paymentProvider as CartPaymentProvider | undefined } },
+    params: { query: { locale: locale as "EN" | "BN", paymentProvider: paymentProvider as CartPaymentProvider | undefined, district } },
     headers: cartHeaders(),
   });
   if (error) throw error;
@@ -37,15 +37,17 @@ async function fetchCart(locale: string, paymentProvider?: string): Promise<Cart
   return data;
 }
 
-// paymentProvider is optional — pass the checkout form's currently selected
-// method so taxAmount/codFee/grandTotal reflect what the customer will
-// actually be charged (COD fee only applies to COD). Omit it anywhere the
-// customer hasn't picked a method yet (mini-cart, cart drawer); tax still
-// applies there since it isn't payment-method-dependent.
-export function useCartQuery(locale: string, paymentProvider?: string) {
+// paymentProvider/district are optional — pass the checkout form's
+// currently selected method/district so taxAmount/codFee/shippingFee/
+// grandTotal reflect what the customer will actually be charged (COD fee
+// only applies to COD; shipping fee is cheaper inside Dhaka district). Omit
+// them anywhere the customer hasn't gotten that far yet (mini-cart, cart
+// drawer) — shipping previews as the cheaper Dhaka rate until a real
+// district is known, same as before district-based tiering existed.
+export function useCartQuery(locale: string, paymentProvider?: string, district?: string) {
   return useQuery({
-    queryKey: cartKey(locale, paymentProvider),
-    queryFn: () => fetchCart(locale, paymentProvider),
+    queryKey: cartKey(locale, paymentProvider, district),
+    queryFn: () => fetchCart(locale, paymentProvider, district),
   });
 }
 

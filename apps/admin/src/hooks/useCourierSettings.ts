@@ -40,6 +40,23 @@ export function useUpdateSteadfastSettings() {
   });
 }
 
+export interface SteadfastWebhookConfig {
+  hasToken: boolean;
+  webhookUrl: string;
+}
+
+export function useSteadfastWebhookSettings() {
+  return useQuery({ queryKey: [...KEY, "steadfast-webhook"], queryFn: () => proxyFetch<SteadfastWebhookConfig>("/admin/courier/settings/steadfast/webhook") });
+}
+export function useUpdateSteadfastWebhookToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) =>
+      proxyFetch<SteadfastWebhookConfig>("/admin/courier/settings/steadfast/webhook", { method: "PUT", body: JSON.stringify({ token }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function usePathaoSettings() {
   return useQuery({ queryKey: [...KEY, "pathao"], queryFn: () => proxyFetch<PathaoConfig>("/admin/courier/settings/pathao") });
 }

@@ -17,8 +17,7 @@ import { BlockerService } from '../net-profit/blocker/blocker.service';
 import { AdvancePaymentService } from '../net-profit/advance-payment/advance-payment.service';
 import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
 import { SmsService } from '../net-profit/sms/sms.service';
-import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
-import { VAT_DEFAULTS, COD_FEE_DEFAULTS, computeCheckoutFees } from '../net-profit/accounts/accounts.service';
+import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -44,7 +43,6 @@ export class CheckoutService {
     private readonly otpSecurity: OtpSecurityService,
     private readonly sms: SmsService,
     private readonly orders: OrdersService,
-    private readonly netProfitSettings: NetProfitSettingsService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -177,24 +175,18 @@ export class CheckoutService {
       new Decimal(0),
     );
 
-    // Real per-order tax/COD-fee, applied site-wide at the same rates shown
-    // in Settings > Accounts > VAT & Cash Flow — previously that page only
-    // reported a synthetic revenue×rate estimate with no real order ever
-    // carrying a non-zero taxAmount (confirmed live: PricingService never
-    // touched tax at all). Both settings default such that this is a no-op
-    // until an admin explicitly turns them on.
-    const [vatSettings, codFeeSettings] = await Promise.all([
-      this.netProfitSettings.getNamespace('accounts_vat', VAT_DEFAULTS),
-      this.netProfitSettings.getNamespace('cod_fee', COD_FEE_DEFAULTS),
-    ]);
-    const { taxAmount, codFee, shippingFee } = computeCheckoutFees(
-      preFeeTotal,
-      dto.paymentProvider === 'COD',
+    // Neither tax nor the COD fee are charged on an order — per explicit
+    // request, both are internal accounting-only figures (Settings >
+    // Accounts) and must never be added to what a customer actually pays —
+    // see computeCheckoutFees's own comment. This order's taxAmount/codFee
+    // are always 0.
+    const { shippingFee } = computeCheckoutFees(
       pricing.discounts.some((d) => d.freeShipping),
-      vatSettings,
-      codFeeSettings,
+      dto.shippingAddress.district,
     );
-    const totalAmount = preFeeTotal.plus(taxAmount).plus(codFee).plus(shippingFee);
+    const taxAmount = new Decimal(0);
+    const codFee = new Decimal(0);
+    const totalAmount = preFeeTotal.plus(shippingFee);
 
     const order = await this.prisma.client.$transaction(async (tx) => {
       for (const item of cart.items) {

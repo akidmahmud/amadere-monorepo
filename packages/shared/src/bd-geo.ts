@@ -70,3 +70,18 @@ export const BD_DISTRICTS_BY_DIVISION: Record<string, string[]> = {
 };
 
 export const BD_DIVISIONS = Object.keys(BD_DISTRICTS_BY_DIVISION);
+
+// Every BD district belongs to exactly one division, so a customer only
+// ever needs to pick a district — division is fully determined by it and
+// doesn't need to be a separate thing they (or staff) fill in by hand.
+// Case-insensitive since free-text district fields (e.g. admin's manual
+// order form) won't always match the canonical casing above.
+const DIVISION_BY_DISTRICT: Record<string, string> = Object.fromEntries(
+  Object.entries(BD_DISTRICTS_BY_DIVISION).flatMap(([division, districts]) =>
+    districts.map((district) => [district.toLowerCase(), division]),
+  ),
+);
+
+export function divisionForDistrict(district: string): string | null {
+  return DIVISION_BY_DISTRICT[district.trim().toLowerCase()] ?? null;
+}

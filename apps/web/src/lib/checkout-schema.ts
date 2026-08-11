@@ -12,7 +12,9 @@ export const addressSchema = z.object({
     .optional()
     .refine((v) => !v || isValidBdPhone(v), "Enter a valid Bangladeshi mobile number (e.g. 01712345678)"),
   email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
-  division: z.string().min(1, "Select a division"),
+  // Not collected from the customer — every BD district belongs to exactly
+  // one division, so the backend derives it from `district` instead.
+  division: z.string().optional(),
   district: z.string().min(1, "Select a district"),
   area: z.string().min(1, "Thana/Area is required"),
   landmark: z.string().optional(),

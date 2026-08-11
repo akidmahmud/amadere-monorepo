@@ -271,6 +271,14 @@ model Customer {
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")
   deletedAt           DateTime?      @map("deleted_at")
+  // Snapshot of `phone`/`email` at delete time, then `phone`/`email`
+  // themselves are nulled out — since those two columns are @unique across
+  // ALL rows regardless of deletedAt, a soft-deleted row would otherwise
+  // permanently squat the number/address and block a brand new registration
+  // with the exact same phone (the real bug this pair of columns fixes).
+  // Restore copies these back into `phone`/`email` and clears these two.
+  deletedPhone        String?        @map("deleted_phone")
+  deletedEmail        String?        @map("deleted_email")
 
   // ---- Sales-team CRM fields (admin-only, manually maintained) ----
   // "Start Date" in the CRM table reuses createdAt rather than duplicating

@@ -14,6 +14,7 @@ import type { CartUpdatedEvent } from '../../cart/cart.events';
 import { ORDER_CREATED_EVENT } from '../../orders/orders.events';
 import type { OrderCreatedEvent } from '../../orders/orders.events';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
+import { toOrderAddressCreate } from '../../orders/order-address.util';
 import { IncompleteOrderDto, toIncompleteOrderDto } from './recovery.mapper';
 
 const SETTINGS_NAMESPACE = 'recovery';
@@ -337,8 +338,8 @@ export class RecoveryService {
         },
         addresses: {
           create: [
-            { type: 'SHIPPING', ...dto },
-            { type: 'BILLING', ...dto },
+            toOrderAddressCreate(dto, 'SHIPPING'),
+            toOrderAddressCreate(dto, 'BILLING'),
           ],
         },
         statusHistory: { create: { status: 'PENDING', note: 'Order recreated from abandoned cart' } },

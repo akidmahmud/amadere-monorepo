@@ -8,12 +8,89 @@ import {
   usePathaoSettings,
   useRedxSettings,
   useSteadfastSettings,
+  useSteadfastWebhookSettings,
   useTestPathaoConnection,
   useTestRedxConnection,
   useUpdatePathaoSettings,
   useUpdateRedxSettings,
   useUpdateSteadfastSettings,
+  useUpdateSteadfastWebhookToken,
 } from "@/hooks/useCourierSettings";
+
+// Same charset convention as the rest of this app's generated-secret helpers
+// (e.g. RegisterForm's generatePassword) — a webhook token is pasted into
+// Steadfast's merchant portal by hand, so it stays free of characters that
+// read ambiguously at a glance.
+function generateWebhookToken(length = 40): string {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const values = new Uint32Array(length);
+  crypto.getRandomValues(values);
+  return Array.from(values, (v) => charset[v % charset.length]).join("");
+}
+
+function SteadfastWebhookCard() {
+  const { data, isLoading } = useSteadfastWebhookSettings();
+  const update = useUpdateSteadfastWebhookToken();
+  const [token, setToken] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  if (isLoading || !data) return <Card><p className="text-sm text-muted">Loading…</p></Card>;
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-ui text-sm font-bold text-text">Steadfast Webhook</h3>
+        {data.hasToken && <span className="text-xs font-semibold text-success">Configured</span>}
+      </div>
+      <p className="text-xs text-secondary">
+        Steadfast calls this URL when a shipment's status changes (delivered/returned/canceled auto-updates the order).
+        Paste it into Steadfast&apos;s merchant portal along with the token below, sent as an{" "}
+        <code className="rounded-sm bg-surface-2 px-1 py-0.5">Authorization: Bearer &lt;token&gt;</code> header.
+      </p>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Webhook URL</span>
+        <div className="flex gap-2">
+          <input readOnly value={data.webhookUrl} className="h-10 flex-1 rounded-sm border border-border bg-surface-2 px-3 text-sm text-text outline-none" />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              navigator.clipboard.writeText(data.webhookUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+          >
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Webhook Token {data.hasToken && <span className="text-success">(configured)</span>}</span>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder={data.hasToken ? "Leave blank to keep the existing token" : "Generate or paste a token"}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="h-10 flex-1 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+          <Button type="button" variant="ghost" onClick={() => setToken(generateWebhookToken())}>
+            Generate
+          </Button>
+        </div>
+      </label>
+      <Button
+        type="button"
+        variant="primary"
+        className="self-start"
+        disabled={update.isPending || !token}
+        onClick={() => update.mutate(token, { onSuccess: () => setToken("") })}
+      >
+        Save token
+      </Button>
+    </Card>
+  );
+}
 
 function SteadfastSettingsCard() {
   const { data, isLoading } = useSteadfastSettings();
@@ -213,6 +290,7 @@ function SettingsTab() {
   return (
     <div className="flex flex-col gap-4">
       <SteadfastSettingsCard />
+      <SteadfastWebhookCard />
       <PathaoSettingsCard />
       <RedxSettingsCard />
     </div>

@@ -80,9 +80,15 @@ export interface CreateManualOrderAddress {
   phone: string;
   alternativePhone?: string;
   email?: string;
-  division: string;
+  // Not collected from staff — every BD district belongs to exactly one
+  // division, so the backend derives it from `district` (see
+  // toOrderAddressCreate in apps/backend).
+  division?: string;
   district: string;
-  area?: string;
+  // Required — matches CheckoutAddressDto.area (mandatory on real checkout
+  // too); this was wrongly optional here, which is what let a blank Thana
+  // field through the form only to 400 on submit.
+  area: string;
   landmark?: string;
   addressLine: string;
   postCode?: string;

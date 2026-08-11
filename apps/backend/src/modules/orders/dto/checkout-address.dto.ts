@@ -26,14 +26,25 @@ export class CheckoutAddressDto {
   @IsEmail()
   email?: string;
 
-  @ApiProperty()
+  // Optional — every BD district belongs to exactly one division, so it's
+  // auto-derived from `district` (see toOrderAddressCreate) rather than
+  // asked for separately. Kept accepting a client-sent value for backward
+  // compatibility, but nothing sends one anymore.
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  division!: string;
+  division?: string;
 
   @ApiProperty()
   @IsString()
   district!: string;
 
+  // Required — deliberately mandatory on the storefront checkout (see
+  // apps/web's checkout-schema.ts: "Thana/Area is required"), even though
+  // it's nullable at the DB level (a saved CustomerAddress can predate that
+  // requirement). The admin's New Order form previously mislabeled this
+  // "(optional)" — a real UI bug, not a sign this should be optional here —
+  // fixed there instead, to match what checkout has always required.
   @ApiProperty({ description: 'Thana/upazila' })
   @IsString()
   area!: string;

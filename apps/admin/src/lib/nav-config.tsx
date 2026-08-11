@@ -50,6 +50,7 @@ const customerTiersIcon = <Icon name="military_tech" />;
 const analyticsIcon = <Icon name="monitoring" />;
 const whatsappIcon = <Icon name="chat" />;
 const promoVideosIcon = <Icon name="smart_display" />;
+const documentationIcon = <Icon name="menu_book" />;
 
 function label(key: string, text: string): AppNavEntry {
   return { type: "label", key, label: text };
@@ -130,4 +131,5 @@ export const adminNav: AppNavEntry[] = [
   { key: "roles", label: "Roles", href: "/roles", icon: rolesIcon },
   { key: "audit-log", label: "Audit Log", href: "/audit-log", icon: auditLogIcon },
   { key: "settings", label: "Settings", href: "/settings", icon: settingsPageIcon },
+  { key: "documentation", label: "Documentation", href: "/documentation", icon: documentationIcon },
 ];

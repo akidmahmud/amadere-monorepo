@@ -6672,7 +6672,7 @@ export interface components {
             alternativePhone?: string;
             /** Format: email */
             email?: string;
-            division: string;
+            division?: string;
             district: string;
             /** @description Thana/upazila */
             area: string;
@@ -11862,6 +11862,7 @@ export interface operations {
             query?: {
                 locale?: "EN" | "BN";
                 paymentProvider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+                district?: string;
             };
             header?: {
                 /** @description Guest cart token (returned on first add-to-cart) */

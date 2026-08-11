@@ -23,8 +23,9 @@ export class PricingSummaryDto {
   // the caller told us the customer picked Cash on Delivery.
   taxAmount!: string;
   codFee!: string;
-  // Flat checkout-time shipping fee (FLAT_SHIPPING_FEE), waived to '0' when
-  // an applied discount has freeShipping set.
+  // Checkout-time shipping fee — Dhaka district vs. outside-Dhaka rate (see
+  // computeCheckoutFees), waived to '0' when an applied discount has
+  // freeShipping set.
   shippingFee!: string;
   grandTotal!: string;
 }

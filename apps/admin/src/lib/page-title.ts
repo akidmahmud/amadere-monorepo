@@ -27,6 +27,7 @@ const SECTIONS: { base: string; label: string }[] = [
   { base: "/search-synonyms", label: "Search Synonyms" },
   { base: "/settings", label: "Settings" },
   { base: "/media", label: "Media Library" },
+  { base: "/documentation", label: "Documentation" },
   { base: "/staff", label: "Staff" },
   { base: "/roles", label: "Roles" },
   { base: "/audit-log", label: "Audit Log" },

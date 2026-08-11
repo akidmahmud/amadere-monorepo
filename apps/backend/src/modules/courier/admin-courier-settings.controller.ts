@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
@@ -7,7 +8,12 @@ import { AuditLogInterceptor } from '../../common/audit-log/audit-log.intercepto
 import { CourierSettingsService } from './courier-settings.service';
 import { PathaoCourierProvider } from './providers/pathao-courier.provider';
 import { RedxCourierProvider } from './providers/redx-courier.provider';
-import { UpdatePathaoSettingsDto, UpdateRedxSettingsDto, UpdateSteadfastSettingsDto } from './dto/update-courier-settings.dto';
+import {
+  UpdatePathaoSettingsDto,
+  UpdateRedxSettingsDto,
+  UpdateSteadfastSettingsDto,
+  UpdateSteadfastWebhookTokenDto,
+} from './dto/update-courier-settings.dto';
 
 @ApiTags('admin/courier-settings')
 @ApiBearerAuth()
@@ -19,6 +25,7 @@ export class AdminCourierSettingsController {
     private readonly settings: CourierSettingsService,
     private readonly pathao: PathaoCourierProvider,
     private readonly redx: RedxCourierProvider,
+    private readonly config: ConfigService,
   ) {}
 
   @Get('settings/steadfast')
@@ -31,6 +38,26 @@ export class AdminCourierSettingsController {
   @RequirePermission('shipment.manage')
   updateSteadfast(@Body() dto: UpdateSteadfastSettingsDto) {
     return this.settings.updateSteadfastConfig(dto);
+  }
+
+  // Real gap this closes: the inbound webhook (CourierWebhooksController)
+  // has always required this token, but there was no admin UI anywhere to
+  // set it — every real Steadfast callback 401'd. `webhookUrl` is handed
+  // back too so the admin can copy it straight into Steadfast's merchant
+  // portal without having to know this app's own routing conventions.
+  @Get('settings/steadfast/webhook')
+  @RequirePermission('shipment.view')
+  async getSteadfastWebhook() {
+    const { hasToken } = await this.settings.getSteadfastWebhookToken();
+    const baseUrl = this.config.get<string>('API_BASE_URL') ?? 'http://localhost:3000';
+    return { hasToken, webhookUrl: `${baseUrl}/api/v1/webhooks/steadfast` };
+  }
+
+  @Put('settings/steadfast/webhook')
+  @RequirePermission('shipment.manage')
+  async updateSteadfastWebhook(@Body() dto: UpdateSteadfastWebhookTokenDto) {
+    if (dto.token) await this.settings.updateSteadfastWebhookToken(dto.token);
+    return this.getSteadfastWebhook();
   }
 
   @Get('settings/pathao')

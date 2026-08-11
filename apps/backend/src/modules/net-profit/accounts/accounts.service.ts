@@ -37,34 +37,26 @@ export interface CodFeeSettings {
 // from the same VAT & Cash Flow tab (Settings > Accounts).
 export const COD_FEE_DEFAULTS: CodFeeSettings = { enabled: false, percent: 1 };
 
-// Flat checkout-time shipping fee (courier cost isn't known until dispatch —
-// see ShippingChargeCalculator — so this is what's actually charged to the
-// customer at order placement; ShipmentsService.dispatch() later overwrites
-// both shippingAmount and totalAmount with the real courier cost).
-export const FLAT_SHIPPING_FEE = new Decimal(80);
+// Checkout-time shipping fee — Dhaka DISTRICT (not the wider division) pays
+// the cheap rate, everywhere else pays the outside-Dhaka rate. This is what's
+// actually charged to the customer at order placement; ShipmentsService.
+// dispatch() later separately overwrites both shippingAmount and
+// totalAmount with the real courier cost (see ShippingChargeCalculator,
+// which does its own similar Dhaka-vs-not split for that unrelated number).
+export const DHAKA_SHIPPING_FEE = new Decimal(80);
+export const OUTSIDE_DHAKA_SHIPPING_FEE = new Decimal(120);
 
-// Single source of truth for tax/COD-fee/shipping-fee math — used by
-// CheckoutService when actually placing an order AND by CartService's
-// checkout-preview pricing, so what the customer sees on the checkout page
-// can never drift from what they're actually charged (that mismatch was a
-// real reported bug: the checkout page showed cart.total with no tax/COD-fee
-// line at all).
-export function computeCheckoutFees(
-  preFeeTotal: Prisma.Decimal,
-  isCod: boolean,
-  freeShipping: boolean,
-  vatSettings: VatSettings,
-  codFeeSettings: CodFeeSettings,
-): { taxAmount: Prisma.Decimal; codFee: Prisma.Decimal; shippingFee: Prisma.Decimal } {
-  const taxAmount = vatSettings.enabled
-    ? preFeeTotal.times(vatSettings.ratePercent).dividedBy(100).toDecimalPlaces(2)
-    : new Decimal(0);
-  const codFee =
-    codFeeSettings.enabled && isCod
-      ? preFeeTotal.times(codFeeSettings.percent).dividedBy(100).toDecimalPlaces(2)
-      : new Decimal(0);
-  const shippingFee = freeShipping ? new Decimal(0) : FLAT_SHIPPING_FEE;
-  return { taxAmount, codFee, shippingFee };
+// Single source of truth for the shipping-fee math — used by CheckoutService
+// when actually placing an order AND by CartService's checkout-preview
+// pricing, so what the customer sees on the checkout page can never drift
+// from what they're actually charged. `district` is optional because the
+// preview can be requested before the customer has typed an address yet —
+// treated as Dhaka (the cheaper default) until a real district is known,
+// same as the flat rate this replaces used to just always assume.
+export function computeCheckoutFees(freeShipping: boolean, district?: string): { shippingFee: Prisma.Decimal } {
+  if (freeShipping) return { shippingFee: new Decimal(0) };
+  const isDhaka = !district || district.trim().toLowerCase() === 'dhaka';
+  return { shippingFee: isDhaka ? DHAKA_SHIPPING_FEE : OUTSIDE_DHAKA_SHIPPING_FEE };
 }
 
 export interface VatSummary {
@@ -246,25 +238,21 @@ export class AccountsService {
   async vatSummary(from?: string, to?: string): Promise<VatSummary> {
     const vat = await this.getVatSettings();
     const revenue = await this.revenueInRange(from, to);
+    const rate = new Decimal(vat.ratePercent).dividedBy(100);
 
-    // Real tax actually collected on completed orders (CheckoutService
-    // applies the same accounts_vat rate at checkout time) rather than a
-    // synthetic revenue×rate estimate — the two used to disagree whenever
-    // an order's real tax differed from the current rate (rate changes,
-    // orders placed before VAT was enabled, etc.).
-    const outputVatAgg = await this.prisma.client.order.aggregate({
-      where: { status: 'COMPLETED', completedAt: dateRange(from, to) },
-      _sum: { taxAmount: true },
-    });
-    const outputVat = outputVatAgg._sum.taxAmount ?? new Decimal(0);
+    // Per explicit request, tax is purely an internal accounting figure —
+    // no real order ever carries a nonzero taxAmount (see
+    // computeCheckoutFees's own comment), so output VAT is estimated from
+    // revenue × rate here instead of summing a per-order field that's
+    // always 0. This is a reversion: an earlier version of this summary did
+    // sum real Order.taxAmount, back when checkout actually charged it.
+    const outputVat = revenue.times(rate);
 
     const inputExpenses = await this.prisma.client.expense.aggregate({
       where: { isVatInput: true, ...((from || to) ? { expenseDate: dateRange(from, to) } : {}) },
       _sum: { amount: true },
     });
     const inputBase = inputExpenses._sum.amount ?? new Decimal(0);
-
-    const rate = new Decimal(vat.ratePercent).dividedBy(100);
     const inputVat = inputBase.times(rate);
 
     return {

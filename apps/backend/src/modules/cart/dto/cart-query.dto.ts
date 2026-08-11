@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentProvider } from '@amader/db';
-import { IsEnum, IsOptional } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { LocaleQueryDto } from '../../../common/dto/locale-query.dto';
 
 export class CartQueryDto extends LocaleQueryDto {
@@ -12,4 +12,13 @@ export class CartQueryDto extends LocaleQueryDto {
   @IsOptional()
   @IsEnum(PaymentProvider)
   paymentProvider?: PaymentProvider;
+
+  // Same idea as paymentProvider above — the checkout page passes whatever
+  // district the customer currently has selected so the previewed shipping
+  // fee (Dhaka vs. outside-Dhaka, see computeCheckoutFees) matches what
+  // they'll actually be charged. Omitted before an address exists yet.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  district?: string;
 }

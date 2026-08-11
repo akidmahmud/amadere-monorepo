@@ -170,4 +170,24 @@ export class CourierSettingsService {
     const apiToken = await this.credentials.getCredential('courier.redx.apiToken');
     return { apiToken };
   }
+
+  // The inbound webhook (CourierWebhooksController) checks this exact plain
+  // Setting key — deliberately NOT going through CredentialsService like the
+  // API keys above, so as not to touch that already-working lookup while
+  // fixing the real gap: there was no admin UI anywhere to ever set it, so
+  // a real inbound Steadfast callback always 401'd. `hasToken` lets the UI
+  // show "configured" without ever re-displaying the real value.
+  async getSteadfastWebhookToken(): Promise<{ hasToken: boolean }> {
+    const row = await this.prisma.client.setting.findUnique({ where: { key: 'steadfast_webhook_token' } });
+    return { hasToken: typeof row?.value === 'string' && row.value.length > 0 };
+  }
+
+  async updateSteadfastWebhookToken(token: string): Promise<{ hasToken: boolean }> {
+    await this.prisma.client.setting.upsert({
+      where: { key: 'steadfast_webhook_token' },
+      create: { key: 'steadfast_webhook_token', value: token },
+      update: { value: token },
+    });
+    return { hasToken: true };
+  }
 }

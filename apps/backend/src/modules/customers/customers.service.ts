@@ -18,7 +18,7 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { AddressDto, toAddressDto } from './address.mapper';
 import { Prisma } from '@amader/db';
-import { PaginatedResult, phoneLookupCandidates, toBdCompact } from '@amader/shared';
+import { PaginatedResult, phoneLookupCandidates, toBdCompact, divisionForDistrict } from '@amader/shared';
 import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
 import { toE164Bd } from '../../common/phone.util';
 import { CALL_PROVIDER } from './providers/call-provider.interface';
@@ -214,8 +214,14 @@ export class CustomersService {
                   // one the admin happened to type — phoneLookupCandidates
                   // falls back to [word] unchanged for a non-phone-shaped
                   // search term, so name/email searches are unaffected.
+                  // Also searches deletedPhone/deletedEmail — a soft-deleted
+                  // customer's live phone/email are null (freed up for
+                  // reuse, see adminBulkAction), so the Deleted Customers
+                  // tab's own search would otherwise never match anything.
                   ...phoneLookupCandidates(word).map((c) => ({ phone: { contains: c } })),
+                  ...phoneLookupCandidates(word).map((c) => ({ deletedPhone: { contains: c } })),
                   { email: { contains: word, mode: 'insensitive' as const } },
+                  { deletedEmail: { contains: word, mode: 'insensitive' as const } },
                 ],
               })),
           }
@@ -254,13 +260,30 @@ export class CustomersService {
     const failed: { customerId: number; error: string }[] = [];
     for (const customerId of dto.customerIds) {
       try {
+        // phone/email are @unique across every row regardless of deletedAt
+        // — a soft-deleted customer would otherwise permanently squat their
+        // number/address and block a brand new registration with the exact
+        // same phone (the real bug this whole snapshot/restore dance
+        // fixes). Delete snapshots them into deletedPhone/deletedEmail and
+        // nulls the live unique columns; restore reverses it. A restore can
+        // legitimately conflict if someone else registered that exact
+        // phone/email in the meantime — that surfaces as a real P2002 below
+        // instead of silently overwriting the other customer's row.
+        const customer = await this.prisma.client.customer.findUniqueOrThrow({ where: { id: customerId } });
         await this.prisma.client.customer.update({
           where: { id: customerId },
-          data: { deletedAt: dto.action === 'delete' ? new Date() : null },
+          data:
+            dto.action === 'delete'
+              ? { deletedAt: new Date(), deletedPhone: customer.phone, deletedEmail: customer.email, phone: null, email: null }
+              : { deletedAt: null, phone: customer.deletedPhone, email: customer.deletedEmail, deletedPhone: null, deletedEmail: null },
         });
         succeeded.push(customerId);
-      } catch {
-        failed.push({ customerId, error: 'Customer not found' });
+      } catch (err) {
+        const message =
+          err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+            ? `${dto.action === 'restore' ? 'Restore' : 'Delete'} failed: that phone number or email is now in use by another customer`
+            : 'Customer not found';
+        failed.push({ customerId, error: message });
       }
     }
     return { succeeded, failed };
@@ -424,12 +447,16 @@ export class CustomersService {
 
     if (dto.addressLine) {
       const recipientName = `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() || 'Customer';
+      // division isn't collected from staff anymore (see CreateCustomerModal
+      // — every BD district belongs to exactly one), so derive it from
+      // district the same way toOrderAddressCreate does for orders.
+      const division = dto.division ?? (dto.district ? divisionForDistrict(dto.district) : null) ?? '';
       await this.prisma.client.customerAddress.create({
         data: {
           customerId: customer.id,
           recipientName,
           phone: dto.phone,
-          division: dto.division ?? '',
+          division,
           district: dto.district ?? '',
           addressLine: dto.addressLine,
           isDefault: true,

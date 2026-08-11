@@ -104,13 +104,14 @@ export function CheckoutForm() {
   const paymentProvider = watch("paymentProvider");
   const billingSameAsShipping = watch("billingSameAsShipping");
   const shippingPhone = watch("shippingAddress.phone");
+  const shippingDistrict = watch("shippingAddress.district");
 
-  // paymentProvider is threaded through so the previewed total includes the
-  // real COD fee (Settings > Accounts) whenever COD is selected — the cart
-  // endpoint recomputes tax/codFee for whichever provider this is, per
+  // paymentProvider/shippingDistrict are threaded through so the previewed
+  // total reflects the real shipping fee (Dhaka vs. outside-Dhaka) and COD
+  // fee (Settings > Accounts) — the cart endpoint recomputes both per
   // computeCheckoutFees on the backend, so this always matches what
   // usePlaceOrder will actually charge.
-  const { data: cart } = useCartQuery(locale, paymentProvider);
+  const { data: cart } = useCartQuery(locale, paymentProvider, shippingDistrict);
   const updateItem = useUpdateCartItem(locale);
   const removeItem = useRemoveCartItem(locale);
   const placeOrder = usePlaceOrder(locale);
@@ -412,22 +413,11 @@ export function CheckoutForm() {
                     <span>{formatMoney(cart.shippingFee)}</span>
                   </div>
                 )}
-                {/* Both were already baked into grandTotal server-side
-                    (computeCheckoutFees) but never had their own row here —
-                    a real reported bug: the displayed rows didn't add up to
-                    Total, with no visible explanation for the gap. */}
-                {Number(cart.taxAmount) > 0 && (
-                  <div className="flex justify-between py-1.5 font-body text-sm text-ink">
-                    <span>Tax (VAT)</span>
-                    <span>{formatMoney(cart.taxAmount)}</span>
-                  </div>
-                )}
-                {Number(cart.codFee) > 0 && (
-                  <div className="flex justify-between py-1.5 font-body text-sm text-ink">
-                    <span>Cash on Delivery fee</span>
-                    <span>{formatMoney(cart.codFee)}</span>
-                  </div>
-                )}
+                {/* No tax/COD-fee row — per explicit request, neither is
+                    ever charged to a customer (both are internal
+                    accounting-only figures, see computeCheckoutFees in
+                    apps/backend's accounts.service.ts); cart.taxAmount/
+                    codFee are always "0" now, so there's nothing to show. */}
                 <div className="flex justify-between border-t border-line py-1.5 pt-2.5 font-ui font-bold text-ink">
                   <span>Total</span>
                   <span>{formatMoney(cart.grandTotal)}</span>

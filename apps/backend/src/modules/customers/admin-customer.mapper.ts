@@ -84,8 +84,12 @@ export function toAdminCustomerListItemDto(c: CustomerWithTier, extras: AdminCus
   return {
     id: c.id,
     name: fullName(c),
-    phone: c.phone,
-    email: c.email,
+    // phone/email are nulled out while soft-deleted (see customers.service
+    // ts's adminBulkAction — frees them up for a new registration to reuse);
+    // the Deleted Customers trash tab still needs to show who this was, so
+    // fall back to the snapshot taken at delete time.
+    phone: c.phone ?? c.deletedPhone,
+    email: c.email ?? c.deletedEmail,
     tier: c.tier?.label ?? null,
     completedOrderCount: c.completedOrderCount,
     createdAt: c.createdAt,
@@ -241,8 +245,9 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
   return {
     id: c.id,
     name: fullName(c),
-    phone: c.phone,
-    email: c.email,
+    // Same deletedPhone/deletedEmail fallback as the list mapper above.
+    phone: c.phone ?? c.deletedPhone,
+    email: c.email ?? c.deletedEmail,
     dob: c.dob,
     tier: c.tier?.label ?? null,
     completedOrderCount: c.completedOrderCount,

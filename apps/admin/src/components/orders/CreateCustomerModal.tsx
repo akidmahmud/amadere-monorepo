@@ -2,15 +2,21 @@
 
 import { useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
-import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION, isValidBdPhone } from "@amader/shared";
 import { useCreateCustomer, type AdminCustomer } from "@/hooks/useCustomers";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
+// Flat, alphabetical — division isn't a separate field (see
+// CreateCustomerModalAddress's own comment); every BD district belongs to
+// exactly one, so the backend derives it from whichever district is picked.
+const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
+  .flat()
+  .sort((a, b) => a.localeCompare(b));
+
 export interface CreateCustomerModalAddress {
   addressLine: string;
-  division: string;
   district: string;
 }
 
@@ -40,12 +46,9 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [email, setEmail] = useState("");
   const [addressLine, setAddressLine] = useState("");
-  const [division, setDivision] = useState("");
   const [district, setDistrict] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const create = useCreateCustomer();
-
-  const districtOptions = BD_DISTRICTS_BY_DIVISION[division] ?? [];
 
   function reset() {
     setFirstName("");
@@ -53,7 +56,6 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
     setPhone(initialPhone ?? "");
     setEmail("");
     setAddressLine("");
-    setDivision("");
     setDistrict("");
     setPhoneError(null);
   }
@@ -64,15 +66,15 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
       return;
     }
     setPhoneError(null);
-    const hasAddress = showAddress && addressLine.trim() && division && district;
+    const hasAddress = showAddress && addressLine.trim() && district;
     const customer = await create.mutateAsync({
       phone,
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       email: email || undefined,
-      ...(hasAddress ? { addressLine, division, district } : {}),
+      ...(hasAddress ? { addressLine, district } : {}),
     });
-    const address = hasAddress ? { addressLine, division, district } : null;
+    const address = hasAddress ? { addressLine, district } : null;
     reset();
     onCreated(customer, address);
   }
@@ -138,37 +140,17 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
               </select>
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">State</span>
-                <select
-                  value={division}
-                  onChange={(e) => {
-                    setDivision(e.target.value);
-                    setDistrict("");
-                  }}
-                  className={inputClass}
-                >
-                  <option value="">Select division</option>
-                  {BD_DIVISIONS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">City</span>
-                <select value={district} onChange={(e) => setDistrict(e.target.value)} disabled={!division} className={`${inputClass} disabled:opacity-70`}>
-                  <option value="">Select district</option>
-                  {districtOptions.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-text">District</span>
+              <select value={district} onChange={(e) => setDistrict(e.target.value)} className={inputClass}>
+                <option value="">Select district</option>
+                {DISTRICT_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
           </>
         ) : (
           <label className="flex flex-col gap-1.5">

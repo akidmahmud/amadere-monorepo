@@ -9,6 +9,15 @@ export interface CleanupSettings {
   otpRetentionDays: number;
   incompleteOrderRetentionDays: number;
   logRetentionDays: number;
+  // Per explicit request: a customer soft-deleted from the admin (see
+  // CustomersService.adminBulkAction) is permanently purged this many days
+  // after deletion, not kept forever like Order's own trash (Order is a
+  // financial record — see its own onDelete: SetNull comment in
+  // schema.prisma — a customer is not). CustomerNote/CustomerCallLog/
+  // CustomerAddress/SocialAccount/Cart/WishlistItem/DiscountCustomer/Review
+  // all cascade-delete with them; Order/Due/DiscountRedemption survive via
+  // onDelete: SetNull (order history is never destroyed by this).
+  customerRetentionDays: number;
 }
 
 const DEFAULTS: CleanupSettings = {
@@ -16,6 +25,7 @@ const DEFAULTS: CleanupSettings = {
   otpRetentionDays: 7,
   incompleteOrderRetentionDays: 30,
   logRetentionDays: 90,
+  customerRetentionDays: 30,
 };
 
 export interface CleanupResult {
@@ -25,6 +35,7 @@ export interface CleanupResult {
   smsLogs: number;
   campaignLogs: number;
   auditLogs: number;
+  purgedCustomers: number;
 }
 
 function daysAgo(days: number): Date {
@@ -57,7 +68,7 @@ export class CleanupService {
   async runNow(): Promise<CleanupResult> {
     const cfg = await this.getSettings();
 
-    const [expiredBlocks, otps, incompleteOrders, smsLogs, campaignLogs, auditLogs] = await Promise.all([
+    const [expiredBlocks, otps, incompleteOrders, smsLogs, campaignLogs, auditLogs, purgedCustomers] = await Promise.all([
       this.blocker.pruneExpired(),
       this.prisma.client.otp
         .deleteMany({ where: { expiresAt: { lt: daysAgo(cfg.otpRetentionDays) } } })
@@ -74,9 +85,12 @@ export class CleanupService {
       this.prisma.client.auditLog
         .deleteMany({ where: { createdAt: { lt: daysAgo(cfg.logRetentionDays) } } })
         .then((r) => r.count),
+      this.prisma.client.customer
+        .deleteMany({ where: { deletedAt: { lt: daysAgo(cfg.customerRetentionDays) } } })
+        .then((r) => r.count),
     ]);
 
-    const result = { expiredBlocks, otps, incompleteOrders, smsLogs, campaignLogs, auditLogs };
+    const result = { expiredBlocks, otps, incompleteOrders, smsLogs, campaignLogs, auditLogs, purgedCustomers };
     this.logger.log(`Cleanup run: ${JSON.stringify(result)}`);
     return result;
   }

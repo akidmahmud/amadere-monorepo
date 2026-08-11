@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CustomersTable } from "@/components/customers/CustomersTable";
 import { useAssignableStaff, useBulkCustomerAction, useDeletedCustomers } from "@/hooks/useCustomers";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
+import { useToast } from "@/components/ToastProvider";
 
 const MUTED = "#64766b";
 const LINE = "#e5ebe6";
@@ -18,15 +19,28 @@ export function DeletedCustomersTab() {
   const { data } = useDeletedCustomers({ page, pageSize });
   const { data: staff } = useAssignableStaff();
   const bulk = useBulkCustomerAction();
+  const toast = useToast();
   const [restoringId, setRestoringId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
+  // The bulk endpoint always 200s and reports per-customer success/failure
+  // in the response body (e.g. a restore can legitimately conflict if
+  // someone else has since registered that exact phone/email) — a mutation
+  // "succeeding" doesn't mean every id in it did. Surfacing `failed` here
+  // fixes a real silent-failure gap: restoring used to just do nothing
+  // visible on a conflict, with the row staying in the trash and no
+  // explanation why.
   function handleRestore(customer: { id: number }) {
     setRestoringId(customer.id);
     bulk.mutate(
       { customerIds: [customer.id], action: "restore" },
-      { onSettled: () => setRestoringId(null) },
+      {
+        onSettled: () => setRestoringId(null),
+        onSuccess: (result) => {
+          if (result.failed.length > 0) toast.push(result.failed[0].error, "error");
+        },
+      },
     );
   }
 
@@ -48,15 +62,27 @@ export function DeletedCustomersTab() {
     if (selected.size === 0) return;
     bulk.mutate(
       { customerIds: [...selected], action: "restore" },
-      { onSuccess: () => setSelected(new Set()) },
+      {
+        onSuccess: (result) => {
+          setSelected(new Set());
+          if (result.failed.length > 0) {
+            toast.push(
+              result.failed.length === 1
+                ? result.failed[0].error
+                : `${result.failed.length} customers couldn't be restored — phone/email now used elsewhere`,
+              "error",
+            );
+          }
+        },
+      },
     );
   }
 
   return (
     <div className="flex flex-col gap-[18px]">
       <p className="text-[0.8rem] font-semibold" style={{ color: MUTED }}>
-        Customers deleted from the working list — nothing here is purged automatically, so anything can be restored
-        whenever it's needed.
+        Customers deleted from the working list — restorable any time within 30 days, after which they're
+        automatically and permanently purged (nightly cleanup job).
       </p>
 
       <div className="flex flex-wrap items-center gap-2.5 rounded-card border p-[12px_16px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>

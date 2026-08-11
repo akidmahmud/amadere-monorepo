@@ -7,8 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
 import { Cart, Locale, PaymentProvider, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
-import { VAT_DEFAULTS, COD_FEE_DEFAULTS, computeCheckoutFees } from '../net-profit/accounts/accounts.service';
+import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
 import { PricingService } from './pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { BuyNowDto } from './dto/buy-now.dto';
@@ -51,17 +50,17 @@ export class CartService {
     private readonly prisma: PrismaService,
     private readonly pricing: PricingService,
     private readonly events: EventEmitter2,
-    private readonly netProfitSettings: NetProfitSettingsService,
   ) {}
 
   async getView(
     identity: CartIdentity,
     locale: Locale,
     paymentProvider?: PaymentProvider,
+    district?: string,
   ): Promise<CartViewDto> {
     const cart = await this.findCart(identity);
     if (!cart) return this.emptyView(identity);
-    return this.buildView(cart.id, locale, identity.customerId, paymentProvider);
+    return this.buildView(cart.id, locale, identity.customerId, paymentProvider, district);
   }
 
   async addItem(
@@ -239,7 +238,7 @@ export class CartService {
       [{ productId, variantId, quantity: quantity ?? 1 }],
       { customerId },
     );
-    return this.serializePricing(pricing, false);
+    return this.serializePricing(pricing);
   }
 
   // ------------------------------------------------------------------
@@ -337,6 +336,7 @@ export class CartService {
     locale: Locale,
     customerId?: number,
     paymentProvider?: PaymentProvider,
+    district?: string,
   ) {
     const cart = await this.prisma.client.cart.findUniqueOrThrow({
       where: { id: cartId },
@@ -391,7 +391,7 @@ export class CartService {
           lineTotal: priced?.lineTotal.toString() ?? '0',
         };
       }),
-      ...(await this.serializePricing(pricing, paymentProvider === 'COD')),
+      ...(await this.serializePricing(pricing, district)),
       crossSell: await this.crossSell(
         cart.items.map((i) => i.productId),
         locale,
@@ -399,21 +399,11 @@ export class CartService {
     };
   }
 
-  private async serializePricing(
-    pricing: Awaited<ReturnType<PricingService['price']>>,
-    isCod: boolean,
-  ) {
-    const [vatSettings, codFeeSettings] = await Promise.all([
-      this.netProfitSettings.getNamespace('accounts_vat', VAT_DEFAULTS),
-      this.netProfitSettings.getNamespace('cod_fee', COD_FEE_DEFAULTS),
-    ]);
-    const { taxAmount, codFee, shippingFee } = computeCheckoutFees(
-      pricing.total,
-      isCod,
-      pricing.discounts.some((d) => d.freeShipping),
-      vatSettings,
-      codFeeSettings,
-    );
+  private async serializePricing(pricing: Awaited<ReturnType<PricingService['price']>>, district?: string) {
+    // Neither tax nor the COD fee are charged on an order — both are
+    // internal accounting-only figures, see computeCheckoutFees's own
+    // comment (accounts.service.ts).
+    const { shippingFee } = computeCheckoutFees(pricing.discounts.some((d) => d.freeShipping), district);
     return {
       subTotal: pricing.subTotal.toString(),
       discounts: pricing.discounts.map((d) => ({
@@ -426,10 +416,10 @@ export class CartService {
       total: pricing.total.toString(),
       couponError: pricing.couponError,
       freeShipping: pricing.freeShipping,
-      taxAmount: taxAmount.toString(),
-      codFee: codFee.toString(),
+      taxAmount: '0',
+      codFee: '0',
       shippingFee: shippingFee.toString(),
-      grandTotal: pricing.total.plus(taxAmount).plus(codFee).plus(shippingFee).toString(),
+      grandTotal: pricing.total.plus(shippingFee).toString(),
     };
   }
 
