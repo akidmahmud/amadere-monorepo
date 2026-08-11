@@ -78,6 +78,16 @@ export function CheckoutForm() {
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
+    // Default mode is "onSubmit" — every field (phone/email included) only
+    // ever validated after the first "Place Order" click, per explicit
+    // report. "onBlur" validates a field the moment you leave it instead.
+    // reValidateMode is set explicitly (not left to its documented
+    // "onChange" default — verified live that it doesn't actually clear an
+    // already-shown error until another blur without this) so a field that
+    // failed validation clears its error the moment it's fixed, not only
+    // after leaving and returning to it again.
+    mode: "onBlur",
+    reValidateMode: "onChange",
     defaultValues: {
       shippingAddress: {
         recipientName: "",

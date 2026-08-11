@@ -137,12 +137,20 @@ export class ShipmentsService {
           ? correctedTotalAmount
           : new Decimal(0);
 
+    // No `division` here — it used to add real information when it was a
+    // distinct customer-picked field, but it's now always mechanically
+    // derived from `district` (see toOrderAddressCreate), so appending it
+    // too is pure noise — and a literal visible duplicate ("..., Dhaka,
+    // Dhaka") for any of the 8 districts that share their divisional seat's
+    // name (Dhaka, Chattogram, Rajshahi, Khulna, Barishal, Sylhet, Rangpur,
+    // Mymensingh — the highest-order-volume districts, so far from a rare
+    // edge case). Confirmed live: a real test order with district "Dhaka"
+    // produced exactly this duplication before this fix.
     const addressParts = [
       shippingAddress.addressLine,
       shippingAddress.area,
       shippingAddress.landmark,
       shippingAddress.district,
-      shippingAddress.division,
       shippingAddress.postCode,
     ].filter(Boolean);
 
