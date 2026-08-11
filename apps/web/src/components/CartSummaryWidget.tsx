@@ -41,11 +41,25 @@ function useIsBlogPost(): boolean {
   return parts[0] === "blog" && parts.length === 2 && !["category", "tag", "author"].includes(parts[1]);
 }
 
+// Product pages get their own mobile "quick add" bar (ProductMobileIsland),
+// docked in roughly the same screen real estate this widget would otherwise
+// float over — per explicit request, this widget hides on mobile there so
+// the two don't compete for the same corner of the screen. Desktop is
+// unaffected (no island there, so this widget stays as the only cart
+// affordance).
+function useIsProductPage(): boolean {
+  const pathname = usePathname();
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "products" && parts.length === 2;
+}
+
 export function CartSummaryWidget() {
   const locale = toApiLocale(useLocale());
   const { data: cart } = useCartQuery(locale);
   const openCart = useCartDrawerStore((s) => s.open);
   const isBlogPost = useIsBlogPost();
+  const isProductPage = useIsProductPage();
+  const hideOnMobile = isBlogPost || isProductPage;
 
   const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
@@ -69,7 +83,7 @@ export function CartSummaryWidget() {
       type="button"
       onClick={openCart}
       aria-label="Open cart"
-      className={`fixed right-0 top-1/2 z-40 ${isBlogPost ? "hidden md:flex" : "flex"} w-[47px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-md shadow-[0_12px_24px_rgba(34,87,122,0.24)] transition-transform hover:-translate-x-[3px] md:w-[66px] ${bouncing ? "animate-bounce" : ""}`}
+      className={`fixed right-0 top-1/2 z-40 ${hideOnMobile ? "hidden md:flex" : "flex"} w-[47px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-md shadow-[0_12px_24px_rgba(34,87,122,0.24)] transition-transform hover:-translate-x-[3px] md:w-[66px] ${bouncing ? "animate-bounce" : ""}`}
     >
       <span className="flex w-full flex-col items-center gap-[3px] bg-green p-[5px] text-white md:gap-1 md:p-3">
         {cartIcon}

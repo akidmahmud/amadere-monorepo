@@ -233,7 +233,9 @@ export function PdpPurchasePanel({
           2-col grid on mobile but `contents` on desktop so its two children
           fall directly into the parent grid's second row instead of being
           squeezed into a single cell. */}
-      <div className="mb-3 flex flex-col gap-3 md:mb-4 md:grid md:grid-cols-2">
+      {/* id watched by ProductMobileIsland's IntersectionObserver — the
+          mobile "quick add" bar appears once this row scrolls out of view. */}
+      <div id="pdp-buy-buttons" className="mb-3 flex flex-col gap-3 md:mb-4 md:grid md:grid-cols-2">
         {!outOfStock && (
           <>
             <button

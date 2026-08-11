@@ -10,6 +10,7 @@ import {
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
+import { ProductMobileIsland } from "@/components/ProductMobileIsland";
 import { WriteReviewForm } from "@/components/WriteReviewForm";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { CrossSellProductGrid } from "@/components/CrossSellProductGrid";
@@ -246,6 +247,12 @@ export default async function ProductPage({
             </div>
           </div>
         </div>
+
+        <ProductMobileIsland
+          product={product}
+          imageUrl={images[0]?.url}
+          whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null}
+        />
 
         <FrequentlyBoughtTogether mainProduct={product} items={product.frequentlyBoughtTogether} />
 

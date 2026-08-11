@@ -1,3 +1,6 @@
+"use client";
+
+import { usePathname } from "@/i18n/navigation";
 import { buildWhatsappLink } from "@/lib/whatsapp";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 
@@ -12,7 +15,17 @@ const whatsappIcon = (
 // `config` is fetched server-side (root layout) rather than via a client
 // useQuery, same reasoning as WhatsappOrderButton: avoids a hydration
 // mismatch between the server's null render and an already-cached client one.
+// Same pathname-based mobile-hide pattern as CartSummaryWidget's blog-post/
+// product-page checks — kept local (not shared) since this is the only
+// other component that needs it and the check itself is one line.
+function useIsProductPage(): boolean {
+  const pathname = usePathname();
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "products" && parts.length === 2;
+}
+
 export function WhatsappFloatingButton({ config }: { config: WhatsappConfig | null }) {
+  const isProductPage = useIsProductPage();
   if (!config?.enabled || !config.phoneNumber) return null;
 
   const href = buildWhatsappLink(config.phoneNumber, config.floatingMessageTemplate);
@@ -24,8 +37,11 @@ export function WhatsappFloatingButton({ config }: { config: WhatsappConfig | nu
       rel="noreferrer noopener"
       // Stacked above BackToTopButton (packages/ui's `bottom-[18px]/[26px]`,
       // up to 46px tall) instead of sharing the same bottom-right corner —
-      // 92px clears its tallest (desktop) span with room to spare.
-      className="fixed bottom-[110px] right-5 z-40 grid h-[37px] w-[37px] place-items-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 md:h-14 md:w-14"
+      // 92px clears its tallest (desktop) span with room to spare. Hidden on
+      // mobile product pages per explicit request (ProductMobileIsland's
+      // WhatsApp button + the PDP's own inline WhatsApp order button already
+      // cover that need there); desktop unaffected.
+      className={`fixed bottom-[110px] right-5 z-40 ${isProductPage ? "hidden md:grid" : "grid"} h-[37px] w-[37px] place-items-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 md:h-14 md:w-14`}
       aria-label="Chat with us on WhatsApp"
       title="Chat with us on WhatsApp"
     >
