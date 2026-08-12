@@ -143,7 +143,14 @@ function SettingsTab() {
       <MediaPicker
         label="Logo"
         value={effectiveLogoUrl}
-        onChange={(url) => setLogoUrl(url)}
+        onChange={(url) => {
+          setLogoUrl(url);
+          // Remove button calls onChange("") without onSelectMedia, so this
+          // is the only signal that the logo was cleared — null it out here.
+          // Non-empty URLs (fresh upload / library pick) are handled by
+          // onSelectMedia, which fires synchronously alongside onChange.
+          if (url === "") setLogoMediaId(null);
+        }}
         onSelectMedia={(media) => setLogoMediaId(media.id)}
       />
       <label className="flex flex-col gap-1.5">
