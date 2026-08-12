@@ -137,7 +137,7 @@ export default function EmailTemplateEditorPage({ params }: { params: Promise<{ 
 
       {previewOpen && preview.data && (
         <Modal open onClose={() => setPreviewOpen(false)} title={preview.data.subject}>
-          <iframe title="Email preview" srcDoc={preview.data.html} className="h-[600px] w-full rounded-sm border border-border bg-white" />
+          <iframe title="Email preview" sandbox="" srcDoc={preview.data.html} className="h-[600px] w-full rounded-sm border border-border bg-white" />
         </Modal>
       )}
     </div>
