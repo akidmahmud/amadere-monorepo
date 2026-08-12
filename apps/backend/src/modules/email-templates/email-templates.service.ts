@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EmailSettingsService } from '../email-settings/email-settings.service';
 import {
   EmailTemplateDto,
   EmailTemplatePreviewDto,
@@ -29,7 +30,10 @@ const SETTINGS_DEFAULTS: EmailTemplateSettingsJson = {
 
 @Injectable()
 export class EmailTemplatesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailSettings: EmailSettingsService,
+  ) {}
 
   async list(): Promise<EmailTemplateDto[]> {
     const rows = await this.prisma.client.emailTemplate.findMany({ orderBy: { id: 'asc' } });
@@ -149,14 +153,28 @@ export class EmailTemplatesService {
         : '',
       copyright: settings.copyright || `Copyright © ${new Date().getFullYear()}`,
       custom_css: settings.customCss || '',
+      contact_email: settings.contactEmail || (await this.emailSettings.getConfig()).senderEmail || '',
     };
 
     let html = bodyHtml;
     const header = await this.prisma.client.emailTemplate.findUnique({ where: { key: 'core_base_header' } });
-    if (header) html = html.replace(/\{\{\s*header\s*\}\}/g, this.substitute(header.bodyHtml, chromeVars));
+    // Function replacers (not plain strings) for `String.prototype.replace` here:
+    // a plain-string second argument interprets `$`-sequences ($$, $&, $`, $')
+    // as special patterns, which would corrupt a header/footer body (or a
+    // settings-derived value like custom CSS injected into it) that happens to
+    // contain one. A function replacer's return value is inserted verbatim.
+    if (header) {
+      const substituted = this.substitute(header.bodyHtml, chromeVars);
+      html = html.replace(/\{\{\s*header\s*\}\}/g, () => substituted);
+    }
     const footer = await this.prisma.client.emailTemplate.findUnique({ where: { key: 'core_base_footer' } });
-    if (footer) html = html.replace(/\{\{\s*footer\s*\}\}/g, this.substitute(footer.bodyHtml, chromeVars));
-    html = this.substitute(html, variables);
+    if (footer) {
+      const substituted = this.substitute(footer.bodyHtml, chromeVars);
+      html = html.replace(/\{\{\s*footer\s*\}\}/g, () => substituted);
+    }
+    // chromeVars (not variables) so logo_html/copyright/custom_css/contact_email
+    // resolve everywhere, not just inside the two base-wrapper rows above.
+    html = this.substitute(html, chromeVars);
 
     return { subject: this.substitute(subject, variables), html };
   }
