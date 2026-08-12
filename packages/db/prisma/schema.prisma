@@ -32,6 +32,45 @@ model Setting {
   @@map("settings")
 }
 
+enum EmailTemplateGroup {
+  BASE
+  ACL
+  CONTACT
+  ECOMMERCE
+  NEWSLETTER
+}
+
+model EmailTemplate {
+  id      Int                @id @default(autoincrement())
+  key     String             @unique
+  group   EmailTemplateGroup
+  title   String
+  description String
+
+  subject  String @default("")
+  bodyHtml String @map("body_html") @db.Text
+
+  // Immutable, set once at seed time — "Reset to default" copies these back
+  // into subject/bodyHtml, so it never needs to re-read a seed script.
+  defaultSubject  String @map("default_subject") @default("")
+  defaultBodyHtml String @map("default_body_html") @db.Text @default("")
+
+  // [{ key: "customer_name", description: "..." }, ...] — per-template,
+  // since each event has different data available. Purely a UI hint for
+  // the editor's insert-variable helper, never validated against.
+  variables Json @default("[]")
+
+  // A few templates (base header/footer, admin password reset) can't be
+  // turned off — the toggle UI renders fixed-on for these.
+  canDisable Boolean @map("can_disable") @default(true)
+  enabled    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
 enum SeoEntityType {
   PRODUCT
   CATEGORY

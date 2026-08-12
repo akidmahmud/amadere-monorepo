@@ -145,6 +145,9 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('setting', 'view'),
   perm('setting', 'update'),
 
+  perm('email_template', 'view'),
+  perm('email_template', 'manage'),
+
   perm('menu_item', 'view'),
   perm('menu_item', 'create'),
   perm('menu_item', 'update'),
