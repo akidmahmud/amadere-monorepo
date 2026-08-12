@@ -7,6 +7,7 @@ import { paginationArgs, toPaginatedResult } from '../../../common/pagination.ut
 import { ORDER_STATUS_CHANGED_EVENT } from '../../orders/orders.events';
 import type { OrderStatusChangedEvent } from '../../orders/orders.events';
 import { AdvancePaymentService } from '../advance-payment/advance-payment.service';
+import { OrderEmailsService } from '../../order-emails/order-emails.service';
 import { SubmitManualPaymentDto, TRX_ID_PATTERNS } from './dto/submit-manual-payment.dto';
 import { ManualPaymentDto, toManualPaymentDto } from './manual-payment.mapper';
 
@@ -23,6 +24,7 @@ export class ManualPaymentService {
     private readonly prisma: PrismaService,
     private readonly advancePayment: AdvancePaymentService,
     private readonly events: EventEmitter2,
+    private readonly orderEmails: OrderEmailsService,
   ) {}
 
   async submit(dto: SubmitManualPaymentDto): Promise<ManualPaymentDto> {
@@ -86,6 +88,9 @@ export class ManualPaymentService {
         where: { id: payment.id },
         data: { status: 'CAPTURED', transactionRef: submission.trxId },
       });
+    }
+    if (payment && payment.status === 'PENDING') {
+      await this.orderEmails.sendPaymentConfirmed(submission.orderId, adminUserId);
     }
 
     const advance = await this.advancePayment.get(submission.orderId);
