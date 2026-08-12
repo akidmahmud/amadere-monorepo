@@ -79,7 +79,17 @@ export class EmailTemplatesService {
 
   async updateSettings(input: Partial<EmailTemplateSettingsJson>): Promise<EmailTemplateSettingsDto> {
     const current = await this.getSettingsJson();
-    const next: EmailTemplateSettingsJson = { ...current, ...input };
+    // class-transformer's plainToInstance() (run by the global ValidationPipe's
+    // transform: true) puts every declared DTO property onto `input`, using
+    // `undefined` for fields the caller didn't send — it does not omit them.
+    // A plain `{ ...current, ...input }` merge would therefore copy those
+    // `undefined` values as own properties, clobbering `current`'s real values
+    // and causing Prisma to drop those keys from the stored JSON entirely.
+    // Filter them out first so only genuinely-provided fields override `current`.
+    const definedInput = Object.fromEntries(
+      Object.entries(input).filter(([, v]) => v !== undefined),
+    ) as Partial<EmailTemplateSettingsJson>;
+    const next: EmailTemplateSettingsJson = { ...current, ...definedInput };
     await this.prisma.client.setting.upsert({
       where: { key: SETTINGS_KEY },
       create: { key: SETTINGS_KEY, value: next as never },
