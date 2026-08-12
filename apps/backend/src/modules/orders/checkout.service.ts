@@ -26,7 +26,7 @@ import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 import { generateOrderNumber } from './order-number.util';
 import { reserveStock } from './stock-reservation.util';
 import { toOrderAddressCreate } from './order-address.util';
-import { OrdersService } from './orders.service';
+import { OrderEmailsService } from '../order-emails/order-emails.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -42,7 +42,7 @@ export class CheckoutService {
     private readonly advancePayment: AdvancePaymentService,
     private readonly otpSecurity: OtpSecurityService,
     private readonly sms: SmsService,
-    private readonly orders: OrdersService,
+    private readonly orderEmails: OrderEmailsService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -347,7 +347,8 @@ export class CheckoutService {
       }
     }
 
-    await this.orders.sendConfirmationEmail(order.id);
+    await this.orderEmails.sendOrderPlaced(order.id);
+    await this.orderEmails.sendNewOrderAdminNotice(order.id);
 
     return this.getByIdInternal(order.id);
   }

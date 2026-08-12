@@ -22,6 +22,7 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { OrdersService } from './orders.service';
 import { AdminOrderCreationService } from './admin-order-creation.service';
+import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
@@ -42,6 +43,7 @@ export class AdminOrdersController {
   constructor(
     private readonly orders: OrdersService,
     private readonly orderCreation: AdminOrderCreationService,
+    private readonly orderEmails: OrderEmailsService,
   ) {}
 
   @Get()
@@ -168,7 +170,7 @@ export class AdminOrdersController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentAdmin() admin: { id: number },
   ): Promise<{ sent: boolean; reason?: string }> {
-    return this.orders.sendConfirmationEmail(id, admin.id);
+    return this.orderEmails.sendOrderPlaced(id, admin.id);
   }
 
   @Post(':id/reorder')

@@ -11,7 +11,7 @@ import { reserveStock } from './stock-reservation.util';
 import { toOrderAddressCreate } from './order-address.util';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
-import { OrdersService } from './orders.service';
+import { OrderEmailsService } from '../order-emails/order-emails.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -30,7 +30,7 @@ export class AdminOrderCreationService {
     private readonly pricing: PricingService,
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
-    private readonly orders: OrdersService,
+    private readonly orderEmails: OrderEmailsService,
   ) {}
 
   // Preview-only — reuses the exact same coupon validation the real create()
@@ -242,7 +242,8 @@ export class AdminOrderCreationService {
       customerId: dto.customerId ?? null,
     } satisfies OrderCreatedEvent);
 
-    await this.orders.sendConfirmationEmail(order.id, adminId);
+    await this.orderEmails.sendOrderPlaced(order.id, adminId);
+    await this.orderEmails.sendNewOrderAdminNotice(order.id);
 
     const full = await this.prisma.client.order.findUniqueOrThrow({
       where: { id: order.id },

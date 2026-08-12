@@ -14,7 +14,7 @@ import {
 } from '../../common/pagination.util';
 import { PaymentsService } from '../payments/payments.service';
 import { PricingService } from '../cart/pricing.service';
-import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
+import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
@@ -60,8 +60,8 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
     private readonly pricing: PricingService,
-    private readonly email: SmtpEmailProvider,
     private readonly events: EventEmitter2,
+    private readonly orderEmails: OrderEmailsService,
   ) {}
 
   async adminList(
@@ -378,44 +378,6 @@ export class OrdersService {
     });
 
     return this.reload(orderId);
-  }
-
-  // Best-effort — SmtpEmailProvider never throws (see its own comments), so
-  // this always resolves; the result is only used to decide what to write
-  // into history, not to fail whatever triggered it (checkout, manual
-  // order creation, or the admin's explicit "Resend" click).
-  async sendConfirmationEmail(orderId: number, adminUserId?: number): Promise<{ sent: boolean; reason?: string }> {
-    const order = await this.prisma.client.order.findUnique({
-      where: { id: orderId },
-      include: { addresses: true },
-    });
-    if (!order) throw new NotFoundException('Order not found');
-
-    const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
-    const to = shipping?.email;
-    if (!to) {
-      await this.prisma.client.orderStatusHistory.create({
-        data: { orderId, status: order.status, note: 'Email confirmation not sent — no email on file', adminUserId },
-      });
-      return { sent: false, reason: 'No email on file' };
-    }
-
-    const result = await this.email.send(
-      to,
-      `Your order ${order.orderNumber} is confirmed`,
-      `Thank you for your order ${order.orderNumber}. Total: ${order.currency} ${order.totalAmount.toString()}. We'll notify you when it ships.`,
-    );
-
-    await this.prisma.client.orderStatusHistory.create({
-      data: {
-        orderId,
-        status: order.status,
-        note: result.failed ? `Email confirmation failed: ${result.error}` : 'The email confirmation was sent to customer',
-        adminUserId,
-      },
-    });
-
-    return { sent: !result.failed, reason: result.error };
   }
 
   async myList(
