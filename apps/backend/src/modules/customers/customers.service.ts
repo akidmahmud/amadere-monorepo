@@ -275,6 +275,16 @@ export class CustomersService {
     const failed: { customerId: number; error: string }[] = [];
     for (const customerId of dto.customerIds) {
       try {
+        if (dto.action === 'assign') {
+          // No snapshot/unique-conflict concerns like delete/restore below —
+          // a plain field update, so no pre-fetch needed.
+          await this.prisma.client.customer.update({
+            where: { id: customerId },
+            data: { assignedAdminId: dto.assignedAdminId ?? null },
+          });
+          succeeded.push(customerId);
+          continue;
+        }
         // phone/email are @unique across every row regardless of deletedAt
         // — a soft-deleted customer would otherwise permanently squat their
         // number/address and block a brand new registration with the exact
@@ -444,7 +454,7 @@ export class CustomersService {
     return toAdminCustomerDto(customer);
   }
 
-  async createCustomer(dto: CreateCustomerDto): Promise<AdminCustomerDto> {
+  async createCustomer(dto: CreateCustomerDto, createdByAdminId?: number): Promise<AdminCustomerDto> {
     const existing = await this.prisma.client.customer.findFirst({
       where: { phone: { in: phoneLookupCandidates(dto.phone) } },
     });
@@ -457,6 +467,7 @@ export class CustomersService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         email: dto.email,
+        assignedAdminId: createdByAdminId ?? null,
       },
     });
 

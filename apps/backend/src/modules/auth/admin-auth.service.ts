@@ -109,8 +109,14 @@ export class AdminAuthService {
   async me(adminUserId: number): Promise<AdminProfileDto> {
     const admin = await this.prisma.client.adminUser.findUniqueOrThrow({
       where: { id: adminUserId },
+      include: {
+        roles: { select: { role: { select: { permissions: { select: { permission: { select: { key: true } } } } } } } },
+      },
     });
-    return toAdminProfileDto(admin);
+    const permissions = [
+      ...new Set(admin.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.key))),
+    ];
+    return toAdminProfileDto(admin, permissions);
   }
 
   async changeOwnPassword(

@@ -172,6 +172,7 @@ model AdminUser {
   customerNotes    CustomerNote[]
   customerCallLogs CustomerCallLog[]
   assignedCustomers Customer[] @relation("CustomerAssignedAdmin")
+  assignedOrders    Order[]    @relation("OrderAssignedAdmin")
   orderStatusHistory OrderStatusHistory[]
 
   @@map("admin_users")
@@ -1080,6 +1081,10 @@ model Order {
   status      OrderStatus  @default(PENDING)
   channel     OrderChannel @default(WEBSITE) @map("channel")
 
+  // Staff assignment for the Order Manager — same pattern as
+  // Customer.assignedAdminId (nullable, unassigned by default).
+  assignedAdminId Int? @map("assigned_admin_id")
+
   subTotal       Decimal @map("sub_total") @db.Decimal(10, 2)
   discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(10, 2)
   taxAmount      Decimal @default(0) @map("tax_amount") @db.Decimal(10, 2)
@@ -1139,6 +1144,7 @@ model Order {
   deletedAt   DateTime? @map("deleted_at")
 
   customer       Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedAdmin  AdminUser?              @relation("OrderAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
   items          OrderItem[]
   addresses      OrderAddress[]
   statusHistory  OrderStatusHistory[]

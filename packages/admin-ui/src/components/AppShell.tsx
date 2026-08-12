@@ -10,6 +10,11 @@ export interface AppNavItem {
   label: string;
   icon: ReactNode;
   href: string;
+  /** Permission key (e.g. "product.view") gating this row's visibility for
+   * a non-super-admin. Omit for rows every admin should always see
+   * (e.g. Overview). Filtering itself happens where `nav` is built, not
+   * here — AppShell just renders whatever list it's given. */
+  permission?: string;
 }
 
 /** A section header row in the sidebar — matches the reference's plain

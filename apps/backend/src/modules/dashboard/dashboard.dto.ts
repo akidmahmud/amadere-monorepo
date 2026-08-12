@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class OrderStatusCountDto {
   @ApiProperty() status!: string;
@@ -47,19 +47,34 @@ export class PeriodStatsDto {
 }
 
 export class DashboardOverviewDto {
-  @ApiProperty() totalRevenue!: string;
-  @ApiProperty() totalOrders!: number;
-  @ApiProperty() totalCustomers!: number;
-  @ApiProperty() totalProducts!: number;
-  @ApiProperty() completedOrderRate!: number;
-  @ApiProperty() avgOrderValue!: string;
-  @ApiProperty({ type: PeriodStatsDto }) today!: PeriodStatsDto;
-  @ApiProperty({ type: PeriodStatsDto }) completed!: PeriodStatsDto;
-  @ApiProperty({ type: PeriodStatsDto }) pending!: PeriodStatsDto;
-  @ApiProperty({ type: [OrderStatusCountDto] }) statusBreakdown!: OrderStatusCountDto[];
-  @ApiProperty({ type: [OrderChannelCountDto] }) ordersByChannel!: OrderChannelCountDto[];
+  // 'staff' = a non-super-admin viewer — every field below except
+  // recentOrders (scoped to their own assigned orders in that case) is
+  // omitted, and the myAssigned* fields below are populated instead.
+  @ApiProperty({ enum: ['global', 'staff'] }) scope!: 'global' | 'staff';
+
+  @ApiPropertyOptional() totalRevenue?: string;
+  @ApiPropertyOptional() totalOrders?: number;
+  @ApiPropertyOptional() totalCustomers?: number;
+  @ApiPropertyOptional() totalProducts?: number;
+  @ApiPropertyOptional() completedOrderRate?: number;
+  @ApiPropertyOptional() avgOrderValue?: string;
+  @ApiPropertyOptional({ type: PeriodStatsDto }) today?: PeriodStatsDto;
+  @ApiPropertyOptional({ type: PeriodStatsDto }) completed?: PeriodStatsDto;
+  @ApiPropertyOptional({ type: PeriodStatsDto }) pending?: PeriodStatsDto;
+  @ApiPropertyOptional({ type: [OrderStatusCountDto] }) statusBreakdown?: OrderStatusCountDto[];
+  @ApiPropertyOptional({ type: [OrderChannelCountDto] }) ordersByChannel?: OrderChannelCountDto[];
+  @ApiPropertyOptional({ type: [TopCustomerDto] }) topCustomers?: TopCustomerDto[];
+  @ApiPropertyOptional({ type: [MonthlyRevenuePointDto] }) monthlyRevenue?: MonthlyRevenuePointDto[];
+  @ApiPropertyOptional({ type: [TopProductDto] }) topProducts?: TopProductDto[];
+
+  // recentOrders: global top-5 for scope=global, this admin's own assigned
+  // orders for scope=staff — always populated, either way.
   @ApiProperty({ type: [RecentOrderDto] }) recentOrders!: RecentOrderDto[];
-  @ApiProperty({ type: [TopCustomerDto] }) topCustomers!: TopCustomerDto[];
-  @ApiProperty({ type: [MonthlyRevenuePointDto] }) monthlyRevenue!: MonthlyRevenuePointDto[];
-  @ApiProperty({ type: [TopProductDto] }) topProducts!: TopProductDto[];
+
+  // Staff-only (scope=staff) — no revenue figures, just what a staff member
+  // needs to know about their own workload.
+  @ApiPropertyOptional() myAssignedOrdersTotal?: number;
+  @ApiPropertyOptional() myAssignedOrdersToday?: number;
+  @ApiPropertyOptional({ type: [OrderStatusCountDto] }) myAssignedOrdersByStatus?: OrderStatusCountDto[];
+  @ApiPropertyOptional() myAssignedCustomersTotal?: number;
 }

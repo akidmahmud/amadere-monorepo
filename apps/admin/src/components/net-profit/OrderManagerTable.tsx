@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { Button } from "@amader/admin-ui";
-import { useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
+import { useAssignOrder, useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
+import type { AssignableStaff } from "@/hooks/useCustomers";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import {
   ORDER_STATUSES,
@@ -86,6 +87,28 @@ function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKe
       {ORDER_STATUSES.map((s) => (
         <option key={s} value={s}>
           {statusByKey.get(s)?.labelEn ?? s}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function AssignCell({ order, staff }: { order: OrderManagerRow; staff: AssignableStaff[] | undefined }) {
+  const assign = useAssignOrder(order.id);
+  return (
+    <select
+      value={order.assignedAdminId ?? ""}
+      disabled={assign.isPending}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => assign.mutate(e.target.value === "" ? null : Number(e.target.value))}
+      className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      style={{ borderColor: "transparent" }}
+      onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
+    >
+      <option value="">—</option>
+      {(staff ?? []).map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}
         </option>
       ))}
     </select>
@@ -331,6 +354,7 @@ export function OrderManagerTable({
   onDelete,
   onRestore,
   restoringId,
+  staff,
 }: {
   orders: OrderManagerRow[];
   total: number;
@@ -349,6 +373,7 @@ export function OrderManagerTable({
   /** Present on the Deleted Orders tab's table — renders a Restore button per row instead. */
   onRestore?: (order: OrderManagerRow) => void;
   restoringId?: number | null;
+  staff?: AssignableStaff[];
 }) {
   const { data: statusConfigs } = useOrderStatusConfigs();
   const statusByKey = new Map((statusConfigs ?? []).map((s) => [s.status, s]));
@@ -359,7 +384,7 @@ export function OrderManagerTable({
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
 
-  const colCount = 15 + columns.size;
+  const colCount = 16 + columns.size;
   const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
   const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
@@ -384,6 +409,7 @@ export function OrderManagerTable({
               <TH>Date</TH>
               <TH>Edit</TH>
               <TH>Status</TH>
+              <TH>Assign</TH>
               <TH>Total</TH>
               <TH>Phone</TH>
               <TH style={{ minWidth: 220 }}>Address</TH>
@@ -430,6 +456,7 @@ export function OrderManagerTable({
                 restoringId={restoringId}
                 td={td}
                 tdStyle={tdStyle}
+                staff={staff}
               />
             ))}
           </tbody>
@@ -519,6 +546,7 @@ function OrderRow({
   restoringId,
   td,
   tdStyle,
+  staff,
 }: {
   order: OrderManagerRow;
   statusByKey: Map<string, { labelEn: string; color: string }>;
@@ -533,6 +561,7 @@ function OrderRow({
   restoringId?: number | null;
   td: string;
   tdStyle: { color: string; borderColor: string; background: string };
+  staff?: AssignableStaff[];
 }) {
   const [editing, setEditing] = useState(false);
   const { date, time } = formatDate(o.createdAt);
@@ -572,6 +601,9 @@ function OrderRow({
       </td>
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <StatusCell order={o} statusByKey={statusByKey} />
+      </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <AssignCell order={o} staff={staff} />
       </td>
       <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
         ৳{Number(o.totalAmount).toLocaleString()}

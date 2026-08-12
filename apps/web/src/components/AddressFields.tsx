@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Input, Select } from "@amader/ui";
-import { BD_DISTRICTS_BY_DIVISION } from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT } from "@amader/shared";
 import type { CheckoutFormValues } from "@/lib/checkout-schema";
 import { CheckoutFraudBadge } from "@/components/CheckoutFraudBadge";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
@@ -38,6 +38,11 @@ export function AddressFields({
   } = useFormContext<CheckoutFormValues>();
 
   const fieldErrors = errors[prefix];
+  // Only districts Steadfast's own area list has been supplied for (see
+  // bd-thanas.ts) get a real dropdown here — every other district still
+  // falls back to free-text entry below until its list is added the same way.
+  const selectedDistrict = watch(`${prefix}.district`);
+  const thanaOptions = selectedDistrict ? BD_THANAS_BY_DISTRICT[selectedDistrict] : undefined;
 
   return (
     <div>
@@ -83,7 +88,22 @@ export function AddressFields({
           )}
         </div>
         <div>
-          <Input placeholder="Thana / Area *" {...register(`${prefix}.area`)} />
+          {thanaOptions ? (
+            <Controller
+              name={`${prefix}.area`}
+              control={control}
+              render={({ field }) => (
+                <Select
+                  options={thanaOptions.map((t) => ({ value: t, label: t }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select Thana / Area"
+                />
+              )}
+            />
+          ) : (
+            <Input placeholder="Thana / Area *" {...register(`${prefix}.area`)} />
+          )}
           {fieldErrors?.area && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.area.message}</p>}
         </div>
       </div>

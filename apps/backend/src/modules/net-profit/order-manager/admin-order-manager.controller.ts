@@ -9,6 +9,7 @@ import { OrderManagerService } from './order-manager.service';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
 import { UpdateOrderNoteDto } from './dto/update-order-note.dto';
+import { AssignOrderDto } from './dto/assign-order.dto';
 
 @ApiTags('admin/net-profit/orders')
 @ApiBearerAuth()
@@ -49,5 +50,11 @@ export class AdminOrderManagerController {
   @RequirePermission('net_profit_orders.manage')
   updateNote(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrderNoteDto) {
     return this.orderManager.updateNote(id, dto.note);
+  }
+
+  @Patch(':id/assign')
+  @RequirePermission('net_profit_orders.manage')
+  assign(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignOrderDto) {
+    return this.orderManager.assign(id, dto.assignedAdminId ?? null);
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { DashboardOverview } from "@/hooks/useDashboard";
+import type { DashboardOverview, GlobalDashboardOverview } from "@/hooks/useDashboard";
 
 // Pill/avatar hex values are ported verbatim from getcommerce-dashboard.html's
 // .pill-*/.av-* classes — deliberately literal hex, not this app's --stat-*
@@ -78,7 +78,7 @@ export function RecentOrdersTable({ data }: { data: DashboardOverview }) {
   );
 }
 
-export function TopCustomersTable({ data }: { data: DashboardOverview }) {
+export function TopCustomersTable({ data }: { data: GlobalDashboardOverview }) {
   return (
     <div className="rounded-card border border-border bg-surface p-[22px] shadow-card">
       <div className="mb-4 flex items-center justify-between">

@@ -13,6 +13,7 @@ import { OrderManagerFilterBar, type OrderFilterState } from "@/components/net-p
 import { OrderManagerTable, OPTIONAL_COLUMNS, type OptionalColumn } from "@/components/net-profit/OrderManagerTable";
 import { ORDER_MANAGER_KEY, useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
+import { useAssignableStaff } from "@/hooks/useCustomers";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderStatusesTab } from "./OrderStatusesTab";
 import { DeletedOrdersTab } from "./DeletedOrdersTab";
@@ -254,6 +255,7 @@ export default function OrderManagerPage() {
   const { data, isLoading } = useOrderManagerList(filters);
   const { data: statusCounts } = useOrderManagerStatusCounts(filters);
   const { data: statusConfigs } = useOrderStatusConfigs();
+  const { data: staff } = useAssignableStaff();
   const bulk = useBulkOrderAction();
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -282,10 +284,10 @@ export default function OrderManagerPage() {
     setSelected((prev) => (prev.size === data.items.length ? new Set() : new Set(data.items.map((o) => o.id))));
   }
 
-  function runBulk(action: "hold" | "block" | "export" | "consign" | "delete", courierProvider?: string) {
+  function runBulk(action: "hold" | "block" | "export" | "consign" | "delete" | "assign", courierProvider?: string, assignedAdminId?: number | null) {
     if (selected.size === 0) return;
     bulk.mutate(
-      { orderIds: [...selected], action, courierProvider },
+      { orderIds: [...selected], action, courierProvider, assignedAdminId },
       {
         onSuccess: (result) => {
           if (result.csv) downloadCsv(result.csv, `orders-${Date.now()}.csv`);
@@ -445,6 +447,28 @@ export default function OrderManagerPage() {
             >
               Delete
             </button>
+            <select
+              aria-label="Bulk assign to staff"
+              disabled={selected.size === 0 || bulk.isPending}
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") return;
+                runBulk("assign", undefined, v === "unassign" ? null : Number(v));
+              }}
+              className="h-[38px] rounded-[9px] border px-2.5 text-[0.75rem] font-semibold disabled:opacity-40"
+              style={{ borderColor: LINE, color: MUTED }}
+            >
+              <option value="" disabled>
+                Assign to…
+              </option>
+              <option value="unassign">— (Unassign)</option>
+              {(staff ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
             <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
               {data?.total ?? 0} orders
             </span>
@@ -467,6 +491,7 @@ export default function OrderManagerPage() {
             onCheckRisk={setRiskPhone}
             isLoading={isLoading}
             onDelete={setDeleteTarget}
+            staff={staff}
           />
         </>
       )}

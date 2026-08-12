@@ -4484,6 +4484,22 @@ export interface paths {
         patch: operations["AdminOrderManagerController_updateNote"];
         trace?: never;
     };
+    "/api/v1/admin/net-profit/orders/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrderManagerController_assign"];
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/payments/manual": {
         parameters: {
             query?: never;
@@ -5615,6 +5631,7 @@ export interface components {
             lastName: string;
             isSuperAdmin: boolean;
             twoFactorEnabled: boolean;
+            permissions: string[];
         };
         ChangePasswordDto: {
             currentPassword: string;
@@ -7244,7 +7261,8 @@ export interface components {
         BulkCustomerActionDto: {
             customerIds: number[];
             /** @enum {string} */
-            action: "delete" | "restore";
+            action: "delete" | "restore" | "assign";
+            assignedAdminId?: number | null;
         };
         UpdateCustomerDto: {
             firstName?: string;
@@ -7615,16 +7633,6 @@ export interface components {
             channel: string;
             count: number;
         };
-        RecentOrderDto: {
-            id: number;
-            orderNumber: string;
-            customerName: string;
-            total: string;
-            status: string;
-            createdAt: string;
-            /** @enum {string} */
-            paymentMethod: "COD" | "PAID";
-        };
         TopCustomerDto: {
             id: number;
             name: string;
@@ -7643,22 +7651,38 @@ export interface components {
             revenue: string;
             unitsSold: number;
         };
+        RecentOrderDto: {
+            id: number;
+            orderNumber: string;
+            customerName: string;
+            total: string;
+            status: string;
+            createdAt: string;
+            /** @enum {string} */
+            paymentMethod: "COD" | "PAID";
+        };
         DashboardOverviewDto: {
-            totalRevenue: string;
-            totalOrders: number;
-            totalCustomers: number;
-            totalProducts: number;
-            completedOrderRate: number;
-            avgOrderValue: string;
-            today: components["schemas"]["PeriodStatsDto"];
-            completed: components["schemas"]["PeriodStatsDto"];
-            pending: components["schemas"]["PeriodStatsDto"];
-            statusBreakdown: components["schemas"]["OrderStatusCountDto"][];
-            ordersByChannel: components["schemas"]["OrderChannelCountDto"][];
+            /** @enum {string} */
+            scope: "global" | "staff";
+            totalRevenue?: string;
+            totalOrders?: number;
+            totalCustomers?: number;
+            totalProducts?: number;
+            completedOrderRate?: number;
+            avgOrderValue?: string;
+            today?: components["schemas"]["PeriodStatsDto"];
+            completed?: components["schemas"]["PeriodStatsDto"];
+            pending?: components["schemas"]["PeriodStatsDto"];
+            statusBreakdown?: components["schemas"]["OrderStatusCountDto"][];
+            ordersByChannel?: components["schemas"]["OrderChannelCountDto"][];
+            topCustomers?: components["schemas"]["TopCustomerDto"][];
+            monthlyRevenue?: components["schemas"]["MonthlyRevenuePointDto"][];
+            topProducts?: components["schemas"]["TopProductDto"][];
             recentOrders: components["schemas"]["RecentOrderDto"][];
-            topCustomers: components["schemas"]["TopCustomerDto"][];
-            monthlyRevenue: components["schemas"]["MonthlyRevenuePointDto"][];
-            topProducts: components["schemas"]["TopProductDto"][];
+            myAssignedOrdersTotal?: number;
+            myAssignedOrdersToday?: number;
+            myAssignedOrdersByStatus?: components["schemas"]["OrderStatusCountDto"][];
+            myAssignedCustomersTotal?: number;
         };
         PublicBlogCategoryDto: {
             id: number;
@@ -8390,15 +8414,19 @@ export interface components {
         BulkOrderActionDto: {
             orderIds: number[];
             /** @enum {string} */
-            action: "consign" | "block" | "hold" | "export" | "delete" | "restore";
+            action: "consign" | "block" | "hold" | "export" | "delete" | "restore" | "assign";
             /**
              * @description Required for action=consign
              * @enum {string}
              */
             courierProvider?: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+            assignedAdminId?: number | null;
         };
         UpdateOrderNoteDto: {
             note: string;
+        };
+        AssignOrderDto: {
+            assignedAdminId?: number | null;
         };
         ManualPaymentDto: {
             id: number;
@@ -18154,6 +18182,29 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateOrderNoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOrderManagerController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignOrderDto"];
             };
         };
         responses: {

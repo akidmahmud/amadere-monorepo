@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Button, Card, Icon, Modal } from "@amader/admin-ui";
 import { usePickerProducts } from "@/hooks/usePickers";
+import { useProductSearch } from "@/hooks/useProducts";
 import { useUploadMedia } from "@/hooks/useMedia";
 import { MediaLibraryBrowser } from "@/components/media/MediaLibraryBrowser";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
@@ -54,10 +55,19 @@ export function PromoVideoEditPanel({
   const [thumbnailUrl, setThumbnailUrl] = useState(video?.thumbnailUrl ?? "");
   const [durationSeconds, setDurationSeconds] = useState(video?.durationSeconds?.toString() ?? "");
   const [productId, setProductId] = useState<number | undefined>(video?.productId ?? undefined);
+  // Set directly from a search result at selection time — usePickerProducts
+  // below only ever holds the first 100 products (see that hook's own
+  // comment), so a product found via search isn't guaranteed to be in it.
+  // Only falls back to looking it up there for the initial edit-mode value
+  // (AdminPromoVideoDto only carries productId, no product name alongside it).
+  const [selectedProductLabel, setSelectedProductLabel] = useState<string | undefined>(undefined);
+  const [productQuery, setProductQuery] = useState("");
   const [showInHomepage, setShowInHomepage] = useState(video?.showInHomepage ?? true);
   const [showLibrary, setShowLibrary] = useState(false);
 
   const { data: products } = usePickerProducts();
+  const { data: productSearchResults } = useProductSearch(productQuery);
+  const linkedProductLabel = selectedProductLabel ?? products?.find((p) => p.id === productId)?.label;
   const create = useCreatePromoVideo();
   const update = useUpdatePromoVideo(video?.id ?? -1);
   const remove = useDeletePromoVideo();
@@ -230,27 +240,51 @@ export function PromoVideoEditPanel({
       <div className="flex flex-col gap-1.5">
         <h3 className="text-sm font-bold text-text">4. Linked Product (Optional)</h3>
         <p className="text-xs text-muted">Select a product to open when video is clicked</p>
-        <div className="flex items-center gap-2">
-          <select
-            value={productId ?? ""}
-            onChange={(e) => setProductId(e.target.value ? Number(e.target.value) : undefined)}
-            // min-w-0 overrides the flex item's default min-width:auto — without it,
-            // a <select> won't shrink below its widest <option>'s intrinsic width
-            // (several product names run 80+ characters), so it blew out past the
-            // card's right edge instead of staying inside it and truncating.
-            className="h-10 w-full min-w-0 flex-1 truncate rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          >
-            <option value="">— None —</option>
-            {products?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-2">
+          <div className="relative">
+            <input
+              value={productQuery}
+              onChange={(e) => setProductQuery(e.target.value)}
+              placeholder="Search products by name…"
+              className="h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+            />
+            {productQuery.trim() && productSearchResults && productSearchResults.length > 0 && (
+              <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-sm border border-border bg-surface p-1.5 shadow-card">
+                {productSearchResults.map((p) => {
+                  const label = p.translations[0]?.name ?? p.slug;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setProductId(p.id);
+                        setSelectedProductLabel(label);
+                        setProductQuery("");
+                      }}
+                      className="block w-full truncate rounded-sm px-3 py-2 text-left text-sm text-text hover:bg-surface-2"
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {productId !== undefined && (
-            <button type="button" aria-label="Clear linked product" onClick={() => setProductId(undefined)} className="text-muted hover:text-text">
-              <Icon name="close" size={18} />
-            </button>
+            <div className="flex items-center gap-2 rounded-sm border border-border bg-surface-2 px-3 py-2 text-sm text-text">
+              <span className="min-w-0 flex-1 truncate">{linkedProductLabel ?? `Product #${productId}`}</span>
+              <button
+                type="button"
+                aria-label="Clear linked product"
+                onClick={() => {
+                  setProductId(undefined);
+                  setSelectedProductLabel(undefined);
+                }}
+                className="shrink-0 text-muted hover:text-text"
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </div>
           )}
         </div>
       </div>

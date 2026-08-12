@@ -39,6 +39,8 @@ interface RawOrderManagerRow {
   staff_note: string | null;
   utm_source: string | null;
   utm_campaign: string | null;
+  assigned_admin_id: number | null;
+  assigned_admin_name: string | null;
   deleted_at: Date | null;
 }
 
@@ -130,6 +132,8 @@ export class OrderManagerService {
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
       SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
              o.utm_source, o.utm_campaign, o.deleted_at,
+             o.assigned_admin_id,
+             NULLIF(TRIM(CONCAT(au.first_name, ' ', au.last_name)), '') AS assigned_admin_name,
              oa.recipient_name, oa.phone, oa.address_line, oa.district, oa.division, oa.post_code,
              thumb.url AS thumbnail_url,
              p.provider AS payment_provider,
@@ -140,6 +144,7 @@ export class OrderManagerService {
              COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level
       FROM orders o
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
+      LEFT JOIN admin_users au ON au.id = o.assigned_admin_id
       LEFT JOIN LATERAL (
         SELECT provider FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) p ON true
@@ -209,6 +214,8 @@ export class OrderManagerService {
       staffNote: r.staff_note,
       utmSource: r.utm_source,
       utmCampaign: r.utm_campaign,
+      assignedAdminId: r.assigned_admin_id,
+      assignedAdminName: r.assigned_admin_name,
       deletedAt: r.deleted_at,
     }));
 
@@ -231,6 +238,13 @@ export class OrderManagerService {
     await this.prisma.client.order.update({
       where: { id: orderId },
       data: { staffNote: note || null },
+    });
+  }
+
+  async assign(orderId: number, assignedAdminId: number | null): Promise<void> {
+    await this.prisma.client.order.update({
+      where: { id: orderId },
+      data: { assignedAdminId },
     });
   }
 
@@ -265,6 +279,8 @@ export class OrderManagerService {
           await this.prisma.client.order.update({ where: { id: orderId }, data: { deletedAt: new Date() } });
         } else if (dto.action === 'restore') {
           await this.restore(orderId);
+        } else if (dto.action === 'assign') {
+          await this.assign(orderId, dto.assignedAdminId ?? null);
         }
         succeeded.push(orderId);
       } catch (err) {

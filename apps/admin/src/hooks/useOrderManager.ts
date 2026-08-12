@@ -32,6 +32,8 @@ export interface OrderManagerRow {
   staffNote: string | null;
   utmSource: string | null;
   utmCampaign: string | null;
+  assignedAdminId: number | null;
+  assignedAdminName: string | null;
   /** Set only in the "Deleted Orders" tab's listing — null everywhere else. */
   deletedAt: string | null;
 }
@@ -127,12 +129,25 @@ export function useBulkOrderAction() {
   return useMutation({
     mutationFn: (input: {
       orderIds: number[];
-      action: "consign" | "block" | "hold" | "export" | "delete" | "restore";
+      action: "consign" | "block" | "hold" | "export" | "delete" | "restore" | "assign";
       courierProvider?: string;
+      assignedAdminId?: number | null;
     }) => proxyFetch<BulkActionResult>("/admin/net-profit/orders/bulk", { method: "POST", body: JSON.stringify(input) }),
     // Both the working list and the trash list move rows between each other
     // on delete/restore — invalidating just KEY (which the trash query key
     // extends via [...KEY, "trash", ...]) covers both in one call.
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useAssignOrder(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (assignedAdminId: number | null) =>
+      proxyFetch(`/admin/net-profit/orders/${id}/assign`, { method: "PATCH", body: JSON.stringify({ assignedAdminId }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ADMIN_ORDERS_KEY });
+    },
   });
 }

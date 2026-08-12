@@ -99,7 +99,7 @@ export interface BulkCustomerActionResult {
 export function useBulkCustomerAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { customerIds: number[]; action: "delete" | "restore" }) =>
+    mutationFn: (input: { customerIds: number[]; action: "delete" | "restore" | "assign"; assignedAdminId?: number | null }) =>
       proxyFetch<BulkCustomerActionResult>("/admin/customers/bulk", { method: "POST", body: JSON.stringify(input) }),
     // Both the working list and the trash list move rows between each other
     // on delete/restore — invalidating just LIST_KEY (which the trash query

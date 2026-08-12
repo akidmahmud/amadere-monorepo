@@ -8,7 +8,13 @@ const NON_CANCELED = { not: 'CANCELED' as const };
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async overview(): Promise<DashboardOverviewDto> {
+  async overview(adminId: number): Promise<DashboardOverviewDto> {
+    const admin = await this.prisma.client.adminUser.findUniqueOrThrow({
+      where: { id: adminId },
+      select: { isSuperAdmin: true },
+    });
+    if (!admin.isSuperAdmin) return this.staffOverview(adminId);
+
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
@@ -165,6 +171,7 @@ export class DashboardService {
     const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
 
     return {
+      scope: 'global',
       totalRevenue: totalRevenue.toString(),
       totalOrders,
       totalCustomers,
@@ -199,6 +206,53 @@ export class DashboardService {
       topCustomers,
       monthlyRevenue,
       topProducts,
+    };
+  }
+
+  // A staff member (not super admin) only sees their own workload — no
+  // revenue figures, no other staff's data.
+  private async staffOverview(adminId: number): Promise<DashboardOverviewDto> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [ordersTotal, ordersToday, statusGroups, customersTotal, recentOrdersRaw] = await Promise.all([
+      this.prisma.client.order.count({ where: { assignedAdminId: adminId } }),
+      this.prisma.client.order.count({ where: { assignedAdminId: adminId, createdAt: { gte: startOfToday } } }),
+      this.prisma.client.order.groupBy({ by: ['status'], where: { assignedAdminId: adminId }, _count: { _all: true } }),
+      this.prisma.client.customer.count({ where: { assignedAdminId: adminId } }),
+      this.prisma.client.order.findMany({
+        where: { assignedAdminId: adminId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          orderNumber: true,
+          totalAmount: true,
+          status: true,
+          createdAt: true,
+          customer: { select: { firstName: true, lastName: true } },
+          payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { provider: true } },
+        },
+      }),
+    ]);
+
+    return {
+      scope: 'staff',
+      recentOrders: recentOrdersRaw.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        customerName: o.customer
+          ? [o.customer.firstName, o.customer.lastName].filter(Boolean).join(' ') || 'Customer'
+          : 'Guest',
+        total: o.totalAmount.toString(),
+        status: o.status,
+        createdAt: o.createdAt.toISOString(),
+        paymentMethod: o.payments[0]?.provider && o.payments[0].provider !== 'COD' ? 'PAID' : 'COD',
+      })),
+      myAssignedOrdersTotal: ordersTotal,
+      myAssignedOrdersToday: ordersToday,
+      myAssignedOrdersByStatus: statusGroups.map((g) => ({ status: g.status, count: g._count._all })),
+      myAssignedCustomersTotal: customersTotal,
     };
   }
 }

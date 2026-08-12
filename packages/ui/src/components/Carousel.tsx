@@ -59,6 +59,13 @@ export function Carousel({
   const [hasOverflow, setHasOverflow] = useState(false);
   const [pageCount, setPageCount] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
+  // Paused while any interactive element inside a card (e.g. ProductCardTwo's
+  // pack-size <select>) has focus — React 17+ delegates onFocus/onBlur via
+  // the bubbling focusin/focusout events, so this catches focus anywhere in
+  // the row without each card needing to know about the carousel. Per
+  // explicit request: picking a variant shouldn't have the slide advance out
+  // from under the shopper mid-selection.
+  const [paused, setPaused] = useState(false);
 
   function updateScrollState() {
     const row = rowRef.current;
@@ -94,7 +101,7 @@ export function Carousel({
   }
 
   useEffect(() => {
-    if (!autoplayMs || !hasOverflow) return;
+    if (!autoplayMs || !hasOverflow || paused) return;
     const timer = setInterval(() => {
       const row = rowRef.current;
       if (!row) return;
@@ -107,7 +114,7 @@ export function Carousel({
     }, autoplayMs);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoplayMs, hasOverflow]);
+  }, [autoplayMs, hasOverflow, paused]);
 
   return (
     <div className={cn("relative px-1", className)}>
@@ -127,6 +134,8 @@ export function Carousel({
       <div
         ref={rowRef}
         onScroll={updateScrollState}
+        onFocus={() => setPaused(true)}
+        onBlur={() => setPaused(false)}
         className={cn(
           "flex snap-x snap-mandatory gap-4.5 overflow-x-auto scroll-smooth px-0.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           !hasOverflow && centerWhenFits && "justify-center",

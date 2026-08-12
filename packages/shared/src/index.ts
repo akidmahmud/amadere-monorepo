@@ -18,6 +18,7 @@ export * from './permission-catalog';
 export * from './url-paths';
 export * from './courier-status';
 export * from './bd-geo';
+export * from './bd-thanas';
 export * from './phone';
 export * from './ckeditor-fonts';
 

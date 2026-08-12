@@ -13,7 +13,7 @@ import {
   Tooltip,
   type ChartConfiguration,
 } from "chart.js";
-import type { DashboardOverview } from "@/hooks/useDashboard";
+import type { GlobalDashboardOverview } from "@/hooks/useDashboard";
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, DoughnutController, ArcElement, Legend, Tooltip);
 
@@ -40,7 +40,7 @@ const CHANNEL_LABELS: Record<string, string> = {
 // series (this period vs. previous period revenue, from monthlyRevenue), not
 // the reference's three (it used static mock data) — mapped onto the
 // reference's first two dataset colors rather than inventing a third series.
-function SalesStatisticsChart({ data }: { data: DashboardOverview }) {
+function SalesStatisticsChart({ data }: { data: GlobalDashboardOverview }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ function SalesStatisticsChart({ data }: { data: DashboardOverview }) {
 // match. Side legend markup (dot + label + count) also mirrors the
 // reference's `.source-legend` list exactly, since the reference disables
 // Chart.js's own legend and renders its own.
-function SalesBySourceChart({ data }: { data: DashboardOverview }) {
+function SalesBySourceChart({ data }: { data: GlobalDashboardOverview }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const slices = data.ordersByChannel
     .filter((c) => c.count > 0)
@@ -162,7 +162,7 @@ function SalesBySourceChart({ data }: { data: DashboardOverview }) {
   );
 }
 
-export function OverviewCharts({ data }: { data: DashboardOverview }) {
+export function OverviewCharts({ data }: { data: GlobalDashboardOverview }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SalesStatisticsChart data={data} />

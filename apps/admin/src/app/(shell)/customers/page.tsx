@@ -88,6 +88,16 @@ export default function CustomersPage() {
     setDeleteTarget(null);
   }
 
+  // No confirm dialog, unlike delete — reassigning isn't destructive, same
+  // reasoning as the per-row inline assign select in CustomersTable.
+  function bulkAssign(assignedAdminId: number | null) {
+    if (selected.size === 0) return;
+    bulk.mutate(
+      { customerIds: [...selected], action: "assign", assignedAdminId },
+      { onSuccess: () => setSelected(new Set()) },
+    );
+  }
+
   function exportHref() {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(uiFilters)) {
@@ -197,6 +207,28 @@ export default function CustomersPage() {
             >
               Delete
             </button>
+            <select
+              aria-label="Bulk assign to staff"
+              disabled={selected.size === 0 || bulk.isPending}
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") return;
+                bulkAssign(v === "unassign" ? null : Number(v));
+              }}
+              className="h-[38px] rounded-[9px] border px-2.5 text-[0.75rem] font-semibold disabled:opacity-40"
+              style={{ borderColor: LINE, color: MUTED }}
+            >
+              <option value="" disabled>
+                Assign to…
+              </option>
+              <option value="unassign">— (Unassign)</option>
+              {(staff ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
             <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
               {data?.total ?? 0} customers
             </span>

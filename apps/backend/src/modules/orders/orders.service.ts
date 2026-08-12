@@ -158,6 +158,10 @@ export class OrdersService {
           confirmedAt: dto.status === 'PROCESSING' ? new Date() : undefined,
           completedAt: dto.status === 'COMPLETED' ? new Date() : undefined,
           canceledAt: dto.status === 'CANCELED' ? new Date() : undefined,
+          // A real staff action (not a courier webhook/system transition)
+          // takes ownership of the order — same "whoever last touched it"
+          // reassignment as the Order Manager's own assign action.
+          assignedAdminId: adminUserId !== null ? adminUserId : undefined,
         },
       });
       await tx.orderStatusHistory.create({

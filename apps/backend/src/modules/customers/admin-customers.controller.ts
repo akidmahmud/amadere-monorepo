@@ -29,8 +29,8 @@ export class AdminCustomersController {
   @Post()
   @RequirePermission('customer.manage')
   @ApiOkResponse({ type: AdminCustomerDto })
-  create(@Body() dto: CreateCustomerDto): Promise<AdminCustomerDto> {
-    return this.customers.createCustomer(dto);
+  create(@Body() dto: CreateCustomerDto, @CurrentAdmin() admin: { id: number }): Promise<AdminCustomerDto> {
+    return this.customers.createCustomer(dto, admin.id);
   }
 
   @Get()

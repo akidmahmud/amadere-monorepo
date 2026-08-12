@@ -143,6 +143,7 @@ export class AdminOrderCreationService {
           orderNumber: generateOrderNumber(),
           channel: dto.channel,
           customerId: dto.customerId ?? null,
+          assignedAdminId: adminId,
           subTotal,
           discountAmount,
           taxAmount,

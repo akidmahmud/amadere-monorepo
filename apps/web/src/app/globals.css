@@ -34,6 +34,19 @@ body {
 .rich-content table { margin: 1em 0; width: 100%; border-collapse: collapse; }
 .rich-content table td, .rich-content table th { border: 1px solid var(--color-line); padding: 0.5em 0.7em; min-width: 2em; }
 .rich-content table th { font-weight: 700; background: rgba(35, 49, 39, 0.05); }
+/* Admin-authored CKEditor tables sometimes carry legacy HTML `width`
+   attributes (pasted from Word/Excel/Google Docs) — tried making the table
+   element itself the scroll container first (display:block + its own
+   overflow-x), but a `<table>` with a `width` attribute ignores CSS
+   width/max-width and keeps sizing itself off that attribute even once
+   display is overridden to block (a real, confirmed-live browser quirk, not
+   just theory — max-width:100% computed correctly but the table's own box
+   still rendered at its attribute width regardless). Scrolling the wrapper
+   div instead sidesteps that entirely: `.rich-content`'s own box is a plain
+   div with no such legacy-attribute quirks, so max-width/overflow behave
+   exactly as expected, and an oversized table (or any other wide content)
+   scrolls within it instead of overflowing the page. */
+.rich-content { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* PDP "Buy Now" attention-getter — a periodic little shake, not a
    continuous shimmy, so it stays noticeable without being annoying. */
@@ -44,3 +57,4 @@ body {
   94% { transform: rotate(-3deg); }
   97% { transform: rotate(2deg); }
 }
+
