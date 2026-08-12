@@ -63,6 +63,7 @@ export function useUpdateEmailTemplateSettings() {
       copyright?: string;
       logoHeight?: number;
       customCss?: string;
+      orderNotificationEmail?: string;
     }) => proxyFetch<EmailTemplateSettings>(`${BASE}/settings`, { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
   });

@@ -8152,6 +8152,7 @@ export interface components {
             copyright: string;
             logoHeight: number;
             customCss: string;
+            orderNotificationEmail: string;
         };
         UpdateEmailTemplateSettingsDto: {
             logoMediaId?: number | null;
@@ -8159,6 +8160,7 @@ export interface components {
             copyright?: string;
             logoHeight?: number;
             customCss?: string;
+            orderNotificationEmail?: string;
         };
         UpdateEmailTemplateDto: {
             subject?: string;

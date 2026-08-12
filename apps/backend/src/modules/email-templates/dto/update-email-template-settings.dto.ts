@@ -27,4 +27,9 @@ export class UpdateEmailTemplateSettingsDto {
   @IsOptional()
   @IsString()
   customCss?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  orderNotificationEmail?: string;
 }

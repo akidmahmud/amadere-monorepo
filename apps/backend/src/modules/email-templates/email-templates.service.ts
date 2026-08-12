@@ -18,6 +18,7 @@ interface EmailTemplateSettingsJson {
   copyright: string;
   logoHeight: number;
   customCss: string;
+  orderNotificationEmail: string;
 }
 
 const SETTINGS_DEFAULTS: EmailTemplateSettingsJson = {
@@ -26,6 +27,7 @@ const SETTINGS_DEFAULTS: EmailTemplateSettingsJson = {
   copyright: '',
   logoHeight: 40,
   customCss: '',
+  orderNotificationEmail: '',
 };
 
 @Injectable()

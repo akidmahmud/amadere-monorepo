@@ -45,6 +45,7 @@ export class EmailTemplateSettingsDto {
   @ApiProperty() copyright!: string;
   @ApiProperty() logoHeight!: number;
   @ApiProperty() customCss!: string;
+  @ApiProperty() orderNotificationEmail!: string;
 }
 
 export class EmailTemplatePreviewDto {

@@ -123,6 +123,7 @@ function SettingsTab() {
   const [copyright, setCopyright] = useState<string | undefined>(undefined);
   const [logoHeight, setLogoHeight] = useState<number | undefined>(undefined);
   const [customCss, setCustomCss] = useState<string | undefined>(undefined);
+  const [orderNotificationEmail, setOrderNotificationEmail] = useState<string | undefined>(undefined);
 
   if (isLoading || !data) return <Card><p className="text-sm text-muted">Loading…</p></Card>;
 
@@ -135,6 +136,7 @@ function SettingsTab() {
       copyright: copyright !== undefined ? copyright : undefined,
       logoHeight: logoHeight !== undefined ? logoHeight : undefined,
       customCss: customCss !== undefined ? customCss : undefined,
+      orderNotificationEmail: orderNotificationEmail !== undefined ? orderNotificationEmail : undefined,
     });
   }
 
@@ -161,6 +163,18 @@ function SettingsTab() {
           placeholder="e.g: example@domain.com"
           className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
         />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Order notification email</span>
+        <input
+          value={orderNotificationEmail !== undefined ? orderNotificationEmail : data.orderNotificationEmail}
+          onChange={(e) => setOrderNotificationEmail(e.target.value)}
+          placeholder="e.g: orders@yourstore.com"
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <span className="text-xs text-muted">
+          Who gets notified when a new order comes in. Falls back to Contact Email, then the SMTP sender address, if left blank.
+        </span>
       </label>
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-semibold text-secondary">Copyright</span>
