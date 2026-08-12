@@ -142,13 +142,13 @@ export function ProductMobileIsland({
     // Per the design spec: 16px side margins (mx-4) and 16px above
     // MobileStickyFooter (measured live: 59px tall, so bottom-[75px]).
     <div className="fixed inset-x-4 bottom-[75px] z-[900] md:hidden">
-      <div className="relative flex h-16 items-center gap-3 rounded-[20px] bg-[#2E7D32] px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+      <div className="relative flex h-16 items-center gap-3 rounded-[20px] bg-[#1F7A4E] px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
         {/* Decorative drag-handle bar, purely visual per the spec. */}
         <div className="absolute left-1/2 top-1.5 h-1 w-8 -translate-x-1/2 rounded-full bg-white/50" />
 
         {justAdded !== null ? (
           <>
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#2E7D32]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#1F7A4E]">
               {checkIcon}
             </div>
             <div className="min-w-0 flex-1 pt-1">
@@ -178,7 +178,7 @@ export function ProductMobileIsland({
                 )}
               </div>
               {outOfStock ? (
-                <span className="inline-block rounded-full bg-white px-2 py-0.5 font-ui text-[10px] font-bold text-[#2E7D32]">
+                <span className="inline-block rounded-full bg-white px-2 py-0.5 font-ui text-[10px] font-bold text-[#1F7A4E]">
                   স্টক নেই
                 </span>
               ) : product.hasVariants && packOptions.length > 0 && selectedVariantId ? (
@@ -218,11 +218,11 @@ export function ProductMobileIsland({
                 aria-label={outOfStock ? "Out of stock" : "Quick add to cart"}
                 disabled={addToCart.isPending || outOfStock}
                 onClick={handleQuickAdd}
-                className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#2E7D32] disabled:opacity-70"
+                className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#1F7A4E] disabled:opacity-70"
               >
                 {cartIcon}
                 {!outOfStock && cartItemCount > 0 && (
-                  <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#2E7D32] px-1 font-ui text-[10px] font-bold text-white ring-2 ring-white">
+                  <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#1F7A4E] px-1 font-ui text-[10px] font-bold text-white ring-2 ring-white">
                     {cartItemCount}
                   </span>
                 )}
