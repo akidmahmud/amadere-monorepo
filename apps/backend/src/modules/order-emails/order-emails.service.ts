@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@amader/db';
+import { Prisma, OrderStatus } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailSettingsService } from '../email-settings/email-settings.service';
@@ -47,9 +47,11 @@ export class OrderEmailsService {
       settings.orderNotificationEmail ||
       settings.contactEmail ||
       (await this.emailSettings.getConfig()).senderEmail;
-    if (!to) return this.logOutcome(orderId, null, { sent: false, reason: 'No order notification email configured' });
+    if (!to) {
+      return this.logOutcome(orderId, order.status, null, { sent: false, reason: 'No order notification email configured' });
+    }
 
-    return this.renderAndSend('admin_new_order', to, this.buildOrderVariables(order), orderId, null);
+    return this.renderAndSend('admin_new_order', to, this.buildOrderVariables(order), orderId, order.status, null);
   }
 
   async sendOrderConfirmed(orderId: number, adminUserId: number | null): Promise<OrderEmailResult> {
@@ -89,10 +91,10 @@ export class OrderEmailsService {
 
     const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
     const to = shipping?.email;
-    if (!to) return this.logOutcome(orderId, adminUserId, { sent: false, reason: 'No email on file' });
+    if (!to) return this.logOutcome(orderId, order.status, adminUserId, { sent: false, reason: 'No email on file' });
 
     const variables = { ...this.buildOrderVariables(order), ...extraVariables };
-    return this.renderAndSend(key, to, variables, orderId, adminUserId);
+    return this.renderAndSend(key, to, variables, orderId, order.status, adminUserId);
   }
 
   private async renderAndSend(
@@ -100,14 +102,29 @@ export class OrderEmailsService {
     to: string,
     variables: Record<string, string>,
     orderId: number,
+    status: OrderStatus,
     adminUserId: number | null,
   ): Promise<OrderEmailResult> {
-    const rendered = await this.emailTemplates.render(key, variables);
-    if (!rendered) return this.logOutcome(orderId, adminUserId, { sent: false, reason: 'Template is disabled' });
+    // render() looks up the EmailTemplate row via findOrThrow and can throw
+    // NotFoundException (e.g. a seeded key was renamed/deleted). This method
+    // must never throw — a thrown error here would otherwise propagate out of
+    // callers like CheckoutService, which await these sends with no
+    // surrounding try/catch, turning a missing email template into a failed
+    // response for an already-committed order. Treat a throw the same as any
+    // other send failure: log it and return { sent: false }.
+    let rendered: Awaited<ReturnType<EmailTemplatesService['render']>>;
+    try {
+      rendered = await this.emailTemplates.render(key, variables);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'Failed to render email template';
+      return this.logOutcome(orderId, status, adminUserId, { sent: false, reason });
+    }
+    if (!rendered) return this.logOutcome(orderId, status, adminUserId, { sent: false, reason: 'Template is disabled' });
 
     const result = await this.email.send(to, rendered.subject, this.stripHtml(rendered.html), { html: rendered.html });
     return this.logOutcome(
       orderId,
+      status,
       adminUserId,
       result.failed ? { sent: false, reason: result.error } : { sent: true },
     );
@@ -115,20 +132,18 @@ export class OrderEmailsService {
 
   private async logOutcome(
     orderId: number,
+    status: OrderStatus,
     adminUserId: number | null,
     result: OrderEmailResult,
   ): Promise<OrderEmailResult> {
-    const order = await this.prisma.client.order.findUnique({ where: { id: orderId }, select: { status: true } });
-    if (order) {
-      await this.prisma.client.orderStatusHistory.create({
-        data: {
-          orderId,
-          status: order.status,
-          note: result.sent ? 'Order email sent to customer' : `Order email not sent: ${result.reason}`,
-          adminUserId,
-        },
-      });
-    }
+    await this.prisma.client.orderStatusHistory.create({
+      data: {
+        orderId,
+        status,
+        note: result.sent ? 'Order email sent to customer' : `Order email not sent: ${result.reason}`,
+        adminUserId,
+      },
+    });
     return result;
   }
 
