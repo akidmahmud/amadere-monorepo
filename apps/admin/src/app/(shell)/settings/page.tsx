@@ -13,6 +13,7 @@ const SETTINGS_LINKS = [
   { href: "/settings/invoice-template", icon: "description", label: "Invoice Template", description: "Custom raw-HTML layout for generated invoices." },
   { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },
   { href: "/settings/email", icon: "mail", label: "Email Settings", description: "SMTP configuration used to send emails." },
+  { href: "/settings/email-templates", icon: "forward_to_inbox", label: "Email Templates", description: "Enable/disable and edit every transactional email template." },
 ];
 
 function SettingsLinksGrid() {
