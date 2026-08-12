@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { OrdersModule } from '../orders/orders.module';
+import { OrderEmailsModule } from '../order-emails/order-emails.module';
 import { AdminShipmentsController } from './admin-shipments.controller';
 import { AdminCourierSettingsController } from './admin-courier-settings.controller';
 import { CourierWebhooksController } from './courier-webhooks.controller';
@@ -11,7 +12,7 @@ import { PathaoCourierProvider } from './providers/pathao-courier.provider';
 import { RedxCourierProvider } from './providers/redx-courier.provider';
 
 @Module({
-  imports: [OrdersModule],
+  imports: [OrdersModule, OrderEmailsModule],
   controllers: [AdminShipmentsController, AdminCourierSettingsController, CourierWebhooksController],
   providers: [
     ShipmentsService,

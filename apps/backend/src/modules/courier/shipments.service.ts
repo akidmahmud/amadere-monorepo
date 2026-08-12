@@ -13,6 +13,7 @@ import {
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { OrdersService } from '../orders/orders.service';
+import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { lockOrderRow } from '../orders/order-totals.util';
 import { BalanceOutcome, CourierProvider } from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
@@ -78,6 +79,7 @@ export class ShipmentsService {
     private readonly charges: ShippingChargeCalculator,
     private readonly orders: OrdersService,
     private readonly courierSettings: CourierSettingsService,
+    private readonly orderEmails: OrderEmailsService,
     steadfast: SteadfastCourierProvider,
     pathao: PathaoCourierProvider,
     redx: RedxCourierProvider,
@@ -230,6 +232,7 @@ export class ShipmentsService {
           adminUserId,
         );
       }
+      await this.orderEmails.sendOrderShipped(order.id, shipment.trackingCode);
       return toShipmentDto(shipment);
     }
 
