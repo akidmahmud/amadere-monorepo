@@ -136,6 +136,190 @@ async function main() {
     });
   }
 
+  console.log('Seeding order-lifecycle email templates...');
+  const orderEmailTemplates: {
+    key: string;
+    title: string;
+    description: string;
+    subject: string;
+    bodyHtml: string;
+    variables: { key: string; description: string }[];
+  }[] = [
+    {
+      key: 'order_placed',
+      title: 'Order Placed',
+      description: 'Send email to customer when they place an order',
+      subject: 'Your order {{ order_id }} has been received',
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">Thanks for your order, {{ customer_name }}!</h2>
+<p style="margin:0 0 16px;line-height:1.6;">We've received order <strong>{{ order_id }}</strong> and will confirm it shortly.</p>
+<p style="margin:0 0 8px;font-weight:bold;color:#1e2b22;">Items</p>
+{{ product_list }}
+<p style="margin:16px 0 0;font-weight:bold;color:#1e2b22;">Total: {{ total }}</p>
+<p style="margin:16px 0 0;color:#64766b;font-size:13px;">Payment method: {{ payment_method }}</p>
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'order_note', description: "The customer's order note, if any" },
+        { key: 'payment_method', description: 'The payment method used' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+    {
+      key: 'admin_new_order',
+      title: 'New Order (Admin Notice)',
+      description: 'Notify staff by email when a new order is placed',
+      subject: 'New order {{ order_id }} received',
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">New order {{ order_id }}</h2>
+<p style="margin:0 0 4px;"><strong>Customer:</strong> {{ customer_name }} ({{ customer_phone }})</p>
+<p style="margin:0 0 16px;"><strong>Address:</strong> {{ customer_address }}</p>
+<p style="margin:0 0 8px;font-weight:bold;color:#1e2b22;">Items</p>
+{{ product_list }}
+<p style="margin:16px 0 0;font-weight:bold;color:#1e2b22;">Total: {{ total }}</p>
+<p style="margin:16px 0 0;color:#64766b;font-size:13px;">Payment method: {{ payment_method }}</p>
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'order_note', description: "The customer's order note, if any" },
+        { key: 'payment_method', description: 'The payment method used' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+    {
+      key: 'order_confirmed',
+      title: 'Order Confirmed',
+      description: 'Send to customer when their order is confirmed',
+      subject: 'Your order {{ order_id }} has been confirmed',
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">Your order is confirmed</h2>
+<p style="margin:0 0 16px;line-height:1.6;">Hi {{ customer_name }}, order <strong>{{ order_id }}</strong> has been confirmed and is being prepared.</p>
+{{ product_list }}
+<p style="margin:16px 0 0;font-weight:bold;color:#1e2b22;">Total: {{ total }}</p>
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'order_note', description: "The customer's order note, if any" },
+        { key: 'payment_method', description: 'The payment method used' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+    {
+      key: 'order_canceled',
+      title: 'Order Canceled',
+      description: 'Send to customer when their order is canceled',
+      subject: 'Your order {{ order_id }} has been canceled',
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">Your order has been canceled</h2>
+<p style="margin:0 0 16px;line-height:1.6;">Hi {{ customer_name }}, order <strong>{{ order_id }}</strong> has been canceled.</p>
+<p style="margin:0 0 16px;color:#64766b;"><strong>Reason:</strong> {{ cancellation_reason }}</p>
+{{ product_list }}
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'cancellation_reason', description: 'Why the order was canceled' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+    {
+      key: 'order_shipped',
+      title: 'Order Shipped',
+      description: 'Send to customer when their order is dispatched to a courier',
+      subject: 'Your order {{ order_id }} is on its way',
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">Your order is on its way!</h2>
+<p style="margin:0 0 16px;line-height:1.6;">Hi {{ customer_name }}, order <strong>{{ order_id }}</strong> has been handed to our courier.</p>
+<p style="margin:0 0 4px;"><strong>Tracking ID:</strong> {{ tracking_id }}</p>
+<p style="margin:0 0 16px;">Track it any time at <a href="{{ tracking_link }}">{{ tracking_link }}</a>.</p>
+{{ product_list }}
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'tracking_id', description: 'The courier tracking code' },
+        { key: 'tracking_link', description: 'Link to the storefront order-tracking page' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+    {
+      key: 'order_delivered',
+      title: 'Order Delivered',
+      description: 'Send to customer when their order is delivered',
+      subject: 'Your order {{ order_id }} has been delivered',
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">Your order has arrived!</h2>
+<p style="margin:0 0 16px;line-height:1.6;">Hi {{ customer_name }}, order <strong>{{ order_id }}</strong> has been delivered. We hope you love it!</p>
+{{ product_list }}
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+    {
+      key: 'payment_confirmed',
+      title: 'Payment Confirmed',
+      description: "Send to customer when their manual payment is verified",
+      subject: "We've received your payment for order {{ order_id }}",
+      bodyHtml: `{{ header }}
+<h2 style="margin:0 0 16px;color:#1e2b22;">Payment received</h2>
+<p style="margin:0 0 16px;line-height:1.6;">Hi {{ customer_name }}, we've confirmed your payment for order <strong>{{ order_id }}</strong>.</p>
+<p style="margin:0 0 16px;font-weight:bold;color:#1e2b22;">Amount: {{ total }}</p>
+{{ footer }}`,
+      variables: [
+        { key: 'order_id', description: 'The order number' },
+        { key: 'customer_name', description: "The customer's name" },
+        { key: 'customer_phone', description: "The customer's phone number" },
+        { key: 'customer_address', description: 'The shipping address' },
+        { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
+        { key: 'total', description: 'The order total, with currency' },
+      ],
+    },
+  ];
+  for (const t of orderEmailTemplates) {
+    await prisma.emailTemplate.upsert({
+      where: { key: t.key },
+      create: {
+        key: t.key,
+        group: 'ECOMMERCE',
+        title: t.title,
+        description: t.description,
+        subject: t.subject,
+        bodyHtml: t.bodyHtml,
+        defaultSubject: t.subject,
+        defaultBodyHtml: t.bodyHtml,
+        variables: t.variables,
+        canDisable: true,
+        enabled: true,
+      },
+      // Same "never overwrite a live edit on re-seed" rule as the sub-project 1 seed block.
+      update: {},
+    });
+  }
+
   console.log('Seeding Super Admin role...');
   const superAdminRole = await prisma.role.upsert({
     where: { name: 'Super Admin' },
