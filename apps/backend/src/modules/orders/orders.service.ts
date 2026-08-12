@@ -169,6 +169,14 @@ export class OrdersService {
       });
     });
 
+    if (dto.status === 'CONFIRMED') {
+      await this.orderEmails.sendOrderConfirmed(id, adminUserId);
+    } else if (dto.status === 'CANCELED') {
+      await this.orderEmails.sendOrderCanceled(id, adminUserId, dto.note);
+    } else if (dto.status === 'COMPLETED') {
+      await this.orderEmails.sendOrderDelivered(id, adminUserId);
+    }
+
     this.events.emit(ORDER_STATUS_CHANGED_EVENT, {
       orderId: id,
       from: order.status,
