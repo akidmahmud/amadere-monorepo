@@ -46,6 +46,7 @@ import { InvoiceSettingsModule } from './modules/invoice-settings/invoice-settin
 import { InvoiceTemplateSettingsModule } from './modules/invoice-template-settings/invoice-template-settings.module';
 import { ShippingLabelSettingsModule } from './modules/shipping-label-settings/shipping-label-settings.module';
 import { EmailSettingsModule } from './modules/email-settings/email-settings.module';
+import { EmailTemplatesModule } from './modules/email-templates/email-templates.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { SettingsModule } from './modules/settings/settings.module';
@@ -142,6 +143,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     InvoiceTemplateSettingsModule,
     ShippingLabelSettingsModule,
     EmailSettingsModule,
+    EmailTemplatesModule,
     AnalyticsModule,
     WhatsappModule,
     SettingsModule,
