@@ -14,7 +14,7 @@ import {
   formatMoney,
   useCartDrawerStore,
 } from "@amader/ui";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
 import { AddressFields } from "@/components/AddressFields";
 import { OrderConfirmation } from "@/components/OrderConfirmation";
@@ -451,8 +451,40 @@ export function CheckoutForm() {
                 control={control}
                 render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />}
               />
-              <span className="font-body text-xs text-ink">
-                I have read and agree to the Terms and Conditions, Privacy Policy &amp; Refund and Return Policy.
+              <span className="font-body text-xs text-ink leading-relaxed">
+                {locale === "BN" ? (
+                  <>
+                    আমি{" "}
+                    <Link href="/pages/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                      শর্তাবলী
+                    </Link>
+                    ,{" "}
+                    <Link href="/pages/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                      গোপনীয়তা নীতি
+                    </Link>{" "}
+                    এবং{" "}
+                    <Link href="/pages/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                      রিটার্ন ও রিফান্ড নীতি
+                    </Link>
+                    -র সাথে সম্মত।
+                  </>
+                ) : (
+                  <>
+                    I have read and agree to the{" "}
+                    <Link href="/pages/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                      Terms and Conditions
+                    </Link>
+                    ,{" "}
+                    <Link href="/pages/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                      Privacy Policy
+                    </Link>{" "}
+                    &amp;{" "}
+                    <Link href="/pages/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                      Refund and Return Policy
+                    </Link>
+                    .
+                  </>
+                )}
               </span>
             </div>
             {formState.errors.agreedToTerms && (

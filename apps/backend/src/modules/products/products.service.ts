@@ -710,6 +710,11 @@ export class ProductsService {
       deletedAt: null,
       status: 'PUBLISHED' as const,
     });
+
+    if (filters.sort === ProductSort.PRICE_ASC || filters.sort === ProductSort.PRICE_DESC) {
+      return this.publicListSortedByEffectivePrice(locale, page, pageSize, where, filters.sort);
+    }
+
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
         where,
@@ -725,6 +730,52 @@ export class ProductsService {
       page,
       pageSize,
     );
+  }
+
+  // `Product.price` is null for variant products (price lives on the
+  // default variant instead), so a plain DB-level `orderBy: { price }`
+  // clustered every variant product at one end of the list regardless of
+  // its real price instead of interleaving correctly with simple products —
+  // the low-to-high/high-to-low sort looked broken because it was sorting a
+  // column that isn't what the card actually displays. Resolves each
+  // product's effective price the same way the storefront card and the
+  // collection page's client-side sort already do (own price, else the
+  // default variant's, else the first variant's), sorts in JS, then
+  // paginates against that order.
+  private async publicListSortedByEffectivePrice(
+    locale: Locale,
+    page: number,
+    pageSize: number,
+    where: Prisma.ProductWhereInput,
+    sort: ProductSort.PRICE_ASC | ProductSort.PRICE_DESC,
+  ): Promise<PaginatedResult<PublicProductDto>> {
+    const all = await this.prisma.client.product.findMany({
+      where,
+      select: {
+        id: true,
+        price: true,
+        variants: { select: { price: true }, orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }], take: 1 },
+      },
+    });
+
+    const effectivePrice = (p: (typeof all)[number]) => Number(p.price ?? p.variants[0]?.price ?? 0);
+    const sorted = all.sort((a, b) => {
+      const diff = effectivePrice(a) - effectivePrice(b);
+      return sort === ProductSort.PRICE_DESC ? -diff : diff;
+    });
+
+    const total = sorted.length;
+    const start = (page - 1) * pageSize;
+    const pageIds = sorted.slice(start, start + pageSize).map((p) => p.id);
+
+    const items = await this.prisma.client.product.findMany({
+      where: { id: { in: pageIds } },
+      include: PRODUCT_INCLUDE,
+    });
+    const itemsById = new Map(items.map((p) => [p.id, p]));
+    const ordered = pageIds.map((id) => itemsById.get(id)).filter((p): p is (typeof items)[number] => p !== undefined);
+
+    return toPaginatedResult(ordered.map((p) => toPublicProductDto(p, locale)), total, page, pageSize);
   }
 
   async getManyByIds(

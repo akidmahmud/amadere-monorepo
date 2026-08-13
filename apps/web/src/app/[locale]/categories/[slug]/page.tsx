@@ -12,6 +12,7 @@ import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { toDisplayImageUrl } from "@/lib/media";
 import { ProductListing } from "@/components/ProductListing";
+import { CollectionDescription } from "@/components/CollectionDescription";
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
 export const revalidate = 3600;
@@ -119,16 +120,17 @@ export default async function CategoryPage({
 
         {category.description && (
           // Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text —
-          // was rendering as literal "<p><strong>..." markup on the storefront
-          // because {category.description} let React escape it instead of
-          // parsing it. Sanitized the same way blog post content already is.
-          // Left-aligned (not centered) — natural paragraph reading, not a
-          // centered block of short justified-looking lines.
-          // eslint-disable-next-line react/no-danger
-          <div
-            className="prose prose-sm mb-6 max-w-none text-left font-body text-sm text-muted [&_a]:text-green [&_a]:underline [&_p]:mb-2"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(category.description) }}
-          />
+          // sanitized the same way blog post content already is. Clamped to
+          // 4 lines with a "See more"/"See less" toggle (both mobile and
+          // desktop), same component/behavior as the collection page's own
+          // description.
+          <div className="mb-6">
+            <CollectionDescription
+              description={sanitizeHtml(category.description)}
+              html
+              className="prose prose-sm max-w-none text-left [&_a]:text-green [&_a]:underline [&_p]:mb-2"
+            />
+          </div>
         )}
       </div>
       <ProductListing
