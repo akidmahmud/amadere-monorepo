@@ -260,7 +260,20 @@ export default async function ProductPage({
             ~12-16px) — so this one needs its own mx-4/sm:mx-0 instead of
             relying on the shared wrapper's mobile px-0. */}
         <div className="mx-4 rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0">
-          <ProductTabs tabs={tabs} />
+          <ProductTabs
+            tabs={tabs}
+            extraRight={
+              product.brand ? (
+                <AppLink
+                  href={`/brands/${product.brand.slug}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-3.5 py-2 font-ui text-xs sm:text-sm font-medium text-[#222831] hover:border-green hover:text-green transition-colors shadow-2xs"
+                >
+                  <span className="text-muted">Brand:</span>
+                  <span className="font-bold text-green">{product.brand.name}</span>
+                </AppLink>
+              ) : undefined
+            }
+          />
         </div>
 
         {/* Standalone section, not a tab — per explicit request. Same card

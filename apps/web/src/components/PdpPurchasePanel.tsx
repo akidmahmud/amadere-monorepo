@@ -162,7 +162,7 @@ export function PdpPurchasePanel({
           (still here even when that section doesn't render, e.g. products
           with no variants). */}
       <div className="hidden md:block">
-        <WatchingNowBadge productId={product.id} />
+        <WatchingNowBadge productId={product.id} salesCount={(product as { salesCount?: number }).salesCount} />
       </div>
 
       {outOfStock ? (
@@ -262,16 +262,6 @@ export function PdpPurchasePanel({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        {product.brand && (
-          <a
-            href={`/brands/${product.brand.slug}`}
-            className="inline-flex items-center gap-2 rounded-md border border-line bg-white px-3.5 py-2 font-ui text-base text-[#222831]"
-          >
-            <span className="text-muted">Brand:</span> {product.brand.name}
-          </a>
-        )}
-      </div>
 
       {badges.length > 0 && (
         <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2.5">

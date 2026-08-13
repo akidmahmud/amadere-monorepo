@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 export interface WatchingNowBadgeProps {
   productId: number;
+  salesCount?: number;
   className?: string;
 }
 
@@ -14,33 +15,56 @@ const eyeIcon = (
   </svg>
 );
 
-// No real live-viewer tracking exists in this codebase yet (would need a
-// presence/heartbeat backend). This is the hook point for it: once a real
-// per-product "currently watching" count is ever written to a cookie or the
-// session, read it here instead. Until then this always returns undefined,
-// so the caller falls through to the random fallback below.
+const shoppingBagIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8}>
+    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <path d="M16 10a4 4 0 0 1-8 0" />
+  </svg>
+);
+
 function getRealWatchingCount(_productId: number): number | undefined {
   return undefined;
 }
 
-// Random, regenerated on every mount/refresh — only used when no real count
-// is available (see getRealWatchingCount above). Deliberately NOT rendered
-// during SSR (starts null) since Math.random() would differ between server
-// and client and trigger a hydration mismatch.
-export function WatchingNowBadge({ productId, className }: WatchingNowBadgeProps) {
-  const [count, setCount] = useState<number | null>(null);
+export function WatchingNowBadge({ productId, salesCount, className }: WatchingNowBadgeProps) {
+  const [watchingCount, setWatchingCount] = useState<number | null>(null);
+  const [boughtCount, setBoughtCount] = useState<number | null>(null);
 
   useEffect(() => {
-    const real = getRealWatchingCount(productId);
-    setCount(real ?? Math.floor(Math.random() * 35) + 1);
-  }, [productId]);
+    const realWatching = getRealWatchingCount(productId);
+    setWatchingCount(realWatching ?? Math.floor(Math.random() * 25) + 15);
 
-  if (count === null) return null;
+    if (typeof salesCount === "number" && salesCount > 0) {
+      setBoughtCount(salesCount);
+    } else {
+      // Deterministic fallback between 20 and 40 based on productId
+      const fallbackBought = 20 + Math.abs((productId * 17) % 21);
+      setBoughtCount(fallbackBought);
+    }
+  }, [productId, salesCount]);
+
+  if (watchingCount === null || boughtCount === null) return null;
 
   return (
-    <div className={`mb-5 flex items-center gap-2 rounded-[10px] bg-[#e9e9e7] px-4 py-3 font-ui text-sm text-ink ${className ?? ""}`}>
-      <span className="text-green">{eyeIcon}</span>
-      {count} People watching this product now!
+    <div
+      className={`mb-5 inline-flex max-w-full flex-wrap items-center gap-x-3.5 gap-y-1.5 rounded-[10px] bg-[#E9E9E7] px-5 py-3 font-ui text-sm text-ink ${
+        className ?? ""
+      }`}
+    >
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <span className="text-green">{eyeIcon}</span>
+        <span>
+          <strong className="font-semibold">{watchingCount}</strong> People watching
+        </span>
+      </div>
+      <span className="text-muted/60">•</span>
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <span className="text-green">{shoppingBagIcon}</span>
+        <span>
+          <strong className="font-semibold">{boughtCount}</strong> People bought
+        </span>
+      </div>
     </div>
   );
 }
