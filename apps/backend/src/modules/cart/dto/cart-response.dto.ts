@@ -75,6 +75,8 @@ export class CartCrossSellItemDto {
   imageUrl!: string | null;
 }
 
+import { PublicProductDto } from '../../products/dto/product-response.dto';
+
 export class CartViewDto extends PricingSummaryDto {
   id!: number | null;
   guestToken!: string | null;
@@ -82,4 +84,6 @@ export class CartViewDto extends PricingSummaryDto {
   couponCode!: string | null;
   items!: CartLineItemDto[];
   crossSell!: CartCrossSellItemDto[];
+  crossSellProducts!: PublicProductDto[];
+  frequentlyBoughtTogether!: PublicProductDto[];
 }

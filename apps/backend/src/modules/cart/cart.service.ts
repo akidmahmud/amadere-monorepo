@@ -13,6 +13,17 @@ import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { BuyNowDto } from './dto/buy-now.dto';
 import { CART_UPDATED_EVENT, CartUpdatedEvent } from './cart.events';
 import { CartViewDto, PricingSummaryDto } from './dto/cart-response.dto';
+import { PRODUCT_INCLUDE } from '../products/product-includes';
+import { toPublicProductDto } from '../products/products.mapper';
+
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 export interface CartIdentity {
   customerId?: number;
@@ -360,6 +371,11 @@ export class CartService {
       pricing.lines.map((l) => [`${l.productId}:${l.variantId ?? ''}`, l]),
     );
 
+    const recommendations = await this.getRecommendations(
+      cart.items.map((i) => i.productId),
+      locale,
+    );
+
     return {
       id: cart.id,
       guestToken: cart.guestToken,
@@ -396,10 +412,15 @@ export class CartService {
         };
       }),
       ...(await this.serializePricing(pricing, district)),
-      crossSell: await this.crossSell(
-        cart.items.map((i) => i.productId),
-        locale,
-      ),
+      crossSell: recommendations.crossSell.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        price: p.price,
+        imageUrl: p.media[0]?.url ?? null,
+      })),
+      crossSellProducts: recommendations.crossSell,
+      frequentlyBoughtTogether: recommendations.frequentlyBoughtTogether,
     };
   }
 
@@ -434,84 +455,107 @@ export class CartService {
     };
   }
 
-  private async crossSell(productIds: number[], locale: Locale) {
-    if (productIds.length === 0) return [];
-    const relations = await this.prisma.client.productRelation.findMany({
+  private async getRecommendations(productIds: number[], locale: Locale) {
+    if (productIds.length === 0) {
+      return { frequentlyBoughtTogether: [], crossSell: [] };
+    }
+
+    // 1. Frequently Bought Together
+    const fbtRelations = await this.prisma.client.productRelation.findMany({
       where: {
         fromProductId: { in: productIds },
-        type: 'CROSS_SELL',
-        toProduct: { deletedAt: null, status: 'PUBLISHED' },
+        type: 'FREQUENTLY_BOUGHT_TOGETHER',
+        toProduct: { deletedAt: null, status: 'PUBLISHED', id: { notIn: productIds } },
       },
       include: {
         toProduct: {
-          include: {
-            translations: true,
-            media: {
-              where: { isPrimary: true },
-              include: { media: true },
-              take: 1,
-            },
-          },
+          include: PRODUCT_INCLUDE,
         },
       },
-      take: 8,
     });
 
-    const seen = new Set<number>();
-    const mapped = relations
-      .filter((r) => !productIds.includes(r.toProductId))
-      .filter((r) =>
-        seen.has(r.toProductId) ? false : (seen.add(r.toProductId), true),
-      )
-      .map((r) => this.toCrossSellCard(r.toProduct, locale));
-    if (mapped.length > 0) return mapped;
+    const seenFbtIds = new Set<number>();
+    let fbtRaw = fbtRelations
+      .map((r) => r.toProduct)
+      .filter((p) => (seenFbtIds.has(p.id) ? false : (seenFbtIds.add(p.id), true)));
 
-    // No admin-configured CROSS_SELL relation for anything in the cart —
-    // rather than show nothing, fall back to other published products from
-    // the same category(ies) as what's already in the cart.
-    const categoryIds = (
-      await this.prisma.client.productCategory.findMany({
-        where: { productId: { in: productIds } },
-        select: { categoryId: true },
-      })
-    ).map((c) => c.categoryId);
-    if (categoryIds.length === 0) return [];
+    // Randomize order
+    fbtRaw = shuffleArray(fbtRaw);
 
-    const categoryProducts = await this.prisma.client.product.findMany({
+    // Fallback to random published products if fewer than 4 relations exist
+    if (fbtRaw.length < 4) {
+      const excludeIds = [...productIds, ...Array.from(seenFbtIds)];
+      const fallbackProducts = await this.prisma.client.product.findMany({
+        where: {
+          deletedAt: null,
+          status: 'PUBLISHED',
+          id: { notIn: excludeIds },
+        },
+        include: PRODUCT_INCLUDE,
+        take: 20,
+      });
+
+      const shuffledFallback = shuffleArray(fallbackProducts);
+      for (const p of shuffledFallback) {
+        if (fbtRaw.length >= 4) break;
+        if (!seenFbtIds.has(p.id)) {
+          seenFbtIds.add(p.id);
+          fbtRaw.push(p);
+        }
+      }
+    }
+
+    const fbtProductIds = Array.from(seenFbtIds);
+
+    // 2. Cross Sell
+    const excludeForCrossSell = [...productIds, ...fbtProductIds];
+    const crossSellRelations = await this.prisma.client.productRelation.findMany({
       where: {
-        deletedAt: null,
-        status: 'PUBLISHED',
-        id: { notIn: productIds },
-        categories: { some: { categoryId: { in: categoryIds } } },
+        fromProductId: { in: productIds },
+        type: 'CROSS_SELL',
+        toProduct: { deletedAt: null, status: 'PUBLISHED', id: { notIn: excludeForCrossSell } },
       },
       include: {
-        translations: true,
-        media: { where: { isPrimary: true }, include: { media: true }, take: 1 },
+        toProduct: {
+          include: PRODUCT_INCLUDE,
+        },
       },
-      distinct: ['id'],
-      take: 8,
     });
-    return categoryProducts.map((p) => this.toCrossSellCard(p, locale));
-  }
 
-  private toCrossSellCard(
-    product: {
-      id: number;
-      slug: string;
-      price: Prisma.Decimal | null;
-      translations: { locale: Locale; name: string }[];
-      media: { media: { url: string } }[];
-    },
-    locale: Locale,
-  ) {
-    const translation =
-      product.translations.find((t) => t.locale === locale) ?? product.translations[0];
+    const seenCsIds = new Set<number>();
+    let crossSellRaw = crossSellRelations
+      .map((r) => r.toProduct)
+      .filter((p) => (seenCsIds.has(p.id) ? false : (seenCsIds.add(p.id), true)));
+
+    // Randomize order
+    crossSellRaw = shuffleArray(crossSellRaw);
+
+    // Fallback to random published products if fewer than 4 relations exist
+    if (crossSellRaw.length < 4) {
+      const excludeAll = [...excludeForCrossSell, ...Array.from(seenCsIds)];
+      const fallbackProducts = await this.prisma.client.product.findMany({
+        where: {
+          deletedAt: null,
+          status: 'PUBLISHED',
+          id: { notIn: excludeAll },
+        },
+        include: PRODUCT_INCLUDE,
+        take: 20,
+      });
+
+      const shuffledFallback = shuffleArray(fallbackProducts);
+      for (const p of shuffledFallback) {
+        if (crossSellRaw.length >= 4) break;
+        if (!seenCsIds.has(p.id)) {
+          seenCsIds.add(p.id);
+          crossSellRaw.push(p);
+        }
+      }
+    }
+
     return {
-      id: product.id,
-      slug: product.slug,
-      name: translation?.name ?? product.slug,
-      price: product.price?.toString() ?? null,
-      imageUrl: product.media[0]?.media.url ?? null,
+      frequentlyBoughtTogether: fbtRaw.map((p) => toPublicProductDto(p, locale)),
+      crossSell: crossSellRaw.map((p) => toPublicProductDto(p, locale)),
     };
   }
 
@@ -533,6 +577,8 @@ export class CartService {
       shippingFee: '0',
       grandTotal: '0',
       crossSell: [],
+      crossSellProducts: [],
+      frequentlyBoughtTogether: [],
     };
   }
 

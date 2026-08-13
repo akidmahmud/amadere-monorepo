@@ -6795,6 +6795,8 @@ export interface components {
             couponCode: string | null;
             items: components["schemas"]["CartLineItemDto"][];
             crossSell: components["schemas"]["CartCrossSellItemDto"][];
+            crossSellProducts?: components["schemas"]["PublicProductDto"][];
+            frequentlyBoughtTogether?: components["schemas"]["PublicProductDto"][];
             subTotal: string;
             discounts: components["schemas"]["CartDiscountDto"][];
             totalDiscount: string;

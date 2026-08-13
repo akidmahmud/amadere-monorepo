@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, FormProvider, useForm, type FieldErrors } from "react-hook-form";
@@ -10,6 +10,7 @@ import {
   Checkbox,
   Input,
   PaymentMethodSelector,
+  SiteProductCard,
   UpsellProgressBar,
   formatMoney,
   useCartDrawerStore,
@@ -22,11 +23,12 @@ import { BlockPopup, type BlockPopupDetails } from "@/components/BlockPopup";
 import { CodOtpPopup } from "@/components/CodOtpPopup";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
+import { toProductCardData, type ProductCardData } from "@/lib/product-card-mapper";
 import { getDeviceId } from "@/lib/device-id";
 import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
-import { useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
+import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
@@ -52,6 +54,85 @@ function cleanAddress(address: components["schemas"]["CheckoutAddressDto"]) {
     landmark: address.landmark?.trim() || undefined,
     postCode: address.postCode?.trim() || undefined,
   };
+}
+
+function CheckoutFbtSection({
+  cards,
+  onAddItems,
+  isPending,
+}: {
+  cards: ProductCardData[];
+  onAddItems: (cardsToAdd: ProductCardData[]) => void;
+  isPending?: boolean;
+}) {
+  const [checked, setChecked] = useState<Set<number>>(() => new Set(cards.map((c) => c.productId)));
+
+  if (cards.length === 0) return null;
+
+  const checkedCards = cards.filter((c) => checked.has(c.productId));
+  const total = checkedCards.reduce((sum, c) => sum + Number(c.price), 0);
+  const saved = checkedCards.reduce(
+    (sum, c) => sum + (c.originalPrice ? Number(c.originalPrice) - Number(c.price) : 0),
+    0,
+  );
+
+  function toggle(id: number) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <section className="rounded-xl border border-line bg-white p-4 sm:p-5 shadow-sm">
+      <h2 className="mb-4 font-ui text-lg font-bold text-green md:text-xl">
+        অন্যরাও সাথে নিয়েছেন
+      </h2>
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+        {cards.map((card, index) => (
+          <Fragment key={card.productId}>
+            {index > 0 && (
+              <span className="hidden shrink-0 text-xl font-bold text-muted md:inline-block">+</span>
+            )}
+            <div className="relative flex w-full items-center gap-3 rounded-lg border border-green bg-[#F5F5F5] p-2.5 md:w-auto md:min-w-[200px] md:max-w-[320px] md:flex-1">
+              <AppLink href={card.href} className="block h-[60px] w-[60px] shrink-0 overflow-hidden rounded-md bg-white">
+                {card.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={card.imageUrl} alt={card.name} loading="lazy" className="h-full w-full object-contain" />
+                )}
+              </AppLink>
+              <div className="min-w-0 flex-1 pr-5">
+                <p className="truncate text-xs font-semibold text-ink" title={card.name}>{card.name}</p>
+                <p className="text-sm font-bold text-green">{formatMoney(card.price)}</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={checked.has(card.productId)}
+                onChange={() => toggle(card.productId)}
+                className="absolute bottom-2.5 right-2.5 h-4 w-4 cursor-pointer accent-green"
+              />
+            </div>
+          </Fragment>
+        ))}
+
+        <span className="hidden shrink-0 text-xl font-bold text-muted md:inline-block">=</span>
+        <div className="w-full rounded-lg bg-green px-4 py-3 text-center text-white md:w-auto md:shrink-0 md:min-w-[140px]">
+          <div className="text-lg font-bold md:text-base">{formatMoney(total.toFixed(2))}</div>
+          {saved > 0 && <div className="text-xs text-white/90">Save {formatMoney(saved.toFixed(2))}</div>}
+          <button
+            type="button"
+            disabled={isPending || checkedCards.length === 0}
+            onClick={() => onAddItems(checkedCards)}
+            className="mt-2 w-full rounded bg-white px-4 py-2 text-sm font-bold text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50 md:mt-1.5 md:py-1.5 md:text-xs"
+          >
+            {isPending ? "যোগ হচ্ছে…" : `কার্টে যোগ করুন (${checkedCards.length})`}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function CheckoutForm() {
@@ -128,8 +209,31 @@ export function CheckoutForm() {
   const voucherCheck = useGiftVoucherCheck(voucherInput);
   const applyCoupon = useApplyCoupon(locale);
   const removeCoupon = useRemoveCoupon(locale);
+  const addToCart = useAddToCart(locale);
+  const [isAddingId, setIsAddingId] = useState<number | null>(null);
   const { data: methodConfigs } = usePaymentMethodConfigs();
   const [copied, setCopied] = useState(false);
+
+  const frequentlyBoughtCards = ((cart?.frequentlyBoughtTogether ?? []) as components["schemas"]["PublicProductDto"][]).map(toProductCardData);
+  const crossSellCards = ((cart?.crossSellProducts ?? []) as components["schemas"]["PublicProductDto"][]).map(toProductCardData);
+
+  function handleCardAddToCart(productId: number, packValue?: string) {
+    setIsAddingId(productId);
+    addToCart.mutate(
+      { productId, variantId: packValue ? Number(packValue) : undefined },
+      { onSettled: () => setIsAddingId(null) },
+    );
+  }
+
+  async function handleAddMultipleCards(cardsToAdd: ProductCardData[]) {
+    for (const card of cardsToAdd) {
+      await addToCart.mutateAsync({
+        productId: card.productId,
+        variantId: card.defaultPackValue ? Number(card.defaultPackValue) : undefined,
+        quantity: 1,
+      });
+    }
+  }
 
   const manualOptions = (methodConfigs ?? [])
     .filter((c) => c.isActive)
@@ -499,6 +603,38 @@ export function CheckoutForm() {
               {placeOrder.isPending ? "Placing Order…" : "Place Order"}
             </Button>
           </div>
+
+          {/* Bottom Recommendations: Frequently Bought Together & Cross Sell */}
+          {hasItems && (frequentlyBoughtCards.length > 0 || crossSellCards.length > 0) && (
+            <div className="col-span-full mt-10 space-y-10 border-t border-line pt-10">
+              {frequentlyBoughtCards.length > 0 && (
+                <CheckoutFbtSection
+                  cards={frequentlyBoughtCards}
+                  onAddItems={handleAddMultipleCards}
+                  isPending={addToCart.isPending}
+                />
+              )}
+
+              {crossSellCards.length > 0 && (
+                <section>
+                  <h2 className="mb-4 font-ui text-lg font-bold text-green md:text-xl">
+                    সাথে নিতে পারেন
+                  </h2>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                    {crossSellCards.map((card) => (
+                      <SiteProductCard
+                        key={card.productId}
+                        {...card}
+                        linkComponent={AppLink}
+                        onAddToCart={(packValue) => handleCardAddToCart(card.productId, packValue)}
+                        addToCartPending={addToCart.isPending && isAddingId === card.productId}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
         </div>
       </form>
       {showOtpPopup && (
