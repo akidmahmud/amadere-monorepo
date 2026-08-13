@@ -56,6 +56,16 @@ function cleanAddress(address: components["schemas"]["CheckoutAddressDto"]) {
   };
 }
 
+function cn(...classes: (string | boolean | undefined | null)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
+
+function toBnNum(num: number | string): string {
+  const str = String(num);
+  const bnDigits = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+  return str.replace(/\d/g, (d) => bnDigits[Number(d)]);
+}
+
 function CheckoutFbtSection({
   cards,
   onAddItems,
@@ -71,10 +81,12 @@ function CheckoutFbtSection({
 
   const checkedCards = cards.filter((c) => checked.has(c.productId));
   const total = checkedCards.reduce((sum, c) => sum + Number(c.price), 0);
-  const saved = checkedCards.reduce(
-    (sum, c) => sum + (c.originalPrice ? Number(c.originalPrice) - Number(c.price) : 0),
+  const originalTotal = checkedCards.reduce(
+    (sum, c) => sum + (c.originalPrice ? Number(c.originalPrice) : Number(c.price)),
     0,
   );
+  const saved = Math.max(0, originalTotal - total);
+  const savingsPercent = originalTotal > 0 && saved > 0 ? Math.round((saved / originalTotal) * 100) : 0;
 
   function toggle(id: number) {
     setChecked((prev) => {
@@ -86,52 +98,150 @@ function CheckoutFbtSection({
   }
 
   return (
-    <section className="rounded-xl border border-line bg-white p-4 sm:p-5 shadow-sm">
-      <h2 className="mb-4 font-ui text-lg font-bold text-green md:text-xl">
-        অন্যরাও সাথে নিয়েছেন
-      </h2>
-      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-        {cards.map((card, index) => (
-          <Fragment key={card.productId}>
-            {index > 0 && (
-              <span className="hidden shrink-0 text-xl font-bold text-muted md:inline-block">+</span>
-            )}
-            <div className="relative flex w-full items-center gap-3 rounded-lg border border-green bg-[#F5F5F5] p-2.5 md:w-auto md:min-w-[200px] md:max-w-[320px] md:flex-1">
-              <AppLink href={card.href} className="block h-[60px] w-[60px] shrink-0 overflow-hidden rounded-md bg-white">
-                {card.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.imageUrl} alt={card.name} loading="lazy" className="h-full w-full object-contain" />
-                )}
-              </AppLink>
-              <div className="min-w-0 flex-1 pr-5">
-                <p className="truncate text-xs font-semibold text-ink" title={card.name}>{card.name}</p>
-                <p className="text-sm font-bold text-green">{formatMoney(card.price)}</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={checked.has(card.productId)}
-                onChange={() => toggle(card.productId)}
-                className="absolute bottom-2.5 right-2.5 h-4 w-4 cursor-pointer accent-green"
-              />
+    <div className="w-full">
+      {/* Outer Card Container */}
+      <section className="rounded-3xl border border-[#E5EFE7] bg-white p-5 sm:p-6 md:p-8 shadow-sm">
+        {/* Top Header Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            {/* Basket Circle Icon */}
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-[#E5F5EB] text-[#008400]">
+              <svg className="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
             </div>
-          </Fragment>
-        ))}
+            <div>
+              <h2 className="font-ui text-xl sm:text-2xl font-extrabold text-[#1E293B] leading-tight">
+                অন্যরাও সাথে নিয়েছেন
+              </h2>
+              <p className="mt-0.5 font-body text-xs sm:text-sm font-medium text-[#64748B]">
+                একসাথে নিলে বেশি সাশ্রয়! নিচের আইটেমগুলো একসাথে নিন এবং বাঁচান।
+              </p>
+            </div>
+          </div>
 
-        <span className="hidden shrink-0 text-xl font-bold text-muted md:inline-block">=</span>
-        <div className="w-full rounded-lg bg-green px-4 py-3 text-center text-white md:w-auto md:shrink-0 md:min-w-[140px]">
-          <div className="text-lg font-bold md:text-base">{formatMoney(total.toFixed(2))}</div>
-          {saved > 0 && <div className="text-xs text-white/90">Save {formatMoney(saved.toFixed(2))}</div>}
-          <button
-            type="button"
-            disabled={isPending || checkedCards.length === 0}
-            onClick={() => onAddItems(checkedCards)}
-            className="mt-2 w-full rounded bg-white px-4 py-2 text-sm font-bold text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50 md:mt-1.5 md:py-1.5 md:text-xs"
-          >
-            {isPending ? "যোগ হচ্ছে…" : `কার্টে যোগ করুন (${checkedCards.length})`}
-          </button>
+          {/* Savings Badge */}
+          <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-[#D5ECCF] bg-[#ECF7EE] px-4 py-2 text-sm font-bold text-[#008400] shrink-0">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            <span>সাশ্রয় করুন</span>
+          </div>
         </div>
-      </div>
-    </section>
+
+        {/* Product Cards Row / Grid */}
+        <div className="my-6 flex flex-col gap-4 md:flex-row md:items-center">
+          {cards.map((card, index) => {
+            const isChecked = checked.has(card.productId);
+            return (
+              <Fragment key={card.productId}>
+                {index > 0 && (
+                  <div className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#CDE5D4] bg-white text-[#008400] font-bold text-lg shadow-sm">
+                    +
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "relative flex flex-col justify-between rounded-2xl border-2 bg-white p-4 shadow-sm transition-all flex-1 min-w-0 min-h-[250px]",
+                    isChecked ? "border-[#008400] shadow-md bg-white" : "border-[#E5E5E5] hover:border-slate-300"
+                  )}
+                >
+                  {/* Product Image */}
+                  <AppLink href={card.href} className="block h-36 w-full shrink-0 overflow-hidden rounded-xl bg-[#F8F9FA] p-2 mb-3">
+                    {card.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={card.imageUrl} alt={card.name} loading="lazy" className="h-full w-full object-contain" />
+                    )}
+                  </AppLink>
+
+                  {/* Title */}
+                  <p className="font-ui text-xs sm:text-sm font-bold text-[#1E293B] line-clamp-2 mb-3 leading-snug flex-1" title={card.name}>
+                    {card.name}
+                  </p>
+
+                  {/* Bottom Price & Checkbox Row */}
+                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
+                    <span className="font-ui text-base font-extrabold text-[#008400]">
+                      ৳{toBnNum(formatMoney(card.price).replace("৳", "").trim())}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggle(card.productId)}
+                      aria-label={`Toggle ${card.name}`}
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-lg border-2 transition-all cursor-pointer",
+                        isChecked ? "border-[#008400] bg-[#008400] text-white shadow-xs" : "border-slate-300 bg-white text-transparent hover:border-slate-400"
+                      )}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </Fragment>
+            );
+          })}
+
+          <div className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#CDE5D4] bg-white text-[#008400] font-bold text-lg shadow-sm">
+            =
+          </div>
+        </div>
+
+        {/* Bottom Total Summary Box */}
+        <div className="rounded-2xl border border-[#E0EFE4] bg-[#F2FAF4] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5">
+          {/* Left Side (Total Price & Savings) */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-[#DFF3E6] text-[#008400]">
+              <svg className="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="font-ui text-2xl sm:text-3xl font-extrabold text-[#008400]">
+                  ৳{toBnNum(total.toFixed(0))}
+                </span>
+                {saved > 0 && (
+                  <span className="font-ui text-sm sm:text-base font-semibold text-[#94A3B8] line-through">
+                    ৳{toBnNum(originalTotal.toFixed(0))}
+                  </span>
+                )}
+              </div>
+              {saved > 0 && (
+                <div className="mt-1 inline-flex items-center rounded-full bg-[#008400] px-3 py-0.5 text-xs font-bold text-white shadow-2xs">
+                  Save ৳{toBnNum(saved.toFixed(0))} ({toBnNum(savingsPercent)}%)
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Side (CTA Button & Security Note) */}
+          <div className="flex flex-col items-center sm:items-end gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              disabled={isPending || checkedCards.length === 0}
+              onClick={() => onAddItems(checkedCards)}
+              className="flex w-full sm:w-auto min-w-[240px] items-center justify-center gap-3 rounded-xl bg-[#1B753C] hover:bg-[#155C2F] text-white px-6 py-3.5 font-bold text-base transition-all shadow-md active:scale-98 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>{isPending ? "যোগ হচ্ছে…" : `কার্টে যোগ করুন (${toBnNum(checkedCards.length)})`}</span>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#008400]">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>১০০% নিরাপদ পেমেন্ট</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -335,7 +445,15 @@ export function CheckoutForm() {
         <h1 className="mb-1 text-center font-ui text-2xl font-bold text-ink">Checkout</h1>
         <p className="mb-6 text-center font-body text-sm text-muted">Home &gt; Checkout</p>
 
-        {cart?.upsell && <UpsellProgressBar stages={cart.upsell.stages} nextStage={cart.upsell.nextStage} className="mb-6" />}
+        {cart?.upsell && (
+          <UpsellProgressBar
+            stages={cart.upsell.stages}
+            nextStage={cart.upsell.nextStage}
+            currentCount={cart.upsell.currentCount}
+            locale={locale}
+            className="mb-6"
+          />
+        )}
 
         {!hasItems && (
           <p className="mb-6 rounded-brand bg-beige p-4 text-center font-body text-sm text-ink">

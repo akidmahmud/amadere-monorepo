@@ -69,7 +69,14 @@ export function SiteCartDrawer() {
       {hasItems && cart && (
         <div>
           {cart.upsell && (
-            <UpsellProgressBar stages={cart.upsell.stages} nextStage={cart.upsell.nextStage} className="mb-3" />
+            <UpsellProgressBar
+              stages={cart.upsell.stages}
+              nextStage={cart.upsell.nextStage}
+              currentCount={cart.upsell.currentCount}
+              locale={locale}
+              variant="drawer"
+              className="mb-3"
+            />
           )}
 
           {cart.items.map((item) => (
