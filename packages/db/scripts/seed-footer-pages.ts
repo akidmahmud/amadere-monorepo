@@ -18,7 +18,7 @@ async function main() {
     throw new Error('DATABASE_URL is required in .env');
   }
 
-  const jsonPath = 'C:/Users/akidm/.gemini/antigravity-ide/brain/05a623d8-6789-4c14-b2f9-153ec3e4c43f/scratch/pages_seed_data.json';
+  const jsonPath = path.resolve(__dirname, 'data/pages_seed_data.json');
   if (!fs.existsSync(jsonPath)) {
     throw new Error(`Pages seed JSON not found at ${jsonPath}`);
   }

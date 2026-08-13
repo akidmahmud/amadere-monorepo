@@ -12,7 +12,8 @@
     "prisma:seed": "prisma db seed",
     "backup": "tsx scripts/backup.ts",
     "migrate:legacy": "tsx scripts/migrate.ts",
-    "backfill:r2-media": "tsx scripts/backfill-r2-media.ts"
+    "backfill:r2-media": "tsx scripts/backfill-r2-media.ts",
+    "seed:footer-pages": "tsx scripts/seed-footer-pages.ts"
   },
   "dependencies": {
     "@amader/shared": "workspace:*",
