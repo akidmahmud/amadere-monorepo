@@ -47,17 +47,23 @@ export function UpsellProgressBar({
   const totalStages = stages.length;
   const allUnlocked = unlockedCount === totalStages;
 
-  // Compute visual progress percentage
+  const currentStageIndex = unlockedCount;
+  const targetStage = stages[currentStageIndex] ?? stages[stages.length - 1];
+
+  // Compute exact visual progress percentage (0% when cart is empty)
   let pct = 0;
   if (allUnlocked) {
     pct = 100;
   } else if (nextStage) {
     const basePct = (unlockedCount / totalStages) * 100;
-    pct = Math.min(92, Math.max(18, basePct + 25));
-  }
+    const currentStageTarget = Number(targetStage?.triggerValue || 1);
+    const rem = Number(nextStage.remaining || 0);
 
-  const currentStageIndex = unlockedCount;
-  const targetStage = stages[currentStageIndex] ?? stages[stages.length - 1];
+    const stepProgress = Math.max(0, currentStageTarget - rem);
+    const stepPct = (stepProgress / Math.max(1, currentStageTarget)) * (100 / totalStages);
+
+    pct = Math.min(96, Math.max(0, basePct + stepPct));
+  }
 
   const remainingValue = nextStage?.remaining ?? "0";
   const remBn = toBnNum(remainingValue);
@@ -122,7 +128,7 @@ export function UpsellProgressBar({
             style={{ width: `${pct}%` }}
           />
 
-          {!allUnlocked && (
+          {!allUnlocked && pct > 0 && (
             <div
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#008400] text-white shadow-xs transition-all duration-500 z-10"
               style={{ left: `${pct}%` }}
@@ -274,7 +280,7 @@ export function UpsellProgressBar({
           style={{ width: `${pct}%` }}
         />
 
-        {!allUnlocked && (
+        {!allUnlocked && pct > 0 && (
           <div
             className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#008400] text-white shadow-md transition-all duration-500 z-10"
             style={{ left: `${pct}%` }}
