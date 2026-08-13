@@ -110,16 +110,29 @@ export function ProductListing({
           <FilterCheckboxGroup
             heading="Filter By Category"
             linkComponent={AppLink}
-            options={categories.map((category) => ({
-              label: category.name,
-              count: category.productCount,
-              active: filters.categoryIds.includes(category.id),
-              href: buildPlpHref(basePath, {
-                ...filters,
-                categoryIds: toggleId(filters.categoryIds, category.id),
-                page: 1,
-              }),
-            }))}
+            options={categories.map((category) => {
+              const isCategoryRoute = basePath.startsWith("/categories/");
+              const isActive = isCategoryRoute
+                ? basePath === `/categories/${category.slug}`
+                : filters.categoryIds.includes(category.id);
+
+              const targetHref = isCategoryRoute
+                ? isActive
+                  ? "/products"
+                  : `/categories/${category.slug}`
+                : buildPlpHref(basePath, {
+                    ...filters,
+                    categoryIds: toggleId(filters.categoryIds, category.id),
+                    page: 1,
+                  });
+
+              return {
+                label: category.name,
+                count: category.productCount,
+                active: isActive,
+                href: targetHref,
+              };
+            })}
           />,
           "category",
         )}

@@ -48,9 +48,9 @@ export function SiteFooter({ initialLogoUrl, initialNavMenu }: SiteFooterProps =
 
   const categoryLinks = [
     { label: isBn ? "আমাদের ছাতু" : "Amader Chatu", href: "/categories/amader-chatu" },
-    { label: isBn ? "আমাদের আটা" : "Amader Atta", href: "/categories/amader-atta" },
+    { label: isBn ? "আমাদের আটা" : "Amader Atta", href: "/categories/atta" },
     { label: isBn ? "আমাদের তেল" : "Amader Oil", href: "/categories/amader-oil" },
-    { label: isBn ? "আমাদের মধু" : "Amader Modhu", href: "/categories/amader-modhu" },
+    { label: isBn ? "আমাদের মধু" : "Amader Modhu", href: "/categories/khati-modhu" },
     { label: isBn ? "আমাদের হার্বস" : "Amader Herbs", href: "/categories/amader-herbs" },
     { label: isBn ? "আমাদের সুপার ফুড" : "Amader Super Food", href: "/categories/amader-super-food" },
     { label: isBn ? "আমাদের চাল" : "Amader Rice", href: "/categories/amader-rice" },

@@ -74,7 +74,7 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const [productsRes, tagsRes, brandsRes] = await Promise.all([
+  const [productsRes, tagsRes, brandsRes, categoriesRes] = await Promise.all([
     safeGet("/api/v1/products", {
       params: {
         query: {
@@ -96,6 +96,9 @@ export default async function CategoryPage({
     safeGet("/api/v1/brands", {
       params: { query: { locale: localeParam, pageSize: 50 } },
     }),
+    safeGet("/api/v1/categories", {
+      params: { query: { locale: localeParam, pageSize: 50 } },
+    }),
   ]);
 
   const products = (productsRes.data?.items ?? []).map(toProductCardData);
@@ -104,6 +107,8 @@ export default async function CategoryPage({
     []) as components["schemas"]["PublicTagDto"][];
   const brands = (brandsRes.data?.items ??
     []) as components["schemas"]["PublicBrandDto"][];
+  const categories = (categoriesRes.data?.items ??
+    []) as components["schemas"]["PublicCategoryDto"][];
 
   return (
     <main className="flex-1">
@@ -139,6 +144,7 @@ export default async function CategoryPage({
         total={total}
         pageSize={pageSize}
         products={products}
+        categories={categories}
         tags={tags}
         brands={brands}
         hidePlaceholderBanner
