@@ -4,7 +4,7 @@ A modern rebuild of the Amader™ organic-goods store (previously Botble/Laravel
 onto a Node/TypeScript stack: a NestJS API, a Next.js storefront, and a Next.js admin
 dashboard, sharing a Prisma/PostgreSQL data layer across a pnpm/Turborepo monorepo.
 
-Live Preview Link: https://app.amadere.com/
+Live Preview Link: https://amadere.com/
 
 ## Tech stack
 

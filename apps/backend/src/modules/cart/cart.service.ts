@@ -280,16 +280,20 @@ export class CartService {
 
     let variantId: number | null = null;
     if (product.hasVariants) {
-      if (!dto.variantId)
-        throw new BadRequestException('This product requires a variantId');
-      const variant = product.variants.find((v) => v.id === dto.variantId);
-      if (!variant)
-        throw new BadRequestException(
-          'Variant does not belong to this product',
-        );
+      const match = dto.variantId
+        ? product.variants.find((v) => v.id === dto.variantId)
+        : undefined;
+      const variant =
+        match ??
+        product.variants.find((v) => v.isDefault) ??
+        product.variants[0];
+
+      if (!variant) {
+        throw new BadRequestException('No active variants available for this product');
+      }
       variantId = variant.id;
-    } else if (dto.variantId) {
-      throw new BadRequestException('This product does not have variants');
+    } else {
+      variantId = null;
     }
 
     const quantity = dto.quantity ?? 1;

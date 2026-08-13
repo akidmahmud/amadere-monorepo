@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 
 const FALLBACK = "http://localhost:3001";
 
-// admin.<domain> -> app.<domain> — the only pattern this env actually uses
-// (admin.amadere.com / app.amadere.com). Anything unrecognized (localhost,
-// a preview deploy host, etc.) is left alone so this never guesses wrong;
-// it just falls through to the configured/localhost default below.
+// admin.<domain> -> <domain> (e.g. admin.amadere.com -> amadere.com).
+// Anything unrecognized (localhost, preview deploy host, etc.) is left alone so
+// this never guesses wrong; it falls through to process.env.NEXT_PUBLIC_STOREFRONT_URL
+// or the localhost fallback below.
 function deriveFromHostname(): string | null {
   if (typeof window === "undefined") return null;
   const { protocol, hostname } = window.location;
   if (!hostname.startsWith("admin.")) return null;
-  return `${protocol}//app.${hostname.slice("admin.".length)}`;
+  return `${protocol}//${hostname.slice("admin.".length)}`;
 }
 
 // NEXT_PUBLIC_STOREFRONT_URL is baked in at build time, so if it's missing
