@@ -17,6 +17,7 @@ const newOrderIcon = <Icon name="add_shopping_cart" />;
 const shipmentsIcon = <Icon name="local_shipping" />;
 const discountsIcon = <Icon name="local_offer" />;
 const giftVouchersIcon = <Icon name="card_giftcard" />;
+const upsellBarIcon = <Icon name="rocket_launch" />;
 const reviewsIcon = <Icon name="star" />;
 const blogIcon = <Icon name="article" />;
 const blogCategoriesIcon = <Icon name="topic" />;
@@ -88,6 +89,7 @@ export const adminNav: AppNavEntry[] = [
   { key: "homepage-sections", label: "Homepage Sections", href: "/homepage-sections", icon: homepageSectionsIcon, permission: "homepage_section.view" },
   { key: "promo-videos", label: "Promo Videos", href: "/promo-videos", icon: promoVideosIcon, permission: "promo_video.view" },
   { key: "discounts", label: "Discounts", href: "/discounts", icon: discountsIcon, permission: "discount.view" },
+  { key: "upsell-bar", label: "Upsell Bar", href: "/upsell-bar", icon: upsellBarIcon, permission: "upsell_bar.view" },
   { key: "gift-vouchers", label: "Gift Vouchers", href: "/gift-vouchers", icon: giftVouchersIcon, permission: "gift_voucher.view" },
   { key: "whatsapp", label: "WhatsApp", href: "/whatsapp", icon: whatsappIcon, permission: "whatsapp.view" },
   { key: "reviews", label: "Reviews", href: "/reviews", icon: reviewsIcon, permission: "review.view" },
