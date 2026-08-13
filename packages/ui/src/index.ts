@@ -50,7 +50,7 @@ export * from "./components/WatchingNowBadge";
 export * from "./components/PackSizeSelector";
 export * from "./components/ProductTabs";
 export * from "./components/CartLineItem";
-export * from "./components/FreeShippingLadder";
+export * from "./components/UpsellProgressBar";
 export * from "./components/CartCrossSellRow";
 export * from "./components/PaymentMethodSelector";
 export * from "./components/FaqAccordion";
