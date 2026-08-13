@@ -287,7 +287,8 @@ async function main() {
       bodyHtml: `{{ header }}
 <h2 style="margin:0 0 16px;color:#1e2b22;">Payment received</h2>
 <p style="margin:0 0 16px;line-height:1.6;">Hi {{ customer_name }}, we've confirmed your payment for order <strong>{{ order_id }}</strong>.</p>
-<p style="margin:0 0 16px;font-weight:bold;color:#1e2b22;">Amount: {{ total }}</p>
+<p style="margin:0 0 8px;font-weight:bold;color:#1e2b22;">Amount paid: {{ payment_amount }}</p>
+<p style="margin:0 0 16px;color:#64766b;">Order total: {{ total }}</p>
 {{ footer }}`,
       variables: [
         { key: 'order_id', description: 'The order number' },
@@ -295,7 +296,8 @@ async function main() {
         { key: 'customer_phone', description: "The customer's phone number" },
         { key: 'customer_address', description: 'The shipping address' },
         { key: 'product_list', description: 'The ordered items, pre-rendered as an HTML list' },
-        { key: 'total', description: 'The order total, with currency' },
+        { key: 'payment_amount', description: 'The amount actually paid in this payment, with currency (may be less than the order total for a partial/advance payment)' },
+        { key: 'total', description: "The order's overall total, with currency" },
       ],
     },
   ];

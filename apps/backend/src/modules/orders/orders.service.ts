@@ -172,7 +172,16 @@ export class OrdersService {
     if (dto.status === 'CONFIRMED') {
       await this.orderEmails.sendOrderConfirmed(id, adminUserId);
     } else if (dto.status === 'CANCELED') {
-      await this.orderEmails.sendOrderCanceled(id, adminUserId, dto.note);
+      // adminUserId is null exactly for system-triggered transitions (see
+      // this method's own doc-comment on the parameter) — e.g. a courier
+      // webhook auto-canceling an order writes a machine-generated,
+      // internal-shorthand note like "Auto-updated — STEADFAST reported
+      // cancelled" into dto.note. That must never be forwarded verbatim as
+      // the customer-facing cancellation reason. Only forward dto.note when
+      // a real admin (adminUserId set) typed it via the status-change
+      // dialog; system-triggered cancels fall back to OrderEmailsService's
+      // own 'Not specified' default.
+      await this.orderEmails.sendOrderCanceled(id, adminUserId, adminUserId !== null ? dto.note : undefined);
     } else if (dto.status === 'COMPLETED') {
       await this.orderEmails.sendOrderDelivered(id, adminUserId);
     }

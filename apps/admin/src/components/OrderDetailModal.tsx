@@ -520,7 +520,14 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
               <h3 className="mb-3 text-base font-semibold text-text">History</h3>
               <div className="flex flex-col gap-3">
                 {[...order.statusHistory].reverse().map((h, i) => {
-                  const isEmailEvent = h.note?.toLowerCase().includes("email confirmation");
+                  // Matches OrderEmailsService#logOutcome's note format —
+                  // "Order email (<template_key>) sent to customer" / "...
+                  // not sent: <reason>" — covering all 7 lifecycle events
+                  // with one stable substring (was "email confirmation",
+                  // which only matched the old hardcoded email's text and
+                  // silently stopped matching anything once logOutcome's
+                  // note format changed).
+                  const isEmailEvent = h.note?.toLowerCase().includes("order email");
                   const text = h.note ?? `Order status changed to ${statusByKey.get(String(h.status))?.labelEn ?? h.status}`;
                   return (
                     <div key={i} className="flex items-start gap-2.5">

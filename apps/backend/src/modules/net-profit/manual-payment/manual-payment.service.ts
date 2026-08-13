@@ -74,6 +74,11 @@ export class ManualPaymentService {
     if (!submission) throw new NotFoundException('Manual payment not found');
     if (submission.status !== 'SUBMITTED') throw new ConflictException('This submission has already been reviewed');
 
+    // Fetched once, up front, so both the payment_confirmed email below and
+    // the per-method order-status-after-verify block further down share the
+    // same read instead of each re-querying it.
+    const order = await this.prisma.client.order.findUnique({ where: { id: submission.orderId } });
+
     const row = await this.prisma.client.manualPayment.update({
       where: { id },
       data: { status: 'VERIFIED', verifiedBy: adminUserId },
@@ -90,7 +95,14 @@ export class ManualPaymentService {
       });
     }
     if (payment && payment.status === 'PENDING') {
-      await this.orderEmails.sendPaymentConfirmed(submission.orderId, adminUserId);
+      // The customer-supplied amount actually being verified here — not the
+      // order's full total — formatted the same way buildOrderVariables()
+      // formats `total` ("{currency} {value}").
+      await this.orderEmails.sendPaymentConfirmed(
+        submission.orderId,
+        adminUserId,
+        `${order?.currency ?? 'BDT'} ${submission.amount.toString()}`,
+      );
     }
 
     const advance = await this.advancePayment.get(submission.orderId);
@@ -107,7 +119,6 @@ export class ManualPaymentService {
       ? await this.prisma.client.paymentMethodConfig.findUnique({ where: { provider } })
       : null;
     if (config) {
-      const order = await this.prisma.client.order.findUnique({ where: { id: submission.orderId } });
       if (order && (order.status === 'PENDING' || order.status === 'HOLD')) {
         await this.prisma.client.order.update({
           where: { id: submission.orderId },

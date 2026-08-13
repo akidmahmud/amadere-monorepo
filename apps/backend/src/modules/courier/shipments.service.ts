@@ -232,7 +232,7 @@ export class ShipmentsService {
           adminUserId,
         );
       }
-      await this.orderEmails.sendOrderShipped(order.id, shipment.trackingCode);
+      await this.orderEmails.sendOrderShipped(order.id, shipment.trackingCode, adminUserId);
       return toShipmentDto(shipment);
     }
 
