@@ -272,7 +272,7 @@ export function Header({
           height-for-height swap would have made the logo taller than its
           own row and spill out past the header's top/bottom edges). */}
       <div className="md:hidden">
-        <div className="grid h-[104px] grid-cols-[44px_1fr_44px_44px] items-center px-4">
+        <div className="grid h-[84px] grid-cols-[44px_1fr_44px_44px] items-center px-4">
           <button
             type="button"
             aria-label={mobileMenuLabel}
@@ -286,7 +286,7 @@ export function Header({
           <Link href={brandHref} className="col-start-2 flex items-center justify-self-center ml-[44px]">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={brandMark} className="h-[88px] w-auto" style={logoStyle} />
+              <img src={logoUrl} alt={brandMark} className="h-[80px] w-auto" style={logoStyle} />
             ) : (
               <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
             )}
@@ -342,17 +342,9 @@ export function Header({
         )}
       </div>
 
-      {/* ===== Tablet/laptop/desktop (>=768px) — single row, spec 5.1 =====
-          Header height was originally 81/87/87 (tablet/laptop/desktop) with
-          a uniform 48px logo, both remeasured from ghorerbazar.com. Per
-          explicit request for a bigger logo, both are now a flat 136px
-          height / 120px logo across all three tiers instead — the previous
-          three-tier split doesn't matter as much once the logo itself is
-          this much bigger, and 136px is that 120px logo plus enough padding
-          to fit inside the row without spilling past its top/bottom edges
-          (a straight height-for-height swap would have overflowed it). */}
-      <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[136px] md:grid-cols-[auto_auto_1fr_auto] lg:gap-x-6 xl:gap-x-8">
-        <Link href={brandHref} className="flex h-[120px] shrink-0 items-center">
+      {/* ===== Tablet/laptop/desktop (>=768px) ===== */}
+      <div className="mx-auto hidden w-full max-w-[1440px] items-center px-6 md:grid md:h-[112px] md:grid-cols-[auto_auto_1fr_auto] md:gap-x-[28px] lg:gap-x-8 xl:gap-x-10">
+        <Link href={brandHref} className="flex h-[100px] shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={brandMark} className="h-full w-auto" style={logoStyle} />

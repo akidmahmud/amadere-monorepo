@@ -53,13 +53,20 @@ function useIsProductPage(): boolean {
   return parts[0] === "products" && parts.length === 2;
 }
 
+function useIsCheckoutPage(): boolean {
+  const pathname = usePathname();
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "checkout";
+}
+
 export function CartSummaryWidget() {
   const locale = toApiLocale(useLocale());
   const { data: cart } = useCartQuery(locale);
   const openCart = useCartDrawerStore((s) => s.open);
   const isBlogPost = useIsBlogPost();
   const isProductPage = useIsProductPage();
-  const hideOnMobile = isBlogPost || isProductPage;
+  const isCheckoutPage = useIsCheckoutPage();
+  const hideOnMobile = isBlogPost || isProductPage || isCheckoutPage;
 
   const itemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 

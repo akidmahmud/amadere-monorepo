@@ -13,7 +13,8 @@ export interface FooterProps {
   description: string;
   address: string;
   phone: string;
-  email: string;
+  email?: string;
+  workingHours?: string;
   facebookHref?: string;
   instagramHref?: string;
   youtubeHref?: string;
@@ -47,6 +48,12 @@ const mailIcon = (
     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </svg>
 );
+const clockIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-header-green">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
 const facebookIcon = (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
     <path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5h1.3V4.9c-.3 0-1.1-.1-2-.1-2 0-3.4 1.2-3.4 3.5V11H8.5v3H11v7Z" />
@@ -76,12 +83,6 @@ const appStoreIcon = (
   </svg>
 );
 
-// Pixel-matched to ghorerbazar.com's `footer.style-3`: a 2-column grid for
-// the four link columns on mobile (About spans both, matching the
-// reference's col-6 tiles), one unified row at lg (About wider + 4 link
-// columns), and a payment-banner + copyright bottom bar that stacks
-// (payment banner on top, centered) on mobile and sits side-by-side on
-// desktop — all measured directly against the reference.
 export function Footer({
   brandMark,
   logoUrl,
@@ -89,6 +90,7 @@ export function Footer({
   address,
   phone,
   email,
+  workingHours,
   facebookHref,
   instagramHref,
   youtubeHref,
@@ -104,8 +106,8 @@ export function Footer({
   return (
     <footer className="border-t border-header-line bg-white">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:gap-x-8">
-          <div className="col-span-2 lg:col-span-1">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:gap-x-8">
+          <div className="sm:col-span-2 lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -114,7 +116,7 @@ export function Footer({
                 <span className="font-bengali text-2xl font-bold text-header-green">{brandMark}</span>
               )}
             </Link>
-            <p className="max-w-[425px] font-header text-sm leading-[1.5] text-header-muted">{description}</p>
+            <p className="max-w-[425px] font-header text-sm leading-[1.6] text-header-muted">{description}</p>
             <ul className="mt-5 flex flex-col gap-2.5">
               <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                 {pinIcon}
@@ -124,10 +126,18 @@ export function Footer({
                 {phoneIcon}
                 {phone}
               </li>
-              <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
-                {mailIcon}
-                {email}
-              </li>
+              {email && (
+                <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
+                  {mailIcon}
+                  {email}
+                </li>
+              )}
+              {workingHours && (
+                <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
+                  {clockIcon}
+                  {workingHours}
+                </li>
+              )}
             </ul>
             <div className="mt-5 flex gap-2">
               {facebookHref && (

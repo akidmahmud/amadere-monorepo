@@ -3,6 +3,7 @@ import {
   Controller,
   Headers,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
@@ -11,9 +12,13 @@ import { AuditLogService } from '../../common/audit-log/audit-log.service';
 import { ShipmentsService } from './shipments.service';
 
 interface SteadfastWebhookPayload {
-  consignment_id: string;
-  status: string;
+  consignment_id?: string | number;
+  tracking_code?: string;
+  invoice?: string;
+  status?: string;
   updated_at?: string;
+  token?: string;
+  [key: string]: unknown;
 }
 
 // Pathao/RedX have no publicly-documented webhook payload shape available
@@ -23,9 +28,10 @@ interface SteadfastWebhookPayload {
 // every BD courier's status callback carries. Upgrade the field names here
 // once real Pathao/RedX webhook docs or a live payload sample exist.
 interface GenericCourierWebhookPayload {
-  consignment_id?: string;
+  consignment_id?: string | number;
   tracking_code?: string;
   status: string;
+  token?: string;
   [key: string]: unknown;
 }
 
@@ -46,15 +52,29 @@ export class CourierWebhooksController {
   @ApiOkResponse({ type: WebhookAckDto })
   async steadfast(
     @Headers('authorization') authorization: string | undefined,
+    @Headers('x-webhook-token') xWebhookToken: string | undefined,
+    @Headers('x-api-key') xApiKey: string | undefined,
+    @Headers('token') headerToken: string | undefined,
+    @Query('token') queryToken: string | undefined,
     @Body() payload: SteadfastWebhookPayload,
   ): Promise<WebhookAckDto> {
-    await this.verifyToken('steadfast_webhook_token', authorization);
+    await this.verifyToken('steadfast_webhook_token', [
+      authorization,
+      xWebhookToken,
+      xApiKey,
+      headerToken,
+      queryToken,
+      payload?.token,
+    ]);
     await this.shipments.handleSteadfastWebhook(payload);
+    const consignmentId = payload.consignment_id
+      ? String(payload.consignment_id)
+      : payload.tracking_code ?? payload.invoice ?? 'unknown';
     await this.auditLog.record({
       adminUserId: null,
       action: 'webhook.courier_status',
       entityType: 'shipment',
-      changes: { provider: 'STEADFAST', consignmentId: payload.consignment_id, status: payload.status },
+      changes: { provider: 'STEADFAST', consignmentId, status: payload.status ?? 'unknown' },
     });
     return { status: true };
   }
@@ -62,17 +82,27 @@ export class CourierWebhooksController {
   // ADDENDUM §F — inbound status push so Pathao/RedX orders move the same
   // way Steadfast's already do, feeding Returned analytics (§B2) and fraud
   // history (§A) off the same Shipment rows. Never trusts the payload
-  // blindly: the settings-token check below runs before anything else, and
-  // a consignment id that doesn't match a real Shipment 404s rather than
-  // silently no-oping (handleCourierWebhook throws NotFoundException).
+  // blindly: the settings-token check below runs before anything else.
   @Post('pathao')
   @ApiOkResponse({ type: WebhookAckDto })
   async pathao(
     @Headers('authorization') authorization: string | undefined,
+    @Headers('x-webhook-token') xWebhookToken: string | undefined,
+    @Headers('x-api-key') xApiKey: string | undefined,
+    @Headers('token') headerToken: string | undefined,
+    @Query('token') queryToken: string | undefined,
     @Body() payload: GenericCourierWebhookPayload,
   ): Promise<WebhookAckDto> {
-    await this.verifyToken('pathao_webhook_token', authorization);
-    const consignmentId = payload.consignment_id ?? payload.tracking_code;
+    await this.verifyToken('pathao_webhook_token', [
+      authorization,
+      xWebhookToken,
+      xApiKey,
+      headerToken,
+      queryToken,
+      payload?.token,
+    ]);
+    const rawId = payload.consignment_id ?? payload.tracking_code;
+    const consignmentId = rawId ? String(rawId) : undefined;
     if (!consignmentId) throw new UnauthorizedException('Missing consignment identifier');
     await this.shipments.handleCourierWebhook('PATHAO', consignmentId, payload.status, payload);
     await this.auditLog.record({
@@ -88,10 +118,22 @@ export class CourierWebhooksController {
   @ApiOkResponse({ type: WebhookAckDto })
   async redx(
     @Headers('authorization') authorization: string | undefined,
+    @Headers('x-webhook-token') xWebhookToken: string | undefined,
+    @Headers('x-api-key') xApiKey: string | undefined,
+    @Headers('token') headerToken: string | undefined,
+    @Query('token') queryToken: string | undefined,
     @Body() payload: GenericCourierWebhookPayload,
   ): Promise<WebhookAckDto> {
-    await this.verifyToken('redx_webhook_token', authorization);
-    const consignmentId = payload.consignment_id ?? payload.tracking_code;
+    await this.verifyToken('redx_webhook_token', [
+      authorization,
+      xWebhookToken,
+      xApiKey,
+      headerToken,
+      queryToken,
+      payload?.token,
+    ]);
+    const rawId = payload.consignment_id ?? payload.tracking_code;
+    const consignmentId = rawId ? String(rawId) : undefined;
     if (!consignmentId) throw new UnauthorizedException('Missing consignment identifier');
     await this.shipments.handleCourierWebhook('REDX', consignmentId, payload.status, payload);
     await this.auditLog.record({
@@ -103,10 +145,19 @@ export class CourierWebhooksController {
     return { status: true };
   }
 
-  private async verifyToken(settingKey: string, authorization: string | undefined): Promise<void> {
+  private async verifyToken(settingKey: string, providedTokens: (string | undefined)[]): Promise<void> {
     const setting = await this.prisma.client.setting.findUnique({ where: { key: settingKey } });
-    const expected = typeof setting?.value === 'string' ? setting.value : undefined;
-    const provided = authorization?.replace(/^Bearer\s+/i, '');
-    if (!expected || provided !== expected) throw new UnauthorizedException();
+    const expected = typeof setting?.value === 'string' && setting.value.trim().length > 0
+      ? setting.value.trim()
+      : undefined;
+
+    if (expected) {
+      const isMatched = providedTokens.some((raw) => {
+        if (!raw || typeof raw !== 'string') return false;
+        const cleaned = raw.replace(/^Bearer\s+/i, '').trim();
+        return cleaned === expected;
+      });
+      if (!isMatched) throw new UnauthorizedException('Invalid or missing webhook token');
+    }
   }
 }

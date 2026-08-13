@@ -2,11 +2,17 @@
 
 import { useLocale } from "next-intl";
 import { useCartDrawerStore, useMobileNavDrawerStore } from "@amader/ui";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { toApiLocale } from "@/lib/api-locale";
 import { useCartQuery } from "@/hooks/useCart";
 import { useMe } from "@/hooks/useAuth";
 import { useProductFloatingBarStore } from "./ProductFloatingBarContext";
+
+function useIsCheckoutPage(): boolean {
+  const pathname = usePathname();
+  const parts = pathname.split("/").filter(Boolean);
+  return parts[0] === "checkout";
+}
 
 const homeIcon = (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
@@ -101,6 +107,7 @@ function FooterItem({
 // replacing the old ProductMobileIsland floating pill).
 export function MobileStickyFooter() {
   const locale = useLocale();
+  const isCheckoutPage = useIsCheckoutPage();
   const { data: cart } = useCartQuery(toApiLocale(locale));
   const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const { data: me } = useMe();

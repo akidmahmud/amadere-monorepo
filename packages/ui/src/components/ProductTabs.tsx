@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 
 export interface ProductTab {
@@ -21,6 +21,75 @@ export interface ProductTab {
 export interface ProductTabsProps {
   tabs: ProductTab[];
   className?: string;
+}
+
+function ExpandableContent({ children, maxCollapsedHeight = 200 }: { children: ReactNode; maxCollapsedHeight?: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    const checkHeight = () => {
+      if (el.scrollHeight > maxCollapsedHeight + 20) {
+        setCanExpand(true);
+      } else {
+        setCanExpand(false);
+      }
+    };
+
+    checkHeight();
+    const timer = setTimeout(checkHeight, 100);
+    const observer = new ResizeObserver(checkHeight);
+    observer.observe(el);
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [maxCollapsedHeight, children]);
+
+  return (
+    <div>
+      <div
+        ref={contentRef}
+        className={cn(
+          "relative transition-[max-height] duration-300 ease-in-out",
+          canExpand && !isExpanded ? "overflow-hidden" : "",
+        )}
+        style={{ maxHeight: canExpand && !isExpanded ? `${maxCollapsedHeight}px` : "none" }}
+      >
+        {children}
+        {canExpand && !isExpanded && (
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
+        )}
+      </div>
+
+      {canExpand && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="inline-flex items-center gap-1.5 rounded border border-[#e5e7eb] bg-white px-3.5 py-1.5 font-ui text-xs font-bold text-green hover:border-green hover:bg-beige/40 transition-colors"
+          >
+            <span>{isExpanded ? "Show less" : "Show more"}</span>
+            <svg
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              className={cn("transition-transform duration-200", isExpanded ? "rotate-180" : "")}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ProductTabs({ tabs, className }: ProductTabsProps) {
@@ -58,7 +127,7 @@ export function ProductTabs({ tabs, className }: ProductTabsProps) {
         ))}
       </div>
       <div className="font-body text-sm leading-relaxed text-ink">
-        {activeTab.content}
+        <ExpandableContent key={activeTab.id}>{activeTab.content}</ExpandableContent>
       </div>
     </div>
   );

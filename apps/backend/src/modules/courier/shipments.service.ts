@@ -513,11 +513,15 @@ export class ShipmentsService {
   }
 
   async handleSteadfastWebhook(payload: {
-    consignment_id: string;
-    status: string;
+    consignment_id?: string | number;
+    tracking_code?: string;
+    invoice?: string;
+    status?: string;
     updated_at?: string;
   }) {
-    return this.handleCourierWebhook('STEADFAST', String(payload.consignment_id), payload.status, payload);
+    const rawId = payload.consignment_id ?? payload.tracking_code ?? payload.invoice;
+    if (!rawId || !payload.status) return;
+    return this.handleCourierWebhook('STEADFAST', String(rawId), payload.status, payload);
   }
 
   // ADDENDUM §F — generic inbound-webhook handler shared by Steadfast
@@ -533,10 +537,18 @@ export class ShipmentsService {
     rawPayload: unknown,
   ): Promise<void> {
     const shipment = await this.prisma.client.shipment.findFirst({
-      where: { provider, consignmentId },
+      where: {
+        provider,
+        OR: [
+          { consignmentId },
+          { trackingCode: consignmentId },
+          { order: { orderNumber: consignmentId } },
+        ],
+      },
     });
-    if (!shipment)
-      throw new NotFoundException('Shipment not found for this consignment');
+    if (!shipment) {
+      return;
+    }
 
     const status = mapRawStatus(rawStatus);
     await this.prisma.client.shipment.update({

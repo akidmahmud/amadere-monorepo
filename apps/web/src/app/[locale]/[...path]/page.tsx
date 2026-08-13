@@ -61,17 +61,19 @@ export default async function CatchAllPage({
   setRequestLocale(locale);
   const fullPath = `/${path.join("/")}`;
 
-  if (path.length === 1) {
-    const page = await getStaticPage(path[0], toApiLocale(locale));
+  const slug = path.length === 1 ? path[0] : path[0] === "pages" && path.length === 2 ? path[1] : null;
+
+  if (slug) {
+    const page = await getStaticPage(slug, toApiLocale(locale));
     if (page) {
       return (
         <main className="flex-1">
-          <div className="mx-auto max-w-3xl px-5 py-12">
-            <h1 className="mb-6 text-center font-serif text-3xl font-semibold text-ink">{page.title}</h1>
+          <div className="mx-auto max-w-4xl px-5 py-12">
+            <h1 className="mb-6 font-serif text-3xl font-bold text-ink">{page.title}</h1>
             {/* Admin-authored WYSIWYG HTML, not user-generated — still sanitized before render */}
             {/* eslint-disable-next-line react/no-danger */}
             <div
-              className="prose max-w-none font-body text-sm leading-relaxed text-ink [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-xl [&_h2]:font-semibold [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_a]:text-green [&_a]:underline"
+              className="prose max-w-none font-body text-sm leading-relaxed text-ink [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-green [&_a]:underline"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.content) }}
             />
           </div>

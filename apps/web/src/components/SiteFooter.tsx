@@ -22,64 +22,65 @@ export function SiteFooter({ initialLogoUrl, initialNavMenu }: SiteFooterProps =
   const { data: navMenu } = useNavMenu(toApiLocale(locale), initialNavMenu);
   const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
 
-  const shopByLinks = (navMenu ?? [])
-    .slice(0, 6)
-    .map((item) => ({ label: item.label, href: item.href }));
+  const isBn = locale.toUpperCase() === "BN";
+
+  const aboutLinks = [
+    { label: isBn ? "আমাদের™ সম্পর্কে" : "About Amader™", href: "/pages/about-us" },
+    { label: isBn ? "আমাদের™ ব্র্যান্ড" : "Amader™ Brand", href: "/pages/amader-brand" },
+    { label: isBn ? "যোগাযোগ" : "Contact Amader™", href: "/pages/contact" },
+    { label: isBn ? "আমাদের™ অঙ্গীকার" : "Amader™ Commitment", href: "/pages/amader-commitment" },
+    { label: isBn ? "কর্পোরেট সেলস" : "Corporate Sales", href: "/pages/corporate-sales" },
+    { label: isBn ? "আমাদের™ ভিশন ও মিশন" : "Amader™ Vision Mission", href: "/pages/vision-mission" },
+    { label: isBn ? "সচরাচর জিজ্ঞাসা" : "Frequently Asked Questions", href: "/pages/faq" },
+  ];
+
+  const policyLinks = [
+    { label: isBn ? "শর্তাবলী" : "Terms & Conditions", href: "/pages/terms-conditions" },
+    { label: isBn ? "গোপনীয়তা নীতি" : "Privacy Policies", href: "/pages/privacy-policy" },
+    { label: isBn ? "রিটার্ন ও এক্সচেঞ্জ" : "Returns & Exchanges", href: "/pages/refund-policy" },
+    { label: isBn ? "শিপিং ও ডেলিভারি" : "Shipping & Delivery", href: "/pages/shipping-delivery" },
+    { label: isBn ? "কর্মক্ষেত্রের নীতি" : "Workplace Policy", href: "/pages/workplace-policy" },
+    { label: isBn ? "স্বাস্থ্য ও নিরাপত্তা নীতি" : "Health & Safety Policy", href: "/pages/health-safety-policy" },
+    { label: isBn ? "হালাল ব্যবসায়িক অঙ্গীকার" : "Halal Business Commitment", href: "/pages/halal-commitment" },
+    { label: isBn ? "আমাদের অঙ্গীকার" : "Amader Commitment", href: "/pages/amader-commitment" },
+    { label: isBn ? "কুকি নীতি" : "Cookie Policy", href: "/pages/cookie-policy" },
+  ];
+
+  const categoryLinks = [
+    { label: isBn ? "আমাদের ছাতু" : "Amader Chatu", href: "/categories/amader-chatu" },
+    { label: isBn ? "আমাদের আটা" : "Amader Atta", href: "/categories/amader-atta" },
+    { label: isBn ? "আমাদের তেল" : "Amader Oil", href: "/categories/amader-oil" },
+    { label: isBn ? "আমাদের মধু" : "Amader Modhu", href: "/categories/amader-modhu" },
+    { label: isBn ? "আমাদের হার্বস" : "Amader Herbs", href: "/categories/amader-herbs" },
+    { label: isBn ? "আমাদের সুপার ফুড" : "Amader Super Food", href: "/categories/amader-super-food" },
+    { label: isBn ? "আমাদের চাল" : "Amader Rice", href: "/categories/amader-rice" },
+    { label: isBn ? "আমাদের মশলা" : "Amader Spices", href: "/categories/amader-spices" },
+  ];
+
+  const descriptionText =
+    "Amader™ (আমাদের™) কেবল একটি ফুড ব্র্যান্ড নয়, এটি বিশুদ্ধতা, বিশ্বাস এবং যত্নের প্রতিশ্রুতি। Amader™ নিশ্চিত করে প্রতিটি পণ্য ১০০% বিশুদ্ধ, ন্যাচারাল এবং স্বাস্থ্যকর। আমাদের লক্ষ্য মানুষকে প্রাচীন ন্যাচারাল খাঁটি, স্বাস্থ্যকর খাবারের সাথে পুনরায় সংযুক্ত করে এমন একটি ভবিষ্যত তৈরি করা যেখানে স্বাস্থ্য, স্বাদ এবং প্রকৃতি মিলেমিশে বাস করে ওষুধ ছাড়া।";
 
   return (
     <Footer
       brandMark="আমাদের"
       logoUrl={logoUrl}
-      description={t("description")}
-      address={t("address")}
-      phone={t("phone")}
-      email={t("email")}
-      facebookHref="#"
-      instagramHref="#"
-      youtubeHref="#"
+      description={descriptionText}
+      address="Address: Salna, Gazipur"
+      phone="Call Us: +8801615980394"
+      workingHours="Working Hours: 10am to 8pm"
+      facebookHref="https://www.facebook.com/amaderecommerce"
+      instagramHref="https://www.instagram.com/amaderebuy"
+      youtubeHref="https://www.youtube.com/@amadere"
       googlePlayHref="#"
       appStoreHref="#"
       appDownloadLabel={t("appDownloadLabel")}
       columns={[
-        {
-          heading: t("informationHeading"),
-          links: [
-            { label: t("aboutUs"), href: "#" },
-            { label: t("contactUs"), href: "#" },
-            { label: t("blog"), href: "/blog" },
-            { label: t("terms"), href: "#" },
-            { label: t("privacy"), href: "#" },
-            { label: t("careers"), href: "#" },
-          ],
-        },
-        { heading: t("shopByHeading"), links: shopByLinks },
-        {
-          heading: t("supportHeading"),
-          links: [
-            { label: t("supportCenter"), href: "#" },
-            { label: t("howToOrder"), href: "#" },
-            { label: t("orderTracking"), href: "/track" },
-            { label: t("payment"), href: "#" },
-            { label: t("shipping"), href: "#" },
-            { label: t("faq"), href: "#" },
-          ],
-        },
-        {
-          heading: t("consumerPolicyHeading"),
-          links: [
-            { label: t("happyReturn"), href: "#" },
-            { label: t("refundPolicy"), href: "#" },
-            { label: t("exchange"), href: "#" },
-            { label: t("cancellation"), href: "#" },
-            { label: t("preOrder"), href: "#" },
-          ],
-        },
+        { heading: isBn ? "আমাদের™ সম্পর্কে" : "About Amader™", links: aboutLinks },
+        { heading: isBn ? "আমাদের™ পলিসি" : "Amader™ Policy", links: policyLinks },
+        { heading: isBn ? "পণ্য বিভাগ" : "Product Categories", links: categoryLinks },
       ]}
       copyrightLabel={t("copyright", { year: new Date().getFullYear() })}
       payWithLabel={t("payWith")}
-      // Placeholder set of generic card/bank/mobile-wallet marks (no
-      // verification/certification badge baked in) — swap for Amader's own
-      // real payment-partner set later.
       paymentImageUrl="/images/payment-methods-placeholder.png"
       linkComponent={Link}
     />

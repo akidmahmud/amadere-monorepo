@@ -463,7 +463,7 @@ export function CheckoutForm() {
               <p className="mb-3 font-body text-sm text-red-600">{placeOrderErrorMessage}</p>
             )}
 
-            <Button type="submit" variant="gold" block disabled={!hasItems || placeOrder.isPending}>
+            <Button type="submit" variant="green" block disabled={!hasItems || placeOrder.isPending}>
               {placeOrder.isPending ? "Placing Order…" : "Place Order"}
             </Button>
           </div>
