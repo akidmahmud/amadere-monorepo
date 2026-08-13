@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Discount, Prisma } from '@amader/db';
+import { Discount, Prisma, UpsellStage } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { UpsellBarSettingsService } from '../upsell-bar/upsell-bar-settings.service';
 
 const Decimal = Prisma.Decimal;
 type DecimalValue = Prisma.Decimal;
@@ -14,10 +15,23 @@ export interface PricedLine {
 }
 
 export interface AppliedDiscount {
-  source: 'COUPON' | 'PROMOTION';
+  source: 'COUPON' | 'PROMOTION' | 'UPSELL';
   label: string;
   amount: DecimalValue;
   freeShipping?: boolean;
+}
+
+export interface UpsellStageProgress {
+  label: string;
+  triggerType: 'ITEM_COUNT' | 'ORDER_AMOUNT';
+  triggerValue: string;
+  unlocked: boolean;
+}
+
+export interface UpsellBarResult {
+  stages: UpsellStageProgress[];
+  currentCount: string;
+  nextStage: { label: string; triggerType: 'ITEM_COUNT' | 'ORDER_AMOUNT'; remaining: string } | null;
 }
 
 export interface PricingResult {
@@ -27,7 +41,7 @@ export interface PricingResult {
   totalDiscount: DecimalValue;
   total: DecimalValue;
   couponError: string | null;
-  freeShipping: { threshold: string; remaining: string } | null;
+  upsell: UpsellBarResult | null;
 }
 
 export interface CartLineInput {
@@ -52,7 +66,10 @@ function effectivePrice(
 
 @Injectable()
 export class PricingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly upsellSettings: UpsellBarSettingsService,
+  ) {}
 
   async price(
     lines: CartLineInput[],
@@ -83,6 +100,12 @@ export class PricingService {
     // PHASE 2 HOOK: reward-point redemption and referral-credit application
     // plug in here as additional AppliedDiscount entries.
 
+    const otherDiscountsTotal = discounts.reduce(
+      (sum, d) => sum.plus(d.amount),
+      new Decimal(0),
+    );
+    const upsell = await this.applyUpsellBar(pricedLines, subTotal, discounts, otherDiscountsTotal);
+
     const totalDiscount = discounts.reduce(
       (sum, d) => sum.plus(d.amount),
       new Decimal(0),
@@ -96,7 +119,7 @@ export class PricingService {
       totalDiscount,
       total,
       couponError,
-      freeShipping: await this.freeShippingLadder(total),
+      upsell,
     };
   }
 
@@ -293,22 +316,90 @@ export class PricingService {
     );
   }
 
-  // Free-shipping incentive ladder for the mini-cart ("spend X more for free
-  // delivery"). Threshold lives in the Setting store, not hardcoded.
-  private async freeShippingLadder(
-    total: DecimalValue,
-  ): Promise<{ threshold: string; remaining: string } | null> {
-    const setting = await this.prisma.client.setting.findUnique({
-      where: { key: 'free_shipping_threshold' },
+  // Upsell progress bar: highest enabled stage whose trigger is satisfied
+  // wins (ladder, not cumulative — see design spec's "Pricing engine"
+  // section). Its discount only counts if it beats the coupon/promotion
+  // total already computed into `discounts`/`otherDiscountsTotal` — the
+  // loser's entries are dropped from `discounts` (mutated in place; `price()`
+  // recomputes totalDiscount from it afterward). Free shipping from the
+  // matched stage always applies regardless of which side won the amount
+  // comparison.
+  private async applyUpsellBar(
+    lines: PricedLine[],
+    subTotal: DecimalValue,
+    discounts: AppliedDiscount[],
+    otherDiscountsTotal: DecimalValue,
+  ): Promise<UpsellBarResult | null> {
+    const settings = await this.upsellSettings.getSettings();
+    if (!settings.enabled) return null;
+
+    const stages = await this.prisma.client.upsellStage.findMany({
+      where: { enabled: true },
+      orderBy: { sortOrder: 'asc' },
     });
-    if (!setting) return null;
+    if (stages.length === 0) return null;
 
-    const raw = setting.value;
-    if (typeof raw !== 'number' && typeof raw !== 'string') return null;
-    const threshold = new Decimal(raw);
-    if (threshold.lessThanOrEqualTo(0)) return null;
+    const itemCount =
+      settings.countMode === 'DISTINCT_PRODUCTS'
+        ? new Set(lines.map((l) => l.productId)).size
+        : lines.reduce((sum, l) => sum + l.quantity, 0);
 
-    const remaining = Decimal.max(threshold.minus(total), new Decimal(0));
-    return { threshold: threshold.toString(), remaining: remaining.toString() };
+    const satisfied = (stage: UpsellStage) =>
+      stage.triggerType === 'ITEM_COUNT'
+        ? itemCount >= stage.triggerValue.toNumber()
+        : subTotal.greaterThanOrEqualTo(stage.triggerValue);
+
+    let matched: UpsellStage | null = null;
+    for (const stage of stages) {
+      if (satisfied(stage)) matched = stage;
+    }
+
+    if (matched) {
+      let stageAmount = new Decimal(0);
+      if (matched.discountPercent) {
+        stageAmount = subTotal
+          .times(matched.discountPercent)
+          .dividedBy(100)
+          .toDecimalPlaces(2, Decimal.ROUND_UP);
+      } else if (matched.discountFixedAmount) {
+        stageAmount = Decimal.min(matched.discountFixedAmount, subTotal);
+      }
+      if (settings.maxDiscountCap !== null) {
+        stageAmount = Decimal.min(stageAmount, new Decimal(settings.maxDiscountCap));
+      }
+
+      if (stageAmount.greaterThan(otherDiscountsTotal)) {
+        discounts.length = 0;
+        discounts.push({
+          source: 'UPSELL',
+          label: matched.label,
+          amount: stageAmount,
+          freeShipping: matched.freeShipping || undefined,
+        });
+      } else if (matched.freeShipping && !discounts.some((d) => d.freeShipping)) {
+        discounts.push({ source: 'UPSELL', label: matched.label, amount: new Decimal(0), freeShipping: true });
+      }
+    }
+
+    const nextStage = stages.find((s) => !satisfied(s));
+    return {
+      stages: stages.map((s) => ({
+        label: s.label,
+        triggerType: s.triggerType,
+        triggerValue: s.triggerValue.toString(),
+        unlocked: satisfied(s),
+      })),
+      currentCount: itemCount.toString(),
+      nextStage: nextStage
+        ? {
+            label: nextStage.label,
+            triggerType: nextStage.triggerType,
+            remaining:
+              nextStage.triggerType === 'ITEM_COUNT'
+                ? String(Math.max(0, nextStage.triggerValue.toNumber() - itemCount))
+                : Decimal.max(nextStage.triggerValue.minus(subTotal), new Decimal(0)).toString(),
+          }
+        : null,
+    };
   }
 }
