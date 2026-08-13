@@ -1,13 +1,21 @@
 export class CartDiscountDto {
-  source!: 'COUPON' | 'PROMOTION';
+  source!: 'COUPON' | 'PROMOTION' | 'UPSELL';
   label!: string;
   amount!: string;
   freeShipping!: boolean;
 }
 
-export class FreeShippingLadderDto {
-  threshold!: string;
-  remaining!: string;
+export class UpsellStageProgressDto {
+  label!: string;
+  triggerType!: 'ITEM_COUNT' | 'ORDER_AMOUNT';
+  triggerValue!: string;
+  unlocked!: boolean;
+}
+
+export class UpsellBarDto {
+  stages!: UpsellStageProgressDto[];
+  currentCount!: string;
+  nextStage!: { label: string; triggerType: 'ITEM_COUNT' | 'ORDER_AMOUNT'; remaining: string } | null;
 }
 
 export class PricingSummaryDto {
@@ -16,7 +24,7 @@ export class PricingSummaryDto {
   totalDiscount!: string;
   total!: string;
   couponError!: string | null;
-  freeShipping!: FreeShippingLadderDto | null;
+  upsell!: UpsellBarDto | null;
   // Real tax/COD-fee preview — same formula CheckoutService uses when the
   // order is actually placed (computeCheckoutFees), so this never drifts
   // from what the customer is really charged. codFee is always '0' unless
