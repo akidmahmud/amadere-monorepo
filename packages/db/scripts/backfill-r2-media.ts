@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import path from 'node:path';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { createPrismaClient } from '../src/index';
 
 config({ path: path.resolve(__dirname, '../../../.env') });
@@ -15,21 +15,19 @@ config({ path: path.resolve(__dirname, '../../../.env') });
 // the new real R2 URL. Idempotent-ish: re-running only touches rows that
 // still start with `legacy://` (already-migrated rows are left alone), so a
 // partial failure can just be re-run.
-//
-// Covers every place a legacy image reference can live, confirmed by a
-// full-database dump grep, not just the "obviously product-shaped" columns —
-// customer avatars and review photos are just as real as product images and
-// were missed on the first pass specifically because reviews.images is a
-// String[] array, not a plain string column like the other five.
 const LEGACY_ORIGIN = 'https://www.amadere.com/storage/';
 
 const STRING_COLUMNS: { table: string; column: string }[] = [
   { table: 'media', column: 'url' },
   { table: 'brands', column: 'logo_url' },
   { table: 'categories', column: 'image_url' },
+  { table: 'categories', column: 'banner_image_url' },
+  { table: 'categories', column: 'icon_url' },
   { table: 'blog_posts', column: 'image_url' },
   { table: 'seo_meta', column: 'og_image_url' },
   { table: 'customers', column: 'avatar_url' },
+  { table: 'admin_users', column: 'avatar_url' },
+  { table: 'attribute_values', column: 'image_url' },
 ];
 
 const ARRAY_COLUMNS: { table: string; column: string }[] = [{ table: 'reviews', column: 'images' }];
@@ -95,13 +93,25 @@ async function main() {
       if (i >= list.length) return;
       const legacyUrl = list[i];
       const relPath = legacyUrl.slice('legacy://'.length).replace(/^\.?\//, '');
+      const key = `legacy/${relPath}`;
       try {
+        // 1. Check if object already exists in R2 bucket via S3 SDK HeadObjectCommand
+        try {
+          await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+          const r2Url = `${publicBaseUrl}/${key}`;
+          urlMap.set(legacyUrl, r2Url);
+          console.log(`EXISTS ON R2 ${relPath}`);
+          continue;
+        } catch {
+          // Object not present in R2, proceed to download from legacy origin
+        }
+
+        // 2. Fetch from legacy origin
         const res = await fetch(LEGACY_ORIGIN + relPath);
         if (!res.ok) throw new Error(`fetch ${res.status}`);
         const body = Buffer.from(await res.arrayBuffer());
         const ext = relPath.split('.').pop()?.toLowerCase() ?? '';
         const contentType = CONTENT_TYPES[ext] ?? res.headers.get('content-type') ?? 'application/octet-stream';
-        const key = `legacy/${relPath}`;
 
         await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }));
         urlMap.set(legacyUrl, `${publicBaseUrl}/${key}`);
