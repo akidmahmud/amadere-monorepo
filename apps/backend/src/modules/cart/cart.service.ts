@@ -406,12 +406,19 @@ export class CartService {
     const { shippingFee } = computeCheckoutFees(pricing.discounts.some((d) => d.freeShipping), district);
     return {
       subTotal: pricing.subTotal.toString(),
-      discounts: pricing.discounts.map((d) => ({
-        source: d.source,
-        label: d.label,
-        amount: d.amount.toString(),
-        freeShipping: d.freeShipping ?? false,
-      })),
+      // Only entries that actually do something are shown. A coupon or
+      // promotion that lost the "bigger wins" comparison to an upsell stage
+      // stays in `pricing.discounts` zeroed (PricingService.applyUpsellBar
+      // keeps it so its freeShipping flag survives, see above), but a
+      // "-৳0" line in the customer's order summary is just noise.
+      discounts: pricing.discounts
+        .filter((d) => d.amount.greaterThan(0) || d.freeShipping === true)
+        .map((d) => ({
+          source: d.source,
+          label: d.label,
+          amount: d.amount.toString(),
+          freeShipping: d.freeShipping ?? false,
+        })),
       totalDiscount: pricing.totalDiscount.toString(),
       total: pricing.total.toString(),
       couponError: pricing.couponError,

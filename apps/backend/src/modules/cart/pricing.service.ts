@@ -320,10 +320,17 @@ export class PricingService {
   // wins (ladder, not cumulative — see design spec's "Pricing engine"
   // section). Its discount only counts if it beats the coupon/promotion
   // total already computed into `discounts`/`otherDiscountsTotal` — the
-  // loser's entries are dropped from `discounts` (mutated in place; `price()`
-  // recomputes totalDiscount from it afterward). Free shipping from the
-  // matched stage always applies regardless of which side won the amount
-  // comparison.
+  // losing side's entries are kept in `discounts` but zeroed to amount 0
+  // (mutated in place; `price()` recomputes totalDiscount from it
+  // afterward). They are deliberately NOT removed from the array: a
+  // FREE_SHIPPING coupon/promotion always computes amount 0
+  // (computeAmount), so it loses to any nonzero stage — dropping it would
+  // also drop its `freeShipping` flag, and checkout/cart derive the waived
+  // shipping fee from `discounts.some(d => d.freeShipping)`. Consumers that
+  // read a specific source out of `discounts` (e.g.
+  // AdminOrderCreationService's COUPON lookup) likewise still find their
+  // entry, at its real applied value of 0. Free shipping from the matched
+  // stage always applies regardless of which side won the amount comparison.
   private async applyUpsellBar(
     lines: PricedLine[],
     subTotal: DecimalValue,
@@ -356,12 +363,16 @@ export class PricingService {
 
     if (matched) {
       let stageAmount = new Decimal(0);
-      if (matched.discountPercent) {
+      // Explicit null tests, not truthiness: both columns are nullable
+      // Decimals, and a Prisma.Decimal of 0 is a truthy object — a stage
+      // saved with discountPercent 0 would otherwise take the percent
+      // branch and price at ৳0, silently ignoring its fixed amount.
+      if (matched.discountPercent != null) {
         stageAmount = subTotal
           .times(matched.discountPercent)
           .dividedBy(100)
           .toDecimalPlaces(2, Decimal.ROUND_UP);
-      } else if (matched.discountFixedAmount) {
+      } else if (matched.discountFixedAmount != null) {
         stageAmount = Decimal.min(matched.discountFixedAmount, subTotal);
       }
       if (settings.maxDiscountCap !== null) {
@@ -369,7 +380,7 @@ export class PricingService {
       }
 
       if (stageAmount.greaterThan(otherDiscountsTotal)) {
-        discounts.length = 0;
+        for (const d of discounts) d.amount = new Decimal(0);
         discounts.push({
           source: 'UPSELL',
           label: matched.label,

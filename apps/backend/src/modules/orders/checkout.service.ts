@@ -260,8 +260,15 @@ export class CheckoutService {
         },
       });
 
+      // A coupon that lost the "bigger wins" comparison to an upsell-bar
+      // stage is still present in `discounts`, zeroed to amount 0 (see
+      // PricingService.applyUpsellBar) — it contributed nothing to this
+      // order, so don't burn one of its limited uses. FREE_SHIPPING coupons
+      // legitimately compute amount 0 and are redeemed as before.
       const couponApplied = pricing.discounts.find(
-        (d) => d.source === 'COUPON',
+        (d) =>
+          d.source === 'COUPON' &&
+          (d.amount.greaterThan(0) || d.freeShipping === true),
       );
       if (couponApplied && cart.couponCode) {
         const discount = await tx.discount.findUnique({
