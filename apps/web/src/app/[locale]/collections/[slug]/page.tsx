@@ -120,10 +120,29 @@ export default async function CollectionPage({
     return true;
   });
 
-  const total = filteredProducts.length;
+  // filters.sort was parsed and forwarded to ProductListing/SortSelect (so
+  // the dropdown itself always looked right), but nothing ever reordered
+  // filteredProducts with it — every other PLP route hands `sort` straight
+  // to the backend's /api/v1/products call, which this route doesn't use.
+  // PRICE_ASC/PRICE_DESC are fully client-derivable from the same
+  // effectivePrice() the price filter already uses. NEWEST/BEST_SELLING
+  // aren't: PublicProductDto (this endpoint's response shape) carries
+  // neither createdAt nor viewCount, so there's nothing to sort by — those
+  // two fall back to the collection's own curated order (collection_products
+  // sortOrder), same as before this fix, rather than silently faking a
+  // "newest"/"best selling" order this page has no data to back up.
+  const sortedProducts =
+    filters.sort === "PRICE_ASC" || filters.sort === "PRICE_DESC"
+      ? [...filteredProducts].sort((a, b) => {
+          const diff = effectivePrice(a) - effectivePrice(b);
+          return filters.sort === "PRICE_DESC" ? -diff : diff;
+        })
+      : filteredProducts;
+
+  const total = sortedProducts.length;
   const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE;
   const start = (filters.page - 1) * pageSize;
-  const products = filteredProducts.slice(start, start + pageSize).map(toProductCardData);
+  const products = sortedProducts.slice(start, start + pageSize).map(toProductCardData);
 
   return (
     <main className="flex-1">
