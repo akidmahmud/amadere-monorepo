@@ -119,6 +119,37 @@ function AmountCell({ row, value, onChange }: { row: ShipmentQueueRow; value: st
   );
 }
 
+type SortField = "none" | "orderNumber" | "createdAt" | "status" | "deliveryStatus" | "totalAmount";
+type SortDirection = "asc" | "desc";
+
+const ORDER_STATUS_RANK: Record<string, number> = {
+  PENDING: 1,
+  CONFIRMED: 2,
+  PROCESSING: 3,
+  HOLD: 4,
+  PARTIALLY_RETURNED: 5,
+  COMPLETED: 6,
+  RETURNED: 7,
+  CANCELED: 8,
+};
+
+const DELIVERY_STATUS_RANK: Record<string, number> = {
+  UNSENT: 0,
+  PENDING: 1,
+  DISPATCHED: 2,
+  IN_TRANSIT: 3,
+  DELIVERED: 4,
+  PARTIALLY_DELIVERED: 5,
+  RETURNED: 6,
+  CANCELED: 7,
+  FAILED: 8,
+};
+
+function getDeliveryStatusKey(row: ShipmentQueueRow): string {
+  if (!row.shipment) return "UNSENT";
+  return (row.shipment.status as unknown as string) || "UNSENT";
+}
+
 export function DispatchQueueTable() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
@@ -129,10 +160,13 @@ export function DispatchQueueTable() {
   const [balanceProvider] = useState<ShipmentProvider>("STEADFAST");
   const [bulkProvider, setBulkProvider] = useState<ShipmentProvider>("STEADFAST");
   const [detailRow, setDetailRow] = useState<OrderDetailModalRow | null>(null);
-  // Single-row target xor "bulk" (current `selected` set) — one
-  // ConfirmDialog covers both the per-row trash icon and the toolbar's
-  // Delete button, same pattern as Order Manager's own delete flow.
   const [deleteTarget, setDeleteTarget] = useState<ShipmentQueueRow | "bulk" | null>(null);
+
+  // Status sorting and filtering state
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("ALL");
+  const [deliveryStatusFilter, setDeliveryStatusFilter] = useState<string>("ALL");
+  const [sortField, setSortField] = useState<SortField>("none");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const qc = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useShipmentQueue({ page, pageSize, search });
@@ -141,17 +175,64 @@ export function DispatchQueueTable() {
   const dispatchBulk = useDispatchBulkShipment();
   const track = useTrackShipment();
   const cancel = useCancelShipment();
-  // A dispatch-queue row IS an order — deleting one here means the exact
-  // same soft-delete Order Manager's own Delete does (moves it to this
-  // page's "Deleted Orders" tab, same underlying Order.deletedAt, nothing
-  // purged). Reuses that hook/endpoint rather than a second delete path.
   const bulkOrderAction = useBulkOrderAction();
 
-  const rows = data?.items ?? [];
+  const rawRows = data?.items ?? [];
   const total = data?.total ?? 0;
+
+  // Filter rows by selected statuses
+  const filteredRows = rawRows.filter((row) => {
+    if (orderStatusFilter !== "ALL" && (row.status as unknown as string) !== orderStatusFilter) {
+      return false;
+    }
+    if (deliveryStatusFilter !== "ALL") {
+      const delKey = getDeliveryStatusKey(row);
+      if (deliveryStatusFilter === "UNSENT" && row.shipment) return false;
+      if (deliveryStatusFilter !== "UNSENT" && delKey !== deliveryStatusFilter) return false;
+    }
+    return true;
+  });
+
+  // Sort rows based on selected field and direction
+  const rows = [...filteredRows].sort((a, b) => {
+    if (sortField === "none") return 0;
+
+    let comp = 0;
+    if (sortField === "status") {
+      const rankA = ORDER_STATUS_RANK[a.status as unknown as string] ?? 99;
+      const rankB = ORDER_STATUS_RANK[b.status as unknown as string] ?? 99;
+      comp = rankA - rankB;
+    } else if (sortField === "deliveryStatus") {
+      const rankA = DELIVERY_STATUS_RANK[getDeliveryStatusKey(a)] ?? 99;
+      const rankB = DELIVERY_STATUS_RANK[getDeliveryStatusKey(b)] ?? 99;
+      comp = rankA - rankB;
+    } else if (sortField === "orderNumber") {
+      comp = a.orderNumber.localeCompare(b.orderNumber);
+    } else if (sortField === "createdAt") {
+      comp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    } else if (sortField === "totalAmount") {
+      comp = Number(a.totalAmount) - Number(b.totalAmount);
+    }
+
+    return sortDirection === "asc" ? comp : -comp;
+  });
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortField("none");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }
 
   function toggleOne(id: number) {
     const next = new Set(selected);
@@ -201,7 +282,75 @@ export function DispatchQueueTable() {
   }
 
   return (
-    <div className="rounded-card border border-border bg-surface p-[18px_18px_14px] shadow-card">
+    <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-[18px_18px_14px] shadow-card">
+      {/* Top Bar: Prominent Search Bar & Status Indicators */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
+        {/* Prominent Search Bar */}
+        <div className="relative flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="Search by order #, phone, recipient name…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setSearch(searchInput);
+                setPage(1);
+              }
+            }}
+            className="h-10 w-full rounded-inner border border-border bg-surface pl-9 pr-8 text-xs text-text outline-none focus:border-brand-500 transition-colors"
+          />
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput("");
+                setSearch("");
+                setPage(1);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-text p-0.5"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Courier Balance & Reload Actions */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-10 items-center gap-1.5 rounded-inner border border-border px-3 text-xs font-bold text-text bg-surface-2">
+            <span className="text-muted">Steadfast Balance:</span>
+            {balance.isLoading ? (
+              <span>…</span>
+            ) : balance.data && !balance.data.unavailable ? (
+              <span className="text-success font-mono font-extrabold">৳{balance.data.balance}</span>
+            ) : (
+              <span className="text-muted">unavailable</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-10 rounded-inner border border-border px-3.5 text-xs font-bold text-text hover:bg-surface-2 transition-colors"
+          >
+            {isFetching ? "Reloading…" : "Reload"}
+          </button>
+        </div>
+      </div>
+
+      {/* Row 2: Sort, Filter & Bulk Actions Toolbar */}
       <div className="flex flex-wrap items-center gap-2.5">
         <select
           value={bulkProvider}
@@ -212,6 +361,63 @@ export function DispatchQueueTable() {
           <option value="PATHAO">Pathao</option>
           <option value="REDX">RedX</option>
         </select>
+
+        {/* Sort By Selector */}
+        <select
+          value={sortField !== "none" ? `${sortField}-${sortDirection}` : "none"}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "none") {
+              setSortField("none");
+            } else {
+              const [f, d] = val.split("-") as [SortField, SortDirection];
+              setSortField(f);
+              setSortDirection(d);
+            }
+          }}
+          className="h-[38px] rounded-inner border border-border bg-surface px-2.5 text-[0.75rem] font-bold text-brand-500 outline-none focus:border-brand-500"
+        >
+          <option value="none">Sort: Default (Newest)</option>
+          <option value="status-asc">Sort: Order Status (Pending → Canceled)</option>
+          <option value="status-desc">Sort: Order Status (Canceled → Pending)</option>
+          <option value="deliveryStatus-asc">Sort: Delivery Status (Unsent → Delivered)</option>
+          <option value="deliveryStatus-desc">Sort: Delivery Status (Delivered → Unsent)</option>
+          <option value="createdAt-asc">Sort: Date (Oldest First)</option>
+          <option value="createdAt-desc">Sort: Date (Newest First)</option>
+        </select>
+
+        {/* Order Status Filter */}
+        <select
+          value={orderStatusFilter}
+          onChange={(e) => setOrderStatusFilter(e.target.value)}
+          className="h-[38px] rounded-inner border border-border bg-surface px-2.5 text-[0.75rem] font-semibold text-secondary outline-none focus:border-brand-500"
+        >
+          <option value="ALL">All Order Statuses</option>
+          <option value="PENDING">Pending</option>
+          <option value="CONFIRMED">Confirmed</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="HOLD">Hold</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELED">Canceled</option>
+          <option value="RETURNED">Returned</option>
+        </select>
+
+        {/* Delivery Status Filter */}
+        <select
+          value={deliveryStatusFilter}
+          onChange={(e) => setDeliveryStatusFilter(e.target.value)}
+          className="h-[38px] rounded-inner border border-border bg-surface px-2.5 text-[0.75rem] font-semibold text-secondary outline-none focus:border-brand-500"
+        >
+          <option value="ALL">All Delivery Statuses</option>
+          <option value="UNSENT">Unsent (Not Dispatched)</option>
+          <option value="DISPATCHED">In Review (Dispatched)</option>
+          <option value="IN_TRANSIT">In Transit</option>
+          <option value="DELIVERED">Delivered</option>
+          <option value="RETURNED">Returned</option>
+          <option value="CANCELED">Canceled</option>
+          <option value="FAILED">Failed</option>
+        </select>
+
         <button
           type="button"
           disabled={selected.size === 0 || dispatchBulk.isPending}
@@ -244,41 +450,6 @@ export function DispatchQueueTable() {
         >
           Delete selected
         </button>
-
-        <input
-          type="text"
-          placeholder="Search order # or phone…"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setSearch(searchInput);
-              setPage(1);
-            }
-          }}
-          className="h-[38px] w-[220px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
-        />
-
-        <div className="ml-auto flex items-center gap-2.5">
-          <div className="flex h-[38px] items-center gap-1.5 rounded-inner border border-border px-3 text-[0.76rem] font-bold text-text">
-            <span className="text-muted">Steadfast balance:</span>
-            {balance.isLoading ? (
-              <span>…</span>
-            ) : balance.data && !balance.data.unavailable ? (
-              <span className="text-success">৳{balance.data.balance}</span>
-            ) : (
-              <span className="text-muted">unavailable</span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="h-[38px] rounded-inner border border-border px-3 text-[0.76rem] font-bold text-text hover:bg-surface-2"
-          >
-            {isFetching ? "Reloading…" : "Reload"}
-          </button>
-        </div>
       </div>
 
       <div className="mt-3 overflow-x-auto">
@@ -288,12 +459,47 @@ export function DispatchQueueTable() {
               <th className="w-[34px] rounded-l-[8px] bg-[#f7f9fc] px-2.5 py-[11px]">
                 <input type="checkbox" checked={rows.length > 0 && selected.size === rows.length} onChange={toggleAll} className="h-4 w-4 accent-brand-500" />
               </th>
-              {["Order", "Date", "Status", "Fraud Check", "Amount", "Send", "Print", "Consignment ID", "Delivery Status"].map((h) => (
-                <th key={h} className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">
-                  {h}
-                </th>
-              ))}
-              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Total</th>
+              <th
+                onClick={() => handleSort("orderNumber")}
+                className="cursor-pointer select-none whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary hover:text-brand-500 transition-colors"
+              >
+                Order {sortField === "orderNumber" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+              </th>
+              <th
+                onClick={() => handleSort("createdAt")}
+                className="cursor-pointer select-none whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary hover:text-brand-500 transition-colors"
+              >
+                Date {sortField === "createdAt" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+              </th>
+              <th
+                onClick={() => handleSort("status")}
+                className="cursor-pointer select-none whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary hover:text-brand-500 transition-colors"
+              >
+                <div className="inline-flex items-center gap-1">
+                  <span>Status</span>
+                  <span className="text-brand-500 font-extrabold">{sortField === "status" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}</span>
+                </div>
+              </th>
+              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Fraud Check</th>
+              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Amount</th>
+              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Send</th>
+              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Print</th>
+              <th className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Consignment ID</th>
+              <th
+                onClick={() => handleSort("deliveryStatus")}
+                className="cursor-pointer select-none whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary hover:text-brand-500 transition-colors"
+              >
+                <div className="inline-flex items-center gap-1">
+                  <span>Delivery Status</span>
+                  <span className="text-brand-500 font-extrabold">{sortField === "deliveryStatus" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}</span>
+                </div>
+              </th>
+              <th
+                onClick={() => handleSort("totalAmount")}
+                className="cursor-pointer select-none whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary hover:text-brand-500 transition-colors"
+              >
+                Total {sortField === "totalAmount" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+              </th>
               <th className="rounded-r-[8px] whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">Actions</th>
             </tr>
           </thead>
