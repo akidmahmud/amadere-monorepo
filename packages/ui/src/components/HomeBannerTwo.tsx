@@ -21,13 +21,15 @@ export interface HomeBannerTwoProps {
 // pagination sits in its own row below the image at every breakpoint,
 // matching the reference's swiper (organicindia.com), instead of overlaid
 // bottom-left on desktop.
-// Mobile box: went 4:3 -> 16:9 -> 3:2, still read as too short against the
-// reference (organicindia.com's mobile hero is close to square, ~1:1,
-// measured directly off their live site) — matched to that. A wide
-// desktop-style banner with no dedicated mobile crop will side-crop hard at
-// this ratio; a real per-slide mobile crop (HomeBannerTwoFields' "Mobile
-// image") avoids that trade-off entirely.
-const bannerAspect = "aspect-[2.94/1] max-md:aspect-[1/1]";
+// Mobile box paired with object-contain below (not object-cover) — per
+// explicit request, the whole banner shrinks to fit on mobile rather than
+// being edge-cropped. 2.6:1 (not 16:9) — close to this site's real banner
+// uploads (~2.35-2.94:1, measured off live slides), which keeps the
+// unavoidable object-contain letterbox gap small; 16:9 was tried first and
+// visibly gapped top/bottom against those wider images. A dedicated mobile
+// image (HomeBannerTwoFields' "Mobile image") can still be uploaded per
+// slide to fill the box edge-to-edge with no letterboxing at all.
+const bannerAspect = "aspect-[2.94/1] max-md:aspect-[2.6/1]";
 
 export function HomeBannerTwo({ slides, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HomeBannerTwoProps) {
   const [index, setIndex] = useState(0);
@@ -68,7 +70,7 @@ export function HomeBannerTwo({ slides, linkComponent: Link = DefaultLink, autop
             const img = (
               <picture>
                 {slide.mobileImageUrl && <source media="(max-width: 767px)" srcSet={slide.mobileImageUrl} />}
-                <img src={slide.imageUrl} alt="" className="h-full w-full object-cover" />
+                <img src={slide.imageUrl} alt="" className="h-full w-full object-cover max-md:object-contain" />
               </picture>
             );
             return (

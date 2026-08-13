@@ -79,6 +79,12 @@ export function ProductStripSection({
   const trackRef = useRef<HTMLDivElement>(null);
   const [pageCount, setPageCount] = useState(1);
   const [activePage, setActivePage] = useState(0);
+  // Paused while any interactive element inside a card (e.g. SiteProductCard's
+  // pack-size <select>) has focus — same mechanism as Carousel.tsx, but this
+  // component has its own independent autoplay loop rather than rendering
+  // through <Carousel>, so it needs its own copy. Picking a variant shouldn't
+  // have the strip advance out from under the shopper mid-selection.
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -119,7 +125,7 @@ export function ProductStripSection({
   // than the activePage state, so this doesn't need to re-subscribe on every
   // page change.
   useEffect(() => {
-    if (pageCount <= 1) return;
+    if (pageCount <= 1 || paused) return;
     const timer = setInterval(() => {
       const track = trackRef.current;
       if (!track) return;
@@ -128,7 +134,7 @@ export function ProductStripSection({
       else scrollByPage(1);
     }, 4500);
     return () => clearInterval(timer);
-  }, [pageCount]);
+  }, [pageCount, paused]);
 
   if (items.length === 0) return null;
 
@@ -163,6 +169,8 @@ export function ProductStripSection({
           <div
             ref={trackRef}
             onScroll={handleScroll}
+            onFocus={() => setPaused(true)}
+            onBlur={() => setPaused(false)}
             className="flex snap-x snap-mandatory gap-5 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {items.map((item) => (
