@@ -13,6 +13,12 @@ import {
 } from "@/hooks/useUpsellBar";
 
 const upsellIcon = <Icon name="rocket_launch" />;
+// PageHeader's default gradient relies on --wpfok-black/--wpfok-glow, which
+// are only defined inside .wpfok-scope (/net-profit routes). This page lives
+// outside that scope, so it needs the same explicit override every other
+// non-/net-profit settings page uses (see discounts/page.tsx,
+// settings/email-templates/page.tsx) to keep the hero visible/on-brand.
+const headerStyle = { background: "linear-gradient(135deg, #140A24 0%, #5F03AA 100%)" };
 
 function emptyStage(sortOrder: number): UpsellStageInput {
   return {
@@ -82,7 +88,12 @@ export default function UpsellBarPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader icon={upsellIcon} title="Upsell Bar" subtitle="Configure the gamified progress bar shown in the cart drawer and checkout." />
+      <PageHeader
+        icon={upsellIcon}
+        title="Upsell Bar"
+        subtitle="Configure the gamified progress bar shown in the cart drawer and checkout."
+        style={headerStyle}
+      />
 
       <SettingsCard icon={upsellIcon} title="Bar settings">
         <div className="flex flex-col gap-5">
