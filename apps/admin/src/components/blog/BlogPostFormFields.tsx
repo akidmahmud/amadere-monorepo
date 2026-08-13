@@ -89,25 +89,27 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
     props.setCategoryIds(props.categoryIds.includes(id) ? props.categoryIds.filter((x) => x !== id) : [...props.categoryIds, id]);
   }
 
+  const baseUrl = storefrontUrl.replace(/\/+$/, "");
+
   return (
-    <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[1fr_340px]">
-      <div className="flex flex-col gap-[18px]">
-        <div className="rounded-card border border-border bg-surface p-[18px]">
+    <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[minmax(0,1fr)_340px] min-w-0">
+      <div className="flex flex-col gap-[18px] min-w-0">
+        <div className="rounded-card border border-border bg-surface p-[18px] min-w-0 overflow-hidden">
           <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Post Content</h3>
 
-          <label className="mb-3.5 flex flex-col gap-1.5">
+          <label className="mb-3.5 flex flex-col gap-1.5 min-w-0">
             <span className="text-xs font-bold text-text">
               Title<span className="ml-0.5 text-danger">*</span>
             </span>
             <input required value={props.title} onChange={(e) => handleTitleChange(e.target.value)} className={inputClass} placeholder="e.g. Post title" />
           </label>
 
-          <label className="mb-3.5 flex flex-col gap-1.5">
+          <label className="mb-3.5 flex flex-col gap-1.5 min-w-0">
             <span className="text-xs font-bold text-text">
               Permalink<span className="ml-0.5 text-danger">*</span>
             </span>
-            <div className="flex h-10 items-center overflow-hidden rounded-sm border border-border bg-surface focus-within:border-brand-500">
-              <span className="select-none whitespace-nowrap pl-3 text-sm text-muted">{storefrontUrl}/blog/</span>
+            <div className="flex h-10 items-center overflow-hidden rounded-sm border border-border bg-surface focus-within:border-brand-500 min-w-0">
+              <span className="select-none whitespace-nowrap pl-3 text-sm text-muted shrink-0">{baseUrl}/blog/</span>
               <input
                 required
                 value={props.slug}
@@ -134,10 +136,10 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
               </button>
             </div>
             {props.slug && (
-              <span className="text-xs text-muted">
+              <span className="text-xs text-muted truncate max-w-full block">
                 Preview:{" "}
-                <a href={`${storefrontUrl}/blog/${props.slug}`} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">
-                  {storefrontUrl}/blog/{props.slug}
+                <a href={`${baseUrl}/blog/${props.slug}`} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline break-all">
+                  {baseUrl}/blog/{props.slug}
                 </a>
               </span>
             )}

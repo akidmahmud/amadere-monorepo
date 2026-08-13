@@ -128,7 +128,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   if (isLoading || !post) return <FormSkeleton />;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 min-w-0 max-w-full">
       {/* SeoMetaCard below renders its own <form> with its own Save button —
           nesting it inside this page's <form> is invalid HTML (and React
           warns/hydration-errors on it), so only the Detail tab's own fields
@@ -138,10 +138,10 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           e.preventDefault();
           handleSave(false);
         }}
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-4 min-w-0 max-w-full"
       >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           <Link href="/blog-posts" aria-label="Back to blog posts" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
               <line x1="19" y1="12" x2="5" y2="12" />
