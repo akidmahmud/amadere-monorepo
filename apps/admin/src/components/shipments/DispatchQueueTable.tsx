@@ -91,7 +91,7 @@ function FraudCheckCell({ phone }: { phone: string | null }) {
           }
         >
           {data.delivered}/{data.totalOrders} delivered
-          {data.successRate !== null ? ` (${data.successRate}%)` : ""}
+          {data.successRate !== null ? ` (${(data.successRate * 100).toFixed(2)}%)` : ""}
         </Pill>
       )}
     </div>

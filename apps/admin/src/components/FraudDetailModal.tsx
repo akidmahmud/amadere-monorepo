@@ -24,7 +24,7 @@ export function FraudDetailModal({ phone, onClose }: { phone: string; onClose: (
           <div className="flex items-center gap-3">
             <RiskBadge level={check.riskLevel as RiskBadgeLevel} />
             <span className="text-sm text-secondary">
-              {check.successRate !== null ? `${Math.round(check.successRate * 100)}% success rate` : "Not enough data"}
+              {check.successRate !== null ? `${(check.successRate * 100).toFixed(2)}% success rate` : "Not enough data"}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-3">
