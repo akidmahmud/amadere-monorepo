@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 export class CartDiscountDto {
   source!: 'COUPON' | 'PROMOTION' | 'UPSELL';
   label!: string;
@@ -7,15 +9,29 @@ export class CartDiscountDto {
 
 export class UpsellStageProgressDto {
   label!: string;
+
+  @ApiProperty({ enum: ['ITEM_COUNT', 'ORDER_AMOUNT'] })
   triggerType!: 'ITEM_COUNT' | 'ORDER_AMOUNT';
+
   triggerValue!: string;
   unlocked!: boolean;
+}
+
+export class UpsellNextStageDto {
+  label!: string;
+
+  @ApiProperty({ enum: ['ITEM_COUNT', 'ORDER_AMOUNT'] })
+  triggerType!: 'ITEM_COUNT' | 'ORDER_AMOUNT';
+
+  remaining!: string;
 }
 
 export class UpsellBarDto {
   stages!: UpsellStageProgressDto[];
   currentCount!: string;
-  nextStage!: { label: string; triggerType: 'ITEM_COUNT' | 'ORDER_AMOUNT'; remaining: string } | null;
+
+  @ApiProperty({ type: UpsellNextStageDto, nullable: true })
+  nextStage!: UpsellNextStageDto | null;
 }
 
 export class PricingSummaryDto {
