@@ -123,15 +123,22 @@ export default function UpsellBarPage() {
               className="h-10 w-40 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
             />
           </label>
-          <Button
-            type="button"
-            variant="primary"
-            className="self-start"
-            disabled={updateSettings.isPending}
-            onClick={() => updateSettings.mutate(settings)}
-          >
-            {updateSettings.isPending ? "Saving…" : "Save settings"}
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              className="self-start"
+              disabled={updateSettings.isPending}
+              onClick={() => updateSettings.mutate(settings)}
+            >
+              {updateSettings.isPending ? "Saving…" : "Save settings"}
+            </Button>
+            {updateSettings.isError && !updateSettings.isPending && (
+              <p className="text-xs text-danger">
+                {updateSettings.error instanceof Error ? updateSettings.error.message : "Couldn't save settings"}
+              </p>
+            )}
+          </div>
         </div>
       </SettingsCard>
 
@@ -222,13 +229,26 @@ export default function UpsellBarPage() {
               </div>
             </Card>
           ))}
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="ghost" disabled={stages.length >= 6} onClick={addStage}>
-              Add stage
-            </Button>
-            <Button type="button" variant="primary" disabled={replaceStages.isPending} onClick={() => replaceStages.mutate(stages)}>
-              {replaceStages.isPending ? "Saving…" : "Save stages"}
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="ghost" disabled={stages.length >= 6} onClick={addStage}>
+                Add stage
+              </Button>
+              <Button type="button" variant="primary" disabled={replaceStages.isPending} onClick={() => replaceStages.mutate(stages)}>
+                {replaceStages.isPending ? "Saving…" : "Save stages"}
+              </Button>
+            </div>
+            {/* The stages endpoint really does reject payloads (a stage can't
+                set both a percentage and a fixed discount, and must set at
+                least one of discount/free shipping — e.g. a freshly added
+                blank stage), so a failed save has to say so: without this the
+                button just flipped back to "Save stages" and the page kept
+                showing the unsaved, invalid state as if it had saved. */}
+            {replaceStages.isError && !replaceStages.isPending && (
+              <p className="text-xs text-danger">
+                {replaceStages.error instanceof Error ? replaceStages.error.message : "Couldn't save stages"}
+              </p>
+            )}
           </div>
         </div>
       </SettingsCard>
