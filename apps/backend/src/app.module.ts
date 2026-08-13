@@ -22,6 +22,7 @@ import { AttributesModule } from './modules/attributes/attributes.module';
 import { ProductsModule } from './modules/products/products.module';
 import { SearchModule } from './modules/search/search.module';
 import { DiscountsModule } from './modules/discounts/discounts.module';
+import { UpsellBarModule } from './modules/upsell-bar/upsell-bar.module';
 import { GiftVouchersModule } from './modules/gift-vouchers/gift-vouchers.module';
 import { CartModule } from './modules/cart/cart.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -119,6 +120,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     ProductsModule,
     SearchModule,
     DiscountsModule,
+    UpsellBarModule,
     GiftVouchersModule,
     CartModule,
     PaymentsModule,
