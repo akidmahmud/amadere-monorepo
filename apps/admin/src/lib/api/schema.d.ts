@@ -6770,20 +6770,23 @@ export interface components {
             amount: string;
             freeShipping: boolean;
         };
-        UpsellStageProgressDto: {
+        UpsellNextStageDto: {
+            /** @enum {string} */
+            triggerType: "ITEM_COUNT" | "ORDER_AMOUNT";
             label: string;
-            triggerType: Record<string, never>;
+            remaining: string;
+        };
+        UpsellStageProgressDto: {
+            /** @enum {string} */
+            triggerType: "ITEM_COUNT" | "ORDER_AMOUNT";
+            label: string;
             triggerValue: string;
             unlocked: boolean;
         };
         UpsellBarDto: {
+            nextStage: components["schemas"]["UpsellNextStageDto"] | null;
             stages: components["schemas"]["UpsellStageProgressDto"][];
             currentCount: string;
-            nextStage: {
-                label: string;
-                triggerType: Record<string, never>;
-                remaining: string;
-            };
         };
         CartViewDto: {
             id: number | null;
