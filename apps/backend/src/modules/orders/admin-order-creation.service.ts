@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { PricingService } from '../cart/pricing.service';
+import { AppliedDiscount, PricingService } from '../cart/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { PreviewCouponDto, PreviewCouponResultDto } from './dto/preview-coupon.dto';
@@ -45,8 +45,32 @@ export class AdminOrderCreationService {
     if (pricing.couponError) {
       return { amount: '0', error: pricing.couponError };
     }
-    const coupon = pricing.discounts.find((d) => d.source === 'COUPON');
-    return { amount: (coupon?.amount ?? new Decimal(0)).toString() };
+    // Same resolution create() uses, so the previewed figure is exactly
+    // what gets charged even when an upsell stage outvalues the coupon.
+    return { amount: this.resolveCartDiscount(pricing.discounts).appliedAmount.toString() };
+  }
+
+  // What this cart is actually entitled to off the top, for a staff-entered
+  // coupon code. PricingService.applyUpsellBar() applies whichever is bigger
+  // — the coupon/promotion side or the best-matched upsell-bar stage — never
+  // both, and zeroes the losing side's amount. So reading only the COUPON
+  // entry (as this service used to) hands the customer ৳0 whenever an upsell
+  // stage beat their coupon: the stage's discount is never substituted
+  // anywhere else, because manual-order totals are assembled from explicit
+  // line-item/discount fields rather than `pricing.totalDiscount`. Taking the
+  // max of the two restores the engine's "bigger wins" rule.
+  //
+  // PROMOTION entries stay deliberately ignored here (a staff-created order
+  // must never pick up a surprise discount the staff didn't ask for) — the
+  // UPSELL entry is only honoured because it exists *in place of* the coupon
+  // the staff did ask for.
+  private resolveCartDiscount(discounts: AppliedDiscount[]): {
+    couponAmount: Prisma.Decimal;
+    appliedAmount: Prisma.Decimal;
+  } {
+    const couponAmount = discounts.find((d) => d.source === 'COUPON')?.amount ?? new Decimal(0);
+    const upsellAmount = discounts.find((d) => d.source === 'UPSELL')?.amount ?? new Decimal(0);
+    return { couponAmount, appliedAmount: Decimal.max(couponAmount, upsellAmount) };
   }
 
   async create(dto: CreateManualOrderDto, adminId: number): Promise<OrderDto> {
@@ -99,11 +123,18 @@ export class AdminOrderCreationService {
 
     // Reuses the exact same coupon validation real checkout runs (expiry,
     // usage limits, min order amount, product/category scope) — only the
-    // COUPON entry from the result is used; any auto-applied
+    // COUPON entry (or the UPSELL stage that replaced it, see
+    // resolveCartDiscount) from the result is used; any auto-applied
     // BUNDLE/PROMOTION discounts it also computes are deliberately ignored
     // here so a staff-created order never picks up a surprise discount the
     // staff didn't ask for.
+    // `couponAmount` = what the coupon itself contributed (0 if an upsell
+    // stage outvalued it); `codeDiscount` = what actually comes off the
+    // order. Only the former decides whether the coupon code is recorded
+    // and redeemed, so a coupon that contributed nothing never gets one of
+    // its limited uses burned or shows up on the order as if it had paid off.
     let couponAmount = new Decimal(0);
+    let codeDiscount = new Decimal(0);
     if (dto.couponCode) {
       const pricing = await this.pricing.price(
         dto.items.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
@@ -112,13 +143,12 @@ export class AdminOrderCreationService {
       if (pricing.couponError) {
         throw new BadRequestException(pricing.couponError);
       }
-      const coupon = pricing.discounts.find((d) => d.source === 'COUPON');
-      couponAmount = coupon?.amount ?? new Decimal(0);
+      ({ couponAmount, appliedAmount: codeDiscount } = this.resolveCartDiscount(pricing.discounts));
     }
 
-    const discountAmount = lineDiscount.plus(explicitDiscount).plus(explicitPromotion).plus(couponAmount);
+    const discountAmount = lineDiscount.plus(explicitDiscount).plus(explicitPromotion).plus(codeDiscount);
     const preFeeTotal = Decimal.max(
-      lineItemsTotal.minus(explicitDiscount).minus(explicitPromotion).minus(couponAmount),
+      lineItemsTotal.minus(explicitDiscount).minus(explicitPromotion).minus(codeDiscount),
       new Decimal(0),
     );
     // No automatic COD fee here — per explicit request, the COD fee (like
