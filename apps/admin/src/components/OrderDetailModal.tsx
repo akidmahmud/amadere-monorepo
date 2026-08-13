@@ -528,6 +528,17 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   // silently stopped matching anything once logOutcome's
                   // note format changed).
                   const isEmailEvent = h.note?.toLowerCase().includes("order email");
+                  // The Resend button is wired to a single mutation
+                  // (useResendOrderConfirmation -> POST
+                  // /admin/orders/:id/resend-confirmation) which
+                  // unconditionally resends the order_placed email
+                  // regardless of which row's button was clicked. Until
+                  // there's a per-template resend endpoint, only show the
+                  // button on the one row it actually corresponds to —
+                  // otherwise clicking it on e.g. an order_shipped row would
+                  // silently resend the wrong ("your order was received")
+                  // email to the customer.
+                  const canResend = h.note?.toLowerCase().includes("(order_placed)");
                   const text = h.note ?? `Order status changed to ${statusByKey.get(String(h.status))?.labelEn ?? h.status}`;
                   return (
                     <div key={i} className="flex items-start gap-2.5">
@@ -538,7 +549,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                         </p>
                         <p className="text-xs" style={{ color: GREEN }}>{new Date(h.createdAt).toLocaleString()}</p>
                       </div>
-                      {isEmailEvent && (
+                      {canResend && (
                         <button type="button" disabled={resendConfirmation.isPending} onClick={() => resendConfirmation.mutate()} className={outlineBtn}>
                           {resendConfirmation.isPending ? "Sending…" : "Resend"}
                         </button>
