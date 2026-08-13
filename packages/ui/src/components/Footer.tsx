@@ -106,8 +106,8 @@ export function Footer({
   return (
     <footer className="border-t border-header-line bg-white">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <div className="grid grid-cols-1 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:gap-x-8">
-          <div className="sm:col-span-2 lg:col-span-1">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:gap-x-8">
+          <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
