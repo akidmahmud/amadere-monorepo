@@ -295,7 +295,11 @@ export function AppShell({
               <span className="max-[768px]:hidden">Clear cache</span>
             </button>
             <a
-              href={process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3001"}
+              href={
+                process.env.NEXT_PUBLIC_STOREFRONT_URL && !process.env.NEXT_PUBLIC_STOREFRONT_URL.includes("localhost")
+                  ? process.env.NEXT_PUBLIC_STOREFRONT_URL
+                  : "https://amadere.com/"
+              }
               target="_blank"
               rel="noreferrer"
               aria-label="Visit website"
