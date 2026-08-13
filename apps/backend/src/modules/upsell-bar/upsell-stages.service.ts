@@ -14,10 +14,15 @@ export class UpsellStagesService {
 
   async replace(stages: UpdateUpsellStagesDto['stages']) {
     for (const s of stages) {
-      if (s.discountPercent && s.discountFixedAmount) {
+      // Explicit null tests, not truthiness: 0 is a legal value for both
+      // @Min(0) fields, so `discountPercent: 0` still means "the percent
+      // field was set" — with truthiness, {discountPercent: 0,
+      // discountFixedAmount: 500} slipped past both checks and persisted a
+      // stage the pricing engine then had to disambiguate.
+      if (s.discountPercent != null && s.discountFixedAmount != null) {
         throw new BadRequestException(`Stage "${s.label}" cannot set both a percentage and a fixed discount`);
       }
-      if (!s.discountPercent && !s.discountFixedAmount && !s.freeShipping) {
+      if (s.discountPercent == null && s.discountFixedAmount == null && !s.freeShipping) {
         throw new BadRequestException(`Stage "${s.label}" must set a discount, free shipping, or both`);
       }
     }
