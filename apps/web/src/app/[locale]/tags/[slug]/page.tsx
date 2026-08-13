@@ -66,22 +66,34 @@ export default async function TagPage({
     notFound();
   }
 
-  const productsRes = await safeGet("/api/v1/products", {
-    params: {
-      query: {
-        locale: localeParam,
-        page: filters.page,
-        pageSize,
-        tagIds: [tag.id],
-        minPrice: filters.minPrice,
-        maxPrice: filters.maxPrice,
-        sort: filters.sort,
+  const [productsRes, categoriesRes, brandsRes] = await Promise.all([
+    safeGet("/api/v1/products", {
+      params: {
+        query: {
+          locale: localeParam,
+          page: filters.page,
+          pageSize,
+          tagIds: [tag.id],
+          categoryIds: filters.categoryIds,
+          brandId: filters.brandId,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          sort: filters.sort,
+        },
       },
-    },
-  });
+    }),
+    safeGet("/api/v1/categories", {
+      params: { query: { locale: localeParam, pageSize: 50 } },
+    }),
+    safeGet("/api/v1/brands", {
+      params: { query: { locale: localeParam, pageSize: 50 } },
+    }),
+  ]);
 
   const products = (productsRes.data?.items ?? []).map(toProductCardData);
   const total = productsRes.data?.total ?? 0;
+  const categories = (categoriesRes.data?.items ?? []) as components["schemas"]["PublicCategoryDto"][];
+  const brands = (brandsRes.data?.items ?? []) as components["schemas"]["PublicBrandDto"][];
 
   return (
     <main className="flex-1">
@@ -98,6 +110,8 @@ export default async function TagPage({
         pageSize={pageSize}
         products={products}
         tags={[]}
+        categories={categories}
+        brands={brands}
       />
     </main>
   );

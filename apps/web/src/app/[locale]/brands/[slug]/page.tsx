@@ -72,7 +72,7 @@ export default async function BrandPage({
     notFound();
   }
 
-  const [productsRes, tagsRes] = await Promise.all([
+  const [productsRes, tagsRes, categoriesRes] = await Promise.all([
     safeGet("/api/v1/products", {
       params: {
         query: {
@@ -80,6 +80,7 @@ export default async function BrandPage({
           page: filters.page,
           pageSize,
           brandId: brand.id,
+          categoryIds: filters.categoryIds,
           tagIds: filters.tagIds,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
@@ -90,11 +91,15 @@ export default async function BrandPage({
     safeGet("/api/v1/tags", {
       params: { query: { locale: localeParam, pageSize: 20 } },
     }),
+    safeGet("/api/v1/categories", {
+      params: { query: { locale: localeParam, pageSize: 50 } },
+    }),
   ]);
 
   const products = (productsRes.data?.items ?? []).map(toProductCardData);
   const total = productsRes.data?.total ?? 0;
   const tags = (tagsRes.data?.items ?? []) as components["schemas"]["PublicTagDto"][];
+  const categories = (categoriesRes.data?.items ?? []) as components["schemas"]["PublicCategoryDto"][];
 
   return (
     <main className="flex-1">
@@ -114,6 +119,7 @@ export default async function BrandPage({
         pageSize={pageSize}
         products={products}
         tags={tags}
+        categories={categories}
       />
     </main>
   );
