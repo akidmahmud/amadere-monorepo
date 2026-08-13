@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Locale, Prisma, SeoEntityType } from '@amader/db';
+import { ContentStatus, Locale, Prisma, SeoEntityType } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -38,6 +38,44 @@ import {
   buildProductJsonLd,
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
+
+export interface CsvImportResult {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { line: number; reason: string }[];
+}
+
+// Minimal hand-rolled parser, same shape as newsletter.service.ts's own —
+// this format (adminExportCsv's own header) has no embedded newlines to
+// justify a real CSV library (ponytail: ~25 lines beats a dependency).
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      fields.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current);
+  return fields;
+}
 
 @Injectable()
 export class ProductsService {
@@ -178,6 +216,112 @@ export class ProductsService {
       return `"${name}",${p.slug},${p.sku ?? ''},"${category}",${p.stock},${p.price ?? ''},${p.status},${p.createdAt.toISOString().slice(0, 10)}`;
     });
     return [header, ...lines].join('\n');
+  }
+
+  // Same column order adminExportCsv writes, so export -> edit -> re-import
+  // round-trips. Upserts by slug: existing slug updates stock/price/status/
+  // sku/category, new slug creates a plain (no-variant) product. Category is
+  // matched by exact name against *existing* categories only — never
+  // auto-created, to avoid silently growing the taxonomy from typos; an
+  // unmatched name still imports the row, just uncategorized, reported as a
+  // non-fatal error line.
+  async importCsv(csv: string): Promise<CsvImportResult> {
+    const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const result: CsvImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
+    if (lines.length === 0) return result;
+
+    const firstRow = parseCsvLine(lines[0]).map((f) => f.trim().toLowerCase());
+    const hasHeader = firstRow[0] === 'name';
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    const headerOffset = hasHeader ? 1 : 0;
+
+    for (let i = 0; i < dataLines.length; i++) {
+      const lineNumber = i + headerOffset + 1;
+      const [name, slug, sku, category, stockRaw, priceRaw, statusRaw] = parseCsvLine(dataLines[i]).map((f) => f.trim());
+
+      if (!name || !slug) {
+        result.errors.push({ line: lineNumber, reason: 'Missing Name or Slug' });
+        result.skipped++;
+        continue;
+      }
+
+      let stock: number | undefined;
+      if (stockRaw) {
+        stock = Number.parseInt(stockRaw, 10);
+        if (Number.isNaN(stock)) {
+          result.errors.push({ line: lineNumber, reason: `Invalid Stock "${stockRaw}"` });
+          result.skipped++;
+          continue;
+        }
+      }
+
+      let price: number | undefined;
+      if (priceRaw) {
+        price = Number.parseFloat(priceRaw);
+        if (Number.isNaN(price)) {
+          result.errors.push({ line: lineNumber, reason: `Invalid Price "${priceRaw}"` });
+          result.skipped++;
+          continue;
+        }
+      }
+
+      let status: ContentStatus | undefined;
+      if (statusRaw) {
+        const match = Object.values(ContentStatus).find((s) => s === statusRaw.toUpperCase());
+        if (!match) {
+          result.errors.push({ line: lineNumber, reason: `Invalid Status "${statusRaw}"` });
+          result.skipped++;
+          continue;
+        }
+        status = match;
+      }
+
+      let categoryId: number | undefined;
+      if (category) {
+        const match = await this.prisma.client.categoryTranslation.findFirst({
+          where: { name: { equals: category, mode: 'insensitive' } },
+        });
+        if (match) categoryId = match.categoryId;
+        else result.errors.push({ line: lineNumber, reason: `Category "${category}" not found — imported uncategorized` });
+      }
+
+      try {
+        const existing = await this.prisma.client.product.findFirst({ where: { slug } });
+        if (existing) {
+          if (categoryId !== undefined) {
+            await this.prisma.client.productCategory.deleteMany({ where: { productId: existing.id } });
+          }
+          await this.prisma.client.product.update({
+            where: { id: existing.id },
+            data: {
+              sku: sku || undefined,
+              stock,
+              price,
+              status,
+              categories: categoryId !== undefined ? { create: [{ categoryId }] } : undefined,
+            },
+          });
+          result.updated++;
+        } else {
+          await this.prisma.client.product.create({
+            data: {
+              slug,
+              sku: sku || undefined,
+              stock: stock ?? 0,
+              price,
+              status,
+              translations: { create: [{ locale: Locale.EN, name }] },
+              categories: categoryId !== undefined ? { create: [{ categoryId }] } : undefined,
+            },
+          });
+          result.created++;
+        }
+      } catch (e) {
+        result.errors.push({ line: lineNumber, reason: e instanceof Error ? e.message : 'Unknown error' });
+        result.skipped++;
+      }
+    }
+    return result;
   }
 
   private buildAdminWhere(filters: AdminProductQueryDto) {

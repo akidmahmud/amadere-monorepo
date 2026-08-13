@@ -3,9 +3,11 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/useCategories";
 import { useDeleteProduct, type AdminProduct, type AdminProductFilters } from "@/hooks/useProducts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ProductImportModal } from "@/components/products/ProductImportModal";
 
 const STATUS_PILL: Record<string, string> = {
   PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
@@ -65,6 +67,7 @@ export function ProductsTable({
   onFiltersChange: (next: AdminProductFilters) => void;
 }) {
   const router = useRouter();
+  const qc = useQueryClient();
   const { data: categories } = useCategories();
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.translations[0]?.name ?? c.slug]));
 
@@ -76,6 +79,7 @@ export function ProductsTable({
     setExpanded(next);
   }
   const [bulkAction, setBulkAction] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const deleteProduct = useDeleteProduct();
   // Single-row target xor bulk (selected.size products) — never both at
   // once, so one ConfirmDialog instance covers both delete entry points.
@@ -129,9 +133,18 @@ export function ProductsTable({
       await Promise.all(
         ids.map((id) => fetch(`/api/backend/admin/products/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status } as never) })),
       );
+    } else if (bulkAction === "in_stock" || bulkAction === "out_of_stock") {
+      const stockStatus = bulkAction === "in_stock" ? "IN_STOCK" : "OUT_OF_STOCK";
+      await Promise.all(
+        ids.map((id) => fetch(`/api/backend/admin/products/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stockStatus } as never) })),
+      );
     }
     setSelected(new Set());
     setBulkAction("");
+    // router.refresh() re-renders server components only — this page is
+    // "use client" and its data lives in react-query, so the PATCHed rows
+    // never appeared updated without also invalidating that cache.
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
     router.refresh();
   }
 
@@ -176,6 +189,8 @@ export function ProductsTable({
           <option value="">Bulk Actions</option>
           <option value="activate">Set Active</option>
           <option value="draft">Set Draft</option>
+          <option value="in_stock">Set In Stock</option>
+          <option value="out_of_stock">Set Out of Stock</option>
           <option value="delete">Delete</option>
         </select>
         {bulkAction && selected.size > 0 && (
@@ -184,6 +199,18 @@ export function ProductsTable({
           </button>
         )}
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="inline-flex h-[38px] items-center gap-1.5 rounded-inner border border-border px-3 text-[0.78rem] font-bold text-text hover:bg-surface-2"
+        >
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          Import
+        </button>
         <a href={exportHref()} className="inline-flex h-[38px] items-center gap-1.5 rounded-inner border border-border px-3 text-[0.78rem] font-bold text-text hover:bg-surface-2">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -193,6 +220,8 @@ export function ProductsTable({
           Export
         </a>
       </div>
+
+      {importOpen && <ProductImportModal onClose={() => setImportOpen(false)} />}
 
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse">
