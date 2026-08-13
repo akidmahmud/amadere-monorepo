@@ -210,23 +210,25 @@ function AddressCell({ order, editing }: { order: OrderManagerRow; editing: bool
   );
 }
 
-function SourceCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
-  const [value, setValue] = useState(order.utmSource ?? "");
+const ORDER_SOURCES = ["facebook", "instagram", "whatsapp", "website", "Telisell", "localsell", "wholesell", "tiktok", "youtube"];
+
+function SourceCell({ order }: { order: OrderManagerRow }) {
   const updateDetails = useUpdateOrderDetails(order.id);
-
-  if (!editing) return <ReadOnlyCell value={value} placeholder="e.g. facebook" width={112} />;
-
   return (
-    <input
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => value !== (order.utmSource ?? "") && updateDetails.mutate({ utmSource: value })}
+    <select
+      value={order.utmSource ?? ""}
+      disabled={updateDetails.isPending}
       onClick={(e) => e.stopPropagation()}
-      placeholder="e.g. facebook"
-      className="h-9 w-28 rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
+      onChange={(e) => updateDetails.mutate({ utmSource: e.target.value })}
+      className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
       style={{ borderColor: "transparent" }}
       onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
-    />
+    >
+      {!order.utmSource && <option value="">—</option>}
+      {ORDER_SOURCES.map((s) => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
   );
 }
 
@@ -634,7 +636,7 @@ function OrderRow({
       )}
       {columns.has("source") && (
         <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-          <SourceCell order={o} editing={editing} />
+          <SourceCell order={o} />
         </td>
       )}
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
