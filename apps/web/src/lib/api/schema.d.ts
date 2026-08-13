@@ -1412,6 +1412,38 @@ export interface paths {
         patch: operations["AdminDiscountsController_update"];
         trace?: never;
     };
+    "/api/v1/admin/upsell-bar/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminUpsellBarController_getSettings"];
+        put: operations["AdminUpsellBarController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/upsell-bar/stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminUpsellBarController_listStages"];
+        put: operations["AdminUpsellBarController_replaceStages"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gift-vouchers/{code}/check": {
         parameters: {
             query?: never;
@@ -2462,6 +2494,86 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminCustomersController_dial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_getSettings"];
+        put: operations["AdminEmailTemplatesController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminEmailTemplatesController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/{key}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminEmailTemplatesController_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/{key}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminEmailTemplatesController_preview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4484,6 +4596,22 @@ export interface paths {
         patch: operations["AdminOrderManagerController_updateNote"];
         trace?: never;
     };
+    "/api/v1/admin/net-profit/orders/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminOrderManagerController_assign"];
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/payments/manual": {
         parameters: {
             query?: never;
@@ -5615,6 +5743,7 @@ export interface components {
             lastName: string;
             isSuperAdmin: boolean;
             twoFactorEnabled: boolean;
+            permissions: string[];
         };
         ChangePasswordDto: {
             currentPassword: string;
@@ -6572,6 +6701,26 @@ export interface components {
             /** @description Restrict to these customers (empty = all) */
             customerIds?: number[];
         };
+        UpdateUpsellBarSettingsDto: {
+            enabled?: boolean;
+            /** @enum {string} */
+            countMode?: "TOTAL_UNITS" | "DISTINCT_PRODUCTS";
+            maxDiscountCap?: number | null;
+        };
+        UpsellStageItemDto: {
+            /** @enum {string} */
+            triggerType: "ITEM_COUNT" | "ORDER_AMOUNT";
+            triggerValue: number;
+            discountPercent?: number;
+            discountFixedAmount?: number;
+            freeShipping: boolean;
+            label: string;
+            sortOrder: number;
+            enabled: boolean;
+        };
+        UpdateUpsellStagesDto: {
+            stages: components["schemas"]["UpsellStageItemDto"][];
+        };
         GiftVoucherCheckDto: {
             code: string;
             remainingBalance: string;
@@ -6621,9 +6770,23 @@ export interface components {
             amount: string;
             freeShipping: boolean;
         };
-        FreeShippingLadderDto: {
-            threshold: string;
+        UpsellNextStageDto: {
+            /** @enum {string} */
+            triggerType: "ITEM_COUNT" | "ORDER_AMOUNT";
+            label: string;
             remaining: string;
+        };
+        UpsellStageProgressDto: {
+            /** @enum {string} */
+            triggerType: "ITEM_COUNT" | "ORDER_AMOUNT";
+            label: string;
+            triggerValue: string;
+            unlocked: boolean;
+        };
+        UpsellBarDto: {
+            nextStage: components["schemas"]["UpsellNextStageDto"] | null;
+            stages: components["schemas"]["UpsellStageProgressDto"][];
+            currentCount: string;
         };
         CartViewDto: {
             id: number | null;
@@ -6637,7 +6800,7 @@ export interface components {
             totalDiscount: string;
             total: string;
             couponError: string | null;
-            freeShipping: components["schemas"]["FreeShippingLadderDto"] | null;
+            upsell: components["schemas"]["UpsellBarDto"] | null;
             taxAmount: string;
             codFee: string;
             shippingFee: string;
@@ -6669,7 +6832,7 @@ export interface components {
             totalDiscount: string;
             total: string;
             couponError: string | null;
-            freeShipping: components["schemas"]["FreeShippingLadderDto"] | null;
+            upsell: components["schemas"]["UpsellBarDto"] | null;
             taxAmount: string;
             codFee: string;
             shippingFee: string;
@@ -7244,7 +7407,8 @@ export interface components {
         BulkCustomerActionDto: {
             customerIds: number[];
             /** @enum {string} */
-            action: "delete" | "restore";
+            action: "delete" | "restore" | "assign";
+            assignedAdminId?: number | null;
         };
         UpdateCustomerDto: {
             firstName?: string;
@@ -7287,6 +7451,51 @@ export interface components {
             /** @enum {string} */
             outcome: "CONNECTED" | "NO_ANSWER" | "VOICEMAIL" | "WRONG_NUMBER" | "DECLINED";
             notes?: string;
+        };
+        EmailTemplateDto: {
+            id: number;
+            key: string;
+            /** @enum {string} */
+            group: "BASE" | "ACL" | "CONTACT" | "ECOMMERCE" | "NEWSLETTER";
+            title: string;
+            description: string;
+            subject: string;
+            bodyHtml: string;
+            defaultSubject: string;
+            defaultBodyHtml: string;
+            variables: Record<string, never>[];
+            canDisable: boolean;
+            enabled: boolean;
+        };
+        EmailTemplateSettingsDto: {
+            logoMediaId: number | null;
+            logoUrl: string | null;
+            contactEmail: string;
+            copyright: string;
+            logoHeight: number;
+            customCss: string;
+            orderNotificationEmail: string;
+        };
+        UpdateEmailTemplateSettingsDto: {
+            logoMediaId?: number | null;
+            contactEmail?: string;
+            copyright?: string;
+            logoHeight?: number;
+            customCss?: string;
+            orderNotificationEmail?: string;
+        };
+        UpdateEmailTemplateDto: {
+            subject?: string;
+            bodyHtml?: string;
+            enabled?: boolean;
+        };
+        PreviewEmailTemplateDto: {
+            subject?: string;
+            bodyHtml?: string;
+        };
+        EmailTemplatePreviewDto: {
+            subject: string;
+            html: string;
         };
         ShipmentEventDto: {
             status: Record<string, never>;
@@ -7615,16 +7824,6 @@ export interface components {
             channel: string;
             count: number;
         };
-        RecentOrderDto: {
-            id: number;
-            orderNumber: string;
-            customerName: string;
-            total: string;
-            status: string;
-            createdAt: string;
-            /** @enum {string} */
-            paymentMethod: "COD" | "PAID";
-        };
         TopCustomerDto: {
             id: number;
             name: string;
@@ -7643,22 +7842,38 @@ export interface components {
             revenue: string;
             unitsSold: number;
         };
+        RecentOrderDto: {
+            id: number;
+            orderNumber: string;
+            customerName: string;
+            total: string;
+            status: string;
+            createdAt: string;
+            /** @enum {string} */
+            paymentMethod: "COD" | "PAID";
+        };
         DashboardOverviewDto: {
-            totalRevenue: string;
-            totalOrders: number;
-            totalCustomers: number;
-            totalProducts: number;
-            completedOrderRate: number;
-            avgOrderValue: string;
-            today: components["schemas"]["PeriodStatsDto"];
-            completed: components["schemas"]["PeriodStatsDto"];
-            pending: components["schemas"]["PeriodStatsDto"];
-            statusBreakdown: components["schemas"]["OrderStatusCountDto"][];
-            ordersByChannel: components["schemas"]["OrderChannelCountDto"][];
+            /** @enum {string} */
+            scope: "global" | "staff";
+            totalRevenue?: string;
+            totalOrders?: number;
+            totalCustomers?: number;
+            totalProducts?: number;
+            completedOrderRate?: number;
+            avgOrderValue?: string;
+            today?: components["schemas"]["PeriodStatsDto"];
+            completed?: components["schemas"]["PeriodStatsDto"];
+            pending?: components["schemas"]["PeriodStatsDto"];
+            statusBreakdown?: components["schemas"]["OrderStatusCountDto"][];
+            ordersByChannel?: components["schemas"]["OrderChannelCountDto"][];
+            topCustomers?: components["schemas"]["TopCustomerDto"][];
+            monthlyRevenue?: components["schemas"]["MonthlyRevenuePointDto"][];
+            topProducts?: components["schemas"]["TopProductDto"][];
             recentOrders: components["schemas"]["RecentOrderDto"][];
-            topCustomers: components["schemas"]["TopCustomerDto"][];
-            monthlyRevenue: components["schemas"]["MonthlyRevenuePointDto"][];
-            topProducts: components["schemas"]["TopProductDto"][];
+            myAssignedOrdersTotal?: number;
+            myAssignedOrdersToday?: number;
+            myAssignedOrdersByStatus?: components["schemas"]["OrderStatusCountDto"][];
+            myAssignedCustomersTotal?: number;
         };
         PublicBlogCategoryDto: {
             id: number;
@@ -8390,15 +8605,19 @@ export interface components {
         BulkOrderActionDto: {
             orderIds: number[];
             /** @enum {string} */
-            action: "consign" | "block" | "hold" | "export" | "delete" | "restore";
+            action: "consign" | "block" | "hold" | "export" | "delete" | "restore" | "assign";
             /**
              * @description Required for action=consign
              * @enum {string}
              */
             courierProvider?: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+            assignedAdminId?: number | null;
         };
         UpdateOrderNoteDto: {
             note: string;
+        };
+        AssignOrderDto: {
+            assignedAdminId?: number | null;
         };
         ManualPaymentDto: {
             id: number;
@@ -11771,6 +11990,86 @@ export interface operations {
             };
         };
     };
+    AdminUpsellBarController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminUpsellBarController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUpsellBarSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminUpsellBarController_listStages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminUpsellBarController_replaceStages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUpsellStagesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     GiftVouchersController_check: {
         parameters: {
             query?: never;
@@ -13853,6 +14152,175 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminEmailTemplatesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"][];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateSettingsDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailTemplateSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateSettingsDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewEmailTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePreviewDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePreviewDto"];
+                };
             };
         };
     };
@@ -18154,6 +18622,29 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateOrderNoteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminOrderManagerController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignOrderDto"];
             };
         };
         responses: {

@@ -6,7 +6,7 @@ import {
   CartDrawer,
   CartCrossSellRow,
   CartLineItem,
-  FreeShippingLadder,
+  UpsellProgressBar,
   Button,
   Input,
   formatMoney,
@@ -68,12 +68,8 @@ export function SiteCartDrawer() {
 
       {hasItems && cart && (
         <div>
-          {cart.freeShipping && (
-            <FreeShippingLadder
-              threshold={cart.freeShipping.threshold}
-              remaining={cart.freeShipping.remaining}
-              className="mb-3"
-            />
+          {cart.upsell && (
+            <UpsellProgressBar stages={cart.upsell.stages} nextStage={cart.upsell.nextStage} className="mb-3" />
           )}
 
           {cart.items.map((item) => (

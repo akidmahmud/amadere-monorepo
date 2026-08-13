@@ -10,6 +10,7 @@ import {
   Checkbox,
   Input,
   PaymentMethodSelector,
+  UpsellProgressBar,
   formatMoney,
   useCartDrawerStore,
 } from "@amader/ui";
@@ -229,6 +230,8 @@ export function CheckoutForm() {
       <form onSubmit={submitForm} className="mx-auto max-w-[1180px] px-5 py-9">
         <h1 className="mb-1 text-center font-ui text-2xl font-bold text-ink">Checkout</h1>
         <p className="mb-6 text-center font-body text-sm text-muted">Home &gt; Checkout</p>
+
+        {cart?.upsell && <UpsellProgressBar stages={cart.upsell.stages} nextStage={cart.upsell.nextStage} className="mb-6" />}
 
         {!hasItems && (
           <p className="mb-6 rounded-brand bg-beige p-4 text-center font-body text-sm text-ink">
