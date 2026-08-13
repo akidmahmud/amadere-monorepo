@@ -196,4 +196,7 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 
   perm('customer', 'view'),
   perm('customer', 'manage'),
+
+  perm('upsell_bar', 'view'),
+  perm('upsell_bar', 'manage'),
 ];

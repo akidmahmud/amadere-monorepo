@@ -1075,6 +1075,27 @@ model CartItem {
   @@map("cart_items")
 }
 
+enum UpsellTriggerType {
+  ITEM_COUNT
+  ORDER_AMOUNT
+}
+
+model UpsellStage {
+  id                  Int               @id @default(autoincrement())
+  sortOrder           Int               @map("sort_order")
+  triggerType         UpsellTriggerType @map("trigger_type")
+  triggerValue        Decimal           @map("trigger_value") @db.Decimal(10, 2)
+  discountPercent     Decimal?          @map("discount_percent") @db.Decimal(5, 2)
+  discountFixedAmount Decimal?          @map("discount_fixed_amount") @db.Decimal(10, 2)
+  freeShipping        Boolean           @default(false) @map("free_shipping")
+  label               String
+  enabled             Boolean           @default(true)
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  @@map("upsell_stages")
+}
+
 model WishlistItem {
   id         Int      @id @default(autoincrement())
   customerId Int      @map("customer_id")
