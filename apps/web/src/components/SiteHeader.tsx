@@ -87,6 +87,10 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
         logoUrl={logoUrl}
         logoPaddingPx={logoPaddingPx}
         logoMarginPx={logoMarginPx}
+        homeHref="/"
+        homeLabel={t("header.home")}
+        blogHref="/blog"
+        blogLabel={t("header.blog")}
         searchPlaceholder={t("header.searchPlaceholder")}
         searchAriaLabel={t("header.searchAria")}
         onSearchSubmit={(query) => query.trim() && router.push(`/search?q=${encodeURIComponent(query.trim())}`)}

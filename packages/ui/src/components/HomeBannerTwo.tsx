@@ -21,16 +21,15 @@ export interface HomeBannerTwoProps {
 // pagination sits in its own row below the image at every breakpoint,
 // matching the reference's swiper (organicindia.com), instead of overlaid
 // bottom-left on desktop.
-// Mobile box paired with object-contain below (not object-cover) — per
-// explicit request, the whole banner shrinks to fit on mobile rather than
-// being edge-cropped. 2.6:1 (not 16:9) — close to this site's real banner
-// uploads (~2.35-2.94:1, measured off live slides), which keeps the
-// unavoidable object-contain letterbox gap small; 16:9 was tried first and
-// visibly gapped top/bottom against those wider images. A dedicated mobile
-// image (HomeBannerTwoFields' "Mobile image") can still be uploaded per
-// slide to fill the box edge-to-edge with no letterboxing at all.
-const bannerAspect = "aspect-[2.94/1] max-md:aspect-[2.6/1]";
-
+// Scaling matches the reference's own `.two-link-slide-img` exactly: no
+// fixed-aspect-ratio box, no object-fit — just `width:100%; height:auto` on
+// whichever image is showing, so the box is always exactly as tall as that
+// image scales to. That's what makes it crop-free and gap-free at every
+// width, on any image shape, with zero per-breakpoint tuning. The trade-off
+// (also true of the reference): only one slide is in the DOM at a time, so
+// slide changes are an instant swap, not a crossfade — a fade would require
+// stacking multiple slides in the same fixed-size box, which is exactly the
+// object-fit/letterboxing problem this avoids.
 export function HomeBannerTwo({ slides, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HomeBannerTwoProps) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -51,10 +50,18 @@ export function HomeBannerTwo({ slides, linkComponent: Link = DefaultLink, autop
 
   if (slideTotal === 0) return null;
 
+  const slide = validSlides[index];
+  const img = (
+    <picture>
+      {slide.mobileImageUrl && <source media="(max-width: 767px)" srcSet={slide.mobileImageUrl} />}
+      <img key={index} src={slide.imageUrl} alt="" className="block h-auto w-full" />
+    </picture>
+  );
+
   return (
     <div className="mx-auto w-full px-0 pb-6 pt-0 max-md:pb-4">
       <div
-        className={cn("relative overflow-hidden bg-[#e9dfcd]", bannerAspect)}
+        className="relative bg-[#e9dfcd]"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
@@ -65,27 +72,7 @@ export function HomeBannerTwo({ slides, linkComponent: Link = DefaultLink, autop
           touchStartX.current = null;
         }}
       >
-        <div className="absolute inset-0">
-          {validSlides.map((slide, i) => {
-            const img = (
-              <picture>
-                {slide.mobileImageUrl && <source media="(max-width: 767px)" srcSet={slide.mobileImageUrl} />}
-                <img src={slide.imageUrl} alt="" className="h-full w-full object-cover max-md:object-contain" />
-              </picture>
-            );
-            return (
-              <div
-                key={i}
-                className={cn(
-                  "absolute inset-0 transition-opacity duration-[550ms] ease-in-out",
-                  i === index ? "z-[1] opacity-100" : "opacity-0",
-                )}
-              >
-                {slide.linkUrl ? <Link href={slide.linkUrl}>{img}</Link> : img}
-              </div>
-            );
-          })}
-        </div>
+        {slide.linkUrl ? <Link href={slide.linkUrl}>{img}</Link> : img}
 
         {slideTotal > 1 && (
           <>

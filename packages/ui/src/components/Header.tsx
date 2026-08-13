@@ -60,6 +60,18 @@ const closeIcon = (
     <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
   </svg>
 );
+const homeIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[18px] w-[18px]">
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+const blogIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-[18px] w-[18px]">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </svg>
+);
 
 export interface HeaderProps {
   brandHref: string;
@@ -72,6 +84,12 @@ export interface HeaderProps {
   /** Extra space around the logo's box, pushing it away from neighboring
    * header elements — see SiteInfoDto.logoMarginPx. */
   logoMarginPx?: number;
+  /** Desktop-only "Home" link shown between logo and search bar. */
+  homeHref?: string;
+  homeLabel?: string;
+  /** Desktop-only "Blog" link shown between logo and search bar. */
+  blogHref?: string;
+  blogLabel?: string;
   searchPlaceholder: string;
   searchAriaLabel: string;
   onSearchSubmit?: (query: string) => void;
@@ -129,6 +147,10 @@ export function Header({
   logoUrl,
   logoPaddingPx = 0,
   logoMarginPx = 0,
+  homeHref,
+  homeLabel,
+  blogHref,
+  blogLabel,
   searchPlaceholder,
   searchAriaLabel,
   onSearchSubmit,
@@ -184,7 +206,7 @@ export function Header({
       <form
         onSubmit={handleSubmit}
         className={cn(
-          "flex w-full items-center rounded-lg border border-transparent bg-beige pl-[18px] pr-1.5 transition-colors focus-within:border-header-green focus-within:bg-white focus-within:ring-2 focus-within:ring-header-green/20",
+          "flex w-full items-center rounded-lg border border-header-green bg-white pl-[18px] pr-1.5 transition-colors focus-within:border-header-green focus-within:bg-white focus-within:ring-2 focus-within:ring-header-green/20",
           heightClass,
         )}
       >
@@ -239,7 +261,7 @@ export function Header({
     // the job) — at md+, Nav.tsx becomes the sticky element instead, so
     // scrolling shows just the slim category bar, not this whole
     // logo/search/actions row, per explicit user request.
-    <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header md:static", className)}>
+    <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header md:relative md:z-50", className)}>
       {/* ===== Mobile (<768px) — single row + drawer + search overlay =====
           The search bar used to be a permanent second row; now it's a
           tap-to-open icon beside Cart (per explicit user request), so the
@@ -261,7 +283,7 @@ export function Header({
           >
             {hamburgerIcon}
           </button>
-          <Link href={brandHref} className="col-start-2 flex items-center justify-self-center">
+          <Link href={brandHref} className="col-start-2 flex items-center justify-self-center ml-[44px]">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={brandMark} className="h-[88px] w-auto" style={logoStyle} />
@@ -329,7 +351,7 @@ export function Header({
           this much bigger, and 136px is that 120px logo plus enough padding
           to fit inside the row without spilling past its top/bottom edges
           (a straight height-for-height swap would have overflowed it). */}
-      <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[136px] md:grid-cols-[auto_1fr_auto] lg:gap-x-6 xl:gap-x-8">
+      <div className="mx-auto hidden w-full max-w-[1440px] items-center gap-x-5 px-6 md:grid md:h-[136px] md:grid-cols-[auto_auto_1fr_auto] lg:gap-x-6 xl:gap-x-8">
         <Link href={brandHref} className="flex h-[120px] shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -339,7 +361,29 @@ export function Header({
           )}
         </Link>
 
-        <div className="relative mx-auto w-full max-w-[446px]">
+        {/* Home & Blog quick links — matches ghorerbazar.com's desktop header
+            layout: logo → Home | Blog → wide search bar → action icons. */}
+        {(homeHref || blogHref) && (
+          <div className="flex shrink-0 items-center gap-3">
+            {homeHref && homeLabel && (
+              <Link href={homeHref} className="flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
+                {homeIcon}
+                {homeLabel}
+              </Link>
+            )}
+            {homeHref && blogHref && (
+              <span className="h-5 w-px bg-header-line" aria-hidden />
+            )}
+            {blogHref && blogLabel && (
+              <Link href={blogHref} className="flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
+                {blogIcon}
+                {blogLabel}
+              </Link>
+            )}
+          </div>
+        )}
+
+        <div className="relative w-full">
           {searchForm("h-[47px]")}
           {suggestionsPanel()}
         </div>

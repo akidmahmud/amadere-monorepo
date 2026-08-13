@@ -25,9 +25,12 @@ export function FilterDrawer({ open, onOpenChange, title, closeLabel, children }
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-[rgba(20,40,25,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
+        {/* Above 1000, not the usual 60/70 — see CartDrawer's own note: apps/web's
+            MobileStickyFooter bottom nav sits at z-[1000] and otherwise covers
+            the bottom of this drawer on mobile. */}
+        <Dialog.Overlay className="fixed inset-0 z-[1010] bg-[rgba(20,40,25,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
         <Dialog.Content
-          className="fixed left-0 top-0 z-[70] flex h-full w-[320px] max-w-[85vw] flex-col bg-white"
+          className="fixed left-0 top-0 z-[1020] flex h-full w-[320px] max-w-[85vw] flex-col bg-white"
           aria-describedby={undefined}
         >
           <div className="flex items-center justify-between bg-green px-5 py-4 text-white">

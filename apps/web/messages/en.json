@@ -16,7 +16,9 @@
     "localeSwitch": "বাংলা",
     "menu": "Menu",
     "close": "Close",
-    "dismissAnnouncement": "Dismiss announcement"
+    "dismissAnnouncement": "Dismiss announcement",
+    "home": "Home",
+    "blog": "Blog"
   },
   "cart": {
     "title": "Shopping Cart",

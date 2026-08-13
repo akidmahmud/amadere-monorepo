@@ -129,10 +129,13 @@ export function MobileDrawer({
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-[rgba(0,0,0,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
+        {/* Above 1000, not the usual 60/70 — see CartDrawer's own note: apps/web's
+            MobileStickyFooter bottom nav sits at z-[1000] and otherwise covers
+            the bottom of this drawer on mobile. */}
+        <Dialog.Overlay className="fixed inset-0 z-[1010] bg-[rgba(0,0,0,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
         <Dialog.Content
           id={MOBILE_DRAWER_ID}
-          className="fixed left-0 top-0 z-[70] flex h-full w-[300px] max-w-[85vw] flex-col gap-4 overflow-y-auto bg-white p-4 pb-20 font-header"
+          className="fixed left-0 top-0 z-[1020] flex h-full w-[300px] max-w-[85vw] flex-col gap-4 overflow-y-auto bg-white p-4 pb-20 font-header"
           aria-describedby={undefined}
         >
           <div className="flex shrink-0 items-center justify-between">

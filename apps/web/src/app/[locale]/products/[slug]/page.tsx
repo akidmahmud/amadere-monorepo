@@ -10,7 +10,7 @@ import {
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
-import { ProductMobileIsland } from "@/components/ProductMobileIsland";
+import { ProductFloatingBarProvider } from "@/components/ProductFloatingBarProvider";
 import { WriteReviewForm } from "@/components/WriteReviewForm";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { CrossSellProductGrid } from "@/components/CrossSellProductGrid";
@@ -171,6 +171,7 @@ export default async function ProductPage({
   ].filter(Boolean) as ProductTab[];
 
   return (
+    <ProductFloatingBarProvider product={product}>
     <main className="flex-1">
       {previewToken && (
         <div className="sticky top-0 z-50 bg-[#7c3aed] py-2 text-center font-ui text-xs font-bold text-white">
@@ -248,11 +249,7 @@ export default async function ProductPage({
           </div>
         </div>
 
-        <ProductMobileIsland
-          product={product}
-          imageUrl={images[0]?.url}
-          whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null}
-        />
+
 
         <FrequentlyBoughtTogether mainProduct={product} items={product.frequentlyBoughtTogether} />
 
@@ -394,5 +391,6 @@ export default async function ProductPage({
         </div>
       </div>
     </main>
+    </ProductFloatingBarProvider>
   );
 }

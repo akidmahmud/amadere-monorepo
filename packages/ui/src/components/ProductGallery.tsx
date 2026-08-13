@@ -51,7 +51,7 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
   return (
     <div className={cn("flex gap-4", className)}>
       {(images.length > 1 || videoUrl) && (
-        <div className="flex w-[50px] shrink-0 flex-col gap-2.5">
+        <div className="flex w-[50px] shrink-0 flex-col gap-2.5 overflow-hidden max-h-[260px] md:w-[80px] md:max-h-[458px]">
           {images.map((image, i) => (
             <button
               key={image.url + i}
@@ -59,7 +59,7 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
               aria-label={`View image ${i + 1}`}
               onClick={() => setActive(i)}
               className={cn(
-                "h-[50px] w-[50px] shrink-0 overflow-hidden rounded border bg-white",
+                "h-[50px] w-[50px] shrink-0 overflow-hidden rounded border bg-white md:h-[80px] md:w-[80px]",
                 active === i ? "border-[#F48721]" : "border-[rgba(34,40,49,0.11)]",
               )}
             >
@@ -72,7 +72,7 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
               aria-label="Play product video"
               onClick={() => setActive(images.length)}
               className={cn(
-                "grid h-[50px] w-[50px] shrink-0 place-items-center rounded border bg-white",
+                "grid h-[50px] w-[50px] shrink-0 place-items-center rounded border bg-white md:h-[80px] md:w-[80px]",
                 active === images.length ? "border-[#F48721]" : "border-[rgba(34,40,49,0.11)]",
               )}
             >
@@ -82,28 +82,10 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
         </div>
       )}
 
-      {/* Fixed height (not aspect-square) on mobile: shrinking the thumbnail
-          column above made this flex-1 area wider, which under aspect-square
-          also made it *taller* — fighting the "fit the first mobile screen"
-          goal. Capped at the smaller of 280px (the reference's own
-          ~280-290px) or 24% of the real device viewport height. A plain
-          280px was consuming a bigger share of the screen — and this app's
-          own fixed bottom nav bar (Home/Menu/Cart/Search/Account, ~59px)
-          eats further into whatever's left — on phones with a shorter
-          CSS-pixel viewport height (e.g. Galaxy S22 or Poco X6 Neo vs. Poco
-          X6 Pro, even at a "similar" advertised screen size).
-          24vh is a deliberate compromise, chosen over stricter options per
-          explicit request to prioritize a bigger photo: on a real Galaxy
-          S22-height viewport (660px) this renders ~35px taller than the
-          strictest-fit value (19vh, which kept Brand on-screen with 0
-          scrolling on every phone including that one) — Brand and the
-          bottom of the WhatsApp/Call Now row now need a small scroll on
-          that specific phone, everything through Buy Now still shows
-          without scrolling. Taller phones (Poco X6 Neo/Pro) still show
-          everything through Brand with no scrolling either way. Square
-          again from md up, where the wider column was already correctly
-          proportioned. */}
-      <div className="relative h-[min(280px,24vh)] min-w-0 flex-1 md:aspect-square md:h-auto">
+      {/* Square at all breakpoints, matching ghorerbazar.com's product
+          gallery exactly: their image container is naturally square (1:1
+          source images with width:100%), no explicit height cap. */}
+      <div className="relative aspect-square min-w-0 flex-1">
         {showVideo ? (
           <iframe
             src={videoUrl}

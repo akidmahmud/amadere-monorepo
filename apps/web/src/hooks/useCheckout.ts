@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { getGuestToken } from "@/lib/guest-token";
 import type { components } from "@/lib/api/schema";
@@ -23,6 +23,7 @@ export function useRequestCodOtp() {
 }
 
 export function usePlaceOrder(locale: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: CheckoutDto) => {
       const { data, error } = await api.POST("/api/v1/checkout", {
@@ -32,6 +33,15 @@ export function usePlaceOrder(locale: string) {
       });
       if (error) throw error;
       return data;
+    },
+    // The backend empties the cart's items as part of placing the order,
+    // but nothing told the client — the cart badge/drawer kept showing the
+    // pre-order contents (a stale cache, not a stale server) until the next
+    // unrelated cart mutation happened to invalidate it. Same invalidation
+    // useCartMutation's own onSuccess already does for every other cart-
+    // changing action.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart", locale] });
     },
   });
 }

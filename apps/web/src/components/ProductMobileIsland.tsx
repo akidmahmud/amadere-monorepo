@@ -1,3 +1,12 @@
+/**
+ * @deprecated This component is no longer used. Its functionality has been
+ * absorbed into MobileStickyFooter via ProductFloatingBarContext /
+ * ProductFloatingBarProvider. The MobileStickyFooter now transforms in-place
+ * into a Buy Now / Add to Cart bar when the user scrolls past #pdp-buy-buttons
+ * on a product page.
+ *
+ * Kept for reference only — can be safely deleted.
+ */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";

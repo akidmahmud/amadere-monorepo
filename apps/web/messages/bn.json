@@ -16,7 +16,9 @@
     "localeSwitch": "English",
     "menu": "মেনু",
     "close": "বন্ধ করুন",
-    "dismissAnnouncement": "ঘোষণা বন্ধ করুন"
+    "dismissAnnouncement": "ঘোষণা বন্ধ করুন",
+    "home": "হোম",
+    "blog": "ব্লগ"
   },
   "cart": {
     "title": "শপিং কার্ট",

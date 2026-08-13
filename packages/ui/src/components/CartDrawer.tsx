@@ -39,9 +39,14 @@ export function CartDrawer({
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-[rgba(20,40,25,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
+        {/* Above 1000, not the usual 60/70 drawer pair (see FilterDrawer/
+            MobileDrawer) — apps/web's MobileStickyFooter bottom nav sits at
+            z-[1000], which otherwise covers this drawer's checkout button on
+            mobile (its own z-index only needing to beat page content, not an
+            open drawer). */}
+        <Dialog.Overlay className="fixed inset-0 z-[1010] bg-[rgba(20,40,25,.45)] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
         <Dialog.Content
-          className="fixed right-0 top-0 z-[70] flex h-full w-[400px] max-w-[92vw] flex-col bg-white"
+          className="fixed right-0 top-0 z-[1020] flex h-full w-[400px] max-w-[92vw] flex-col bg-white"
           aria-describedby={undefined}
         >
           <div className="flex items-center justify-between bg-green px-5 py-4 text-white">
