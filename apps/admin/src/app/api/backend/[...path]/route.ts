@@ -37,6 +37,7 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body,
+      cache: "no-store",
     });
   }
 

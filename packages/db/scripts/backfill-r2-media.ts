@@ -8,14 +8,18 @@ config({ path: path.resolve(__dirname, '../../../.env') });
 // One-time follow-up to B12's migration ETL (AGENTS.md §8/§B12): every
 // migrated media reference was stored as a `legacy://{path}` placeholder
 // pointing at a file that still only exists on the old Botble site
-// (confirmed live: `legacy://{path}` == `https://www.amadere.com/storage/{path}`
-// on the still-running legacy site). Now that real R2 credentials exist,
-// this downloads each real file from the legacy site and re-uploads it to
-// R2, then rewrites every column that held the `legacy://` placeholder to
-// the new real R2 URL. Idempotent-ish: re-running only touches rows that
+// (confirmed live: `legacy://{path}` == `https://old.amadere.com/storage/{path}`
+// on the still-running legacy site). `www.amadere.com` used to be that same
+// legacy site when this script was first written, but production has since
+// cut over — `www`/bare `amadere.com` now serve the new site, and the old
+// Botble app moved to the `old.` subdomain (confirmed live: `www` 301s away
+// from `/storage/...`, `old.` still 200s). Now that real R2 credentials
+// exist, this downloads each real file from the legacy site and re-uploads
+// it to R2, then rewrites every column that held the `legacy://` placeholder
+// to the new real R2 URL. Idempotent-ish: re-running only touches rows that
 // still start with `legacy://` (already-migrated rows are left alone), so a
 // partial failure can just be re-run.
-const LEGACY_ORIGIN = 'https://www.amadere.com/storage/';
+const LEGACY_ORIGIN = 'https://old.amadere.com/storage/';
 
 const STRING_COLUMNS: { table: string; column: string }[] = [
   { table: 'media', column: 'url' },

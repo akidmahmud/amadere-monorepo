@@ -851,6 +851,7 @@ model ProductCategory {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([productId, categoryId])
+  @@index([categoryId])
   @@map("product_categories")
 }
 
@@ -862,6 +863,7 @@ model ProductTag {
   tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([productId, tagId])
+  @@index([tagId])
   @@map("product_tags")
 }
 
@@ -875,6 +877,7 @@ model ProductAttribute {
   attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
 
   @@id([productId, attributeId])
+  @@index([attributeId])
   @@map("product_attributes")
 }
 
@@ -1220,6 +1223,8 @@ model Order {
 
   @@index([status])
   @@index([deletedAt])
+  @@index([deletedAt, createdAt])
+  @@index([status, deletedAt, createdAt])
   @@map("orders")
 }
 
@@ -1288,6 +1293,7 @@ model OrderStatusHistory {
   order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
 
+  @@index([orderId])
   @@map("order_status_history")
 }
 
@@ -1332,6 +1338,7 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+  @@index([orderId, createdAt])
   @@map("payments")
 }
 
@@ -1386,6 +1393,7 @@ model Shipment {
   events ShipmentEvent[]
 
   @@index([orderId])
+  @@index([orderId, createdAt])
   @@map("shipments")
 }
 
@@ -1598,6 +1606,8 @@ model BlogPost {
   tags         BlogPostTag[]
   revisions    BlogPostRevision[]
 
+  @@index([status])
+  @@index([deletedAt, createdAt])
   @@map("blog_posts")
 }
 
@@ -1721,6 +1731,7 @@ model BlogPostCategory {
   category BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([postId, categoryId])
+  @@index([categoryId])
   @@map("blog_post_categories")
 }
 
@@ -1732,6 +1743,7 @@ model BlogPostTag {
   tag  BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([postId, tagId])
+  @@index([tagId])
   @@map("blog_post_tags")
 }
 
