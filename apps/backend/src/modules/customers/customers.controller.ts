@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CustomerJwtGuard } from '../../common/auth/customer-jwt.guard';
 import { CurrentCustomer } from '../../common/auth/current-customer.decorator';
@@ -15,6 +16,11 @@ import { CustomerProfileDto } from '../auth/customer.mapper';
 export class CustomersController {
   constructor(private readonly customers: CustomersService) {}
 
+  // Called on every page load to check login state (throttle guard runs
+  // before the JWT guard, so even anonymous requests here would still
+  // otherwise burn shared budget on every 401) — see SiteInfoController's
+  // comment. The mutating endpoints below keep the default limit.
+  @SkipThrottle()
   @Get()
   @ApiOkResponse({ type: CustomerProfileDto })
   getProfile(

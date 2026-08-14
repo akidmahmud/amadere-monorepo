@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsSettingsService, PublicAnalyticsConfig } from './analytics-settings.service';
@@ -35,6 +36,10 @@ export class AnalyticsController {
   // — the storefront's script loader (AnalyticsScripts) reads this to decide
   // which pixels/tags to inject, so IDs live in one admin-editable place
   // instead of being hardcoded into the frontend build.
+  // Fetched server-side on every single page load (root layout) — see
+  // SiteInfoController's comment for why this is exempt from the global
+  // per-IP throttle. `track` above keeps the default limit intentionally.
+  @SkipThrottle()
   @Get('config')
   getConfig(): Promise<PublicAnalyticsConfig> {
     return this.settings.getPublicConfig();

@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
 import { CartQueryDto } from './dto/cart-query.dto';
@@ -38,6 +39,11 @@ import { CartViewDto, PricingSummaryDto } from './dto/cart-response.dto';
 export class CartController {
   constructor(private readonly cart: CartService) {}
 
+  // Called on every page load (useCart hook mounts client-side) — read-only,
+  // not an abuse target, and shares the same shared-bucket exhaustion risk
+  // as the SSR-fetched endpoints (see SiteInfoController's comment). The
+  // mutating endpoints below keep the default limit intentionally.
+  @SkipThrottle()
   @Get()
   @ApiOkResponse({ type: CartViewDto })
   getCart(
