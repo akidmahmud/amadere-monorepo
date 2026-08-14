@@ -989,10 +989,15 @@ export class ProductsService {
       imageUrl: imageUrls[0] ?? null,
     });
 
-    const [crossSell, frequentlyBoughtTogether] = await Promise.all([
+    const [crossSell, frequentlyBoughtTogether, salesSum] = await Promise.all([
       this.getPublicRelation(product.id, 'CROSS_SELL', locale),
       this.getPublicRelation(product.id, 'FREQUENTLY_BOUGHT_TOGETHER', locale),
+      this.prisma.client.orderItem.aggregate({
+        where: { productId: product.id, order: { status: { not: 'CANCELED' } } },
+        _sum: { quantity: true },
+      }),
     ]);
+    const salesCount = salesSum._sum.quantity ?? 0;
 
     const translation =
       product.translations.find((t) => t.locale === locale) ?? product.translations[0];
@@ -1047,7 +1052,7 @@ export class ProductsService {
     const faqJsonLd = buildFaqPageJsonLd(faqs);
     if (faqJsonLd) structuredData.push(faqJsonLd);
 
-    return { ...dto, seo, structuredData, faqs, crossSell, frequentlyBoughtTogether };
+    return { ...dto, salesCount, seo, structuredData, faqs, crossSell, frequentlyBoughtTogether };
   }
 
   private buildWhere(

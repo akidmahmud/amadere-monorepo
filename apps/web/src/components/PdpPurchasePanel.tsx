@@ -161,8 +161,8 @@ export function PdpPurchasePanel({
           shown to mobile visitors, and sits right under Select Pack Size
           (still here even when that section doesn't render, e.g. products
           with no variants). */}
-      <div className="hidden md:block">
-        <WatchingNowBadge productId={product.id} salesCount={(product as { salesCount?: number }).salesCount} />
+      <div className="mb-4">
+        <WatchingNowBadge productId={product.id} salesCount={product.salesCount} />
       </div>
 
       {outOfStock ? (

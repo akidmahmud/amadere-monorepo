@@ -35,12 +35,10 @@ export function WatchingNowBadge({ productId, salesCount, className }: WatchingN
     const realWatching = getRealWatchingCount(productId);
     setWatchingCount(realWatching ?? Math.floor(Math.random() * 25) + 15);
 
-    if (typeof salesCount === "number" && salesCount > 0) {
+    if (typeof salesCount === "number") {
       setBoughtCount(salesCount);
     } else {
-      // Deterministic fallback between 20 and 40 based on productId
-      const fallbackBought = 20 + Math.abs((productId * 17) % 21);
-      setBoughtCount(fallbackBought);
+      setBoughtCount(0);
     }
   }, [productId, salesCount]);
 

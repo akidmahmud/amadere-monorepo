@@ -191,18 +191,21 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="flex items-center justify-between text-xs font-bold text-text">
                     Short Description
-                    <span className="font-semibold text-muted">
+                    <span className={stripHtml(form.description).length > 350 ? "font-semibold text-danger" : "font-semibold text-muted"}>
                       {stripHtml(form.description).length}/350 characters
                     </span>
                   </span>
                   <textarea
                     value={form.description}
-                    onChange={(e) => {
-                      if (stripHtml(e.target.value).length <= 350) form.setDescription(e.target.value);
-                    }}
+                    onChange={(e) => form.setDescription(e.target.value)}
                     rows={3}
                     className={textareaClass}
                   />
+                  {stripHtml(form.description).length > 350 && (
+                    <span className="text-xs font-semibold text-danger">
+                      Short description exceeds 350 characters by {stripHtml(form.description).length - 350} char(s). Please trim to save.
+                    </span>
+                  )}
                 </label>
                 {/* A plain div, not <label> — RichTextEditor renders its own
                     toolbar full of buttons, and a bare <label> with no

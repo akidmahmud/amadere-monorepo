@@ -6279,6 +6279,7 @@ export interface components {
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
             media: components["schemas"]["PublicProductMediaDto"][];
             variants: components["schemas"]["PublicProductVariantDto"][];
+            salesCount?: number;
         };
         ProductFaqPublicDto: {
             question: string;
@@ -6322,6 +6323,7 @@ export interface components {
             faqs: components["schemas"]["ProductFaqPublicDto"][];
             crossSell: components["schemas"]["PublicProductDto"][];
             frequentlyBoughtTogether: components["schemas"]["PublicProductDto"][];
+            salesCount?: number;
         };
         AdminProductFaqDto: {
             question: string;

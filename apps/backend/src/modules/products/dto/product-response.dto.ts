@@ -193,6 +193,8 @@ export class PublicProductDto {
   tags!: PublicProductTagSummaryDto[];
   media!: PublicProductMediaDto[];
   variants!: PublicProductVariantDto[];
+  /** Total units sold based on real non-canceled orders in DB. */
+  salesCount?: number;
 }
 
 export class ProductFaqPublicDto {

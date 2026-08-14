@@ -206,6 +206,9 @@ export function useProductFormState(initial?: AdminProduct) {
     if (!sku.trim()) missing.push("SKU");
     if (!shippableWeight.trim()) missing.push("Shippable weight");
     if (!minOrderQuantity.trim() || Number(minOrderQuantity) < 1) missing.push("Min order quantity");
+    if (stripHtml(description).length > 350) {
+      missing.push(`Short Description (exceeds limit by ${stripHtml(description).length - 350} chars)`);
+    }
     if (hasVariants) {
       if (variantCount === 0) missing.push("Variants (add at least one)");
     } else {
