@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ckeditorGoogleFontsUrl } from "@amader/shared";
+import { CRITICAL_FONT_NAMES, ckeditorGoogleFontsUrl } from "@amader/shared";
 import { ProductCardStyleProvider, type ProductCardStyle } from "@amader/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -15,6 +15,7 @@ import { MobileStickyFooter } from "@/components/MobileStickyFooter";
 import { QueryProvider } from "@/components/QueryProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/AnalyticsScripts";
+import { DeferredFontLoader } from "@/components/DeferredFontLoader";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
 import "../globals.css";
@@ -78,18 +79,18 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
-      {/* Loaded under their real, literal family names — this is also how
-          the site-wide default type stack (packages/ui's tokens.css: Open
-          Sans + Noto Sans Bengali) actually gets its typefaces, since both happen
-          to already be in this same list; no separate link needed for them.
-          Admin-authored content (product/blog descriptions) can also carry
-          inline `font-family: "Poppins"` etc. styles from the admin's
-          CKEditor font picker (a deliberately wider choice beyond the
-          site's own default), which only resolve to the actual typeface if
-          a stylesheet registers that exact literal name here. Same list as
-          apps/admin's layout.tsx (shared via @amader/shared). */}
-      <link rel="stylesheet" href={ckeditorGoogleFontsUrl()} precedence="default" />
+      {/* Only the 3 families the site's own default type stack falls back
+          through (packages/ui's tokens.css --font-body/--font-serif) stay
+          render-blocking here. Admin-authored content (product/blog
+          descriptions) can carry inline `font-family: "Poppins"` etc. from
+          the admin's CKEditor font picker (a much wider choice than the
+          site's own default) — those ~17 extra families load in after first
+          paint via DeferredFontLoader instead of blocking every page's LCP
+          for typefaces most page loads never even use. Full list shared
+          with apps/admin's layout.tsx via @amader/shared. */}
+      <link rel="stylesheet" href={ckeditorGoogleFontsUrl(CRITICAL_FONT_NAMES)} precedence="default" />
       <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
+        <DeferredFontLoader />
         <AnalyticsScripts
           config={
             (analyticsConfig as PublicAnalyticsConfig | undefined) ?? {
