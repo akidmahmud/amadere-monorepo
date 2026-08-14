@@ -48,6 +48,41 @@ function instagramCode(url: string): string | null {
   return m?.[1] ?? null;
 }
 
+function normalizeFacebookUrl(url: string): string {
+  const reelMatch = url.match(/facebook\.com\/reel\/(\d+)/);
+  if (reelMatch?.[1]) {
+    return `https://www.facebook.com/reel/${reelMatch[1]}`;
+  }
+  const watchMatch = url.match(/facebook\.com\/watch\/?\?v=(\d+)/);
+  if (watchMatch?.[1]) {
+    return `https://www.facebook.com/reel/${watchMatch[1]}`;
+  }
+  return url.trim();
+}
+
+function FacebookVideoEmbed({
+  url,
+  muted = true,
+  thumbnailUrl,
+}: {
+  url: string;
+  muted?: boolean;
+  thumbnailUrl?: string;
+}) {
+  const normalizedUrl = normalizeFacebookUrl(url);
+  const encodedUrl = encodeURIComponent(normalizedUrl);
+  const src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&muted=1&mute=${muted ? 1 : 0}&controls=0&allowfullscreen=true`;
+
+  return (
+    <EmbedFrame
+      src={src}
+      allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"
+      thumbnailUrl={thumbnailUrl}
+      isFacebook
+    />
+  );
+}
+
 // Renders the actual playable element for each source. `muted` only actually
 // controls R2 (native <video> — a real DOM property) and YOUTUBE (documented
 // `mute` embed param); TikTok/Instagram keep unconditional autoplay-only
@@ -101,15 +136,12 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
     return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} />;
   }
   if (card.source === "FACEBOOK") {
-    // Facebook's plugin embed (no oEmbed ID extraction needed — it takes the
-    // post/reel URL itself as a query param, unlike YouTube/TikTok/Instagram).
-    const src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(card.url)}&autoplay=1&mute=${muted ? 1 : 0}`;
-    return <EmbedFrame src={src} allow="autoplay; encrypted-media" thumbnailUrl={card.thumbnailUrl} />;
+    return <FacebookVideoEmbed url={card.url} muted={muted} thumbnailUrl={card.thumbnailUrl} />;
   }
   // INSTAGRAM
   const code = instagramCode(card.url);
   const src = code ? `https://www.instagram.com/reel/${code}/embed/?autoplay=1` : card.url;
-  return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} />;
+  return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} isInstagram />;
 }
 
 // Actual YouTube video bytes can't be cached/rehosted ourselves — that's a
@@ -129,11 +161,6 @@ function YoutubePreconnect() {
   );
 }
 
-// `object-fit` only works on <img>/<video> — it's a no-op on <iframe>, so a
-// plain h-full/w-full iframe still shows whatever black-bar letterboxing the
-// embedded player (YouTube/TikTok/Instagram's own page, not ours) decides to
-// draw when the video's native aspect ratio doesn't match this box (most
-// visible on tall phone screens against a ~9:16 vertical video). Scaling the
 // iframe itself up and clipping the overflow pushes those bars outside the
 // visible area instead. This is a fixed heuristic, not device-aware — it
 // won't be pixel-perfect on every phone's exact aspect ratio, but removes
@@ -147,7 +174,19 @@ function YoutubePreconnect() {
 // thumbnail we already have instead of a blank box, without needing
 // YouTube's/TikTok's postMessage player APIs just to know "video is now
 // visibly playing".
-function EmbedFrame({ src, allow, thumbnailUrl }: { src: string; allow: string; thumbnailUrl?: string }) {
+function EmbedFrame({
+  src,
+  allow,
+  thumbnailUrl,
+  isFacebook = false,
+  isInstagram = false,
+}: {
+  src: string;
+  allow: string;
+  thumbnailUrl?: string;
+  isFacebook?: boolean;
+  isInstagram?: boolean;
+}) {
   const [ready, setReady] = useState(false);
 
   function handleLoad() {
@@ -160,8 +199,12 @@ function EmbedFrame({ src, allow, thumbnailUrl }: { src: string; allow: string; 
         src={src}
         title="Promo video"
         allow={allow}
+        allowFullScreen
         onLoad={handleLoad}
-        className="h-full w-full scale-125 border-0"
+        className={cn(
+          "h-full w-full border-0",
+          isInstagram ? "scale-[1.38]" : isFacebook ? "scale-100" : "scale-125",
+        )}
       />
       {thumbnailUrl && (
         // eslint-disable-next-line @next/next/no-img-element

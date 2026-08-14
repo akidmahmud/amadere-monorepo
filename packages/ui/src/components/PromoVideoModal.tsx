@@ -193,7 +193,12 @@ export function PromoVideoModal({
         <PeekThumb card={items[prevIndex]} label="Previous video" onClick={() => onNavigate(prevIndex)} />
       )}
 
-      <div className="relative flex max-h-[85vh] w-full max-w-[820px] shrink-0 overflow-hidden rounded-2xl bg-white max-sm:flex-col">
+      <div
+        className={cn(
+          "relative flex max-h-[85vh] w-full shrink-0 overflow-hidden rounded-2xl max-sm:flex-col",
+          product ? "max-w-[820px] bg-white" : "max-w-[420px] bg-black",
+        )}
+      >
         {items.length > 1 && (
           <button
             type="button"
