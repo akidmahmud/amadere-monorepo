@@ -35,7 +35,12 @@ export function MediaPicker({ value, onChange, onSelectMedia, label = "Image" }:
     e.target.value = "";
     if (!file) return;
     const media = await upload.mutateAsync(file);
-    onChange(media.url);
+    // ~1200w-capped WebP derivative, not the raw upload — every one of this
+    // widget's callers (hero banners, testimonials, category showcases,
+    // site logo, ...) displays at well under 1200w, so this is a strict
+    // size win everywhere with no visible quality loss. Falls back to the
+    // original for anything the derivative pipeline couldn't process (SVG).
+    onChange(media.fullUrl ?? media.url);
     onSelectMedia?.(media);
   }
 
@@ -63,7 +68,7 @@ export function MediaPicker({ value, onChange, onSelectMedia, label = "Image" }:
       <Modal open={showLibrary} onClose={() => setShowLibrary(false)} title="Browse media library" className="max-w-5xl">
         <MediaLibraryBrowser
           onSelect={(media) => {
-            onChange(media.url);
+            onChange(media.fullUrl ?? media.url);
             onSelectMedia?.(media);
             setShowLibrary(false);
           }}

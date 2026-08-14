@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { formatMoney } from "@amader/ui";
 import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
-import { fireClientPurchase } from "@/lib/analytics-events";
+import { fireClientPurchase, pushEcommerceEvent } from "@/lib/analytics-events";
 import { toDisplayImageUrl } from "@/lib/media";
 import type { components } from "@/lib/api/schema";
 
@@ -81,6 +81,26 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
       totalAmount: order.totalAmount,
       currency: order.currency,
       items: order.items.map((item) => ({ name: item.name, price: Number(item.unitPrice), quantity: item.quantity })),
+    });
+    // Additive GA4-via-GTM push — fireClientPurchase above (direct
+    // gtag/fbq/ttq calls) keeps working exactly as before; this is the
+    // separate dataLayer mechanism any GTM container (PixelFly's included)
+    // can build its own GA4/Ads/Meta tags from.
+    pushEcommerceEvent("purchase", {
+      transaction_id: order.orderNumber,
+      value: Number(order.totalAmount),
+      tax: Number(order.taxAmount),
+      shipping: Number(order.shippingAmount),
+      currency: order.currency,
+      coupon: order.couponCode ?? undefined,
+      items: order.items.map((item) => ({
+        // Bare product id, same convention as every other event — see
+        // productToGa4Item's comment in analytics-events.ts.
+        item_id: String(item.productId ?? item.id),
+        item_name: item.name,
+        price: Number(item.unitPrice),
+        quantity: item.quantity,
+      })),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   CartDrawer,
@@ -16,6 +16,7 @@ import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
+import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import {
   useApplyCoupon,
   useCartQuery,
@@ -40,6 +41,20 @@ export function SiteCartDrawer() {
 
   const hasItems = (cart?.items.length ?? 0) > 0;
   const closeDrawer = useCartDrawerStore((s) => s.close);
+  const isOpen = useCartDrawerStore((s) => s.isOpen);
+
+  useEffect(() => {
+    if (!isOpen || !cart || !hasItems) return;
+    pushEcommerceEvent("view_cart", {
+      currency: cart.currency,
+      value: Number(cart.total),
+      items: cart.items.map(cartLineToGa4Item),
+    });
+    // Fire once per open, not on every cart refetch while it's open
+    // (quantity-change/coupon-apply already have their own more specific
+    // events) — isOpen flipping true/false is the real trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   return (
     <CartDrawer
@@ -84,7 +99,14 @@ export function SiteCartDrawer() {
               key={item.id}
               item={{ ...item, href: `/products/${item.slug}`, imageUrl: toDisplayImageUrl(item.imageUrl) }}
               onQuantityChange={(quantity) => updateItem.mutate({ itemId: item.id, quantity })}
-              onRemove={() => removeItem.mutate({ itemId: item.id })}
+              onRemove={() => {
+                pushEcommerceEvent("remove_from_cart", {
+                  currency: cart.currency,
+                  value: Number(item.lineTotal),
+                  items: [cartLineToGa4Item(item)],
+                });
+                removeItem.mutate({ itemId: item.id });
+              }}
               linkComponent={AppLink}
             />
           ))}

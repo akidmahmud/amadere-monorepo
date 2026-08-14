@@ -77,6 +77,12 @@ export interface ProductCardProps {
   addToCartPending?: boolean;
   linkComponent?: LinkComponent;
   className?: string;
+  /** Fires (fire-and-forget, doesn't block navigation) right before the
+   * card's Link navigates — the caller builds and pushes its own GA4
+   * select_item event here, since only it knows this card's list context
+   * (item_list_id/name, index) and full item data. Absent = no tracking,
+   * same as today. */
+  onSelect?: () => void;
 }
 
 export function ProductCard({
@@ -96,6 +102,7 @@ export function ProductCard({
   addToCartPending,
   linkComponent: Link = DefaultLink,
   className,
+  onSelect,
 }: ProductCardProps) {
   const defaultPack = defaultPackValue ?? packOptions?.[0]?.value;
   const defaultOption = packOptions?.find((o) => o.value === defaultPack);
@@ -157,7 +164,7 @@ export function ProductCard({
           </span>
         </div>
       )}
-      <Link href={href} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
+      <Link href={href} onClick={onSelect} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
         {imageUrl ? (
           <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]" />
         ) : (
@@ -181,7 +188,7 @@ export function ProductCard({
         )}
       </Link>
       <div className="flex flex-1 flex-col justify-between pt-3">
-        <Link href={href} className="mb-2 line-clamp-2 min-h-[34px] md:min-h-[38px] font-sans text-sm md:text-base font-medium text-[#020101] transition-colors hover:text-header-green">
+        <Link href={href} onClick={onSelect} className="mb-2 line-clamp-2 min-h-[34px] md:min-h-[38px] font-sans text-sm md:text-base font-medium text-[#020101] transition-colors hover:text-header-green">
           {name}
         </Link>
         <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} align="left" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "next-intl";
 import {
   PackSizeSelector,
@@ -14,6 +14,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { buildPackSizeOptions, defaultVariantId } from "@/lib/pdp";
 import { toApiLocale } from "@/lib/api-locale";
 import { useAddToCart } from "@/hooks/useCart";
+import { pushEcommerceEvent, productToGa4Item } from "@/lib/analytics-events";
 import { useMe } from "@/hooks/useAuth";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from "@/hooks/useAccount";
 import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
@@ -72,6 +73,15 @@ export function PdpPurchasePanel({
   const addToWishlist = useAddToWishlist(locale);
   const removeFromWishlist = useRemoveFromWishlist(locale);
   const isWishlisted = wishlist?.some((item) => item.productId === product.id) ?? false;
+
+  // view_item — once per product page visit. add_to_cart is already covered
+  // by useAddToCart itself (useCart.ts), so nothing extra needed for that
+  // here despite this panel owning the "Add to Cart" button.
+  useEffect(() => {
+    const item = productToGa4Item(product);
+    pushEcommerceEvent("view_item", { currency: "BDT", value: item.price, items: [item] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   const badges = (product.keyBenefits ?? "")
     .split("\n")
@@ -132,6 +142,8 @@ export function PdpPurchasePanel({
     if (isWishlisted) {
       removeFromWishlist.mutate(product.id);
     } else {
+      const item = productToGa4Item(product);
+      pushEcommerceEvent("add_to_wishlist", { currency: "BDT", value: item.price, items: [item] });
       addToWishlist.mutate(product.id);
     }
   }

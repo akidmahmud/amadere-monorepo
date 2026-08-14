@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { getGuestToken, setGuestToken } from "@/lib/guest-token";
+import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import type { components } from "@/lib/api/schema";
 
 type CartViewDto = components["schemas"]["CartViewDto"];
@@ -54,11 +55,12 @@ export function useCartQuery(locale: string, paymentProvider?: string, district?
 function useCartMutation<TArgs>(
   locale: string,
   mutationFn: (args: TArgs) => Promise<CartViewDto>,
+  onTrack?: (cart: CartViewDto, args: TArgs) => void,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: (cart) => {
+    onSuccess: (cart, args) => {
       persistGuestToken(cart);
       // Item/coupon mutations don't know the customer's selected payment
       // method, so their response always computes codFee as if not COD —
@@ -68,23 +70,45 @@ function useCartMutation<TArgs>(
       // correct provider rather than momentarily showing this codFee-less
       // total.
       queryClient.invalidateQueries({ queryKey: ["cart", locale] });
+      onTrack?.(cart, args);
     },
   });
 }
 
 export function useAddToCart(locale: string) {
-  return useCartMutation(locale, async (args: { productId: number; variantId?: number; quantity?: number }) => {
-    const { data, error } = await api.POST("/api/v1/cart/items", {
-      params: { query: { locale: locale as "EN" | "BN" } },
-      headers: cartHeaders(),
-      // The generated type marks `quantity` required (openapi-typescript
-      // treats a swagger `default` as always-present) even though the
-      // backend DTO itself makes it optional — default it here to match.
-      body: { ...args, quantity: args.quantity ?? 1 },
-    });
-    if (error) throw error;
-    return data;
-  });
+  return useCartMutation(
+    locale,
+    async (args: { productId: number; variantId?: number; quantity?: number }) => {
+      const { data, error } = await api.POST("/api/v1/cart/items", {
+        params: { query: { locale: locale as "EN" | "BN" } },
+        headers: cartHeaders(),
+        // The generated type marks `quantity` required (openapi-typescript
+        // treats a swagger `default` as always-present) even though the
+        // backend DTO itself makes it optional — default it here to match.
+        body: { ...args, quantity: args.quantity ?? 1 },
+      });
+      if (error) throw error;
+      return data;
+    },
+    // Single choke point for add_to_cart — every "Add to Cart" button
+    // sitewide (PDP, cards, promo videos, cross-sell) funnels through this
+    // one mutation via useCardAddToCart/PdpPurchasePanel, so this one push
+    // covers all of them. `quantity` here is what was actually just added
+    // (the mutation args), not the line's running total in the cart.
+    (cart, args) => {
+      const line = cart.items.find(
+        (i) => i.productId === args.productId && (i.variantId ?? undefined) === args.variantId,
+      );
+      if (!line) return;
+      const quantity = args.quantity ?? 1;
+      const item = { ...cartLineToGa4Item(line), quantity };
+      pushEcommerceEvent("add_to_cart", {
+        currency: cart.currency,
+        value: (item.price ?? 0) * quantity,
+        items: [item],
+      });
+    },
+  );
 }
 
 export function useUpdateCartItem(locale: string) {

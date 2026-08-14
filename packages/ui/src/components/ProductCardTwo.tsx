@@ -39,6 +39,9 @@ export interface ProductCardTwoProps {
   addToCartPending?: boolean;
   linkComponent?: LinkComponent;
   className?: string;
+  /** Same contract as ProductCard's onSelect — fires right before the
+   * card's Link navigates, for the caller's own GA4 select_item push. */
+  onSelect?: () => void;
 }
 
 // Second card style — pixel-matched to organicindia.com's product card
@@ -68,6 +71,7 @@ export function ProductCardTwo({
   addToCartPending,
   linkComponent: Link = DefaultLink,
   className,
+  onSelect,
 }: ProductCardTwoProps) {
   const hasChoice = (packOptions?.length ?? 0) > 1;
   const singleOption = packOptions?.length === 1 ? packOptions[0] : undefined;
@@ -89,7 +93,7 @@ export function ProductCardTwo({
 
   return (
     <div className={cn("group flex h-full flex-col rounded-[20px] border border-line bg-transparent p-2.5", className)}>
-      <Link href={href} className="relative block aspect-square w-full overflow-hidden rounded-[20px] bg-beige">
+      <Link href={href} onClick={onSelect} className="relative block aspect-square w-full overflow-hidden rounded-[20px] bg-beige">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -125,7 +129,7 @@ export function ProductCardTwo({
           this card sits in the same grid row as a taller one. */}
       <div className="flex flex-1 flex-col justify-between pt-2.5">
         <div>
-          <Link href={href} className="block truncate font-sans text-[13px] leading-[130%] text-ink" title={name}>
+          <Link href={href} onClick={onSelect} className="block truncate font-sans text-[13px] leading-[130%] text-ink" title={name}>
             {name}
           </Link>
 

@@ -129,6 +129,12 @@ enum MediaType {
 model Media {
   id        Int       @id @default(autoincrement())
   url       String
+  // WebP derivatives generated at upload time (image-derivatives.util.ts) —
+  // null for VIDEO rows, for images sharp couldn't decode (SVG), and for
+  // rows uploaded before this existed until the backfill script runs.
+  // Consumers fall back to `url` when these are null.
+  cardUrl   String?   @map("card_url")
+  fullUrl   String?   @map("full_url")
   type      MediaType
   altText   String?   @map("alt_text")
   width     Int?

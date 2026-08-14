@@ -13,6 +13,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
+import { generateImageDerivatives } from '@amader/shared/image-derivatives';
 import { MEDIA_STORAGE } from './storage/media-storage.interface';
 import type { MediaStorage } from './storage/media-storage.interface';
 import { MediaDto, MediaFolderDto, toMediaDto, toMediaFolderDto } from './media.mapper';
@@ -47,11 +48,31 @@ export class MediaService {
       }
     }
 
-    const key = `${type.toLowerCase()}/${randomUUID()}-${file.originalname}`;
+    const id = randomUUID();
+    const key = `${type.toLowerCase()}/${id}-${file.originalname}`;
     const { url } = await this.storage.upload(key, file.buffer, file.mimetype);
 
+    // Card/full WebP derivatives — original stays as uploaded (untouched,
+    // per explicit decision to keep it as a re-derive source), these are
+    // additional objects alongside it. null for VIDEO and anything sharp
+    // can't decode (SVG) — cardUrl/fullUrl just stay unset and every
+    // consumer already falls back to `url`.
+    let cardUrl: string | undefined;
+    let fullUrl: string | undefined;
+    if (type === 'IMAGE') {
+      const derivatives = await generateImageDerivatives(file.buffer);
+      if (derivatives) {
+        const [card, full] = await Promise.all([
+          this.storage.upload(`image/${id}-card.webp`, derivatives.card.buffer, derivatives.card.contentType),
+          this.storage.upload(`image/${id}-full.webp`, derivatives.full.buffer, derivatives.full.contentType),
+        ]);
+        cardUrl = card.url;
+        fullUrl = full.url;
+      }
+    }
+
     const media = await this.prisma.client.media.create({
-      data: { url, type, altText, width, height },
+      data: { url, cardUrl, fullUrl, type, altText, width, height },
     });
     return toMediaDto(media);
   }
@@ -126,8 +147,12 @@ export class MediaService {
       );
     }
 
-    const key = media.url.split('/').slice(-2).join('/');
-    await this.storage.delete(key);
+    const urls = [media.url, media.cardUrl, media.fullUrl].filter(
+      (u): u is string => u !== null && u !== undefined,
+    );
+    await Promise.all(
+      urls.map((u) => this.storage.delete(u.split('/').slice(-2).join('/'))),
+    );
     await this.prisma.client.media.delete({ where: { id } });
   }
 }

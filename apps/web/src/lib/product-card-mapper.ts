@@ -96,7 +96,9 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
     href: `/products/${product.slug}`,
     productId: product.id,
     name: product.name,
-    imageUrl: toDisplayImageUrl(primaryMedia?.url),
+    // ~400w WebP thumbnail when the derivative pipeline has processed this
+    // media row, falling back to the original — see Media.cardUrl.
+    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url),
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
     flagLabel: product.flagLabel ? FLAG_LABEL_TEXT[product.flagLabel as unknown as ProductFlagLabel] : undefined,
@@ -145,7 +147,9 @@ export function toPromoVideoProductData(product: PublicProductDto): PromoVideoPr
     description: product.description ? sanitizeHtml(product.description) : null,
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
-    imageUrl: toDisplayImageUrl(primaryMedia?.url),
+    // ~400w WebP thumbnail when the derivative pipeline has processed this
+    // media row, falling back to the original — see Media.cardUrl.
+    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url),
     // Variant-only products reject a bare productId add ("This product
     // requires a variantId") — same defaultVariantId() used by
     // toProductCardData above, so the modal's one-click Add to Cart works

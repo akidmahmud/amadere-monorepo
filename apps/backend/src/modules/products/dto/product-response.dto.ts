@@ -28,6 +28,10 @@ export class AdminProductTranslationDto {
 export class AdminProductMediaDto {
   id!: number;
   url!: string;
+  /** ~400w WebP thumbnail, null until the derivative pipeline has run — see Media.cardUrl. */
+  cardUrl!: string | null;
+  /** ~1200w-capped WebP for full-size display, same null/fallback rule as cardUrl. */
+  fullUrl!: string | null;
   altText!: string | null;
   isPrimary!: boolean;
   sortOrder!: number;
@@ -137,6 +141,10 @@ export class PublicProductTagSummaryDto {
 
 export class PublicProductMediaDto {
   url!: string;
+  /** ~400w WebP thumbnail, null until the derivative pipeline has run — see Media.cardUrl. */
+  cardUrl!: string | null;
+  /** ~1200w-capped WebP for full-size display, same null/fallback rule as cardUrl. */
+  fullUrl!: string | null;
   type!: MediaType;
   isPrimary!: boolean;
 }

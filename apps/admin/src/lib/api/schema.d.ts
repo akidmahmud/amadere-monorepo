@@ -1012,6 +1012,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProductsController_importCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/trash": {
         parameters: {
             query?: never;
@@ -5875,6 +5891,8 @@ export interface components {
         MediaDto: {
             id: number;
             url: string;
+            cardUrl: string | null;
+            fullUrl: string | null;
             type: string;
             altText: string | null;
             width: number | null;
@@ -6201,6 +6219,8 @@ export interface components {
         };
         PublicProductMediaDto: {
             url: string;
+            cardUrl: string | null;
+            fullUrl: string | null;
             type: Record<string, never>;
             isPrimary: boolean;
         };
@@ -6253,6 +6273,7 @@ export interface components {
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
             media: components["schemas"]["PublicProductMediaDto"][];
             variants: components["schemas"]["PublicProductVariantDto"][];
+            salesCount?: number;
         };
         ProductFaqPublicDto: {
             question: string;
@@ -6291,6 +6312,7 @@ export interface components {
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
             media: components["schemas"]["PublicProductMediaDto"][];
             variants: components["schemas"]["PublicProductVariantDto"][];
+            salesCount?: number;
             seo: components["schemas"]["ResolvedSeoDto"];
             structuredData: Record<string, never>[];
             faqs: components["schemas"]["ProductFaqPublicDto"][];
@@ -6315,6 +6337,8 @@ export interface components {
         AdminProductMediaDto: {
             id: number;
             url: string;
+            cardUrl: string | null;
+            fullUrl: string | null;
             altText: string | null;
             isPrimary: boolean;
             sortOrder: number;
@@ -6795,6 +6819,8 @@ export interface components {
             couponCode: string | null;
             items: components["schemas"]["CartLineItemDto"][];
             crossSell: components["schemas"]["CartCrossSellItemDto"][];
+            crossSellProducts: components["schemas"]["PublicProductDto"][];
+            frequentlyBoughtTogether: components["schemas"]["PublicProductDto"][];
             subTotal: string;
             discounts: components["schemas"]["CartDiscountDto"][];
             totalDiscount: string;
@@ -8324,8 +8350,8 @@ export interface components {
         SiteInfoDto: {
             siteName: string;
             logoUrl: string | null;
-            productsPageBannerUrl?: string | null;
-            announcementSpeedSeconds?: number;
+            productsPageBannerUrl: string | null;
+            announcementSpeedSeconds: number;
             productCardStyle: Record<string, never>;
             logoPaddingPx: number;
             logoMarginPx: number;
@@ -11158,6 +11184,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminProductsController_importCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };

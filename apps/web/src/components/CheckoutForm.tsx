@@ -24,6 +24,7 @@ import { CodOtpPopup } from "@/components/CodOtpPopup";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { toProductCardData, type ProductCardData } from "@/lib/product-card-mapper";
+import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import { getDeviceId } from "@/lib/device-id";
 import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
@@ -324,6 +325,60 @@ export function CheckoutForm() {
   const { data: methodConfigs } = usePaymentMethodConfigs();
   const [copied, setCopied] = useState(false);
 
+  // begin_checkout — once per checkout page visit, as soon as real cart data
+  // is available (not on every refetch triggered by paymentProvider/district
+  // changing the previewed total, hence the ref guard).
+  const firedBeginCheckout = useRef(false);
+  useEffect(() => {
+    if (firedBeginCheckout.current || !cart || cart.items.length === 0) return;
+    firedBeginCheckout.current = true;
+    pushEcommerceEvent("begin_checkout", {
+      currency: cart.currency,
+      value: Number(cart.total),
+      coupon: cart.couponCode ?? undefined,
+      items: cart.items.map(cartLineToGa4Item),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
+
+  // add_payment_info — this checkout is a single page (no distinct
+  // "shipping"/"payment" steps), so there's no page transition to hook;
+  // fires whenever the payment method selection changes (including the
+  // initial default on mount, which is itself a meaningful "customer has a
+  // payment method staged" signal). `cart` is in the dependency array
+  // because it loads asynchronously — on first render it's still
+  // undefined, so the effect must re-run once it arrives — but the ref
+  // guard stops that same load (or any later unrelated cart refetch, e.g.
+  // a quantity change) from re-firing for a paymentProvider already fired.
+  const firedPaymentType = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cart || cart.items.length === 0 || firedPaymentType.current === paymentProvider) return;
+    firedPaymentType.current = paymentProvider;
+    pushEcommerceEvent("add_payment_info", {
+      currency: cart.currency,
+      value: Number(cart.total),
+      payment_type: paymentProvider,
+      items: cart.items.map(cartLineToGa4Item),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentProvider, cart]);
+
+  // add_shipping_info — same single-page-checkout caveat as add_payment_info
+  // above; there's no distinct shipping step or shipping-tier choice
+  // (single courier), so this fires once a real delivery district is
+  // selected, as the closest available signal to "shipping info entered".
+  const firedShippingInfo = useRef(false);
+  useEffect(() => {
+    if (firedShippingInfo.current || !shippingDistrict || !cart || cart.items.length === 0) return;
+    firedShippingInfo.current = true;
+    pushEcommerceEvent("add_shipping_info", {
+      currency: cart.currency,
+      value: Number(cart.total),
+      items: cart.items.map(cartLineToGa4Item),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shippingDistrict, cart]);
+
   const frequentlyBoughtCards = ((cart?.frequentlyBoughtTogether ?? []) as components["schemas"]["PublicProductDto"][])
     .map(toProductCardData)
     .filter((c) => !c.outOfStock);
@@ -475,7 +530,16 @@ export function CheckoutForm() {
                   key={item.id}
                   item={{ ...item, href: `/products/${item.slug}`, imageUrl: toDisplayImageUrl(item.imageUrl) }}
                   onQuantityChange={(quantity) => updateItem.mutate({ itemId: item.id, quantity })}
-                  onRemove={() => removeItem.mutate({ itemId: item.id })}
+                  onRemove={() => {
+                    if (cart) {
+                      pushEcommerceEvent("remove_from_cart", {
+                        currency: cart.currency,
+                        value: Number(item.lineTotal),
+                        items: [cartLineToGa4Item(item)],
+                      });
+                    }
+                    removeItem.mutate({ itemId: item.id });
+                  }}
                   linkComponent={AppLink}
                 />
               ))}

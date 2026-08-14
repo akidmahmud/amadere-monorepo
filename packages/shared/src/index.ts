@@ -18,6 +18,12 @@ export * from './permission-catalog';
 export * from './url-paths';
 export * from './courier-status';
 export * from './bd-geo';
+// image-derivatives is NOT re-exported here on purpose — it pulls in
+// `sharp` (a native Node binary), and this barrel is imported by client
+// components too (e.g. RichTextEditor's font picker uses ckeditor-fonts.ts
+// from this same file). Bundling sharp into a browser build fails outright
+// (its detect-libc dependency needs Node's `child_process`). Server-only
+// consumers import `@amader/shared/image-derivatives` directly instead.
 export * from './bd-thanas';
 export * from './phone';
 export * from './ckeditor-fonts';

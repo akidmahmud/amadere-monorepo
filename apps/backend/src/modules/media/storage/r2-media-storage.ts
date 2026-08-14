@@ -58,6 +58,13 @@ export class R2MediaStorage implements MediaStorage {
         Key: key,
         Body: body,
         ContentType: contentType,
+        // Every key embeds a randomUUID (media.service.ts) and is never
+        // overwritten in place — a re-upload gets a new key, an edit
+        // creates a new Media row — so it's safe to cache forever. Flagged
+        // live as one of the two largest Lighthouse opportunities on the
+        // storefront (11.8MB/7.8MB "Use efficient cache lifetimes"), since
+        // R2 wasn't setting this at all before.
+        CacheControl: 'public, max-age=31536000, immutable',
       }),
     );
     return { url: `${publicBaseUrl}/${key}` };

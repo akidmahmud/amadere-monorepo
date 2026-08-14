@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FilterCheckboxGroup, FilterDrawer, PlaceholderBanner, SiteProductCard } from "@amader/ui";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { AppLink } from "@/components/AppLink";
@@ -10,6 +10,7 @@ import { PriceFilter } from "@/components/PriceFilter";
 import { SortSelect } from "@/components/SortSelect";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import { buildPlpHref, FLAG_LABEL_OPTIONS, type FlagLabelValue, type PlpFilters } from "@/lib/plp";
+import { pushEcommerceEvent, cardToGa4Item } from "@/lib/analytics-events";
 import type { ProductCardData } from "@/lib/product-card-mapper";
 
 const hamburgerIcon = (
@@ -96,6 +97,21 @@ export function ProductListing({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (filters.page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, filters.page * pageSize);
+
+  // view_item_list — fires whenever this page's actual product set changes
+  // (filter/sort/page navigation genuinely is a new "list view" in GA4's
+  // model, not just this component's first mount).
+  const listId = basePath.replace(/^\//, "") || "products";
+  const listName = title ?? "Products";
+  useEffect(() => {
+    if (products.length === 0) return;
+    pushEcommerceEvent("view_item_list", {
+      item_list_id: listId,
+      item_list_name: listName,
+      items: products.map((p, i) => cardToGa4Item(p, { index: i, listId, listName })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, listId, listName]);
 
   const widget = (content: React.ReactNode, key: string) => (
     <div key={key} className="mb-1.5 rounded bg-white p-3 shadow-[0_1px_1px_rgba(0,0,0,.1)]">
@@ -234,13 +250,20 @@ export function ProductListing({
             <p className="py-16 text-center font-body text-muted">No products match these filters.</p>
           ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-              {products.map((product) => (
+              {products.map((product, i) => (
                 <SiteProductCard
                   key={product.href}
                   {...product}
                   linkComponent={AppLink}
                   addToCartPending={isPending && pendingProductId === product.productId}
                   onAddToCart={(packValue) => handleAddToCart(product.productId, packValue)}
+                  onSelect={() =>
+                    pushEcommerceEvent("select_item", {
+                      item_list_id: listId,
+                      item_list_name: listName,
+                      items: [cardToGa4Item(product, { index: i, listId, listName })],
+                    })
+                  }
                 />
               ))}
             </div>

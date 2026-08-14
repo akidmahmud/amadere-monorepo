@@ -61,6 +61,8 @@ export function toAdminProductDto(
     media: product.media.map((m) => ({
       id: m.mediaId,
       url: m.media.url,
+      cardUrl: m.media.cardUrl,
+      fullUrl: m.media.fullUrl,
       altText: m.media.altText,
       isPrimary: m.isPrimary,
       sortOrder: m.sortOrder,
@@ -146,6 +148,8 @@ export function toPublicProductDto(
     }),
     media: product.media.map((m) => ({
       url: m.media.url,
+      cardUrl: m.media.cardUrl,
+      fullUrl: m.media.fullUrl,
       type: m.media.type,
       isPrimary: m.isPrimary,
     })),

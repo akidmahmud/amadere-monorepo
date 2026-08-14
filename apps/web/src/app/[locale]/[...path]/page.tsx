@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getLanguageAlternates } from "@/i18n/alternates";
-import { safeGet } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
@@ -22,11 +22,26 @@ import type { components } from "@/lib/api/schema";
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
 export const revalidate = 3600;
 
-async function getStaticPage(slug: string, locale: string) {
-  const res = await safeGet("/api/v1/pages/{slug}", {
-    params: { path: { slug }, query: { locale } },
-  });
-  return res.data as components["schemas"]["PublicPageDetailDto"] | undefined;
+async function getStaticPage(slug: string, locale: "EN" | "BN") {
+  try {
+    const res = await api.GET("/api/v1/pages/{slug}", {
+      params: { path: { slug }, query: { locale } },
+    });
+    return res.data as components["schemas"]["PublicPageDetailDto"] | undefined;
+  } catch (err) {
+    // A real "no such page" — the backend's own 404 for this slug. Safe to
+    // treat as not-found and let ISR (revalidate = 3600 below) cache that.
+    if (err instanceof ApiError && err.status === 404) return undefined;
+    // Anything else (network blip, backend 5xx, DB timeout) must NOT be
+    // swallowed into "not found" the way the shared safeGet() helper does —
+    // this route's 1-hour ISR cache would then bake a single transient
+    // hiccup into a false 404 for up to an hour, which is exactly the
+    // "works, then randomly 404s, then works again" behavior reported live
+    // on amadere.com's footer links. Re-throwing instead means Next.js
+    // keeps serving the last known-good cached page (if any) and retries
+    // fresh on the next request rather than caching the failure.
+    throw err;
+  }
 }
 
 export async function generateMetadata({
