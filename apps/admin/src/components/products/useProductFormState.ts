@@ -43,6 +43,22 @@ export interface ProductFormSnapshot {
   images: GalleryImage[];
 }
 
+function stripHtml(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function useProductFormState(initial?: AdminProduct) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
@@ -68,7 +84,7 @@ export function useProductFormState(initial?: AdminProduct) {
     initial?.maxOrderQuantity != null ? String(initial.maxOrderQuantity) : "",
   );
   const [name, setName] = useState(initial?.translations[0]?.name ?? "");
-  const [description, setDescription] = useState(initial?.translations[0]?.description ?? "");
+  const [description, setDescription] = useState(stripHtml(initial?.translations[0]?.description ?? ""));
   const [content, setContent] = useState(initial?.translations[0]?.content ?? "");
   const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
   const [benefitPoints, setBenefitPoints] = useState(initial?.translations[0]?.benefitPoints ?? "");
@@ -164,7 +180,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setMinOrderQuantity(String(product.minOrderQuantity));
     setMaxOrderQuantity(product.maxOrderQuantity != null ? String(product.maxOrderQuantity) : "");
     setName(product.translations[0]?.name ?? "");
-    setDescription(product.translations[0]?.description ?? "");
+    setDescription(stripHtml(product.translations[0]?.description ?? ""));
     setContent(product.translations[0]?.content ?? "");
     setKeyBenefits(product.translations[0]?.keyBenefits ?? "");
     setBenefitPoints(product.translations[0]?.benefitPoints ?? "");

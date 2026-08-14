@@ -324,8 +324,12 @@ export function CheckoutForm() {
   const { data: methodConfigs } = usePaymentMethodConfigs();
   const [copied, setCopied] = useState(false);
 
-  const frequentlyBoughtCards = ((cart?.frequentlyBoughtTogether ?? []) as components["schemas"]["PublicProductDto"][]).map(toProductCardData);
-  const crossSellCards = ((cart?.crossSellProducts ?? []) as components["schemas"]["PublicProductDto"][]).map(toProductCardData);
+  const frequentlyBoughtCards = ((cart?.frequentlyBoughtTogether ?? []) as components["schemas"]["PublicProductDto"][])
+    .map(toProductCardData)
+    .filter((c) => !c.outOfStock);
+  const crossSellCards = ((cart?.crossSellProducts ?? []) as components["schemas"]["PublicProductDto"][])
+    .map(toProductCardData)
+    .filter((c) => !c.outOfStock);
 
   function handleCardAddToCart(productId: number, packValue?: string) {
     setIsAddingId(productId);
@@ -677,15 +681,15 @@ export function CheckoutForm() {
                 {locale === "BN" ? (
                   <>
                     আমি{" "}
-                    <Link href="/pages/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                    <Link href="/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
                       শর্তাবলী
                     </Link>
                     ,{" "}
-                    <Link href="/pages/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                    <Link href="/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
                       গোপনীয়তা নীতি
                     </Link>{" "}
                     এবং{" "}
-                    <Link href="/pages/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                    <Link href="/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
                       রিটার্ন ও রিফান্ড নীতি
                     </Link>
                     -র সাথে সম্মত।
@@ -693,15 +697,15 @@ export function CheckoutForm() {
                 ) : (
                   <>
                     I have read and agree to the{" "}
-                    <Link href="/pages/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                    <Link href="/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
                       Terms and Conditions
                     </Link>
                     ,{" "}
-                    <Link href="/pages/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                    <Link href="/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
                       Privacy Policy
                     </Link>{" "}
                     &amp;{" "}
-                    <Link href="/pages/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                    <Link href="/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
                       Refund and Return Policy
                     </Link>
                     .

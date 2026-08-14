@@ -460,6 +460,14 @@ export class CartService {
       return { frequentlyBoughtTogether: [], crossSell: [] };
     }
 
+    const isInStock = (p: any) => {
+      if (!p.trackInventory || p.allowBackorder) return true;
+      if (p.hasVariants && p.variants && p.variants.length > 0) {
+        return p.variants.some((v: any) => v.stock > 0);
+      }
+      return p.stock > 0;
+    };
+
     // 1. Frequently Bought Together
     const fbtRelations = await this.prisma.client.productRelation.findMany({
       where: {
@@ -477,7 +485,7 @@ export class CartService {
     const seenFbtIds = new Set<number>();
     let fbtRaw = fbtRelations
       .map((r) => r.toProduct)
-      .filter((p) => (seenFbtIds.has(p.id) ? false : (seenFbtIds.add(p.id), true)));
+      .filter((p) => (isInStock(p) && !seenFbtIds.has(p.id) ? (seenFbtIds.add(p.id), true) : false));
 
     // Randomize order
     fbtRaw = shuffleArray(fbtRaw);
@@ -498,7 +506,7 @@ export class CartService {
       const shuffledFallback = shuffleArray(fallbackProducts);
       for (const p of shuffledFallback) {
         if (fbtRaw.length >= 4) break;
-        if (!seenFbtIds.has(p.id)) {
+        if (isInStock(p) && !seenFbtIds.has(p.id)) {
           seenFbtIds.add(p.id);
           fbtRaw.push(p);
         }
@@ -525,7 +533,7 @@ export class CartService {
     const seenCsIds = new Set<number>();
     let crossSellRaw = crossSellRelations
       .map((r) => r.toProduct)
-      .filter((p) => (seenCsIds.has(p.id) ? false : (seenCsIds.add(p.id), true)));
+      .filter((p) => (isInStock(p) && !seenCsIds.has(p.id) ? (seenCsIds.add(p.id), true) : false));
 
     // Randomize order
     crossSellRaw = shuffleArray(crossSellRaw);
@@ -546,7 +554,7 @@ export class CartService {
       const shuffledFallback = shuffleArray(fallbackProducts);
       for (const p of shuffledFallback) {
         if (crossSellRaw.length >= 4) break;
-        if (!seenCsIds.has(p.id)) {
+        if (isInStock(p) && !seenCsIds.has(p.id)) {
           seenCsIds.add(p.id);
           crossSellRaw.push(p);
         }

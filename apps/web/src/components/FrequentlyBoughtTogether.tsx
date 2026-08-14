@@ -65,7 +65,7 @@ export function FrequentlyBoughtTogether({
   items: PublicProductDto[];
 }) {
   const mainCard = toProductCardData(mainProduct);
-  const itemCards = items.map(toProductCardData);
+  const itemCards = items.map(toProductCardData).filter((c) => !c.outOfStock);
   const [checked, setChecked] = useState<Set<number>>(() => new Set(itemCards.map((c) => c.productId)));
   const locale = toApiLocale(useLocale());
   const addToCart = useAddToCart(locale);

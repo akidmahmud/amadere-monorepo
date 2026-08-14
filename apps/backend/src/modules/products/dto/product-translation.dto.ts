@@ -1,8 +1,53 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Locale } from '@amader/db';
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsString,
+  ValidateNested,
+  registerDecorator,
+  ValidationOptions,
+} from 'class-validator';
 import { ProductFaqDto } from './product-faq.dto';
+
+function stripHtml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function IsPlainLengthMax(max: number, validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'isPlainLengthMax',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: {
+        message: `${propertyName} text (excluding HTML tags) must not exceed ${max} characters`,
+        ...validationOptions,
+      },
+      validator: {
+        validate(value: any) {
+          if (value === undefined || value === null || value === '') return true;
+          if (typeof value !== 'string') return false;
+          return stripHtml(value).length <= max;
+        },
+      },
+    });
+  };
+}
 
 export class ProductTranslationDto {
   @ApiProperty({ enum: Locale })
@@ -13,13 +58,13 @@ export class ProductTranslationDto {
   @IsString()
   name!: string;
 
-  // Admin's Short Description field shows a "X/350" counter next to it —
-  // the frontend also caps the textarea's `maxLength` at 350, but this is
-  // the real enforcement (a direct API call could otherwise still bypass it).
+  // Admin's Short Description field shows a "X/350" character counter —
+  // HTML tags/markup are excluded from character count so legacy HTML wrappers
+  // don't trigger validation failures.
   @ApiPropertyOptional({ description: 'Short Description — teaser near the title and the PDP\'s "About This Product" section', maxLength: 350 })
   @IsOptional()
   @IsString()
-  @MaxLength(350)
+  @IsPlainLengthMax(350)
   description?: string;
 
   @ApiPropertyOptional({ description: 'Full Description — rendered as the PDP\'s "Description" tab' })

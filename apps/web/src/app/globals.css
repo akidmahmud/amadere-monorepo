@@ -48,6 +48,23 @@ body {
    scrolls within it instead of overflowing the page. */
 .rich-content { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+/* CMS-authored collapsible FAQ blocks (Page content, e.g. /faq) — the admin
+   editor's GeneralHtmlSupport strips a literal <style> tag pasted into page
+   content (flattens it to plain text), so this can't be styled from within
+   the content itself. Plain <details>/<summary> already gives free,
+   JS-free collapse/expand and survives sanitizeHtml; this just re-skins the
+   native disclosure triangle as a bordered card with a +/- toggle to match
+   the brand FAQ design. Scoped to .amader-faq so it never affects any other
+   <details> a page might contain. */
+.amader-faq details { border: 1px solid var(--color-line); border-radius: 10px; padding: 18px 22px; margin-bottom: 14px; }
+.amader-faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-family: var(--font-serif); font-weight: 700; font-size: 1.05rem; color: var(--color-ink); }
+.amader-faq summary::-webkit-details-marker { display: none; }
+.amader-faq summary::after { content: "+"; flex: 0 0 auto; width: 26px; height: 26px; border: 1px solid var(--color-ink); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; }
+.amader-faq details[open] summary::after { content: "\2212"; }
+.amader-faq .faq-answer { margin-top: 16px; }
+.amader-faq .faq-lang-label { font-weight: 700; margin-bottom: 6px; }
+.amader-faq .faq-answer p { border-left: 3px solid var(--color-line); padding-left: 16px; font-style: italic; color: var(--color-ink); opacity: 0.85; margin: 0 0 14px; }
+
 /* PDP "Buy Now" attention-getter — a periodic little shake, not a
    continuous shimmy, so it stays noticeable without being annoying. */
 @keyframes wiggle {

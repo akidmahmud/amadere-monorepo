@@ -8324,6 +8324,7 @@ export interface components {
         SiteInfoDto: {
             siteName: string;
             logoUrl: string | null;
+            productsPageBannerUrl?: string | null;
             productCardStyle: Record<string, never>;
             logoPaddingPx: number;
             logoMarginPx: number;

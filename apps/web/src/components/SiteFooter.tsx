@@ -25,25 +25,25 @@ export function SiteFooter({ initialLogoUrl, initialNavMenu }: SiteFooterProps =
   const isBn = locale.toUpperCase() === "BN";
 
   const aboutLinks = [
-    { label: isBn ? "আমাদের™ সম্পর্কে" : "About Amader™", href: "/pages/about-us" },
-    { label: isBn ? "আমাদের™ ব্র্যান্ড" : "Amader™ Brand", href: "/pages/amader-brand" },
-    { label: isBn ? "যোগাযোগ" : "Contact Amader™", href: "/pages/contact" },
-    { label: isBn ? "আমাদের™ অঙ্গীকার" : "Amader™ Commitment", href: "/pages/amader-commitment" },
-    { label: isBn ? "কর্পোরেট সেলস" : "Corporate Sales", href: "/pages/corporate-sales" },
-    { label: isBn ? "আমাদের™ ভিশন ও মিশন" : "Amader™ Vision Mission", href: "/pages/vision-mission" },
-    { label: isBn ? "সচরাচর জিজ্ঞাসা" : "Frequently Asked Questions", href: "/pages/faq" },
+    { label: isBn ? "আমাদের™ সম্পর্কে" : "About Amader™", href: "/about-us" },
+    { label: isBn ? "আমাদের™ ব্র্যান্ড" : "Amader™ Brand", href: "/amader-brand" },
+    { label: isBn ? "যোগাযোগ" : "Contact Amader™", href: "/contact" },
+    { label: isBn ? "আমাদের™ অঙ্গীকার" : "Amader™ Commitment", href: "/amader-commitment" },
+    { label: isBn ? "কর্পোরেট সেলস" : "Corporate Sales", href: "/corporate-sales" },
+    { label: isBn ? "আমাদের™ ভিশন ও মিশন" : "Amader™ Vision Mission", href: "/vision-mission" },
+    { label: isBn ? "সচরাচর জিজ্ঞাসা" : "Frequently Asked Questions", href: "/faq" },
   ];
 
   const policyLinks = [
-    { label: isBn ? "শর্তাবলী" : "Terms & Conditions", href: "/pages/terms-conditions" },
-    { label: isBn ? "গোপনীয়তা নীতি" : "Privacy Policies", href: "/pages/privacy-policy" },
-    { label: isBn ? "রিটার্ন ও এক্সচেঞ্জ" : "Returns & Exchanges", href: "/pages/refund-policy" },
-    { label: isBn ? "শিপিং ও ডেলিভারি" : "Shipping & Delivery", href: "/pages/shipping-delivery" },
-    { label: isBn ? "কর্মক্ষেত্রের নীতি" : "Workplace Policy", href: "/pages/workplace-policy" },
-    { label: isBn ? "স্বাস্থ্য ও নিরাপত্তা নীতি" : "Health & Safety Policy", href: "/pages/health-safety-policy" },
-    { label: isBn ? "হালাল ব্যবসায়িক অঙ্গীকার" : "Halal Business Commitment", href: "/pages/halal-commitment" },
-    { label: isBn ? "আমাদের অঙ্গীকার" : "Amader Commitment", href: "/pages/amader-commitment" },
-    { label: isBn ? "কুকি নীতি" : "Cookie Policy", href: "/pages/cookie-policy" },
+    { label: isBn ? "শর্তাবলী" : "Terms & Conditions", href: "/terms-conditions" },
+    { label: isBn ? "গোপনীয়তা নীতি" : "Privacy Policies", href: "/privacy-policy" },
+    { label: isBn ? "রিটার্ন ও এক্সচেঞ্জ" : "Returns & Exchanges", href: "/refund-policy" },
+    { label: isBn ? "শিপিং ও ডেলিভারি" : "Shipping & Delivery", href: "/shipping-delivery" },
+    { label: isBn ? "কর্মক্ষেত্রের নীতি" : "Workplace Policy", href: "/workplace-policy" },
+    { label: isBn ? "স্বাস্থ্য ও নিরাপত্তা নীতি" : "Health & Safety Policy", href: "/health-safety-policy" },
+    { label: isBn ? "হালাল ব্যবসায়িক অঙ্গীকার" : "Halal Business Commitment", href: "/halal-commitment" },
+    { label: isBn ? "আমাদের অঙ্গীকার" : "Amader Commitment", href: "/amader-commitment" },
+    { label: isBn ? "কুকি নীতি" : "Cookie Policy", href: "/cookie-policy" },
   ];
 
   const categoryLinks = [

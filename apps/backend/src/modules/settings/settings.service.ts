@@ -11,6 +11,7 @@ const SITE_LOGO_MEDIA_ID_KEY = 'site_logo_media_id';
 const SITE_LOGO_STYLE_KEY = 'site_logo_style';
 const SITE_NAME_KEY = 'site_name';
 const DEFAULT_SITE_NAME = 'আমাদের';
+const PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY = 'products_page_banner_media_id';
 
 // Value shape: { style: 'ONE' | 'TWO' } — an object (not a bare string) so it
 // fits the same Prisma.InputJsonValue-typed upsert() every other setting
@@ -46,11 +47,21 @@ export class SettingsService {
     return toSettingDto(setting);
   }
 
-  // Public: resolves the logo Media row so the frontend gets a real URL,
-  // not a raw mediaId it would have to look up separately.
+  // Public: resolves the logo & banner Media rows so the frontend gets real URLs,
+  // not raw mediaIds it would have to look up separately.
   async getSiteInfo(): Promise<SiteInfoDto> {
     const rows = await this.prisma.client.setting.findMany({
-      where: { key: { in: [SITE_LOGO_MEDIA_ID_KEY, SITE_LOGO_STYLE_KEY, SITE_NAME_KEY, PRODUCT_CARD_STYLE_KEY] } },
+      where: {
+        key: {
+          in: [
+            SITE_LOGO_MEDIA_ID_KEY,
+            SITE_LOGO_STYLE_KEY,
+            SITE_NAME_KEY,
+            PRODUCT_CARD_STYLE_KEY,
+            PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY,
+          ],
+        },
+      },
     });
     const byKey = new Map(rows.map((r) => [r.key, r.value]));
 
@@ -61,6 +72,15 @@ export class SettingsService {
         where: { id: logoMediaId },
       });
       logoUrl = media?.url ?? null;
+    }
+
+    const bannerMediaId = byKey.get(PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY);
+    let productsPageBannerUrl: string | null = null;
+    if (typeof bannerMediaId === 'number') {
+      const media = await this.prisma.client.media.findUnique({
+        where: { id: bannerMediaId },
+      });
+      productsPageBannerUrl = media?.url ?? null;
     }
 
     const siteName = byKey.get(SITE_NAME_KEY);
@@ -79,6 +99,7 @@ export class SettingsService {
     return {
       siteName: typeof siteName === 'string' ? siteName : DEFAULT_SITE_NAME,
       logoUrl,
+      productsPageBannerUrl,
       productCardStyle,
       logoPaddingPx,
       logoMarginPx,

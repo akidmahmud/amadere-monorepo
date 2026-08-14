@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
 import { MediaPicker } from "@/components/MediaPicker";
 import { useSiteInfo, useUpsertSetting } from "@/hooks/useSettings";
+import { ProductsPageBannerSettings } from "@/components/ProductsPageBannerSettings";
 
 const logoIcon = <Icon name="image" />;
 const numberInputClass = "h-10 w-28 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -129,6 +130,8 @@ export default function LogoSettingsPage() {
           {saved && <span className="text-xs text-success">✓ Saved</span>}
         </div>
       </Card>
+
+      <ProductsPageBannerSettings />
     </div>
   );
 }

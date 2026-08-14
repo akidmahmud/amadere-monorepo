@@ -30,11 +30,29 @@ function toggle(list: number[], id: number, set: (ids: number[]) => void) {
 }
 
 // Short Description is plain text typed by an admin, but products migrated
-// from the old WooCommerce catalog can carry a literal "<p>...</p>" wrapper
-// in the raw string — counting those tag characters against the 350 cap
-// both inflates the displayed count and eats into the actual usable length.
+// from the old WooCommerce/Botble catalog can carry literal HTML tags ("<p>...", "<span>...")
+// or HTML entities in the raw string — stripping tags & entities ensures HTML markup is
+// never counted as words or characters against length limits.
 function stripHtml(str: string): string {
-  return str.replace(/<[^>]+>/g, "");
+  if (!str) return "";
+  return str
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function countWords(str: string): number {
+  const plainText = stripHtml(str);
+  if (!plainText) return 0;
+  return plainText.split(/\s+/).filter(Boolean).length;
 }
 
 // Product names in this catalog are commonly bilingual — "Amader Fiber Mix
@@ -173,7 +191,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="flex items-center justify-between text-xs font-bold text-text">
                     Short Description
-                    <span className="font-semibold text-muted">{stripHtml(form.description).length}/350</span>
+                    <span className="font-semibold text-muted">
+                      {stripHtml(form.description).length}/350 characters
+                    </span>
                   </span>
                   <textarea
                     value={form.description}

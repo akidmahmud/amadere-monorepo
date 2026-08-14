@@ -12,8 +12,21 @@ const textareaClass = "rounded-sm border border-border bg-surface p-3 text-sm te
 export const DESCRIPTION_MAX_WORDS = 500;
 
 export function countWords(text: string): number {
-  const trimmed = text.trim();
-  return trimmed ? trimmed.split(/\s+/).length : 0;
+  if (!text) return 0;
+  const plainText = text
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plainText) return 0;
+  return plainText.split(/\s+/).filter(Boolean).length;
 }
 
 // Same ASCII-first slugify as BlogPostFormFields.tsx/ProductFormFields.tsx —

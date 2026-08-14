@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/settings/site": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            responses: {
+                200: {
+                    content: {
+                        "application/json": components["schemas"]["SiteInfoDto"];
+                    };
+                };
+            };
+        };
+    };
     "/api/v1/admin/audit-log": {
         parameters: {
             query?: never;
@@ -5672,6 +5689,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        SiteInfoDto: {
+            siteName: string;
+            logoUrl: string | null;
+            productsPageBannerUrl?: string | null;
+            productCardStyle: Record<string, never>;
+            logoPaddingPx: number;
+            logoMarginPx: number;
+        };
         RegisterDto: {
             firstName: string;
             lastName: string;
