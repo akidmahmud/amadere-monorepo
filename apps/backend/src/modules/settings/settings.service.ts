@@ -12,6 +12,7 @@ const SITE_LOGO_STYLE_KEY = 'site_logo_style';
 const SITE_NAME_KEY = 'site_name';
 const DEFAULT_SITE_NAME = 'আমাদের';
 const PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY = 'products_page_banner_media_id';
+export const ANNOUNCEMENT_BAR_SPEED_KEY = 'announcement_bar_speed';
 
 // Value shape: { style: 'ONE' | 'TWO' } — an object (not a bare string) so it
 // fits the same Prisma.InputJsonValue-typed upsert() every other setting
@@ -59,6 +60,7 @@ export class SettingsService {
             SITE_NAME_KEY,
             PRODUCT_CARD_STYLE_KEY,
             PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY,
+            ANNOUNCEMENT_BAR_SPEED_KEY,
           ],
         },
       },
@@ -83,6 +85,19 @@ export class SettingsService {
       productsPageBannerUrl = media?.url ?? null;
     }
 
+    const speedVal = byKey.get(ANNOUNCEMENT_BAR_SPEED_KEY);
+    let announcementSpeedSeconds = 20;
+    if (typeof speedVal === 'number' && speedVal > 0) {
+      announcementSpeedSeconds = speedVal;
+    } else if (
+      speedVal &&
+      typeof speedVal === 'object' &&
+      typeof (speedVal as { speedSeconds?: unknown }).speedSeconds === 'number' &&
+      ((speedVal as { speedSeconds: number }).speedSeconds > 0)
+    ) {
+      announcementSpeedSeconds = (speedVal as { speedSeconds: number }).speedSeconds;
+    }
+
     const siteName = byKey.get(SITE_NAME_KEY);
     const cardStyleValue = byKey.get(PRODUCT_CARD_STYLE_KEY);
     const productCardStyle =
@@ -100,6 +115,7 @@ export class SettingsService {
       siteName: typeof siteName === 'string' ? siteName : DEFAULT_SITE_NAME,
       logoUrl,
       productsPageBannerUrl,
+      announcementSpeedSeconds,
       productCardStyle,
       logoPaddingPx,
       logoMarginPx,

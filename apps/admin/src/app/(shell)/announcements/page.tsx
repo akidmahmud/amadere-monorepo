@@ -1,8 +1,94 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { useAnnouncements, useDeleteAnnouncement } from "@/hooks/useAnnouncements";
+import { useSiteInfo, useUpsertSetting } from "@/hooks/useSettings";
+
+const ANNOUNCEMENT_BAR_SPEED_KEY = "announcement_bar_speed";
+
+const SPEED_PRESETS = [
+  { label: "10s (Fast)", value: 10 },
+  { label: "15s (Medium Fast)", value: 15 },
+  { label: "20s (Normal)", value: 20 },
+  { label: "30s (Slow)", value: 30 },
+  { label: "40s (Very Slow)", value: 40 },
+];
+
+function AnnouncementSpeedCard() {
+  const { data: siteInfo } = useSiteInfo();
+  const upsert = useUpsertSetting();
+  const [speed, setSpeed] = useState(20);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (siteInfo?.announcementSpeedSeconds) {
+      setSpeed(siteInfo.announcementSpeedSeconds);
+    }
+  }, [siteInfo?.announcementSpeedSeconds]);
+
+  async function handleSave(newSpeed: number) {
+    setSpeed(newSpeed);
+    await upsert.mutateAsync({ key: ANNOUNCEMENT_BAR_SPEED_KEY, value: { speedSeconds: newSpeed } });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-ui text-sm font-semibold text-text">Ticker Speed Setting</h3>
+          <p className="mt-0.5 text-xs text-muted">
+            Control how fast announcement text moves across the top banner on the storefront.
+          </p>
+        </div>
+        {saved && <span className="text-xs font-semibold text-success">✓ Speed Saved</span>}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {SPEED_PRESETS.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            disabled={upsert.isPending}
+            onClick={() => handleSave(preset.value)}
+            className={`rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              speed === preset.value
+                ? "border-brand-500 bg-brand-50 text-brand-500"
+                : "border-border bg-surface text-text hover:bg-surface-2"
+            }`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-1 flex items-center gap-3">
+        <label className="flex items-center gap-2 text-xs font-semibold text-secondary">
+          Custom Duration (seconds):
+          <input
+            type="number"
+            min={3}
+            max={120}
+            value={speed}
+            onChange={(e) => setSpeed(Math.max(3, Number(e.target.value) || 20))}
+            className="h-8 w-20 rounded-sm border border-border bg-surface px-2.5 text-xs text-text outline-none focus:border-brand-500"
+          />
+        </label>
+        <Button
+          type="button"
+          variant="primary"
+          disabled={upsert.isPending}
+          onClick={() => handleSave(speed)}
+        >
+          {upsert.isPending ? "Saving…" : "Save Custom Speed"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
 
 export default function AnnouncementsPage() {
   const { data: items, isLoading } = useAnnouncements();
@@ -10,6 +96,8 @@ export default function AnnouncementsPage() {
 
   return (
     <>
+      <AnnouncementSpeedCard />
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-secondary">{items?.length ?? 0} announcements</p>
         <Link href="/announcements/new">

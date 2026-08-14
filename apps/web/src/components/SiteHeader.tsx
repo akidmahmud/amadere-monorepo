@@ -80,7 +80,12 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
 
   return (
     <>
-      <AnnouncementBar items={announcements ?? []} dismissLabel={t("header.dismissAnnouncement")} linkComponent={Link} />
+      <AnnouncementBar
+        items={announcements ?? []}
+        dismissLabel={t("header.dismissAnnouncement")}
+        linkComponent={Link}
+        speedSeconds={siteInfo?.announcementSpeedSeconds}
+      />
       <Header
         brandHref="/"
         brandMark="আমাদের"

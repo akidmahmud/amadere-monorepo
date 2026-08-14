@@ -13,6 +13,8 @@ export interface AnnouncementBarProps {
   items: AnnouncementItem[];
   dismissLabel?: string;
   linkComponent?: LinkComponent;
+  /** Speed of ticker animation in seconds (default: 20s). */
+  speedSeconds?: number;
 }
 
 const truckIcon = (
@@ -66,6 +68,7 @@ export function AnnouncementBar({
   items,
   dismissLabel = "Dismiss announcement",
   linkComponent: Link = DefaultLink,
+  speedSeconds = 20,
 }: AnnouncementBarProps) {
   const [dismissed, setDismissed] = useState(false);
   const signature = items.map((item) => item.message).join("|");
@@ -83,6 +86,15 @@ export function AnnouncementBar({
     setDismissed(true);
   }
 
+  // Duplicate items so there is enough text to fill the screen and loop seamlessly
+  // without any blank gaps or pause when restarting a rotation.
+  const displayItems =
+    items.length === 1
+      ? [...items, ...items, ...items, ...items]
+      : items.length === 2
+      ? [...items, ...items, ...items]
+      : [...items, ...items];
+
   function segment(item: AnnouncementItem, key: string) {
     const text = (
       <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap font-header text-[11.5px] font-medium text-white md:text-[0.8rem]">
@@ -91,7 +103,7 @@ export function AnnouncementBar({
       </span>
     );
     return (
-      <span key={key} className="inline-flex shrink-0 items-center pr-12">
+      <span key={key} className="inline-flex shrink-0 items-center pr-16 md:pr-24">
         {item.linkUrl ? (
           <Link href={item.linkUrl} className="hover:underline">
             {text}
@@ -105,13 +117,14 @@ export function AnnouncementBar({
 
   return (
     <div className="relative flex h-10 items-center bg-header-green">
-      {/* News-ticker: enters fully off-screen from the right edge and
-          exits off-screen at the left (see `announcement-ticker` keyframe),
-          then pauses briefly before re-entering — a single announcement
-          sweeps past once per cycle, several sweep past back-to-back. */}
+      {/* Continuous marquee ticker: moves smoothly from 0% to -50% with duplicated items
+          so after completing one rotation it instantly loops to the next without any gap or delay. */}
       <div className="mx-auto min-w-0 max-w-[1440px] flex-1 overflow-hidden px-8 md:px-6">
-        <div className="flex w-max animate-announcement-ticker">
-          {items.map((item, i) => segment(item, `a-${i}`))}
+        <div
+          className="flex w-max animate-announcement-ticker hover:[animation-play-state:paused]"
+          style={{ animationDuration: `${Math.max(3, speedSeconds)}s` }}
+        >
+          {displayItems.map((item, i) => segment(item, `a-${i}`))}
         </div>
       </div>
       <button

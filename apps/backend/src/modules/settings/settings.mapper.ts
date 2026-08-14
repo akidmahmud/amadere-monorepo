@@ -20,6 +20,8 @@ export class SiteInfoDto {
   siteName!: string;
   logoUrl!: string | null;
   productsPageBannerUrl!: string | null;
+  /** Speed of announcement bar marquee ticker in seconds (e.g. 20). */
+  announcementSpeedSeconds!: number;
   /** Which product card component the storefront renders everywhere a
    * product card appears (homepage, search, PLP, PDP related/cross-sell) —
    * admin-configurable, see SettingsService.PRODUCT_CARD_STYLE_KEY. */
