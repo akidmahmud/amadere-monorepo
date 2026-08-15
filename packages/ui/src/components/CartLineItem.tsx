@@ -40,7 +40,11 @@ export function CartLineItem({ item, onQuantityChange, onRemove, linkComponent: 
         </Link>
         {item.variantLabel && <p className="mb-1.5 text-xs text-muted">{item.variantLabel}</p>}
         <div className="flex items-center gap-2.5">
-          <QtyStepper value={item.quantity} onChange={onQuantityChange} />
+          {/* Debounced — onQuantityChange is a network mutation here, unlike
+              the PDP's local "qty to add" stepper, so rapid +/- clicks
+              shouldn't each fire their own request. The displayed number
+              still updates instantly regardless (QtyStepper's own local echo). */}
+          <QtyStepper value={item.quantity} onChange={onQuantityChange} commitDelayMs={400} />
           <span className="font-body text-sm text-ink">{formatMoney(item.lineTotal)}</span>
         </div>
       </div>

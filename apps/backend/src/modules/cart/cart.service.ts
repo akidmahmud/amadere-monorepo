@@ -412,13 +412,20 @@ export class CartService {
         };
       }),
       ...(await this.serializePricing(pricing, district)),
-      crossSell: recommendations.crossSell.map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        name: p.name,
-        price: p.price,
-        imageUrl: p.media[0]?.url ?? null,
-      })),
+      crossSell: recommendations.crossSell.map((p) => {
+        // Variant-only products carry no price on the product itself (see
+        // PublicProductDto.price's own comment) — same default-variant
+        // fallback toProductCardData uses on the frontend, so cross-sell
+        // cards don't silently hide the price for every variant product.
+        const defaultVariant = p.variants.find((v) => v.isDefault) ?? p.variants[0];
+        return {
+          id: p.id,
+          slug: p.slug,
+          name: p.name,
+          price: p.price ?? defaultVariant?.price ?? null,
+          imageUrl: p.media[0]?.url ?? null,
+        };
+      }),
       crossSellProducts: recommendations.crossSell,
       frequentlyBoughtTogether: recommendations.frequentlyBoughtTogether,
     };

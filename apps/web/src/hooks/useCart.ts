@@ -112,14 +112,51 @@ export function useAddToCart(locale: string) {
 }
 
 export function useUpdateCartItem(locale: string) {
-  return useCartMutation(locale, async (args: { itemId: number; quantity: number }) => {
-    const { data, error } = await api.PATCH("/api/v1/cart/items/{id}", {
-      params: { path: { id: args.itemId }, query: { locale: locale as "EN" | "BN" } },
-      headers: cartHeaders(),
-      body: { quantity: args.quantity },
-    });
-    if (error) throw error;
-    return data;
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { itemId: number; quantity: number }) => {
+      const { data, error } = await api.PATCH("/api/v1/cart/items/{id}", {
+        params: { path: { id: args.itemId }, query: { locale: locale as "EN" | "BN" } },
+        headers: cartHeaders(),
+        body: { quantity: args.quantity },
+      });
+      if (error) throw error;
+      return data;
+    },
+    // QtyStepper's own local echo already makes the +/- buttons feel
+    // instant before this even fires, but without also patching the cache
+    // here, the number would flicker back to the old value the moment
+    // QtyStepper re-syncs from this query's (still-stale, pre-response)
+    // data, then jump forward again once the real response lands. Patching
+    // every cached cart query (there can be several — see cartKey) closes
+    // that gap; onSuccess's invalidate below still corrects totals/tax/
+    // codFee, which a client-side guess at unitPrice*quantity can't.
+    onMutate: async (args) => {
+      await queryClient.cancelQueries({ queryKey: ["cart", locale] });
+      const previous = queryClient.getQueriesData<CartViewDto>({ queryKey: ["cart", locale] });
+      for (const [key, data] of previous) {
+        if (!data) continue;
+        queryClient.setQueryData<CartViewDto>(key, {
+          ...data,
+          items: data.items.map((item) =>
+            item.id === args.itemId
+              ? { ...item, quantity: args.quantity, lineTotal: (Number(item.unitPrice) * args.quantity).toFixed(2) }
+              : item,
+          ),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _args, context) => {
+      if (!context) return;
+      for (const [key, data] of context.previous) {
+        queryClient.setQueryData(key, data);
+      }
+    },
+    onSuccess: (cart) => {
+      persistGuestToken(cart);
+      queryClient.invalidateQueries({ queryKey: ["cart", locale] });
+    },
   });
 }
 
