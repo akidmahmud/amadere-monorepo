@@ -62,6 +62,11 @@ export class SettingsService {
     // this yet"), which is why an admin-saved favicon kept showing the old
     // one until the page's own 5-60min timed revalidate window rolled over.
     void this.revalidation.revalidate(['/[locale]'], 'layout');
+    // manifest.ts (site name/icon for bookmarks, PWA install) reads this
+    // same settings data but lives at the app root, outside [locale] — the
+    // layout-type revalidate above doesn't reach it, so it needs its own
+    // literal-path (default page-type) revalidate call.
+    void this.revalidation.revalidate(['/manifest.webmanifest']);
     return toSettingDto(setting);
   }
 

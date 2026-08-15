@@ -43,8 +43,16 @@ function resolveDateRange(value: string | undefined, customFrom?: string, custom
     return { from: new Date(customFrom).toISOString(), to: new Date(`${customTo}T23:59:59.999`).toISOString() };
   }
   if (!value) return {};
-  const days = value === "today" ? 1 : value === "7d" ? 7 : 30;
   const to = new Date();
+  if (value === "today") {
+    // Calendar day (local midnight to now), not a rolling 24h window — the
+    // rolling-window version below meant "Today" at, say, 2am actually
+    // included nearly all of yesterday (anything after 2am the day before),
+    // which is exactly the reported bug.
+    const from = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 0, 0, 0, 0);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
+  const days = value === "7d" ? 7 : 30;
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
   return { from: from.toISOString(), to: to.toISOString() };
 }

@@ -735,6 +735,14 @@ model Product {
   viewCount   Int           @default(0) @map("view_count")
   videoUrl    String?       @map("video_url") // embedded video reference (product detail gallery)
 
+  // Manual social-proof override for the storefront's "N people bought"
+  // badge (WatchingNowBadge) — that number is normally SUM(order_items.qty)
+  // over real non-canceled orders (see ProductsService.getBySlug), which
+  // undercounts for products just launched or moved off a legacy site with
+  // real sales history not reflected in these orders. Null = use the real
+  // computed count; set = show this instead, unconditionally (not a floor).
+  salesCountOverride Int? @map("sales_count_override")
+
   // Simple (non-variant) products price/stock live directly here. Variant
   // products (hasVariants=true) keep price/stock on ProductVariant instead.
   hasVariants    Boolean     @default(false) @map("has_variants")

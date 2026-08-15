@@ -166,6 +166,7 @@ export class PublicProductBrandDto {
   id!: number;
   slug!: string;
   name!: string;
+  description!: string | null;
 }
 
 export class PublicProductCategorySummaryDto {

@@ -1085,7 +1085,7 @@ export class ProductsService {
         _sum: { quantity: true },
       }),
     ]);
-    const salesCount = salesSum._sum.quantity ?? 0;
+    const salesCount = product.salesCountOverride ?? (salesSum._sum.quantity ?? 0);
 
     const translation =
       product.translations.find((t) => t.locale === locale) ?? product.translations[0];

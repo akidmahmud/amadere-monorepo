@@ -175,6 +175,16 @@ export default async function ProductPage({
       ),
     },
     product.howToUse && { id: "how-to-use", label: "How to Use", content: htmlBlock(product.howToUse) },
+    // Always last, per explicit request — kept as its own array push (not
+    // spliced in above) so it can never end up anywhere but the final tab
+    // regardless of which of the other conditional tabs are present.
+    product.brand && {
+      id: "brand",
+      label: product.brand.name,
+      content: product.brand.description
+        ? htmlBlock(product.brand.description)
+        : <p className="font-body text-sm text-secondary">No description available for {product.brand.name} yet.</p>,
+    },
   ].filter(Boolean) as ProductTab[];
 
   return (
@@ -267,20 +277,7 @@ export default async function ProductPage({
             ~12-16px) — so this one needs its own mx-4/sm:mx-0 instead of
             relying on the shared wrapper's mobile px-0. */}
         <div className="mx-4 rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0">
-          <ProductTabs
-            tabs={tabs}
-            extraRight={
-              product.brand ? (
-                <AppLink
-                  href={`/brands/${product.brand.slug}`}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-3.5 py-2 font-ui text-xs sm:text-sm font-medium text-[#222831] hover:border-green hover:text-green transition-colors shadow-2xs"
-                >
-                  <span className="text-muted">Brand:</span>
-                  <span className="font-bold text-green">{product.brand.name}</span>
-                </AppLink>
-              ) : undefined
-            }
-          />
+          <ProductTabs tabs={tabs} />
         </div>
 
         {/* Standalone section, not a tab — per explicit request. Same card

@@ -172,6 +172,7 @@ export function toPublicProductDto(
           id: product.brand.id,
           slug: product.brand.slug,
           name: brandTranslation?.name ?? product.brand.slug,
+          description: brandTranslation?.description ?? null,
         }
       : null,
     categories: product.categories.map((c) => {

@@ -78,6 +78,18 @@ export default async function LocaleLayout({
           own <link> for) so there's exactly one favicon link, no ambiguity
           between a static build-time icon and this runtime-configurable one. */}
       <link rel="icon" href={siteInfo?.faviconUrl ?? "/favicon-default.png"} />
+      {/* iOS home-screen icon — Safari doesn't reliably read icons out of
+          manifest.ts (app/manifest.ts) for "Add to Home Screen", it wants
+          this explicit link. Same admin-uploaded favicon, not a separate
+          asset — a good square favicon works fine here too. */}
+      <link rel="apple-touch-icon" href={siteInfo?.faviconUrl ?? "/favicon-default.png"} />
+      {/* Tints mobile browser chrome (address bar) and the PWA splash
+          screen to match the header's own nav-bar green, so the site reads
+          as the same brand from the very first frame — same value as
+          manifest.ts's theme_color, kept in sync manually since the two
+          files can't share a constant across a client/server boundary this
+          cleanly for one hex value. */}
+      <meta name="theme-color" content="#21713d" />
       {/* Opens the connection (DNS + TLS) to promo-video embed platforms
           ahead of time, before any specific iframe actually needs one — the
           handshake itself is often a big chunk of the perceived "video takes

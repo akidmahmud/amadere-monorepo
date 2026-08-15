@@ -3988,22 +3988,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/analytics/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AnalyticsController_track"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/analytics/config": {
         parameters: {
             query?: never;
@@ -6223,6 +6207,7 @@ export interface components {
             id: number;
             slug: string;
             name: string;
+            description: string | null;
         };
         PublicProductCategorySummaryDto: {
             id: number;
@@ -8327,20 +8312,10 @@ export interface components {
             enabled?: boolean;
             template?: string;
         };
-        TrackEventDto: {
-            /** @description e.g. "page_view", "view_item", "add_to_cart" */
-            name: string;
-            params?: Record<string, never>;
-            /** @description Frontend-generated anonymous id */
-            clientId?: string;
-        };
-        AnalyticsAckDto: Record<string, never>;
         UpdateGa4SettingsDto: {
             enabled?: boolean;
             /** @description e.g. G-XXXXXXXXXX */
             measurementId?: string;
-            /** @description Leave blank to keep the existing stored secret */
-            apiSecret?: string;
         };
         UpdateGtmSettingsDto: {
             enabled?: boolean;
@@ -8351,10 +8326,6 @@ export interface components {
             enabled?: boolean;
             /** @description Meta Pixel ID */
             pixelId?: string;
-            /** @description Optional — tags CAPI events as test events in Events Manager */
-            testEventCode?: string;
-            /** @description Leave blank to keep the existing stored token */
-            accessToken?: string;
         };
         UpdateGoogleAdsSettingsDto: {
             enabled?: boolean;
@@ -8367,8 +8338,6 @@ export interface components {
             enabled?: boolean;
             /** @description TikTok Pixel Code */
             pixelCode?: string;
-            /** @description Leave blank to keep the existing stored token */
-            accessToken?: string;
         };
         UpdateClaritySettingsDto: {
             enabled?: boolean;
@@ -17322,37 +17291,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AnalyticsController_track: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TrackEventDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnalyticsAckDto"];
-                };
-            };
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnalyticsAckDto"];
                 };
             };
         };

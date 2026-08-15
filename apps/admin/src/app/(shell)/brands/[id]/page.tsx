@@ -10,31 +10,6 @@ import { StatusSelect } from "@/components/StatusSelect";
 import { useBrand, useUpdateBrand } from "@/hooks/useBrands";
 import type { PublishStatus } from "@/hooks/useBrands";
 
-// Same stripper/counter as ProductFormFields.tsx/CategoryFormFields.tsx —
-// duplicated per-form, matching this codebase's existing convention.
-function stripHtml(str: string): string {
-  if (!str) return "";
-  return str
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&[a-z0-9#]+;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function countWords(str: string): number {
-  const plain = stripHtml(str);
-  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
-}
-
-const DESCRIPTION_MAX_WORDS = 450;
-
 export default function EditBrandPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const brandId = Number(id);
@@ -50,7 +25,6 @@ export default function EditBrandPage({ params }: { params: Promise<{ id: string
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [isFeatured, setIsFeatured] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const wordCount = countWords(description);
 
   useEffect(() => {
     if (!brand) return;
@@ -65,10 +39,6 @@ export default function EditBrandPage({ params }: { params: Promise<{ id: string
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (wordCount > DESCRIPTION_MAX_WORDS) {
-      setFormError(`Description can't be more than ${DESCRIPTION_MAX_WORDS} words.`);
-      return;
-    }
     setFormError(null);
     await update.mutateAsync({
       slug,
@@ -108,12 +78,7 @@ export default function EditBrandPage({ params }: { params: Promise<{ id: string
           />
         </label>
         <div className="flex flex-col gap-1.5">
-          <span className="flex items-center justify-between text-xs font-semibold text-secondary">
-            Description (optional)
-            <span className={wordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
-              {wordCount}/{DESCRIPTION_MAX_WORDS} words
-            </span>
-          </span>
+          <span className="text-xs font-semibold text-secondary">Description (optional)</span>
           <RichTextEditor value={description} onChange={setDescription} compact />
         </div>
         {formError && (

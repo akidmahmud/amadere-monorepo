@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Icon, PageHeader, Tabs, ToggleSwitch } from "@amader/admin-ui";
 import { MediaPicker } from "@/components/MediaPicker";
+import { useToast } from "@/components/ToastProvider";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
 import {
   useEmailTemplates,
   useEmailTemplateSettings,
@@ -115,6 +118,7 @@ function StatusTab({ templates }: { templates: EmailTemplate[] }) {
 }
 
 function SettingsTab() {
+  const toast = useToast();
   const { data, isLoading } = useEmailTemplateSettings();
   const update = useUpdateEmailTemplateSettings();
   const [logoMediaId, setLogoMediaId] = useState<number | null | undefined>(undefined);
@@ -129,15 +133,20 @@ function SettingsTab() {
 
   const effectiveLogoUrl = logoUrl !== undefined ? logoUrl : (data.logoUrl ?? undefined);
 
-  function handleSave() {
-    update.mutate({
-      logoMediaId: logoMediaId !== undefined ? logoMediaId : undefined,
-      contactEmail: contactEmail !== undefined ? contactEmail : undefined,
-      copyright: copyright !== undefined ? copyright : undefined,
-      logoHeight: logoHeight !== undefined ? logoHeight : undefined,
-      customCss: customCss !== undefined ? customCss : undefined,
-      orderNotificationEmail: orderNotificationEmail !== undefined ? orderNotificationEmail : undefined,
-    });
+  async function handleSave() {
+    try {
+      await update.mutateAsync({
+        logoMediaId: logoMediaId !== undefined ? logoMediaId : undefined,
+        contactEmail: contactEmail !== undefined ? contactEmail : undefined,
+        copyright: copyright !== undefined ? copyright : undefined,
+        logoHeight: logoHeight !== undefined ? logoHeight : undefined,
+        customCss: customCss !== undefined ? customCss : undefined,
+        orderNotificationEmail: orderNotificationEmail !== undefined ? orderNotificationEmail : undefined,
+      });
+      toast.push("Email template settings saved.", "success");
+    } catch (err) {
+      toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to save settings", "error");
+    }
   }
 
   return (

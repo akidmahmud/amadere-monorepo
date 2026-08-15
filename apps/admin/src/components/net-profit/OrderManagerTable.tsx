@@ -386,7 +386,7 @@ export function OrderManagerTable({
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
 
-  const colCount = 16 + columns.size;
+  const colCount = 15 + columns.size;
   const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
   const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
@@ -409,7 +409,7 @@ export function OrderManagerTable({
                 Order
               </TH>
               <TH>Date</TH>
-              <TH>Edit</TH>
+              <TH>Actions</TH>
               <TH>Status</TH>
               <TH>Assign</TH>
               <TH>Total</TH>
@@ -424,7 +424,6 @@ export function OrderManagerTable({
               <TH>Risk</TH>
               <TH>Courier Send</TH>
               <TH>Courier Status</TH>
-              <TH>Actions</TH>
             </tr>
           </thead>
           <tbody>
@@ -590,16 +589,42 @@ function OrderRow({
         </div>
       </td>
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={() => setEditing((v) => !v)}
-          aria-label={editing ? "Done editing" : "Edit"}
-          title={editing ? "Done editing" : "Edit"}
-          className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border"
-          style={editing ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" } : { color: FAINT, borderColor: "transparent" }}
-        >
-          {editing ? checkIcon : editIcon}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            aria-label={editing ? "Done editing" : "Edit"}
+            title={editing ? "Done editing" : "Edit"}
+            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border"
+            style={editing ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" } : { color: FAINT, borderColor: "transparent" }}
+          >
+            {editing ? checkIcon : editIcon}
+          </button>
+          {onRestore && (
+            <button
+              type="button"
+              disabled={restoringId === o.id}
+              onClick={() => onRestore(o)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold disabled:opacity-50"
+              style={{ borderColor: GREEN, color: GREEN }}
+            >
+              {restoreIcon}
+              {restoringId === o.id ? "Restoring…" : "Restore"}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              aria-label="Delete order"
+              title="Delete order"
+              onClick={() => onDelete(o)}
+              className="grid h-8 w-8 place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
+              style={{ borderColor: "#f8ccd3" }}
+            >
+              {deleteIcon}
+            </button>
+          )}
+        </div>
       </td>
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <StatusCell order={o} statusByKey={statusByKey} />
@@ -665,32 +690,6 @@ function OrderRow({
       </td>
       <td className={td} style={tdStyle}>
         <CourierStatusCell order={o} />
-      </td>
-      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-        {onRestore && (
-          <button
-            type="button"
-            disabled={restoringId === o.id}
-            onClick={() => onRestore(o)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold disabled:opacity-50"
-            style={{ borderColor: GREEN, color: GREEN }}
-          >
-            {restoreIcon}
-            {restoringId === o.id ? "Restoring…" : "Restore"}
-          </button>
-        )}
-        {onDelete && (
-          <button
-            type="button"
-            aria-label="Delete order"
-            title="Delete order"
-            onClick={() => onDelete(o)}
-            className="grid h-8 w-8 place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white"
-            style={{ borderColor: "#f8ccd3" }}
-          >
-            {deleteIcon}
-          </button>
-        )}
       </td>
     </tr>
   );
