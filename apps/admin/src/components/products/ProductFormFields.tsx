@@ -29,10 +29,14 @@ function toggle(list: number[], id: number, set: (ids: number[]) => void) {
   set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 }
 
-// Short Description is plain text typed by an admin, but products migrated
-// from the old WooCommerce/Botble catalog can carry literal HTML tags ("<p>...", "<span>...")
-// or HTML entities in the raw string — stripping tags & entities ensures HTML markup is
-// never counted as words or characters against length limits.
+export const SHORT_DESCRIPTION_MAX_WORDS = 450;
+
+// Short Description is HTML (compact RichTextEditor — bold/italic/underline/
+// link only), same as products migrated from the old WooCommerce/Botble
+// catalog which can carry literal HTML tags ("<p>...", "<span>...") or HTML
+// entities in the raw string — stripping tags & entities either way ensures
+// markup is never counted as words against the length limit (word count,
+// not character count, matching CategoryFormFields.tsx's own convention).
 function stripHtml(str: string): string {
   if (!str) return "";
   return str
@@ -188,25 +192,20 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                     </span>
                   )}
                 </label>
-                <label className="mb-3.5 flex flex-col gap-1.5">
+                <div className="mb-3.5 flex flex-col gap-1.5">
                   <span className="flex items-center justify-between text-xs font-bold text-text">
                     Short Description
-                    <span className={stripHtml(form.description).length > 350 ? "font-semibold text-danger" : "font-semibold text-muted"}>
-                      {stripHtml(form.description).length}/350 characters
+                    <span className={countWords(form.description) > SHORT_DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
+                      {countWords(form.description)}/{SHORT_DESCRIPTION_MAX_WORDS} words
                     </span>
                   </span>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => form.setDescription(e.target.value)}
-                    rows={3}
-                    className={textareaClass}
-                  />
-                  {stripHtml(form.description).length > 350 && (
+                  <RichTextEditor value={form.description} onChange={form.setDescription} compact />
+                  {countWords(form.description) > SHORT_DESCRIPTION_MAX_WORDS && (
                     <span className="text-xs font-semibold text-danger">
-                      Short description exceeds 350 characters by {stripHtml(form.description).length - 350} char(s). Please trim to save.
+                      Short description exceeds {SHORT_DESCRIPTION_MAX_WORDS} words by {countWords(form.description) - SHORT_DESCRIPTION_MAX_WORDS} word(s). Please trim to save.
                     </span>
                   )}
-                </label>
+                </div>
                 {/* A plain div, not <label> — RichTextEditor renders its own
                     toolbar full of buttons, and a bare <label> with no
                     htmlFor wrapping multiple interactive elements makes the

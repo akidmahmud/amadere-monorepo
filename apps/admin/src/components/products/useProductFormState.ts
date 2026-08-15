@@ -43,6 +43,12 @@ export interface ProductFormSnapshot {
   images: GalleryImage[];
 }
 
+// Short Description is HTML (compact RichTextEditor) — this strips tags for
+// the word-count check below only, never the stored/edited value itself
+// (that would silently destroy any real formatting every time an existing
+// product is reopened for editing).
+const SHORT_DESCRIPTION_MAX_WORDS = 450;
+
 function stripHtml(str: string): string {
   if (!str) return "";
   return str
@@ -57,6 +63,11 @@ function stripHtml(str: string): string {
     .replace(/&[a-z0-9#]+;/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function countWords(str: string): number {
+  const plain = stripHtml(str);
+  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
 }
 
 export function useProductFormState(initial?: AdminProduct) {
@@ -84,7 +95,7 @@ export function useProductFormState(initial?: AdminProduct) {
     initial?.maxOrderQuantity != null ? String(initial.maxOrderQuantity) : "",
   );
   const [name, setName] = useState(initial?.translations[0]?.name ?? "");
-  const [description, setDescription] = useState(stripHtml(initial?.translations[0]?.description ?? ""));
+  const [description, setDescription] = useState(initial?.translations[0]?.description ?? "");
   const [content, setContent] = useState(initial?.translations[0]?.content ?? "");
   const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
   const [benefitPoints, setBenefitPoints] = useState(initial?.translations[0]?.benefitPoints ?? "");
@@ -180,7 +191,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setMinOrderQuantity(String(product.minOrderQuantity));
     setMaxOrderQuantity(product.maxOrderQuantity != null ? String(product.maxOrderQuantity) : "");
     setName(product.translations[0]?.name ?? "");
-    setDescription(stripHtml(product.translations[0]?.description ?? ""));
+    setDescription(product.translations[0]?.description ?? "");
     setContent(product.translations[0]?.content ?? "");
     setKeyBenefits(product.translations[0]?.keyBenefits ?? "");
     setBenefitPoints(product.translations[0]?.benefitPoints ?? "");
@@ -206,8 +217,8 @@ export function useProductFormState(initial?: AdminProduct) {
     if (!sku.trim()) missing.push("SKU");
     if (!shippableWeight.trim()) missing.push("Shippable weight");
     if (!minOrderQuantity.trim() || Number(minOrderQuantity) < 1) missing.push("Min order quantity");
-    if (stripHtml(description).length > 350) {
-      missing.push(`Short Description (exceeds limit by ${stripHtml(description).length - 350} chars)`);
+    if (countWords(description) > SHORT_DESCRIPTION_MAX_WORDS) {
+      missing.push(`Short Description (exceeds limit by ${countWords(description) - SHORT_DESCRIPTION_MAX_WORDS} word(s))`);
     }
     if (hasVariants) {
       if (variantCount === 0) missing.push("Variants (add at least one)");

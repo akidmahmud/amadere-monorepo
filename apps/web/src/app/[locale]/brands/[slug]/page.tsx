@@ -7,10 +7,12 @@ import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { redirectIfMapped } from "@/lib/redirects";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { isFilteredView, parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
 import { ProductListing } from "@/components/ProductListing";
+import { CollectionDescription } from "@/components/CollectionDescription";
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
 export const revalidate = 3600;
@@ -116,7 +118,11 @@ export default async function BrandPage({
         )}
         <SectionHeading>{brand.name}</SectionHeading>
         {brand.description && (
-          <p className="mx-auto -mt-4 mb-6 max-w-2xl font-body text-sm text-muted">{brand.description}</p>
+          // Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text
+          // — sanitized the same way the category page's own description is.
+          <div className="mx-auto -mt-4 mb-6">
+            <CollectionDescription description={sanitizeHtml(brand.description)} html className="mx-auto text-center" />
+          </div>
         )}
       </div>
       <ProductListing

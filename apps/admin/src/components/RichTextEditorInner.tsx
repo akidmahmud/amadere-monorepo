@@ -241,6 +241,37 @@ const CONFIG: EditorConfig = {
   },
 };
 
+// Short fields (product/category/collection/brand/tag "short description",
+// ~450 chars) get a stripped-down toolbar and a much smaller editable area —
+// the full CONFIG above (headings, tables, images, source editing, a fixed
+// 430px canvas) is sized for long-form content and looks absurd wrapped
+// around a one-line teaser. Same CKEditor engine/output (still real HTML,
+// still sanitized identically on the storefront), just fewer plugins.
+const COMPACT_CONFIG: EditorConfig = {
+  licenseKey: "GPL",
+  plugins: [Essentials, Paragraph, Bold, Italic, Underline, RemoveFormat, Link, GeneralHtmlSupport, SourceEditing],
+  // "sourceEditing" is the only way typed/pasted HTML (e.g. "<h1>Hi</h1>")
+  // actually becomes real markup instead of literal escaped text — without
+  // it (and without a dedicated Heading feature, deliberately left out of
+  // this compact toolbar) CKEditor has no schema for a tag like <h1> and
+  // just treats it as plain characters.
+  toolbar: ["undo", "redo", "|", "sourceEditing", "|", "bold", "italic", "underline", "removeFormat", "|", "link"],
+  // General HTML Support preserves tags with no dedicated CKEditor feature
+  // (headings included, since Heading isn't loaded here) once they're typed
+  // via Source — same trust boundary as the full editor's own htmlSupport
+  // block: admin-only content, sanitized again on the storefront before render.
+  htmlSupport: {
+    allow: [
+      {
+        name: /^(h1|h2|h3|h4|h5|h6|div|span|section|mark|small)$/,
+        attributes: true,
+        classes: true,
+        styles: true,
+      },
+    ],
+  },
+};
+
 // CKEditor 5 (free/GPL, self-hosted) — the site-wide rich text editor, used
 // anywhere admin-authored HTML content is captured (product Full
 // Description, blog post content, and any future editor field). Same
@@ -250,7 +281,16 @@ const CONFIG: EditorConfig = {
 // `licenseKey: "GPL"` opts into the free, open-source self-hosted license —
 // per CKEditor's own terms this shows a small "Powered by CKEditor" badge in
 // the editor UI; only a paid commercial license removes it.
-export function RichTextEditorInner({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+export function RichTextEditorInner({
+  value,
+  onChange,
+  compact,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+  /** Short "short description"-style fields — minimal toolbar, ~120px canvas. */
+  compact?: boolean;
+}) {
   const [fullscreen, setFullscreen] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const lastValue = useRef(value);
@@ -278,19 +318,25 @@ export function RichTextEditorInner({ value, onChange }: { value: string; onChan
           // container stays collapsed until that finishes, then jumps to
           // full height — the same click-lands-on-the-wrong-element hazard
           // the loading placeholder alone doesn't cover.
-          : "min-h-[430px] rounded-sm border border-border bg-surface"
+          : compact
+            ? "min-h-[120px] rounded-sm border border-border bg-surface"
+            : "min-h-[430px] rounded-sm border border-border bg-surface"
       }
     >
-      <div className="flex justify-end border-b border-border bg-surface-2 p-1">
-        <button
-          type="button"
-          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-          onClick={() => setFullscreen((v) => !v)}
-          className="rounded-[6px] px-2 py-1 text-xs font-semibold text-secondary transition-colors hover:bg-brand-50 hover:text-brand-600"
-        >
-          {fullscreen ? "⤡ Exit fullscreen" : "⤢ Fullscreen"}
-        </button>
-      </div>
+      {/* Fullscreen only makes sense for the full toolbar (source editing,
+          tables, images) — a compact field has nothing to expand into. */}
+      {!compact && (
+        <div className="flex justify-end border-b border-border bg-surface-2 p-1">
+          <button
+            type="button"
+            aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            onClick={() => setFullscreen((v) => !v)}
+            className="rounded-[6px] px-2 py-1 text-xs font-semibold text-secondary transition-colors hover:bg-brand-50 hover:text-brand-600"
+          >
+            {fullscreen ? "⤡ Exit fullscreen" : "⤢ Fullscreen"}
+          </button>
+        </div>
+      )}
       <div className={fullscreen ? "flex-1 overflow-y-auto" : undefined}>
         <CKEditor
           editor={ClassicEditor}
@@ -303,7 +349,7 @@ export function RichTextEditorInner({ value, onChange }: { value: string; onChan
             lastValue.current = html;
             onChange(html);
           }}
-          config={CONFIG}
+          config={compact ? COMPACT_CONFIG : CONFIG}
         />
       </div>
     </div>

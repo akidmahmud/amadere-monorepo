@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, FormSkeleton } from "@amader/admin-ui";
-import { CollectionFormFields } from "@/components/collections/CollectionFormFields";
+import { CollectionFormFields, DESCRIPTION_MAX_WORDS, countWords } from "@/components/collections/CollectionFormFields";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
 import { useCollection, useUpdateCollection } from "@/hooks/useCollections";
 import type { PublishStatus } from "@/hooks/useBrands";
@@ -24,6 +24,7 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [showInNav, setShowInNav] = useState(false);
   const [productIds, setProductIds] = useState<number[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!collection) return;
@@ -41,6 +42,11 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (countWords(descriptionEn) > DESCRIPTION_MAX_WORDS || countWords(descriptionBn) > DESCRIPTION_MAX_WORDS) {
+      setFormError(`Description can't be more than ${DESCRIPTION_MAX_WORDS} words.`);
+      return;
+    }
+    setFormError(null);
     await update.mutateAsync({
       slug,
       status,
@@ -99,6 +105,12 @@ export default function EditCollectionPage({ params }: { params: Promise<{ id: s
             </span>
           </span>
         </div>
+
+        {formError && (
+          <div className="flex items-center gap-2.5 rounded-inner border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[0.75rem] font-semibold text-danger">
+            {formError}
+          </div>
+        )}
 
         <CollectionFormFields
           nameEn={nameEn}

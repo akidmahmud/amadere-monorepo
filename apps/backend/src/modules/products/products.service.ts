@@ -14,8 +14,8 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
-import { PRODUCT_INCLUDE } from './product-includes';
-import { toAdminProductDto, toPublicProductDto } from './products.mapper';
+import { PRODUCT_INCLUDE, PRODUCT_LIST_INCLUDE } from './product-includes';
+import { toAdminProductDto, toAdminProductListItemDto, toPublicProductDto } from './products.mapper';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
@@ -26,6 +26,7 @@ import { computeSeoScore } from './seo-score.util';
 import {
   AdminDeletedProductDto,
   AdminProductDto,
+  AdminProductListItemDto,
   AdminProductPickerItemDto,
   PublicProductDetailDto,
   PublicProductDto,
@@ -108,12 +109,12 @@ export class ProductsService {
     page: number,
     pageSize: number,
     filters: AdminProductQueryDto,
-  ): Promise<PaginatedResult<AdminProductDto>> {
+  ): Promise<PaginatedResult<AdminProductListItemDto>> {
     const where = this.buildAdminWhere(filters);
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
         where,
-        include: PRODUCT_INCLUDE,
+        include: PRODUCT_LIST_INCLUDE,
         orderBy: { createdAt: 'desc' },
         ...paginationArgs(page, pageSize),
       }),
@@ -122,7 +123,7 @@ export class ProductsService {
     const seoMetaByProductId = await this.fetchSeoMetaMap(items.map((p) => p.id));
     return toPaginatedResult(
       items.map((p) => ({
-        ...toAdminProductDto(p),
+        ...toAdminProductListItemDto(p),
         createdAt: p.createdAt,
         seoScore: computeSeoScore({
           metaTitle: seoMetaByProductId.get(p.id)?.title,

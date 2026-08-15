@@ -915,6 +915,10 @@ model ProductVariant {
   licenseCodes    ProductLicenseCode[]
   bundleItems     ProductBundleItem[]
 
+  // Missing before — every "load a product with its variants" query (admin
+  // list/detail, storefront PDP, cart/order line lookups) joined this table
+  // on productId with no index backing it, forcing a sequential scan.
+  @@index([productId])
   @@map("product_variants")
 }
 

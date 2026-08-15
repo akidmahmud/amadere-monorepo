@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useDeleteTag, useTag, useUpdateTag } from "@/hooks/useTags";
 import type { PublishStatus } from "@/hooks/useBrands";
@@ -18,6 +19,31 @@ function slugify(text: string): string {
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+// Same stripper/counter as ProductFormFields.tsx/CategoryFormFields.tsx —
+// duplicated per-form, matching this codebase's existing convention.
+function stripHtml(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function countWords(str: string): number {
+  const plain = stripHtml(str);
+  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
+}
+
+const DESCRIPTION_MAX_WORDS = 450;
 
 export default function EditTagPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -34,6 +60,9 @@ export default function EditTagPage({ params }: { params: Promise<{ id: string }
   const [descEn, setDescEn] = useState("");
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [activeLangTab, setActiveLangTab] = useState<"BN" | "EN">("BN");
+  const [formError, setFormError] = useState<string | null>(null);
+  const bnWordCount = countWords(descBn);
+  const enWordCount = countWords(descEn);
 
   useEffect(() => {
     if (!tag) return;
@@ -50,6 +79,11 @@ export default function EditTagPage({ params }: { params: Promise<{ id: string }
 
   async function handleSubmit(e?: React.FormEvent) {
     if (e) e.preventDefault();
+    if (bnWordCount > DESCRIPTION_MAX_WORDS || enWordCount > DESCRIPTION_MAX_WORDS) {
+      setFormError(`Description can't be more than ${DESCRIPTION_MAX_WORDS} words.`);
+      return;
+    }
+    setFormError(null);
     await update.mutateAsync({
       slug,
       status,
@@ -177,16 +211,15 @@ export default function EditTagPage({ params }: { params: Promise<{ id: string }
                     className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500 transition-colors"
                   />
                 </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-secondary">বিবরণ (Bangla Description)</span>
-                  <textarea
-                    value={descBn}
-                    onChange={(e) => setDescBn(e.target.value)}
-                    rows={3}
-                    placeholder="ট্যাগের সংক্ষিপ্ত বিবরণ..."
-                    className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500 transition-colors"
-                  />
-                </label>
+                <div className="flex flex-col gap-1.5">
+                  <span className="flex items-center justify-between text-xs font-semibold text-secondary">
+                    বিবরণ (Bangla Description)
+                    <span className={bnWordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
+                      {bnWordCount}/{DESCRIPTION_MAX_WORDS} words
+                    </span>
+                  </span>
+                  <RichTextEditor value={descBn} onChange={setDescBn} compact />
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
@@ -202,19 +235,24 @@ export default function EditTagPage({ params }: { params: Promise<{ id: string }
                     className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500 transition-colors"
                   />
                 </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-secondary">Description (English)</span>
-                  <textarea
-                    value={descEn}
-                    onChange={(e) => setDescEn(e.target.value)}
-                    rows={3}
-                    placeholder="Brief description for SEO & category indexing..."
-                    className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500 transition-colors"
-                  />
-                </label>
+                <div className="flex flex-col gap-1.5">
+                  <span className="flex items-center justify-between text-xs font-semibold text-secondary">
+                    Description (English)
+                    <span className={enWordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
+                      {enWordCount}/{DESCRIPTION_MAX_WORDS} words
+                    </span>
+                  </span>
+                  <RichTextEditor value={descEn} onChange={setDescEn} compact />
+                </div>
               </div>
             )}
           </Card>
+
+          {formError && (
+            <div className="flex items-center gap-2.5 rounded-inner border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[0.75rem] font-semibold text-danger">
+              {formError}
+            </div>
+          )}
 
           {/* Slug & URL Structure Card */}
           <Card className="flex flex-col gap-5">

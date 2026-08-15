@@ -1,9 +1,13 @@
 import { Locale, Prisma } from '@amader/db';
-import { PRODUCT_INCLUDE } from './product-includes';
-import { AdminProductDto, PublicProductDto } from './dto/product-response.dto';
+import { PRODUCT_INCLUDE, PRODUCT_LIST_INCLUDE } from './product-includes';
+import { AdminProductDto, AdminProductListItemDto, PublicProductDto } from './dto/product-response.dto';
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof PRODUCT_INCLUDE;
+}>;
+
+export type ProductListItemWithRelations = Prisma.ProductGetPayload<{
+  include: typeof PRODUCT_LIST_INCLUDE;
 }>;
 
 function decimalToString(
@@ -79,6 +83,39 @@ export function toAdminProductDto(
       weightOverride: decimalToString(v.weightOverride),
       isDefault: v.isDefault,
       attributeValueIds: v.attributeValues.map((av) => av.attributeValueId),
+    })),
+  };
+}
+
+// Excludes createdAt/seoScore — same as toAdminProductDto, the list service
+// merges those in separately (seoScore needs an extra SeoMeta batch lookup
+// that has nothing to do with PRODUCT_LIST_INCLUDE's shape).
+export function toAdminProductListItemDto(
+  product: ProductListItemWithRelations,
+): Omit<AdminProductListItemDto, 'createdAt' | 'seoScore'> {
+  const primaryMedia = product.media.find((m) => m.isPrimary) ?? product.media[0];
+  return {
+    id: product.id,
+    slug: product.slug,
+    sku: product.sku,
+    name: product.translations[0]?.name ?? product.slug,
+    hasVariants: product.hasVariants,
+    stock: product.stock,
+    reservedStock: product.reservedStock,
+    stockStatus: product.stockStatus,
+    price: decimalToString(product.price),
+    status: product.status,
+    categoryIds: product.categories.map((c) => c.categoryId),
+    thumbnailUrl: primaryMedia?.media.url ?? null,
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      sku: v.sku,
+      price: decimalToString(v.price),
+      salePrice: decimalToString(v.salePrice),
+      stock: v.stock,
+      reservedStock: v.reservedStock,
+      stockStatus: v.stockStatus,
+      isDefault: v.isDefault,
     })),
   };
 }

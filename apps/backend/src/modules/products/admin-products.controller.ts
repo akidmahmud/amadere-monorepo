@@ -32,7 +32,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { AdminProductQueryDto } from './dto/admin-product-query.dto';
-import { AdminDeletedProductDto, AdminProductDto, AdminProductPickerItemDto } from './dto/product-response.dto';
+import { AdminDeletedProductDto, AdminProductDto, AdminProductListItemDto, AdminProductPickerItemDto } from './dto/product-response.dto';
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
 import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
@@ -48,11 +48,11 @@ export class AdminProductsController {
 
   @Get()
   @RequirePermission('product.view')
-  @ApiPaginatedResponse(AdminProductDto)
+  @ApiPaginatedResponse(AdminProductListItemDto)
   list(
     @Query() { page, pageSize }: PaginationQueryDto,
     @Query() filters: AdminProductQueryDto,
-  ): Promise<PaginatedResult<AdminProductDto>> {
+  ): Promise<PaginatedResult<AdminProductListItemDto>> {
     return this.products.adminList(page ?? 1, pageSize ?? 20, filters);
   }
 

@@ -4,9 +4,37 @@ import { useRef, useState } from "react";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { usePickerProducts } from "@/hooks/usePickers";
 import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 const textareaClass = "rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500";
+
+export const DESCRIPTION_MAX_WORDS = 450;
+
+// Same stripper/counter as ProductFormFields.tsx/CategoryFormFields.tsx —
+// duplicated per-form, matching this codebase's existing convention. Only
+// used for the word-count check, never applied to the stored/edited value
+// itself (that would silently destroy any real formatting on every reload).
+function stripHtml(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function countWords(str: string): number {
+  const plain = stripHtml(str);
+  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
+}
 
 // Same ASCII-first slugify as CategoryFormFields.tsx/BlogPostFormFields.tsx —
 // duplicated per-form, matching this codebase's existing convention.
@@ -61,6 +89,8 @@ export function CollectionFormFields(props: CollectionFormFieldsProps) {
   const slugEdited = useRef(false);
   const storefrontUrl = useStorefrontUrl();
   const [productQuery, setProductQuery] = useState("");
+  const enWordCount = countWords(props.descriptionEn);
+  const bnWordCount = countWords(props.descriptionBn);
 
   function handleNameEnChange(v: string) {
     props.setNameEn(v);
@@ -129,14 +159,30 @@ export function CollectionFormFields(props: CollectionFormFieldsProps) {
           </label>
 
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">Description (English)</span>
-              <textarea value={props.descriptionEn} onChange={(e) => props.setDescriptionEn(e.target.value)} rows={4} className={textareaClass} placeholder="Optional — shown on the collection's storefront page" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">Description (বাংলা)</span>
-              <textarea lang="bn" value={props.descriptionBn} onChange={(e) => props.setDescriptionBn(e.target.value)} rows={4} className={textareaClass} placeholder="ঐচ্ছিক — স্টোরফ্রন্টে দেখানো হবে" />
-            </label>
+            <div className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between text-xs font-bold text-text">
+                Description (English)
+                <span className={enWordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
+                  {enWordCount}/{DESCRIPTION_MAX_WORDS} words
+                </span>
+              </span>
+              <RichTextEditor value={props.descriptionEn} onChange={props.setDescriptionEn} compact />
+              {enWordCount > DESCRIPTION_MAX_WORDS && (
+                <span className="text-xs font-semibold text-danger">Trim this by {enWordCount - DESCRIPTION_MAX_WORDS} word(s) to save.</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="flex items-center justify-between text-xs font-bold text-text">
+                Description (বাংলা)
+                <span className={bnWordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
+                  {bnWordCount}/{DESCRIPTION_MAX_WORDS} words
+                </span>
+              </span>
+              <RichTextEditor value={props.descriptionBn} onChange={props.setDescriptionBn} compact />
+              {bnWordCount > DESCRIPTION_MAX_WORDS && (
+                <span className="text-xs font-semibold text-danger">Trim this by {bnWordCount - DESCRIPTION_MAX_WORDS} word(s) to save.</span>
+              )}
+            </div>
           </div>
         </div>
 

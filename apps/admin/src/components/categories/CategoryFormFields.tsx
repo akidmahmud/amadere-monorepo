@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { MediaPicker } from "@/components/MediaPicker";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { useCategories } from "@/hooks/useCategories";
 import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
@@ -9,7 +10,7 @@ import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 const textareaClass = "rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500";
 
-export const DESCRIPTION_MAX_WORDS = 500;
+export const DESCRIPTION_MAX_WORDS = 450;
 
 export function countWords(text: string): number {
   if (!text) return 0;
@@ -153,30 +154,30 @@ export function CategoryFormFields(props: CategoryFormFieldsProps) {
           </label>
 
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <span className="flex items-center justify-between text-xs font-bold text-text">
                 Description (English)
                 <span className={enWordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
                   {enWordCount}/{DESCRIPTION_MAX_WORDS} words
                 </span>
               </span>
-              <textarea value={props.descriptionEn} onChange={(e) => props.setDescriptionEn(e.target.value)} rows={4} className={textareaClass} placeholder="Optional — shown on the category's storefront page" />
+              <RichTextEditor value={props.descriptionEn} onChange={props.setDescriptionEn} compact />
               {enWordCount > DESCRIPTION_MAX_WORDS && (
                 <span className="text-xs font-semibold text-danger">Trim this by {enWordCount - DESCRIPTION_MAX_WORDS} word(s) to save.</span>
               )}
-            </label>
-            <label className="flex flex-col gap-1.5">
+            </div>
+            <div className="flex flex-col gap-1.5">
               <span className="flex items-center justify-between text-xs font-bold text-text">
                 Description (বাংলা)
                 <span className={bnWordCount > DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
                   {bnWordCount}/{DESCRIPTION_MAX_WORDS} words
                 </span>
               </span>
-              <textarea lang="bn" value={props.descriptionBn} onChange={(e) => props.setDescriptionBn(e.target.value)} rows={4} className={textareaClass} placeholder="ঐচ্ছিক — স্টোরফ্রন্টে দেখানো হবে" />
+              <RichTextEditor value={props.descriptionBn} onChange={props.setDescriptionBn} compact />
               {bnWordCount > DESCRIPTION_MAX_WORDS && (
                 <span className="text-xs font-semibold text-danger">Trim this by {bnWordCount - DESCRIPTION_MAX_WORDS} word(s) to save.</span>
               )}
-            </label>
+            </div>
           </div>
         </div>
 

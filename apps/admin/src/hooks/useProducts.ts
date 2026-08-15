@@ -24,6 +24,24 @@ export type AdminProductVariant = Omit<components["schemas"]["AdminProductVarian
   stockStatus: StockStatus;
 };
 
+// Lean shape for the Products table only (PRODUCT_LIST_INCLUDE on the
+// backend) — everything AdminProductDto carries that ProductsTable.tsx
+// never renders (FAQs, brand/category/tag/attribute translations, every
+// variant's attribute values) is dropped, since reusing the full detail
+// shape here was doing 5-10x the necessary joins per row on a 20-row page.
+export type AdminProductListItem = Omit<
+  components["schemas"]["AdminProductListItemDto"],
+  "stockStatus" | "status" | "variants"
+> & {
+  stockStatus: StockStatus;
+  status: PublishStatus;
+  variants: AdminProductListVariant[];
+};
+
+export type AdminProductListVariant = Omit<components["schemas"]["AdminProductListVariantDto"], "stockStatus"> & {
+  stockStatus: StockStatus;
+};
+
 export type ProductInput = Omit<
   components["schemas"]["CreateProductDto"],
   "productType" | "status" | "stockStatus" | "flagLabel"
@@ -70,7 +88,7 @@ function toQueryString(filters: AdminProductFilters): string {
 export function useProducts(filters: AdminProductFilters = {}) {
   return useQuery({
     queryKey: [...KEY, filters],
-    queryFn: () => proxyFetch<Required<Paginated<AdminProduct>>>(`/admin/products${toQueryString(filters)}`),
+    queryFn: () => proxyFetch<Required<Paginated<AdminProductListItem>>>(`/admin/products${toQueryString(filters)}`),
     placeholderData: keepPreviousData,
   });
 }

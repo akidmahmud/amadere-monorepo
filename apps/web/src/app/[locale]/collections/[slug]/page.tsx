@@ -7,6 +7,7 @@ import { toApiLocale } from "@/lib/api-locale";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { parsePlpSearchParams, type FlagLabelValue, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { ProductListing } from "@/components/ProductListing";
 import { CollectionDescription } from "@/components/CollectionDescription";
 import type { components } from "@/lib/api/schema";
@@ -155,7 +156,9 @@ export default async function CollectionPage({
     <main className="flex-1">
       {collection.description && (
         <div className={`${CONTAINER_CLASSNAME} pt-5`}>
-          <CollectionDescription description={collection.description} />
+          {/* Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text
+              — sanitized the same way the category page's own description is. */}
+          <CollectionDescription description={sanitizeHtml(collection.description)} html />
         </div>
       )}
       <ProductListing

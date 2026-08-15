@@ -108,6 +108,39 @@ export class AdminProductPickerItemDto {
   name!: string;
 }
 
+// Same rationale as AdminProductPickerItemDto above, applied to the actual
+// Products table this time — only what ProductsTable.tsx renders (see
+// PRODUCT_LIST_INCLUDE's comment for exactly what's dropped vs AdminProductDto).
+export class AdminProductListVariantDto {
+  id!: number;
+  sku!: string | null;
+  price!: string | null;
+  salePrice!: string | null;
+  stock!: number;
+  reservedStock!: number;
+  stockStatus!: StockStatus;
+  isDefault!: boolean;
+}
+
+export class AdminProductListItemDto {
+  id!: number;
+  slug!: string;
+  sku!: string | null;
+  name!: string;
+  hasVariants!: boolean;
+  stock!: number;
+  reservedStock!: number;
+  stockStatus!: StockStatus;
+  price!: string | null;
+  status!: ContentStatus;
+  categoryIds!: number[];
+  thumbnailUrl!: string | null;
+  variants!: AdminProductListVariantDto[];
+  createdAt!: Date;
+  /** Rule-based 0-100 score (see seo-score.util.ts) — not AI-generated. */
+  seoScore!: number;
+}
+
 // Trash listing — deliberately minimal, same rationale as the picker item
 // above (a 100-row trash list doesn't need every variant/category/tag).
 export class AdminDeletedProductDto {

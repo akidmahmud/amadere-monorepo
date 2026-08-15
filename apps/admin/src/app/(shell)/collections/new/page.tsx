@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@amader/admin-ui";
-import { CollectionFormFields } from "@/components/collections/CollectionFormFields";
+import { CollectionFormFields, DESCRIPTION_MAX_WORDS, countWords } from "@/components/collections/CollectionFormFields";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
 import { useCreateCollection } from "@/hooks/useCollections";
 import { useUpsertSeoMeta } from "@/hooks/useSeoMeta";
@@ -22,11 +22,17 @@ export default function NewCollectionPage() {
   const [productIds, setProductIds] = useState<number[]>([]);
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
   const create = useCreateCollection();
   const upsertSeo = useUpsertSeoMeta();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (countWords(descriptionEn) > DESCRIPTION_MAX_WORDS || countWords(descriptionBn) > DESCRIPTION_MAX_WORDS) {
+      setFormError(`Description can't be more than ${DESCRIPTION_MAX_WORDS} words.`);
+      return;
+    }
+    setFormError(null);
     const created = await create.mutateAsync({
       slug,
       status,
@@ -95,6 +101,12 @@ export default function NewCollectionPage() {
             </span>
           </span>
         </div>
+
+        {formError && (
+          <div className="flex items-center gap-2.5 rounded-inner border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[0.75rem] font-semibold text-danger">
+            {formError}
+          </div>
+        )}
 
         <CollectionFormFields
           nameEn={nameEn}

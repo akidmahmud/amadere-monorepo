@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/useCategories";
-import { useDeleteProduct, type AdminProduct, type AdminProductFilters } from "@/hooks/useProducts";
+import { useDeleteProduct, type AdminProductListItem, type AdminProductFilters } from "@/hooks/useProducts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ProductImportModal } from "@/components/products/ProductImportModal";
 
@@ -61,7 +61,7 @@ export function ProductsTable({
   filters,
   onFiltersChange,
 }: {
-  products: AdminProduct[];
+  products: AdminProductListItem[];
   total: number;
   filters: AdminProductFilters;
   onFiltersChange: (next: AdminProductFilters) => void;
@@ -247,8 +247,8 @@ export function ProductsTable({
               </tr>
             )}
             {products.map((p) => {
-              const name = p.translations[0]?.name ?? p.slug;
-              const thumb = p.media.find((m) => m.isPrimary) ?? p.media[0];
+              const name = p.name;
+              const thumb = p.thumbnailUrl ? { url: p.thumbnailUrl } : undefined;
               const categoryLabel = p.categoryIds.map((id) => categoryName.get(id)).filter(Boolean)[0] ?? "—";
               // Variant products carry no meaningful stock/price on the parent row itself
               // (those live per-variant) — show the real aggregate instead of the
