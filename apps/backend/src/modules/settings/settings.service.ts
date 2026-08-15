@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RevalidationService } from '../../common/revalidation/revalidation.service';
 import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
 import { SettingDto, SiteInfoDto, toSettingDto } from './settings.mapper';
 
@@ -27,6 +28,7 @@ export class SettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly netProfitSettings: NetProfitSettingsService,
+    private readonly revalidation: RevalidationService,
   ) {}
 
   async list(): Promise<SettingDto[]> {
@@ -50,6 +52,16 @@ export class SettingsService {
       create: { key, value: value as Prisma.InputJsonValue },
       update: { value: value as Prisma.InputJsonValue },
     });
+    // Fire-and-forget, same as every other RevalidationService caller — a
+    // settings save must never wait on (or fail because of) the storefront
+    // being briefly unreachable. `type: 'layout'` because the settings this
+    // generic upsert most often changes (logo, favicon, site name, product
+    // card style) are all read once in [locale]/layout.tsx and rendered on
+    // every single page, not one specific route — closes the exact gap
+    // apps/web's api/revalidate/route.ts already flagged ("nothing calls
+    // this yet"), which is why an admin-saved favicon kept showing the old
+    // one until the page's own 5-60min timed revalidate window rolled over.
+    void this.revalidation.revalidate(['/[locale]'], 'layout');
     return toSettingDto(setting);
   }
 

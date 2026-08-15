@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CRITICAL_FONT_NAMES, ckeditorGoogleFontsUrl } from "@amader/shared";
+import { ckeditorGoogleFontsUrl } from "@amader/shared";
 import { ProductCardStyleProvider, type ProductCardStyle } from "@amader/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -16,9 +16,9 @@ import { QueryProvider } from "@/components/QueryProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/AnalyticsScripts";
 import { UserIdentityTracker } from "@/components/UserIdentityTracker";
-import { DeferredFontLoader } from "@/components/DeferredFontLoader";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
+import { googleSans } from "@/fonts";
 import "../globals.css";
 
 export const metadata: Metadata = {
@@ -71,7 +71,7 @@ export default async function LocaleLayout({
   ]);
 
   return (
-    <html lang={locale} className="h-full antialiased">
+    <html lang={locale} className={`h-full antialiased ${googleSans.variable}`}>
       {/* Admin-uploaded via Settings > Logo & Banners > Favicon — falls back
           to the static default in public/ when unset. Replaces the old
           app/icon.png file-convention favicon (which Next auto-injects its
@@ -86,18 +86,17 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
-      {/* Only the 3 families the site's own default type stack falls back
-          through (packages/ui's tokens.css --font-body/--font-serif) stay
-          render-blocking here. Admin-authored content (product/blog
-          descriptions) can carry inline `font-family: "Poppins"` etc. from
-          the admin's CKEditor font picker (a much wider choice than the
-          site's own default) — those ~17 extra families load in after first
-          paint via DeferredFontLoader instead of blocking every page's LCP
-          for typefaces most page loads never even use. Full list shared
-          with apps/admin's layout.tsx via @amader/shared. */}
-      <link rel="stylesheet" href={ckeditorGoogleFontsUrl(CRITICAL_FONT_NAMES)} precedence="default" />
+      {/* Glyph-coverage fallbacks only now, not the primary typeface — the
+          self-hosted Google Sans (fonts.ts) covers Latin, but has no Bengali
+          glyphs at all, so Noto Sans Bengali stays render-blocking here for
+          every Bengali character on the site; Open Sans backstops any Latin
+          glyph Google Sans itself doesn't cover. The old 'Google Sans Flex'
+          CDN load (and the deferred ~17-family CKEditor picker load) are
+          gone — inline font-family from admin-authored content is now
+          force-overridden site-wide (globals.css), so loading fonts nothing
+          will ever render was pure waste. */}
+      <link rel="stylesheet" href={ckeditorGoogleFontsUrl(["Open Sans", "Noto Sans Bengali"])} precedence="default" />
       <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
-        <DeferredFontLoader />
         <AnalyticsScripts
           config={
             (analyticsConfig as PublicAnalyticsConfig | undefined) ?? {

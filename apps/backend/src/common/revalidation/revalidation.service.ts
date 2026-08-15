@@ -13,7 +13,11 @@ export class RevalidationService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async revalidate(paths: string[]): Promise<void> {
+  // `type: 'layout'` busts every route sharing that layout (e.g. passing
+  // '/[locale]' revalidates every locale-scoped page at once) — needed for
+  // site-wide UI driven by the root layout itself (logo, favicon, banner)
+  // rather than one specific page's own content.
+  async revalidate(paths: string[], type?: 'layout' | 'page'): Promise<void> {
     // Same env var sitemap/canonical/structured-data already use for the
     // storefront's absolute origin (e.g. https://amadere.com) — no need for
     // a second one.
@@ -27,7 +31,7 @@ export class RevalidationService {
       const res = await fetch(`${webAppUrl}/api/revalidate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret },
-        body: JSON.stringify({ paths }),
+        body: JSON.stringify({ paths, type }),
       });
       if (!res.ok) {
         this.logger.warn(`Revalidate ${paths.join(', ')} returned ${res.status}`);

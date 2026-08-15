@@ -18,19 +18,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Invalid secret" } }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { path?: string; paths?: string[] };
+  const body = (await req.json().catch(() => ({}))) as { path?: string; paths?: string[]; type?: "layout" | "page" };
   const paths = body.paths ?? (body.path ? [body.path] : []);
   if (paths.length === 0) {
     return NextResponse.json({ success: false, error: { code: "BAD_REQUEST", message: "path or paths is required" } }, { status: 400 });
   }
 
   for (const path of paths) {
-    // `type: "page"` is only for route PATTERNS with a dynamic segment (e.g.
-    // "/products/[slug]") — passing it for a literal resolved path (e.g.
-    // "/en/products/some-slug") doesn't match any cache entry and silently
-    // no-ops instead of revalidating. Every path this route receives is
-    // already a literal resolved path, never a pattern, so omit it.
-    revalidatePath(path);
+    // `type: "page"` (the default) is only for route PATTERNS with a dynamic
+    // segment (e.g. "/products/[slug]") — passing it for a literal resolved
+    // path (e.g. "/en/products/some-slug") doesn't match any cache entry and
+    // silently no-ops instead of revalidating, so every literal-path caller
+    // omits it. `type: "layout"` is the opposite: it's *only* meaningful with
+    // a route pattern (e.g. "/[locale]"), since it busts every page sharing
+    // that layout at once — used for site-wide UI (logo/favicon/banner) that
+    // the root layout itself renders, not one page's own content.
+    revalidatePath(path, body.type);
   }
 
   return NextResponse.json({ success: true, data: { revalidated: paths } });

@@ -62,23 +62,29 @@
   --radius-brand: var(--radius-brand);
   --shadow-brand: var(--shadow-brand);
 
-  /* Site-wide default: Google Sans Flex (Google's own signature typeface —
-     restricted to Google's own products for years, but released free and
-     open-source under the OFL in Nov 2025, correcting the earlier note here
-     that called it proprietary) as the primary Latin font, falling through
-     to Open Sans for any Latin glyph Google Sans Flex doesn't cover, then to
-     Noto Sans Bengali (Google's own Bengali-script font) for Bengali
-     characters — neither Google Sans Flex nor Open Sans has Bengali glyphs
-     at all, so Bengali text always resolves to Noto Sans Bengali regardless
-     of where it sits in this list — then a generic sans-serif as the final
-     fallback. Loaded via a Google Fonts <link> in each app's layout.tsx.
+  /* Site-wide default: self-hosted Google Sans (apps/web/src/fonts.ts,
+     next/font/local — explicit request to standardize on this exact
+     licensed font file rather than the CDN-loaded "Google Sans Flex"
+     release) as the primary Latin font, falling through to Open Sans for
+     any Latin glyph it doesn't cover, then to Noto Sans Bengali (Google's
+     own Bengali-script font) for Bengali characters — none of the Latin
+     fonts here have Bengali glyphs at all, so Bengali text always resolves
+     to Noto Sans Bengali regardless of where it sits in this list — then a
+     generic sans-serif as the final fallback.
+     `var(--font-google-sans, 'Google Sans Flex')`: apps/web sets
+     --font-google-sans on <html> via fonts.ts's `.variable` class, so it
+     resolves to the self-hosted font there; apps/admin never sets that
+     variable, so it falls through to the old CDN 'Google Sans Flex' exactly
+     as before — this one shared token file serves both without forking it,
+     and without silently breaking admin (which still loads 'Google Sans
+     Flex' via its own layout.tsx) the day this changed.
      Applies to every semantic token — a deliberate full type-system reset,
      not per-token tuning. */
-  --font-serif: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-ui: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-body: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-bengali: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
-  --font-header: 'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-serif: var(--font-google-sans, 'Google Sans Flex'), 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-ui: var(--font-google-sans, 'Google Sans Flex'), 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-body: var(--font-google-sans, 'Google Sans Flex'), 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-bengali: var(--font-google-sans, 'Google Sans Flex'), 'Open Sans', 'Noto Sans Bengali', sans-serif;
+  --font-header: var(--font-google-sans, 'Google Sans Flex'), 'Open Sans', 'Noto Sans Bengali', sans-serif;
 
   /* CertificationRow's mobile auto-scroll — content is duplicated exactly
      once, so -50% is precisely one full set's width, giving a seamless loop

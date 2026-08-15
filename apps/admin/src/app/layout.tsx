@@ -28,9 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             (a deliberately wider choice beyond the site's own default)
             writes plain `font-family: "Poppins"` inline styles into saved
             content, which only resolves to the actual typeface if a
-            stylesheet registers that exact name. Same list as apps/web's
-            layout.tsx (shared via @amader/shared) — see that file for why
-            the storefront needs this same link too. */}
+            stylesheet registers that exact name — so this stays loading the
+            full picker list here (unlike apps/web's own layout.tsx, which
+            now force-overrides every inline font-family on the storefront
+            via globals.css and no longer needs to load fonts for content
+            it'll never actually render with them). */}
         <link rel="stylesheet" href={ckeditorGoogleFontsUrl()} precedence="default" />
       </head>
       <body>

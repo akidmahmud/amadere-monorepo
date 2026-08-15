@@ -39,12 +39,6 @@ export const CKEDITOR_FONT_FAMILIES: CkeditorFontFamily[] = [
   { name: "Anek Bangla", weights: "400;500;600;700", fallback: "sans-serif" },
 ];
 
-// The 3 families the site's own default type stack actually falls back
-// through (packages/ui's tokens.css --font-body/--font-serif) — these must
-// stay render-blocking. Every other family here only matters for
-// admin-authored rich-text content, which can load in after first paint.
-export const CRITICAL_FONT_NAMES = ["Google Sans Flex", "Open Sans", "Noto Sans Bengali"];
-
 export function ckeditorGoogleFontsUrl(only?: string[]): string {
   const list = only ? CKEDITOR_FONT_FAMILIES.filter((f) => only.includes(f.name)) : CKEDITOR_FONT_FAMILIES;
   const families = list.map((f) => `family=${f.name.replace(/ /g, "+")}:wght@${f.weights}`).join("&");

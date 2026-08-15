@@ -16,6 +16,20 @@ body {
   font-family: var(--font-body);
 }
 
+/* Explicit request: the whole storefront renders in one font (Google Sans,
+   tokens.css's --font-body) — no exceptions for admin-authored content.
+   CKEditor's Font Family picker writes a literal `style="font-family: ..."`
+   onto whatever the admin selected (product/blog/page content), and an
+   inline style normally beats any stylesheet rule regardless of selector
+   specificity — the *only* thing that wins over an inline style is a
+   stylesheet rule on that exact element marked `!important`. `body *`
+   (every descendant, not just .rich-content) so this is genuinely
+   unconditional, not something a new content type could slip past by using
+   a different wrapper class. */
+body * {
+  font-family: var(--font-body) !important;
+}
+
 /* Admin-authored rich content (product Full Description, blog post content)
    rendered via dangerouslySetInnerHTML — Tailwind's preflight strips default
    h1-h6/table styling and this project has no typography plugin installed,
