@@ -6335,10 +6335,13 @@ export interface components {
             sku: string | null;
             name: string;
             hasVariants: boolean;
+            trackInventory: boolean;
+            allowBackorder: boolean;
             stock: number;
             reservedStock: number;
             stockStatus: Record<string, never>;
             price: string | null;
+            salePrice: string | null;
             status: Record<string, never>;
             categoryIds: number[];
             thumbnailUrl: string | null;
@@ -8392,6 +8395,7 @@ export interface components {
             productCardStyle: Record<string, never>;
             logoPaddingPx: number;
             logoMarginPx: number;
+            codOtpEnabled: boolean;
         };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
@@ -10670,6 +10674,8 @@ export interface operations {
                 pageSize?: number;
                 /** @description Case-insensitive substring match on tag name */
                 q?: string;
+                /** @description Comma-separated tag ids — batch-resolves specific tags (e.g. a product's assigned tags that fall outside the picker's first-100 page) in one request instead of one GET per id. Ignores page/pageSize/q when set. */
+                ids?: string;
             };
             header?: never;
             path?: never;

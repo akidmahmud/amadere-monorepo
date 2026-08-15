@@ -33,4 +33,8 @@ export class SiteInfoDto {
   /** Extra space around the logo's box, pushing it away from neighboring
    * header elements — see SettingsService.SITE_LOGO_STYLE_KEY. */
   logoMarginPx!: number;
+  /** Whether the checkout COD flow requires phone OTP verification — see
+   * OtpSecuritySettings.codOtpEnabled. Storefront reads this to decide
+   * whether to require/show the "Verify your phone" OTP step at all. */
+  codOtpEnabled!: boolean;
 }

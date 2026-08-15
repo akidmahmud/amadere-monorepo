@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
 import { SettingDto, SiteInfoDto, toSettingDto } from './settings.mapper';
 
 const SITE_LOGO_MEDIA_ID_KEY = 'site_logo_media_id';
@@ -22,7 +23,10 @@ export const PRODUCT_CARD_STYLE_KEY = 'product_card_style';
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly netProfitSettings: NetProfitSettingsService,
+  ) {}
 
   async list(): Promise<SettingDto[]> {
     const settings = await this.prisma.client.setting.findMany({
@@ -111,6 +115,12 @@ export class SettingsService {
     const logoPaddingPx = typeof logoStyleValue?.paddingPx === 'number' ? logoStyleValue.paddingPx : 0;
     const logoMarginPx = typeof logoStyleValue?.marginPx === 'number' ? logoStyleValue.marginPx : 0;
 
+    // Same 'otp' namespace/default OtpSecurityService reads for the admin
+    // toggle — duplicated here (rather than importing OtpSecurityService
+    // itself) to avoid pulling in its VPN-detector dependency just for one
+    // boolean.
+    const { codOtpEnabled } = await this.netProfitSettings.getNamespace('otp', { codOtpEnabled: true });
+
     return {
       siteName: typeof siteName === 'string' ? siteName : DEFAULT_SITE_NAME,
       logoUrl,
@@ -119,6 +129,7 @@ export class SettingsService {
       productCardStyle,
       logoPaddingPx,
       logoMarginPx,
+      codOtpEnabled,
     };
   }
 }

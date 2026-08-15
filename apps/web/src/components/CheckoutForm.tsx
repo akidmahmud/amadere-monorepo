@@ -28,10 +28,11 @@ import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import { getDeviceId } from "@/lib/device-id";
 import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
-import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
+import { makeCheckoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
+import { useSiteInfo } from "@/hooks/useSiteInfo";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 import type { components } from "@/lib/api/schema";
 
@@ -269,8 +270,19 @@ export function CheckoutForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const { data: siteInfo } = useSiteInfo();
+  // Defaults true (OTP required) until the setting loads, matching the
+  // historical always-on behavior. Read through a ref rather than closing
+  // over `siteInfo.codOtpEnabled` directly in the resolver below — the
+  // resolver function's identity must stay stable for react-hook-form to
+  // keep using it correctly, so it reads the *current* value at validation
+  // time instead of the value from whichever render created it.
+  const codOtpEnabledRef = useRef(true);
+  codOtpEnabledRef.current = siteInfo?.codOtpEnabled ?? true;
+
   const form = useForm<CheckoutFormValues>({
-    resolver: zodResolver(checkoutFormSchema),
+    resolver: (values, context, options) =>
+      zodResolver(makeCheckoutFormSchema(codOtpEnabledRef.current))(values, context, options),
     // Default mode is "onSubmit" — every field (phone/email included) only
     // ever validated after the first "Place Order" click, per explicit
     // report. "onBlur" validates a field the moment you leave it instead.

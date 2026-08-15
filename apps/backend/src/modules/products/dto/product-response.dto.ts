@@ -128,10 +128,18 @@ export class AdminProductListItemDto {
   sku!: string | null;
   name!: string;
   hasVariants!: boolean;
+  // Simple (no-variant) products only enforce stock when trackInventory is
+  // on, and allowBackorder bypasses it entirely — same conditions
+  // reserveStock() (stock-reservation.util.ts) checks. Needed by the order-
+  // creation search UIs (useProductSearch), which reuse this same list
+  // shape and gate "out of stock" on these two flags.
+  trackInventory!: boolean;
+  allowBackorder!: boolean;
   stock!: number;
   reservedStock!: number;
   stockStatus!: StockStatus;
   price!: string | null;
+  salePrice!: string | null;
   status!: ContentStatus;
   categoryIds!: number[];
   thumbnailUrl!: string | null;

@@ -159,7 +159,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   {productResults && productResults.length > 0 && (
                     <div className="absolute z-10 mt-1 flex w-full flex-col gap-1 rounded-sm border border-border bg-surface p-1.5 shadow-card">
                       {productResults.flatMap((p) => {
-                        const thumb = p.media.find((m) => m.isPrimary) ?? p.media[0];
                         const notPublished = p.status !== "PUBLISHED";
                         return p.hasVariants
                           ? p.variants.map((v) => {
@@ -178,9 +177,9 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                                   }}
                                   className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  <ProductThumb url={thumb?.url} />
+                                  <ProductThumb url={p.thumbnailUrl ?? undefined} />
                                   <span>
-                                    {p.translations[0]?.name ?? p.slug} — {v.sku ?? `Variant #${v.id}`} — ৳{v.salePrice ?? v.price ?? "0"}
+                                    {p.name} — {v.sku ?? `Variant #${v.id}`} — ৳{v.salePrice ?? v.price ?? "0"}
                                     {outOfStock && <span className="ml-2 font-bold" style={{ color: RED }}>Out of stock</span>}
                                     {notPublished && <span className="ml-2 font-bold" style={{ color: RED }}>Not published</span>}
                                   </span>
@@ -203,9 +202,9 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                                   }}
                                   className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  <ProductThumb url={thumb?.url} />
+                                  <ProductThumb url={p.thumbnailUrl ?? undefined} />
                                   <span>
-                                    {p.translations[0]?.name ?? p.slug} — ৳{p.salePrice ?? p.price ?? "0"} {p.sku ? `(${p.sku})` : ""}
+                                    {p.name} — ৳{p.salePrice ?? p.price ?? "0"} {p.sku ? `(${p.sku})` : ""}
                                     {outOfStock && <span className="ml-2 font-bold" style={{ color: RED }}>Out of stock</span>}
                                     {notPublished && <span className="ml-2 font-bold" style={{ color: RED }}>Not published</span>}
                                   </span>

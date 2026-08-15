@@ -6319,6 +6319,48 @@ export interface components {
             crossSell: components["schemas"]["PublicProductDto"][];
             frequentlyBoughtTogether: components["schemas"]["PublicProductDto"][];
         };
+        AdminProductListVariantDto: {
+            id: number;
+            sku: string | null;
+            price: string | null;
+            salePrice: string | null;
+            stock: number;
+            reservedStock: number;
+            stockStatus: Record<string, never>;
+            isDefault: boolean;
+        };
+        AdminProductListItemDto: {
+            id: number;
+            slug: string;
+            sku: string | null;
+            name: string;
+            hasVariants: boolean;
+            stock: number;
+            reservedStock: number;
+            stockStatus: Record<string, never>;
+            price: string | null;
+            status: Record<string, never>;
+            categoryIds: number[];
+            thumbnailUrl: string | null;
+            variants: components["schemas"]["AdminProductListVariantDto"][];
+            /** Format: date-time */
+            createdAt: string;
+            seoScore: number;
+        };
+        AdminProductPickerItemDto: {
+            id: number;
+            slug: string;
+            name: string;
+        };
+        AdminDeletedProductDto: {
+            id: number;
+            slug: string;
+            name: string;
+            imageUrl: string | null;
+            /** Format: date-time */
+            deletedAt: string;
+            daysRemaining: number;
+        };
         AdminProductFaqDto: {
             question: string;
             answer: string;
@@ -6391,20 +6433,6 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
             seoScore?: number;
-        };
-        AdminProductPickerItemDto: {
-            id: number;
-            slug: string;
-            name: string;
-        };
-        AdminDeletedProductDto: {
-            id: number;
-            slug: string;
-            name: string;
-            imageUrl: string | null;
-            /** Format: date-time */
-            deletedAt: string;
-            daysRemaining: number;
         };
         ProductFaqDto: {
             question: string;
@@ -7315,14 +7343,23 @@ export interface components {
             addressLine?: string;
             division?: string;
             district?: string;
+            recipientName?: string;
+            /** @description Thana/upazila */
+            area?: string;
+            landmark?: string;
+            postCode?: string;
+            alternativePhone?: string;
         };
         AdminCustomerAddressSummaryDto: {
+            recipientName: string;
+            phone: string;
             addressLine: string;
             division: string;
             district: string;
             area: string | null;
             landmark: string | null;
             postCode: string | null;
+            alternativePhone: string | null;
         };
         AdminCustomerOrderSummaryDto: {
             id: number;
@@ -8355,6 +8392,7 @@ export interface components {
             productCardStyle: Record<string, never>;
             logoPaddingPx: number;
             logoMarginPx: number;
+            codOtpEnabled: boolean;
         };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
@@ -10633,6 +10671,8 @@ export interface operations {
                 pageSize?: number;
                 /** @description Case-insensitive substring match on tag name */
                 q?: string;
+                /** @description Comma-separated tag ids — batch-resolves specific tags (e.g. a product's assigned tags that fall outside the picker's first-100 page) in one request instead of one GET per id. Ignores page/pageSize/q when set. */
+                ids?: string;
             };
             header?: never;
             path?: never;
@@ -11072,7 +11112,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        items?: components["schemas"]["AdminProductDto"][];
+                        items?: components["schemas"]["AdminProductListItemDto"][];
                         total?: number;
                         page?: number;
                         pageSize?: number;
@@ -11208,9 +11248,10 @@ export interface operations {
     };
     AdminProductsController_listDeleted: {
         parameters: {
-            query?: {
+            query: {
                 page?: number;
                 pageSize?: number;
+                q: string;
             };
             header?: never;
             path?: never;
@@ -15964,6 +16005,7 @@ export interface operations {
                 page?: number;
                 pageSize?: number;
                 parentId?: number;
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -16441,9 +16483,10 @@ export interface operations {
     };
     AdminBlogPostsController_listDeleted: {
         parameters: {
-            query?: {
+            query: {
                 page?: number;
                 pageSize?: number;
+                q: string;
             };
             header?: never;
             path?: never;
@@ -16738,6 +16781,7 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -16861,6 +16905,7 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -17732,7 +17777,9 @@ export interface operations {
     };
     AdminMenuItemsController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17916,7 +17963,9 @@ export interface operations {
     };
     AdminAnnouncementsController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -18404,7 +18453,9 @@ export interface operations {
     };
     AdminPromoVideosController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

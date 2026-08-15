@@ -122,11 +122,15 @@ export function useProductStats() {
   });
 }
 
+// Hits the same list endpoint (and lean AdminProductListItem shape —
+// flat `name`/`thumbnailUrl`, no `translations`/`media`) as useProducts()
+// below, not the full AdminProductDto — see PRODUCT_LIST_INCLUDE's comment
+// on products.service.ts's adminList().
 export function useProductSearch(q: string) {
   return useQuery({
     queryKey: [...KEY, "search", q],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminProduct>>(`/admin/products?pageSize=20&q=${encodeURIComponent(q)}`);
+      const res = await proxyFetch<Paginated<AdminProductListItem>>(`/admin/products?pageSize=20&q=${encodeURIComponent(q)}`);
       return res.items ?? [];
     },
     enabled: q.trim().length > 0,

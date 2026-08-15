@@ -251,7 +251,7 @@ export function PromoVideoEditPanel({
             {productQuery.trim() && productSearchResults && productSearchResults.length > 0 && (
               <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-sm border border-border bg-surface p-1.5 shadow-card">
                 {productSearchResults.map((p) => {
-                  const label = p.translations[0]?.name ?? p.slug;
+                  const label = p.name;
                   return (
                     <button
                       key={p.id}

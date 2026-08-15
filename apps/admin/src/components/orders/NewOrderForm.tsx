@@ -473,7 +473,6 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                 {productResults && productResults.length > 0 && (
                   <div className="absolute z-10 mt-1 flex w-full flex-col gap-1 rounded-sm border border-border bg-surface p-1.5 shadow-card">
                     {productResults.flatMap((p) => {
-                      const thumb = p.media.find((m) => m.isPrimary) ?? p.media[0];
                       const notPublished = p.status !== "PUBLISHED";
                       return p.hasVariants
                         ? p.variants.map((v) => {
@@ -490,17 +489,17 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                                   addLine({
                                     productId: p.id,
                                     variantId: v.id,
-                                    name: `${p.translations[0]?.name ?? p.slug} — ${v.sku ?? `Variant #${v.id}`}`,
+                                    name: `${p.name} — ${v.sku ?? `Variant #${v.id}`}`,
                                     sku: v.sku,
                                     price: v.salePrice ?? v.price,
-                                    imageUrl: thumb?.url,
+                                    imageUrl: p.thumbnailUrl ?? undefined,
                                   })
                                 }
                                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2 text-left text-sm text-text hover:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
                               >
-                                <ProductThumb url={thumb?.url} />
+                                <ProductThumb url={p.thumbnailUrl ?? undefined} />
                                 <span>
-                                  {p.translations[0]?.name ?? p.slug} — {v.sku ?? `Variant #${v.id}`} — ৳{v.salePrice ?? v.price ?? "0"}
+                                  {p.name} — {v.sku ?? `Variant #${v.id}`} — ৳{v.salePrice ?? v.price ?? "0"}
                                   {outOfStock && <span className="ml-2 font-bold" style={{ color: RED }}>Out of stock</span>}
                                   {notPublished && <span className="ml-2 font-bold" style={{ color: RED }}>Not published</span>}
                                 </span>
@@ -520,17 +519,17 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                                 onClick={() =>
                                   addLine({
                                     productId: p.id,
-                                    name: p.translations[0]?.name ?? p.slug,
+                                    name: p.name,
                                     sku: p.sku,
                                     price: p.salePrice ?? p.price,
-                                    imageUrl: thumb?.url,
+                                    imageUrl: p.thumbnailUrl ?? undefined,
                                   })
                                 }
                                 className="flex items-center gap-2 rounded-sm border border-border px-3 py-2 text-left text-sm text-text hover:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
                               >
-                                <ProductThumb url={thumb?.url} />
+                                <ProductThumb url={p.thumbnailUrl ?? undefined} />
                                 <span>
-                                  {p.translations[0]?.name ?? p.slug} — ৳{p.salePrice ?? p.price ?? "0"} {p.sku ? `(${p.sku})` : ""}
+                                  {p.name} — ৳{p.salePrice ?? p.price ?? "0"} {p.sku ? `(${p.sku})` : ""}
                                   {outOfStock && <span className="ml-2 font-bold" style={{ color: RED }}>Out of stock</span>}
                                   {notPublished && <span className="ml-2 font-bold" style={{ color: RED }}>Not published</span>}
                                 </span>
