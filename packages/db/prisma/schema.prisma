@@ -463,6 +463,8 @@ model CustomerAddress {
   landmark      String?
   addressLine   String   @map("address_line")
   postCode      String?  @map("post_code")
+  // Steadfast's alternative_phone — mirrors OrderAddress.alternativePhone.
+  alternativePhone String? @map("alternative_phone")
   isDefault     Boolean  @default(false) @map("is_default")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")

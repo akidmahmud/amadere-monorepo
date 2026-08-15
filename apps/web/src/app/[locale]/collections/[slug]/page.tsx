@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getLanguageAlternates } from "@/i18n/alternates";
-import { safeGet } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { parsePlpSearchParams, type FlagLabelValue, type PlpSearchParams } from "@/lib/plp";
@@ -28,11 +28,18 @@ const DEFAULT_PAGE_SIZE = 16;
 // a phone screen.
 const CONTAINER_CLASSNAME = "mx-auto max-w-[1920px] px-5 lg:px-[207px]";
 
-async function getCollection(slug: string, locale: string) {
-  const res = await safeGet("/api/v1/collections/{slug}", {
-    params: { path: { slug }, query: { locale } },
-  });
-  return res.data;
+async function getCollection(slug: string, locale: "EN" | "BN") {
+  try {
+    const res = await api.GET("/api/v1/collections/{slug}", {
+      params: { path: { slug }, query: { locale } },
+    });
+    return res.data;
+  } catch (err) {
+    // See categories/[slug]/page.tsx's getCategory for why only a real
+    // 404 is treated as not-found here, not any other kind of failure.
+    if (err instanceof ApiError && err.status === 404) return undefined;
+    throw err;
+  }
 }
 
 export async function generateMetadata({

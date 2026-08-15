@@ -16,7 +16,7 @@ import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { CrossSellProductGrid } from "@/components/CrossSellProductGrid";
 import { FrequentlyBoughtTogether } from "@/components/FrequentlyBoughtTogether";
 import { getLanguageAlternates } from "@/i18n/alternates";
-import { safeGet } from "@/lib/api/client";
+import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toDisplayImageUrl, toEmbeddableVideoUrl } from "@/lib/media";
@@ -32,11 +32,18 @@ export const revalidate = 3600;
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 
-async function getProduct(slug: string, locale: string, previewToken?: string) {
-  const res = await safeGet("/api/v1/products/{slug}", {
-    params: { path: { slug }, query: { locale, previewToken } },
-  });
-  return res.data as PublicProductDetailDto | undefined;
+async function getProduct(slug: string, locale: "EN" | "BN", previewToken?: string) {
+  try {
+    const res = await api.GET("/api/v1/products/{slug}", {
+      params: { path: { slug }, query: { locale, previewToken } },
+    });
+    return res.data as PublicProductDetailDto | undefined;
+  } catch (err) {
+    // See categories/[slug]/page.tsx's getCategory for why only a real
+    // 404 is treated as not-found here, not any other kind of failure.
+    if (err instanceof ApiError && err.status === 404) return undefined;
+    throw err;
+  }
 }
 
 export async function generateMetadata({

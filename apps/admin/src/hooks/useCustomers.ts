@@ -207,6 +207,10 @@ export function useCreateCustomer() {
       addressLine?: string;
       division?: string;
       district?: string;
+      area?: string;
+      landmark?: string;
+      postCode?: string;
+      alternativePhone?: string;
     }) => proxyFetch<AdminCustomer>("/admin/customers", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
   });

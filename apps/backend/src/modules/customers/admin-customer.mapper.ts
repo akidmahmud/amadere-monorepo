@@ -175,12 +175,15 @@ type ActivityEntry =
   | { type: 'CALL'; callId: number; outcome: string; occurredAt: Date };
 
 export class AdminCustomerAddressSummaryDto {
+  recipientName!: string;
+  phone!: string;
   addressLine!: string;
   division!: string;
   district!: string;
   area!: string | null;
   landmark!: string | null;
   postCode!: string | null;
+  alternativePhone!: string | null;
 }
 
 export class AdminCustomerDto {
@@ -254,12 +257,15 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
     createdAt: c.createdAt,
     defaultAddress: c.addresses[0]
       ? {
+          recipientName: c.addresses[0].recipientName,
+          phone: c.addresses[0].phone,
           addressLine: c.addresses[0].addressLine,
           division: c.addresses[0].division,
           district: c.addresses[0].district,
           area: c.addresses[0].area,
           landmark: c.addresses[0].landmark,
           postCode: c.addresses[0].postCode,
+          alternativePhone: c.addresses[0].alternativePhone,
         }
       : null,
     orders: c.orders.map((o) => ({

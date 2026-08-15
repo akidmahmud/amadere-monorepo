@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -10,6 +11,9 @@ import {
   PublicBlogCategoryDto,
 } from './blog-categories.mapper';
 
+// Public, read-only — see SiteInfoController's comment for why this is
+// exempt from the global per-IP throttle.
+@SkipThrottle()
 @ApiTags('blog-categories')
 @Controller('blog-categories')
 export class BlogCategoriesController {

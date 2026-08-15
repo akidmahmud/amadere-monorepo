@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -11,6 +12,11 @@ import {
   PublicCategoryNavDto,
 } from './categories.mapper';
 
+// Public, read-only, called server-side on every storefront page render
+// (the nav's category dropdown) and every category page — see
+// SiteInfoController's comment for why this is exempt from the global
+// per-IP throttle.
+@SkipThrottle()
 @ApiTags('categories')
 @Controller('categories')
 export class CategoriesController {

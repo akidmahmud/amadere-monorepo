@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
-import { BD_DISTRICTS_BY_DIVISION, toLocalBdPhone } from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT, toLocalBdPhone } from "@amader/shared";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useCreateManualOrder, usePreviewCoupon, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
@@ -105,6 +105,11 @@ function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; o
   function set(key: keyof CreateManualOrderAddress, v: string) {
     onChange({ ...value, [key]: v });
   }
+  // Only districts Steadfast's own area list covers get a real dropdown
+  // (see bd-thanas.ts) — same fallback-to-free-text behavior as the
+  // storefront checkout's AddressFields.tsx, so staff and customers see the
+  // same Thana options for the same district.
+  const thanaOptions = value.district ? BD_THANAS_BY_DISTRICT[value.district] : undefined;
   // Field order mirrors the storefront checkout page (CheckoutForm/
   // AddressFields): phone, name, address, district, thana/landmark,
   // alternative phone/email, post code — same fields, same sequence, so
@@ -149,7 +154,16 @@ function AddressFields({ value, onChange }: { value: CreateManualOrderAddress; o
         </select>
       </Field>
       <Field label="Thana / Area" required>
-        <input value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} placeholder="Thana / Area" className={cardInputClass + " w-full"} />
+        {thanaOptions ? (
+          <select value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} className={cardInputClass + " w-full"}>
+            <option value="">Select thana/area</option>
+            {thanaOptions.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        ) : (
+          <input value={value.area ?? ""} onChange={(e) => set("area", e.target.value)} placeholder="Thana / Area" className={cardInputClass + " w-full"} />
+        )}
       </Field>
       <Field label="Landmark (optional)">
         <input value={value.landmark ?? ""} onChange={(e) => set("landmark", e.target.value)} placeholder="Nearby landmark" className={cardInputClass + " w-full"} />
@@ -229,6 +243,7 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
       area: customerDetail.defaultAddress?.area ?? a.area,
       landmark: customerDetail.defaultAddress?.landmark ?? a.landmark,
       postCode: customerDetail.defaultAddress?.postCode ?? a.postCode,
+      alternativePhone: customerDetail.defaultAddress?.alternativePhone ?? a.alternativePhone,
     }));
   }, [customerDetail]);
 
@@ -282,7 +297,15 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
     setCreateModalOpen(false);
     selectCustomer({ id: c.id, name: c.name, phone: c.phone ?? null, completedOrderCount: 0, tier: null, email: c.email });
     if (newAddress) {
-      setAddress((a) => ({ ...a, addressLine: newAddress.addressLine, district: newAddress.district }));
+      setAddress((a) => ({
+        ...a,
+        addressLine: newAddress.addressLine,
+        district: newAddress.district,
+        area: newAddress.area,
+        landmark: newAddress.landmark,
+        postCode: newAddress.postCode,
+        alternativePhone: newAddress.alternativePhone,
+      }));
     }
   }
 
@@ -454,11 +477,10 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                       const notPublished = p.status !== "PUBLISHED";
                       return p.hasVariants
                         ? p.variants.map((v) => {
-                            // stockStatus is derived from stock alone and goes stale once
-                            // reservations (other pending orders) eat the remaining stock —
-                            // reserveStock() always enforces stock - reservedStock for
-                            // variants, so that's the only accurate availability check.
-                            const outOfStock = v.stock - v.reservedStock < 1;
+                            // ProductVariant has no trackInventory/allowBackorder columns of
+                            // its own — availability follows the PARENT product's flags, same
+                            // as reserveStock() (stock-reservation.util.ts) enforces.
+                            const outOfStock = p.trackInventory && !p.allowBackorder && v.stock - v.reservedStock < 1;
                             return (
                               <button
                                 key={`${p.id}-${v.id}`}

@@ -42,4 +42,29 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   district?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  recipientName?: string;
+
+  @ApiPropertyOptional({ description: 'Thana/upazila' })
+  @IsOptional()
+  @IsString()
+  area?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landmark?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  postCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  alternativePhone?: string;
 }

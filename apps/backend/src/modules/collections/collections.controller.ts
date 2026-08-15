@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -11,6 +12,10 @@ import {
   PublicNavCollectionDto,
 } from './collections.mapper';
 
+// Public, read-only, called server-side on every storefront page render
+// (the nav's collection dropdown) — see SiteInfoController's comment for
+// why this is exempt from the global per-IP throttle.
+@SkipThrottle()
 @ApiTags('collections')
 @Controller('collections')
 export class CollectionsController {

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -7,6 +8,9 @@ import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { TagsService } from './tags.service';
 import { PublicTagDetailDto, PublicTagDto } from './tags.mapper';
 
+// Public, read-only — see SiteInfoController's comment for why this is
+// exempt from the global per-IP throttle.
+@SkipThrottle()
 @ApiTags('tags')
 @Controller('tags')
 export class TagsController {

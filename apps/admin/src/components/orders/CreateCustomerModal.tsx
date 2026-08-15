@@ -2,23 +2,14 @@
 
 import { useState } from "react";
 import { Button, Modal } from "@amader/admin-ui";
-import { BD_DISTRICTS_BY_DIVISION, isValidBdPhone } from "@amader/shared";
+import { isValidBdPhone } from "@amader/shared";
 import { useCreateCustomer, type AdminCustomer } from "@/hooks/useCustomers";
 import { ProxyApiError } from "@/lib/api/proxy-client";
+import { CustomerAddressFields, EMPTY_CUSTOMER_ADDRESS, type CustomerAddressValue } from "@/components/customers/CustomerAddressFields";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
-// Flat, alphabetical — division isn't a separate field (see
-// CreateCustomerModalAddress's own comment); every BD district belongs to
-// exactly one, so the backend derives it from whichever district is picked.
-const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
-  .flat()
-  .sort((a, b) => a.localeCompare(b));
-
-export interface CreateCustomerModalAddress {
-  addressLine: string;
-  district: string;
-}
+export type CreateCustomerModalAddress = CustomerAddressValue;
 
 export interface CreateCustomerModalProps {
   open: boolean;
@@ -45,8 +36,7 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [email, setEmail] = useState("");
-  const [addressLine, setAddressLine] = useState("");
-  const [district, setDistrict] = useState("");
+  const [address, setAddress] = useState<CustomerAddressValue>(EMPTY_CUSTOMER_ADDRESS);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const create = useCreateCustomer();
 
@@ -55,8 +45,7 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
     setLastName("");
     setPhone(initialPhone ?? "");
     setEmail("");
-    setAddressLine("");
-    setDistrict("");
+    setAddress(EMPTY_CUSTOMER_ADDRESS);
     setPhoneError(null);
   }
 
@@ -66,17 +55,25 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
       return;
     }
     setPhoneError(null);
-    const hasAddress = showAddress && addressLine.trim() && district;
+    const hasAddress = showAddress && address.addressLine.trim() && address.district;
     const customer = await create.mutateAsync({
       phone,
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       email: email || undefined,
-      ...(hasAddress ? { addressLine, district } : {}),
+      ...(hasAddress
+        ? {
+            addressLine: address.addressLine,
+            district: address.district,
+            area: address.area || undefined,
+            landmark: address.landmark || undefined,
+            postCode: address.postCode || undefined,
+            alternativePhone: address.alternativePhone || undefined,
+          }
+        : {}),
     });
-    const address = hasAddress ? { addressLine, district } : null;
     reset();
-    onCreated(customer, address);
+    onCreated(customer, hasAddress ? address : null);
   }
 
   return (
@@ -116,22 +113,10 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
 
         {showAddress ? (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">Address</span>
-                <textarea
-                  value={addressLine}
-                  onChange={(e) => setAddressLine(e.target.value)}
-                  placeholder="House / road / area"
-                  rows={2}
-                  className="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">Email</span>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-              </label>
-            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-text">Email</span>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+            </label>
 
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-text">Country</span>
@@ -140,17 +125,7 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
               </select>
             </label>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">District</span>
-              <select value={district} onChange={(e) => setDistrict(e.target.value)} className={inputClass}>
-                <option value="">Select district</option>
-                {DISTRICT_OPTIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <CustomerAddressFields value={address} onChange={setAddress} inputClassName={inputClass} />
           </>
         ) : (
           <label className="flex flex-col gap-1.5">

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -11,6 +12,10 @@ import {
   PublicProductDto,
 } from './dto/product-response.dto';
 
+// Public, read-only, called server-side on every storefront product-listing
+// and product-detail page render — see SiteInfoController's comment for why
+// this is exempt from the global per-IP throttle.
+@SkipThrottle()
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {

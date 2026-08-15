@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { PaginatedResult } from '@amader/shared';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
@@ -18,6 +18,10 @@ import {
 export class BlogPostsController {
   constructor(private readonly posts: BlogPostsService) {}
 
+  // Public, read-only — see SiteInfoController's comment for why this is
+  // exempt from the global per-IP throttle. `recordView` below keeps its
+  // own tighter, intentional throttle.
+  @SkipThrottle()
   @Get('blog-posts')
   @ApiQuery({ name: 'category', required: false })
   @ApiQuery({ name: 'tag', required: false })
@@ -37,6 +41,7 @@ export class BlogPostsController {
     );
   }
 
+  @SkipThrottle()
   @Get('blog-posts/:slug')
   @ApiOkResponse({ type: PublicBlogPostDetailDto })
   @ApiQuery({ name: 'previewToken', required: false })
@@ -62,6 +67,7 @@ export class BlogPostsController {
     return { success: true };
   }
 
+  @SkipThrottle()
   @Get('blog-authors/:id')
   @ApiOkResponse({ type: BlogAuthorProfileDto })
   authorProfile(

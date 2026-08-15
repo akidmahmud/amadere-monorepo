@@ -472,7 +472,7 @@ export class CustomersService {
     });
 
     if (dto.addressLine) {
-      const recipientName = `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() || 'Customer';
+      const recipientName = dto.recipientName || `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() || 'Customer';
       // division isn't collected from staff anymore (see CreateCustomerModal
       // — every BD district belongs to exactly one), so derive it from
       // district the same way toOrderAddressCreate does for orders.
@@ -487,6 +487,10 @@ export class CustomersService {
           phone: dto.phone,
           division,
           district: dto.district ?? '',
+          area: dto.area,
+          landmark: dto.landmark,
+          postCode: dto.postCode,
+          alternativePhone: dto.alternativePhone,
           addressLine: dto.addressLine,
           isDefault: true,
         },

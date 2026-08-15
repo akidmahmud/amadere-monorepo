@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCreateCustomer } from "@/hooks/useCustomers";
 import { ProxyApiError } from "@/lib/api/proxy-client";
+import { CustomerAddressFields, EMPTY_CUSTOMER_ADDRESS, type CustomerAddressValue } from "@/components/customers/CustomerAddressFields";
 
 // Same visual language as the Customer Management list page
 // (apps/admin/src/app/(shell)/customers/page.tsx) — this form used to be a
@@ -25,7 +26,9 @@ export default function NewCustomerPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [address, setAddress] = useState<CustomerAddressValue>(EMPTY_CUSTOMER_ADDRESS);
   const create = useCreateCustomer();
+  const hasAddress = address.addressLine.trim() && address.district;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +37,16 @@ export default function NewCustomerPage() {
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       email: email || undefined,
+      ...(hasAddress
+        ? {
+            addressLine: address.addressLine,
+            district: address.district,
+            area: address.area || undefined,
+            landmark: address.landmark || undefined,
+            postCode: address.postCode || undefined,
+            alternativePhone: address.alternativePhone || undefined,
+          }
+        : {}),
     });
     // Back to the Customer Management list, not the new customer's own
     // detail page — the list is where the newly created row is visible.
@@ -90,6 +103,8 @@ export default function NewCustomerPage() {
             </span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} style={inputStyle} />
           </label>
+
+          <CustomerAddressFields value={address} onChange={setAddress} inputClassName={inputClass} inputStyle={inputStyle} />
 
           {create.error && (
             <p className="text-[0.8rem] font-semibold" style={{ color: "#e5484d" }}>

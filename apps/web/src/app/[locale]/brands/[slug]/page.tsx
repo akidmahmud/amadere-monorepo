@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { SectionHeading } from "@amader/ui";
 import { getLanguageAlternates } from "@/i18n/alternates";
-import { safeGet } from "@/lib/api/client";
+import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { redirectIfMapped } from "@/lib/redirects";
@@ -17,11 +17,18 @@ export const revalidate = 3600;
 
 const PAGE_SIZE = 24;
 
-async function getBrand(slug: string, locale: string) {
-  const res = await safeGet("/api/v1/brands/{slug}", {
-    params: { path: { slug }, query: { locale } },
-  });
-  return res.data as components["schemas"]["PublicBrandDetailDto"] | undefined;
+async function getBrand(slug: string, locale: "EN" | "BN") {
+  try {
+    const res = await api.GET("/api/v1/brands/{slug}", {
+      params: { path: { slug }, query: { locale } },
+    });
+    return res.data as components["schemas"]["PublicBrandDetailDto"] | undefined;
+  } catch (err) {
+    // See categories/[slug]/page.tsx's getCategory for why only a real
+    // 404 is treated as not-found here, not any other kind of failure.
+    if (err instanceof ApiError && err.status === 404) return undefined;
+    throw err;
+  }
 }
 
 export async function generateMetadata({

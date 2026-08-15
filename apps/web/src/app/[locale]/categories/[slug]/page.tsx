@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { SectionHeading } from "@amader/ui";
 import { getLanguageAlternates } from "@/i18n/alternates";
-import { safeGet } from "@/lib/api/client";
+import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toProductCardData } from "@/lib/product-card-mapper";
@@ -19,11 +19,21 @@ export const revalidate = 3600;
 
 const PAGE_SIZE = 24;
 
-async function getCategory(slug: string, locale: string) {
-  const res = await safeGet("/api/v1/categories/{slug}", {
-    params: { path: { slug }, query: { locale } },
-  });
-  return res.data as components["schemas"]["PublicCategoryDetailDto"] | undefined;
+async function getCategory(slug: string, locale: "EN" | "BN") {
+  try {
+    const res = await api.GET("/api/v1/categories/{slug}", {
+      params: { path: { slug }, query: { locale } },
+    });
+    return res.data as components["schemas"]["PublicCategoryDetailDto"] | undefined;
+  } catch (err) {
+    // A real "no such category" — safe to treat as not-found. Anything else
+    // (network blip, backend 5xx/429) must NOT be swallowed into "not
+    // found" the way safeGet() does — this route's 1-hour ISR cache would
+    // then bake a single transient hiccup into a false 404 for up to an
+    // hour. See apps/web's catch-all [...path]/page.tsx for the same fix.
+    if (err instanceof ApiError && err.status === 404) return undefined;
+    throw err;
+  }
 }
 
 export async function generateMetadata({

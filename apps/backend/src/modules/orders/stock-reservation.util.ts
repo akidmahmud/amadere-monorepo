@@ -56,6 +56,12 @@ export async function releaseStock(
 ): Promise<void> {
   if (quantity <= 0) return;
 
+  // Mirrors reserveStock's early return: when trackInventory is off, nothing
+  // was ever incremented (for either a variant or the plain product), so
+  // decrementing here would drift reservedStock negative over time.
+  const product = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+  if (!product.trackInventory) return;
+
   if (variantId) {
     await tx.productVariant.update({
       where: { id: variantId },
@@ -63,9 +69,6 @@ export async function releaseStock(
     });
     return;
   }
-
-  const product = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-  if (!product.trackInventory) return;
 
   await tx.product.update({
     where: { id: productId },

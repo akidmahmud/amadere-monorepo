@@ -163,11 +163,10 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                         const notPublished = p.status !== "PUBLISHED";
                         return p.hasVariants
                           ? p.variants.map((v) => {
-                              // stockStatus is derived from stock alone and goes stale once
-                              // reservations (other pending orders) eat the remaining stock —
-                              // reserveStock() always enforces stock - reservedStock for
-                              // variants, so that's the only accurate availability check.
-                              const outOfStock = v.stock - v.reservedStock < 1;
+                              // ProductVariant has no trackInventory/allowBackorder columns of
+                              // its own — availability follows the PARENT product's flags, same
+                              // as reserveStock() (stock-reservation.util.ts) enforces.
+                              const outOfStock = p.trackInventory && !p.allowBackorder && v.stock - v.reservedStock < 1;
                               return (
                                 <button
                                   key={`${p.id}-${v.id}`}

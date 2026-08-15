@@ -6,7 +6,7 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { AppLink } from "@/components/AppLink";
 import { BlogViewTracker } from "@/components/BlogViewTracker";
 import { getLanguageAlternates } from "@/i18n/alternates";
-import { safeGet } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { formatBlogDate, toBlogCardData } from "@/lib/blog-mapper";
@@ -19,11 +19,18 @@ export const revalidate = 3600;
 
 type PublicBlogPostDetailDto = components["schemas"]["PublicBlogPostDetailDto"];
 
-async function getPost(slug: string, locale: string, previewToken?: string) {
-  const res = await safeGet("/api/v1/blog-posts/{slug}", {
-    params: { path: { slug }, query: { locale, previewToken } },
-  });
-  return res.data as PublicBlogPostDetailDto | undefined;
+async function getPost(slug: string, locale: "EN" | "BN", previewToken?: string) {
+  try {
+    const res = await api.GET("/api/v1/blog-posts/{slug}", {
+      params: { path: { slug }, query: { locale, previewToken } },
+    });
+    return res.data as PublicBlogPostDetailDto | undefined;
+  } catch (err) {
+    // See categories/[slug]/page.tsx's getCategory for why only a real
+    // 404 is treated as not-found here, not any other kind of failure.
+    if (err instanceof ApiError && err.status === 404) return undefined;
+    throw err;
+  }
 }
 
 export async function generateMetadata({

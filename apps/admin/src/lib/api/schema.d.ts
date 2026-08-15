@@ -7315,14 +7315,23 @@ export interface components {
             addressLine?: string;
             division?: string;
             district?: string;
+            recipientName?: string;
+            /** @description Thana/upazila */
+            area?: string;
+            landmark?: string;
+            postCode?: string;
+            alternativePhone?: string;
         };
         AdminCustomerAddressSummaryDto: {
+            recipientName: string;
+            phone: string;
             addressLine: string;
             division: string;
             district: string;
             area: string | null;
             landmark: string | null;
             postCode: string | null;
+            alternativePhone: string | null;
         };
         AdminCustomerOrderSummaryDto: {
             id: number;
