@@ -27,6 +27,15 @@ function getRealWatchingCount(_productId: number): number | undefined {
   return undefined;
 }
 
+// "1500" -> "1.5K" — watching count never crosses 40, but a manually
+// boosted salesCountOverride (see ProductsService.getBySlug) can be
+// large, and a raw 4-5 digit number reads as less trustworthy than a
+// rounded compact one on a social-proof badge.
+const compactFormatter = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+function formatCount(n: number): string {
+  return n >= 1000 ? compactFormatter.format(n).toLowerCase() : String(n);
+}
+
 export function WatchingNowBadge({ productId, salesCount, className }: WatchingNowBadgeProps) {
   const [watchingCount, setWatchingCount] = useState<number | null>(null);
   const [boughtCount, setBoughtCount] = useState<number | null>(null);
@@ -53,14 +62,14 @@ export function WatchingNowBadge({ productId, salesCount, className }: WatchingN
       <div className="flex items-center gap-2 whitespace-nowrap">
         <span className="text-green">{eyeIcon}</span>
         <span>
-          <strong className="font-semibold">{watchingCount}</strong> People watching
+          <strong className="font-semibold">{formatCount(watchingCount)}</strong> People watching
         </span>
       </div>
       <span className="text-muted/60">•</span>
       <div className="flex items-center gap-2 whitespace-nowrap">
         <span className="text-green">{shoppingBagIcon}</span>
         <span>
-          <strong className="font-semibold">{boughtCount}</strong> People bought
+          <strong className="font-semibold">{formatCount(boughtCount)}</strong> People bought
         </span>
       </div>
     </div>
