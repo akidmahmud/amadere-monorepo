@@ -100,11 +100,24 @@ function HeroSlideImage({ src, isDesktop, boxRatio }: { src: string; isDesktop: 
   );
 }
 
+// Side banner's square size N, solved so it exactly equals the main
+// slider's own rendered height once the grid column split accounts for N —
+// otherwise this is circular (the slider's height depends on its width,
+// which depends on how much room N leaves it, which is exactly the value
+// we're trying to compute). With mainSliderWidth = C - N - gap and
+// height = mainSliderWidth × 5/16 (aspect-[16/5]), setting N = height and
+// solving for N gives a closed form instead of a measure-then-adjust loop:
+//   N = (C - N - gap) × 5/16  →  21N = 5(C - gap)  →  N = 5(C - gap) / 21
+const GRID_GAP = 20;
+function solveSideBannerSize(containerWidth: number): number {
+  return Math.round((5 * (containerWidth - GRID_GAP)) / 21);
+}
+
 export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HeroCarouselProps) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Defense in depth: admin-entered config can end up with a slide that has
   // no image yet (e.g. "Add slide" clicked before an upload finishes) — an
@@ -113,12 +126,13 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
   const validSlides = slides?.filter((slide) => slide.imageUrl) ?? [];
   const slideTotal = validSlides.length;
 
-  // The box's own current ratio — its width is fluid (grid's 1fr track)
-  // while its height is a fixed 400px on desktop, so the ratio genuinely
-  // changes with viewport width and has to be re-measured on resize, not
-  // assumed. Each slide's own image ratio lives in HeroSlideImage instead.
   const [isDesktop, setIsDesktop] = useState(false);
-  const [boxRatio, setBoxRatio] = useState<number | null>(null);
+  // Fixed 16:5 always (sliderAspect enforces this unconditionally at
+  // desktop) — not measured, since the ratio no longer varies with
+  // viewport width the way it did back when the slider had a fixed pixel
+  // height instead of a fixed aspect-ratio.
+  const boxRatio = isDesktop ? 16 / 5 : null;
+  const [sideBannerSize, setSideBannerSize] = useState<number | null>(null);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1024px)");
@@ -131,8 +145,8 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
   useEffect(() => {
     if (!isDesktop) return;
     function measure() {
-      const rect = boxRef.current?.getBoundingClientRect();
-      if (rect && rect.height > 0) setBoxRatio(rect.width / rect.height);
+      const width = gridRef.current?.clientWidth;
+      if (width) setSideBannerSize(solveSideBannerSize(width));
     }
     measure();
     window.addEventListener("resize", measure);
@@ -151,24 +165,33 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-6 py-6 max-md:px-3 max-md:pb-4 max-md:pt-5">
-      {/* Main slider (flex:1, 400px tall on desktop) + fixed 400×400 side
-          banner — both explicitly 400px tall on desktop so they match with
-          no gap. Stacks to a single column at ≤1024px. */}
-      <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1fr_400px]">
+      {/* Main slider (aspect-[16/5], matches a 1600×500 upload) + a square
+          side banner sized so it exactly equals the slider's own rendered
+          height (solveSideBannerSize) — e.g. 330px side banner when the
+          slider itself is 330px tall, recomputed on resize since the
+          slider's height is fluid (aspect-[16/5] on a 1fr-track width, not
+          a fixed pixel value). lg:grid-cols-[1fr_300px] is just the pre-JS/
+          SSR default the inline gridTemplateColumns style overrides once
+          isDesktop and the computed size are known. Stacks to a single
+          column at ≤1024px. */}
+      <div
+        ref={gridRef}
+        className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1fr_300px]"
+        style={isDesktop && sideBannerSize ? { gridTemplateColumns: `1fr ${sideBannerSize}px` } : undefined}
+      >
         <div
-          // lg:aspect-auto lg:h-[400px] — overrides sliderAspect's
-          // aspect-[16/5] at desktop with a fixed height instead, matching
-          // the side banner's own fixed 400px so the row has no leftover
-          // gap. Mixing an explicit height with aspect-ratio (rather than
-          // canceling the ratio via aspect-auto) is exactly what caused the
-          // side banner to get shoved off-screen earlier — aspect-ratio
-          // would compute a *preferred width* from the explicit height
-          // (400×16/5=1280px) and blow through the 1fr grid column. self-
-          // start keeps this box from being stretched by items-stretch to
-          // match the side banner at breakpoints where the override above
-          // isn't active (≤1024px, before the side banner even shows).
-          ref={boxRef}
-          className={cn("relative self-start overflow-hidden bg-[#e9dfcd] lg:aspect-auto lg:h-[400px]", sliderAspect, bannerRadius)}
+          // Desktop box is aspect-[16/5] (via sliderAspect) — matches the
+          // admin's recommended 1600×500 upload exactly, so a correctly
+          // sized image gets object-cover with ~0% crop (see HeroSlideImage's
+          // per-image fit logic). self-start — the side banner next to it
+          // has its own explicit height (solveSideBannerSize, set via inline
+          // style); without self-start, items-stretch would pull this box's
+          // height up to match it, and that stretched height combined with
+          // aspect-[16/5] would compute a *preferred width* from the ratio,
+          // blowing through the 1fr grid column (this exact bug happened
+          // once already with a fixed-400px side banner — see git history
+          // if it resurfaces).
+          className={cn("relative self-start overflow-hidden bg-[#e9dfcd]", sliderAspect, bannerRadius)}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
@@ -268,22 +291,29 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
         {stripImageUrl ? (
           (() => {
             const bannerImg = <img src={stripImageUrl} alt="" className="h-full w-full object-cover" />;
-            // Fixed 400×400 square, matching the main slider's own
-            // lg:h-[400px] override above so the two sit at equal height
-            // with no gap. Hidden below lg entirely (not just stacked) —
-            // per earlier explicit request, the side banner shouldn't show
-            // on mobile at all, not even below the slider.
-            const bannerClass = cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[400px] lg:w-[400px]", bannerRadius);
+            // Square, sized to exactly match the main slider's own rendered
+            // height (solveSideBannerSize) — 330px side banner when the
+            // slider is 330px tall, 300px when it's 300px, etc., recomputed
+            // on resize. lg:h-[300px] lg:w-[300px] is just the pre-JS/SSR
+            // default the inline style overrides once isDesktop and the
+            // computed size are known. Hidden below lg entirely (not just
+            // stacked) — per earlier explicit request, the side banner
+            // shouldn't show on mobile at all, not even below the slider.
+            const bannerClass = cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[300px] lg:w-[300px]", bannerRadius);
+            const bannerStyle = isDesktop && sideBannerSize ? { width: sideBannerSize, height: sideBannerSize } : undefined;
             return stripLinkUrl ? (
-              <Link href={stripLinkUrl} className={bannerClass}>
+              <Link href={stripLinkUrl} className={bannerClass} style={bannerStyle}>
                 {bannerImg}
               </Link>
             ) : (
-              <div className={bannerClass}>{bannerImg}</div>
+              <div className={bannerClass} style={bannerStyle}>{bannerImg}</div>
             );
           })()
         ) : (
-          <div className={cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[400px] lg:w-[400px]", bannerRadius)}>
+          <div
+            className={cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[300px] lg:w-[300px]", bannerRadius)}
+            style={isDesktop && sideBannerSize ? { width: sideBannerSize, height: sideBannerSize } : undefined}
+          >
             <EmptySlot label="Add a side banner" />
           </div>
         )}
