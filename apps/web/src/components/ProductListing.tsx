@@ -9,7 +9,7 @@ import { PlpPager } from "@/components/PlpPager";
 import { PriceFilter } from "@/components/PriceFilter";
 import { SortSelect } from "@/components/SortSelect";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
-import { buildPlpHref, FLAG_LABEL_OPTIONS, type FlagLabelValue, type PlpFilters } from "@/lib/plp";
+import { buildPlpHref, type PlpFilters } from "@/lib/plp";
 import { pushEcommerceEvent, cardToGa4Item } from "@/lib/analytics-events";
 import type { ProductCardData } from "@/lib/product-card-mapper";
 
@@ -23,15 +23,16 @@ function toggleId(ids: number[], id: number): number[] {
   return ids.includes(id) ? ids.filter((existing) => existing !== id) : [...ids, id];
 }
 
-function toggleFlag(flags: FlagLabelValue[], flag: FlagLabelValue): FlagLabelValue[] {
-  return flags.includes(flag) ? flags.filter((existing) => existing !== flag) : [...flags, flag];
-}
-
 export interface ProductListingCategory {
   id: number;
   slug: string;
   name: string;
   productCount: number;
+}
+
+export interface ProductListingCollection {
+  id: number;
+  name: string;
 }
 
 export interface ProductListingTag {
@@ -52,6 +53,7 @@ export interface ProductListingProps {
   pageSize: number;
   products: ProductCardData[];
   categories?: ProductListingCategory[];
+  collections?: ProductListingCollection[];
   tags: ProductListingTag[];
   brands?: ProductListingBrand[];
   /** Price bounds across this listing's full (unfiltered) product set — omitted (no slider) if there's nothing to range over. */
@@ -84,6 +86,7 @@ export function ProductListing({
   pageSize,
   products,
   categories,
+  collections,
   tags,
   brands,
   priceBounds,
@@ -121,34 +124,38 @@ export function ProductListing({
 
   const filterGroups = (
     <>
+      {collections && collections.length > 0 &&
+        widget(
+          <FilterCheckboxGroup
+            heading="Filter By Collection"
+            linkComponent={AppLink}
+            options={collections.map((collection) => ({
+              label: collection.name,
+              active: filters.collectionIds.includes(collection.id),
+              href: buildPlpHref(basePath, {
+                ...filters,
+                collectionIds: toggleId(filters.collectionIds, collection.id),
+                page: 1,
+              }),
+            }))}
+          />,
+          "collection",
+        )}
       {categories && categories.length > 0 &&
         widget(
           <FilterCheckboxGroup
             heading="Filter By Category"
             linkComponent={AppLink}
-            options={categories.map((category) => {
-              const isCategoryRoute = basePath.startsWith("/categories/");
-              const isActive = isCategoryRoute
-                ? basePath === `/categories/${category.slug}`
-                : filters.categoryIds.includes(category.id);
-
-              const targetHref = isCategoryRoute
-                ? isActive
-                  ? "/products"
-                  : `/categories/${category.slug}`
-                : buildPlpHref(basePath, {
-                    ...filters,
-                    categoryIds: toggleId(filters.categoryIds, category.id),
-                    page: 1,
-                  });
-
-              return {
-                label: category.name,
-                count: category.productCount,
-                active: isActive,
-                href: targetHref,
-              };
-            })}
+            options={categories.map((category) => ({
+              label: category.name,
+              count: category.productCount,
+              active: filters.categoryIds.includes(category.id),
+              href: buildPlpHref(basePath, {
+                ...filters,
+                categoryIds: toggleId(filters.categoryIds, category.id),
+                page: 1,
+              }),
+            }))}
           />,
           "category",
         )}
@@ -171,22 +178,6 @@ export function ProductListing({
           />,
           "brand",
         )}
-      {widget(
-        <FilterCheckboxGroup
-          heading="Product Flag"
-          linkComponent={AppLink}
-          options={FLAG_LABEL_OPTIONS.map((flag) => ({
-            label: flag.label,
-            active: filters.flagLabels.includes(flag.value),
-            href: buildPlpHref(basePath, {
-              ...filters,
-              flagLabels: toggleFlag(filters.flagLabels, flag.value),
-              page: 1,
-            }),
-          }))}
-        />,
-        "flag",
-      )}
       {tags.length > 0 &&
         widget(
           <FilterCheckboxGroup

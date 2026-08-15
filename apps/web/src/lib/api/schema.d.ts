@@ -11038,6 +11038,8 @@ export interface operations {
                 /** @description Matches products in ANY of the given categories. */
                 categoryIds?: number[];
                 brandId?: number;
+                /** @description Matches products belonging to ANY of the given collections. */
+                collectionIds?: number[];
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
@@ -11104,6 +11106,8 @@ export interface operations {
                 /** @description Matches products in ANY of the given categories. */
                 categoryIds?: number[];
                 brandId?: number;
+                /** @description Matches products belonging to ANY of the given collections. */
+                collectionIds?: number[];
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
@@ -11217,6 +11221,8 @@ export interface operations {
                 /** @description Matches products in ANY of the given categories. */
                 categoryIds?: number[];
                 brandId?: number;
+                /** @description Matches products belonging to ANY of the given collections. */
+                collectionIds?: number[];
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;

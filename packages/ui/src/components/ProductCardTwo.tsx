@@ -103,19 +103,24 @@ export function ProductCardTwo({
           />
         ) : null}
         {(flagLabel || computedDiscountLabel) && (
-          // flex + justify-between (not two independently left/right-absolute
-          // spans) — a real gap between the two badges. Sized small enough
-          // that both stay on the same row on the narrowest mobile card
-          // instead of ever wrapping or truncating with an ellipsis. Always
-          // renders both slots so justify-between still pushes a lone badge
-          // to its correct side.
-          <div className="absolute inset-x-1.5 top-1.5 flex items-start justify-between gap-1">
-            <span className={flagLabel ? "shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink" : undefined}>
-              {flagLabel}
-            </span>
-            <span className={computedDiscountLabel ? "shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink" : undefined}>
-              {computedDiscountLabel}
-            </span>
+          // All badges grouped on the right, stacked in a column (not a
+          // wrapping row) per explicit request — flex-col + items-end so
+          // multiple badges stack one per line, each right-aligned. Only
+          // rendering the spans that actually have content (the old
+          // justify-between layout needed both slots present — even empty —
+          // to keep a lone badge pinned to its designated side; that's not
+          // needed here since items-end right-aligns regardless).
+          <div className="absolute inset-x-1.5 top-1.5 flex flex-col items-end gap-1">
+            {flagLabel && (
+              <span className="shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink">
+                {flagLabel}
+              </span>
+            )}
+            {computedDiscountLabel && (
+              <span className="shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink">
+                {computedDiscountLabel}
+              </span>
+            )}
           </div>
         )}
       </Link>

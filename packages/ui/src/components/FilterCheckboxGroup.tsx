@@ -51,6 +51,7 @@ export function FilterCheckboxGroup({
     <Link
       key={option.href}
       href={option.href}
+      scroll={false}
       className="flex items-center gap-2 py-1.5 font-body text-[13.5px] text-ink"
     >
       <span

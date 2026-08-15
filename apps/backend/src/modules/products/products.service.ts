@@ -888,8 +888,13 @@ export class ProductsService {
       status: 'PUBLISHED' as const,
     });
 
-    if (filters.sort === ProductSort.PRICE_ASC || filters.sort === ProductSort.PRICE_DESC) {
-      return this.publicListSortedByEffectivePrice(locale, page, pageSize, where, filters.sort);
+    const needsEffectivePrice =
+      filters.minPrice !== undefined ||
+      filters.maxPrice !== undefined ||
+      filters.sort === ProductSort.PRICE_ASC ||
+      filters.sort === ProductSort.PRICE_DESC;
+    if (needsEffectivePrice) {
+      return this.publicListByEffectivePrice(locale, page, pageSize, where, filters);
     }
 
     const [items, total] = await Promise.all([
@@ -910,35 +915,85 @@ export class ProductsService {
   }
 
   // `Product.price` is null for variant products (price lives on the
-  // default variant instead), so a plain DB-level `orderBy: { price }`
-  // clustered every variant product at one end of the list regardless of
-  // its real price instead of interleaving correctly with simple products —
-  // the low-to-high/high-to-low sort looked broken because it was sorting a
-  // column that isn't what the card actually displays. Resolves each
-  // product's effective price the same way the storefront card and the
-  // collection page's client-side sort already do (own price, else the
-  // default variant's, else the first variant's), sorts in JS, then
-  // paginates against that order.
-  private async publicListSortedByEffectivePrice(
+  // default variant instead), so neither a DB-level `orderBy: { price }` nor
+  // a DB-level `where: { price: { gte, lte } } }` works for them — the sort
+  // clustered every variant product at one end of the list, and the filter
+  // excluded them entirely regardless of their real price, since NULL never
+  // satisfies a gte/lte comparison. Both are resolved here in JS instead,
+  // against the same effective-price fallback the storefront card and the
+  // collection page's client-side filter/sort already use (own price, else
+  // the default variant's, else the first variant's), then paginated against
+  // that result. Runs whenever a price filter OR a price sort is requested —
+  // combining both (e.g. a price-filtered "Newest" view) needs this same
+  // fetch-all-then-narrow approach regardless of which one triggered it.
+  private async publicListByEffectivePrice(
     locale: Locale,
     page: number,
     pageSize: number,
     where: Prisma.ProductWhereInput,
-    sort: ProductSort.PRICE_ASC | ProductSort.PRICE_DESC,
+    filters: ProductFilterQueryDto,
   ): Promise<PaginatedResult<PublicProductDto>> {
     const all = await this.prisma.client.product.findMany({
       where,
       select: {
         id: true,
         price: true,
-        variants: { select: { price: true }, orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }], take: 1 },
+        salePrice: true,
+        saleStartsAt: true,
+        saleEndsAt: true,
+        createdAt: true,
+        viewCount: true,
+        variants: {
+          select: { price: true, salePrice: true, isDefault: true },
+          orderBy: { sortOrder: 'asc' },
+        },
       },
     });
 
-    const effectivePrice = (p: (typeof all)[number]) => Number(p.price ?? p.variants[0]?.price ?? 0);
-    const sorted = all.sort((a, b) => {
-      const diff = effectivePrice(a) - effectivePrice(b);
-      return sort === ProductSort.PRICE_DESC ? -diff : diff;
+    // Mirrors pricing.service.ts's own effectivePrice() / the storefront
+    // card's resolution (product-card-mapper.ts's toProductCardData) — base
+    // price (own, else the default variant's, else the first by sortOrder)
+    // with an active-sale-window salePrice override. Sorting/filtering on
+    // the bare base price (an earlier version of this method did) put
+    // products in the wrong order whenever they were on sale, since the
+    // price the customer actually sees is the sale price, not the
+    // pre-discount one. Picks the default variant in JS from the FULL
+    // ordered list rather than a nested `orderBy` + `take: 1` on the
+    // relation — that combination doesn't reliably return the
+    // lowest-sortOrder row through Prisma's relation-load-strategy planner,
+    // confirmed by it returning a different variant than variants[0] of the
+    // exact same sortOrder-ordered relation elsewhere in this file.
+    const now = new Date();
+    const effectivePrice = (p: (typeof all)[number]) => {
+      const defaultVariant = p.variants.find((v) => v.isDefault) ?? p.variants[0];
+      const base = Number(p.price ?? defaultVariant?.price ?? 0);
+      const sale = p.salePrice ?? defaultVariant?.salePrice ?? null;
+      if (sale === null) return base;
+      if (p.saleStartsAt && now < p.saleStartsAt) return base;
+      if (p.saleEndsAt && now > p.saleEndsAt) return base;
+      const saleNum = Number(sale);
+      return saleNum < base ? saleNum : base;
+    };
+
+    const inRange = all.filter((p) => {
+      const price = effectivePrice(p);
+      if (filters.minPrice !== undefined && price < filters.minPrice) return false;
+      if (filters.maxPrice !== undefined && price > filters.maxPrice) return false;
+      return true;
+    });
+
+    const sorted = inRange.sort((a, b) => {
+      switch (filters.sort) {
+        case ProductSort.PRICE_DESC:
+          return effectivePrice(b) - effectivePrice(a);
+        case ProductSort.BEST_SELLING:
+          return b.viewCount - a.viewCount;
+        case ProductSort.PRICE_ASC:
+          return effectivePrice(a) - effectivePrice(b);
+        case ProductSort.NEWEST:
+        default:
+          return b.createdAt.getTime() - a.createdAt.getTime();
+      }
     });
 
     const total = sorted.length;
@@ -1104,17 +1159,18 @@ export class ProductsService {
       ...(filters.categoryIds?.length
         ? { categories: { some: { categoryId: { in: filters.categoryIds } } } }
         : {}),
+      ...(filters.collectionIds?.length
+        ? { collections: { some: { collectionId: { in: filters.collectionIds } } } }
+        : {}),
       ...(filters.tagIds?.length
         ? { tags: { some: { tagId: { in: filters.tagIds } } } }
         : {}),
-      ...(filters.minPrice !== undefined || filters.maxPrice !== undefined
-        ? {
-            price: {
-              ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
-              ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
-            },
-          }
-        : {}),
+      // minPrice/maxPrice are deliberately NOT applied here as a DB-level
+      // `price: { gte, lte }` — `Product.price` is null for every hasVariants
+      // product (price lives on the variant instead), so that would silently
+      // exclude every variant product regardless of its real price. Applied
+      // in JS instead, against the same effective-price fallback the sort
+      // and the storefront card already use — see publicListByEffectivePrice.
       ...(filters.q?.trim()
         ? {
             OR: [

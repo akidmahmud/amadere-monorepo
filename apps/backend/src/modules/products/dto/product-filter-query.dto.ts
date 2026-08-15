@@ -30,6 +30,13 @@ export class ProductFilterQueryDto {
   @IsInt()
   brandId?: number;
 
+  @ApiPropertyOptional({ type: [Number], description: 'Matches products belonging to ANY of the given collections.' })
+  @IsOptional()
+  @Transform(toArray)
+  @Type(() => Number)
+  @IsInt({ each: true })
+  collectionIds?: number[];
+
   @ApiPropertyOptional({ type: [Number], description: 'Matches products tagged with ANY of the given tags.' })
   @IsOptional()
   @Transform(toArray)

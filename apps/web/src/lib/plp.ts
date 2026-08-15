@@ -24,6 +24,7 @@ export interface PlpSearchParams {
   categoryId?: string | string[];
   tagId?: string | string[];
   brandId?: string;
+  collectionId?: string | string[];
   flagLabel?: string | string[];
   minPrice?: string;
   maxPrice?: string;
@@ -36,6 +37,7 @@ export interface PlpFilters {
   categoryIds: number[];
   tagIds: number[];
   brandId?: number;
+  collectionIds: number[];
   flagLabels: FlagLabelValue[];
   minPrice?: number;
   maxPrice?: number;
@@ -69,6 +71,7 @@ export function parsePlpSearchParams(params: PlpSearchParams): PlpFilters {
     categoryIds: parseIds(params.categoryId),
     tagIds: parseIds(params.tagId),
     brandId: params.brandId ? Number(params.brandId) : undefined,
+    collectionIds: parseIds(params.collectionId),
     flagLabels: parseFlagLabels(params.flagLabel),
     minPrice: params.minPrice ? Number(params.minPrice) : undefined,
     maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
@@ -88,6 +91,7 @@ export function buildPlpHref(base: string, filters: Partial<PlpFilters>): string
   for (const id of filters.categoryIds ?? []) search.append("categoryId", String(id));
   for (const id of filters.tagIds ?? []) search.append("tagId", String(id));
   if (filters.brandId !== undefined) search.set("brandId", String(filters.brandId));
+  for (const id of filters.collectionIds ?? []) search.append("collectionId", String(id));
   for (const flag of filters.flagLabels ?? []) search.append("flagLabel", flag);
   if (filters.minPrice !== undefined) search.set("minPrice", String(filters.minPrice));
   if (filters.maxPrice !== undefined) search.set("maxPrice", String(filters.maxPrice));
@@ -105,6 +109,7 @@ export function isFilteredView(filters: PlpFilters): boolean {
     filters.categoryIds.length > 0 ||
     filters.tagIds.length > 0 ||
     filters.brandId !== undefined ||
+    filters.collectionIds.length > 0 ||
     filters.flagLabels.length > 0 ||
     filters.minPrice !== undefined ||
     filters.maxPrice !== undefined ||

@@ -21,6 +21,7 @@ export function PerPageSelect({ basePath, filters }: { basePath: string; filters
             pageSize: e.target.value ? Number(e.target.value) : undefined,
             page: 1,
           }),
+          { scroll: false },
         )
       }
     >

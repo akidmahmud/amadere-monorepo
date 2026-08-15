@@ -37,7 +37,7 @@ export default async function ProductsPage({
   const filters = parsePlpSearchParams(await searchParams);
   const pageSize = filters.pageSize ?? PAGE_SIZE;
 
-  const [productsRes, categoriesRes, tagsRes, brandsRes, siteInfoRes] = await Promise.all([
+  const [productsRes, collectionsRes, tagsRes, brandsRes, siteInfoRes] = await Promise.all([
     safeGet("/api/v1/products", {
       params: {
         query: {
@@ -47,6 +47,7 @@ export default async function ProductsPage({
           categoryIds: filters.categoryIds,
           tagIds: filters.tagIds,
           brandId: filters.brandId,
+          collectionIds: filters.collectionIds,
           flagLabels: filters.flagLabels,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
@@ -54,7 +55,7 @@ export default async function ProductsPage({
         },
       },
     }),
-    safeGet("/api/v1/categories", {
+    safeGet("/api/v1/collections", {
       params: { query: { locale: localeParam, pageSize: 50 } },
     }),
     safeGet("/api/v1/tags", {
@@ -68,8 +69,8 @@ export default async function ProductsPage({
 
   const products = (productsRes.data?.items ?? []).map(toProductCardData);
   const total = productsRes.data?.total ?? 0;
-  const categories = (categoriesRes.data?.items ??
-    []) as components["schemas"]["PublicCategoryDto"][];
+  const collections = (collectionsRes.data?.items ??
+    []) as components["schemas"]["PublicCollectionSummaryDto"][];
   const tags = (tagsRes.data?.items ??
     []) as components["schemas"]["PublicTagDto"][];
   const brands = (brandsRes.data?.items ??
@@ -93,7 +94,7 @@ export default async function ProductsPage({
         total={total}
         pageSize={pageSize}
         products={products}
-        categories={categories}
+        collections={collections}
         tags={tags}
         brands={brands}
         title="All Products"

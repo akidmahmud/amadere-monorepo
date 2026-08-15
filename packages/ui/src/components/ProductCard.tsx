@@ -146,22 +146,24 @@ export function ProductCard({
           fight these exact values under plain clsx) — 10px/400, 2px 6px
           padding, 4px radius, 6px inset from each top corner. */}
       {(flagLabel || computedDiscountLabel) && (
-        // flex + justify-between (not two independently left/right-absolute
-        // spans) — a real gap-1 between the two badges instead of them
-        // sitting flush against whatever text each happens to have. Sized
-        // small enough (9px/px-1) that even "Best Selling" + a 3-digit
-        // "100% OFF" both fit on the same row on the narrowest (2-per-row
-        // mobile grid) card — no ellipsis, no wrap, both always readable.
-        // Always renders both <span> slots (empty/unstyled when that label
-        // is absent) so justify-between still pushes a lone badge to its
-        // correct side.
-        <div className="absolute inset-x-1.5 top-1.5 z-10 flex items-start justify-between gap-1">
-          <span className={flagLabel ? "shrink-0 rounded bg-[#FF4900] px-1 py-0.5 text-[9px] font-normal leading-normal text-white" : undefined}>
-            {flagLabel}
-          </span>
-          <span className={computedDiscountLabel ? "shrink-0 rounded bg-[#008400] px-1 py-0.5 text-[9px] font-normal leading-normal text-white" : undefined}>
-            {computedDiscountLabel}
-          </span>
+        // All badges grouped on the right, stacked in a column (not a
+        // wrapping row) per explicit request — flex-col + items-end so
+        // multiple badges stack one per line, each right-aligned. Only
+        // rendering the spans that actually have content (the old
+        // justify-between layout needed both slots present — even empty —
+        // to keep a lone badge pinned to its designated side; that's not
+        // needed here since items-end right-aligns regardless).
+        <div className="absolute inset-x-1.5 top-1.5 z-10 flex flex-col items-end gap-1">
+          {flagLabel && (
+            <span className="shrink-0 rounded bg-[#FF4900] px-1 py-0.5 text-[9px] font-normal leading-normal text-white">
+              {flagLabel}
+            </span>
+          )}
+          {computedDiscountLabel && (
+            <span className="shrink-0 rounded bg-[#008400] px-1 py-0.5 text-[9px] font-normal leading-normal text-white">
+              {computedDiscountLabel}
+            </span>
+          )}
         </div>
       )}
       <Link href={href} onClick={onSelect} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">

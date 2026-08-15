@@ -6,10 +6,10 @@ import type { AnchorHTMLAttributes, ComponentType } from "react";
  * this package framework-agnostic. Defaults to a plain anchor.
  */
 export type LinkComponent = ComponentType<
-  AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }
+  AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; scroll?: boolean }
 >;
 
-export const DefaultLink: LinkComponent = ({ href, children, ...props }) => (
+export const DefaultLink: LinkComponent = ({ href, children, scroll: _scroll, ...props }) => (
   <a href={href} {...props}>
     {children}
   </a>

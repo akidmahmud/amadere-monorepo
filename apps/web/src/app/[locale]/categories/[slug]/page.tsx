@@ -84,7 +84,7 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const [productsRes, tagsRes, brandsRes, categoriesRes] = await Promise.all([
+  const [productsRes, tagsRes, brandsRes, cheapestRes, priciestRes] = await Promise.all([
     safeGet("/api/v1/products", {
       params: {
         query: {
@@ -106,8 +106,16 @@ export default async function CategoryPage({
     safeGet("/api/v1/brands", {
       params: { query: { locale: localeParam, pageSize: 50 } },
     }),
-    safeGet("/api/v1/categories", {
-      params: { query: { locale: localeParam, pageSize: 50 } },
+    // Price bounds for the slider, across this category's full (unfiltered)
+    // product set — same idea as the collection page's own priceBounds, but
+    // a category has no ready-made "full set" response to derive it from,
+    // so it's two 1-item requests sorted to each extreme instead of pulling
+    // every product just to find min/max.
+    safeGet("/api/v1/products", {
+      params: { query: { locale: localeParam, categoryIds: [category.id], pageSize: 1, sort: "PRICE_ASC" } },
+    }),
+    safeGet("/api/v1/products", {
+      params: { query: { locale: localeParam, categoryIds: [category.id], pageSize: 1, sort: "PRICE_DESC" } },
     }),
   ]);
 
@@ -117,8 +125,12 @@ export default async function CategoryPage({
     []) as components["schemas"]["PublicTagDto"][];
   const brands = (brandsRes.data?.items ??
     []) as components["schemas"]["PublicBrandDto"][];
-  const categories = (categoriesRes.data?.items ??
-    []) as components["schemas"]["PublicCategoryDto"][];
+
+  const effectivePrice = (p: components["schemas"]["PublicProductDto"]) =>
+    Number(p.price ?? p.variants.find((v) => v.isDefault)?.price ?? p.variants[0]?.price ?? 0);
+  const cheapest = cheapestRes.data?.items?.[0];
+  const priciest = priciestRes.data?.items?.[0];
+  const priceBounds = cheapest && priciest ? { min: effectivePrice(cheapest), max: effectivePrice(priciest) } : undefined;
 
   return (
     <main className="flex-1">
@@ -154,9 +166,9 @@ export default async function CategoryPage({
         total={total}
         pageSize={pageSize}
         products={products}
-        categories={categories}
         tags={tags}
         brands={brands}
+        priceBounds={priceBounds}
         hidePlaceholderBanner
       />
     </main>

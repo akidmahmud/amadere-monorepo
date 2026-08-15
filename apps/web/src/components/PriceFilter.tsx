@@ -38,6 +38,7 @@ export function PriceFilter({
           maxPrice: live.max === max ? undefined : live.max,
           page: 1,
         }),
+        { scroll: false },
       );
     }, 400);
     return () => clearTimeout(t);
