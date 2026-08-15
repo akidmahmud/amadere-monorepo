@@ -72,6 +72,12 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className="h-full antialiased">
+      {/* Admin-uploaded via Settings > Logo & Banners > Favicon — falls back
+          to the static default in public/ when unset. Replaces the old
+          app/icon.png file-convention favicon (which Next auto-injects its
+          own <link> for) so there's exactly one favicon link, no ambiguity
+          between a static build-time icon and this runtime-configurable one. */}
+      <link rel="icon" href={siteInfo?.faviconUrl ?? "/favicon-default.png"} />
       {/* Opens the connection (DNS + TLS) to promo-video embed platforms
           ahead of time, before any specific iframe actually needs one — the
           handshake itself is often a big chunk of the perceived "video takes

@@ -1684,6 +1684,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{orderNumber}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OrdersController_cancelMine"];
+        trace?: never;
+    };
     "/api/v1/admin/orders": {
         parameters: {
             query?: never;
@@ -2237,7 +2253,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
+        post: operations["CustomersController_setPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5738,6 +5754,7 @@ export interface components {
             emailVerifiedAt: string | null;
             /** Format: date-time */
             phoneVerifiedAt: string | null;
+            hasPassword: boolean;
         };
         AdminTwoFactorRequiredDto: {
             requiresTwoFactor: boolean;
@@ -7273,6 +7290,9 @@ export interface components {
         SuccessResponseDto: {
             success: boolean;
         };
+        SetPasswordDto: {
+            newPassword: string;
+        };
         AddressDto: {
             id: number;
             label: string | null;
@@ -8391,6 +8411,7 @@ export interface components {
             siteName: string;
             logoUrl: string | null;
             productsPageBannerUrl: string | null;
+            faviconUrl: string | null;
             announcementSpeedSeconds: number;
             productCardStyle: Record<string, never>;
             logoPaddingPx: number;
@@ -11018,6 +11039,8 @@ export interface operations {
                 /** @description Matches products in ANY of the given categories. */
                 categoryIds?: number[];
                 brandId?: number;
+                /** @description Matches products belonging to ANY of the given collections. */
+                collectionIds?: number[];
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
@@ -11084,6 +11107,8 @@ export interface operations {
                 /** @description Matches products in ANY of the given categories. */
                 categoryIds?: number[];
                 brandId?: number;
+                /** @description Matches products belonging to ANY of the given collections. */
+                collectionIds?: number[];
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
@@ -11197,6 +11222,8 @@ export interface operations {
                 /** @description Matches products in ANY of the given categories. */
                 categoryIds?: number[];
                 brandId?: number;
+                /** @description Matches products belonging to ANY of the given collections. */
+                collectionIds?: number[];
                 /** @description Matches products tagged with ANY of the given tags. */
                 tagIds?: number[];
                 isFeatured?: boolean;
@@ -12653,6 +12680,27 @@ export interface operations {
             };
         };
     };
+    OrdersController_cancelMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
     AdminOrdersController_list: {
         parameters: {
             query?: {
@@ -13614,6 +13662,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+        };
+    };
+    CustomersController_setPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
                 };
             };
         };

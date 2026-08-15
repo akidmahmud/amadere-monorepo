@@ -6,10 +6,9 @@ import { Button, Card, Icon } from "@amader/admin-ui";
 import { useSettings, useUpsertSetting, type Setting } from "@/hooks/useSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { ProductCardStyleSettings } from "@/components/ProductCardStyleSettings";
-import { ProductsPageBannerSettings } from "@/components/ProductsPageBannerSettings";
 
 const SETTINGS_LINKS = [
-  { href: "/settings/logo", icon: "image", label: "Logo & Banners", description: "Upload storefront logo and All Products page banner." },
+  { href: "/settings/logo", icon: "image", label: "Logo & Banners", description: "Upload storefront logo, favicon, and All Products page banner." },
   { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
   { href: "/settings/invoice-template", icon: "description", label: "Invoice Template", description: "Custom raw-HTML layout for generated invoices." },
   { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },
@@ -138,7 +137,6 @@ export default function SettingsPage() {
   return (
     <>
       <SettingsLinksGrid />
-      <ProductsPageBannerSettings />
       <TwoFactorSettings />
       <ProductCardStyleSettings />
 

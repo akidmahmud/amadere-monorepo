@@ -20,6 +20,10 @@ export class SiteInfoDto {
   siteName!: string;
   logoUrl!: string | null;
   productsPageBannerUrl!: string | null;
+  /** Browser-tab icon — see SettingsService.SITE_FAVICON_MEDIA_ID_KEY. Falls
+   * back to the storefront's static default (apps/web/public/favicon-default.png)
+   * when unset. */
+  faviconUrl!: string | null;
   /** Speed of announcement bar marquee ticker in seconds (e.g. 20). */
   announcementSpeedSeconds!: number;
   /** Which product card component the storefront renders everywhere a

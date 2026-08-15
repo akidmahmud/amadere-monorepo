@@ -8411,6 +8411,7 @@ export interface components {
             siteName: string;
             logoUrl: string | null;
             productsPageBannerUrl: string | null;
+            faviconUrl: string | null;
             announcementSpeedSeconds: number;
             productCardStyle: Record<string, never>;
             logoPaddingPx: number;
