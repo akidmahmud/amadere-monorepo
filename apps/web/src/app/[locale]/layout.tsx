@@ -15,6 +15,7 @@ import { MobileStickyFooter } from "@/components/MobileStickyFooter";
 import { QueryProvider } from "@/components/QueryProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/AnalyticsScripts";
+import { UserIdentityTracker } from "@/components/UserIdentityTracker";
 import { DeferredFontLoader } from "@/components/DeferredFontLoader";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
@@ -108,6 +109,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           <QueryProvider>
             <ToastProvider>
+              <UserIdentityTracker />
               <SiteHeader
                 initialLogoUrl={siteInfo?.logoUrl}
                 initialNavMenu={navMenu}

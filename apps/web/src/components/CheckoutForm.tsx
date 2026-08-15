@@ -24,7 +24,7 @@ import { CodOtpPopup } from "@/components/CodOtpPopup";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl } from "@/lib/media";
 import { toProductCardData, type ProductCardData } from "@/lib/product-card-mapper";
-import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
+import { pushEcommerceEvent, cartLineToGa4Item, addressToUserData } from "@/lib/analytics-events";
 import { getDeviceId } from "@/lib/device-id";
 import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ApiError } from "@/lib/api/client";
@@ -344,12 +344,16 @@ export function CheckoutForm() {
   useEffect(() => {
     if (firedBeginCheckout.current || !cart || cart.items.length === 0) return;
     firedBeginCheckout.current = true;
-    pushEcommerceEvent("begin_checkout", {
-      currency: cart.currency,
-      value: Number(cart.total),
-      coupon: cart.couponCode ?? undefined,
-      items: cart.items.map(cartLineToGa4Item),
-    });
+    pushEcommerceEvent(
+      "begin_checkout",
+      {
+        currency: cart.currency,
+        value: Number(cart.total),
+        coupon: cart.couponCode ?? undefined,
+        items: cart.items.map(cartLineToGa4Item),
+      },
+      addressToUserData(form.getValues("shippingAddress")),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart]);
 
@@ -366,12 +370,16 @@ export function CheckoutForm() {
   useEffect(() => {
     if (!cart || cart.items.length === 0 || firedPaymentType.current === paymentProvider) return;
     firedPaymentType.current = paymentProvider;
-    pushEcommerceEvent("add_payment_info", {
-      currency: cart.currency,
-      value: Number(cart.total),
-      payment_type: paymentProvider,
-      items: cart.items.map(cartLineToGa4Item),
-    });
+    pushEcommerceEvent(
+      "add_payment_info",
+      {
+        currency: cart.currency,
+        value: Number(cart.total),
+        payment_type: paymentProvider,
+        items: cart.items.map(cartLineToGa4Item),
+      },
+      addressToUserData(form.getValues("shippingAddress")),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentProvider, cart]);
 
@@ -383,11 +391,15 @@ export function CheckoutForm() {
   useEffect(() => {
     if (firedShippingInfo.current || !shippingDistrict || !cart || cart.items.length === 0) return;
     firedShippingInfo.current = true;
-    pushEcommerceEvent("add_shipping_info", {
-      currency: cart.currency,
-      value: Number(cart.total),
-      items: cart.items.map(cartLineToGa4Item),
-    });
+    pushEcommerceEvent(
+      "add_shipping_info",
+      {
+        currency: cart.currency,
+        value: Number(cart.total),
+        items: cart.items.map(cartLineToGa4Item),
+      },
+      addressToUserData(form.getValues("shippingAddress")),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shippingDistrict, cart]);
 
