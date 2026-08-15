@@ -32,14 +32,15 @@ const nextIcon = (
   </svg>
 );
 
-// 16:5 matches the admin's recommended 1600×500 upload (see
-// SectionConfigFields.tsx's "recommended image size" hint). Mobile is 3:2 —
-// ~240px tall at a ~366px-wide slider (an iPhone-width viewport minus page
-// padding), up from ~160px at the previous 16:7 — per explicit "240px from
-// 160px" request. Progressively bumped taller each round (16:5.5 → 5:2 →
-// 16:7 → 3:2); trades more left/right object-cover crop on a non-16:5
-// upload for a more prominent mobile banner each step.
-const sliderAspect = "aspect-[16/5] max-md:aspect-[3/2]";
+// 16:5 everywhere, mobile included — matches the admin's recommended
+// 1600×500 upload exactly (see SectionConfigFields.tsx's "recommended image
+// size" hint), per explicit "make the box match the image" request. With
+// the box and a correctly-sized upload sharing the same ratio, cover/
+// contain/fill all render identically (no crop, no stretch, no letterbox) —
+// mobile had cycled through all three chasing this same goal by adjusting
+// object-fit alone, which never fully worked while the box itself (3:2 at
+// its last setting) stayed a different ratio from the image.
+const sliderAspect = "aspect-[16/5]";
 // 5px radius at mobile (re-measured against the reference's `.hero.style-7`
 // mobile slide — was the same 14px as desktop, notably more rounded than
 // the reference's subtle 5px there).
@@ -56,12 +57,13 @@ function EmptySlot({ label }: { label: string }) {
   );
 }
 
-// Desktop only (mobile keeps its fixed object-fill — see the <img>'s
-// className) — cover when the image's own aspect ratio is already close to
-// the box's, since the crop is then barely noticeable; stretch (fill)
-// otherwise, so a wildly different ratio doesn't lose content off the edges
-// the way a big cover-crop would. 15% is a loose enough tolerance to prefer
-// cover (mild crop, no distortion) whenever it wouldn't visibly hide much.
+// Desktop only — mobile is a fixed object-cover regardless of ratio (see
+// the <img>'s className). Cover when the image's own aspect ratio is
+// already close to the box's, since the crop is then barely noticeable;
+// stretch (fill) otherwise, so a wildly different ratio doesn't lose
+// content off the edges the way a big cover-crop would. 15% is a loose
+// enough tolerance to prefer cover (mild crop, no distortion) whenever it
+// wouldn't visibly hide much.
 const COVER_TOLERANCE = 0.15;
 function pickDesktopFit(imageRatio: number | undefined, boxRatio: number | null): "cover" | "fill" {
   if (!imageRatio || !boxRatio) return "cover";
@@ -87,7 +89,14 @@ function HeroSlideImage({ src, isDesktop, boxRatio }: { src: string; isDesktop: 
     <img
       src={src}
       alt=""
-      className="h-full w-full object-cover max-md:object-fill"
+      // Mobile is object-contain per explicit "need to see the full image"
+      // request — the only mode that shows 100% of the image with no crop
+      // and no distortion. Tradeoff: a 1600×500 (3.2:1) upload in the 3:2
+      // mobile box shows letterbox bars (this component's bg color) above/
+      // below the image, since contain can't fill a box whose ratio doesn't
+      // match without either cropping (object-cover, tried before this) or
+      // stretching (object-fill, tried before that).
+      className="h-full w-full object-cover max-md:object-contain"
       style={isDesktop ? { objectFit: pickDesktopFit(ratio, boxRatio) } : undefined}
       // ref, not just onLoad — a browser-cached image can finish loading
       // before React attaches the onLoad listener, so `.complete` is
