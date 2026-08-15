@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -7,7 +8,18 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Nest's default body parser caps JSON bodies at Express's own default of
+  // 100kb, silently 413'ing (surfaced to the client as a generic 500 before
+  // HttpExceptionFilter's frameworkStatus handling was added — see that
+  // file's comment) any request past that. Admin-authored rich content
+  // (product "Full Description", blog post bodies, etc. — especially
+  // anything pasted in from Word/Google Docs, whose export HTML wraps nearly
+  // every word in its own styled <span>) routinely exceeds 100kb well before
+  // hitting any of this app's own actual validation limits.
+  app.useBodyParser('json', { limit: '5mb' });
+  app.useBodyParser('urlencoded', { extended: true, limit: '5mb' });
   const config = app.get(ConfigService);
 
   // Behind nginx (VPS deployment) req.ip otherwise resolves to the proxy's

@@ -84,7 +84,7 @@ function HeroBannerFields({
     <div className="flex flex-col gap-4">
       <div>
         <span className="mb-2 block text-xs font-semibold text-secondary">
-          Slides <span className="font-normal text-muted">— recommended image size: 1882 × 500px</span>
+          Slides <span className="font-normal text-muted">— recommended image size: 1600 × 500px</span>
         </span>
         <div className="flex flex-col gap-4">
           {slides.map((slide, i) => (

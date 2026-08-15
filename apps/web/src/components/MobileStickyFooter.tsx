@@ -35,10 +35,10 @@ const cartIcon = (
     <path d="M2.5 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 8H6" />
   </svg>
 );
-const searchIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-    <circle cx="11" cy="11" r="7" />
-    <path d="m21 21-4.3-4.3" />
+const blogIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3.5" y="4" width="17" height="16" rx="1.5" />
+    <path d="M7.5 8.5h9M7.5 12h9M7.5 15.5h5.5" />
   </svg>
 );
 const accountIcon = (
@@ -96,9 +96,10 @@ function FooterItem({
 }
 
 // Reference: https://ghorerbazar.com/ mobile `.sticky-footer.style-1` — fixed
-// bottom bar, 5 equal-width icon+label items (Home/Menu/Cart/Search/Account),
-// white 16px icons + 10px uppercase labels, cart item-count badge, brand
-// color instead of the reference's orange per explicit request. Mobile only
+// bottom bar, 5 equal-width icon+label items (Home/Menu/Cart/Blog/Account —
+// Blog replaces the reference's Search per explicit request), white 16px
+// icons + 10px uppercase labels, cart item-count badge, brand color instead
+// of the reference's orange per explicit request. Mobile only
 // (md:hidden) — desktop keeps the existing header/nav entirely.
 //
 // On product pages, once the user scrolls past the main Add to Cart / Buy Now
@@ -137,7 +138,7 @@ export function MobileStickyFooter() {
           <FooterItem icon={homeIcon} label="Home" href="/" />
           <FooterItem icon={menuIcon} label="Menu" onClick={openMobileNav} />
           <FooterItem icon={cartIcon} label="Cart" badge={cartCount} onClick={openCartDrawer} />
-          <FooterItem icon={searchIcon} label="Search" href="/search" />
+          <FooterItem icon={blogIcon} label="Blog" href="/blog" />
           <FooterItem icon={accountIcon} label="Account" href={me ? "/account" : "/login"} />
         </div>
 

@@ -32,12 +32,12 @@ const nextIcon = (
   </svg>
 );
 
-// Fixed 5:2 (desktop) → 16:7 (≤1024px) → 16:9 (≤768px) aspect ratio, not an
-// auto-detected-from-the-first-image ratio — the reference's own hero
-// matrix is a fixed-proportion slider + side banner grid, and a variable
-// aspect ratio would make the side banner (which stretches to match the
-// slider's height) resize unpredictably per slide.
-const sliderAspect = "aspect-[5/2] max-lg:aspect-[16/7] max-md:aspect-[16/9]";
+// 16:5 matches the admin's recommended 1600×500 upload (see
+// SectionConfigFields.tsx's "recommended image size" hint). Mobile is 5:2 —
+// matches the reference (ghorerbazar.com)'s own live mobile hero slide ratio
+// exactly, measured directly off their site (396×158px slide box, 1000×400
+// native slide image, both 5:2) — per explicit "make it the same" request.
+const sliderAspect = "aspect-[16/5] max-md:aspect-[5/2]";
 // 5px radius at mobile (re-measured against the reference's `.hero.style-7`
 // mobile slide — was the same 14px as desktop, notably more rounded than
 // the reference's subtle 5px there).
