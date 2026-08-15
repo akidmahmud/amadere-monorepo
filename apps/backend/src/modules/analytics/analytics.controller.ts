@@ -1,36 +1,12 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { AnalyticsService } from './analytics.service';
+import { ApiTags } from '@nestjs/swagger';
 import { AnalyticsSettingsService, PublicAnalyticsConfig } from './analytics-settings.service';
-import { TrackEventDto } from './dto/track-event.dto';
-
-class AnalyticsAckDto {
-  accepted!: boolean;
-}
 
 @ApiTags('analytics')
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(
-    private readonly analytics: AnalyticsService,
-    private readonly settings: AnalyticsSettingsService,
-  ) {}
-
-  // Public and unauthenticated on purpose — this is what the frontend's
-  // client-side tracking calls hit directly (page views, product views,
-  // add-to-cart clicks), the same way a GA/GTM snippet would.
-  @Post('events')
-  @HttpCode(202)
-  @ApiOkResponse({ type: AnalyticsAckDto })
-  async track(@Body() dto: TrackEventDto): Promise<AnalyticsAckDto> {
-    await this.analytics.track({
-      name: dto.name,
-      params: dto.params ?? {},
-      clientId: dto.clientId,
-    });
-    return { accepted: true };
-  }
+  constructor(private readonly settings: AnalyticsSettingsService) {}
 
   // Client-safe subset of the admin-configured tracking IDs (never secrets)
   // — the storefront's script loader (AnalyticsScripts) reads this to decide
@@ -38,7 +14,7 @@ export class AnalyticsController {
   // instead of being hardcoded into the frontend build.
   // Fetched server-side on every single page load (root layout) — see
   // SiteInfoController's comment for why this is exempt from the global
-  // per-IP throttle. `track` above keeps the default limit intentionally.
+  // per-IP throttle.
   @SkipThrottle()
   @Get('config')
   getConfig(): Promise<PublicAnalyticsConfig> {

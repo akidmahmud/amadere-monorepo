@@ -1,23 +1,11 @@
-import { getUtmParams } from "@/lib/utm";
 import type { components } from "@/lib/api/schema";
 import type { ProductCardData } from "@/lib/product-card-mapper";
 
 type PublicProductDto = components["schemas"]["PublicProductDto"];
 type CartLineItemDto = components["schemas"]["CartLineItemDto"];
 
-interface PurchaseInput {
-  orderNumber: string;
-  totalAmount: string;
-  currency: string;
-  items: { name: string; price: number; quantity: number }[];
-}
-
 declare global {
   interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-    ttq?: { track: (...args: unknown[]) => void };
-    __amaderAdsConversion?: string | null;
     dataLayer?: Record<string, unknown>[];
   }
 }
@@ -28,8 +16,11 @@ declare global {
 // GTM's documented shape so any GTM container (this site's is proxied
 // through PixelFly, not loaded natively — see AnalyticsScripts.tsx) can
 // pick these up via a Custom Event trigger + Data Layer Variables. This is
-// a separate, additive mechanism from fireClientPurchase below (which
-// calls gtag/fbq/ttq directly) — that one keeps working exactly as before.
+// the *only* client-side purchase mechanism now — a direct gtag/fbq/ttq
+// call used to fire alongside this (fireClientPurchase), but that duplicated
+// what GTM tags already do when they see this same dataLayer purchase event,
+// so it was removed; GTM (client- and server-side) is the single source of
+// truth for actually firing vendor conversions.
 // ---------------------------------------------------------------------
 
 export interface Ga4Item {
@@ -62,6 +53,10 @@ export interface Ga4EcommercePayload {
 export interface Ga4UserData {
   email?: string;
   phone_number?: string;
+  /** ISO date (YYYY-MM-DD) — a Meta CAPI matching parameter (`db`), not part
+   * of Google's own Enhanced Conversions schema, but harmless to include
+   * alongside it since GTM tags simply read the fields they know about. */
+  date_of_birth?: string;
   address?: {
     first_name?: string;
     last_name?: string;
@@ -191,47 +186,3 @@ export function cartLineToGa4Item(line: CartLineItemDto): Ga4Item {
   };
 }
 
-// Fires the one client-side event that actually matters for ecommerce
-// tracking (purchase) into whichever pixels the admin has configured —
-// guarded on the global each vendor's own script installs, so a disabled/
-// unconfigured provider is silently skipped instead of throwing. Called
-// once from OrderConfirmation on mount; server-side purchase/CAPI/Events-API
-// forwarding already happens independently via the backend's
-// AnalyticsEventListener (order.created), this only covers the browser side
-// (retargeting audiences, browser-attributed conversions) that a server
-// event alone can't provide.
-export function fireClientPurchase(order: PurchaseInput): void {
-  if (typeof window === "undefined") return;
-  const value = Number(order.totalAmount);
-  const utm = getUtmParams();
-
-  if (typeof window.gtag === "function") {
-    window.gtag("event", "purchase", {
-      transaction_id: order.orderNumber,
-      currency: order.currency,
-      value,
-      items: order.items.map((i) => ({ item_name: i.name, price: i.price, quantity: i.quantity })),
-      ...utm,
-    });
-    if (window.__amaderAdsConversion) {
-      window.gtag("event", "conversion", {
-        send_to: window.__amaderAdsConversion,
-        value,
-        currency: order.currency,
-        transaction_id: order.orderNumber,
-      });
-    }
-  }
-
-  if (typeof window.fbq === "function") {
-    window.fbq("track", "Purchase", { value, currency: order.currency, content_ids: [order.orderNumber] });
-  }
-
-  if (window.ttq && typeof window.ttq.track === "function") {
-    window.ttq.track("CompletePayment", {
-      value,
-      currency: order.currency,
-      content_id: order.orderNumber,
-    });
-  }
-}

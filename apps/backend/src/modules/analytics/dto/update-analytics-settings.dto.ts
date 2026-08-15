@@ -11,11 +11,6 @@ export class UpdateGa4SettingsDto {
   @IsOptional()
   @IsString()
   measurementId?: string;
-
-  @ApiPropertyOptional({ description: 'Leave blank to keep the existing stored secret' })
-  @IsOptional()
-  @IsString()
-  apiSecret?: string;
 }
 
 export class UpdateGtmSettingsDto {
@@ -40,16 +35,6 @@ export class UpdateMetaSettingsDto {
   @IsOptional()
   @IsString()
   pixelId?: string;
-
-  @ApiPropertyOptional({ description: 'Optional — tags CAPI events as test events in Events Manager' })
-  @IsOptional()
-  @IsString()
-  testEventCode?: string;
-
-  @ApiPropertyOptional({ description: 'Leave blank to keep the existing stored token' })
-  @IsOptional()
-  @IsString()
-  accessToken?: string;
 }
 
 export class UpdateGoogleAdsSettingsDto {
@@ -79,11 +64,6 @@ export class UpdateTiktokSettingsDto {
   @IsOptional()
   @IsString()
   pixelCode?: string;
-
-  @ApiPropertyOptional({ description: 'Leave blank to keep the existing stored token' })
-  @IsOptional()
-  @IsString()
-  accessToken?: string;
 }
 
 export class UpdateClaritySettingsDto {

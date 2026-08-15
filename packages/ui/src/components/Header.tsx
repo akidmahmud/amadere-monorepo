@@ -255,6 +255,16 @@ export function Header({
   const desktopActionClass =
     "relative flex h-[22px] w-[22px] items-center justify-center text-green hover:text-green-dark xl:h-11 xl:w-auto xl:flex-col xl:justify-center xl:gap-1";
   const desktopActionLabelClass = "hidden font-header text-[11px] font-semibold xl:inline";
+  // At the xl icon+label tier, `justify-center` centers the whole
+  // icon+gap+label stack as one block — which visually leaves the icon
+  // glyph itself sitting above the Home/Blog links' own center (measured
+  // live: -10.25px). Nudging the icon straight down by that same 10.25px
+  // doesn't work here, because centering re-splits any added margin-top
+  // between "space above the block" and "space before the icon within it" —
+  // confirmed live that the margin has to be exactly double the visible gap
+  // (20.5px) to land the icon glyph dead center. No effect below xl (still
+  // a single centered icon-only row there, unrelated to this offset).
+  const desktopActionIconClass = "xl:mt-[20.5px]";
 
   return (
     // Sticky only on mobile (no separate Nav bar exists there to take over
@@ -387,28 +397,30 @@ export function Header({
               (Cart 1342-1416 at a 1440px container, right edge = container
               right = 1440-24 gutter = 1416). */}
           <button type="button" onClick={onLocaleSwitch} className={desktopActionClass}>
-            {globeIcon}
+            <span className={desktopActionIconClass}>{globeIcon}</span>
             <span className={desktopActionLabelClass}>{localeSwitchLabel}</span>
           </button>
           <Link href={trackOrderHref} className={desktopActionClass}>
-            {trackIcon}
+            <span className={desktopActionIconClass}>{trackIcon}</span>
             <span className={desktopActionLabelClass}>{trackOrderLabel}</span>
           </Link>
           {accountHref && accountLabel && (
             <Link href={accountHref} className={desktopActionClass}>
-              {accountIcon}
+              <span className={desktopActionIconClass}>{accountIcon}</span>
               <span className={desktopActionLabelClass}>{accountLabel}</span>
             </Link>
           )}
           {wishlistHref && wishlistLabel && (
             <Link href={wishlistHref} className={desktopActionClass}>
-              {wishlistIcon}
-              <Badge count={wishlistCount} />
+              <span className={desktopActionIconClass}>
+                {wishlistIcon}
+                <Badge count={wishlistCount} />
+              </span>
               <span className={desktopActionLabelClass}>{wishlistLabel}</span>
             </Link>
           )}
           <button type="button" onClick={openCart} aria-label={`${cartLabel}, ${cartCount ?? 0} items`} className={desktopActionClass}>
-            <span className={cn("relative flex items-center justify-center", cartBouncing && "animate-bounce")}>
+            <span className={cn(desktopActionIconClass, "relative flex items-center justify-center", cartBouncing && "animate-bounce")}>
               {cartIcon}
               <Badge count={cartCount} />
             </span>

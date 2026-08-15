@@ -80,15 +80,6 @@ export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) 
                 gtag('js', new Date());
                 ${config.ga4 ? `gtag('config', '${config.ga4.measurementId}');` : ""}
                 ${config.googleAds ? `gtag('config', '${config.googleAds.conversionId}');` : ""}
-                ${
-                  config.googleAds
-                    ? `window.__amaderAdsConversion = ${
-                        config.googleAds.conversionLabel
-                          ? `'${config.googleAds.conversionId}/${config.googleAds.conversionLabel}'`
-                          : "null"
-                      };`
-                    : ""
-                }
               `,
             }}
           />

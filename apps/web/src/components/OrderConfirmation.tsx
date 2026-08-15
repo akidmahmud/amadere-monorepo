@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { formatMoney } from "@amader/ui";
 import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
-import { fireClientPurchase, pushEcommerceEvent, addressToUserData } from "@/lib/analytics-events";
+import { pushEcommerceEvent, addressToUserData } from "@/lib/analytics-events";
 import { toDisplayImageUrl } from "@/lib/media";
 import type { components } from "@/lib/api/schema";
 
@@ -76,16 +76,11 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
   // just placed — a page refresh loses the parent's `placedOrder` state
   // entirely rather than re-rendering this, so there's no double-fire risk).
   useEffect(() => {
-    fireClientPurchase({
-      orderNumber: order.orderNumber,
-      totalAmount: order.totalAmount,
-      currency: order.currency,
-      items: order.items.map((item) => ({ name: item.name, price: Number(item.unitPrice), quantity: item.quantity })),
-    });
-    // Additive GA4-via-GTM push — fireClientPurchase above (direct
-    // gtag/fbq/ttq calls) keeps working exactly as before; this is the
-    // separate dataLayer mechanism any GTM container (PixelFly's included)
-    // can build its own GA4/Ads/Meta tags from. user_data carries the
+    // The single client-side purchase signal — pushed to window.dataLayer
+    // for any GTM container (PixelFly's included) to build its own
+    // GA4/Ads/Meta tags from. A direct gtag/fbq/ttq call used to fire
+    // alongside this, but that duplicated what GTM tags already do off this
+    // same dataLayer event, so it was removed. user_data carries the
     // customer's name/phone/email/address (from the real, validated
     // shipping address on the placed order, not the in-progress form
     // values the earlier checkout-funnel events use) for enhanced

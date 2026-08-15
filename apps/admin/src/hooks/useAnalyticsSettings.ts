@@ -4,7 +4,6 @@ import { proxyFetch } from "@/lib/api/proxy-client";
 export interface Ga4Config {
   enabled: boolean;
   measurementId: string;
-  hasApiSecret: boolean;
 }
 export interface GtmConfig {
   enabled: boolean;
@@ -13,8 +12,6 @@ export interface GtmConfig {
 export interface MetaConfig {
   enabled: boolean;
   pixelId: string;
-  testEventCode: string;
-  hasAccessToken: boolean;
 }
 export interface GoogleAdsConfig {
   enabled: boolean;
@@ -24,7 +21,6 @@ export interface GoogleAdsConfig {
 export interface TiktokConfig {
   enabled: boolean;
   pixelCode: string;
-  hasAccessToken: boolean;
 }
 export interface ClarityConfig {
   enabled: boolean;
@@ -48,7 +44,7 @@ export function useGa4Settings() {
 export function useUpdateGa4Settings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { enabled?: boolean; measurementId?: string; apiSecret?: string }) =>
+    mutationFn: (input: Partial<Ga4Config>) =>
       proxyFetch<Ga4Config>(`${BASE}/ga4`, { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
@@ -71,7 +67,7 @@ export function useMetaSettings() {
 export function useUpdateMetaSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { enabled?: boolean; pixelId?: string; testEventCode?: string; accessToken?: string }) =>
+    mutationFn: (input: Partial<MetaConfig>) =>
       proxyFetch<MetaConfig>(`${BASE}/meta`, { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
@@ -95,7 +91,7 @@ export function useTiktokSettings() {
 export function useUpdateTiktokSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { enabled?: boolean; pixelCode?: string; accessToken?: string }) =>
+    mutationFn: (input: Partial<TiktokConfig>) =>
       proxyFetch<TiktokConfig>(`${BASE}/tiktok`, { method: "PUT", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

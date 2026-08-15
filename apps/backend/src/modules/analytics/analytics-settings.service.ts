@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { CredentialsService } from '../../common/credentials/credentials.service';
 
 const KEY_PREFIX = 'analytics.';
 
 export interface Ga4Config {
   enabled: boolean;
   measurementId: string;
-  hasApiSecret: boolean;
 }
 export interface GtmConfig {
   enabled: boolean;
@@ -16,8 +14,6 @@ export interface GtmConfig {
 export interface MetaConfig {
   enabled: boolean;
   pixelId: string;
-  testEventCode: string;
-  hasAccessToken: boolean;
 }
 export interface GoogleAdsConfig {
   enabled: boolean;
@@ -27,7 +23,6 @@ export interface GoogleAdsConfig {
 export interface TiktokConfig {
   enabled: boolean;
   pixelCode: string;
-  hasAccessToken: boolean;
 }
 export interface ClarityConfig {
   enabled: boolean;
@@ -64,7 +59,6 @@ interface GtmJson {
 interface MetaJson {
   enabled: boolean;
   pixelId: string;
-  testEventCode: string;
 }
 interface GoogleAdsJson {
   enabled: boolean;
@@ -90,28 +84,24 @@ interface CustomScriptJson {
 
 const GA4_DEFAULTS: Ga4Json = { enabled: false, measurementId: '' };
 const GTM_DEFAULTS: GtmJson = { enabled: false, containerId: '' };
-const META_DEFAULTS: MetaJson = { enabled: false, pixelId: '', testEventCode: '' };
+const META_DEFAULTS: MetaJson = { enabled: false, pixelId: '' };
 const GOOGLE_ADS_DEFAULTS: GoogleAdsJson = { enabled: false, conversionId: '', conversionLabel: '' };
 const TIKTOK_DEFAULTS: TiktokJson = { enabled: false, pixelCode: '' };
 const CLARITY_DEFAULTS: ClarityJson = { enabled: false, projectId: '' };
 const UTM_DEFAULTS: UtmJson = { enabled: true };
 const CUSTOM_SCRIPT_DEFAULTS: CustomScriptJson = { enabled: false, headerScript: '', bodyScript: '' };
 
-// Credential/config storage for the tracking pixels (GA4/GTM/Meta/Google
-// Ads/TikTok/Clarity) plus the UTM-capture toggle — same split as
-// CourierSettingsService: non-secret fields (IDs, toggles) live in the
-// generic `Setting` table, secrets (API/access tokens) go through
-// CredentialsService (encrypted at rest). This is the sole source of truth
-// for the server-side providers (Ga4Provider/MetaCapiProvider/
-// TiktokEventsProvider) and for the public /analytics/config endpoint the
-// storefront's script loader reads — no `.env` fallback, matching the
-// courier providers' DB-only pattern.
+// Config storage for the client-side tracking pixels (GA4/GTM/Meta/Google
+// Ads/TikTok/Clarity) plus the UTM-capture toggle — all plain, non-secret
+// IDs, since every one of these now only feeds the storefront's own
+// script loader (AnalyticsScripts, via getPublicConfig below) and the admin
+// settings UI. No server-side forwarding (GA4 Measurement Protocol / Meta
+// CAPI / TikTok Events API) happens from this backend — that's handled by
+// server-side GTM instead, so there's nothing here that needs a secret kept
+// server-only.
 @Injectable()
 export class AnalyticsSettingsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly credentials: CredentialsService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private async getJson<T>(key: string, defaults: T): Promise<T> {
     const row = await this.prisma.client.setting.findUnique({ where: { key: KEY_PREFIX + key } });
@@ -127,25 +117,14 @@ export class AnalyticsSettingsService {
   }
 
   async getGa4Config(): Promise<Ga4Config> {
-    const json = await this.getJson('ga4', GA4_DEFAULTS);
-    const hasApiSecret = await this.credentials.hasCredential('analytics.ga4.apiSecret');
-    return { ...json, hasApiSecret };
+    return this.getJson('ga4', GA4_DEFAULTS);
   }
 
-  async updateGa4Config(input: { enabled?: boolean; measurementId?: string; apiSecret?: string }): Promise<Ga4Config> {
+  async updateGa4Config(input: Partial<Ga4Json>): Promise<Ga4Config> {
     const current = await this.getJson('ga4', GA4_DEFAULTS);
-    await this.setJson('ga4', {
-      enabled: input.enabled ?? current.enabled,
-      measurementId: input.measurementId ?? current.measurementId,
-    });
-    await this.credentials.saveCredential('analytics.ga4.apiSecret', input.apiSecret);
-    return this.getGa4Config();
-  }
-
-  async getGa4Credentials(): Promise<{ enabled: boolean; measurementId: string; apiSecret: string | null }> {
-    const json = await this.getJson('ga4', GA4_DEFAULTS);
-    const apiSecret = await this.credentials.getCredential('analytics.ga4.apiSecret');
-    return { enabled: json.enabled, measurementId: json.measurementId, apiSecret };
+    const next = { enabled: input.enabled ?? current.enabled, measurementId: input.measurementId ?? current.measurementId };
+    await this.setJson('ga4', next);
+    return next;
   }
 
   async getGtmConfig(): Promise<GtmConfig> {
@@ -160,31 +139,14 @@ export class AnalyticsSettingsService {
   }
 
   async getMetaConfig(): Promise<MetaConfig> {
-    const json = await this.getJson('meta', META_DEFAULTS);
-    const hasAccessToken = await this.credentials.hasCredential('analytics.meta.accessToken');
-    return { ...json, hasAccessToken };
+    return this.getJson('meta', META_DEFAULTS);
   }
 
-  async updateMetaConfig(input: {
-    enabled?: boolean;
-    pixelId?: string;
-    testEventCode?: string;
-    accessToken?: string;
-  }): Promise<MetaConfig> {
+  async updateMetaConfig(input: Partial<MetaJson>): Promise<MetaConfig> {
     const current = await this.getJson('meta', META_DEFAULTS);
-    await this.setJson('meta', {
-      enabled: input.enabled ?? current.enabled,
-      pixelId: input.pixelId ?? current.pixelId,
-      testEventCode: input.testEventCode ?? current.testEventCode,
-    });
-    await this.credentials.saveCredential('analytics.meta.accessToken', input.accessToken);
-    return this.getMetaConfig();
-  }
-
-  async getMetaCredentials(): Promise<{ enabled: boolean; pixelId: string; accessToken: string | null }> {
-    const json = await this.getJson('meta', META_DEFAULTS);
-    const accessToken = await this.credentials.getCredential('analytics.meta.accessToken');
-    return { enabled: json.enabled, pixelId: json.pixelId, accessToken };
+    const next = { enabled: input.enabled ?? current.enabled, pixelId: input.pixelId ?? current.pixelId };
+    await this.setJson('meta', next);
+    return next;
   }
 
   async getGoogleAdsConfig(): Promise<GoogleAdsConfig> {
@@ -203,25 +165,14 @@ export class AnalyticsSettingsService {
   }
 
   async getTiktokConfig(): Promise<TiktokConfig> {
-    const json = await this.getJson('tiktok', TIKTOK_DEFAULTS);
-    const hasAccessToken = await this.credentials.hasCredential('analytics.tiktok.accessToken');
-    return { ...json, hasAccessToken };
+    return this.getJson('tiktok', TIKTOK_DEFAULTS);
   }
 
-  async updateTiktokConfig(input: { enabled?: boolean; pixelCode?: string; accessToken?: string }): Promise<TiktokConfig> {
+  async updateTiktokConfig(input: Partial<TiktokJson>): Promise<TiktokConfig> {
     const current = await this.getJson('tiktok', TIKTOK_DEFAULTS);
-    await this.setJson('tiktok', {
-      enabled: input.enabled ?? current.enabled,
-      pixelCode: input.pixelCode ?? current.pixelCode,
-    });
-    await this.credentials.saveCredential('analytics.tiktok.accessToken', input.accessToken);
-    return this.getTiktokConfig();
-  }
-
-  async getTiktokCredentials(): Promise<{ enabled: boolean; pixelCode: string; accessToken: string | null }> {
-    const json = await this.getJson('tiktok', TIKTOK_DEFAULTS);
-    const accessToken = await this.credentials.getCredential('analytics.tiktok.accessToken');
-    return { enabled: json.enabled, pixelCode: json.pixelCode, accessToken };
+    const next = { enabled: input.enabled ?? current.enabled, pixelCode: input.pixelCode ?? current.pixelCode };
+    await this.setJson('tiktok', next);
+    return next;
   }
 
   async getClarityConfig(): Promise<ClarityConfig> {
@@ -265,9 +216,9 @@ export class AnalyticsSettingsService {
     return next;
   }
 
-  // Client-safe subset for the storefront's script loader — never secrets,
-  // and only for providers that are both enabled and have their public ID
-  // actually set (so a half-configured provider never injects a broken tag).
+  // Client-safe subset for the storefront's script loader — only for
+  // providers that are both enabled and have their public ID actually set
+  // (so a half-configured provider never injects a broken tag).
   async getPublicConfig(): Promise<PublicAnalyticsConfig> {
     const [ga4, gtm, meta, googleAds, tiktok, clarity, utm, customScript] = await Promise.all([
       this.getJson('ga4', GA4_DEFAULTS),

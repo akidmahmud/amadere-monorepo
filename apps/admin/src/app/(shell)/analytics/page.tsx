@@ -55,7 +55,7 @@ function OverviewTab() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         <ProviderStat label="GA4" configured={!!ga4?.enabled && !!ga4.measurementId} icon={<Icon name="query_stats" />} />
         <ProviderStat label="Google Tag Manager" configured={!!gtm?.enabled && !!gtm.containerId} icon={<Icon name="dns" />} />
-        <ProviderStat label="Meta Pixel + CAPI" configured={!!meta?.enabled && !!meta.pixelId} icon={<Icon name="thumb_up" />} />
+        <ProviderStat label="Meta Pixel" configured={!!meta?.enabled && !!meta.pixelId} icon={<Icon name="thumb_up" />} />
         <ProviderStat label="Google Ads" configured={!!googleAds?.enabled && !!googleAds.conversionId} icon={<Icon name="ads_click" />} />
         <ProviderStat label="TikTok Pixel" configured={!!tiktok?.enabled && !!tiktok.pixelCode} icon={<Icon name="music_note" />} />
         <ProviderStat label="Microsoft Clarity" configured={!!clarity?.enabled && !!clarity.projectId} icon={<Icon name="visibility" />} />
@@ -100,7 +100,6 @@ function Ga4Card() {
   const { data, isLoading } = useGa4Settings();
   const update = useUpdateGa4Settings();
   const [measurementId, setMeasurementId] = useState("");
-  const [apiSecret, setApiSecret] = useState("");
 
   if (isLoading || !data) return <Card><p className="text-sm text-muted">Loading…</p></Card>;
 
@@ -109,42 +108,25 @@ function Ga4Card() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-ui text-sm font-bold text-text">Google Analytics 4</h3>
-          <p className="text-xs text-muted">Server-side purchase/sign_up events via the GA4 Measurement Protocol.</p>
+          <p className="text-xs text-muted">Client-side gtag.js tag on every storefront page. Server-side event forwarding is handled by server-side GTM, not this backend.</p>
         </div>
         <ToggleSwitch checked={data.enabled} onChange={(v) => update.mutate({ enabled: v })} label="Enabled" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Measurement ID</span>
-          <input
-            placeholder={data.measurementId || "G-XXXXXXXXXX"}
-            value={measurementId}
-            onChange={(e) => setMeasurementId(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">API Secret {data.hasApiSecret && <span className="text-success">(configured)</span>}</span>
-          <input
-            type="password"
-            placeholder={data.hasApiSecret ? "••••••••" : "Measurement Protocol API secret"}
-            value={apiSecret}
-            onChange={(e) => setApiSecret(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-      </div>
+      <label className="flex max-w-xs flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Measurement ID</span>
+        <input
+          placeholder={data.measurementId || "G-XXXXXXXXXX"}
+          value={measurementId}
+          onChange={(e) => setMeasurementId(e.target.value)}
+          className={inputClass}
+        />
+      </label>
       <Button
         type="button"
         variant="primary"
         className="self-start"
-        disabled={update.isPending || (!measurementId && !apiSecret)}
-        onClick={() =>
-          update.mutate(
-            { measurementId: measurementId || undefined, apiSecret: apiSecret || undefined },
-            { onSuccess: () => { setMeasurementId(""); setApiSecret(""); } },
-          )
-        }
+        disabled={update.isPending || !measurementId}
+        onClick={() => update.mutate({ measurementId }, { onSuccess: () => setMeasurementId("") })}
       >
         Save
       </Button>
@@ -189,8 +171,6 @@ function MetaCard() {
   const { data, isLoading } = useMetaSettings();
   const update = useUpdateMetaSettings();
   const [pixelId, setPixelId] = useState("");
-  const [testEventCode, setTestEventCode] = useState("");
-  const [accessToken, setAccessToken] = useState("");
 
   if (isLoading || !data) return <Card><p className="text-sm text-muted">Loading…</p></Card>;
 
@@ -198,47 +178,21 @@ function MetaCard() {
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-ui text-sm font-bold text-text">Meta Pixel &amp; Conversions API</h3>
-          <p className="text-xs text-muted">Browser pixel + server-side CAPI, same Pixel ID for both.</p>
+          <h3 className="font-ui text-sm font-bold text-text">Meta Pixel</h3>
+          <p className="text-xs text-muted">Client-side browser pixel on every storefront page. Server-side Conversions API events are handled by server-side GTM, not this backend.</p>
         </div>
         <ToggleSwitch checked={data.enabled} onChange={(v) => update.mutate({ enabled: v })} label="Enabled" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Pixel ID</span>
-          <input placeholder={data.pixelId || "Pixel ID"} value={pixelId} onChange={(e) => setPixelId(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Access Token {data.hasAccessToken && <span className="text-success">(configured)</span>}</span>
-          <input
-            type="password"
-            placeholder={data.hasAccessToken ? "••••••••" : "CAPI access token"}
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Test Event Code (optional)</span>
-          <input
-            placeholder={data.testEventCode || "TEST12345 — for Events Manager test events"}
-            value={testEventCode}
-            onChange={(e) => setTestEventCode(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-      </div>
+      <label className="flex max-w-xs flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Pixel ID</span>
+        <input placeholder={data.pixelId || "Pixel ID"} value={pixelId} onChange={(e) => setPixelId(e.target.value)} className={inputClass} />
+      </label>
       <Button
         type="button"
         variant="primary"
         className="self-start"
-        disabled={update.isPending || (!pixelId && !accessToken && !testEventCode)}
-        onClick={() =>
-          update.mutate(
-            { pixelId: pixelId || undefined, accessToken: accessToken || undefined, testEventCode: testEventCode || undefined },
-            { onSuccess: () => { setPixelId(""); setAccessToken(""); setTestEventCode(""); } },
-          )
-        }
+        disabled={update.isPending || !pixelId}
+        onClick={() => update.mutate({ pixelId }, { onSuccess: () => setPixelId("") })}
       >
         Save
       </Button>
@@ -295,7 +249,6 @@ function TiktokCard() {
   const { data, isLoading } = useTiktokSettings();
   const update = useUpdateTiktokSettings();
   const [pixelCode, setPixelCode] = useState("");
-  const [accessToken, setAccessToken] = useState("");
 
   if (isLoading || !data) return <Card><p className="text-sm text-muted">Loading…</p></Card>;
 
@@ -304,37 +257,20 @@ function TiktokCard() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-ui text-sm font-bold text-text">TikTok Pixel</h3>
-          <p className="text-xs text-muted">Browser pixel + server-side Events API, same Pixel Code for both.</p>
+          <p className="text-xs text-muted">Client-side browser pixel on every storefront page. Server-side Events API events are handled by server-side GTM, not this backend.</p>
         </div>
         <ToggleSwitch checked={data.enabled} onChange={(v) => update.mutate({ enabled: v })} label="Enabled" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Pixel Code</span>
-          <input placeholder={data.pixelCode || "Pixel Code"} value={pixelCode} onChange={(e) => setPixelCode(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Access Token {data.hasAccessToken && <span className="text-success">(configured)</span>}</span>
-          <input
-            type="password"
-            placeholder={data.hasAccessToken ? "••••••••" : "Events API access token"}
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-      </div>
+      <label className="flex max-w-xs flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Pixel Code</span>
+        <input placeholder={data.pixelCode || "Pixel Code"} value={pixelCode} onChange={(e) => setPixelCode(e.target.value)} className={inputClass} />
+      </label>
       <Button
         type="button"
         variant="primary"
         className="self-start"
-        disabled={update.isPending || (!pixelCode && !accessToken)}
-        onClick={() =>
-          update.mutate(
-            { pixelCode: pixelCode || undefined, accessToken: accessToken || undefined },
-            { onSuccess: () => { setPixelCode(""); setAccessToken(""); } },
-          )
-        }
+        disabled={update.isPending || !pixelCode}
+        onClick={() => update.mutate({ pixelCode }, { onSuccess: () => setPixelCode("") })}
       >
         Save
       </Button>
@@ -476,7 +412,7 @@ export default function AnalyticsPage() {
       <PageHeader
         icon={analyticsIcon}
         title="Analytics"
-        subtitle="Tracking pixels, conversions API credentials, and UTM attribution."
+        subtitle="Client-side tracking pixels, custom tracking code, and UTM attribution."
         style={{ background: "linear-gradient(135deg, #140A24 0%, #5F03AA 100%)" }}
         actions={
           <Link

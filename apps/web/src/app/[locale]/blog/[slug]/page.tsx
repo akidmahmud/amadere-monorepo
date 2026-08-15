@@ -125,10 +125,19 @@ export default async function BlogPostPage({
             </p>
 
             {toDisplayImageUrl(post.imageUrl) && (
+              // Was a fixed aspect-[16/9] box with object-contain — stopped
+              // the cropping, but forcing every real image (mostly square,
+              // some — like a multi-panel Word-pasted collage — much
+              // narrower/taller than 16:9) into one fixed wide shape just
+              // traded cropping for huge empty color bars on the narrow
+              // ones. No grid/carousel here needs every post's image to be
+              // the same shape (unlike the blog card grid, which does) — so
+              // just let each image size itself at its own natural aspect
+              // ratio, capped so an extreme one can't dominate the page.
               <img
                 src={toDisplayImageUrl(post.imageUrl)}
                 alt={post.title}
-                className="mb-6 aspect-[16/9] w-full rounded-brand object-cover"
+                className="mx-auto mb-6 block max-h-[500px] max-w-full rounded-brand"
               />
             )}
 

@@ -19,10 +19,11 @@ const STATUS_TEMPLATES: Partial<Record<OrderStatus, { key: string; triggerField:
 };
 
 // Auto-fires the triggers this backend already knows about server-side
-// (§7.4) — same "subscribe to existing domain events" shape as B11's
-// AnalyticsEventListener. Locale defaults to EN: Customer has no stored
-// language preference to read (confirmed against the real schema before
-// building this), so "customer's language or store default" always
+// (§7.4) — subscribes directly to existing domain events (ORDER_CREATED_EVENT
+// etc.), same shape server-side analytics forwarding used to before it was
+// removed in favor of server-side GTM. Locale defaults to EN: Customer has no
+// stored language preference to read (confirmed against the real schema
+// before building this), so "customer's language or store default" always
 // resolves to the store default here.
 @Injectable()
 export class SmsEventListener {
