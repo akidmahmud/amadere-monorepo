@@ -14,6 +14,7 @@ import {
 } from '../auth/customer.mapper';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from '../auth/dto/change-password.dto';
+import { SetPasswordDto } from '../auth/dto/set-password.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { AddressDto, toAddressDto } from './address.mapper';
@@ -98,6 +99,33 @@ export class CustomersService {
     );
     if (!valid) throw new BadRequestException('Current password is incorrect');
 
+    const passwordHash = await hashPassword(dto.newPassword);
+    await this.prisma.client.customer.update({
+      where: { id: customerId },
+      data: { passwordHash },
+    });
+    return { success: true };
+  }
+
+  // For a customer who registered/logged in via OTP and has no password yet
+  // (see changePassword's own "OTP/social login only" check above) — adds
+  // phone+password as a second login method. Deliberately separate from
+  // changePassword rather than making currentPassword optional there: this
+  // endpoint would otherwise become a way to overwrite an *existing*
+  // password without knowing it, so it stays gated on passwordHash being
+  // null, same condition changePassword already enforces in reverse.
+  async setPassword(
+    customerId: number,
+    dto: SetPasswordDto,
+  ): Promise<SuccessResponseDto> {
+    const customer = await this.prisma.client.customer.findUnique({
+      where: { id: customerId },
+    });
+    if (customer?.passwordHash) {
+      throw new BadRequestException(
+        'Password already set — use change password instead',
+      );
+    }
     const passwordHash = await hashPassword(dto.newPassword);
     await this.prisma.client.customer.update({
       where: { id: customerId },

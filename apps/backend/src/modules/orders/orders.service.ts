@@ -54,6 +54,12 @@ const COMMIT_ON_COMPLETE = new Set(['COMPLETED']);
 // desync the reservation accounting those transitions already settled.
 const ITEM_EDITABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HOLD']);
 
+// A customer can self-cancel only before fulfillment has actually started —
+// once an order moves to PROCESSING, staff are likely already picking/
+// packing it, so cancellation past that point goes through support/admin
+// instead of a self-service button.
+const CUSTOMER_CANCELABLE_STATUSES = new Set(['PENDING', 'CONFIRMED']);
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -424,6 +430,27 @@ export class OrdersService {
     if (order.customerId !== customerId)
       throw new ForbiddenException('This order does not belong to you');
     return toOrderDto(order);
+  }
+
+  // Self-service cancel — reuses updateStatus (same stock-release/email/
+  // audit-log path the admin status change goes through), just scoped to
+  // the calling customer's own order and gated to CUSTOMER_CANCELABLE_STATUSES.
+  // adminUserId: null marks this as a non-staff transition, same convention
+  // system-triggered transitions (e.g. courier webhooks) already use — see
+  // updateStatus's own doc-comment on that parameter.
+  async cancelMine(customerId: number, orderNumber: string): Promise<OrderDto> {
+    const order = await this.prisma.client.order.findUnique({
+      where: { orderNumber },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.customerId !== customerId)
+      throw new ForbiddenException('This order does not belong to you');
+    if (!CUSTOMER_CANCELABLE_STATUSES.has(order.status)) {
+      throw new BadRequestException(
+        'This order can no longer be canceled — please contact support',
+      );
+    }
+    return this.updateStatus(order.id, { status: 'CANCELED' }, null);
   }
 
   // Guest tracking: orderNumber + shipping phone, no account required.

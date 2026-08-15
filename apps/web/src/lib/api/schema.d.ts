@@ -1684,6 +1684,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{orderNumber}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OrdersController_cancelMine"];
+        trace?: never;
+    };
     "/api/v1/admin/orders": {
         parameters: {
             query?: never;
@@ -2237,7 +2253,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
+        post: operations["CustomersController_setPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5738,6 +5754,7 @@ export interface components {
             emailVerifiedAt: string | null;
             /** Format: date-time */
             phoneVerifiedAt: string | null;
+            hasPassword: boolean;
         };
         AdminTwoFactorRequiredDto: {
             requiresTwoFactor: boolean;
@@ -6335,10 +6352,13 @@ export interface components {
             sku: string | null;
             name: string;
             hasVariants: boolean;
+            trackInventory: boolean;
+            allowBackorder: boolean;
             stock: number;
             reservedStock: number;
             stockStatus: Record<string, never>;
             price: string | null;
+            salePrice: string | null;
             status: Record<string, never>;
             categoryIds: number[];
             thumbnailUrl: string | null;
@@ -7269,6 +7289,9 @@ export interface components {
         };
         SuccessResponseDto: {
             success: boolean;
+        };
+        SetPasswordDto: {
+            newPassword: string;
         };
         AddressDto: {
             id: number;
@@ -12650,6 +12673,27 @@ export interface operations {
             };
         };
     };
+    OrdersController_cancelMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderNumber: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
     AdminOrdersController_list: {
         parameters: {
             query?: {
@@ -13611,6 +13655,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+        };
+    };
+    CustomersController_setPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
                 };
             };
         };

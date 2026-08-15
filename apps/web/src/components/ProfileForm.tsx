@@ -3,19 +3,21 @@
 import { useState } from "react";
 import { Button, Input } from "@amader/ui";
 import { useMe } from "@/hooks/useAuth";
-import { useChangePassword, useUpdateProfile } from "@/hooks/useAccount";
+import { useChangePassword, useSetPassword, useUpdateProfile } from "@/hooks/useAccount";
 import { BirthdayPopup } from "@/components/BirthdayPopup";
 
 export function ProfileForm() {
   const { data: me } = useMe();
   const updateProfile = useUpdateProfile();
   const changePassword = useChangePassword();
+  const setPasswordMutation = useSetPassword();
 
   const [firstName, setFirstName] = useState(me?.firstName ?? "");
   const [lastName, setLastName] = useState(me?.lastName ?? "");
   const [dob, setDob] = useState(me?.dob ? me.dob.slice(0, 10) : "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [setPasswordValue, setSetPasswordValue] = useState("");
 
   // Non-blocking birthday nudge: resets to visible on every fresh mount of
   // this page (no dismiss-tracking storage) — closing it only hides it for
@@ -61,41 +63,78 @@ export function ProfileForm() {
         </Button>
       </div>
 
-      <div className="rounded-brand border border-line bg-white p-5">
-        <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Change Password</h2>
-        <div className="mb-3.5 grid grid-cols-2 gap-3">
-          <Input
-            type="password"
-            placeholder="Current password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-          />
+      {me.hasPassword ? (
+        <div className="rounded-brand border border-line bg-white p-5">
+          <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Change Password</h2>
+          <div className="mb-3.5 grid grid-cols-2 gap-3">
+            <Input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+            <Input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+          </div>
+          {changePassword.isError && (
+            <p className="mb-2 font-body text-xs text-red-600">
+              {changePassword.error instanceof Error ? changePassword.error.message : "Couldn't change password"}
+            </p>
+          )}
+          {changePassword.isSuccess && <p className="mb-2 font-body text-xs text-green">Password updated!</p>}
+          <Button
+            variant="ghost"
+            disabled={!currentPassword || newPassword.length < 8 || changePassword.isPending}
+            onClick={() => {
+              changePassword.mutate(
+                { currentPassword, newPassword },
+                { onSuccess: () => { setCurrentPassword(""); setNewPassword(""); } },
+              );
+            }}
+          >
+            Update Password
+          </Button>
+        </div>
+      ) : (
+        // Account was created/logged into via OTP only — no current password
+        // to confirm, so this is a create rather than a change (POST vs the
+        // PATCH above, see useSetPassword).
+        <div className="rounded-brand border border-line bg-white p-5">
+          <h2 className="mb-1 font-ui text-[15px] font-semibold text-green">Set a Password</h2>
+          <p className="mb-3.5 font-body text-xs text-muted">
+            You signed in with a phone OTP. Add a password so you can also log in with your phone number and password.
+          </p>
           <Input
             type="password"
             placeholder="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            value={setPasswordValue}
+            onChange={(e) => setSetPasswordValue(e.target.value)}
+            className="mb-3.5 max-w-[280px]"
           />
+          {setPasswordMutation.isError && (
+            <p className="mb-2 font-body text-xs text-red-600">
+              {setPasswordMutation.error instanceof Error ? setPasswordMutation.error.message : "Couldn't set password"}
+            </p>
+          )}
+          {setPasswordMutation.isSuccess && <p className="mb-2 font-body text-xs text-green">Password set!</p>}
+          <Button
+            variant="ghost"
+            disabled={setPasswordValue.length < 8 || setPasswordMutation.isPending}
+            onClick={() => {
+              setPasswordMutation.mutate(
+                { newPassword: setPasswordValue },
+                { onSuccess: () => setSetPasswordValue("") },
+              );
+            }}
+          >
+            Set Password
+          </Button>
         </div>
-        {changePassword.isError && (
-          <p className="mb-2 font-body text-xs text-red-600">
-            {changePassword.error instanceof Error ? changePassword.error.message : "Couldn't change password"}
-          </p>
-        )}
-        {changePassword.isSuccess && <p className="mb-2 font-body text-xs text-green">Password updated!</p>}
-        <Button
-          variant="ghost"
-          disabled={!currentPassword || newPassword.length < 8 || changePassword.isPending}
-          onClick={() => {
-            changePassword.mutate(
-              { currentPassword, newPassword },
-              { onSuccess: () => { setCurrentPassword(""); setNewPassword(""); } },
-            );
-          }}
-        >
-          Update Password
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

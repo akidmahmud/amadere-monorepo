@@ -25,10 +25,45 @@ export function useChangePassword() {
   });
 }
 
+// For an OTP/social-only account (me.hasPassword === false) adding phone+
+// password as a second login method — POST (create), not the PATCH above
+// (which requires currentPassword and 400s on an account with none set).
+export function useSetPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { newPassword: string }) =>
+      proxyFetch("/customers/me/password", { method: "POST", body: JSON.stringify(args) }),
+    // hasPassword flips true server-side the moment this succeeds — refetch
+    // `me` so ProfileForm switches from "Set password" to "Change password"
+    // without needing a manual page reload.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
+}
+
+export function useCancelOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orderNumber: string) =>
+      proxyFetch<OrderDto>(`/orders/${orderNumber}/cancel`, { method: "PATCH" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-orders"] }),
+  });
+}
+
 export function useMyOrders(page: number) {
   return useQuery({
     queryKey: ["my-orders", page],
     queryFn: () => proxyFetch<PaginatedResult<OrderDto>>(`/orders?page=${page}&pageSize=10`),
+  });
+}
+
+// Single order by number, scoped to the calling customer server-side
+// (ForbiddenException on someone else's order) — used by the invoice page,
+// which needs one order's full detail rather than a page of the list.
+export function useOrder(orderNumber: string) {
+  return useQuery({
+    queryKey: ["order", orderNumber],
+    queryFn: () => proxyFetch<OrderDto>(`/orders/${orderNumber}`),
+    enabled: !!orderNumber,
   });
 }
 

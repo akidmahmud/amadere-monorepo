@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -48,5 +49,16 @@ export class OrdersController {
     @Param('orderNumber') orderNumber: string,
   ): Promise<OrderDto> {
     return this.orders.myGet(customer.id, orderNumber);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(CustomerJwtGuard)
+  @Patch(':orderNumber/cancel')
+  @ApiOkResponse({ type: OrderDto })
+  cancelMine(
+    @CurrentCustomer() customer: { id: number },
+    @Param('orderNumber') orderNumber: string,
+  ): Promise<OrderDto> {
+    return this.orders.cancelMine(customer.id, orderNumber);
   }
 }

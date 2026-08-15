@@ -3,12 +3,21 @@
 import { useState } from "react";
 import { Button, formatMoney } from "@amader/ui";
 import { OrderConfirmation } from "@/components/OrderConfirmation";
-import { useMyOrders } from "@/hooks/useAccount";
+import { useCancelOrder, useMyOrders } from "@/hooks/useAccount";
+import { useLocale } from "next-intl";
+
+// Mirrors CUSTOMER_CANCELABLE_STATUSES in the backend's orders.service.ts —
+// the backend is the real gate (this just avoids showing a button that
+// would 400), so keep these two lists in sync if that set ever changes.
+const CANCELABLE_STATUSES = new Set(["PENDING", "CONFIRMED"]);
 
 export function OrdersList() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [confirmingCancelId, setConfirmingCancelId] = useState<number | null>(null);
   const { data, isLoading } = useMyOrders(page);
+  const cancelOrder = useCancelOrder();
+  const locale = useLocale();
 
   if (isLoading) return <p className="font-body text-sm text-muted">Loading…</p>;
   if (!data || data.items.length === 0) {
@@ -36,6 +45,40 @@ export function OrdersList() {
             </button>
             {expanded === order.id && (
               <div className="mt-4 border-t border-line pt-4">
+                <div className="mb-4 flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => window.open(`/${locale}/orders/${order.orderNumber}/invoice`, "_blank")}
+                  >
+                    Download Invoice
+                  </Button>
+                  {CANCELABLE_STATUSES.has(order.status as unknown as string) &&
+                    (confirmingCancelId === order.id ? (
+                      <>
+                        <span className="self-center font-body text-xs text-muted">Cancel this order?</span>
+                        <Button variant="ghost" onClick={() => setConfirmingCancelId(null)}>
+                          No
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={cancelOrder.isPending}
+                          onClick={() => cancelOrder.mutate(order.orderNumber, { onSettled: () => setConfirmingCancelId(null) })}
+                          className="text-red-600"
+                        >
+                          {cancelOrder.isPending ? "Canceling…" : "Yes, cancel"}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="ghost" onClick={() => setConfirmingCancelId(order.id)}>
+                        Cancel Order
+                      </Button>
+                    ))}
+                </div>
+                {cancelOrder.isError && (
+                  <p className="mb-3 text-right font-body text-xs text-red-600">
+                    {cancelOrder.error instanceof Error ? cancelOrder.error.message : "Couldn't cancel this order"}
+                  </p>
+                )}
                 <OrderConfirmation order={order} />
               </div>
             )}
