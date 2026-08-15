@@ -33,11 +33,13 @@ const nextIcon = (
 );
 
 // 16:5 matches the admin's recommended 1600×500 upload (see
-// SectionConfigFields.tsx's "recommended image size" hint). Mobile is 5:2 —
-// matches the reference (ghorerbazar.com)'s own live mobile hero slide ratio
-// exactly, measured directly off their site (396×158px slide box, 1000×400
-// native slide image, both 5:2) — per explicit "make it the same" request.
-const sliderAspect = "aspect-[16/5] max-md:aspect-[5/2]";
+// SectionConfigFields.tsx's "recommended image size" hint). Mobile is 3:2 —
+// ~240px tall at a ~366px-wide slider (an iPhone-width viewport minus page
+// padding), up from ~160px at the previous 16:7 — per explicit "240px from
+// 160px" request. Progressively bumped taller each round (16:5.5 → 5:2 →
+// 16:7 → 3:2); trades more left/right object-cover crop on a non-16:5
+// upload for a more prominent mobile banner each step.
+const sliderAspect = "aspect-[16/5] max-md:aspect-[3/2]";
 // 5px radius at mobile (re-measured against the reference's `.hero.style-7`
 // mobile slide — was the same 14px as desktop, notably more rounded than
 // the reference's subtle 5px there).
@@ -78,11 +80,23 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-6 py-6 max-md:px-3 max-md:pb-4 max-md:pt-5">
-      {/* Main slider (~972px, flex:1) + fixed 400px side banner, equal
-          heights (items-stretch) — stacks to a single column at ≤1024px. */}
+      {/* Main slider (flex:1, 400px tall on desktop) + fixed 400×400 side
+          banner — both explicitly 400px tall on desktop so they match with
+          no gap. Stacks to a single column at ≤1024px. */}
       <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1fr_400px]">
         <div
-          className={cn("relative overflow-hidden bg-[#e9dfcd]", sliderAspect, bannerRadius)}
+          // lg:aspect-auto lg:h-[400px] — overrides sliderAspect's
+          // aspect-[16/5] at desktop with a fixed height instead, matching
+          // the side banner's own fixed 400px so the row has no leftover
+          // gap. Mixing an explicit height with aspect-ratio (rather than
+          // canceling the ratio via aspect-auto) is exactly what caused the
+          // side banner to get shoved off-screen earlier — aspect-ratio
+          // would compute a *preferred width* from the explicit height
+          // (400×16/5=1280px) and blow through the 1fr grid column. self-
+          // start keeps this box from being stretched by items-stretch to
+          // match the side banner at breakpoints where the override above
+          // isn't active (≤1024px, before the side banner even shows).
+          className={cn("relative self-start overflow-hidden bg-[#e9dfcd] lg:aspect-auto lg:h-[400px]", sliderAspect, bannerRadius)}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
@@ -99,7 +113,15 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
             <>
               <div className="absolute inset-0">
                 {validSlides.map((slide, i) => {
-                  const img = <img src={slide.imageUrl} alt="" className="h-full w-full object-cover" />;
+                  // object-cover on desktop per explicit request (fills the
+                  // 16:5 box, cropping any overflow — that box still matches
+                  // the recommended 1600×500 upload almost exactly, so this
+                  // is a minimal crop in practice). Mobile stays object-fill
+                  // ("stretch") — squashed to exactly fill the 3:2 box, no
+                  // cropping and no letterbox bars, at the cost of distorting
+                  // the image's own aspect ratio on any upload that isn't
+                  // already 3:2.
+                  const img = <img src={slide.imageUrl} alt="" className="h-full w-full object-cover max-md:object-fill" />;
                   return (
                     <div
                       key={i}
@@ -175,15 +197,12 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
         {stripImageUrl ? (
           (() => {
             const bannerImg = <img src={stripImageUrl} alt="" className="h-full w-full object-cover" />;
-            // w-full pins this to its 400px grid column — without it, aspect-[5/2]
-            // combined with lg:h-full computes a *preferred* width from the
-            // ratio (height × 2.5 ≈ 972px, matching the slider's own width)
-            // instead of stretching to the track, and grid doesn't clip an
-            // item that's wider than its own column, so it visibly overflowed
-            // past the 400px track into the page's right margin. Hidden below
-            // lg entirely (not just stacked) — per explicit user request, the
-            // side banner shouldn't show on mobile at all, not even below the slider.
-            const bannerClass = cn("relative hidden w-full overflow-hidden bg-[#dfe8d9] lg:block lg:h-full", sliderAspect, bannerRadius);
+            // Fixed 400×400 square, matching the main slider's own
+            // lg:h-[400px] override above so the two sit at equal height
+            // with no gap. Hidden below lg entirely (not just stacked) —
+            // per earlier explicit request, the side banner shouldn't show
+            // on mobile at all, not even below the slider.
+            const bannerClass = cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[400px] lg:w-[400px]", bannerRadius);
             return stripLinkUrl ? (
               <Link href={stripLinkUrl} className={bannerClass}>
                 {bannerImg}
@@ -193,7 +212,7 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
             );
           })()
         ) : (
-          <div className={cn("relative hidden w-full overflow-hidden bg-[#dfe8d9] lg:block lg:h-full", sliderAspect, bannerRadius)}>
+          <div className={cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[400px] lg:w-[400px]", bannerRadius)}>
             <EmptySlot label="Add a side banner" />
           </div>
         )}

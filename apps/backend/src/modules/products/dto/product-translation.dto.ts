@@ -28,21 +28,35 @@ function stripHtml(str: string): string {
     .trim();
 }
 
-export function IsPlainLengthMax(max: number, validationOptions?: ValidationOptions) {
+function countWords(str: string): number {
+  const plainText = stripHtml(str);
+  if (!plainText) return 0;
+  return plainText.split(/\s+/).filter(Boolean).length;
+}
+
+// Word-based, not character-based — matches the admin form's own counter
+// (ProductFormFields.tsx's SHORT_DESCRIPTION_MAX_WORDS), which switched from
+// a 350-character cap to a 450-word cap so products migrated from the old
+// WooCommerce/Botble catalog (which can carry verbose legacy HTML) aren't
+// rejected just for the markup's character weight. This validator has to
+// match that switch exactly — a char-based backend cap left in place next to
+// a word-based frontend cap meant a save could pass the form's own counter
+// and still 400 here.
+export function IsPlainWordCountMax(max: number, validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
-      name: 'isPlainLengthMax',
+      name: 'isPlainWordCountMax',
       target: object.constructor,
       propertyName: propertyName,
       options: {
-        message: `${propertyName} text (excluding HTML tags) must not exceed ${max} characters`,
+        message: `${propertyName} text (excluding HTML tags) must not exceed ${max} words`,
         ...validationOptions,
       },
       validator: {
         validate(value: any) {
           if (value === undefined || value === null || value === '') return true;
           if (typeof value !== 'string') return false;
-          return stripHtml(value).length <= max;
+          return countWords(value) <= max;
         },
       },
     });
@@ -58,13 +72,13 @@ export class ProductTranslationDto {
   @IsString()
   name!: string;
 
-  // Admin's Short Description field shows a "X/350" character counter —
-  // HTML tags/markup are excluded from character count so legacy HTML wrappers
-  // don't trigger validation failures.
-  @ApiPropertyOptional({ description: 'Short Description — teaser near the title and the PDP\'s "About This Product" section', maxLength: 350 })
+  // Admin's Short Description field shows a "X/450" word counter — HTML
+  // tags/markup are excluded from the count so legacy HTML wrappers don't
+  // trigger validation failures.
+  @ApiPropertyOptional({ description: 'Short Description — teaser near the title and the PDP\'s "About This Product" section' })
   @IsOptional()
   @IsString()
-  @IsPlainLengthMax(350)
+  @IsPlainWordCountMax(450)
   description?: string;
 
   @ApiPropertyOptional({ description: 'Full Description — rendered as the PDP\'s "Description" tab' })
