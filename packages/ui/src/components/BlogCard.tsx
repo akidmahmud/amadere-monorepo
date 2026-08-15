@@ -29,8 +29,14 @@ export interface BlogCardProps {
 export function BlogCard({ post, linkComponent: Link = DefaultLink }: BlogCardProps) {
   return (
     <div className="overflow-hidden rounded-brand border border-line bg-white shadow-brand">
-      <Link href={post.href} className="block aspect-[16/10] bg-beige">
-        {post.imageUrl && <img src={post.imageUrl} alt={post.title} className="h-full w-full object-cover" />}
+      {/* Was aspect-[16/10] + object-cover — most real blog thumbnails are
+          square (measured live: 800x800, 1080x1080), but not guaranteed to
+          be exactly square every time, and any mismatch still cropped
+          image text/headlines. object-contain guarantees the full image is
+          always visible regardless of its real aspect ratio — a thin
+          letterbox bar beats cutting content off, per explicit request. */}
+      <Link href={post.href} className="block aspect-square bg-beige">
+        {post.imageUrl && <img src={post.imageUrl} alt={post.title} className="h-full w-full object-contain" />}
       </Link>
       <div className="p-4">
         {post.categoryLabel && (

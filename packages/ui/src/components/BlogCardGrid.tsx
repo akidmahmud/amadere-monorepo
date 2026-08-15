@@ -40,11 +40,17 @@ function BlogCard({
     <Link href={post.href} className={`group block text-center ${className ?? ""}`}>
       <div className="mb-4 overflow-hidden rounded-2xl bg-gray">
         {post.imageUrl && (
+          // Was aspect-[4/3] + object-cover — most real blog thumbnails are
+          // square (measured live: 800x800, 1080x1080), but not guaranteed
+          // to be exactly square every time, and any mismatch still cropped
+          // image text/headlines. object-contain guarantees the full image
+          // is always visible regardless of its real aspect ratio — a thin
+          // letterbox bar beats cutting content off, per explicit request.
           <img
             src={post.imageUrl}
             alt={post.title}
             loading="lazy"
-            className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="aspect-square w-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
         )}
       </div>
