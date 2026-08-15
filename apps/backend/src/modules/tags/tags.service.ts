@@ -28,7 +28,25 @@ export class TagsService {
     private readonly seo: SeoService,
   ) {}
 
-  async adminList(page: number, pageSize: number, q?: string) {
+  async adminList(page: number, pageSize: number, q?: string, ids?: string) {
+    // Batch-resolve a known set of ids — callers that already know exactly
+    // which tags they need (e.g. a product's assigned tags that fall past
+    // the picker's first-100-page cutoff) skip pagination/q entirely rather
+    // than being truncated to whatever page size they'd otherwise ask for.
+    // Replaces what used to be one GET /admin/tags/:id per missing id.
+    if (ids?.trim()) {
+      const parsedIds = ids
+        .split(',')
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n));
+      const items = await this.prisma.client.tag.findMany({
+        where: { deletedAt: null, id: { in: parsedIds } },
+        include: WITH_TRANSLATIONS,
+      });
+      const mapped = items.map(toAdminTagDto);
+      return toPaginatedResult(mapped, mapped.length, 1, mapped.length || 1);
+    }
+
     const where = {
       deletedAt: null,
       // Lets callers check "does a tag named X already exist" against the

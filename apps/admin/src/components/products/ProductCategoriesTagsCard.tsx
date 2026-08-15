@@ -59,22 +59,22 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
   // page-1-of-100 cutoff (same root cause as the comment above) — without
   // this, opening an existing product could silently show fewer selected
   // chips than it actually has tags, even though form.tagIds is correct.
-  // Resolves each missing id directly by id once the picker page has loaded.
+  // One batched `ids=` request resolves every missing id at once — this used
+  // to be one GET /admin/tags/:id per missing tag (18+ sequential round
+  // trips on a heavily-tagged product), which was most of this page's load time.
   useEffect(() => {
     if (!tags) return;
     const known = new Set([...tags.map((t) => t.id), ...extraTags.map((t) => t.id)]);
     const missing = form.tagIds.filter((id) => !known.has(id));
     if (missing.length === 0) return;
     let cancelled = false;
-    Promise.all(
-      missing.map((id) => proxyFetch<AdminTagDto>(`/admin/tags/${id}`).catch(() => null)),
-    ).then((results) => {
-      if (cancelled) return;
-      const found = results
-        .filter((t): t is AdminTagDto => t !== null)
-        .map((t) => ({ id: t.id, label: t.translations?.[0]?.name ?? t.slug }));
-      if (found.length > 0) setExtraTags((prev) => [...prev, ...found]);
-    });
+    proxyFetch<Paginated<AdminTagDto>>(`/admin/tags?ids=${missing.join(",")}`)
+      .then((res) => {
+        if (cancelled) return;
+        const found = (res.items ?? []).map((t) => ({ id: t.id, label: t.translations?.[0]?.name ?? t.slug }));
+        if (found.length > 0) setExtraTags((prev) => [...prev, ...found]);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

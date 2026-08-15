@@ -36,9 +36,9 @@ export class AdminTagsController {
   @RequirePermission('tag.view')
   @ApiPaginatedResponse(AdminTagDto)
   list(
-    @Query() { page, pageSize, q }: AdminTagQueryDto,
+    @Query() { page, pageSize, q, ids }: AdminTagQueryDto,
   ): Promise<PaginatedResult<AdminTagDto>> {
-    return this.tags.adminList(page ?? 1, pageSize ?? 20, q);
+    return this.tags.adminList(page ?? 1, pageSize ?? 20, q, ids);
   }
 
   @Get(':id')
