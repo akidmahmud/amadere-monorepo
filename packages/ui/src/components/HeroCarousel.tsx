@@ -56,10 +56,55 @@ function EmptySlot({ label }: { label: string }) {
   );
 }
 
+// Desktop only (mobile keeps its fixed object-fill — see the <img>'s
+// className) — cover when the image's own aspect ratio is already close to
+// the box's, since the crop is then barely noticeable; stretch (fill)
+// otherwise, so a wildly different ratio doesn't lose content off the edges
+// the way a big cover-crop would. 15% is a loose enough tolerance to prefer
+// cover (mild crop, no distortion) whenever it wouldn't visibly hide much.
+const COVER_TOLERANCE = 0.15;
+function pickDesktopFit(imageRatio: number | undefined, boxRatio: number | null): "cover" | "fill" {
+  if (!imageRatio || !boxRatio) return "cover";
+  return Math.abs(imageRatio - boxRatio) / boxRatio <= COVER_TOLERANCE ? "cover" : "fill";
+}
+
+// Each slide owns its own ratio state (rather than a shared Record<index,
+// ratio> on the parent) — that shared-state version had a real bug where a
+// slide's computed fit used a *different* slide's ratio (state updates from
+// several images loading in the same batch don't necessarily land before
+// the sibling that reads them next re-renders). A self-contained component
+// per <img> sidesteps that entirely: there's no cross-slide index to mix up.
+function HeroSlideImage({ src, isDesktop, boxRatio }: { src: string; isDesktop: boolean; boxRatio: number | null }) {
+  const [ratio, setRatio] = useState<number | undefined>(undefined);
+
+  function recordRatio(el: HTMLImageElement) {
+    if (!el.naturalWidth || !el.naturalHeight) return;
+    const r = el.naturalWidth / el.naturalHeight;
+    setRatio((prev) => (prev === r ? prev : r));
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full object-cover max-md:object-fill"
+      style={isDesktop ? { objectFit: pickDesktopFit(ratio, boxRatio) } : undefined}
+      // ref, not just onLoad — a browser-cached image can finish loading
+      // before React attaches the onLoad listener, so `.complete` is
+      // checked immediately too.
+      ref={(el) => {
+        if (el?.complete) recordRatio(el);
+      }}
+      onLoad={(e) => recordRatio(e.currentTarget)}
+    />
+  );
+}
+
 export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HeroCarouselProps) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   // Defense in depth: admin-entered config can end up with a slide that has
   // no image yet (e.g. "Add slide" clicked before an upload finishes) — an
@@ -67,6 +112,32 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
   // of whether the admin form that produced this config already validates it.
   const validSlides = slides?.filter((slide) => slide.imageUrl) ?? [];
   const slideTotal = validSlides.length;
+
+  // The box's own current ratio — its width is fluid (grid's 1fr track)
+  // while its height is a fixed 400px on desktop, so the ratio genuinely
+  // changes with viewport width and has to be re-measured on resize, not
+  // assumed. Each slide's own image ratio lives in HeroSlideImage instead.
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [boxRatio, setBoxRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const updateDesktop = () => setIsDesktop(mql.matches);
+    updateDesktop();
+    mql.addEventListener("change", updateDesktop);
+    return () => mql.removeEventListener("change", updateDesktop);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    function measure() {
+      const rect = boxRef.current?.getBoundingClientRect();
+      if (rect && rect.height > 0) setBoxRatio(rect.width / rect.height);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [isDesktop]);
 
   useEffect(() => {
     if (slideTotal <= 1 || paused) return;
@@ -96,6 +167,7 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
           // start keeps this box from being stretched by items-stretch to
           // match the side banner at breakpoints where the override above
           // isn't active (≤1024px, before the side banner even shows).
+          ref={boxRef}
           className={cn("relative self-start overflow-hidden bg-[#e9dfcd] lg:aspect-auto lg:h-[400px]", sliderAspect, bannerRadius)}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
@@ -113,15 +185,14 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
             <>
               <div className="absolute inset-0">
                 {validSlides.map((slide, i) => {
-                  // object-cover on desktop per explicit request (fills the
-                  // 16:5 box, cropping any overflow — that box still matches
-                  // the recommended 1600×500 upload almost exactly, so this
-                  // is a minimal crop in practice). Mobile stays object-fill
-                  // ("stretch") — squashed to exactly fill the 3:2 box, no
-                  // cropping and no letterbox bars, at the cost of distorting
-                  // the image's own aspect ratio on any upload that isn't
-                  // already 3:2.
-                  const img = <img src={slide.imageUrl} alt="" className="h-full w-full object-cover max-md:object-fill" />;
+                  // Desktop object-fit is picked per-image by HeroSlideImage
+                  // (cover when its own ratio is already close to the box's,
+                  // fill/stretch otherwise) rather than one fixed rule for
+                  // every slide. Mobile is untouched — stays the fixed
+                  // object-fill ("stretch") baked into that component's own
+                  // className, since its inline style override only applies
+                  // when isDesktop is true.
+                  const img = <HeroSlideImage src={slide.imageUrl} isDesktop={isDesktop} boxRatio={boxRatio} />;
                   return (
                     <div
                       key={i}
