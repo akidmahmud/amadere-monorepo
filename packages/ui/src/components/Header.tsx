@@ -264,7 +264,7 @@ export function Header({
   // confirmed live that the margin has to be exactly double the visible gap
   // (20.5px) to land the icon glyph dead center. No effect below xl (still
   // a single centered icon-only row there, unrelated to this offset).
-  const desktopActionIconClass = "xl:mt-[20.5px]";
+  const desktopActionIconClass = "xl:mt-[25.5px]";
 
   return (
     // Sticky only on mobile (no separate Nav bar exists there to take over
@@ -354,7 +354,7 @@ export function Header({
 
       {/* ===== Tablet/laptop/desktop (>=768px) ===== */}
       <div className="mx-auto hidden w-full max-w-[1440px] items-center px-6 md:grid md:h-[112px] md:grid-cols-[auto_auto_1fr_auto] md:gap-x-[28px] lg:gap-x-8 xl:gap-x-10">
-        <Link href={brandHref} className="flex h-[100px] shrink-0 items-center">
+        <Link href={brandHref} className="mt-[25.5px] flex h-[100px] shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt={brandMark} className="h-full w-auto" style={logoStyle} />
@@ -368,16 +368,16 @@ export function Header({
         {(homeHref || blogHref) && (
           <div className="flex shrink-0 items-center gap-3">
             {homeHref && homeLabel && (
-              <Link href={homeHref} className="flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
+              <Link href={homeHref} className="mt-[25.5px] flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
                 {homeIcon}
                 {homeLabel}
               </Link>
             )}
             {homeHref && blogHref && (
-              <span className="h-5 w-px bg-header-line" aria-hidden />
+              <span className="mt-[25.5px] h-5 w-px bg-header-line" aria-hidden />
             )}
             {blogHref && blogLabel && (
-              <Link href={blogHref} className="flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
+              <Link href={blogHref} className="mt-[25.5px] flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
                 {blogIcon}
                 {blogLabel}
               </Link>
@@ -385,7 +385,7 @@ export function Header({
           </div>
         )}
 
-        <div className="relative w-full">
+        <div className="relative mt-[25.5px] w-full">
           {searchForm("h-[47px]")}
           {suggestionsPanel()}
         </div>
