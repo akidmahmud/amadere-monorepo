@@ -50,7 +50,8 @@ const PAGE_SIZE = 20;
 export default function DeletedBlogPostsPage() {
   const { data: me, isLoading: meLoading } = useAdminMe();
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useDeletedBlogPosts(page, PAGE_SIZE);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data, isLoading } = useDeletedBlogPosts(page, PAGE_SIZE, searchQuery);
   const restore = useRestoreBlogPost();
   const toast = useToast();
   const [restoringId, setRestoringId] = useState<number | null>(null);
@@ -98,9 +99,21 @@ export default function DeletedBlogPostsPage() {
             Posts deleted from the blog stay here for 30 days before they're permanently removed.
           </p>
         </div>
-        <Link href="/blog-posts" className="text-sm font-semibold text-brand-500 hover:underline">
-          ← Back to Blog Posts
-        </Link>
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search deleted posts..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+            className="h-[38px] w-[220px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
+          />
+          <Link href="/blog-posts" className="text-sm font-semibold text-brand-500 hover:underline">
+            ← Back to Blog Posts
+          </Link>
+        </div>
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
@@ -108,8 +121,12 @@ export default function DeletedBlogPostsPage() {
       {!isLoading && (data?.items?.length ?? 0) === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-surface py-16 text-center shadow-card">
           <span className="grid h-16 w-16 place-items-center rounded-full bg-surface-2 text-muted">{emptyTrashIcon}</span>
-          <h2 className="font-ui text-base font-bold text-text">Trash is empty</h2>
-          <p className="max-w-sm text-sm text-secondary">Posts you delete from the blog will show up here.</p>
+          <h2 className="font-ui text-base font-bold text-text">
+            {searchQuery ? `No deleted posts matching "${searchQuery}"` : "Trash is empty"}
+          </h2>
+          <p className="max-w-sm text-sm text-secondary">
+            {searchQuery ? "Try refining your search query." : "Posts you delete from the blog will show up here."}
+          </p>
         </div>
       )}
 

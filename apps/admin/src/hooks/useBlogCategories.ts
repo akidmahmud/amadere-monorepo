@@ -13,11 +13,12 @@ export type BlogCategoryInput = Omit<components["schemas"]["CreateBlogCategoryDt
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-blog-categories"];
 
-export function useBlogCategories() {
+export function useBlogCategories(q?: string) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, q],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminBlogCategory>>("/admin/blog-categories?pageSize=100");
+      const url = `/admin/blog-categories?pageSize=100${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+      const res = await proxyFetch<Paginated<AdminBlogCategory>>(url);
       return res.items ?? [];
     },
   });

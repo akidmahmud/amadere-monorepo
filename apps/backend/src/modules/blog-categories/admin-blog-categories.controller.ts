@@ -35,15 +35,18 @@ export class AdminBlogCategoriesController {
   @Get()
   @RequirePermission('blog_category.view')
   @ApiQuery({ name: 'parentId', required: false, type: Number })
+  @ApiQuery({ name: 'q', required: false })
   @ApiPaginatedResponse(AdminBlogCategoryDto)
   list(
     @Query() { page, pageSize }: PaginationQueryDto,
     @Query('parentId') parentId?: string,
+    @Query('q') q?: string,
   ): Promise<PaginatedResult<AdminBlogCategoryDto>> {
     return this.categories.adminList(
       page ?? 1,
       pageSize ?? 20,
       parentId ? Number(parentId) : undefined,
+      q,
     );
   }
 

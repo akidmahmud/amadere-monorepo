@@ -91,22 +91,36 @@ function AnnouncementSpeedCard() {
 }
 
 export default function AnnouncementsPage() {
-  const { data: items, isLoading } = useAnnouncements();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: items, isLoading } = useAnnouncements(searchQuery);
   const deleteItem = useDeleteAnnouncement();
 
   return (
     <>
       <AnnouncementSpeedCard />
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">{items?.length ?? 0} announcements</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-secondary">{items?.length ?? 0} announcements</p>
+          <input
+            type="text"
+            placeholder="Search announcements..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-[38px] w-[220px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
+          />
+        </div>
         <Link href="/announcements/new">
           <Button variant="primary">Add announcement</Button>
         </Link>
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {items && items.length === 0 && <p className="text-sm text-muted">No announcements yet.</p>}
+      {items && items.length === 0 && (
+        <p className="text-sm text-muted">
+          {searchQuery ? `No announcements matching "${searchQuery}".` : "No announcements yet."}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
         {items?.map((item) => (

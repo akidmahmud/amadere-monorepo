@@ -22,8 +22,20 @@ export class PromoVideosService {
     private readonly seo: SeoService,
   ) {}
 
-  async adminList(): Promise<AdminPromoVideoDto[]> {
-    const videos = await this.prisma.client.promoVideo.findMany({ orderBy: { sortOrder: 'asc' } });
+  async adminList(q?: string): Promise<AdminPromoVideoDto[]> {
+    const trimmed = q?.trim();
+    const where = trimmed
+      ? {
+          OR: [
+            { title: { contains: trimmed, mode: 'insensitive' as const } },
+            { url: { contains: trimmed, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
+    const videos = await this.prisma.client.promoVideo.findMany({
+      where,
+      orderBy: { sortOrder: 'asc' },
+    });
     return videos.map(toAdminPromoVideoDto);
   }
 

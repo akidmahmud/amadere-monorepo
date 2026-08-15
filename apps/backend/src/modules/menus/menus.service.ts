@@ -16,8 +16,18 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 export class MenusService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async adminList(): Promise<AdminMenuItemDto[]> {
+  async adminList(q?: string): Promise<AdminMenuItemDto[]> {
+    const trimmed = q?.trim();
+    const where = trimmed
+      ? {
+          OR: [
+            { href: { contains: trimmed, mode: 'insensitive' as const } },
+            { translations: { some: { label: { contains: trimmed, mode: 'insensitive' as const } } } },
+          ],
+        }
+      : {};
     const items = await this.prisma.client.menuItem.findMany({
+      where,
       include: WITH_TRANSLATIONS,
       orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }],
     });

@@ -191,11 +191,13 @@ export type AdminDeletedProduct = components["schemas"]["AdminDeletedProductDto"
 
 const TRASH_KEY = ["admin-products-trash"];
 
-export function useDeletedProducts(page = 1, pageSize = 20) {
+export function useDeletedProducts(page = 1, pageSize = 20, q?: string) {
   return useQuery({
-    queryKey: [...TRASH_KEY, page, pageSize],
-    queryFn: () =>
-      proxyFetch<Required<Paginated<AdminDeletedProduct>>>(`/admin/products/trash?page=${page}&pageSize=${pageSize}`),
+    queryKey: [...TRASH_KEY, page, pageSize, q],
+    queryFn: () => {
+      const url = `/admin/products/trash?page=${page}&pageSize=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+      return proxyFetch<Required<Paginated<AdminDeletedProduct>>>(url);
+    },
   });
 }
 

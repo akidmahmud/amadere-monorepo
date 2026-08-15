@@ -7,10 +7,13 @@ export type MenuItemInput = components["schemas"]["CreateMenuItemDto"];
 
 const KEY = ["admin-menu-items"];
 
-export function useMenuItems() {
+export function useMenuItems(q?: string) {
   return useQuery({
-    queryKey: KEY,
-    queryFn: () => proxyFetch<MenuItem[]>("/admin/menu-items"),
+    queryKey: [...KEY, q],
+    queryFn: () => {
+      const url = `/admin/menu-items${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+      return proxyFetch<MenuItem[]>(url);
+    },
   });
 }
 

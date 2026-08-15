@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards, UseInterceptors } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
@@ -20,9 +20,10 @@ export class AdminPromoVideosController {
 
   @Get()
   @RequirePermission('promo_video.view')
+  @ApiQuery({ name: 'q', required: false })
   @ApiOkResponse({ type: [AdminPromoVideoDto] })
-  list(): Promise<AdminPromoVideoDto[]> {
-    return this.promoVideos.adminList();
+  list(@Query('q') q?: string): Promise<AdminPromoVideoDto[]> {
+    return this.promoVideos.adminList(q);
   }
 
   @Get(':id')

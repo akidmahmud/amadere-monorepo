@@ -119,11 +119,13 @@ export type AdminDeletedBlogPost = components["schemas"]["AdminDeletedBlogPostDt
 
 const TRASH_KEY = ["admin-blog-posts-trash"];
 
-export function useDeletedBlogPosts(page = 1, pageSize = 20) {
+export function useDeletedBlogPosts(page = 1, pageSize = 20, q?: string) {
   return useQuery({
-    queryKey: [...TRASH_KEY, page, pageSize],
-    queryFn: () =>
-      proxyFetch<Required<Paginated<AdminDeletedBlogPost>>>(`/admin/blog-posts/trash?page=${page}&pageSize=${pageSize}`),
+    queryKey: [...TRASH_KEY, page, pageSize, q],
+    queryFn: () => {
+      const url = `/admin/blog-posts/trash?page=${page}&pageSize=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+      return proxyFetch<Required<Paginated<AdminDeletedBlogPost>>>(url);
+    },
   });
 }
 

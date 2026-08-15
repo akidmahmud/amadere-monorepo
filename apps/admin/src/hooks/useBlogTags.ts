@@ -9,11 +9,12 @@ export type BlogTagInput = Omit<components["schemas"]["CreateBlogTagDto"], "stat
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-blog-tags"];
 
-export function useBlogTags() {
+export function useBlogTags(q?: string) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, q],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminBlogTag>>("/admin/blog-tags?pageSize=100");
+      const url = `/admin/blog-tags?pageSize=100${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+      const res = await proxyFetch<Paginated<AdminBlogTag>>(url);
       return res.items ?? [];
     },
   });

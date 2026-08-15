@@ -81,8 +81,9 @@ export class AdminBlogPostsController {
   @ApiPaginatedResponse(AdminDeletedBlogPostDto)
   listDeleted(
     @Query() { page, pageSize }: PaginationQueryDto,
+    @Query('q') q?: string,
   ): Promise<PaginatedResult<AdminDeletedBlogPostDto>> {
-    return this.posts.listDeleted(page ?? 1, pageSize ?? 20);
+    return this.posts.listDeleted(page ?? 1, pageSize ?? 20, q);
   }
 
   @Get(':id')

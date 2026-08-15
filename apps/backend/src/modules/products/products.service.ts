@@ -9,6 +9,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ContentStatus, Locale, Prisma, SeoEntityType } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RevalidationService } from '../../common/revalidation/revalidation.service';
 import {
   paginationArgs,
   toPaginatedResult,
@@ -86,7 +87,22 @@ export class ProductsService {
     private readonly seo: SeoService,
     private readonly reviews: ReviewsService,
     private readonly tokens: TokenService,
+    private readonly revalidation: RevalidationService,
   ) {}
+
+  // Fire-and-forget so admin saves stay fast even if the storefront is
+  // briefly unreachable (the page's own timed revalidate window still
+  // catches up regardless). Revalidates both locales' PDP plus the listing
+  // page every write can affect (new/changed price, stock, status, ...).
+  private revalidateProduct(slugs: (string | null | undefined)[]): void {
+    const paths = new Set(["/products", "/en/products", "/bn/products"]);
+    for (const slug of slugs) {
+      if (!slug) continue;
+      paths.add(`/en/products/${slug}`);
+      paths.add(`/bn/products/${slug}`);
+    }
+    void this.revalidation.revalidate([...paths]);
+  }
 
   async adminList(
     page: number,
@@ -438,11 +454,12 @@ export class ProductsService {
       },
       include: PRODUCT_INCLUDE,
     });
+    this.revalidateProduct([product.slug]);
     return toAdminProductDto(product);
   }
 
   async update(id: number, dto: UpdateProductDto): Promise<AdminProductDto> {
-    await this.adminGet(id);
+    const existing = await this.adminGet(id);
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
     await this.validateReferences(dto);
 
@@ -535,15 +552,18 @@ export class ProductsService {
       },
       include: PRODUCT_INCLUDE,
     });
+    // Both slugs — a rename must clear the old PDP too, not just the new one.
+    this.revalidateProduct([existing.slug, product.slug]);
     return toAdminProductDto(product);
   }
 
   async delete(id: number): Promise<void> {
-    await this.adminGet(id);
+    const existing = await this.adminGet(id);
     await this.prisma.client.product.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    this.revalidateProduct([existing.slug]);
   }
 
   private static readonly TRASH_RETENTION_DAYS = 30;
@@ -551,8 +571,20 @@ export class ProductsService {
   // Trash listing — soft-deleted products still within the retention window
   // (the nightly purge job below removes anything older, so `deletedAt: not
   // null` alone is equivalent to "within 30 days" in practice).
-  async listDeleted(page = 1, pageSize = 20): Promise<PaginatedResult<AdminDeletedProductDto>> {
-    const where = { deletedAt: { not: null } };
+  async listDeleted(page = 1, pageSize = 20, q?: string): Promise<PaginatedResult<AdminDeletedProductDto>> {
+    const trimmed = q?.trim();
+    const where = {
+      deletedAt: { not: null },
+      ...(trimmed
+        ? {
+            OR: [
+              { slug: { contains: trimmed, mode: 'insensitive' as const } },
+              { sku: { contains: trimmed, mode: 'insensitive' as const } },
+              { translations: { some: { name: { contains: trimmed, mode: 'insensitive' as const } } } },
+            ],
+          }
+        : {}),
+    };
     const [total, products] = await Promise.all([
       this.prisma.client.product.count({ where }),
       this.prisma.client.product.findMany({

@@ -29,8 +29,19 @@ export class BlogCategoriesService {
     private readonly seo: SeoService,
   ) {}
 
-  async adminList(page: number, pageSize: number, parentId?: number) {
-    const where = parentId !== undefined ? { parentId } : {};
+  async adminList(page: number, pageSize: number, parentId?: number, q?: string) {
+    const trimmed = q?.trim();
+    const where = {
+      ...(parentId !== undefined ? { parentId } : {}),
+      ...(trimmed
+        ? {
+            OR: [
+              { slug: { contains: trimmed, mode: 'insensitive' as const } },
+              { translations: { some: { name: { contains: trimmed, mode: 'insensitive' as const } } } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.client.blogCategory.findMany({
         where,

@@ -111,7 +111,8 @@ function MenuItemRow({ flat, onDelete }: { flat: FlatItem; onDelete: (id: number
 }
 
 export default function MenuItemsPage() {
-  const { data: items, isLoading } = useMenuItems();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: items, isLoading } = useMenuItems(searchQuery);
   const deleteItem = useDeleteMenuItem();
   const move = useMoveMenuItems();
   const importFromCategories = useImportMenuItemsFromCategories();
@@ -173,10 +174,19 @@ export default function MenuItemsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">
-          {items?.length ?? 0} menu items — drag to reorder, drag right to nest under the item above.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-secondary">
+            {items?.length ?? 0} menu items — drag to reorder, drag right to nest under the item above.
+          </p>
+          <input
+            type="text"
+            placeholder="Search menu items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-[38px] w-[220px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
+          />
+        </div>
         <Link href="/menu-items/new">
           <Button variant="primary">Add menu item</Button>
         </Link>
@@ -187,7 +197,9 @@ export default function MenuItemsPage() {
       {items && items.length === 0 && (
         <Card className="flex flex-col items-start gap-3">
           <p className="text-sm text-muted">
-            No menu items yet — the storefront navbar has nothing to show. Start from your existing categories, or add items manually above.
+            {searchQuery
+              ? `No menu items matching "${searchQuery}".`
+              : "No menu items yet — the storefront navbar has nothing to show. Start from your existing categories, or add items manually above."}
           </p>
           <Button
             type="button"

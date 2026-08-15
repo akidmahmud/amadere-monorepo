@@ -25,7 +25,12 @@ export async function POST(req: NextRequest) {
   }
 
   for (const path of paths) {
-    revalidatePath(path, "page");
+    // `type: "page"` is only for route PATTERNS with a dynamic segment (e.g.
+    // "/products/[slug]") — passing it for a literal resolved path (e.g.
+    // "/en/products/some-slug") doesn't match any cache entry and silently
+    // no-ops instead of revalidating. Every path this route receives is
+    // already a literal resolved path, never a pattern, so omit it.
+    revalidatePath(path);
   }
 
   return NextResponse.json({ success: true, data: { revalidated: paths } });

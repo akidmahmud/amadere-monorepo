@@ -7,10 +7,11 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import { RequirePermission } from '../../common/auth/permission.decorator';
@@ -30,9 +31,10 @@ export class AdminAnnouncementsController {
 
   @Get()
   @RequirePermission('announcement.view')
+  @ApiQuery({ name: 'q', required: false })
   @ApiOkResponse({ type: AdminAnnouncementDto, isArray: true })
-  list(): Promise<AdminAnnouncementDto[]> {
-    return this.announcements.adminList();
+  list(@Query('q') q?: string): Promise<AdminAnnouncementDto[]> {
+    return this.announcements.adminList(q);
   }
 
   @Get(':id')

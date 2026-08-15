@@ -1,24 +1,39 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { useBlogTags, useDeleteBlogTag } from "@/hooks/useBlogTags";
 
 export default function BlogTagsPage() {
-  const { data: tags, isLoading } = useBlogTags();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: tags, isLoading } = useBlogTags(searchQuery);
   const deleteTag = useDeleteBlogTag();
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">{tags?.length ?? 0} blog tags</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-secondary">{tags?.length ?? 0} blog tags</p>
+          <input
+            type="text"
+            placeholder="Search blog tags..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-[38px] w-[220px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
+          />
+        </div>
         <Link href="/blog-tags/new">
           <Button variant="primary">Add tag</Button>
         </Link>
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {tags && tags.length === 0 && <p className="text-sm text-muted">No blog tags yet.</p>}
+      {tags && tags.length === 0 && (
+        <p className="text-sm text-muted">
+          {searchQuery ? `No blog tags matching "${searchQuery}".` : "No blog tags yet."}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
         {tags?.map((tag) => (

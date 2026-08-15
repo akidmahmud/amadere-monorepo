@@ -101,8 +101,9 @@ export class AdminProductsController {
   @ApiPaginatedResponse(AdminDeletedProductDto)
   listDeleted(
     @Query() { page, pageSize }: PaginationQueryDto,
+    @Query('q') q?: string,
   ): Promise<PaginatedResult<AdminDeletedProductDto>> {
-    return this.products.listDeleted(page ?? 1, pageSize ?? 20);
+    return this.products.listDeleted(page ?? 1, pageSize ?? 20, q);
   }
 
   @Get(':id')

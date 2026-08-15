@@ -11,7 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
@@ -34,11 +34,13 @@ export class AdminRedirectsController {
 
   @Get()
   @RequirePermission('redirect.view')
+  @ApiQuery({ name: 'q', required: false })
   @ApiPaginatedResponse(RedirectDto)
   list(
     @Query() { page, pageSize }: PaginationQueryDto,
+    @Query('q') q?: string,
   ): Promise<PaginatedResult<RedirectDto>> {
-    return this.redirects.adminList(page ?? 1, pageSize ?? 20);
+    return this.redirects.adminList(page ?? 1, pageSize ?? 20, q);
   }
 
   @Get(':id')

@@ -7,6 +7,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import * as path from 'node:path';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { RevalidationModule } from './common/revalidation/revalidation.module';
 import { CoreAuthModule } from './common/auth/core-auth.module';
 import { AuditLogModule } from './common/audit-log/audit-log.module';
 import { CredentialsModule } from './common/credentials/credentials.module';
@@ -91,6 +92,11 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
         // URLs (e.g. https://amadere.com). Without it, URLs are relative —
         // fine for local dev, must be set before this hits production.
         STOREFRONT_BASE_URL: Joi.string().optional(),
+        // Optional: shared with apps/web's REVALIDATE_SECRET — lets admin
+        // saves trigger on-demand ISR revalidation instead of waiting for
+        // the page's timed revalidate window. App boots fine without it;
+        // RevalidationService just no-ops.
+        REVALIDATE_SECRET: Joi.string().optional(),
         // Optional: server-side analytics forwarding (AGENTS.md §6) — app
         // must boot without any of these, each provider just no-ops.
         GA4_MEASUREMENT_ID: Joi.string().optional(),
@@ -105,6 +111,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     PrismaModule,
+    RevalidationModule,
     CoreAuthModule,
     AuditLogModule,
     CredentialsModule,

@@ -25,13 +25,24 @@ export class RedirectsService {
   async adminList(
     page: number,
     pageSize: number,
+    q?: string,
   ): Promise<PaginatedResult<RedirectDto>> {
+    const trimmed = q?.trim();
+    const where = trimmed
+      ? {
+          OR: [
+            { fromPath: { contains: trimmed, mode: 'insensitive' as const } },
+            { toPath: { contains: trimmed, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
     const [items, total] = await Promise.all([
       this.prisma.client.redirect.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         ...paginationArgs(page, pageSize),
       }),
-      this.prisma.client.redirect.count(),
+      this.prisma.client.redirect.count({ where }),
     ]);
     return toPaginatedResult(items.map(toRedirectDto), total, page, pageSize);
   }

@@ -9,11 +9,12 @@ export type PageInput = Omit<components["schemas"]["CreatePageDto"], "status"> &
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-pages"];
 
-export function usePages() {
+export function usePages(q?: string) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, q],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminPage>>("/admin/pages?pageSize=100");
+      const url = `/admin/pages?pageSize=100${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+      const res = await proxyFetch<Paginated<AdminPage>>(url);
       return res.items ?? [];
     },
   });

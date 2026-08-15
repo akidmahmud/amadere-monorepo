@@ -7,10 +7,13 @@ export type AnnouncementInput = components["schemas"]["CreateAnnouncementDto"];
 
 const KEY = ["admin-announcements"];
 
-export function useAnnouncements() {
+export function useAnnouncements(q?: string) {
   return useQuery({
-    queryKey: KEY,
-    queryFn: () => proxyFetch<Announcement[]>("/admin/announcements"),
+    queryKey: [...KEY, q],
+    queryFn: () => {
+      const url = `/admin/announcements${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+      return proxyFetch<Announcement[]>(url);
+    },
   });
 }
 

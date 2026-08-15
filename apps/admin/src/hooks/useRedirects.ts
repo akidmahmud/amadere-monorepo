@@ -8,11 +8,12 @@ export type RedirectInput = components["schemas"]["CreateRedirectDto"];
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-redirects"];
 
-export function useRedirects() {
+export function useRedirects(q?: string) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: [...KEY, q],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<Redirect>>("/admin/redirects?pageSize=100");
+      const url = `/admin/redirects?pageSize=100${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+      const res = await proxyFetch<Paginated<Redirect>>(url);
       return res.items ?? [];
     },
   });

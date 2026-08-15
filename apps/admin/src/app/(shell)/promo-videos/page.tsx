@@ -43,7 +43,8 @@ function PromoVideoRowContainer({
 }
 
 export default function PromoVideosPage() {
-  const { data: videos, isLoading } = usePromoVideos();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: videos, isLoading } = usePromoVideos(searchQuery);
   const reorder = useReorderPromoVideos();
   const [selectedId, setSelectedId] = useState<number | "new" | null>(null);
   const [dragOrder, setDragOrder] = useState<number[] | null>(null);
@@ -84,15 +85,26 @@ export default function PromoVideosPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
         <div className="rounded-card border border-border bg-surface p-[22px] shadow-card">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-ui text-sm font-bold text-text">Video List</h2>
               <p className="text-xs text-muted">Drag to reorder videos</p>
             </div>
+            <input
+              type="text"
+              placeholder="Search promo videos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-[34px] w-[200px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
+            />
           </div>
 
           {isLoading && <p className="text-sm text-muted">Loading…</p>}
-          {ordered && ordered.length === 0 && <p className="text-sm text-muted">No videos yet — add one to get started.</p>}
+          {ordered && ordered.length === 0 && (
+            <p className="text-sm text-muted">
+              {searchQuery ? `No videos matching "${searchQuery}".` : "No videos yet — add one to get started."}
+            </p>
+          )}
 
           {ordered && ordered.length > 0 && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

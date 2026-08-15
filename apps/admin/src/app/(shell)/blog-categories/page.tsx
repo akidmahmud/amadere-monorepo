@@ -1,24 +1,39 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { useBlogCategories, useDeleteBlogCategory } from "@/hooks/useBlogCategories";
 
 export default function BlogCategoriesPage() {
-  const { data: categories, isLoading } = useBlogCategories();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: categories, isLoading } = useBlogCategories(searchQuery);
   const deleteCategory = useDeleteBlogCategory();
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">{categories?.length ?? 0} blog categories</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-secondary">{categories?.length ?? 0} blog categories</p>
+          <input
+            type="text"
+            placeholder="Search blog categories..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-[38px] w-[220px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
+          />
+        </div>
         <Link href="/blog-categories/new">
           <Button variant="primary">Add category</Button>
         </Link>
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
-      {categories && categories.length === 0 && <p className="text-sm text-muted">No blog categories yet.</p>}
+      {categories && categories.length === 0 && (
+        <p className="text-sm text-muted">
+          {searchQuery ? `No blog categories matching "${searchQuery}".` : "No blog categories yet."}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
         {categories?.map((category) => (

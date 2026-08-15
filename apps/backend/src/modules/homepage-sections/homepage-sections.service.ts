@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { HomepageSectionType, Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RevalidationService } from '../../common/revalidation/revalidation.service';
 import { CollectionsService } from '../collections/collections.service';
 import { ProductsService } from '../products/products.service';
 import { PublicProductDto } from '../products/dto/product-response.dto';
@@ -21,7 +22,15 @@ export class HomepageSectionsService {
     private readonly prisma: PrismaService,
     private readonly collections: CollectionsService,
     private readonly products: ProductsService,
+    private readonly revalidation: RevalidationService,
   ) {}
+
+  // Every write below touches the homepage — fire-and-forget so admin saves
+  // stay fast even if the storefront is briefly unreachable (the page's own
+  // timed revalidate window still catches up regardless).
+  private revalidateHomepage(): void {
+    void this.revalidation.revalidate(['/', '/en', '/bn']);
+  }
 
   async adminList(): Promise<AdminHomepageSectionDto[]> {
     const sections = await this.prisma.client.homepageSection.findMany({
@@ -54,6 +63,7 @@ export class HomepageSectionsService {
       },
       include: WITH_TRANSLATIONS,
     });
+    this.revalidateHomepage();
     return toAdminHomepageSectionDto(section);
   }
 
@@ -85,12 +95,14 @@ export class HomepageSectionsService {
       },
       include: WITH_TRANSLATIONS,
     });
+    this.revalidateHomepage();
     return toAdminHomepageSectionDto(section);
   }
 
   async delete(id: number): Promise<void> {
     await this.adminGet(id);
     await this.prisma.client.homepageSection.delete({ where: { id } });
+    this.revalidateHomepage();
   }
 
   async reorder(ids: number[]): Promise<void> {
@@ -102,6 +114,7 @@ export class HomepageSectionsService {
         }),
       ),
     );
+    this.revalidateHomepage();
   }
 
   async publicList(locale: Locale): Promise<PublicHomepageSectionDto[]> {

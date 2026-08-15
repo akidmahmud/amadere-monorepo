@@ -16,8 +16,18 @@ const WITH_TRANSLATIONS = { translations: true } as const;
 export class AnnouncementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async adminList(): Promise<AdminAnnouncementDto[]> {
+  async adminList(q?: string): Promise<AdminAnnouncementDto[]> {
+    const trimmed = q?.trim();
+    const where = trimmed
+      ? {
+          OR: [
+            { linkUrl: { contains: trimmed, mode: 'insensitive' as const } },
+            { translations: { some: { message: { contains: trimmed, mode: 'insensitive' as const } } } },
+          ],
+        }
+      : {};
     const items = await this.prisma.client.announcement.findMany({
+      where,
       include: WITH_TRANSLATIONS,
       orderBy: { sortOrder: 'asc' },
     });

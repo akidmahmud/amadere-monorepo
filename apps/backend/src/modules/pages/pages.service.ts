@@ -28,8 +28,19 @@ export class PagesService {
     private readonly seo: SeoService,
   ) {}
 
-  async adminList(page: number, pageSize: number) {
-    const where = { deletedAt: null };
+  async adminList(page: number, pageSize: number, q?: string) {
+    const trimmed = q?.trim();
+    const where = {
+      deletedAt: null,
+      ...(trimmed
+        ? {
+            OR: [
+              { slug: { contains: trimmed, mode: 'insensitive' as const } },
+              { translations: { some: { title: { contains: trimmed, mode: 'insensitive' as const } } } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.client.page.findMany({
         where,

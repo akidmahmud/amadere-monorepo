@@ -17,10 +17,13 @@ export type PromoVideoInput = Omit<components["schemas"]["CreatePromoVideoDto"],
 
 const KEY = ["admin-promo-videos"];
 
-export function usePromoVideos() {
+export function usePromoVideos(q?: string) {
   return useQuery({
-    queryKey: KEY,
-    queryFn: () => proxyFetch<AdminPromoVideo[]>("/admin/promo-videos"),
+    queryKey: [...KEY, q],
+    queryFn: () => {
+      const url = `/admin/promo-videos${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+      return proxyFetch<AdminPromoVideo[]>(url);
+    },
   });
 }
 

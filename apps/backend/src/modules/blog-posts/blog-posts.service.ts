@@ -316,8 +316,19 @@ export class BlogPostsService {
   // (the nightly purge job below removes anything older, so `deletedAt: not
   // null` alone is equivalent to "within 30 days" in practice). Same pattern
   // as ProductsService.listDeleted.
-  async listDeleted(page = 1, pageSize = 20): Promise<PaginatedResult<AdminDeletedBlogPostDto>> {
-    const where = { deletedAt: { not: null } };
+  async listDeleted(page = 1, pageSize = 20, q?: string): Promise<PaginatedResult<AdminDeletedBlogPostDto>> {
+    const trimmed = q?.trim();
+    const where = {
+      deletedAt: { not: null },
+      ...(trimmed
+        ? {
+            OR: [
+              { slug: { contains: trimmed, mode: 'insensitive' as const } },
+              { translations: { some: { title: { contains: trimmed, mode: 'insensitive' as const } } } },
+            ],
+          }
+        : {}),
+    };
     const [total, posts] = await Promise.all([
       this.prisma.client.blogPost.count({ where }),
       this.prisma.client.blogPost.findMany({
