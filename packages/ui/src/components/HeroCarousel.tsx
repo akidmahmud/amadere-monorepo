@@ -11,9 +11,12 @@ export interface HeroSlide {
 
 export interface HeroCarouselProps {
   slides?: HeroSlide[];
-  /** The reference design's fixed side banner — same slot as before (config.stripImageUrl/stripLinkUrl), now rendered beside the slider instead of as a strip underneath it. */
-  stripImageUrl?: string;
-  stripLinkUrl?: string;
+  /** The reference design's fixed side banner slot, rendered beside the
+   * slider on desktop. 2+ entries auto-rotate on the same autoplayMs
+   * interval as the main slides, crossfading — no arrows/dots, per explicit
+   * request (this slot is meant to stay visually quiet next to the main
+   * slider's own controls). */
+  sideBanners?: HeroSlide[];
   linkComponent?: LinkComponent;
   /** Only relevant with 2+ slides — how often it auto-advances. */
   autoplayMs?: number;
@@ -122,11 +125,16 @@ function solveSideBannerSize(containerWidth: number): number {
   return Math.round((5 * (containerWidth - GRID_GAP)) / 21);
 }
 
-export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HeroCarouselProps) {
+export function HeroCarousel({ slides, sideBanners, linkComponent: Link = DefaultLink, autoplayMs = 5000 }: HeroCarouselProps) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const validSideBanners = sideBanners?.filter((b) => b.imageUrl) ?? [];
+  const sideBannerTotal = validSideBanners.length;
+  const [sideIndex, setSideIndex] = useState(0);
+  const [sidePaused, setSidePaused] = useState(false);
 
   // Defense in depth: admin-entered config can end up with a slide that has
   // no image yet (e.g. "Add slide" clicked before an upload finishes) — an
@@ -168,6 +176,14 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
     return () => clearInterval(timer);
   }, [slideTotal, autoplayMs, paused]);
 
+  // Independent index/timer from the main slider — counts can differ, and
+  // there's no reason the two rotations need to stay in lockstep.
+  useEffect(() => {
+    if (sideBannerTotal <= 1 || sidePaused) return;
+    const timer = setInterval(() => setSideIndex((i) => (i + 1) % sideBannerTotal), autoplayMs);
+    return () => clearInterval(timer);
+  }, [sideBannerTotal, autoplayMs, sidePaused]);
+
   function go(delta: number) {
     setIndex((i) => (i + delta + slideTotal) % slideTotal);
   }
@@ -200,7 +216,7 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
           // blowing through the 1fr grid column (this exact bug happened
           // once already with a fixed-400px side banner — see git history
           // if it resurfaces).
-          className={cn("relative self-start overflow-hidden bg-[#e9dfcd]", sliderAspect, bannerRadius)}
+          className={cn("group relative self-start overflow-hidden bg-[#e9dfcd]", sliderAspect, bannerRadius)}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
@@ -240,11 +256,16 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
               </div>
               {slideTotal > 1 && (
                 <>
+                  {/* Desktop only (hidden below md — no arrows on mobile,
+                      swipe already covers it via onTouchStart/End above), and
+                      only revealed on hover/focus of the slider (opacity-0
+                      until the parent's :hover/:focus-within), not shown at
+                      rest — per explicit request. */}
                   <button
                     type="button"
                     aria-label="Previous slide"
                     onClick={() => go(-1)}
-                    className="absolute left-4 top-1/2 z-[3] grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-green shadow-[0_4px_14px_rgba(30,43,34,.22)] transition-[background-color,color,transform] hover:bg-green hover:text-white active:scale-[0.94]"
+                    className="absolute left-4 top-1/2 z-[3] hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-green opacity-0 shadow-[0_4px_14px_rgba(30,43,34,.22)] transition-[background-color,color,transform,opacity] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-green hover:text-white active:scale-[0.94] md:grid"
                   >
                     {prevIcon}
                   </button>
@@ -252,7 +273,7 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
                     type="button"
                     aria-label="Next slide"
                     onClick={() => go(1)}
-                    className="absolute right-4 top-1/2 z-[3] grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-green shadow-[0_4px_14px_rgba(30,43,34,.22)] transition-[background-color,color,transform] hover:bg-green hover:text-white active:scale-[0.94]"
+                    className="absolute right-4 top-1/2 z-[3] hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-green opacity-0 shadow-[0_4px_14px_rgba(30,43,34,.22)] transition-[background-color,color,transform,opacity] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-green hover:text-white active:scale-[0.94] md:grid"
                   >
                     {nextIcon}
                   </button>
@@ -297,27 +318,38 @@ export function HeroCarousel({ slides, stripImageUrl, stripLinkUrl, linkComponen
           </div>
         )}
 
-        {stripImageUrl ? (
-          (() => {
-            const bannerImg = <img src={stripImageUrl} alt="" className="h-full w-full object-cover" />;
-            // Square, sized to exactly match the main slider's own rendered
-            // height (solveSideBannerSize) — 330px side banner when the
-            // slider is 330px tall, 300px when it's 300px, etc., recomputed
-            // on resize. lg:h-[300px] lg:w-[300px] is just the pre-JS/SSR
-            // default the inline style overrides once isDesktop and the
-            // computed size are known. Hidden below lg entirely (not just
-            // stacked) — per earlier explicit request, the side banner
-            // shouldn't show on mobile at all, not even below the slider.
-            const bannerClass = cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[300px] lg:w-[300px]", bannerRadius);
-            const bannerStyle = isDesktop && sideBannerSize ? { width: sideBannerSize, height: sideBannerSize } : undefined;
-            return stripLinkUrl ? (
-              <Link href={stripLinkUrl} className={bannerClass} style={bannerStyle}>
-                {bannerImg}
-              </Link>
-            ) : (
-              <div className={bannerClass} style={bannerStyle}>{bannerImg}</div>
-            );
-          })()
+        {sideBannerTotal > 0 ? (
+          // Square, sized to exactly match the main slider's own rendered
+          // height (solveSideBannerSize) — 330px side banner when the
+          // slider is 330px tall, 300px when it's 300px, etc., recomputed
+          // on resize. lg:h-[300px] lg:w-[300px] is just the pre-JS/SSR
+          // default the inline style overrides once isDesktop and the
+          // computed size are known. Hidden below lg entirely (not just
+          // stacked) — per earlier explicit request, the side banner
+          // shouldn't show on mobile at all, not even below the slider.
+          // 2+ entries crossfade on their own timer — no arrows/dots here,
+          // unlike the main slider (per explicit request).
+          <div
+            className={cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[300px] lg:w-[300px]", bannerRadius)}
+            style={isDesktop && sideBannerSize ? { width: sideBannerSize, height: sideBannerSize } : undefined}
+            onMouseEnter={() => setSidePaused(true)}
+            onMouseLeave={() => setSidePaused(false)}
+          >
+            {validSideBanners.map((banner, i) => {
+              const bannerImg = <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />;
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "absolute inset-0 transition-opacity duration-[550ms] ease-in-out",
+                    i === sideIndex ? "z-[1] opacity-100" : "opacity-0",
+                  )}
+                >
+                  {banner.linkUrl ? <Link href={banner.linkUrl}>{bannerImg}</Link> : bannerImg}
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div
             className={cn("relative hidden overflow-hidden bg-[#dfe8d9] lg:block lg:h-[300px] lg:w-[300px]", bannerRadius)}

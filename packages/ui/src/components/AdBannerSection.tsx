@@ -32,13 +32,11 @@ export function AdBannerSection({ images, autoplayMs = 4000, linkComponent: Link
   if (valid.length === 0) return null;
 
   const current = valid[Math.min(index, valid.length - 1)];
-  // Matches ghorerbazar.com's `.single-banner` exactly: a 50:13 (≈3.85:1)
-  // desktop crop and a shorter 5:2 mobile crop (that site serves two
-  // separately-cropped image files per breakpoint; here one image
-  // object-covers into each ratio instead of needing a second upload field
-  // for the same visual result). Radius 20px already matched their spec.
+  // 16:5 everywhere (mobile included), matching a 1600×500 upload exactly —
+  // same ratio and reasoning as HeroCarousel's sliderAspect, per explicit
+  // request to keep the two sections' recommended image size consistent.
   const image = (
-    <div className="relative mx-auto aspect-[5/2] w-full max-w-[1686px] overflow-hidden rounded-[20px] bg-gray sm:aspect-[50/13]">
+    <div className="relative mx-auto aspect-[16/5] w-full max-w-[1600px] overflow-hidden rounded-[20px] bg-gray">
       <img src={current.imageUrl} alt="" className="h-full w-full object-cover" />
     </div>
   );

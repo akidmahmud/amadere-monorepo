@@ -106,17 +106,19 @@ function renderSection(
   switch (section.type) {
     case "HERO_BANNER": {
       const slides = config.slides as { imageUrl: string; linkUrl?: string }[] | undefined;
+      // sideBanners (array, multiple) supersedes the old singular
+      // stripImageUrl/stripLinkUrl — fall back to wrapping those as a
+      // one-item array so sections saved before this change keep rendering
+      // their existing side banner unchanged.
+      const sideBanners = (config.sideBanners as { imageUrl: string; linkUrl?: string }[] | undefined) ?? (config.stripImageUrl
+        ? [{ imageUrl: config.stripImageUrl as string, linkUrl: config.stripLinkUrl as string | undefined }]
+        : undefined);
       return (
         // Full-bleed edge-to-edge (no padding, no top gap), unlike every
         // other section — kept only the max-width cap for ultra-wide
         // monitors.
         <div className="mx-auto w-full max-w-[1920px]" key={section.id}>
-          <HeroCarousel
-            slides={slides}
-            stripImageUrl={config.stripImageUrl as string | undefined}
-            stripLinkUrl={config.stripLinkUrl as string | undefined}
-            linkComponent={AppLink}
-          />
+          <HeroCarousel slides={slides} sideBanners={sideBanners} linkComponent={AppLink} />
         </div>
       );
     }

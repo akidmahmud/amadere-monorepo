@@ -10,7 +10,13 @@ export function sanitizeHomepageSectionConfig(
   config: Record<string, unknown>,
 ): Record<string, unknown> {
   if ((type === "HERO_BANNER" || type === "HOME_BANNER_TWO") && Array.isArray(config.slides)) {
-    return { ...config, slides: config.slides.filter((slide) => slide?.imageUrl) };
+    config = { ...config, slides: config.slides.filter((slide) => slide?.imageUrl) };
+  }
+  if (type === "HERO_BANNER" && Array.isArray(config.sideBanners)) {
+    config = { ...config, sideBanners: config.sideBanners.filter((banner) => banner?.imageUrl) };
+  }
+  if (type === "HERO_BANNER" || type === "HOME_BANNER_TWO") {
+    return config;
   }
   if (type === "TESTIMONIAL_BENTO") {
     const reviews = Array.isArray(config.reviews) ? config.reviews.filter((r) => r?.quote && r?.name) : config.reviews;

@@ -80,6 +80,20 @@ function HeroBannerFields({
     onConfigChange({ ...config, slides: next });
   }
 
+  // Sections saved before "multiple side banners" only have the old singular
+  // stripImageUrl/stripLinkUrl fields — read those as a one-item list so an
+  // existing side banner doesn't silently disappear from this form. Any edit
+  // here (add/remove/change) writes the new sideBanners array going forward;
+  // the old fields are left alone in the config object (harmless, unused
+  // once sideBanners exists — the storefront prefers sideBanners too).
+  const sideBanners =
+    (config.sideBanners as Slide[] | undefined) ??
+    (config.stripImageUrl ? [{ imageUrl: config.stripImageUrl as string, linkUrl: config.stripLinkUrl as string | undefined }] : []);
+
+  function updateSideBanners(next: Slide[]) {
+    onConfigChange({ ...config, sideBanners: next });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -127,23 +141,50 @@ function HeroBannerFields({
 
       <div>
         <span className="mb-2 block text-xs font-semibold text-secondary">
-          Side banner <span className="font-normal text-muted">— shown beside the slider on desktop, stacked below it on mobile; stretches to match the slider's height. Leave empty to hide it.</span>
+          Side banners{" "}
+          <span className="font-normal text-muted">
+            — shown beside the slider on desktop only (hidden on mobile, not just stacked), sized to match the
+            slider's height. 2+ images auto-rotate (no arrows — this slot stays quiet next to the main slider's own
+            controls). Leave empty to hide the slot entirely.
+          </span>
         </span>
-        <div className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
-          <MediaPicker
-            value={config.stripImageUrl as string | undefined}
-            onChange={(url) => onConfigChange({ ...config, stripImageUrl: url })}
-            label="Side banner image"
-          />
-          <div className="flex flex-1 flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Link URL (optional)</span>
-            <input
-              value={(config.stripLinkUrl as string | undefined) ?? ""}
-              onChange={(e) => onConfigChange({ ...config, stripLinkUrl: e.target.value })}
-              className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-            />
-          </div>
+        <div className="flex flex-col gap-4">
+          {sideBanners.map((banner, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-inner bg-surface-2 p-3">
+              <MediaPicker
+                value={banner.imageUrl}
+                onChange={(url) => updateSideBanners(sideBanners.map((b, j) => (j === i ? { ...b, imageUrl: url } : b)))}
+                label={`Side banner ${i + 1} image`}
+              />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-secondary">Link URL (optional)</span>
+                <input
+                  value={banner.linkUrl ?? ""}
+                  onChange={(e) =>
+                    updateSideBanners(sideBanners.map((b, j) => (j === i ? { ...b, linkUrl: e.target.value } : b)))
+                  }
+                  className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+                />
+                <Button
+                  type="button"
+                  variant="link"
+                  className="self-start text-danger"
+                  onClick={() => updateSideBanners(sideBanners.filter((_, j) => j !== i))}
+                >
+                  Remove side banner
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-2"
+          onClick={() => updateSideBanners([...sideBanners, { imageUrl: "" }])}
+        >
+          Add side banner
+        </Button>
       </div>
     </div>
   );
@@ -365,7 +406,7 @@ function AdBannerFields({
     <div className="flex flex-col gap-4">
       <div>
         <span className="mb-2 block text-xs font-semibold text-secondary">
-          Images <span className="font-normal text-muted">— recommended size: 1686 × 759px. One image shows statically; 2+ auto-advance as a slider.</span>
+          Images <span className="font-normal text-muted">— recommended size: 1600 × 500px. One image shows statically; 2+ auto-advance as a slider.</span>
         </span>
         <div className="flex flex-col gap-4">
           {images.map((image, i) => (
