@@ -23,7 +23,6 @@ import { NewVariantsBuilder } from "./NewVariantsBuilder";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 const numInputClass = `num ${inputClass}`;
-const textareaClass = "rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500";
 
 function toggle(list: number[], id: number, set: (ids: number[]) => void) {
   set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -223,14 +222,22 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   <span className="text-xs font-bold text-text">Full Description</span>
                   <RichTextEditor value={form.content} onChange={form.setContent} />
                 </div>
-                <label className="mb-3.5 flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">Key Benefits (optional — rendered as a checklist on the product page)</span>
-                  <textarea value={form.benefitPoints} onChange={(e) => form.setBenefitPoints(e.target.value)} rows={4} className={textareaClass} placeholder="One benefit per line" />
-                </label>
-                <label className="flex flex-col gap-1.5">
+                {/* Plain div, not <label> — see the Full Description field's
+                    own comment above for why (RichTextEditor's toolbar has
+                    multiple buttons; a wrapping <label> would hijack every
+                    click in it to the first one). Full (non-compact) editor,
+                    not the short-field compact one — Key Benefits needs
+                    Heading (for benefit groups) and bulleted List (for both
+                    the benefit points and any usage-idea sub-lists), neither
+                    of which the compact toolbar carries. */}
+                <div className="mb-3.5 flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-text">Key Benefits (optional)</span>
+                  <RichTextEditor value={form.benefitPoints} onChange={form.setBenefitPoints} />
+                </div>
+                <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">How to Use (optional)</span>
-                  <textarea value={form.howToUse} onChange={(e) => form.setHowToUse(e.target.value)} rows={3} className={textareaClass} />
-                </label>
+                  <RichTextEditor value={form.howToUse} onChange={form.setHowToUse} />
+                </div>
               </div>
 
               <div className="rounded-card border border-border bg-surface p-[18px]">

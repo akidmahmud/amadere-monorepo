@@ -260,11 +260,22 @@ export function HeroCarousel({ slides, sideBanners, linkComponent: Link = Defaul
                       swipe already covers it via onTouchStart/End above), and
                       only revealed on hover/focus of the slider (opacity-0
                       until the parent's :hover/:focus-within), not shown at
-                      rest — per explicit request. */}
+                      rest — per explicit request. Clicking blurs the button
+                      right after — without it, a mouse click leaves the
+                      button holding keyboard focus, and group-focus-within
+                      alone kept the arrow visible (stuck showing) even after
+                      the mouse left, until something else took focus. Only
+                      matters for a real click (mouse or Enter/Space on a
+                      focused button already showing it) — Tab-focusing it
+                      via keyboard still reveals it via group-focus-within
+                      exactly as before. */}
                   <button
                     type="button"
                     aria-label="Previous slide"
-                    onClick={() => go(-1)}
+                    onClick={(e) => {
+                      go(-1);
+                      e.currentTarget.blur();
+                    }}
                     className="absolute left-4 top-1/2 z-[3] hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-green opacity-0 shadow-[0_4px_14px_rgba(30,43,34,.22)] transition-[background-color,color,transform,opacity] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-green hover:text-white active:scale-[0.94] md:grid"
                   >
                     {prevIcon}
@@ -272,7 +283,10 @@ export function HeroCarousel({ slides, sideBanners, linkComponent: Link = Defaul
                   <button
                     type="button"
                     aria-label="Next slide"
-                    onClick={() => go(1)}
+                    onClick={(e) => {
+                      go(1);
+                      e.currentTarget.blur();
+                    }}
                     className="absolute right-4 top-1/2 z-[3] hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-green opacity-0 shadow-[0_4px_14px_rgba(30,43,34,.22)] transition-[background-color,color,transform,opacity] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-green hover:text-white active:scale-[0.94] md:grid"
                   >
                     {nextIcon}

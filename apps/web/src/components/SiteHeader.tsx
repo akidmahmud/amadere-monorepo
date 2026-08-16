@@ -101,46 +101,50 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
         onSearchSubmit={(query) => query.trim() && router.push(`/search?q=${encodeURIComponent(query.trim())}`)}
         onSearchQueryChange={setSearchQuery}
         searchSuggestions={
-          searchQuery.trim().length >= 2 ? (
-            <div className="max-h-[70vh] overflow-y-auto py-1.5">
-              {suggestionsLoading ? (
-                <p className="px-4 py-3 text-center font-body text-xs text-muted">Searching…</p>
-              ) : suggestions?.items?.length ? (
-                <>
-                  {suggestions.items.map((hit) => (
-                    <Link
-                      key={hit.slug}
-                      href={`/products/${hit.slug}`}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-beige"
-                    >
-                      <span className="h-10 w-10 shrink-0 overflow-hidden rounded-[8px] bg-beige">
-                        {hit.primaryImageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={toDisplayImageUrl(hit.primaryImageUrl)} alt="" className="h-full w-full object-cover" />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-body text-[13px] text-ink">{hit.name}</span>
-                        <span className="block font-ui text-xs font-semibold text-green-deep">
-                          ৳{hit.salePrice ?? hit.price}
-                        </span>
-                      </span>
-                    </Link>
-                  ))}
-                  <Link
-                    href={`/search?q=${encodeURIComponent(searchQuery.trim())}`}
-                    className="block border-t border-line px-4 py-2 text-center font-ui text-xs font-semibold text-green hover:bg-beige"
-                  >
-                    View all results for &quot;{searchQuery.trim()}&quot;
-                  </Link>
-                </>
-              ) : (
-                <p className="px-4 py-3 text-center font-body text-xs text-muted">
-                  No products found for &quot;{searchQuery.trim()}&quot;.
-                </p>
-              )}
-            </div>
-          ) : undefined
+          searchQuery.trim().length >= 2
+            ? (close) => (
+                <div className="max-h-[70vh] overflow-y-auto py-1.5">
+                  {suggestionsLoading ? (
+                    <p className="px-4 py-3 text-center font-body text-xs text-muted">Searching…</p>
+                  ) : suggestions?.items?.length ? (
+                    <>
+                      {suggestions.items.map((hit) => (
+                        <Link
+                          key={hit.slug}
+                          href={`/products/${hit.slug}`}
+                          onClick={close}
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-beige"
+                        >
+                          <span className="h-10 w-10 shrink-0 overflow-hidden rounded-[8px] bg-beige">
+                            {hit.primaryImageUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={toDisplayImageUrl(hit.primaryImageUrl)} alt="" className="h-full w-full object-cover" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-body text-[13px] text-ink">{hit.name}</span>
+                            <span className="block font-ui text-xs font-semibold text-green-deep">
+                              ৳{hit.salePrice ?? hit.price}
+                            </span>
+                          </span>
+                        </Link>
+                      ))}
+                      <Link
+                        href={`/search?q=${encodeURIComponent(searchQuery.trim())}`}
+                        onClick={close}
+                        className="block border-t border-line px-4 py-2 text-center font-ui text-xs font-semibold text-green hover:bg-beige"
+                      >
+                        View all results for &quot;{searchQuery.trim()}&quot;
+                      </Link>
+                    </>
+                  ) : (
+                    <p className="px-4 py-3 text-center font-body text-xs text-muted">
+                      No products found for &quot;{searchQuery.trim()}&quot;.
+                    </p>
+                  )}
+                </div>
+              )
+            : undefined
         }
         trackOrderHref="/track"
         trackOrderLabel={t("header.trackOrder")}

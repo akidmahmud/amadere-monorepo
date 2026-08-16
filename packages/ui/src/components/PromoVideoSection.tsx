@@ -301,9 +301,11 @@ function PromoVideoCardTile({
       // fit ~3.5 in the section's 1440px max-width wrapper) — same
       // calc(percentage - gap-share) technique as mobile's 2-up, just for
       // N=5: each card is 20% of the row minus its share of the 4 gaps
-      // between 5 cards (18px × 4 ÷ 5 = 14.4px). Card shape (377:600)
-      // unchanged, just fluid now instead of a fixed pixel size.
-      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:aspect-[377/600] sm:w-[calc(20%-14.4px)]"
+      // between 5 cards (18px × 4 ÷ 5 = 14.4px). No separate desktop aspect
+      // override — the base aspect-[377/650] (a bit taller than the
+      // previous fixed-pixel desktop shape, per explicit "increase the
+      // height a little" request) now applies at every breakpoint.
+      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:w-[calc(20%-14.4px)]"
     >
       {isInView ? (
         <PlayingMedia card={card} />

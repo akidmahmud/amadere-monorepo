@@ -94,7 +94,14 @@ export interface HeaderProps {
   searchAriaLabel: string;
   onSearchSubmit?: (query: string) => void;
   onSearchQueryChange?: (query: string) => void;
-  searchSuggestions?: ReactNode;
+  /** Render-prop, not a plain node — the caller needs `close` to dismiss the
+   * dropdown/mobile search overlay itself when a suggestion (a real
+   * navigation Link, not the form's own onSubmit) is clicked. Without it,
+   * clicking a suggestion navigates to the product page but this component's
+   * own isSuggestionsOpen/isMobileSearchOpen state stays true (it survives
+   * the route change since Header is a persistent layout component), so the
+   * dropdown/overlay is left stuck open over the new page. */
+  searchSuggestions?: (close: () => void) => ReactNode;
   trackOrderHref: string;
   trackOrderLabel: string;
   accountHref?: string;
@@ -230,6 +237,11 @@ export function Header({
     );
   }
 
+  function closeSearch() {
+    setIsSuggestionsOpen(false);
+    setIsMobileSearchOpen(false);
+  }
+
   function suggestionsPanel() {
     if (!isSuggestionsOpen || !searchSuggestions) return null;
     return (
@@ -240,7 +252,7 @@ export function Header({
         onMouseDown={(e) => e.preventDefault()}
         className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-lg border border-header-line bg-white shadow-brand"
       >
-        {searchSuggestions}
+        {searchSuggestions(closeSearch)}
       </div>
     );
   }

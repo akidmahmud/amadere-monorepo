@@ -9,6 +9,7 @@ import {
 } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
+import { FaqAccordion } from "@/components/FaqAccordion";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
 import { ProductFloatingBarProvider } from "@/components/ProductFloatingBarProvider";
 import { WriteReviewForm } from "@/components/WriteReviewForm";
@@ -120,19 +121,13 @@ export default async function ProductPage({
     .filter((url): url is string => Boolean(url))
     .map((url) => ({ url }));
 
-  // "Key Benefits" tab — a checklist, unlike the deprecated badge strip.
-  const benefitPoints = (product.benefitPoints ?? "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
   // Admin-authored WYSIWYG HTML, not user-generated — same trust level as
   // the description block above and blog post content elsewhere. Still
   // sanitized before render, so a compromised admin account can't plant a
   // stored-XSS payload that runs for every visitor.
-  function htmlBlock(html: string) {
+  function htmlBlock(html: string, extraClassName?: string) {
     // eslint-disable-next-line react/no-danger
-    return <div className="rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
+    return <div className={`rich-content ${extraClassName ?? ""}`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
   }
 
   const tabs = [
@@ -147,32 +142,22 @@ export default async function ProductPage({
     product.faqs.length > 0 && {
       id: "faq",
       label: "FAQ",
-      content: (
-        <div className="flex flex-col gap-4">
-          {product.faqs.map((faq, i) => (
-            <div key={i}>
-              <p className="font-body text-sm font-bold text-text">{faq.question}</p>
-              <p className="mt-1 font-body text-sm text-secondary">{faq.answer}</p>
-            </div>
-          ))}
-        </div>
-      ),
+      content: <FaqAccordion faqs={product.faqs} />,
     },
-    benefitPoints.length > 0 && {
+    // Both fields are now real CKEditor HTML (headings, bulleted lists,
+    // paragraphs) instead of loose plain text — the admin builds the actual
+    // structure (section headings, ticked vs. plain bullet points, one
+    // How-to-Use step per line) themselves with the editor's own tools, so
+    // this just renders it like Description/Brand below, no text-convention
+    // parsing needed. "rich-content-checklist" swaps <ul><li>'s default disc
+    // marker for the same green checkmark the old hand-built checklist used
+    // — see globals.css — scoped to this one tab only (Description/How to
+    // Use/Brand keep plain bullets, since a checkmark only makes sense for
+    // an actual list of benefits).
+    product.benefitPoints && {
       id: "key-benefits",
       label: "Key Benefits",
-      content: (
-        <ul className="flex flex-col gap-2.5">
-          {benefitPoints.map((point, i) => (
-            <li key={i} className="flex items-start gap-2.5 font-body text-sm font-medium text-text">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-green">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              {point}
-            </li>
-          ))}
-        </ul>
-      ),
+      content: htmlBlock(product.benefitPoints, "rich-content-checklist"),
     },
     product.howToUse && { id: "how-to-use", label: "How to Use", content: htmlBlock(product.howToUse) },
     // Always last, per explicit request — kept as its own array push (not
