@@ -724,6 +724,11 @@ enum CostPriceUnit {
   PER_KG
   PER_100G
   PER_G
+  // Volume-based — the same "Weight" field variants already carry is reused
+  // as the multiplier, interpreted as liters instead of kilograms when one
+  // of these is selected (e.g. a "2 Ltr" oil variant enters 2 there).
+  PER_LITER
+  PER_ML
 }
 
 model Product {

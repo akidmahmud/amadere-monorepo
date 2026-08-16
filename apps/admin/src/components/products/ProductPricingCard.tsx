@@ -35,19 +35,22 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
         <div className="mt-1.5 flex flex-col gap-1.5">
           <p className="leading-relaxed text-secondary">
             By default, Cost Price is a fixed amount used as-is for Profit/Margin. Turn on &quot;Calculate cost by
-            weight&quot; to enter it as a rate instead (per kg / per 100g / per gram) — it&apos;s then multiplied by
-            the product&apos;s Weight ({form.hasVariants ? "each variant's own Weight, set in the Variants tab" : "the Weight (kg) field below"})
-            to get the real cost. Use the flat option when cost doesn&apos;t scale with size (boxes, bundles,
-            fixed-price items); use per-weight when the same item is sold in different weight-based pack sizes.
+            weight&quot; to enter it as a rate instead (per kg / per 100g / per gram / per liter / per ml) —
+            it&apos;s then multiplied by the product&apos;s Weight (
+            {form.hasVariants ? "each variant's own Weight, set in the Variants tab" : "the Weight (kg) field below"}
+            ) to get the real cost — for the liter/ml rates, enter the volume (e.g. 2 for a 2 Ltr pack) in that same
+            field. Use the flat option when cost doesn&apos;t scale with size (boxes, bundles, fixed-price items);
+            use per-unit when the same item is sold in different weight or volume-based pack sizes.
           </p>
           <p lang="bn" className="leading-relaxed text-secondary">
             ডিফল্টভাবে, কস্ট প্রাইস একটি নির্দিষ্ট (ফিক্সড) মূল্য যা সরাসরি প্রফিট/মার্জিন হিসাব করতে ব্যবহৃত হয়।
             &quot;Calculate cost by weight&quot; চালু করলে এটিকে একটি রেট হিসেবে দিতে পারবেন (প্রতি কেজি / প্রতি ১০০
-            গ্রাম / প্রতি গ্রাম) — তখন এটি পণ্যের ওজন (
+            গ্রাম / প্রতি গ্রাম / প্রতি লিটার / প্রতি মিলিলিটার) — তখন এটি পণ্যের ওজন (
             {form.hasVariants ? "প্রতিটি ভ্যারিয়েন্টের নিজস্ব ওজন, ভ্যারিয়েন্টস ট্যাবে সেট করা হয়" : "নিচের Weight (kg) ফিল্ড"}
-            ) দিয়ে গুণ করে আসল খরচ বের করবে। যেসব পণ্যের খরচ সাইজ অনুযায়ী পরিবর্তিত হয় না (বক্স, বান্ডেল,
-            ফিক্সড-প্রাইস আইটেম) সেগুলোর জন্য ফ্ল্যাট অপশন ব্যবহার করুন; একই পণ্য বিভিন্ন ওজনের প্যাকে বিক্রি হলে
-            পার-ওয়েট অপশন ব্যবহার করুন।
+            ) দিয়ে গুণ করে আসল খরচ বের করবে — লিটার/মিলিলিটার রেটের ক্ষেত্রে, ওই একই ফিল্ডে ভলিউম দিন (যেমন ২ লিটারের
+            প্যাকের জন্য ২)। যেসব পণ্যের খরচ সাইজ অনুযায়ী পরিবর্তিত হয় না (বক্স, বান্ডেল, ফিক্সড-প্রাইস আইটেম)
+            সেগুলোর জন্য ফ্ল্যাট অপশন ব্যবহার করুন; একই পণ্য বিভিন্ন ওজন বা ভলিউমের প্যাকে বিক্রি হলে পার-ইউনিট
+            অপশন ব্যবহার করুন।
           </p>
         </div>
       </details>
@@ -95,6 +98,8 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
                 <option value="PER_KG">Kilogram</option>
                 <option value="PER_100G">100 grams</option>
                 <option value="PER_G">Gram</option>
+                <option value="PER_LITER">Liter</option>
+                <option value="PER_ML">Milliliter</option>
               </select>
               <span className="text-xs text-muted">
                 Cost = this rate × the product&apos;s Weight (kg) below. Leave unchecked for products where cost
@@ -145,6 +150,8 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
                 <option value="PER_KG">Kilogram</option>
                 <option value="PER_100G">100 grams</option>
                 <option value="PER_G">Gram</option>
+                <option value="PER_LITER">Liter</option>
+                <option value="PER_ML">Milliliter</option>
               </select>
               <span className="text-xs text-muted">
                 Each variant&apos;s cost = this rate × its own weight (set per variant in the Variants tab). Leave

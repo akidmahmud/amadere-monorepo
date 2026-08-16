@@ -366,6 +366,75 @@ export class ProductsService {
     return toAdminProductDto(product);
   }
 
+  // Clones everything worth re-typing (translations/FAQs, pricing, media,
+  // categories/tags/attributes, variants+their attribute combos) but
+  // deliberately resets everything that identifies a specific physical
+  // listing rather than being template content: slug (must be unique — see
+  // below), sku/variant sku/variant barcode (all @unique or physical-item
+  // identifiers, copying them verbatim would either 500 on save or make two
+  // different products falsely share a barcode), status back to DRAFT,
+  // isFeatured off, and stock/stockStatus back to zero/out-of-stock — a
+  // duplicate is a starting point for a new listing, not a live second copy
+  // of the original's current inventory. Reuses create()'s own validation
+  // (slug/reference/pricing/variant-attribute checks) rather than
+  // duplicating it, by building a CreateProductDto from the existing record.
+  async duplicate(id: number): Promise<AdminProductDto> {
+    const existing = await this.adminGet(id);
+
+    let slug = `${existing.slug}-copy`;
+    for (let n = 2; await this.prisma.client.product.findUnique({ where: { slug } }); n++) {
+      slug = `${existing.slug}-copy-${n}`;
+    }
+
+    const dto: CreateProductDto = {
+      slug,
+      brandId: existing.brandId ?? undefined,
+      productType: existing.productType,
+      status: 'DRAFT',
+      isFeatured: false,
+      flagLabel: existing.flagLabel ?? undefined,
+      videoUrl: existing.videoUrl ?? undefined,
+      hasVariants: existing.hasVariants,
+      trackInventory: existing.trackInventory,
+      allowBackorder: existing.allowBackorder,
+      stock: 0,
+      stockStatus: 'OUT_OF_STOCK',
+      price: existing.price ? Number(existing.price) : undefined,
+      salePrice: existing.salePrice ? Number(existing.salePrice) : undefined,
+      costPerItem: existing.costPerItem ? Number(existing.costPerItem) : undefined,
+      costPriceUnit: existing.costPriceUnit ?? undefined,
+      shippableWeight: existing.shippableWeight ? Number(existing.shippableWeight) : undefined,
+      minOrderQuantity: existing.minOrderQuantity,
+      maxOrderQuantity: existing.maxOrderQuantity ?? undefined,
+      translations: existing.translations.map((t) => ({
+        locale: t.locale,
+        name: `${t.name} (copy)`,
+        description: t.description ?? undefined,
+        content: t.content ?? undefined,
+        keyBenefits: t.keyBenefits ?? undefined,
+        benefitPoints: t.benefitPoints ?? undefined,
+        howToUse: t.howToUse ?? undefined,
+        faqs: t.faqs,
+      })),
+      categoryIds: existing.categoryIds,
+      tagIds: existing.tagIds,
+      attributeIds: existing.attributeIds,
+      mediaIds: existing.media.map((m) => m.id),
+      variants: existing.hasVariants
+        ? existing.variants.map((v) => ({
+            price: Number(v.price),
+            salePrice: v.salePrice ? Number(v.salePrice) : undefined,
+            stock: 0,
+            weightOverride: v.weightOverride ? Number(v.weightOverride) : undefined,
+            isDefault: v.isDefault,
+            attributeValueIds: v.attributeValueIds,
+          }))
+        : undefined,
+    };
+
+    return this.create(dto);
+  }
+
   async create(dto: CreateProductDto): Promise<AdminProductDto> {
     await this.assertSlugAvailable(dto.slug);
     await this.validateReferences(dto);

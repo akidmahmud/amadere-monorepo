@@ -1092,6 +1092,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProductsController_duplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/restore": {
         parameters: {
             query?: never;
@@ -6540,7 +6556,7 @@ export interface components {
              * @description When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.
              * @enum {string|null}
              */
-            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | null;
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML" | null;
             /** @description Kilograms */
             shippableWeight?: number;
             /** @default 1 */
@@ -6604,7 +6620,7 @@ export interface components {
              * @description When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.
              * @enum {string|null}
              */
-            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | null;
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML" | null;
             /** @description Kilograms */
             shippableWeight?: number;
             /** @default 1 */
@@ -11404,6 +11420,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminProductsController_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductDto"];
+                };
             };
         };
     };

@@ -149,6 +149,13 @@ export class AdminProductsController {
     return this.products.delete(id);
   }
 
+  @Post(':id/duplicate')
+  @RequirePermission('product.create')
+  @ApiOkResponse({ type: AdminProductDto })
+  duplicate(@Param('id', ParseIntPipe) id: number): Promise<AdminProductDto> {
+    return this.products.duplicate(id);
+  }
+
   // Super-admin only regardless of granted permissions — see SuperAdminGuard.
   @Post(':id/restore')
   @UseGuards(SuperAdminGuard)

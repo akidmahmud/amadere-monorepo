@@ -6,7 +6,7 @@ import type { PublishStatus } from "@/hooks/useBrands";
 export type ProductType = "PHYSICAL" | "DIGITAL";
 export type StockStatus = "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
 export type ProductFlagLabel = "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED";
-export type CostPriceUnit = "PER_KG" | "PER_100G" | "PER_G";
+export type CostPriceUnit = "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML";
 
 // Same swagger enum-erasure fix as every other module — productType/status/
 // stockStatus/flagLabel/costPriceUnit on the response DTO come out as
@@ -175,6 +175,14 @@ export function useDeleteProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => proxyFetch<void>(`/admin/products/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useDuplicateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<AdminProduct>(`/admin/products/${id}/duplicate`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

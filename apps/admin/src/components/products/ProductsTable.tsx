@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/useCategories";
-import { useDeleteProduct, type AdminProductListItem, type AdminProductFilters } from "@/hooks/useProducts";
+import { useDeleteProduct, useDuplicateProduct, type AdminProductListItem, type AdminProductFilters } from "@/hooks/useProducts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ProductImportModal } from "@/components/products/ProductImportModal";
+import { useToast } from "@/components/ToastProvider";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
 
 const STATUS_PILL: Record<string, string> = {
   PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
@@ -68,6 +71,7 @@ export function ProductsTable({
 }) {
   const router = useRouter();
   const qc = useQueryClient();
+  const toast = useToast();
   const { data: categories } = useCategories();
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.translations[0]?.name ?? c.slug]));
 
@@ -81,6 +85,20 @@ export function ProductsTable({
   const [bulkAction, setBulkAction] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const deleteProduct = useDeleteProduct();
+  const duplicateProduct = useDuplicateProduct();
+
+  // Jumps straight into editing the copy — the whole point of duplicating is
+  // almost always "now let me change the name/price/etc.", same reasoning
+  // as the New Product page redirecting to the edit page after create.
+  async function handleDuplicate(id: number) {
+    try {
+      const copy = await duplicateProduct.mutateAsync(id);
+      toast.push("Product duplicated — now editing the copy.", "success");
+      router.push(`/products/${copy.id}`);
+    } catch (err) {
+      toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to duplicate product", "error");
+    }
+  }
   // Single-row target xor bulk (selected.size products) — never both at
   // once, so one ConfirmDialog instance covers both delete entry points.
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | "bulk" | null>(null);
@@ -321,6 +339,19 @@ export function ProductsTable({
                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                           </svg>
                         </Link>
+                        <button
+                          type="button"
+                          aria-label="Duplicate"
+                          title="Duplicate product"
+                          disabled={duplicateProduct.isPending}
+                          onClick={() => handleDuplicate(p.id)}
+                          className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="12" height="12" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                        </button>
                         <button
                           type="button"
                           aria-label="Delete"
