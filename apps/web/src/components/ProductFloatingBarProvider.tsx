@@ -69,20 +69,47 @@ export function ProductFloatingBarProvider({
     });
   }, [handleAddToCart, handleBuyNow, addToCart.isPending, outOfStock, update]);
 
-  // --- IntersectionObserver (same logic as old ProductMobileIsland) ---
+  // --- Scroll-position check (was IntersectionObserver, replaced — see
+  //     below) ---
+  //
+  // IntersectionObserver reportedly went stale/never fired on some real
+  // devices (iPhone Safari, Huawei Browser) — both are known for caching a
+  // stale root/target rect across the dynamic address-bar show/hide that
+  // happens mid-scroll, so the callback can simply stop firing instead of
+  // reporting the element left the viewport. Rather than chase per-browser
+  // IntersectionObserver quirks, this just re-measures the real element
+  // position directly (getBoundingClientRect, universally reliable, no
+  // caching) on every scroll/resize tick, rAF-throttled so it's cheap.
+  // `rect.bottom < 0` = the watched row has scrolled fully above the
+  // viewport top, same condition the old observer callback intended.
+  //
+  // Watches #pdp-social-proof (the "N People watching / N People bought"
+  // row, PdpPurchasePanel.tsx) rather than #pdp-buy-buttons — per explicit
+  // request, the sticky bar should appear as soon as that row scrolls out of
+  // view, not only once the buy buttons themselves are gone too.
   useEffect(() => {
-    const target = document.getElementById("pdp-buy-buttons");
+    const target = document.getElementById("pdp-social-proof");
     if (!target) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Only flip on once the row has genuinely scrolled up past the
-        // top edge, not just because it hasn't been scrolled to yet.
-        update({ isScrolledPast: !entry.isIntersecting && entry.boundingClientRect.top < 0 });
-      },
-      { threshold: 0 },
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
+
+    let ticking = false;
+    function check() {
+      ticking = false;
+      const rect = target!.getBoundingClientRect();
+      update({ isScrolledPast: rect.bottom < 0 });
+    }
+    function onScrollOrResize() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(check);
+    }
+
+    check();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+    };
   }, [update]);
 
   // --- Reset on unmount (navigating away from product page) ---

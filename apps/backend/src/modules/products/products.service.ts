@@ -401,6 +401,7 @@ export class ProductsService {
         saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : dto.saleStartsAt,
         saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : dto.saleEndsAt,
         costPerItem: dto.costPerItem,
+        costPriceUnit: dto.costPriceUnit,
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
@@ -515,6 +516,7 @@ export class ProductsService {
         saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : dto.saleStartsAt,
         saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : dto.saleEndsAt,
         costPerItem: dto.costPerItem,
+        costPriceUnit: dto.costPriceUnit,
         shippableWeight: dto.shippableWeight,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
@@ -773,6 +775,26 @@ export class ProductsService {
     await this.prisma.client.productVariant.update({
       where: { id: variantId },
       data: { sku: normalized },
+    });
+  }
+
+  // Powers per-variant "cost per kg × this variant's weight" profit
+  // calculation on the admin's Variants tab (Product.costPriceUnit) — was
+  // already used for courier shipment weight (falls back to the product's
+  // shippableWeight when unset), this just gives it a second consumer, not a
+  // new concept. `null` explicitly clears it back to that fallback.
+  async updateVariantWeight(
+    productId: number,
+    variantId: number,
+    weightOverride?: number | null,
+  ): Promise<void> {
+    const variant = await this.prisma.client.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+    if (!variant) throw new NotFoundException('Variant not found');
+    await this.prisma.client.productVariant.update({
+      where: { id: variantId },
+      data: { weightOverride },
     });
   }
 

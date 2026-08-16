@@ -720,6 +720,12 @@ enum ProductFlagLabel {
   FEATURED
 }
 
+enum CostPriceUnit {
+  PER_KG
+  PER_100G
+  PER_G
+}
+
 model Product {
   id         Int     @id @default(autoincrement())
   slug       String  @unique
@@ -759,6 +765,14 @@ model Product {
   saleStartsAt   DateTime?   @map("sale_starts_at")
   saleEndsAt     DateTime?   @map("sale_ends_at")
   costPerItem    Decimal?    @map("cost_per_item") @db.Decimal(10, 2)
+  // When set, costPerItem above is a RATE per this unit of weight rather
+  // than an absolute buying cost — each variant's actual profit cost becomes
+  // costPerItem × (that variant's weightOverride converted to this unit),
+  // not the flat costPerItem value. Null (default, and the only option for
+  // non-variant products) = costPerItem is used as-is, unscaled — the
+  // correct behavior for box/jar/bundle-style variants where cost doesn't
+  // scale with weight at all. See apps/admin's variant-cost.ts.
+  costPriceUnit  CostPriceUnit? @map("cost_price_unit")
 
   // Accurate shippable weight for courier charging (AGENTS.md §5/§11),
   // editable — not just a label/box-volume figure. Kilograms. Also the

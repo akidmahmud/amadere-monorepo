@@ -1,14 +1,23 @@
 "use client";
 
 import type { ProductFormState } from "./useProductFormState";
+import { COST_PRICE_UNIT_LABELS, computeVariantCost } from "@/lib/variant-cost";
+import type { CostPriceUnit } from "@/hooks/useProducts";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-ink font-semibold outline-none focus:border-brand-500";
 const readonlyClass = "h-10 rounded-sm border border-border bg-surface-2 px-3 text-sm text-muted outline-none";
 
 export function ProductPricingCard({ form }: { form: ProductFormState }) {
   const price = Number(form.price) || 0;
-  const cost = Number(form.costPerItem) || 0;
-  const hasCost = form.costPerItem.trim() !== "";
+  const costPerItem = form.costPerItem.trim() !== "" ? Number(form.costPerItem) : undefined;
+  // Simple products have exactly one weight field already (Weight (kg) /
+  // shippableWeight below) — reused as the multiplier basis here instead of
+  // a second, redundant weight input, unlike variants which each need their
+  // own. undefined weight + costPriceUnit set = don't guess, same as variants.
+  const shippableWeight = form.shippableWeight.trim() !== "" ? Number(form.shippableWeight) : undefined;
+  const effectiveCost = computeVariantCost(costPerItem, form.costPriceUnit, shippableWeight);
+  const hasCost = effectiveCost !== undefined;
+  const cost = effectiveCost ?? 0;
   const profit = price - cost;
   const margin = price > 0 ? (profit / price) * 100 : 0;
 
@@ -21,10 +30,33 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
     <div className="rounded-card border border-border bg-surface p-[18px]">
       <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Pricing</h3>
 
+      <details className="mb-3.5 rounded-sm border border-border bg-surface-2 p-3 text-xs">
+        <summary className="cursor-pointer font-bold text-text">How Cost Price works / কস্ট প্রাইস কীভাবে কাজ করে</summary>
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <p className="leading-relaxed text-secondary">
+            By default, Cost Price is a fixed amount used as-is for Profit/Margin. Turn on &quot;Calculate cost by
+            weight&quot; to enter it as a rate instead (per kg / per 100g / per gram) — it&apos;s then multiplied by
+            the product&apos;s Weight ({form.hasVariants ? "each variant's own Weight, set in the Variants tab" : "the Weight (kg) field below"})
+            to get the real cost. Use the flat option when cost doesn&apos;t scale with size (boxes, bundles,
+            fixed-price items); use per-weight when the same item is sold in different weight-based pack sizes.
+          </p>
+          <p lang="bn" className="leading-relaxed text-secondary">
+            ডিফল্টভাবে, কস্ট প্রাইস একটি নির্দিষ্ট (ফিক্সড) মূল্য যা সরাসরি প্রফিট/মার্জিন হিসাব করতে ব্যবহৃত হয়।
+            &quot;Calculate cost by weight&quot; চালু করলে এটিকে একটি রেট হিসেবে দিতে পারবেন (প্রতি কেজি / প্রতি ১০০
+            গ্রাম / প্রতি গ্রাম) — তখন এটি পণ্যের ওজন (
+            {form.hasVariants ? "প্রতিটি ভ্যারিয়েন্টের নিজস্ব ওজন, ভ্যারিয়েন্টস ট্যাবে সেট করা হয়" : "নিচের Weight (kg) ফিল্ড"}
+            ) দিয়ে গুণ করে আসল খরচ বের করবে। যেসব পণ্যের খরচ সাইজ অনুযায়ী পরিবর্তিত হয় না (বক্স, বান্ডেল,
+            ফিক্সড-প্রাইস আইটেম) সেগুলোর জন্য ফ্ল্যাট অপশন ব্যবহার করুন; একই পণ্য বিভিন্ন ওজনের প্যাকে বিক্রি হলে
+            পার-ওয়েট অপশন ব্যবহার করুন।
+          </p>
+        </div>
+      </details>
+
       {form.hasVariants ? (
         <p className="mb-3.5 text-sm text-muted">
-          This product has variants — price, sale price, and profit are set per-variant in the Variants tab. Cost
-          price below is the product-wide default, used when a variant doesn&apos;t set its own.
+          This product has variants — price and sale price are set per-variant in the Variants tab. Cost price below
+          is either a flat cost applied to every variant, or (if you turn on per-weight calculation) a rate that
+          gets multiplied by each variant&apos;s own weight — set per variant in the Variants tab.
         </p>
       ) : (
         <div className="mb-3.5 flex flex-col gap-3">
@@ -39,9 +71,37 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
             <input type="number" value={form.salePrice} onChange={(e) => form.setSalePrice(e.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-text">Cost Price (৳)</span>
+            <span className="text-xs font-bold text-text">
+              {form.costPriceUnit ? `Cost Price (৳ ${COST_PRICE_UNIT_LABELS[form.costPriceUnit]})` : "Cost Price (৳)"}
+            </span>
             <input type="number" value={form.costPerItem} onChange={(e) => form.setCostPerItem(e.target.value)} className={inputClass} />
           </label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-text">
+            <input
+              type="checkbox"
+              checked={form.costPriceUnit !== null}
+              onChange={(e) => form.setCostPriceUnit(e.target.checked ? "PER_KG" : null)}
+            />
+            Calculate cost by weight
+          </label>
+          {form.costPriceUnit && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-text">Rate is per</span>
+              <select
+                value={form.costPriceUnit}
+                onChange={(e) => form.setCostPriceUnit(e.target.value as CostPriceUnit)}
+                className={inputClass}
+              >
+                <option value="PER_KG">Kilogram</option>
+                <option value="PER_100G">100 grams</option>
+                <option value="PER_G">Gram</option>
+              </select>
+              <span className="text-xs text-muted">
+                Cost = this rate × the product&apos;s Weight (kg) below. Leave unchecked for products where cost
+                doesn&apos;t scale with weight (a fixed per-item cost).
+              </span>
+            </label>
+          )}
           {/* Same field as "Shippable weight, kg" on the Shipping tab (one
               piece of state, edit either and both stay in sync) — surfaced
               here too since it's easy to miss on its own tab, and it's
@@ -59,10 +119,41 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
       )}
 
       {form.hasVariants && (
-        <label className="mb-3.5 flex flex-col gap-1.5">
-          <span className="text-xs font-bold text-text">Default Cost Price (৳)</span>
-          <input type="number" value={form.costPerItem} onChange={(e) => form.setCostPerItem(e.target.value)} className={inputClass} />
-        </label>
+        <div className="mb-3.5 flex flex-col gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-text">
+              {form.costPriceUnit ? `Cost Price (৳ ${COST_PRICE_UNIT_LABELS[form.costPriceUnit]})` : "Default Cost Price (৳)"}
+            </span>
+            <input type="number" value={form.costPerItem} onChange={(e) => form.setCostPerItem(e.target.value)} className={inputClass} />
+          </label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-text">
+            <input
+              type="checkbox"
+              checked={form.costPriceUnit !== null}
+              onChange={(e) => form.setCostPriceUnit(e.target.checked ? "PER_KG" : null)}
+            />
+            Calculate cost per variant by weight
+          </label>
+          {form.costPriceUnit && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-text">Rate is per</span>
+              <select
+                value={form.costPriceUnit}
+                onChange={(e) => form.setCostPriceUnit(e.target.value as CostPriceUnit)}
+                className={inputClass}
+              >
+                <option value="PER_KG">Kilogram</option>
+                <option value="PER_100G">100 grams</option>
+                <option value="PER_G">Gram</option>
+              </select>
+              <span className="text-xs text-muted">
+                Each variant&apos;s cost = this rate × its own weight (set per variant in the Variants tab). Leave
+                unchecked above for products where cost doesn&apos;t scale with weight (boxes, bundles, jars) — the
+                cost price is then applied flat to every variant instead.
+              </span>
+            </label>
+          )}
+        </div>
       )}
 
       {!form.hasVariants && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProductFlagLabel, ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts";
+import type { CostPriceUnit, ProductFlagLabel, ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts";
 import type { PublishStatus } from "@/hooks/useBrands";
 import type { GalleryImage } from "./ProductMediaGallery";
 
@@ -27,6 +27,7 @@ export interface ProductFormSnapshot {
   saleStartsAt: string;
   saleEndsAt: string;
   costPerItem: string;
+  costPriceUnit: CostPriceUnit | null;
   shippableWeight: string;
   minOrderQuantity: string;
   maxOrderQuantity: string;
@@ -89,6 +90,7 @@ export function useProductFormState(initial?: AdminProduct) {
   const [saleStartsAt, setSaleStartsAt] = useState(initial?.saleStartsAt?.slice(0, 10) ?? "");
   const [saleEndsAt, setSaleEndsAt] = useState(initial?.saleEndsAt?.slice(0, 10) ?? "");
   const [costPerItem, setCostPerItem] = useState(initial?.costPerItem ?? "");
+  const [costPriceUnit, setCostPriceUnit] = useState<CostPriceUnit | null>(initial?.costPriceUnit ?? null);
   const [shippableWeight, setShippableWeight] = useState(initial?.shippableWeight ?? "");
   const [minOrderQuantity, setMinOrderQuantity] = useState(String(initial?.minOrderQuantity ?? 1));
   const [maxOrderQuantity, setMaxOrderQuantity] = useState(
@@ -131,6 +133,11 @@ export function useProductFormState(initial?: AdminProduct) {
       saleStartsAt: saleStartsAt || undefined,
       saleEndsAt: saleEndsAt || undefined,
       costPerItem: costPerItem ? Number(costPerItem) : undefined,
+      // Always sent explicitly (never omitted) so unchecking "calculate per
+      // variant by weight" actually clears a previously-set unit — the
+      // update endpoint treats an omitted/undefined field as "leave
+      // unchanged", only an explicit null clears it.
+      costPriceUnit,
       shippableWeight: shippableWeight ? Number(shippableWeight) : undefined,
       minOrderQuantity: Number(minOrderQuantity),
       maxOrderQuantity: maxOrderQuantity ? Number(maxOrderQuantity) : undefined,
@@ -187,6 +194,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setSaleStartsAt(product.saleStartsAt?.slice(0, 10) ?? "");
     setSaleEndsAt(product.saleEndsAt?.slice(0, 10) ?? "");
     setCostPerItem(product.costPerItem ?? "");
+    setCostPriceUnit(product.costPriceUnit);
     setShippableWeight(product.shippableWeight ?? "");
     setMinOrderQuantity(String(product.minOrderQuantity));
     setMaxOrderQuantity(product.maxOrderQuantity != null ? String(product.maxOrderQuantity) : "");
@@ -235,7 +243,7 @@ export function useProductFormState(initial?: AdminProduct) {
   function getSnapshot(): ProductFormSnapshot {
     return {
       slug, sku, brandId, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
-      stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, shippableWeight,
+      stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, costPriceUnit, shippableWeight,
       minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse, faqs,
       categoryIds, tagIds, attributeIds, images,
     };
@@ -260,6 +268,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setSaleStartsAt(s.saleStartsAt);
     setSaleEndsAt(s.saleEndsAt);
     setCostPerItem(s.costPerItem);
+    setCostPriceUnit(s.costPriceUnit);
     setShippableWeight(s.shippableWeight);
     setMinOrderQuantity(s.minOrderQuantity);
     setMaxOrderQuantity(s.maxOrderQuantity);
@@ -295,6 +304,7 @@ export function useProductFormState(initial?: AdminProduct) {
     saleStartsAt, setSaleStartsAt,
     saleEndsAt, setSaleEndsAt,
     costPerItem, setCostPerItem,
+    costPriceUnit, setCostPriceUnit,
     shippableWeight, setShippableWeight,
     minOrderQuantity, setMinOrderQuantity,
     maxOrderQuantity, setMaxOrderQuantity,

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ContentStatus,
+  CostPriceUnit,
   ProductFlagLabel,
   ProductType,
   StockStatus,
@@ -127,6 +128,16 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   costPerItem?: number;
+
+  @ApiPropertyOptional({
+    enum: CostPriceUnit,
+    nullable: true,
+    description:
+      'When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.',
+  })
+  @IsOptional()
+  @IsEnum(CostPriceUnit)
+  costPriceUnit?: CostPriceUnit | null;
 
   @ApiPropertyOptional({ description: 'Kilograms' })
   @IsOptional()

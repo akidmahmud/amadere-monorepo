@@ -42,6 +42,7 @@ export function toAdminProductDto(
     saleStartsAt: product.saleStartsAt,
     saleEndsAt: product.saleEndsAt,
     costPerItem: decimalToString(product.costPerItem),
+    costPriceUnit: product.costPriceUnit,
     shippableWeight: decimalToString(product.shippableWeight),
     minOrderQuantity: product.minOrderQuantity,
     maxOrderQuantity: product.maxOrderQuantity,

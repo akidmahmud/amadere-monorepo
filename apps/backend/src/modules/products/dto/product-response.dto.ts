@@ -1,5 +1,6 @@
 import {
   ContentStatus,
+  CostPriceUnit,
   Locale,
   MediaType,
   ProductFlagLabel,
@@ -81,6 +82,7 @@ export class AdminProductDto {
   saleStartsAt!: Date | null;
   saleEndsAt!: Date | null;
   costPerItem!: string | null;
+  costPriceUnit!: CostPriceUnit | null;
   shippableWeight!: string | null;
   minOrderQuantity!: number;
   maxOrderQuantity!: number | null;

@@ -169,11 +169,11 @@ export function PdpPurchasePanel({
         </div>
       )}
 
-      {/* Desktop only, per explicit request — the live-viewer count isn't
-          shown to mobile visitors, and sits right under Select Pack Size
-          (still here even when that section doesn't render, e.g. products
-          with no variants). */}
-      <div className="mb-4">
+      {/* Sits right under Select Pack Size (still here even when that
+          section doesn't render, e.g. products with no variants). id watched
+          by ProductFloatingBarProvider — the mobile sticky Buy Now/Add to
+          Cart bar appears once this row scrolls out of view. */}
+      <div id="pdp-social-proof" className="mb-4">
         <WatchingNowBadge productId={product.id} salesCount={product.salesCount} />
       </div>
 
@@ -245,8 +245,6 @@ export function PdpPurchasePanel({
           2-col grid on mobile but `contents` on desktop so its two children
           fall directly into the parent grid's second row instead of being
           squeezed into a single cell. */}
-      {/* id watched by ProductMobileIsland's IntersectionObserver — the
-          mobile "quick add" bar appears once this row scrolls out of view. */}
       <div id="pdp-buy-buttons" className="mb-3 flex flex-col gap-3 md:mb-4 md:grid md:grid-cols-2">
         {!outOfStock && (
           <>

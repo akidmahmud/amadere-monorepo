@@ -96,8 +96,15 @@ const wandIcon = (
 
 function SaveFirstNotice() {
   return (
-    <div className="rounded-card border border-border bg-surface p-[18px] text-sm text-muted">
-      Save the product first — this tab needs a real product ID.
+    <div className="flex items-center gap-3 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/40 p-5 text-sm font-semibold text-emerald-900 shadow-sm">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-700 ring-1 ring-amber-400/40">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.5}>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </span>
+      <span>Save the product first — this tab needs a real product ID.</span>
     </div>
   );
 }
@@ -259,25 +266,38 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
       )}
 
       {tab === "Media" && (
-        <div className="rounded-card border border-border bg-surface p-[18px]">
-          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">
-            Media<span className="ml-0.5 text-danger">*</span>
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-xs">
+          <h3 className="mb-5 flex items-center gap-2.5 text-base font-extrabold text-[#064e3b]">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#ecfdf5] text-[#059669]">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </span>
+            <span>Media</span>
+            <span className="text-[#f43f5e]">*</span>
           </h3>
           <ProductMediaGallery images={form.images} onChange={form.setImages} />
+          <label className="mt-5 flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-emerald-950">Video URL (optional)</span>
+            <input
+              value={form.videoUrl}
+              onChange={(e) => form.setVideoUrl(e.target.value)}
+              className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30 placeholder:text-emerald-900/40"
+              placeholder="https://youtube.com/..."
+            />
+          </label>
+          <label className="mt-4 flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
+            <input type="checkbox" checked={form.isFeatured} onChange={(e) => form.setIsFeatured(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+            Featured Product
+          </label>
           <label className="mt-4 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-text">Video URL (optional)</span>
-            <input value={form.videoUrl} onChange={(e) => form.setVideoUrl(e.target.value)} className={inputClass} />
-          </label>
-          <label className="mt-3.5 flex items-center gap-2 text-sm font-semibold text-text">
-            <input type="checkbox" checked={form.isFeatured} onChange={(e) => form.setIsFeatured(e.target.checked)} className="accent-brand-500" />
-            Featured
-          </label>
-          <label className="mt-3.5 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-text">Product Badge (optional)</span>
+            <span className="text-xs font-bold text-emerald-950">Product Badge (optional)</span>
             <select
               value={form.flagLabel ?? ""}
               onChange={(e) => form.setFlagLabel(e.target.value === "" ? null : (e.target.value as typeof form.flagLabel))}
-              className={inputClass}
+              className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
             >
               <option value="">None</option>
               <option value="BEST_SELLING">Best Selling</option>
@@ -289,29 +309,53 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
       )}
 
       {tab === "Inventory" && (
-        <div className="rounded-card border border-border bg-surface p-[18px]">
-          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Inventory</h3>
-          <div className="mb-3.5 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
+          <h3 className="mb-4 text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                <path d="m3.3 7 8.7 5 8.7-5" />
+                <path d="M12 22V12" />
+              </svg>
+            </span>
+            Inventory Management
+          </h3>
+          <div className="mb-4 grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">
-                SKU<span className="ml-0.5 text-danger">*</span>
+              <span className="text-xs font-bold text-emerald-950">
+                SKU<span className="ml-0.5 text-rose-500">*</span>
               </span>
-              <input value={form.sku} onChange={(e) => form.setSku(e.target.value)} className={inputClass} />
+              <input
+                value={form.sku}
+                onChange={(e) => form.setSku(e.target.value)}
+                className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+              />
             </label>
           </div>
           {form.hasVariants ? (
-            <p className="mb-3.5 text-sm text-muted">This product has variants — stock is tracked per variant in the Variants tab.</p>
+            <div className="mb-4 rounded-lg border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-amber-400/5 p-3.5 text-xs font-semibold text-amber-900">
+              This product has variants — stock is tracked per variant in the <strong>Variants</strong> tab.
+            </div>
           ) : (
-            <div className="mb-3.5 grid grid-cols-2 gap-3">
+            <div className="mb-4 grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">
-                  Stock<span className="ml-0.5 text-danger">*</span>
+                <span className="text-xs font-bold text-emerald-950">
+                  Stock<span className="ml-0.5 text-rose-500">*</span>
                 </span>
-                <input type="number" value={form.stock} onChange={(e) => form.setStock(e.target.value)} className={numInputClass} />
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => form.setStock(e.target.value)}
+                  className="num h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+                />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-text">Stock status</span>
-                <select value={form.stockStatus} onChange={(e) => form.setStockStatus(e.target.value as StockStatus)} className={inputClass}>
+                <span className="text-xs font-bold text-emerald-950">Stock status</span>
+                <select
+                  value={form.stockStatus}
+                  onChange={(e) => form.setStockStatus(e.target.value as StockStatus)}
+                  className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+                >
                   <option value="IN_STOCK">In stock</option>
                   <option value="OUT_OF_STOCK">Out of stock</option>
                   <option value="ON_BACKORDER">On backorder</option>
@@ -319,43 +363,76 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               </label>
             </div>
           )}
-          <label className="mb-2.5 flex items-center gap-2 text-sm font-semibold text-text">
-            <input type="checkbox" checked={form.trackInventory} onChange={(e) => form.setTrackInventory(e.target.checked)} className="accent-brand-500" />
-            Track inventory
-          </label>
-          <label className="flex items-center gap-2 text-sm font-semibold text-text">
-            <input type="checkbox" checked={form.allowBackorder} onChange={(e) => form.setAllowBackorder(e.target.checked)} className="accent-brand-500" />
-            Allow backorder
-          </label>
+          <div className="flex flex-col gap-3 pt-1">
+            <label className="flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
+              <input type="checkbox" checked={form.trackInventory} onChange={(e) => form.setTrackInventory(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+              Track inventory
+            </label>
+            <label className="flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
+              <input type="checkbox" checked={form.allowBackorder} onChange={(e) => form.setAllowBackorder(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+              Allow backorder
+            </label>
+          </div>
         </div>
       )}
 
       {tab === "Variants" && (
-        <div className="rounded-card border border-border bg-surface p-[18px]">
-          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Variants</h3>
-          <label className="mb-3.5 flex items-center gap-2 text-sm font-semibold text-text">
-            <input type="checkbox" checked={form.hasVariants} onChange={(e) => form.setHasVariants(e.target.checked)} className="accent-brand-500" />
+        <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
+          <h3 className="mb-4 text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+            </span>
+            Product Variants
+          </h3>
+          <label className="mb-5 flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none rounded-lg border border-emerald-800/15 bg-white p-3 shadow-xs">
+            <input type="checkbox" checked={form.hasVariants} onChange={(e) => form.setHasVariants(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
             This product has variants (price/stock live on each variant instead)
           </label>
 
           {form.hasVariants && (
             <>
-              <div className="mb-3.5">
-                <span className="mb-2 block text-xs font-bold text-text">Variant attributes (which properties this product varies by)</span>
+              <div className="mb-5 rounded-lg border border-emerald-800/15 bg-emerald-50/40 p-4">
+                <span className="mb-2.5 block text-xs font-extrabold text-emerald-950">Variant attributes (which properties this product varies by)</span>
                 <div className="flex flex-wrap gap-2">
-                  {attributes?.map((a) => (
-                    <label key={a.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text">
-                      <input type="checkbox" checked={form.attributeIds.includes(a.id)} onChange={() => toggle(form.attributeIds, a.id, form.setAttributeIds)} className="accent-brand-500" />
-                      {a.translations[0]?.name}
-                    </label>
-                  ))}
+                  {attributes?.map((a) => {
+                    const checked = form.attributeIds.includes(a.id);
+                    return (
+                      <label
+                        key={a.id}
+                        className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer select-none ${
+                          checked
+                            ? "border-amber-400 bg-gradient-to-r from-emerald-800 to-emerald-900 text-amber-300 shadow-sm ring-1 ring-amber-400/40"
+                            : "border-emerald-800/20 bg-white text-emerald-950 hover:border-emerald-600/40"
+                        }`}
+                      >
+                        <input type="checkbox" checked={checked} onChange={() => toggle(form.attributeIds, a.id, form.setAttributeIds)} className="accent-amber-400" />
+                        {a.translations[0]?.name}
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
               {productId && variants ? (
-                <ExistingVariantsManager productId={productId} attributes={selectedAttributes} variants={variants} costPerItem={variantCostPerItem} />
+                <ExistingVariantsManager
+                  productId={productId}
+                  attributes={selectedAttributes}
+                  variants={variants}
+                  costPerItem={variantCostPerItem}
+                  costPriceUnit={form.costPriceUnit}
+                />
               ) : (
-                <NewVariantsBuilder attributes={selectedAttributes} variants={newVariants ?? []} onChange={onNewVariantsChange ?? (() => {})} costPerItem={variantCostPerItem} />
+                <NewVariantsBuilder
+                  attributes={selectedAttributes}
+                  variants={newVariants ?? []}
+                  onChange={onNewVariantsChange ?? (() => {})}
+                  costPerItem={variantCostPerItem}
+                  costPriceUnit={form.costPriceUnit}
+                />
               )}
             </>
           )}
@@ -363,53 +440,69 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
       )}
 
       {tab === "Shipping" && (
-        <div className="rounded-card border border-border bg-surface p-[18px]">
-          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Shipping</h3>
-          {/* How courier weight is actually calculated (shipments.service.ts):
-              a variant's own weightOverride is used when it has one; only
-              when it doesn't does the product-level Shippable weight below
-              step in as the fallback. Written out for admins in both
-              languages since it's not obvious from the field alone, and this
-              is the one place in the form where "why does this number
-              matter" needed explaining. */}
-          <div
-            className="mb-3.5 flex flex-col gap-2 rounded-sm px-3 py-2.5 text-xs"
-            style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
-          >
-            <p>
+        <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
+          <h3 className="mb-4 text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
+            <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <rect x="1" y="3" width="15" height="13" />
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                <circle cx="5.5" cy="18.5" r="2.5" />
+                <circle cx="18.5" cy="18.5" r="2.5" />
+              </svg>
+            </span>
+            Shipping & Fulfillment
+          </h3>
+          <div className="mb-4 flex flex-col gap-2 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/50 p-4 text-xs text-emerald-950 shadow-xs">
+            <div className="flex items-center gap-2 font-bold text-emerald-900">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-400 text-emerald-950 font-black text-[10px]">i</span>
+              <span>Courier Weight Calculation Rules</span>
+            </div>
+            <p className="leading-relaxed">
               <strong>Same value as &quot;Weight (kg)&quot; on the General tab (Pricing)</strong> — editing either one
               updates both. For products with variants: each variant can have its own shipping weight (set per
               variant in the Variants tab); when a variant doesn&apos;t have one, this product-level weight is used
               for it instead when the courier shipment is calculated.
             </p>
-            <p lang="bn">
+            <p lang="bn" className="leading-relaxed text-emerald-900/90">
               <strong>জেনারেল ট্যাবের (প্রাইসিং) &quot;Weight (kg)&quot; ফিল্ডের সাথে এটি একই মান</strong> — যেকোনো
               একটিতে পরিবর্তন করলে দুটোই আপডেট হয়। ভ্যারিয়েন্ট থাকা পণ্যের ক্ষেত্রে: প্রতিটি ভ্যারিয়েন্টের নিজস্ব
               শিপিং ওজন থাকতে পারে (ভ্যারিয়েন্টস ট্যাবে সেট করা যায়); কোনো ভ্যারিয়েন্টের নিজস্ব ওজন সেট না থাকলে,
               কুরিয়ার শিপমেন্ট হিসাব করার সময় এই প্রোডাক্ট-লেভেল ওজনটি সেই ভ্যারিয়েন্টের জন্য ব্যবহৃত হবে।
             </p>
           </div>
-          {/* Also editable from the Pricing card on the General tab (same
-              state) — surfaced there too since it's easy to miss tucked away
-              in this tab, and it's a required field. */}
-          <div className="mb-3.5 grid grid-cols-2 gap-3">
+          <div className="mb-4 grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">
-                Shippable weight, kg<span className="ml-0.5 text-danger">*</span>
+              <span className="text-xs font-bold text-emerald-950">
+                Shippable weight, kg<span className="ml-0.5 text-rose-500">*</span>
               </span>
-              <input type="number" value={form.shippableWeight} onChange={(e) => form.setShippableWeight(e.target.value)} className={numInputClass} />
+              <input
+                type="number"
+                value={form.shippableWeight}
+                onChange={(e) => form.setShippableWeight(e.target.value)}
+                className="num h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+              />
             </label>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">
-                Min order quantity<span className="ml-0.5 text-danger">*</span>
+              <span className="text-xs font-bold text-emerald-950">
+                Min order quantity<span className="ml-0.5 text-rose-500">*</span>
               </span>
-              <input type="number" value={form.minOrderQuantity} onChange={(e) => form.setMinOrderQuantity(e.target.value)} className={numInputClass} />
+              <input
+                type="number"
+                value={form.minOrderQuantity}
+                onChange={(e) => form.setMinOrderQuantity(e.target.value)}
+                className="num h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+              />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-text">Max order quantity (optional)</span>
-              <input type="number" value={form.maxOrderQuantity} onChange={(e) => form.setMaxOrderQuantity(e.target.value)} className={numInputClass} />
+              <span className="text-xs font-bold text-emerald-950">Max order quantity (optional)</span>
+              <input
+                type="number"
+                value={form.maxOrderQuantity}
+                onChange={(e) => form.setMaxOrderQuantity(e.target.value)}
+                className="num h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+              />
             </label>
           </div>
         </div>

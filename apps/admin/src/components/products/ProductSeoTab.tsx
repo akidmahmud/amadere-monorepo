@@ -41,8 +41,15 @@ export function ProductSeoTab({
 
   if (!productId) {
     return (
-      <div className="rounded-card border border-border bg-surface p-[18px] text-sm text-muted">
-        Save the product first — SEO metadata is edited once it has a real ID.
+      <div className="flex items-center gap-3 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/40 p-5 text-sm font-semibold text-emerald-900 shadow-sm">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-700 ring-1 ring-amber-400/40">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </span>
+        <span>Save the product first — SEO metadata is edited once it has a real ID.</span>
       </div>
     );
   }
@@ -64,45 +71,69 @@ export function ProductSeoTab({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-2">
-      <div className="flex flex-col gap-[18px]">
-        <div className="rounded-card border border-border bg-surface p-[18px]">
-          <div className="mb-3.5 flex items-center justify-between">
-            <h3 className="text-[0.9rem] font-extrabold text-text">SEO Preview</h3>
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="flex flex-col gap-5">
+        <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
+              <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </span>
+              SEO Preview
+            </h3>
+            <span className="rounded-full bg-amber-400/20 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-400/30">
+              Google Search Snippet
+            </span>
           </div>
-          <div className="rounded-[10px] border border-border p-[14px_15px]">
-            <div className="text-[0.92rem] font-bold leading-snug text-[#1a5fd0]">{effectiveTitle || "Untitled product"}</div>
-            <div className="mt-1.5 break-all text-[0.7rem] font-semibold text-[#1a8a4a]">
+          <div className="rounded-xl border border-emerald-800/15 bg-emerald-50/30 p-4 shadow-xs">
+            <div className="text-[0.92rem] font-extrabold leading-snug text-emerald-800 hover:underline cursor-pointer">
+              {effectiveTitle || "Untitled product"}
+            </div>
+            <div className="mt-1 break-all text-[0.72rem] font-bold text-emerald-950/70 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
               {storefrontUrl}/products/{slug || "product-slug"}
             </div>
-            <div className="mt-1.5 text-[0.73rem] leading-relaxed text-muted">
+            <div className="mt-2 text-xs leading-relaxed text-emerald-950/80">
               {effectiveDescription || "No description set yet — the storefront will fall back to the product's own description."}
             </div>
           </div>
 
-          <label className="mt-4 flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Meta title (optional, falls back to product name)</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder={name} />
+          <label className="mt-5 flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-emerald-950">Meta title (optional, falls back to product name)</span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+              placeholder={name}
+            />
           </label>
-          <label className="mt-3 flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Meta description (optional)</span>
+          <label className="mt-4 flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-emerald-950">Meta description (optional)</span>
             <textarea
               value={metaDescription}
               onChange={(e) => setMetaDescription(e.target.value)}
               rows={3}
-              className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500"
+              className="rounded-lg border border-emerald-800/20 bg-white p-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
             />
           </label>
-          <div className="mt-3.5 flex items-center gap-3">
-            <Button type="button" variant="primary" disabled={upsert.isPending} onClick={handleSave}>
+          <div className="mt-5 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={upsert.isPending}
+              onClick={handleSave}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-900 px-5 text-xs font-extrabold text-amber-300 shadow-md shadow-emerald-900/15 ring-1 ring-amber-400/40 transition-all duration-150 hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50"
+            >
               {upsert.isPending ? "Saving…" : "Save SEO"}
-            </Button>
+            </button>
             {justSaved && (
-              <span className="flex items-center gap-1.5 text-xs font-bold text-success">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                Saved
+                SEO Metadata Saved!
               </span>
             )}
           </div>

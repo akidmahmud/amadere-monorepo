@@ -6,18 +6,21 @@ import type { PublishStatus } from "@/hooks/useBrands";
 export type ProductType = "PHYSICAL" | "DIGITAL";
 export type StockStatus = "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
 export type ProductFlagLabel = "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED";
+export type CostPriceUnit = "PER_KG" | "PER_100G" | "PER_G";
 
 // Same swagger enum-erasure fix as every other module — productType/status/
-// stockStatus/flagLabel on the response DTO come out as Record<string, never>.
+// stockStatus/flagLabel/costPriceUnit on the response DTO come out as
+// Record<string, never>.
 export type AdminProduct = Omit<
   components["schemas"]["AdminProductDto"],
-  "productType" | "status" | "stockStatus" | "variants" | "flagLabel"
+  "productType" | "status" | "stockStatus" | "variants" | "flagLabel" | "costPriceUnit"
 > & {
   productType: ProductType;
   status: PublishStatus;
   stockStatus: StockStatus;
   variants: AdminProductVariant[];
   flagLabel: ProductFlagLabel | null;
+  costPriceUnit: CostPriceUnit | null;
 };
 
 export type AdminProductVariant = Omit<components["schemas"]["AdminProductVariantDto"], "stockStatus"> & {
@@ -199,6 +202,18 @@ export function useUpdateVariantSku(productId: number) {
   return useMutation({
     mutationFn: ({ variantId, sku }: { variantId: number; sku: string }) =>
       proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/sku`, { method: "PATCH", body: JSON.stringify({ sku }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useUpdateVariantWeight(productId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ variantId, weightOverride }: { variantId: number; weightOverride: number | null }) =>
+      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/weight`, {
+        method: "PATCH",
+        body: JSON.stringify({ weightOverride }),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

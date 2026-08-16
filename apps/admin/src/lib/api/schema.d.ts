@@ -1188,6 +1188,22 @@ export interface paths {
         patch: operations["AdminProductsController_updateVariantSku"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/{variantId}/weight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateVariantWeight"];
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/cross-sell": {
         parameters: {
             query?: never;
@@ -6426,6 +6442,7 @@ export interface components {
             /** Format: date-time */
             saleEndsAt: string | null;
             costPerItem: string | null;
+            costPriceUnit: Record<string, never> | null;
             shippableWeight: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
@@ -6519,6 +6536,11 @@ export interface components {
             saleStartsAt?: string;
             saleEndsAt?: string;
             costPerItem?: number;
+            /**
+             * @description When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.
+             * @enum {string|null}
+             */
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | null;
             /** @description Kilograms */
             shippableWeight?: number;
             /** @default 1 */
@@ -6578,6 +6600,11 @@ export interface components {
             saleStartsAt?: string;
             saleEndsAt?: string;
             costPerItem?: number;
+            /**
+             * @description When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.
+             * @enum {string|null}
+             */
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | null;
             /** @description Kilograms */
             shippableWeight?: number;
             /** @default 1 */
@@ -6602,6 +6629,10 @@ export interface components {
         };
         UpdateVariantSkuDto: {
             sku?: string;
+        };
+        UpdateVariantWeightDto: {
+            /** @description Kilograms. Omit/null to clear and fall back to the product-level shippable weight. */
+            weightOverride?: number | null;
         };
         UpdateCrossSellDto: {
             productIds: number[];
@@ -11519,6 +11550,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateVariantSkuDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_updateVariantWeight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariantWeightDto"];
             };
         };
         responses: {

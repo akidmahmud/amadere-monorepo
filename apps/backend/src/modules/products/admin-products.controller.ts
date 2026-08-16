@@ -36,6 +36,7 @@ import { AdminDeletedProductDto, AdminProductDto, AdminProductListItemDto, Admin
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
 import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
+import { UpdateVariantWeightDto } from './dto/update-variant-weight.dto';
 import { UpdateCrossSellDto } from './dto/update-cross-sell.dto';
 
 @ApiTags('admin/products')
@@ -203,6 +204,16 @@ export class AdminProductsController {
     @Body() dto: UpdateVariantSkuDto,
   ): Promise<void> {
     return this.products.updateVariantSku(id, variantId, dto.sku);
+  }
+
+  @Patch(':id/variants/:variantId/weight')
+  @RequirePermission('product.update')
+  updateVariantWeight(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+    @Body() dto: UpdateVariantWeightDto,
+  ): Promise<void> {
+    return this.products.updateVariantWeight(id, variantId, dto.weightOverride);
   }
 
   @Get(':id/cross-sell')
