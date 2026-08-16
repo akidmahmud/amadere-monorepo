@@ -26,6 +26,7 @@ export const ORDER_INCLUDE = {
     orderBy: { createdAt: 'asc' as const },
     include: { adminUser: { select: { firstName: true, lastName: true } } },
   },
+  assignedAdmin: { select: { firstName: true, lastName: true } },
   payments: { orderBy: { createdAt: 'asc' as const } },
   // Most recent shipment only — an order can theoretically get re-dispatched
   // (e.g. after a return), so `shipments` is a list, but customers/admins
@@ -134,6 +135,8 @@ export class OrderDto {
   customerId!: number | null;
   status!: OrderStatus;
   channel!: OrderChannel;
+  assignedAdminId!: number | null;
+  assignedAdminName!: string | null;
   subTotal!: string;
   discountAmount!: string;
   taxAmount!: string;
@@ -182,6 +185,8 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     customerId: order.customerId,
     status: order.status,
     channel: order.channel,
+    assignedAdminId: order.assignedAdminId,
+    assignedAdminName: order.assignedAdmin ? `${order.assignedAdmin.firstName} ${order.assignedAdmin.lastName}`.trim() : null,
     subTotal: order.subTotal.toString(),
     discountAmount: order.discountAmount.toString(),
     taxAmount: order.taxAmount.toString(),

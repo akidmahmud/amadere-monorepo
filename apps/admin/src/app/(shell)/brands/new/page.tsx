@@ -3,15 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card } from "@amader/admin-ui";
-import { MediaPicker } from "@/components/MediaPicker";
-import { RichTextEditor } from "@/components/RichTextEditor";
-import { StatusSelect } from "@/components/StatusSelect";
+import { ProxyApiError } from "@/lib/api/proxy-client";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
 import { useCreateBrand } from "@/hooks/useBrands";
 import type { PublishStatus } from "@/hooks/useBrands";
+import { useToast } from "@/components/ToastProvider";
+import { BrandFormFields } from "@/components/brands/BrandFormFields";
+
+const cancelButtonClass =
+  "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 text-xs font-bold text-slate-700 transition-colors duration-150 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs";
 
 export default function NewBrandPage() {
   const router = useRouter();
+  const create = useCreateBrand();
+  const toast = useToast();
+
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -20,82 +26,89 @@ export default function NewBrandPage() {
   const [status, setStatus] = useState<PublishStatus>("DRAFT");
   const [isFeatured, setIsFeatured] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const create = useCreateBrand();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    await create.mutateAsync({
-      slug,
-      logoUrl,
-      websiteUrl: websiteUrl || undefined,
-      isFeatured,
-      sortOrder: 0,
-      status,
-      translations: [
-        { locale: "EN", name, description: description || undefined },
-        { locale: "BN", name, description: description || undefined },
-      ],
-    });
-    router.push("/brands");
+    try {
+      await create.mutateAsync({
+        slug,
+        logoUrl,
+        websiteUrl: websiteUrl || undefined,
+        isFeatured,
+        sortOrder: 0,
+        status,
+        translations: [
+          { locale: "EN", name, description: description || undefined },
+          { locale: "BN", name, description: description || undefined },
+        ],
+      });
+      toast.push("Brand created successfully!");
+      router.push("/brands");
+    } catch (err) {
+      const msg = err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to create brand";
+      setFormError(msg);
+      toast.push(msg);
+    }
   }
 
   return (
-    <Card className="max-w-xl">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Name</span>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Slug</span>
-          <input
-            required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Description (optional)</span>
-          <RichTextEditor value={description} onChange={setDescription} compact />
-        </div>
-        {formError && (
-          <div className="flex items-center gap-2.5 rounded-inner border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[0.75rem] font-semibold text-danger">
-            {formError}
-          </div>
-        )}
-        <MediaPicker value={logoUrl} onChange={setLogoUrl} label="Logo" />
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Website URL (optional)</span>
-          <input
-            value={websiteUrl}
-            onChange={(e) => setWebsiteUrl(e.target.value)}
-            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-        <StatusSelect value={status} onChange={setStatus} />
-        <label className="flex items-center gap-2 text-sm text-text">
-          <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
-          Featured
-        </label>
-
-        <div className="flex gap-3">
-          <Button type="submit" variant="primary" disabled={create.isPending}>
-            {create.isPending ? "Saving…" : "Create brand"}
-          </Button>
-          <Link href="/brands">
-            <Button type="button" variant="ghost">
-              Cancel
-            </Button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/brands"
+            aria-label="Back to brands"
+            className="grid h-9 w-9 place-items-center rounded-xl text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
           </Link>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-extrabold text-slate-900">Create New Brand</h1>
+            {name && (
+              <span className="max-w-[260px] truncate rounded-full bg-[#ecfdf5] px-3 py-0.5 text-xs font-bold text-[#059669] border border-[#a7f3d0]">
+                {name}
+              </span>
+            )}
+          </div>
         </div>
-      </form>
-    </Card>
+
+        <div className="flex items-center gap-2.5">
+          <Link href="/brands">
+            <button type="button" className={cancelButtonClass}>
+              Cancel
+            </button>
+          </Link>
+          <button
+            type="submit"
+            disabled={create.isPending}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#044e37] px-5 text-xs font-bold text-[#fbbf24] shadow-xs transition-all duration-150 hover:bg-[#033c2a] disabled:opacity-50"
+          >
+            {create.isPending ? "Creating…" : "Create Brand"}
+          </button>
+        </div>
+      </div>
+
+      <BrandFormFields
+        name={name}
+        setName={setName}
+        slug={slug}
+        setSlug={setSlug}
+        description={description}
+        setDescription={setDescription}
+        logoUrl={logoUrl}
+        setLogoUrl={setLogoUrl}
+        websiteUrl={websiteUrl}
+        setWebsiteUrl={setWebsiteUrl}
+        status={status}
+        setStatus={setStatus}
+        isFeatured={isFeatured}
+        setIsFeatured={setIsFeatured}
+        formError={formError}
+      />
+    </form>
   );
 }

@@ -25,7 +25,9 @@ interface BlogPostDraft {
   content: string;
   metaDescription: string;
   imageUrl: string | undefined;
+  coverImageUrl: string | undefined;
   isFeatured: boolean;
+  sortOrder: number;
   categoryIds: number[];
   tagIds: number[];
 }
@@ -38,7 +40,9 @@ export default function NewBlogPostPage() {
   const [content, setContent] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>();
   const [isFeatured, setIsFeatured] = useState(false);
+  const [sortOrder, setSortOrder] = useState(0);
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const create = useCreateBlogPost();
@@ -51,7 +55,7 @@ export default function NewBlogPostPage() {
   }, []);
 
   useAutosaveDraft(DRAFT_KEY, () => ({
-    title, slug, excerpt, content, metaDescription, imageUrl, isFeatured, categoryIds, tagIds,
+    title, slug, excerpt, content, metaDescription, imageUrl, coverImageUrl, isFeatured, sortOrder, categoryIds, tagIds,
   }));
 
   function restoreDraft(d: BlogPostDraft) {
@@ -61,7 +65,9 @@ export default function NewBlogPostPage() {
     setContent(d.content);
     setMetaDescription(d.metaDescription);
     setImageUrl(d.imageUrl);
+    setCoverImageUrl(d.coverImageUrl);
     setIsFeatured(d.isFeatured);
+    setSortOrder(d.sortOrder);
     setCategoryIds(d.categoryIds);
     setTagIds(d.tagIds);
   }
@@ -77,7 +83,9 @@ export default function NewBlogPostPage() {
       created = await create.mutateAsync({
         slug,
         imageUrl,
+        coverImageUrl,
         isFeatured,
+        sortOrder,
         categoryIds,
         tagIds,
         translations: [
@@ -166,8 +174,12 @@ export default function NewBlogPostPage() {
         setMetaDescription={setMetaDescription}
         imageUrl={imageUrl}
         setImageUrl={setImageUrl}
+        coverImageUrl={coverImageUrl}
+        setCoverImageUrl={setCoverImageUrl}
         isFeatured={isFeatured}
         setIsFeatured={setIsFeatured}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
         categoryIds={categoryIds}
         setCategoryIds={setCategoryIds}
         tagIds={tagIds}

@@ -51,7 +51,9 @@ export class AdminBlogPostDto {
   slug!: string;
   status!: ContentStatus;
   isFeatured!: boolean;
+  sortOrder!: number;
   imageUrl!: string | null;
+  coverImageUrl!: string | null;
   publishedAt!: Date | null;
   viewCount!: number;
   author!: BlogPostAuthorDto;
@@ -92,7 +94,9 @@ export function toAdminBlogPostDto(
     slug: post.slug,
     status: post.status,
     isFeatured: post.isFeatured,
+    sortOrder: post.sortOrder,
     imageUrl: post.imageUrl,
+    coverImageUrl: post.coverImageUrl,
     publishedAt: post.publishedAt,
     viewCount: post.viewCount,
     author: post.author,
@@ -187,6 +191,11 @@ export class BlogPostFaqPublicDto {
 }
 
 export class PublicBlogPostDetailDto extends PublicBlogPostSummaryDto {
+  // Wide hero banner for the article's own page — distinct from the
+  // inherited `imageUrl` (small card thumbnail, used by listings/related
+  // posts, never the hero). Already resolved to fall back to `imageUrl`
+  // when unset — see blog-posts.service.ts#publicGetBySlug.
+  coverImageUrl!: string | null;
   content!: string;
   metaDescription!: string | null;
   toc!: BlogPostTocEntryDto[];

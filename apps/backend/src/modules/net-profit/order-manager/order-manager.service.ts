@@ -3,6 +3,7 @@ import {
   CourierProviderName,
   OrderStatus,
   PaymentProvider,
+  PaymentStatus,
   Prisma,
   RiskLevel,
   ShipmentStatus,
@@ -31,6 +32,7 @@ interface RawOrderManagerRow {
   post_code: string | null;
   thumbnail_url: string | null;
   payment_provider: PaymentProvider | null;
+  payment_status: PaymentStatus | null;
   courier_provider: CourierProviderName | null;
   shipment_id: number | null;
   courier_status: ShipmentStatus | null;
@@ -137,6 +139,7 @@ export class OrderManagerService {
              oa.recipient_name, oa.phone, oa.address_line, oa.district, oa.division, oa.post_code,
              thumb.url AS thumbnail_url,
              p.provider AS payment_provider,
+             p.status AS payment_status,
              s.provider AS courier_provider,
              s.id AS shipment_id,
              s.status AS courier_status,
@@ -146,7 +149,7 @@ export class OrderManagerService {
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
       LEFT JOIN admin_users au ON au.id = o.assigned_admin_id
       LEFT JOIN LATERAL (
-        SELECT provider FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
+        SELECT provider, status FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) p ON true
       LEFT JOIN LATERAL (
         SELECT id, provider, status FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
@@ -206,6 +209,7 @@ export class OrderManagerService {
       // constant rather than a real column. Revisit if that flow gets built.
       origin: 'Web',
       paymentProvider: r.payment_provider,
+      paymentStatus: r.payment_status,
       courierProvider: r.courier_provider,
       shipmentId: r.shipment_id,
       courierStatus: r.courier_status,

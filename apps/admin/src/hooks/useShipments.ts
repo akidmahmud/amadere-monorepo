@@ -100,7 +100,19 @@ export function useTrackShipment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => proxyFetch<Shipment>(`/admin/shipments/${id}/track`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    // Was only invalidating this file's own KEY — every sibling mutation
+    // here (dispatch/cancel/updateStatus) also invalidates admin-orders and
+    // net-profit-order-manager, since OrderDetailModal reads shipment status
+    // through useOrder(id), not through this module. Missing those two left
+    // the modal's Delivery card (status pill, "Last Update") frozen at
+    // whatever it was when the modal opened even after a successful
+    // "refresh from courier" — only closing and reopening the modal forced
+    // a fresh fetch.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["net-profit-order-manager"] });
+    },
   });
 }
 

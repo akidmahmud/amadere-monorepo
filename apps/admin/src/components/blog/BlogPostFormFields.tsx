@@ -4,8 +4,8 @@ import { useRef } from "react";
 import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { MediaPicker } from "@/components/MediaPicker";
 import { BlogHtmlDropzone, type ParsedHtmlPost } from "./BlogHtmlDropzone";
-import { CoverImageDropzone } from "./CoverImageDropzone";
 import { BlogTagsPicker } from "./BlogTagsPicker";
 
 const inputClass = "h-[38px] rounded-sm border border-border bg-surface px-3 text-sm font-semibold text-ink outline-none focus:border-brand-500";
@@ -57,8 +57,12 @@ export interface BlogPostFormFieldsProps {
   setMetaDescription: (v: string) => void;
   imageUrl: string | undefined;
   setImageUrl: (v: string) => void;
+  coverImageUrl: string | undefined;
+  setCoverImageUrl: (v: string) => void;
   isFeatured: boolean;
   setIsFeatured: (v: boolean) => void;
+  sortOrder: number;
+  setSortOrder: (v: number) => void;
   categoryIds: number[];
   setCategoryIds: (v: number[]) => void;
   tagIds: number[];
@@ -177,8 +181,15 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
         </div>
 
         <div className="rounded-card border border-border bg-surface p-[18px]">
-          <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Cover image</h3>
-          <CoverImageDropzone value={props.imageUrl} onChange={props.setImageUrl} />
+          <h3 className="mb-1 text-[0.9rem] font-extrabold text-text">Thumbnail image</h3>
+          <p className="mb-3.5 text-[0.7rem] text-muted">Recommended size: 800×800px (square). Used on blog listing cards.</p>
+          <MediaPicker value={props.imageUrl} onChange={props.setImageUrl} label="" />
+        </div>
+
+        <div className="rounded-card border border-border bg-surface p-[18px]">
+          <h3 className="mb-1 text-[0.9rem] font-extrabold text-text">Cover image</h3>
+          <p className="mb-3.5 text-[0.7rem] text-muted">Recommended size: 1600×500px. Shown at the top of the post page — falls back to the thumbnail image above if left empty.</p>
+          <MediaPicker value={props.coverImageUrl} onChange={props.setCoverImageUrl} label="" />
         </div>
 
         <div className="rounded-card border border-border bg-surface p-[18px]">
@@ -197,6 +208,17 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
               <span className="absolute left-[3px] h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[18px]" />
             </label>
           </div>
+          <div className="flex items-center justify-between border-t border-[#f1f5fa] py-2.5 text-[0.76rem] font-semibold">
+            <span className="text-muted">Position</span>
+            <input
+              type="number"
+              min={0}
+              value={props.sortOrder}
+              onChange={(e) => props.setSortOrder(Math.max(0, Number(e.target.value) || 0))}
+              className="h-8 w-20 rounded-sm border border-border bg-surface px-2 text-right text-[0.76rem] font-semibold text-text outline-none focus:border-brand-500"
+            />
+          </div>
+          <p className="pt-1 text-[0.68rem] text-muted">Higher number shows first in blog listings. Leave 0 for normal date order.</p>
         </div>
 
         <div className="rounded-card border border-border bg-surface p-[18px]">

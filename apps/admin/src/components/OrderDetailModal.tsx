@@ -22,16 +22,27 @@ import {
   type OrderChannel,
   type PaymentProviderType,
 } from "@/hooks/useOrders";
-import { useUpdateOrderNote } from "@/hooks/useOrderManager";
+import { useAssignOrder, useUpdateOrderNote } from "@/hooks/useOrderManager";
+import { useAssignableStaff } from "@/hooks/useCustomers";
 import { useAdvancePayment, useManualPaymentsForOrder } from "@/hooks/usePayments";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { useProductSearch } from "@/hooks/useProducts";
-import { useCancelShipment, useTrackShipment, useUpdateShipmentStatus, SHIPMENT_STATUSES, type ShipmentStatus } from "@/hooks/useShipments";
+import { useTrackShipment, useUpdateShipmentStatus, SHIPMENT_STATUSES, type ShipmentStatus } from "@/hooks/useShipments";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { ConsignModal } from "./ConsignModal";
 import { FraudDetailModal } from "./FraudDetailModal";
 
 const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
+// Same relabeling as OrderManagerTable.tsx / NewOrderForm.tsx — "CAPTURED" is
+// gateway jargon, staff sees "Paid". Stored value is unchanged.
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  AUTHORIZED: "Authorized",
+  CAPTURED: "Paid",
+  FAILED: "Failed",
+  REFUNDED: "Refunded",
+  PARTIALLY_REFUNDED: "Partially Refunded",
+};
 const GREEN = "#1e7439";
 const AMBER = "#f59f00";
 const BLUE = "#4299e1";
@@ -89,10 +100,11 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const { data: statusConfigs } = useOrderStatusConfigs();
   const { data: advance } = useAdvancePayment(row.id);
   const { data: manual } = useManualPaymentsForOrder(row.id);
+  const { data: staff } = useAssignableStaff();
   const updateStatus = useUpdateOrderStatus(row.id);
+  const assign = useAssignOrder(row.id);
   const refund = useRefundOrder(row.id);
   const track = useTrackShipment();
-  const cancelShipment = useCancelShipment();
   const updateShipmentStatus = useUpdateShipmentStatus();
   const addItem = useAddOrderItem(row.id);
   const updateItem = useUpdateOrderItem(row.id);
@@ -369,7 +381,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     style={{ backgroundColor: (latestPayment?.status as unknown as string) === "CAPTURED" ? GREEN : AMBER }}
                   >
                     {!latestPayment && <option value="">—</option>}
-                    {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{PAYMENT_STATUS_LABELS[s]}</option>)}
                   </select>
                 </div>
                 {advance && (
@@ -437,20 +449,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                 Order was confirmed
               </div>
 
-              {latestPayment && (latestPayment.status as unknown as string) !== "CAPTURED" && (
-                <div className="flex items-center justify-between border-b border-border py-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-text">
-                    <Icon name="credit_card" size={18} className="text-muted" />
-                    Pending payment
-                  </div>
-                  <Button type="button" variant="primary" disabled={updatePayment.isPending}
-                    onClick={() => updatePayment.mutate({ status: "CAPTURED" })}
-                    style={{ backgroundColor: BLUE, borderColor: BLUE }}>
-                    Confirm payment
-                  </Button>
-                </div>
-              )}
-
               <div className="flex items-center gap-2 py-3 text-sm font-semibold uppercase tracking-wide text-text">
                 <Icon name="check_circle" size={18} className={order.shipment ? "text-[#1e7439]" : "text-muted"} />
                 Delivery
@@ -496,10 +494,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   )}
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" disabled={cancelShipment.isPending} className={outlineBtn}
-                      onClick={() => row.shipmentId && cancelShipment.mutate({ id: row.shipmentId, reasonCode: "Canceled by staff" })}>
-                      <Icon name="cancel" size={16} /> Cancel shipping
-                    </button>
                     <button type="button" className={outlineBtn} onClick={() => setShowStatusOverride(true)}>
                       <Icon name="local_shipping" size={16} /> Update shipping status
                     </button>
@@ -516,7 +510,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
             {/* History card */}
             <div className="rounded-card border border-border bg-surface p-4">
               <h3 className="mb-3 text-base font-semibold text-text">History</h3>
-              <div className="flex flex-col gap-3">
+              <div className={`flex flex-col gap-3 ${order.statusHistory.length > 5 ? "max-h-[280px] overflow-y-auto pr-1" : ""}`}>
                 {[...order.statusHistory].reverse().map((h, i) => {
                   // Matches OrderEmailsService#logOutcome's note format —
                   // "Order email (<template_key>) sent to customer" / "...
@@ -653,6 +647,45 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
               <div className="mt-4 border-t border-border pt-4">
                 <h3 className="mb-2 text-base font-semibold text-text">Order details</h3>
                 <div className="flex flex-col gap-3">
+                  {(() => {
+                    // The very first status-history row is written at order
+                    // creation and nowhere else — OrderStatusHistory.adminUserId
+                    // is null for checkout.service.ts's own row (customer
+                    // placed it) and set for AdminOrderCreationService's row
+                    // (staff placed it over phone/WhatsApp/POS), so it's a
+                    // reliable "who actually created this" signal rather than
+                    // Order.channel (which staff can freely re-edit afterward).
+                    const creator = order.statusHistory[0];
+                    const createdByStaff = creator?.adminName;
+                    return (
+                      <div className="flex flex-col gap-1 rounded-sm border border-border bg-surface-2 p-2.5">
+                        <span className="text-xs text-muted">Created by</span>
+                        {createdByStaff ? (
+                          <p className="text-sm font-semibold text-text">Staff — {createdByStaff}</p>
+                        ) : (
+                          <p className="text-sm font-semibold text-text">
+                            Customer — {shippingAddress?.recipientName ?? "—"}
+                            {shippingAddress?.phone && <> · {shippingAddress.phone}</>}
+                            {" · "}Order #{order.orderNumber}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">Assigned to</span>
+                    <select
+                      value={order.assignedAdminId ?? ""}
+                      disabled={assign.isPending}
+                      onChange={(e) => assign.mutate(e.target.value === "" ? null : Number(e.target.value))}
+                      className="h-9 rounded-sm border border-border bg-surface px-2 text-sm text-text disabled:opacity-50"
+                    >
+                      <option value="">Unassigned</option>
+                      {(staff ?? []).map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs text-muted">Origin</span>
                     <select value={order.channel} onChange={(e) => updateDetails.mutate({ channel: e.target.value as OrderChannel })}

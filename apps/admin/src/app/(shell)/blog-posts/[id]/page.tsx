@@ -29,7 +29,9 @@ interface BlogPostDraft {
   content: string;
   metaDescription: string;
   imageUrl: string | undefined;
+  coverImageUrl: string | undefined;
   isFeatured: boolean;
+  sortOrder: number;
   categoryIds: number[];
   tagIds: number[];
 }
@@ -60,7 +62,9 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const [content, setContent] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>();
   const [isFeatured, setIsFeatured] = useState(false);
+  const [sortOrder, setSortOrder] = useState(0);
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<"detail" | "revisions">("detail");
@@ -74,7 +78,9 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     setContent(post.translations[0]?.content ?? "");
     setMetaDescription(post.translations[0]?.metaDescription ?? "");
     setImageUrl(post.imageUrl ?? undefined);
+    setCoverImageUrl(post.coverImageUrl ?? undefined);
     setIsFeatured(post.isFeatured);
+    setSortOrder(post.sortOrder);
     setCategoryIds(post.categoryIds);
     setTagIds(post.tagIds);
     // Same reasoning as the product edit page: useUpdateBlogPost's own
@@ -85,7 +91,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   }, [post]);
 
   useAutosaveDraft(draftKey, () => ({
-    title, slug, excerpt, content, metaDescription, imageUrl, isFeatured, categoryIds, tagIds,
+    title, slug, excerpt, content, metaDescription, imageUrl, coverImageUrl, isFeatured, sortOrder, categoryIds, tagIds,
   }));
 
   function restoreDraft(d: BlogPostDraft) {
@@ -95,7 +101,9 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     setContent(d.content);
     setMetaDescription(d.metaDescription);
     setImageUrl(d.imageUrl);
+    setCoverImageUrl(d.coverImageUrl);
     setIsFeatured(d.isFeatured);
+    setSortOrder(d.sortOrder);
     setCategoryIds(d.categoryIds);
     setTagIds(d.tagIds);
   }
@@ -109,7 +117,9 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
       await update.mutateAsync({
         slug,
         imageUrl,
+        coverImageUrl,
         isFeatured,
+        sortOrder,
         categoryIds,
         tagIds,
         translations: [
@@ -221,8 +231,12 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           setMetaDescription={setMetaDescription}
           imageUrl={imageUrl}
           setImageUrl={setImageUrl}
+          coverImageUrl={coverImageUrl}
+          setCoverImageUrl={setCoverImageUrl}
           isFeatured={isFeatured}
           setIsFeatured={setIsFeatured}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
           categoryIds={categoryIds}
           setCategoryIds={setCategoryIds}
           tagIds={tagIds}

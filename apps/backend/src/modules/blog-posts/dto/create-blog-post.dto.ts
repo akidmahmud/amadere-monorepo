@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { BlogPostTranslationDto } from './blog-post-translation.dto';
@@ -21,10 +22,21 @@ export class CreateBlogPostDto {
   @IsString()
   imageUrl?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  coverImageUrl?: string;
+
   @ApiPropertyOptional({ default: false })
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Higher shows first in public listings. 0 = no manual override.', default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
 
   @ApiPropertyOptional({ type: [Number] })
   @IsOptional()

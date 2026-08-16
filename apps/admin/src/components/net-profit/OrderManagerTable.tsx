@@ -12,6 +12,7 @@ import {
   useUpdateOrderDetails,
   useUpdateOrderPayment,
   useUpdateOrderStatus,
+  type ManualOrderPaymentStatus,
   type OrderStatus,
   type PaymentProviderType,
 } from "@/hooks/useOrders";
@@ -39,8 +40,30 @@ const COURIER_STATUS_COLOR: Record<string, string> = {
   FAILED: "#e5484d",
 };
 
-const OPTIONAL_COLUMNS = ["payment", "division", "internalNote", "source"] as const;
+const OPTIONAL_COLUMNS = ["payment", "paymentStatus", "division", "internalNote", "source"] as const;
 export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number];
+
+const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
+// "CAPTURED" is the Prisma enum's own gateway-jargon name for "money is
+// actually in hand" — shown to staff as "Paid" everywhere, same relabeling
+// NewOrderForm.tsx and InvoiceDocument.tsx already do; the stored value is
+// unchanged.
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  AUTHORIZED: "Authorized",
+  CAPTURED: "Paid",
+  FAILED: "Failed",
+  REFUNDED: "Refunded",
+  PARTIALLY_REFUNDED: "Partially Refunded",
+};
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  PENDING: "#f5a623",
+  AUTHORIZED: "#0c8ce9",
+  CAPTURED: "#22b07d",
+  FAILED: "#e5484d",
+  REFUNDED: "#e5484d",
+  PARTIALLY_REFUNDED: "#e5484d",
+};
 
 export interface OrderManagerFiltersLike {
   page?: number;
@@ -88,6 +111,26 @@ function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKe
         <option key={s} value={s}>
           {statusByKey.get(s)?.labelEn ?? s}
         </option>
+      ))}
+    </select>
+  );
+}
+
+function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
+  const updatePayment = useUpdateOrderPayment(order.id);
+  const color = order.paymentStatus ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? "#9ca3af") : "#9ca3af";
+  return (
+    <select
+      value={order.paymentStatus ?? ""}
+      disabled={updatePayment.isPending}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => updatePayment.mutate({ status: e.target.value as ManualOrderPaymentStatus })}
+      className="rounded-[8px] border-0 px-2.5 py-1 text-[0.7rem] font-bold outline-none"
+      style={{ backgroundColor: `${color}1a`, color }}
+    >
+      {!order.paymentStatus && <option value="">—</option>}
+      {PAYMENT_STATUSES.map((s) => (
+        <option key={s} value={s}>{PAYMENT_STATUS_LABELS[s]}</option>
       ))}
     </select>
   );
@@ -410,7 +453,8 @@ export function OrderManagerTable({
               </TH>
               <TH>Date</TH>
               <TH>Actions</TH>
-              <TH>Status</TH>
+              <TH>Order Status</TH>
+              {columns.has("paymentStatus") && <TH>Payment Status</TH>}
               <TH>Assign</TH>
               <TH>Total</TH>
               <TH>Phone</TH>
@@ -629,6 +673,11 @@ function OrderRow({
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <StatusCell order={o} statusByKey={statusByKey} />
       </td>
+      {columns.has("paymentStatus") && (
+        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+          <PaymentStatusCell order={o} />
+        </td>
+      )}
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <AssignCell order={o} staff={staff} />
       </td>

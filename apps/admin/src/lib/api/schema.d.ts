@@ -7060,6 +7060,8 @@ export interface components {
             customerId: number | null;
             status: Record<string, never>;
             channel: Record<string, never>;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
             subTotal: string;
             discountAmount: string;
             taxAmount: string;
@@ -8131,6 +8133,7 @@ export interface components {
             author: components["schemas"]["PublicBlogPostAuthorDto"];
             categories: components["schemas"]["BlogPostCategorySummaryDto"][];
             tags: components["schemas"]["BlogPostTagSummaryDto"][];
+            coverImageUrl: string | null;
             content: string;
             metaDescription: string | null;
             toc: components["schemas"]["BlogPostTocEntryDto"][];
@@ -8180,7 +8183,9 @@ export interface components {
             slug: string;
             status: Record<string, never>;
             isFeatured: boolean;
+            sortOrder: number;
             imageUrl: string | null;
+            coverImageUrl: string | null;
             /** Format: date-time */
             publishedAt: string | null;
             viewCount: number;
@@ -8212,8 +8217,14 @@ export interface components {
         CreateBlogPostDto: {
             slug: string;
             imageUrl?: string;
+            coverImageUrl?: string;
             /** @default false */
             isFeatured: boolean;
+            /**
+             * @description Higher shows first in public listings. 0 = no manual override.
+             * @default 0
+             */
+            sortOrder: number;
             categoryIds?: number[];
             tagIds?: number[];
             translations: components["schemas"]["BlogPostTranslationDto"][];
@@ -8221,8 +8232,14 @@ export interface components {
         UpdateBlogPostDto: {
             slug?: string;
             imageUrl?: string;
+            coverImageUrl?: string;
             /** @default false */
             isFeatured: boolean;
+            /**
+             * @description Higher shows first in public listings. 0 = no manual override.
+             * @default 0
+             */
+            sortOrder: number;
             categoryIds?: number[];
             tagIds?: number[];
             translations?: components["schemas"]["BlogPostTranslationDto"][];

@@ -1092,6 +1092,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminProductsController_duplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/restore": {
         parameters: {
             query?: never;
@@ -1186,6 +1202,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminProductsController_updateVariantSku"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/variants/{variantId}/weight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateVariantWeight"];
         trace?: never;
     };
     "/api/v1/admin/products/{id}/cross-sell": {
@@ -6426,6 +6458,7 @@ export interface components {
             /** Format: date-time */
             saleEndsAt: string | null;
             costPerItem: string | null;
+            costPriceUnit: Record<string, never> | null;
             shippableWeight: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
@@ -6519,6 +6552,11 @@ export interface components {
             saleStartsAt?: string;
             saleEndsAt?: string;
             costPerItem?: number;
+            /**
+             * @description When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.
+             * @enum {string|null}
+             */
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML" | null;
             /** @description Kilograms */
             shippableWeight?: number;
             /** @default 1 */
@@ -6578,6 +6616,11 @@ export interface components {
             saleStartsAt?: string;
             saleEndsAt?: string;
             costPerItem?: number;
+            /**
+             * @description When set, costPerItem is a rate per this unit of weight, scaled per-variant by weightOverride, instead of a flat cost. Only meaningful when hasVariants is true.
+             * @enum {string|null}
+             */
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML" | null;
             /** @description Kilograms */
             shippableWeight?: number;
             /** @default 1 */
@@ -6602,6 +6645,10 @@ export interface components {
         };
         UpdateVariantSkuDto: {
             sku?: string;
+        };
+        UpdateVariantWeightDto: {
+            /** @description Kilograms. Omit/null to clear and fall back to the product-level shippable weight. */
+            weightOverride?: number | null;
         };
         UpdateCrossSellDto: {
             productIds: number[];
@@ -7013,6 +7060,8 @@ export interface components {
             customerId: number | null;
             status: Record<string, never>;
             channel: Record<string, never>;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
             subTotal: string;
             discountAmount: string;
             taxAmount: string;
@@ -8084,6 +8133,7 @@ export interface components {
             author: components["schemas"]["PublicBlogPostAuthorDto"];
             categories: components["schemas"]["BlogPostCategorySummaryDto"][];
             tags: components["schemas"]["BlogPostTagSummaryDto"][];
+            coverImageUrl: string | null;
             content: string;
             metaDescription: string | null;
             toc: components["schemas"]["BlogPostTocEntryDto"][];
@@ -8133,7 +8183,9 @@ export interface components {
             slug: string;
             status: Record<string, never>;
             isFeatured: boolean;
+            sortOrder: number;
             imageUrl: string | null;
+            coverImageUrl: string | null;
             /** Format: date-time */
             publishedAt: string | null;
             viewCount: number;
@@ -8165,8 +8217,14 @@ export interface components {
         CreateBlogPostDto: {
             slug: string;
             imageUrl?: string;
+            coverImageUrl?: string;
             /** @default false */
             isFeatured: boolean;
+            /**
+             * @description Higher shows first in public listings. 0 = no manual override.
+             * @default 0
+             */
+            sortOrder: number;
             categoryIds?: number[];
             tagIds?: number[];
             translations: components["schemas"]["BlogPostTranslationDto"][];
@@ -8174,8 +8232,14 @@ export interface components {
         UpdateBlogPostDto: {
             slug?: string;
             imageUrl?: string;
+            coverImageUrl?: string;
             /** @default false */
             isFeatured: boolean;
+            /**
+             * @description Higher shows first in public listings. 0 = no manual override.
+             * @default 0
+             */
+            sortOrder: number;
             categoryIds?: number[];
             tagIds?: number[];
             translations?: components["schemas"]["BlogPostTranslationDto"][];
@@ -11376,6 +11440,35 @@ export interface operations {
             };
         };
     };
+    AdminProductsController_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductDto"];
+                };
+            };
+        };
+    };
     AdminProductsController_restore: {
         parameters: {
             query?: never;
@@ -11519,6 +11612,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateVariantSkuDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_updateVariantWeight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariantWeightDto"];
             };
         };
         responses: {

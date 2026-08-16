@@ -1631,7 +1631,24 @@ model BlogPost {
   adminUserId Int           @map("admin_user_id") // author; a Role like "Content Editor" governs who may post
   status      ContentStatus @default(DRAFT)
   isFeatured  Boolean       @default(false) @map("is_featured")
+  // Manual priority override for public ordering — higher shows first.
+  // Default 0 means "no manual override," so untouched posts keep the
+  // original reverse-chronological order (ties broken by publishedAt) —
+  // see BlogPostsService.publicList/adminList orderBy. Admin sets this via
+  // a plain "Position" number rather than full drag-and-drop, since the
+  // admin list (and every public listing) is paginated — a whole-list drag
+  // reorder (like PromoVideosService.reorder, which works because that
+  // list is small/unpaginated) can't produce a stable absolute ordering
+  // across pages.
+  sortOrder   Int           @default(0) @map("sort_order")
+  // Small square thumbnail — blog listing/related-posts cards, homepage
+  // "Our Blog" grid (BlogCard/BlogCardGrid). Deliberately separate from
+  // coverImageUrl below, same split as Category.imageUrl vs
+  // Category.bannerImageUrl (different aspect ratios/purposes).
   imageUrl    String?       @map("image_url")
+  // Wide 1600x500 banner shown at the top of the post's own detail page.
+  // Falls back to imageUrl when unset — see toPublicBlogPostDetailDto.
+  coverImageUrl String?     @map("cover_image_url")
   publishedAt DateTime?     @map("published_at")
   viewCount   Int           @default(0) @map("view_count")
   legacyId    Int?          @unique @map("legacy_id")

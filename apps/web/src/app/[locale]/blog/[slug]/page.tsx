@@ -124,18 +124,23 @@ export default async function BlogPostPage({
               {post.publishedAt && ` · ${formatBlogDate(post.publishedAt)}`}
             </p>
 
-            {toDisplayImageUrl(post.imageUrl) && (
-              // Was a fixed aspect-[16/9] box with object-contain — stopped
-              // the cropping, but forcing every real image (mostly square,
-              // some — like a multi-panel Word-pasted collage — much
-              // narrower/taller than 16:9) into one fixed wide shape just
-              // traded cropping for huge empty color bars on the narrow
-              // ones. No grid/carousel here needs every post's image to be
-              // the same shape (unlike the blog card grid, which does) — so
-              // just let each image size itself at its own natural aspect
-              // ratio, capped so an extreme one can't dominate the page.
+            {toDisplayImageUrl(post.coverImageUrl) && (
+              // post.coverImageUrl is already resolved server-side to fall
+              // back to the small thumbnail (imageUrl) when the admin never
+              // set a dedicated 1600x500 cover — see
+              // blog-posts.service.ts#publicGetBySlug. Was a fixed
+              // aspect-[16/9] box with object-contain — stopped the
+              // cropping, but forcing every real image (the thumbnail
+              // fallback is mostly square, some — like a multi-panel
+              // Word-pasted collage — much narrower/taller than 16:9) into
+              // one fixed wide shape just traded cropping for huge empty
+              // color bars on the narrow ones. No grid/carousel here needs
+              // every post's image to be the same shape (unlike the blog
+              // card grid, which does) — so just let each image size itself
+              // at its own natural aspect ratio, capped so an extreme one
+              // can't dominate the page.
               <img
-                src={toDisplayImageUrl(post.imageUrl)}
+                src={toDisplayImageUrl(post.coverImageUrl)}
                 alt={post.title}
                 className="mx-auto mb-6 block max-h-[500px] max-w-full rounded-brand"
               />

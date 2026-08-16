@@ -49,11 +49,21 @@ function invalidateOrder(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ORDER_MANAGER_KEY });
 }
 
+// A courier webhook (status push, or this file's own delivery→Paid payment
+// sync) can update this order entirely server-side while an admin has its
+// detail modal open — nothing on the frontend ever calls a mutation for
+// that, so there's nothing to invalidate this query. Same 15s polling
+// useOrderManagerList already uses for the same reason, so the open modal
+// converges on real data within 15s instead of staying frozen until closed
+// and reopened.
+const ORDER_DETAIL_REFETCH_INTERVAL_MS = 15_000;
+
 export function useOrder(id: number | null) {
   return useQuery({
     queryKey: [...KEY, "detail", id],
     queryFn: () => proxyFetch<AdminOrder>(`/admin/orders/${id}`),
     enabled: id !== null && Number.isFinite(id),
+    refetchInterval: ORDER_DETAIL_REFETCH_INTERVAL_MS,
   });
 }
 

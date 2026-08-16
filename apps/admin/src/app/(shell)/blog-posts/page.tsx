@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Skeleton } from "@amader/admin-ui";
-import { useBlogPosts, useBlogPostStats, useDeleteBlogPost, type BlogPostFilters } from "@/hooks/useBlogPosts";
+import { useBlogPosts, useBlogPostStats, useDeleteBlogPost, useUpdateBlogPost, type AdminBlogPost, type BlogPostFilters } from "@/hooks/useBlogPosts";
 import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
 import { BlogStatsStrip } from "@/components/blog/BlogStatsStrip";
@@ -22,6 +22,31 @@ const STATUS_PILL: Record<string, string> = {
 
 function Pill({ children, className }: { children: React.ReactNode; className: string }) {
   return <span className={`inline-flex items-center rounded-[6px] px-2.5 py-1 text-[0.68rem] font-bold ${className}`}>{children}</span>;
+}
+
+// Quick inline "show this post first" control, without opening the full
+// editor — reuses the same PATCH the Position field on the edit page does
+// (useUpdateBlogPost), just scoped to one field. A per-row mutation instance
+// (same reasoning as OrderManagerTable's AssignCell/StatusCell) since hooks
+// can't be called inside the .map() below.
+function PositionCell({ post }: { post: AdminBlogPost }) {
+  const update = useUpdateBlogPost(post.id);
+  const [draft, setDraft] = useState(String(post.sortOrder));
+  return (
+    <input
+      type="number"
+      min={0}
+      value={draft}
+      disabled={update.isPending}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        const value = Math.max(0, Number(draft) || 0);
+        setDraft(String(value));
+        if (value !== post.sortOrder) update.mutate({ sortOrder: value });
+      }}
+      className="h-8 w-16 rounded-[6px] border border-border bg-surface px-2 text-right text-[0.76rem] font-semibold text-text outline-none focus:border-brand-500 disabled:opacity-50"
+    />
+  );
 }
 
 const DEFAULT_FILTERS: BlogPostFilters = { page: 1, pageSize: 10 };
@@ -101,10 +126,10 @@ export default function BlogPostsPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {["Post", "Category", "Tags", "Status", "Featured", "Date", "Actions"].map((h, i) => (
+                {["Post", "Category", "Tags", "Status", "Featured", "Position", "Date", "Actions"].map((h, i) => (
                   <th
                     key={h}
-                    className={`whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary ${i === 0 ? "rounded-l-[8px]" : ""} ${i === 6 ? "rounded-r-[8px]" : ""}`}
+                    className={`whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary ${i === 0 ? "rounded-l-[8px]" : ""} ${i === 7 ? "rounded-r-[8px]" : ""}`}
                   >
                     {h}
                   </th>
@@ -115,14 +140,14 @@ export default function BlogPostsPage() {
               {isLoading &&
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={7} className="px-2.5 py-2.5">
+                    <td colSpan={8} className="px-2.5 py-2.5">
                       <Skeleton className="h-8 w-full" />
                     </td>
                   </tr>
                 ))}
               {!isLoading && posts.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-2.5 py-8 text-center text-sm text-muted">
+                  <td colSpan={8} className="px-2.5 py-8 text-center text-sm text-muted">
                     No posts match these filters.
                   </td>
                 </tr>
@@ -157,6 +182,9 @@ export default function BlogPostsPage() {
                       <svg viewBox="0 0 24 24" width="17" height="17" fill={p.isFeatured ? "#f5a623" : "#dfe5ee"}>
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                       </svg>
+                    </td>
+                    <td className="px-2.5 py-3.5 align-middle">
+                      <PositionCell post={p} />
                     </td>
                     <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
                       {new Date(p.createdAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}

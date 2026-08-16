@@ -30,6 +30,7 @@ const PAGE_SIZE_KEY = "wpfok-order-manager-page-size";
 const COLUMNS_KEY = "wpfok-order-manager-columns";
 const COLUMN_LABELS: Record<OptionalColumn, string> = {
   payment: "Payment",
+  paymentStatus: "Payment Status",
   division: "Division",
   internalNote: "Internal Note",
   source: "Source",

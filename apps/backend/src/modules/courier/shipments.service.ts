@@ -590,6 +590,29 @@ export class ShipmentsService {
         );
       }
     }
+
+    // Steadfast's own status glossary describes DELIVERED/PARTIALLY_DELIVERED
+    // as "...and balance added" — the rider has actually collected the COD
+    // cash from the customer and credited it to our Steadfast merchant
+    // balance by this point. That's not the same as the money sitting in our
+    // bank account (a separate Steadfast withdrawal/settlement step with no
+    // webhook of its own), but it does mean the COD payment itself is
+    // collected, so mirror that onto the Payment row. Scoped to COD only —
+    // every other provider is captured up front at checkout, not on
+    // delivery — and only touches a still-PENDING payment so a payment an
+    // admin already marked FAILED/REFUNDED/etc. is never silently overwritten.
+    if (status === 'DELIVERED' || status === 'PARTIALLY_DELIVERED') {
+      const payment = await this.prisma.client.payment.findFirst({
+        where: { orderId: shipment.orderId },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (payment && payment.provider === 'COD' && payment.status === 'PENDING') {
+        await this.prisma.client.payment.update({
+          where: { id: payment.id },
+          data: { status: 'CAPTURED' },
+        });
+      }
+    }
   }
 
   private async computeOrderWeight(

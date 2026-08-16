@@ -1,4 +1,4 @@
-import { CourierProviderName, OrderStatus, PaymentProvider, RiskLevel } from '@amader/db';
+import { CourierProviderName, OrderStatus, PaymentProvider, PaymentStatus, RiskLevel } from '@amader/db';
 
 export interface OrderManagerCourierAttempt {
   provider: CourierProviderName;
@@ -21,6 +21,7 @@ export class OrderManagerRowDto {
   thumbnailUrl!: string | null;
   origin!: string;
   paymentProvider!: PaymentProvider | null;
+  paymentStatus!: PaymentStatus | null;
   courierProvider!: CourierProviderName | null;
   shipmentId!: number | null;
   courierStatus!: string | null;

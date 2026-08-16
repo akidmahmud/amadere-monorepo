@@ -24,6 +24,7 @@ export interface OrderManagerRow {
   thumbnailUrl: string | null;
   origin: string;
   paymentProvider: string | null;
+  paymentStatus: string | null;
   courierProvider: string | null;
   shipmentId: number | null;
   courierStatus: string | null;

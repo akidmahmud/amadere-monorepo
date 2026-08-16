@@ -125,9 +125,9 @@ export default async function ProductPage({
   // the description block above and blog post content elsewhere. Still
   // sanitized before render, so a compromised admin account can't plant a
   // stored-XSS payload that runs for every visitor.
-  function htmlBlock(html: string, extraClassName?: string) {
+  function htmlBlock(html: string) {
     // eslint-disable-next-line react/no-danger
-    return <div className={`rich-content ${extraClassName ?? ""}`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
+    return <div className="rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
   }
 
   const tabs = [
@@ -146,19 +146,13 @@ export default async function ProductPage({
     },
     // Both fields are now real CKEditor HTML (headings, bulleted lists,
     // paragraphs) instead of loose plain text — the admin builds the actual
-    // structure (section headings, ticked vs. plain bullet points, one
-    // How-to-Use step per line) themselves with the editor's own tools, so
-    // this just renders it like Description/Brand below, no text-convention
-    // parsing needed. "rich-content-checklist" swaps <ul><li>'s default disc
-    // marker for the same green checkmark the old hand-built checklist used
-    // — see globals.css — scoped to this one tab only (Description/How to
-    // Use/Brand keep plain bullets, since a checkmark only makes sense for
-    // an actual list of benefits).
-    product.benefitPoints && {
-      id: "key-benefits",
-      label: "Key Benefits",
-      content: htmlBlock(product.benefitPoints, "rich-content-checklist"),
-    },
+    // structure themselves with the editor's own tools, so this just renders
+    // it like Description/Brand below, no text-convention parsing and no
+    // auto-generated checkmark styling (tried a CSS checkmark-bullet look
+    // here briefly; removed per explicit request — plain rich-content
+    // bullets like every other tab, admin can type their own ✓/bullet
+    // characters directly if they want that look on a specific product).
+    product.benefitPoints && { id: "key-benefits", label: "Key Benefits", content: htmlBlock(product.benefitPoints) },
     product.howToUse && { id: "how-to-use", label: "How to Use", content: htmlBlock(product.howToUse) },
     // Always last, per explicit request — kept as its own array push (not
     // spliced in above) so it can never end up anywhere but the final tab

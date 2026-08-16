@@ -82,7 +82,10 @@ export class BlogPostsService {
       this.prisma.client.blogPost.findMany({
         where,
         include: BLOG_POST_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        // Same ordering the public listing uses (sortOrder desc first) so
+        // the admin list visibly reflects "what shows first on the site",
+        // not just creation order.
+        orderBy: [{ sortOrder: 'desc' }, { createdAt: 'desc' }],
         ...paginationArgs(page, pageSize),
       }),
       this.prisma.client.blogPost.count({ where }),
@@ -123,7 +126,9 @@ export class BlogPostsService {
         slug: dto.slug,
         adminUserId: authorId,
         imageUrl: dto.imageUrl,
+        coverImageUrl: dto.coverImageUrl,
         isFeatured: dto.isFeatured,
+        sortOrder: dto.sortOrder,
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
           : undefined,
@@ -176,7 +181,9 @@ export class BlogPostsService {
       data: {
         slug: dto.slug,
         imageUrl: dto.imageUrl,
+        coverImageUrl: dto.coverImageUrl,
         isFeatured: dto.isFeatured,
+        sortOrder: dto.sortOrder,
         categories: dto.categoryIds
           ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
           : undefined,
@@ -220,7 +227,9 @@ export class BlogPostsService {
 
     if (dto.slug !== undefined) push('slug', before.slug, dto.slug);
     if (dto.imageUrl !== undefined) push('imageUrl', before.imageUrl, dto.imageUrl ?? null);
+    if (dto.coverImageUrl !== undefined) push('coverImageUrl', before.coverImageUrl, dto.coverImageUrl ?? null);
     if (dto.isFeatured !== undefined) push('isFeatured', String(before.isFeatured), String(dto.isFeatured));
+    if (dto.sortOrder !== undefined) push('sortOrder', String(before.sortOrder), String(dto.sortOrder));
 
     if (dto.categoryIds !== undefined) {
       const beforeIds = before.categories.map((c) => c.categoryId).sort((a, b) => a - b);
@@ -409,7 +418,10 @@ export class BlogPostsService {
       this.prisma.client.blogPost.findMany({
         where,
         include: BLOG_POST_INCLUDE,
-        orderBy: { publishedAt: 'desc' },
+        // Manually-boosted posts (sortOrder > 0) show first; everything
+        // else (the vast majority, still at the default 0) keeps its
+        // original reverse-chronological order via the publishedAt tiebreak.
+        orderBy: [{ sortOrder: 'desc' }, { publishedAt: 'desc' }],
         ...paginationArgs(page, pageSize),
       }),
       this.prisma.client.blogPost.count({ where }),
@@ -466,12 +478,16 @@ export class BlogPostsService {
       question: f.question,
       answer: f.answer,
     }));
+    // Wide banner if the admin set one, else fall back to the small card
+    // thumbnail — resolved once here so the detail page, OG/social preview,
+    // and Article JSON-LD all agree on the same image.
+    const coverImageUrl = post.coverImageUrl ?? post.imageUrl;
 
     const seo = await this.seo.resolve('BLOG_POST', post.id, locale, {
       title: summary.title,
       description: translation?.metaDescription ?? summary.excerpt,
       canonicalPath: `/blog/${post.slug}`,
-      imageUrl: post.imageUrl,
+      imageUrl: coverImageUrl,
     });
 
     const faqJsonLd = buildFaqPageJsonLd(faqs);
@@ -479,7 +495,7 @@ export class BlogPostsService {
       buildArticleJsonLd({
         headline: summary.title,
         description: seo.description,
-        imageUrl: post.imageUrl,
+        imageUrl: coverImageUrl,
         authorName:
           `${post.author.firstName ?? ''} ${post.author.lastName ?? ''}`.trim(),
         datePublished: post.publishedAt,
@@ -496,6 +512,7 @@ export class BlogPostsService {
 
     return {
       ...summary,
+      coverImageUrl,
       content,
       metaDescription: translation?.metaDescription ?? null,
       toc,
