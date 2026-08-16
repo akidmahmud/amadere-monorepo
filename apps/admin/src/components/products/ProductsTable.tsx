@@ -180,28 +180,8 @@ export function ProductsTable({
   const end = Math.min(page * pageSize, total);
 
   return (
-    <div className="rounded-card border border-border bg-surface p-[18px_18px_14px] shadow-card">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="h-[38px] w-[200px] rounded-inner border border-border bg-surface px-3 text-[0.76rem] text-text outline-none focus:border-brand-500"
-        />
-        <Link
-          href="/products/new"
-          className="ml-auto inline-flex h-[38px] items-center gap-1.5 rounded-inner bg-brand-500 px-[15px] text-[0.8rem] font-bold text-white hover:bg-brand-600"
-        >
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Add Product
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+    <div className="min-w-0 rounded-card border border-border bg-surface p-[18px_18px_14px] shadow-card">
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <input type="checkbox" checked={products.length > 0 && selected.size === products.length} onChange={toggleAll} className="h-4 w-4 accent-brand-500" />
         <select value={bulkAction} onChange={(e) => setBulkAction(e.target.value)} className="h-[38px] min-w-[130px] rounded-inner border border-border bg-surface px-2.5 text-[0.75rem] font-semibold text-secondary outline-none">
           <option value="">Bulk Actions</option>
@@ -216,6 +196,29 @@ export function ProductsTable({
             Apply ({selected.size})
           </button>
         )}
+        <div className="relative w-[300px]">
+          <svg
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search products by name, SKU..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="h-[44px] w-full rounded-[12px] border border-border bg-surface pr-3.5 pl-10 text-[0.84rem] text-text outline-none transition-shadow focus:border-brand-500"
+          />
+        </div>
         <div className="flex-1" />
         <button
           type="button"
@@ -237,6 +240,16 @@ export function ProductsTable({
           </svg>
           Export
         </a>
+        <Link
+          href="/products/new"
+          className="inline-flex h-[38px] items-center gap-1.5 rounded-inner bg-brand-500 px-[15px] text-[0.8rem] font-bold text-white hover:bg-brand-600"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Product
+        </Link>
       </div>
 
       {importOpen && <ProductImportModal onClose={() => setImportOpen(false)} />}
