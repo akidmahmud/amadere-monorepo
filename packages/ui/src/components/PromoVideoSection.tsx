@@ -296,9 +296,14 @@ function PromoVideoCardTile({
       // Carousel's own 18px gap, not an approximate vw guess, plus
       // snap-start so it actually rests on a full card instead of settling
       // mid-card. aspect-ratio scales the height so a narrower card isn't
-      // disproportionately tall. sm+ (640px) reverts to the original fixed
-      // reel dimensions.
-      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:aspect-auto sm:h-[600px] sm:w-[377px]"
+      // disproportionately tall. sm+ (640px, "PC") switches to exactly 5
+      // visible per row instead of the old fixed 377px width (which only
+      // fit ~3.5 in the section's 1440px max-width wrapper) — same
+      // calc(percentage - gap-share) technique as mobile's 2-up, just for
+      // N=5: each card is 20% of the row minus its share of the 4 gaps
+      // between 5 cards (18px × 4 ÷ 5 = 14.4px). Card shape (377:600)
+      // unchanged, just fluid now instead of a fixed pixel size.
+      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:aspect-[377/600] sm:w-[calc(20%-14.4px)]"
     >
       {isInView ? (
         <PlayingMedia card={card} />
