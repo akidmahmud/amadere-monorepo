@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Button, Modal } from "@amader/admin-ui";
+import { Button, Icon, Modal } from "@amader/admin-ui";
 import { useCustomer } from "@/hooks/useCustomers";
+
+const BLUE = "#4299e1";
 
 // Quick-view for a row click in the customers list — full note/call-log/
 // order-history/activity-timeline management still lives on the dedicated
@@ -20,8 +22,22 @@ export function CustomerDetailModal({ customerId, onClose }: { customerId: numbe
         <div className="flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <div className="text-sm text-text">
-              <div>{customer.phone ?? "no phone"}</div>
-              <div className="text-muted">{customer.email ?? "no email"}</div>
+              {customer.phone ? (
+                <a href={`tel:${customer.phone}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
+                  <Icon name="call" size={14} />
+                  {customer.phone}
+                </a>
+              ) : (
+                <div>no phone</div>
+              )}
+              {customer.email ? (
+                <a href={`mailto:${customer.email}`} className="inline-flex items-center gap-1 text-muted">
+                  <Icon name="mail" size={14} />
+                  {customer.email}
+                </a>
+              ) : (
+                <div className="text-muted">no email</div>
+              )}
             </div>
             {customer.tier && (
               <span className="rounded-pill bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-500">{customer.tier}</span>

@@ -811,7 +811,12 @@ export function NewOrderForm({ initialCustomerId, onCreated, onCancel }: NewOrde
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-semibold">{c.name}</span>
-                          {c.phone && <span className="block truncate text-xs text-muted">{c.phone}</span>}
+                          {c.phone && (
+                            <span className="flex items-center gap-1 truncate text-xs text-muted">
+                              <Icon name="call" size={12} />
+                              {c.phone}
+                            </span>
+                          )}
                         </span>
                       </button>
                     ))}

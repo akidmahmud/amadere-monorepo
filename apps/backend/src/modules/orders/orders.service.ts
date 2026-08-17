@@ -173,6 +173,27 @@ export class OrdersService {
       await tx.orderStatusHistory.create({
         data: { orderId: id, status: dto.status, note: dto.note, adminUserId },
       });
+
+      // Canceling an order that's still awaiting payment means that payment
+      // is never coming — leaving it at PENDING forever reads as "still
+      // expected," which is misleading on a dead order (see the printed
+      // invoice's "please pay the delivery person" notice). Distinct from
+      // FAILED (a real attempted-and-declined charge never happened here).
+      // Only touches a still-PENDING payment — never overwrites a payment
+      // that's already CAPTURED/REFUNDED/etc., same "don't clobber a real
+      // fact" rule as the courier-webhook delivery→Paid sync.
+      if (dto.status === 'CANCELED') {
+        const latestPayment = await tx.payment.findFirst({
+          where: { orderId: id },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (latestPayment && latestPayment.status === 'PENDING') {
+          await tx.payment.update({
+            where: { id: latestPayment.id },
+            data: { status: 'CANCELED' },
+          });
+        }
+      }
     });
 
     if (dto.status === 'CONFIRMED') {

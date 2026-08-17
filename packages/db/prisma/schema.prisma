@@ -1359,6 +1359,10 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   PARTIALLY_REFUNDED
+  // Order was canceled while payment was still PENDING — distinct from
+  // FAILED (a real attempted-and-declined charge) since nothing was ever
+  // attempted here; see OrdersService.updateStatus's CANCELED branch.
+  CANCELED
 }
 
 model Payment {

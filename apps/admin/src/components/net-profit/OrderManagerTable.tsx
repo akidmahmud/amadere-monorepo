@@ -43,7 +43,7 @@ const COURIER_STATUS_COLOR: Record<string, string> = {
 const OPTIONAL_COLUMNS = ["payment", "paymentStatus", "division", "internalNote", "source"] as const;
 export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number];
 
-const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
+const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELED"];
 // "CAPTURED" is the Prisma enum's own gateway-jargon name for "money is
 // actually in hand" — shown to staff as "Paid" everywhere, same relabeling
 // NewOrderForm.tsx and InvoiceDocument.tsx already do; the stored value is
@@ -55,6 +55,7 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   FAILED: "Failed",
   REFUNDED: "Refunded",
   PARTIALLY_REFUNDED: "Partially Refunded",
+  CANCELED: "Cancelled",
 };
 const PAYMENT_STATUS_COLOR: Record<string, string> = {
   PENDING: "#f5a623",
@@ -63,6 +64,7 @@ const PAYMENT_STATUS_COLOR: Record<string, string> = {
   FAILED: "#e5484d",
   REFUNDED: "#e5484d",
   PARTIALLY_REFUNDED: "#e5484d",
+  CANCELED: "#9ca3af",
 };
 
 export interface OrderManagerFiltersLike {
@@ -104,11 +106,19 @@ function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKe
       disabled={updateStatus.isPending}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => updateStatus.mutate({ status: e.target.value as OrderStatus })}
-      className="rounded-[8px] border-0 px-2.5 py-1 text-[0.7rem] font-bold outline-none"
-      style={{ backgroundColor: `${color}1a`, color }}
+      // Was a pale ~10%-opacity tint with colored text — too low-contrast
+      // to scan a full page of rows at a glance (reported: staff couldn't
+      // tell a fresh/new order apart from an already-actioned one). Solid
+      // fill + white text reads as a real, unmissable status badge instead.
+      className="rounded-pill border-0 px-3 py-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-white shadow-[0_1px_3px_rgba(0,0,0,.18)] outline-none"
+      style={{ backgroundColor: color }}
     >
       {ORDER_STATUSES.map((s) => (
-        <option key={s} value={s}>
+        // Options need their own dark text — the select's white text color
+        // above is only meant for the closed/badge state; native <option>
+        // rows render against the browser's own (light) dropdown background,
+        // and would otherwise inherit that same white and go invisible.
+        <option key={s} value={s} className="text-text" style={{ backgroundColor: "#fff", color: "#1e2b22" }}>
           {statusByKey.get(s)?.labelEn ?? s}
         </option>
       ))}
@@ -125,12 +135,16 @@ function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
       disabled={updatePayment.isPending}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => updatePayment.mutate({ status: e.target.value as ManualOrderPaymentStatus })}
-      className="rounded-[8px] border-0 px-2.5 py-1 text-[0.7rem] font-bold outline-none"
-      style={{ backgroundColor: `${color}1a`, color }}
+      className="rounded-pill border-0 px-3 py-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-white shadow-[0_1px_3px_rgba(0,0,0,.18)] outline-none"
+      style={{ backgroundColor: color }}
     >
-      {!order.paymentStatus && <option value="">—</option>}
+      {!order.paymentStatus && (
+        <option value="" style={{ backgroundColor: "#fff", color: "#1e2b22" }}>—</option>
+      )}
       {PAYMENT_STATUSES.map((s) => (
-        <option key={s} value={s}>{PAYMENT_STATUS_LABELS[s]}</option>
+        <option key={s} value={s} style={{ backgroundColor: "#fff", color: "#1e2b22" }}>
+          {PAYMENT_STATUS_LABELS[s]}
+        </option>
       ))}
     </select>
   );
@@ -315,15 +329,24 @@ function DivisionCell({ order }: { order: OrderManagerRow }) {
   );
 }
 
+// Sending a canceled/returned/held order to a courier makes no sense —
+// there's nothing live left to ship (or, for HOLD, shipping is explicitly
+// what staff paused). Disabled rather than hidden so the row's layout stays
+// stable and it's visible *why* dispatch isn't available here.
+const COURIER_SEND_DISABLED_STATUSES = new Set(["CANCELED", "RETURNED", "PARTIALLY_RETURNED", "HOLD"]);
+
 function CourierSendCell({ order, onConsign }: { order: OrderManagerRow; onConsign: (provider: "STEADFAST" | "REDX") => void }) {
+  const disabled = COURIER_SEND_DISABLED_STATUSES.has(order.status);
   return (
     <div className="flex flex-col gap-1">
       {SEND_PROVIDERS.map((sp) => (
         <button
           key={sp.provider}
           type="button"
+          disabled={disabled}
+          title={disabled ? `Can't dispatch — order is ${order.status.replace(/_/g, " ").toLowerCase()}` : undefined}
           onClick={() => onConsign(sp.provider)}
-          className="rounded-[7px] border px-2 py-1 text-[0.68rem] font-bold"
+          className="rounded-[7px] border px-2 py-1 text-[0.68rem] font-bold disabled:cursor-not-allowed disabled:opacity-40"
           style={{ borderColor: LINE, color: TEXT }}
         >
           {sp.label}

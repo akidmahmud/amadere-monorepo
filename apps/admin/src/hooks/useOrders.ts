@@ -104,7 +104,7 @@ export interface CreateManualOrderAddress {
   postCode?: string;
 }
 
-export type ManualOrderPaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+export type ManualOrderPaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CANCELED";
 
 export interface CreateManualOrderInput {
   customerId?: number;

@@ -159,7 +159,7 @@ export default async function ProductPage({
     // regardless of which of the other conditional tabs are present.
     product.brand && {
       id: "brand",
-      label: product.brand.name,
+      label: "Brand",
       content: product.brand.description
         ? htmlBlock(product.brand.description)
         : <p className="font-body text-sm text-secondary">No description available for {product.brand.name} yet.</p>,

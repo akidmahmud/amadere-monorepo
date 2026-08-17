@@ -34,6 +34,7 @@ const PAYMENT_STATUS_STYLE: Record<string, string> = {
   FAILED: "bg-[#fbe7e7] text-[#c53030]",
   REFUNDED: "bg-[#eef0f3] text-[#4a5568]",
   PARTIALLY_REFUNDED: "bg-[#eef0f3] text-[#4a5568]",
+  CANCELED: "bg-[#eef0f3] text-[#4a5568]",
 };
 
 const PAYMENT_STATUS_DISPLAY_NAME: Record<string, string> = {
@@ -43,6 +44,7 @@ const PAYMENT_STATUS_DISPLAY_NAME: Record<string, string> = {
   FAILED: "FAILED",
   REFUNDED: "REFUNDED",
   PARTIALLY_REFUNDED: "PARTIALLY REFUNDED",
+  CANCELED: "CANCELLED",
 };
 
 // Gateway wordmark badges — factual "here's which payment method was used"
@@ -319,7 +321,33 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
           </table>
         </div>
 
-        <div className="flex items-start justify-between gap-5">
+        <div className="relative flex items-start justify-between gap-5">
+          {(order.status as unknown as string) === "CANCELED" && (
+            // Rotated double-ring rubber-stamp look, red-on-white so it reads
+            // clearly on screen and reprints correctly (the print-color-adjust
+            // override above already forces backgrounds/borders through).
+            // Anchored to THIS row (Payment Information / Grand Total),
+            // not the whole card — a fixed percentage-of-card offset drifted
+            // off target on any order with more/fewer item rows than the
+            // reference invoice had; anchoring here keeps it landing on the
+            // totals regardless of item count.
+            <div
+              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 -rotate-[18deg] select-none"
+              style={{ top: "78%", left: "68%" }}
+            >
+              <div
+                className="rounded-md border-[4px] px-5 py-1.5"
+                style={{ borderColor: "#c53030", boxShadow: "0 0 0 2px #fff, 0 0 0 4px #c53030" }}
+              >
+                <span
+                  className="block text-[22px] font-extrabold tracking-[0.1em] uppercase"
+                  style={{ color: "#c53030" }}
+                >
+                  Cancelled
+                </span>
+              </div>
+            </div>
+          )}
           <div className="flex w-[48%] flex-col gap-2.5 rounded-md border border-[#dbdfea] px-5 py-4">
             <div className="flex items-center gap-2">
               {cardIcon}
@@ -353,7 +381,7 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
               <span>Due Amount</span>
               <span>{order.currency} {dueAmount.toFixed(0)}</span>
             </div>
-            {isCod && dueAmount > 0 && (
+            {isCod && dueAmount > 0 && paymentStatus !== "CANCELED" && (
               <div className="mt-1 flex items-center gap-2 rounded-md bg-[#fdf3d9] px-3 py-2 text-xs text-[#a9740a]">
                 {warningIcon}
                 Please pay the delivery person the due amount.

@@ -257,82 +257,61 @@ export function Header({
     );
   }
 
-  // Remeasured from ghorerbazar.com: actions are icon-only ~22×22px at
-  // md/lg (no separate 44×44 "compact" tier, no padded hover box — just a
-  // bare icon that shifts color on hover), then auto-width icon+label
-  // stacks (~44px tall, no fixed min-width column) at xl. Replaces the
-  // earlier 44×44/74×64 padded-box tiers. Colored brand green (not the
-  // reference's dark ink) per explicit request — cart-toggle/label-down-link
-  // items specifically.
   const desktopActionClass =
-    "relative flex h-[22px] w-[22px] items-center justify-center text-green hover:text-green-dark xl:h-11 xl:w-auto xl:flex-col xl:justify-center xl:gap-1";
-  const desktopActionLabelClass = "hidden font-header text-[11px] font-semibold xl:inline";
-  // At the xl icon+label tier, `justify-center` centers the whole
-  // icon+gap+label stack as one block — which visually leaves the icon
-  // glyph itself sitting above the Home/Blog links' own center (measured
-  // live: -10.25px). Nudging the icon straight down by that same 10.25px
-  // doesn't work here, because centering re-splits any added margin-top
-  // between "space above the block" and "space before the icon within it" —
-  // confirmed live that the margin has to be exactly double the visible gap
-  // (20.5px) to land the icon glyph dead center. No effect below xl (still
-  // a single centered icon-only row there, unrelated to this offset).
-  const desktopActionIconClass = "xl:mt-[25.5px]";
+    "relative flex items-center justify-center text-green hover:text-green-dark transition-colors xl:flex-col xl:gap-0.5 shrink-0 h-full py-1";
+  const desktopActionLabelClass = "hidden font-header text-[11px] font-semibold text-center xl:block text-header-ink hover:text-green transition-colors";
+  const desktopActionIconClass = "relative flex h-6 w-6 items-center justify-center shrink-0";
 
   return (
-    // Sticky only on mobile (no separate Nav bar exists there to take over
-    // the job) — at md+, Nav.tsx becomes the sticky element instead, so
-    // scrolling shows just the slim category bar, not this whole
-    // logo/search/actions row, per explicit user request.
     <header className={cn("sticky top-0 z-40 border-b border-header-line bg-white font-header md:relative md:z-50", className)}>
-      {/* ===== Mobile (<768px) — single row + drawer + search overlay =====
-          The search bar used to be a permanent second row; now it's a
-          tap-to-open icon beside Cart (per explicit user request), so the
-          header is a single row on mobile. Row height bumped from the
-          original 64px to 104px, and the logo from 48px to 88px, per
-          explicit request for a larger logo — 104px is that 88px logo plus
-          enough padding to actually fit inside the row (a straight
-          height-for-height swap would have made the logo taller than its
-          own row and spill out past the header's top/bottom edges). */}
+      {/* ===== Mobile (<768px) — single row + drawer + search overlay ===== */}
       <div className="md:hidden">
-        <div className="grid h-[84px] grid-cols-[44px_1fr_44px_44px] items-center px-4">
+        <div className="relative flex h-[76px] items-center justify-between px-4">
           <button
             type="button"
             aria-label={mobileMenuLabel}
             aria-expanded={isDrawerOpen}
             aria-controls={MOBILE_DRAWER_ID}
             onClick={openDrawer}
-            className="grid h-11 w-11 place-items-center text-header-ink"
+            className="z-10 grid h-10 w-10 shrink-0 place-items-center text-header-ink hover:text-green transition-colors"
           >
             {hamburgerIcon}
           </button>
-          <Link href={brandHref} className="col-start-2 flex items-center justify-self-center ml-[44px]">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={brandMark} className="h-[80px] w-auto" style={logoStyle} />
-            ) : (
-              <span className="font-bengali text-lg font-bold text-header-green">{brandMark}</span>
-            )}
-          </Link>
-          <button
-            type="button"
-            aria-label={searchAriaLabel}
-            onClick={() => setIsMobileSearchOpen(true)}
-            className="col-start-3 grid h-11 w-11 place-items-center justify-self-end text-header-ink"
-          >
-            {searchIcon}
-          </button>
-          <button
-            type="button"
-            onClick={openCart}
-            aria-label={`${cartLabel}, ${cartCount ?? 0} items`}
-            className="relative col-start-4 flex h-full w-11 flex-col items-center justify-center justify-self-end gap-0.5 text-green"
-          >
-            <span className={cn("relative", cartBouncing && "animate-bounce")}>
-              {smallCartIcon}
-              <Badge count={cartCount} />
-            </span>
-            <span className="font-header text-[10px] font-semibold">{cartLabel}</span>
-          </button>
+
+          {/* Absolute centering so the logo sits at exact 50% screen width regardless of asymmetric left/right icon widths */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none max-w-[calc(100%-150px)]">
+            <Link href={brandHref} className="pointer-events-auto flex items-center justify-center shrink max-h-[56px]">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={brandMark} className="h-14 w-auto max-h-[56px] object-contain" style={logoStyle} />
+              ) : (
+                <span className="font-bengali text-2xl font-bold text-header-green truncate">{brandMark}</span>
+              )}
+            </Link>
+          </div>
+
+          <div className="z-10 flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              aria-label={searchAriaLabel}
+              onClick={() => setIsMobileSearchOpen(true)}
+              className="grid h-10 w-10 place-items-center text-header-ink hover:text-green transition-colors"
+            >
+              {searchIcon}
+            </button>
+            <button
+              type="button"
+              onClick={openCart}
+              aria-label={`${cartLabel}, ${cartCount ?? 0} items`}
+              className="relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 text-green"
+            >
+              <span className={cn("relative flex items-center justify-center", cartBouncing && "animate-bounce")}>
+                {smallCartIcon}
+                <Badge count={cartCount} />
+              </span>
+              <span className="font-header text-[9px] font-semibold">{cartLabel}</span>
+            </button>
+          </div>
         </div>
 
         {isMobileSearchOpen && (
@@ -365,31 +344,30 @@ export function Header({
       </div>
 
       {/* ===== Tablet/laptop/desktop (>=768px) ===== */}
-      <div className="mx-auto hidden w-full max-w-[1440px] items-center px-6 md:grid md:h-[112px] md:grid-cols-[auto_auto_1fr_auto] md:gap-x-[28px] lg:gap-x-8 xl:gap-x-10">
-        <Link href={brandHref} className="mt-[25.5px] flex h-[100px] shrink-0 items-center">
+      <div className="mx-auto hidden w-full max-w-[1440px] items-center px-6 md:grid md:h-[92px] md:grid-cols-[auto_auto_1fr_auto] md:gap-x-6 lg:gap-x-8 xl:gap-x-10">
+        <Link href={brandHref} className="flex h-[72px] shrink-0 items-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={brandMark} className="h-full w-auto" style={logoStyle} />
+            <img src={logoUrl} alt={brandMark} className="h-full w-auto max-h-[72px] object-contain" style={logoStyle} />
           ) : (
-            <span className="font-bengali text-xl font-bold text-header-green">{brandMark}</span>
+            <span className="font-bengali text-3xl font-extrabold text-header-green">{brandMark}</span>
           )}
         </Link>
 
-        {/* Home & Blog quick links — matches ghorerbazar.com's desktop header
-            layout: logo → Home | Blog → wide search bar → action icons. */}
+        {/* Home & Blog quick links */}
         {(homeHref || blogHref) && (
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3 lg:gap-4">
             {homeHref && homeLabel && (
-              <Link href={homeHref} className="mt-[25.5px] flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
+              <Link href={homeHref} className="flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green transition-colors">
                 {homeIcon}
                 {homeLabel}
               </Link>
             )}
             {homeHref && blogHref && (
-              <span className="mt-[25.5px] h-5 w-px bg-header-line" aria-hidden />
+              <span className="h-4 w-px bg-header-line" aria-hidden />
             )}
             {blogHref && blogLabel && (
-              <Link href={blogHref} className="mt-[25.5px] flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green">
+              <Link href={blogHref} className="flex items-center gap-1.5 font-header text-[13px] font-semibold text-header-green underline decoration-header-green/40 underline-offset-2 hover:decoration-header-green transition-colors">
                 {blogIcon}
                 {blogLabel}
               </Link>
@@ -397,17 +375,12 @@ export function Header({
           </div>
         )}
 
-        <div className="relative mt-[25.5px] w-full">
-          {searchForm("h-[47px]")}
+        <div className="relative flex items-center w-full">
+          {searchForm("h-[44px]")}
           {suggestionsPanel()}
         </div>
 
-        <div className="flex shrink-0 items-center gap-[23px]">
-          {/* Locale switch leads the group (not trailing after Cart) so Cart
-              stays the true rightmost action, its right edge flush with the
-              container's own right edge — per the exact position spec
-              (Cart 1342-1416 at a 1440px container, right edge = container
-              right = 1440-24 gutter = 1416). */}
+        <div className="flex shrink-0 items-center gap-4 lg:gap-5 xl:gap-6">
           <button type="button" onClick={onLocaleSwitch} className={desktopActionClass}>
             <span className={desktopActionIconClass}>{globeIcon}</span>
             <span className={desktopActionLabelClass}>{localeSwitchLabel}</span>
@@ -432,7 +405,7 @@ export function Header({
             </Link>
           )}
           <button type="button" onClick={openCart} aria-label={`${cartLabel}, ${cartCount ?? 0} items`} className={desktopActionClass}>
-            <span className={cn(desktopActionIconClass, "relative flex items-center justify-center", cartBouncing && "animate-bounce")}>
+            <span className={cn(desktopActionIconClass, cartBouncing && "animate-bounce")}>
               {cartIcon}
               <Badge count={cartCount} />
             </span>

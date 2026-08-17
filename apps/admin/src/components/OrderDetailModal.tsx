@@ -32,7 +32,7 @@ import { ProxyApiError } from "@/lib/api/proxy-client";
 import { ConsignModal } from "./ConsignModal";
 import { FraudDetailModal } from "./FraudDetailModal";
 
-const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
+const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELED"];
 // Same relabeling as OrderManagerTable.tsx / NewOrderForm.tsx — "CAPTURED" is
 // gateway jargon, staff sees "Paid". Stored value is unchanged.
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -42,6 +42,7 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   FAILED: "Failed",
   REFUNDED: "Refunded",
   PARTIALLY_REFUNDED: "Partially Refunded",
+  CANCELED: "Cancelled",
 };
 const GREEN = "#1e7439";
 const AMBER = "#f59f00";
@@ -445,8 +446,12 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
             {/* Confirmation / payment / delivery timeline card */}
             <div className="rounded-card border border-border bg-surface p-4">
               <div className="flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold uppercase tracking-wide text-text">
-                <Icon name="check_circle" size={18} className="text-[#1e7439]" />
-                Order was confirmed
+                <Icon
+                  name={(order.status as unknown as string) !== "PENDING" ? "check_circle" : "cancel"}
+                  size={18}
+                  className={(order.status as unknown as string) !== "PENDING" ? "text-[#1e7439]" : "text-[#e5484d]"}
+                />
+                {(order.status as unknown as string) !== "PENDING" ? "Order was confirmed" : "Order is not confirmed"}
               </div>
 
               <div className="flex items-center gap-2 py-3 text-sm font-semibold uppercase tracking-wide text-text">
@@ -592,8 +597,18 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                 </div>
                 <p className="text-muted">0 order(s)</p>
                 <p className="font-semibold text-text">{shippingAddress?.recipientName}</p>
-                {shippingAddress?.email && <a href={`mailto:${shippingAddress.email}`} style={{ color: BLUE }}>{shippingAddress.email}</a>}
-                {shippingAddress?.phone && <a href={`tel:${shippingAddress.phone}`} style={{ color: BLUE }}>{shippingAddress.phone}</a>}
+                {shippingAddress?.email && (
+                  <a href={`mailto:${shippingAddress.email}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
+                    <Icon name="mail" size={14} />
+                    {shippingAddress.email}
+                  </a>
+                )}
+                {shippingAddress?.phone && (
+                  <a href={`tel:${shippingAddress.phone}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
+                    <Icon name="call" size={14} />
+                    {shippingAddress.phone}
+                  </a>
+                )}
                 <p className="text-muted">{order.customerId ? "Have an account already" : "Guest checkout"}</p>
               </div>
 
@@ -603,7 +618,12 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                 <div className="flex flex-col gap-1 text-sm text-text">
                   <p>{shippingAddress?.recipientName}</p>
                   <div className="flex items-center gap-2">
-                    {shippingAddress?.phone && <a href={`tel:${shippingAddress.phone}`} style={{ color: BLUE }}>{shippingAddress.phone}</a>}
+                    {shippingAddress?.phone && (
+                      <a href={`tel:${shippingAddress.phone}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
+                        <Icon name="call" size={14} />
+                        {shippingAddress.phone}
+                      </a>
+                    )}
                     {shippingAddress?.phone && (
                       <button type="button" onClick={() => setShowRisk(true)} className="text-xs text-muted underline">
                         Check risk
