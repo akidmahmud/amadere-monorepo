@@ -383,7 +383,7 @@ function renderPromoVideos(videos: PublicPromoVideo[]): ReactNode {
   const items = videos.map((v) => ({ source: v.source, url: v.url, thumbnailUrl: v.thumbnailUrl ?? undefined }));
   const products = videos.map((v) => (v.product ? toPromoVideoProductData(v.product) : null));
   return (
-    <div className={WRAPPER} key="promo-videos">
+    <div className={WRAPPER_HALF} key="promo-videos">
       <PromoVideoSectionClient items={items} products={products} />
       {videos.flatMap((v) => v.structuredData).map((item, i) => (
         // eslint-disable-next-line react/no-danger
