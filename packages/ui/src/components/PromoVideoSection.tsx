@@ -78,7 +78,6 @@ function FacebookVideoEmbed({
       src={src}
       allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; web-share"
       thumbnailUrl={thumbnailUrl}
-      isFacebook
     />
   );
 }
@@ -116,7 +115,12 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
   if (card.source === "YOUTUBE") {
     const id = youtubeId(card.url);
     const src = id
-      ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${id}&playsinline=1`
+      // modestbranding=1 — asks YouTube itself to suppress its own
+      // title/channel overlay bar, rather than relying purely on the
+      // scale-crop below to hide it. Added after reducing that scale factor
+      // exposed a real video's channel name/avatar bar that the original,
+      // more aggressive zoom had been masking (confirmed live).
+      ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&modestbranding=1&loop=1&playlist=${id}&playsinline=1`
       : card.url;
     return (
       <>
@@ -126,6 +130,12 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
           src={src}
           allow="autoplay; encrypted-media"
           thumbnailUrl={card.thumbnailUrl}
+          // Was 100%/no crop — modestbranding=1 above handles the overlay
+          // bar, but at 100% YouTube's own player was still pillarboxing
+          // (black bars left/right) since the video's native ratio doesn't
+          // fill this card's aspect-[377/650] exactly. A small crop clears
+          // the bars without meaningfully cutting into real content.
+          zoomClassName="scale-105"
         />
       </>
     );
@@ -133,7 +143,7 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
   if (card.source === "TIKTOK") {
     const id = tiktokId(card.url);
     const src = id ? `https://www.tiktok.com/embed/v2/${id}?autoplay=1` : card.url;
-    return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} />;
+    return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} zoomClassName="scale-105" />;
   }
   if (card.source === "FACEBOOK") {
     return <FacebookVideoEmbed url={card.url} muted={muted} thumbnailUrl={card.thumbnailUrl} />;
@@ -141,7 +151,7 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
   // INSTAGRAM
   const code = instagramCode(card.url);
   const src = code ? `https://www.instagram.com/reel/${code}/embed/?autoplay=1` : card.url;
-  return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} isInstagram />;
+  return <EmbedFrame src={src} allow="autoplay" thumbnailUrl={card.thumbnailUrl} zoomClassName="scale-[1.25]" />;
 }
 
 // Actual YouTube video bytes can't be cached/rehosted ourselves — that's a
@@ -178,14 +188,16 @@ function EmbedFrame({
   src,
   allow,
   thumbnailUrl,
-  isFacebook = false,
-  isInstagram = false,
+  // Explicit per-caller value instead of per-platform boolean flags — each
+  // platform's embed needs an independently-tuned crop (YouTube's own
+  // overlay bar vs. Instagram's vs. plain pillarboxing), and boolean flags
+  // stopped scaling once more than two platforms needed their own number.
+  zoomClassName = "scale-100",
 }: {
   src: string;
   allow: string;
   thumbnailUrl?: string;
-  isFacebook?: boolean;
-  isInstagram?: boolean;
+  zoomClassName?: string;
 }) {
   const [ready, setReady] = useState(false);
 
@@ -201,10 +213,7 @@ function EmbedFrame({
         allow={allow}
         allowFullScreen
         onLoad={handleLoad}
-        className={cn(
-          "h-full w-full border-0",
-          isInstagram ? "scale-[1.38]" : isFacebook ? "scale-100" : "scale-125",
-        )}
+        className={cn("h-full w-full border-0", zoomClassName)}
       />
       {thumbnailUrl && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -305,7 +314,7 @@ function PromoVideoCardTile({
       // override — the base aspect-[377/650] (a bit taller than the
       // previous fixed-pixel desktop shape, per explicit "increase the
       // height a little" request) now applies at every breakpoint.
-      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-2xl bg-black sm:w-[calc(20%-14.4px)]"
+      className="relative aspect-[377/650] w-[calc(50%-9px)] shrink-0 snap-start overflow-hidden rounded-lg bg-black sm:w-[calc(20%-14.4px)]"
     >
       {isInView ? (
         <PlayingMedia card={card} />
