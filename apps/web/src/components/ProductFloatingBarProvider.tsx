@@ -34,7 +34,18 @@ export function ProductFloatingBarProvider({
   const reset = useProductFloatingBarStore((s) => s._reset);
 
   // --- Stock check (same rule as PdpPurchasePanel) ---
-  const outOfStock = product.trackInventory && !product.allowBackorder && product.stock < 1;
+  // Was reading product.stock unconditionally — the parent Product's own
+  // stock field is unused/stale (typically 0) for any variant product,
+  // since real stock lives on each ProductVariant. That made outOfStock
+  // true for essentially every variant product regardless of real stock,
+  // permanently hiding this sticky bar's Buy Now/Add to Cart buttons on
+  // mobile after scrolling — while PdpPurchasePanel's inline buttons stayed
+  // visible/correct because it already checked the variant's own stock.
+  const selectedVariant = product.hasVariants
+    ? product.variants.find((v) => String(v.id) === selectedVariantId)
+    : undefined;
+  const stockCount = selectedVariant ? selectedVariant.stock : product.stock;
+  const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
 
   // --- Handlers (stable refs via useCallback) ---
   const handleAddToCart = useCallback(() => {

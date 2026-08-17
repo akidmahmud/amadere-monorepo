@@ -22,7 +22,7 @@ function NewOrderPageInner() {
       />
       <NewOrderForm
         initialCustomerId={preselectedId ? Number(preselectedId) : null}
-        onCreated={(order) => router.push(`/orders/${order.id}`)}
+        onCreated={() => router.push("/net-profit/orders")}
         onCancel={() => router.push("/net-profit/orders")}
       />
     </div>
