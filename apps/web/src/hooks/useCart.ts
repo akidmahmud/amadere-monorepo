@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
 import { proxyFetch } from "@/lib/api/proxy-client";
-import { getGuestToken, setGuestToken } from "@/lib/guest-token";
+import { getGuestToken, setGuestToken, clearGuestToken } from "@/lib/guest-token";
 import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import type { components } from "@/lib/api/schema";
 
 type CartViewDto = components["schemas"]["CartViewDto"];
 
+// Every cart call goes through this app's own authenticated proxy (not the
+// raw backend client) — a logged-in customer's cart is keyed by their
+// customerId, identified only via the Bearer token the proxy attaches
+// server-side from the httpOnly cookie. The raw client has no access to that
+// cookie and would silently keep hitting the cart as a guest even while
+// logged in. X-Guest-Token still rides along for anonymous visitors (the
+// proxy forwards it), so guest carts keep working exactly as before.
 function cartHeaders(): Record<string, string> {
   const token = getGuestToken();
   return token ? { "X-Guest-Token": token } : {};
@@ -24,16 +30,11 @@ function cartKey(locale: string, paymentProvider?: string, district?: string) {
   return ["cart", locale, paymentProvider, district] as const;
 }
 
-type CartPaymentProvider = NonNullable<
-  components["schemas"]["CheckoutDto"]["paymentProvider"]
->;
-
 async function fetchCart(locale: string, paymentProvider?: string, district?: string): Promise<CartViewDto> {
-  const { data, error } = await api.GET("/api/v1/cart", {
-    params: { query: { locale: locale as "EN" | "BN", paymentProvider: paymentProvider as CartPaymentProvider | undefined, district } },
-    headers: cartHeaders(),
-  });
-  if (error) throw error;
+  const params = new URLSearchParams({ locale });
+  if (paymentProvider) params.set("paymentProvider", paymentProvider);
+  if (district) params.set("district", district);
+  const data = await proxyFetch<CartViewDto>(`/cart?${params}`, { headers: cartHeaders() });
   persistGuestToken(data);
   return data;
 }
@@ -79,16 +80,11 @@ export function useAddToCart(locale: string) {
   return useCartMutation(
     locale,
     async (args: { productId: number; variantId?: number; quantity?: number }) => {
-      const { data, error } = await api.POST("/api/v1/cart/items", {
-        params: { query: { locale: locale as "EN" | "BN" } },
+      return proxyFetch<CartViewDto>(`/cart/items?locale=${locale}`, {
+        method: "POST",
         headers: cartHeaders(),
-        // The generated type marks `quantity` required (openapi-typescript
-        // treats a swagger `default` as always-present) even though the
-        // backend DTO itself makes it optional — default it here to match.
-        body: { ...args, quantity: args.quantity ?? 1 },
+        body: JSON.stringify({ ...args, quantity: args.quantity ?? 1 }),
       });
-      if (error) throw error;
-      return data;
     },
     // Single choke point for add_to_cart — every "Add to Cart" button
     // sitewide (PDP, cards, promo videos, cross-sell) funnels through this
@@ -115,13 +111,11 @@ export function useUpdateCartItem(locale: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (args: { itemId: number; quantity: number }) => {
-      const { data, error } = await api.PATCH("/api/v1/cart/items/{id}", {
-        params: { path: { id: args.itemId }, query: { locale: locale as "EN" | "BN" } },
+      return proxyFetch<CartViewDto>(`/cart/items/${args.itemId}?locale=${locale}`, {
+        method: "PATCH",
         headers: cartHeaders(),
-        body: { quantity: args.quantity },
+        body: JSON.stringify({ quantity: args.quantity }),
       });
-      if (error) throw error;
-      return data;
     },
     // QtyStepper's own local echo already makes the +/- buttons feel
     // instant before this even fires, but without also patching the cache
@@ -162,35 +156,29 @@ export function useUpdateCartItem(locale: string) {
 
 export function useRemoveCartItem(locale: string) {
   return useCartMutation(locale, async (args: { itemId: number }) => {
-    const { data, error } = await api.DELETE("/api/v1/cart/items/{id}", {
-      params: { path: { id: args.itemId }, query: { locale: locale as "EN" | "BN" } },
+    return proxyFetch<CartViewDto>(`/cart/items/${args.itemId}?locale=${locale}`, {
+      method: "DELETE",
       headers: cartHeaders(),
     });
-    if (error) throw error;
-    return data;
   });
 }
 
 export function useApplyCoupon(locale: string) {
   return useCartMutation(locale, async (args: { code: string }) => {
-    const { data, error } = await api.POST("/api/v1/cart/coupon", {
-      params: { query: { locale: locale as "EN" | "BN" } },
+    return proxyFetch<CartViewDto>(`/cart/coupon?locale=${locale}`, {
+      method: "POST",
       headers: cartHeaders(),
-      body: args,
+      body: JSON.stringify(args),
     });
-    if (error) throw error;
-    return data;
   });
 }
 
 export function useRemoveCoupon(locale: string) {
   return useCartMutation(locale, async () => {
-    const { data, error } = await api.DELETE("/api/v1/cart/coupon", {
-      params: { query: { locale: locale as "EN" | "BN" } },
+    return proxyFetch<CartViewDto>(`/cart/coupon?locale=${locale}`, {
+      method: "DELETE",
       headers: cartHeaders(),
     });
-    if (error) throw error;
-    return data;
   });
 }
 
@@ -207,4 +195,9 @@ export async function mergeGuestCartOnLogin(locale: string): Promise<void> {
     method: "POST",
     body: JSON.stringify({ guestToken }),
   });
+  // The merge deletes/reassigns the guest cart row server-side — clearing
+  // the cookie stops it from being sent on every cart call afterward, which
+  // would otherwise keep resolving to a now-gone guest cart instead of the
+  // customer's real (merged) one and made the cart look emptied on login.
+  clearGuestToken();
 }

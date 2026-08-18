@@ -36,7 +36,13 @@ export class AuthController {
     return this.customerAuth.login(dto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  // Tighter than the other auth endpoints' 5/60s — this is the one that
+  // actually costs real SMS/email money per call, and 5/60s (up to ~300/hr
+  // per IP) left real headroom for a spammer to rack up a bill by rotating
+  // through many identifiers from one IP. otp.service.ts's own 5/hour cap
+  // per (identifier, purpose) still applies on top of this — this is the
+  // per-IP budget across ALL identifiers.
+  @Throttle({ default: { limit: 3, ttl: 300000 } })
   @Post('otp/request')
   requestOtp(@Body() dto: OtpRequestDto): Promise<void> {
     return this.customerAuth.requestOtp(dto);

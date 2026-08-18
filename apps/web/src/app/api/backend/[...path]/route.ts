@@ -30,11 +30,14 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
   const url = `${BACKEND_URL}/api/v1/${path.join("/")}${req.nextUrl.search}`;
   const body = req.method === "GET" || req.method === "DELETE" ? undefined : await req.text();
 
+  const guestToken = req.headers.get("x-guest-token");
+
   async function call(token: string | undefined) {
     return fetch(url, {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
+        ...(guestToken ? { "X-Guest-Token": guestToken } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body,

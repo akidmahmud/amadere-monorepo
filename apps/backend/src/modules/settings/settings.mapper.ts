@@ -41,4 +41,16 @@ export class SiteInfoDto {
    * OtpSecuritySettings.codOtpEnabled. Storefront reads this to decide
    * whether to require/show the "Verify your phone" OTP step at all. */
   codOtpEnabled!: boolean;
+  /** Site-wide SEO title — used for the homepage's <title>/og:title and as
+   * the fallback for any page with no per-page SeoMeta override of its own.
+   * Null = storefront falls back to its own hardcoded default. */
+  seoTitle!: string | null;
+  /** Site-wide SEO description — og:description/meta description fallback,
+   * same rule as seoTitle. */
+  seoDescription!: string | null;
+  /** Open Graph image shown in link-preview cards (WhatsApp, Messenger,
+   * Discord, etc.) when this site's homepage/root URL is shared — see
+   * SettingsService.SITE_SEO_IMAGE_MEDIA_ID_KEY. Null = no image in the
+   * preview card. */
+  seoImageUrl!: string | null;
 }

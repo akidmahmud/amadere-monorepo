@@ -7,6 +7,7 @@ import { Button, Input } from "@amader/ui";
 import { useRouter, Link } from "@/i18n/navigation";
 import { toApiLocale } from "@/lib/api-locale";
 import { useRegister, useVerifyOtp, LocalAuthError } from "@/hooks/useAuth";
+import { useResendCooldown } from "@/hooks/useResendCooldown";
 
 // Ground truth is RegisterDto: @MinLength(8) and nothing else — no
 // uppercase/number/symbol is actually required server-side. "score" below
@@ -58,6 +59,7 @@ export function RegisterForm() {
   const router = useRouter();
   const register = useRegister();
   const verifyOtp = useVerifyOtp(locale);
+  const resendCooldown = useResendCooldown();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -86,7 +88,7 @@ export function RegisterForm() {
   function submitDetails() {
     register.mutate(
       { firstName, lastName, phone, email: email || undefined, password },
-      { onSuccess: () => setOtpSent(true) },
+      { onSuccess: () => { setOtpSent(true); resendCooldown.start(); } },
     );
   }
 
@@ -124,11 +126,18 @@ export function RegisterForm() {
         </Button>
         <button
           type="button"
-          disabled={register.isPending}
-          onClick={() => register.mutate({ firstName, lastName, phone, email: email || undefined, password })}
-          className="mt-3 w-full text-center font-body text-sm text-green underline disabled:opacity-50"
+          disabled={!resendCooldown.canResend || register.isPending}
+          onClick={() =>
+            register.mutate(
+              { firstName, lastName, phone, email: email || undefined, password },
+              { onSuccess: () => resendCooldown.start() },
+            )
+          }
+          className="mt-3 w-full text-center font-body text-sm text-green underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline disabled:opacity-50"
         >
-          {register.isPending ? "Sending…" : "Resend code"}
+          {resendCooldown.canResend
+            ? register.isPending ? "Sending…" : "Resend code"
+            : `Resend code in ${resendCooldown.secondsLeft}s`}
         </button>
       </div>
     );

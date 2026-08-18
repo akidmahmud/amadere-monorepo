@@ -17,6 +17,7 @@ import { useAddToCart } from "@/hooks/useCart";
 import { pushEcommerceEvent, productToGa4Item } from "@/lib/analytics-events";
 import { useMe } from "@/hooks/useAuth";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from "@/hooks/useAccount";
+import { useToast } from "@/components/ToastProvider";
 import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
 import { CallNowButton } from "@/components/CallNowButton";
 import type { WhatsappConfig } from "@/lib/whatsapp";
@@ -73,6 +74,7 @@ export function PdpPurchasePanel({
   const addToWishlist = useAddToWishlist(locale);
   const removeFromWishlist = useRemoveFromWishlist(locale);
   const isWishlisted = wishlist?.some((item) => item.productId === product.id) ?? false;
+  const toast = useToast();
 
   // view_item — once per product page visit. add_to_cart is already covered
   // by useAddToCart itself (useCart.ts), so nothing extra needed for that
@@ -136,6 +138,12 @@ export function PdpPurchasePanel({
 
   function handleToggleWishlist() {
     if (!me) {
+      // There's no guest wishlist (unlike cart's guest-token flow) — nothing
+      // is saved until the customer actually logs in, so this needs its own
+      // heads-up instead of silently redirecting, or a customer who taps the
+      // heart, logs in, and finds the wishlist still empty reads it as data
+      // loss rather than "nothing was ever added."
+      toast.push("Log in to save items to your wishlist");
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }

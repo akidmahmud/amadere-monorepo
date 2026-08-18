@@ -522,6 +522,7 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           name={form.name}
           description={form.description}
           primaryImageAlt={form.images[0]?.alt ?? ""}
+          primaryImageUrl={form.images[0]?.url}
         />
       )}
 

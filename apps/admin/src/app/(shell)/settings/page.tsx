@@ -8,7 +8,8 @@ import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { ProductCardStyleSettings } from "@/components/ProductCardStyleSettings";
 
 const SETTINGS_LINKS = [
-  { href: "/settings/logo", icon: "image", label: "Logo & Banners", description: "Upload storefront logo, favicon, and All Products page banner." },
+  { href: "/settings/logo", icon: "image", label: "Logo & Banners", description: "Upload storefront logo and the All Products page banner." },
+  { href: "/settings/seo", icon: "travel_explore", label: "Site SEO Settings", description: "Site title, description, and preview image for search & shared links. Favicon lives here too." },
   { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
   { href: "/settings/invoice-template", icon: "description", label: "Invoice Template", description: "Custom raw-HTML layout for generated invoices." },
   { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },

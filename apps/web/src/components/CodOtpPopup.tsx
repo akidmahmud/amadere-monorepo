@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import { Button, Input } from "@amader/ui";
 import type { CheckoutFormValues } from "@/lib/checkout-schema";
 import { useRequestCodOtp } from "@/hooks/useCheckout";
+import { useResendCooldown } from "@/hooks/useResendCooldown";
 
 export function CodOtpPopup({
   shippingPhone,
@@ -23,6 +24,7 @@ export function CodOtpPopup({
   const requestCodOtp = useRequestCodOtp();
   const codOtpCode = watch("codOtpCode");
   const autoSentRef = useRef(false);
+  const resendCooldown = useResendCooldown();
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -30,7 +32,7 @@ export function CodOtpPopup({
 
     if (shippingPhone && !autoSentRef.current) {
       autoSentRef.current = true;
-      requestCodOtp.mutate(shippingPhone);
+      requestCodOtp.mutate(shippingPhone, { onSuccess: () => resendCooldown.start() });
     }
 
     function onKeyDown(e: KeyboardEvent) {
@@ -72,10 +74,16 @@ export function CodOtpPopup({
           <Button
             type="button"
             variant="ghost"
-            disabled={!shippingPhone || requestCodOtp.isPending}
-            onClick={() => requestCodOtp.mutate(shippingPhone)}
+            disabled={!shippingPhone || requestCodOtp.isPending || (requestCodOtp.isSuccess && !resendCooldown.canResend)}
+            onClick={() => requestCodOtp.mutate(shippingPhone, { onSuccess: () => resendCooldown.start() })}
           >
-            {requestCodOtp.isPending ? "Sending…" : requestCodOtp.isSuccess ? "Resend OTP" : "Send OTP"}
+            {requestCodOtp.isPending
+              ? "Sending…"
+              : requestCodOtp.isSuccess
+                ? resendCooldown.canResend
+                  ? "Resend OTP"
+                  : `Resend in ${resendCooldown.secondsLeft}s`
+                : "Send OTP"}
           </Button>
         </div>
         {(requestCodOtp.isSuccess || (autoSentRef.current && !requestCodOtp.isError)) && (

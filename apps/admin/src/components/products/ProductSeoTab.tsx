@@ -5,6 +5,7 @@ import { Button } from "@amader/admin-ui";
 import { useSeoMeta, useUpsertSeoMeta } from "@/hooks/useSeoMeta";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
+import { MediaPicker } from "@/components/MediaPicker";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -14,15 +15,23 @@ export function ProductSeoTab({
   name,
   description,
   primaryImageAlt,
+  primaryImageUrl,
 }: {
   productId?: number;
   slug: string;
   name: string;
   description: string;
   primaryImageAlt: string;
+  /** The product's own first gallery image — same "no ogImageUrl override →
+   * primary product image" fallback the public API already applies
+   * server-side (products.service.ts's `imageUrl: imageUrls[0] ?? null`
+   * passed into SeoService.resolve()), shown here so the admin sees exactly
+   * what a shared product link will use even before setting an override. */
+  primaryImageUrl?: string;
 }) {
   const [title, setTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  const [ogImageUrl, setOgImageUrl] = useState("");
   // Ephemeral, not derived from upsert.isSuccess — react-query doesn't reset
   // that flag on its own, so it would stay true forever after the first save
   // instead of confirming *this* save just happened.
@@ -35,6 +44,7 @@ export function ProductSeoTab({
     if (query.data) {
       setTitle(query.data.title ?? "");
       setMetaDescription(query.data.description ?? "");
+      setOgImageUrl(query.data.ogImageUrl ?? "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data]);
@@ -56,6 +66,7 @@ export function ProductSeoTab({
 
   const effectiveTitle = title || name;
   const effectiveDescription = metaDescription || description;
+  const effectiveImageUrl = ogImageUrl || primaryImageUrl;
 
   async function handleSave() {
     await upsert.mutateAsync({
@@ -64,6 +75,7 @@ export function ProductSeoTab({
       locale: "EN",
       title: title || undefined,
       description: metaDescription || undefined,
+      ogImageUrl: ogImageUrl || undefined,
       robots: "index,follow",
     });
     setJustSaved(true);
@@ -119,6 +131,21 @@ export function ProductSeoTab({
               className="rounded-lg border border-emerald-800/20 bg-white p-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
             />
           </label>
+          <div className="mt-4 flex flex-col gap-1.5">
+            <MediaPicker label="Social/share preview image (optional)" value={ogImageUrl || undefined} onChange={setOgImageUrl} />
+            <p className="text-xs text-emerald-950/60">
+              {ogImageUrl
+                ? "Overriding the product's own image for shared links (WhatsApp, Facebook, etc.)."
+                : primaryImageUrl
+                  ? "No override set — shared links will use the product's primary image below."
+                  : "No override set, and this product has no image yet — shared links won't show a preview image."}
+            </p>
+            {!ogImageUrl && primaryImageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={primaryImageUrl} alt="" className="h-24 w-24 rounded-inner border border-dashed border-border object-cover opacity-80" />
+            )}
+          </div>
+
           <div className="mt-5 flex items-center gap-3">
             <button
               type="button"

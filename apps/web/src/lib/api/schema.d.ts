@@ -7141,7 +7141,7 @@ export interface components {
              * @description Overrides the payment provider's default authorization status — e.g. mark a manual (bKash/Nagad) payment CAPTURED immediately when staff has already confirmed receipt.
              * @enum {string}
              */
-            paymentStatus?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+            paymentStatus?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CANCELED";
             customerNote?: string;
         };
         PreviewCouponItemDto: {
@@ -7196,7 +7196,7 @@ export interface components {
             /** @enum {string} */
             provider?: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
             /** @enum {string} */
-            status?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+            status?: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CANCELED";
         };
         UpdateOrderAmountsDto: {
             discountAmount?: number;
@@ -7380,6 +7380,7 @@ export interface components {
             image: string | null;
             /** Format: date-time */
             addedAt: string;
+            variantId: number | null;
         };
         CustomerTierDto: Record<string, never>;
         CustomerTierCountDto: Record<string, never>;

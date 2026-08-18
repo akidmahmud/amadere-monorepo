@@ -16,6 +16,13 @@ const DEFAULT_SITE_NAME = 'আমাদের';
 const PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY = 'products_page_banner_media_id';
 const SITE_FAVICON_MEDIA_ID_KEY = 'site_favicon_media_id';
 export const ANNOUNCEMENT_BAR_SPEED_KEY = 'announcement_bar_speed';
+// Site-wide SEO/Open Graph fallback — shown for the homepage and any other
+// page with no per-page SeoMeta override of its own (see the `seo` module
+// for that per-entity system; this is the site-level default it doesn't
+// cover). Same media-id-key pattern as the favicon/logo above.
+const SITE_SEO_TITLE_KEY = 'site_seo_title';
+const SITE_SEO_DESCRIPTION_KEY = 'site_seo_description';
+const SITE_SEO_IMAGE_MEDIA_ID_KEY = 'site_seo_image_media_id';
 
 // Value shape: { style: 'ONE' | 'TWO' } — an object (not a bare string) so it
 // fits the same Prisma.InputJsonValue-typed upsert() every other setting
@@ -84,6 +91,9 @@ export class SettingsService {
             PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY,
             SITE_FAVICON_MEDIA_ID_KEY,
             ANNOUNCEMENT_BAR_SPEED_KEY,
+            SITE_SEO_TITLE_KEY,
+            SITE_SEO_DESCRIPTION_KEY,
+            SITE_SEO_IMAGE_MEDIA_ID_KEY,
           ],
         },
       },
@@ -116,6 +126,20 @@ export class SettingsService {
       });
       faviconUrl = media?.url ?? null;
     }
+
+    const seoImageMediaId = byKey.get(SITE_SEO_IMAGE_MEDIA_ID_KEY);
+    let seoImageUrl: string | null = null;
+    if (typeof seoImageMediaId === 'number') {
+      const media = await this.prisma.client.media.findUnique({
+        where: { id: seoImageMediaId },
+      });
+      seoImageUrl = media?.url ?? null;
+    }
+    const seoTitleVal = byKey.get(SITE_SEO_TITLE_KEY);
+    const seoTitle = typeof seoTitleVal === 'string' && seoTitleVal.trim() ? seoTitleVal : null;
+    const seoDescriptionVal = byKey.get(SITE_SEO_DESCRIPTION_KEY);
+    const seoDescription =
+      typeof seoDescriptionVal === 'string' && seoDescriptionVal.trim() ? seoDescriptionVal : null;
 
     const speedVal = byKey.get(ANNOUNCEMENT_BAR_SPEED_KEY);
     let announcementSpeedSeconds = 20;
@@ -159,6 +183,9 @@ export class SettingsService {
       logoPaddingPx,
       logoMarginPx,
       codOtpEnabled,
+      seoTitle,
+      seoDescription,
+      seoImageUrl,
     };
   }
 }

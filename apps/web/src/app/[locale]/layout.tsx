@@ -21,10 +21,39 @@ import { safeGet } from "@/lib/api/client";
 import { googleSans } from "@/fonts";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  title: "আমাদের",
-  description: "আমাদের — organic & natural products",
-};
+const DEFAULT_TITLE = "আমাদের";
+const DEFAULT_DESCRIPTION = "আমাদের — organic & natural products";
+
+// Site-wide fallback (Settings > Site SEO Settings, apps/backend's
+// SiteInfoDto.seo*) — shown for the homepage/root URL and any page that
+// doesn't set its own `openGraph`/`title`/`description` via its own
+// generateMetadata (products/categories/brands/blog posts already do, via
+// the per-entity `seo` module, and simply override these at that level).
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const { data: siteInfo } = await safeGet("/api/v1/settings/site");
+  const title: string = siteInfo?.seoTitle || DEFAULT_TITLE;
+  const description: string = siteInfo?.seoDescription || DEFAULT_DESCRIPTION;
+  const ogImageUrl: string | undefined = siteInfo?.seoImageUrl ?? undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: locale === "bn" ? "bn_BD" : "en_US",
+      images: ogImageUrl ? [{ url: ogImageUrl, width: 1200, height: 630 }] : undefined,
+    },
+    twitter: {
+      card: ogImageUrl ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: ogImageUrl ? [ogImageUrl] : undefined,
+    },
+  };
+}
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

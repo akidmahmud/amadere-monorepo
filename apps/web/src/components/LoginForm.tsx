@@ -7,6 +7,7 @@ import { Button, Input } from "@amader/ui";
 import { useRouter, Link } from "@/i18n/navigation";
 import { toApiLocale } from "@/lib/api-locale";
 import { useLogin, useRequestOtp, useVerifyOtp } from "@/hooks/useAuth";
+import { useResendCooldown } from "@/hooks/useResendCooldown";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export function LoginForm() {
@@ -23,6 +24,7 @@ export function LoginForm() {
   const requestOtp = useRequestOtp();
   const verifyOtp = useVerifyOtp(locale);
   const login = useLogin(locale);
+  const resendCooldown = useResendCooldown();
 
   function goToRedirect() {
     router.push(redirectTo);
@@ -74,7 +76,10 @@ export function LoginForm() {
             disabled={!identifier || requestOtp.isPending || verifyOtp.isPending}
             onClick={() => {
               if (!otpSent) {
-                requestOtp.mutate({ identifier, purpose: "LOGIN" }, { onSuccess: () => setOtpSent(true) });
+                requestOtp.mutate(
+                  { identifier, purpose: "LOGIN" },
+                  { onSuccess: () => { setOtpSent(true); resendCooldown.start(); } },
+                );
               } else {
                 verifyOtp.mutate({ identifier, code: otpCode, purpose: "LOGIN" }, { onSuccess: goToRedirect });
               }
@@ -82,6 +87,20 @@ export function LoginForm() {
           >
             {otpSent ? "Verify & Sign In" : "Send OTP"}
           </Button>
+          {otpSent && (
+            <button
+              type="button"
+              disabled={!resendCooldown.canResend || requestOtp.isPending}
+              onClick={() =>
+                requestOtp.mutate({ identifier, purpose: "LOGIN" }, { onSuccess: () => resendCooldown.start() })
+              }
+              className="mt-2.5 w-full text-center font-body text-xs text-green underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
+            >
+              {resendCooldown.canResend
+                ? requestOtp.isPending ? "Sending…" : "Resend code"
+                : `Resend code in ${resendCooldown.secondsLeft}s`}
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col items-center justify-center gap-1.5 max-md:hidden">

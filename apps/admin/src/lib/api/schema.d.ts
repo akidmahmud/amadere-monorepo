@@ -7380,6 +7380,7 @@ export interface components {
             image: string | null;
             /** Format: date-time */
             addedAt: string;
+            variantId: number | null;
         };
         CustomerTierDto: Record<string, never>;
         CustomerTierCountDto: Record<string, never>;
@@ -8450,6 +8451,9 @@ export interface components {
             logoPaddingPx: number;
             logoMarginPx: number;
             codOtpEnabled: boolean;
+            seoTitle: string | null;
+            seoDescription: string | null;
+            seoImageUrl: string | null;
         };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
