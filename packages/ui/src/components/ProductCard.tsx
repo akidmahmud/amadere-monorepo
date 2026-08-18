@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { PackPickerModal } from "./PackPickerModal";
@@ -168,7 +169,13 @@ export function ProductCard({
       )}
       <Link href={href} onClick={onSelect} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
         {imageUrl ? (
-          <img src={imageUrl} alt={name} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]" />
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
+          />
         ) : (
           <div className="h-full w-full bg-beige" />
         )}

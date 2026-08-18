@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 
 export interface FeaturedCategoryItem {
@@ -85,8 +86,13 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
               <Link key={item.href} href={item.href} className="group flex-none basis-[105px] text-center [scroll-snap-align:start] md:basis-[145px]">
                 <div className="flex h-[100px] w-[100px] items-center justify-center overflow-hidden rounded-[20px] bg-white p-0.5 transition-transform duration-200 group-hover:-translate-y-1 md:h-[140px] md:w-[140px]">
                   {item.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.imageUrl} alt="" className="h-full w-full rounded-[20px] object-contain" />
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      width={140}
+                      height={140}
+                      className="h-full w-full rounded-[20px] object-contain"
+                    />
                   ) : (
                     <div className="h-full w-full rounded-[20px] bg-beige" />
                   )}

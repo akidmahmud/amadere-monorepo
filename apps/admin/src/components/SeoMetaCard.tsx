@@ -8,6 +8,26 @@ import { SeoScoreRing } from "@/components/SeoScoreRing";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
+// `fallbackDescription` is frequently an entity's own CKEditor-authored
+// rich-text field (e.g. a category/blog-post's description/content) — shown
+// raw, that puts literal `<p>`/`<strong>` tags in the preview instead of the
+// plain text a real search snippet or share-link card would show. Same fix
+// as ProductSeoTab.tsx and the backend's SeoService (which strips the real
+// og:description meta tag the same way).
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const EMPTY_FORM = { title: "", description: "", canonicalUrl: "", robots: "index,follow", ogTitle: "", ogDescription: "", ogImageUrl: "" };
 
 export interface SeoMetaCardValue {
@@ -128,7 +148,7 @@ export function SeoMetaCard({
   }
 
   const effectiveTitle = title || fallbackTitle || "";
-  const effectiveDescription = description || fallbackDescription || "";
+  const effectiveDescription = stripHtml(description || fallbackDescription || "");
   const storefrontUrl = useStorefrontUrl();
 
   return (

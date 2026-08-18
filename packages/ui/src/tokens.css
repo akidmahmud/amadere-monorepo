@@ -67,10 +67,14 @@
      licensed font file rather than the CDN-loaded "Google Sans Flex"
      release) as the primary Latin font, falling through to Open Sans for
      any Latin glyph it doesn't cover, then to Noto Sans Bengali (Google's
-     own Bengali-script font) for Bengali characters — none of the Latin
-     fonts here have Bengali glyphs at all, so Bengali text always resolves
-     to Noto Sans Bengali regardless of where it sits in this list — then a
-     generic sans-serif as the final fallback.
+     own Bengali-script font) for Bengali characters — then a generic
+     sans-serif as the final fallback. Google Sans does carry real Bengali
+     outlines (85 codepoints, not Latin-only — see PERF-BRIEF.md §2's
+     correction to an earlier, wrong version of this comment), but likely
+     lacks full conjunct-forming OpenType features, so Bengali text still
+     effectively resolves to Noto Sans Bengali in practice regardless of
+     where it sits in this list; not verified precisely enough to drop the
+     fallback.
      `var(--font-google-sans, 'Google Sans Flex')`: apps/web sets
      --font-google-sans on <html> via fonts.ts's `.variable` class, so it
      resolves to the self-hosted font there; apps/admin never sets that

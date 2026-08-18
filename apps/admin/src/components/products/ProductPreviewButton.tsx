@@ -41,8 +41,11 @@ export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonPr
           previewToken.mutate(productId, {
             onSuccess: ({ token }) => {
               // Uses the saved product's slug, not a possibly-unsaved form
-              // field — preview shows what's actually persisted.
-              setPreviewUrl(`${storefrontUrl}/en/products/${slug}?previewToken=${token}`);
+              // field — preview shows what's actually persisted. Path-based
+              // token (not `?previewToken=`) so the real product route never
+              // has to read searchParams and can stay statically cached —
+              // see PERF-BRIEF.md §3 / product-detail.tsx.
+              setPreviewUrl(`${storefrontUrl}/en/products/${slug}/preview/${token}`);
             },
           });
         }}

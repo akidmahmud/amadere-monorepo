@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
@@ -95,11 +96,12 @@ export function ProductCardTwo({
     <div className={cn("group flex h-full flex-col rounded-[20px] border border-line bg-transparent p-2.5", className)}>
       <Link href={href} onClick={onSelect} className="relative block aspect-square w-full overflow-hidden rounded-[20px] bg-beige">
         {imageUrl ? (
-          <img
+          <Image
             src={imageUrl}
             alt={name}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
           />
         ) : null}
         {(flagLabel || computedDiscountLabel) && (

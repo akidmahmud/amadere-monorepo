@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { cn } from "../lib/cn";
 
@@ -79,7 +80,17 @@ function pickDesktopFit(imageRatio: number | undefined, boxRatio: number | null)
 // several images loading in the same batch don't necessarily land before
 // the sibling that reads them next re-renders). A self-contained component
 // per <img> sidesteps that entirely: there's no cross-slide index to mix up.
-function HeroSlideImage({ src, isDesktop, boxRatio }: { src: string; isDesktop: boolean; boxRatio: number | null }) {
+function HeroSlideImage({
+  src,
+  isDesktop,
+  boxRatio,
+  priority,
+}: {
+  src: string;
+  isDesktop: boolean;
+  boxRatio: number | null;
+  priority: boolean;
+}) {
   const [ratio, setRatio] = useState<number | undefined>(undefined);
 
   function recordRatio(el: HTMLImageElement) {
@@ -89,9 +100,15 @@ function HeroSlideImage({ src, isDesktop, boxRatio }: { src: string; isDesktop: 
   }
 
   return (
-    <img
+    <Image
       src={src}
       alt=""
+      fill
+      // Only the very first slide is ever the initial paint (later ones are
+      // switched to client-side by clicking a dot/arrow) — same "priority
+      // only on what's actually the LCP candidate" rule as ProductGallery.
+      priority={priority}
+      sizes="(max-width: 1024px) 100vw, 70vw"
       // Mobile is object-contain per explicit "need to see the full image"
       // request — the only mode that shows 100% of the image with no crop
       // and no distortion. Tradeoff: a 1600×500 (3.2:1) upload in the 3:2
@@ -99,11 +116,12 @@ function HeroSlideImage({ src, isDesktop, boxRatio }: { src: string; isDesktop: 
       // below the image, since contain can't fill a box whose ratio doesn't
       // match without either cropping (object-cover, tried before this) or
       // stretching (object-fill, tried before that).
-      className="h-full w-full object-cover max-md:object-contain"
+      className="object-cover max-md:object-contain"
       style={isDesktop ? { objectFit: pickDesktopFit(ratio, boxRatio) } : undefined}
       // ref, not just onLoad — a browser-cached image can finish loading
       // before React attaches the onLoad listener, so `.complete` is
-      // checked immediately too.
+      // checked immediately too. next/image forwards both straight to the
+      // underlying <img>, so this measurement logic is unchanged.
       ref={(el) => {
         if (el?.complete) recordRatio(el);
       }}
@@ -240,7 +258,7 @@ export function HeroCarousel({ slides, sideBanners, linkComponent: Link = Defaul
                   // object-fill ("stretch") baked into that component's own
                   // className, since its inline style override only applies
                   // when isDesktop is true.
-                  const img = <HeroSlideImage src={slide.imageUrl} isDesktop={isDesktop} boxRatio={boxRatio} />;
+                  const img = <HeroSlideImage src={slide.imageUrl} isDesktop={isDesktop} boxRatio={boxRatio} priority={i === 0} />;
                   return (
                     <div
                       key={i}
@@ -350,7 +368,7 @@ export function HeroCarousel({ slides, sideBanners, linkComponent: Link = Defaul
             onMouseLeave={() => setSidePaused(false)}
           >
             {validSideBanners.map((banner, i) => {
-              const bannerImg = <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />;
+              const bannerImg = <Image src={banner.imageUrl} alt="" fill sizes="300px" className="object-cover" />;
               return (
                 <div
                   key={i}

@@ -12,6 +12,23 @@ export interface SeoFallback {
   imageUrl?: string | null;
 }
 
+// `description` fallbacks are frequently a product/post/page's own
+// CKEditor-authored rich-text field (e.g. products.service.ts passes
+// `dto.description`, straight from the translation row) — used raw, that
+// puts literal `<p>`/`<strong>` tags into <meta name="description">,
+// og:description, and search-engine/link-preview snippets. Meta
+// descriptions are always plain text, never HTML, so every description-
+// shaped field this service returns goes through this first.
+// ponytail: regex strip, not a full HTML parser — good enough for
+// well-formed editor output, matches content.util.ts's own stripHtml.
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 @Injectable()
 export class SeoService {
   constructor(
@@ -94,18 +111,16 @@ export class SeoService {
     const canonicalUrl =
       meta?.canonicalUrl ?? `${baseUrl}${fallback.canonicalPath}`;
     const title = meta?.title ?? fallback.title;
+    const description = meta?.description ?? fallback.description ?? null;
+    const ogDescription = meta?.ogDescription ?? description;
 
     return {
       title,
-      description: meta?.description ?? fallback.description ?? null,
+      description: description ? stripHtml(description) : null,
       canonicalUrl,
       robots: meta?.robots ?? 'index,follow',
       ogTitle: meta?.ogTitle ?? title,
-      ogDescription:
-        meta?.ogDescription ??
-        meta?.description ??
-        fallback.description ??
-        null,
+      ogDescription: ogDescription ? stripHtml(ogDescription) : null,
       ogImageUrl: meta?.ogImageUrl ?? fallback.imageUrl ?? null,
     };
   }

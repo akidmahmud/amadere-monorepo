@@ -1,0 +1,8 @@
+{
+  "/[locale]/categories/[slug]/page": "app/[locale]/categories/[slug]/page.js",
+  "/[locale]/page": "app/[locale]/page.js",
+  "/[locale]/products/[slug]/page": "app/[locale]/products/[slug]/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/backend/[...path]/route": "app/api/backend/[...path]/route.js",
+  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js"
+}

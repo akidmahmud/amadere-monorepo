@@ -41,8 +41,11 @@ export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
           previewToken.mutate(postId, {
             onSuccess: ({ token }) => {
               // Uses the saved post's slug, not a possibly-unsaved form
-              // field — preview shows what's actually persisted.
-              setPreviewUrl(`${storefrontUrl}/blog/${slug}?previewToken=${token}`);
+              // field — preview shows what's actually persisted. Path-based
+              // token (not `?previewToken=`) so the real post route never
+              // has to read searchParams and can stay statically cached —
+              // see PERF-BRIEF.md §3 / post-detail.tsx.
+              setPreviewUrl(`${storefrontUrl}/blog/${slug}/preview/${token}`);
             },
           });
         }}

@@ -5,7 +5,9 @@ import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
 import { MediaPicker } from "@/components/MediaPicker";
 import { FaviconSettings } from "@/components/FaviconSettings";
+import { OgPreviewCard } from "@/components/OgPreviewCard";
 import { useSiteInfo, useUpsertSetting } from "@/hooks/useSettings";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
 const seoIcon = <Icon name="travel_explore" />;
 
@@ -13,35 +15,17 @@ const SITE_SEO_TITLE_KEY = "site_seo_title";
 const SITE_SEO_DESCRIPTION_KEY = "site_seo_description";
 const SITE_SEO_IMAGE_MEDIA_ID_KEY = "site_seo_image_media_id";
 
-// Mimics the link-preview card WhatsApp/Messenger/Discord render from a
-// page's Open Graph tags — the same "big image, bold title, description,
-// domain" shape the admin asked to match, so they can see exactly what a
-// shared link will look like without actually sharing the link somewhere.
-function OgPreviewCard({ imageUrl, title, description }: { imageUrl?: string; title: string; description: string }) {
-  return (
-    <div className="w-full max-w-sm overflow-hidden rounded-inner border border-border bg-surface shadow-card">
-      <div className="aspect-[1.91/1] w-full bg-surface-2">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-xs text-muted">No image selected</div>
-        )}
-      </div>
-      <div className="flex flex-col gap-0.5 p-3">
-        <span className="truncate text-xs uppercase tracking-wide text-muted">amadere.com</span>
-        <span className="truncate text-sm font-bold text-text">{title || "Your site title"}</span>
-        <span className="line-clamp-2 text-xs text-secondary">
-          {description || "Your site description will appear here."}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export default function SeoSettingsPage() {
   const { data, isLoading } = useSiteInfo();
   const upsert = useUpsertSetting();
+  const storefrontUrl = useStorefrontUrl();
+  const domain = (() => {
+    try {
+      return new URL(storefrontUrl).hostname;
+    } catch {
+      return storefrontUrl;
+    }
+  })();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -113,11 +97,11 @@ export default function SeoSettingsPage() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            maxLength={70}
+            maxLength={200}
             placeholder="Amader™ — Organic & Natural Products"
             className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
           />
-          <span className="text-xs text-muted">{title.length}/70 characters — shown as the bold headline in link previews.</span>
+          <span className="text-xs text-muted">{title.length}/200 characters — shown as the bold headline in link previews.</span>
         </label>
 
         <label className="flex flex-col gap-1.5">
@@ -125,12 +109,12 @@ export default function SeoSettingsPage() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            maxLength={200}
+            maxLength={500}
             rows={3}
             placeholder="A short line describing your site — shown under the title in link previews and search results."
             className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500"
           />
-          <span className="text-xs text-muted">{description.length}/200 characters.</span>
+          <span className="text-xs text-muted">{description.length}/500 characters.</span>
         </label>
 
         <MediaPicker
@@ -145,7 +129,7 @@ export default function SeoSettingsPage() {
 
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-secondary">Link preview (approximate)</span>
-          <OgPreviewCard imageUrl={previewUrl} title={title} description={description} />
+          <OgPreviewCard imageUrl={previewUrl} title={title} description={description} domain={domain} />
         </div>
 
         <div className="flex items-center gap-3">

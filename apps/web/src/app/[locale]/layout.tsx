@@ -127,15 +127,23 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
-      {/* Glyph-coverage fallbacks only now, not the primary typeface — the
-          self-hosted Google Sans (fonts.ts) covers Latin, but has no Bengali
-          glyphs at all, so Noto Sans Bengali stays render-blocking here for
-          every Bengali character on the site; Open Sans backstops any Latin
-          glyph Google Sans itself doesn't cover. The old 'Google Sans Flex'
-          CDN load (and the deferred ~17-family CKEditor picker load) are
-          gone — inline font-family from admin-authored content is now
-          force-overridden site-wide (globals.css), so loading fonts nothing
-          will ever render was pure waste. */}
+      {/* Glyph-coverage fallbacks only now, not the primary typeface. The
+          self-hosted Google Sans (fonts.ts) does carry real Bengali outlines
+          (85 codepoints, U+0980-09FF) — it's NOT Latin-only, correcting an
+          earlier comment here that said otherwise (see PERF-BRIEF.md §2's
+          correction) — but it likely lacks the full conjunct-forming
+          OpenType features (akhn/blwf/half/pstf/vatu/cjct/rphf) proper
+          Bengali typography needs, which is presumably why Noto Sans Bengali
+          is still loaded here as the real fallback for Bengali text; Open
+          Sans backstops any Latin glyph Google Sans itself doesn't cover.
+          Not verified either way in this pass — dropping Noto Sans Bengali
+          would need real visual QA across conjunct-heavy Bengali strings
+          first, since a wrong call breaks Bengali rendering sitewide. The
+          old 'Google Sans Flex' CDN load (and the deferred ~17-family
+          CKEditor picker load) are gone — inline font-family from
+          admin-authored content is now force-overridden site-wide
+          (globals.css), so loading fonts nothing will ever render was pure
+          waste. */}
       <link rel="stylesheet" href={ckeditorGoogleFontsUrl(["Open Sans", "Noto Sans Bengali"])} precedence="default" />
       <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
         <AnalyticsScripts

@@ -6,8 +6,30 @@ import { useSeoMeta, useUpsertSeoMeta } from "@/hooks/useSeoMeta";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
 import { MediaPicker } from "@/components/MediaPicker";
+import { OgPreviewCard } from "@/components/OgPreviewCard";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+
+// `description` here can be the product's own CKEditor-authored rich-text
+// field (see the `description` prop below) — shown raw, that puts literal
+// `<p>`/`<strong>` tags in the preview instead of the plain text a real
+// search-result snippet or share-link card would show. Same regex-strip
+// approach as this codebase's other stripHtml copies (e.g.
+// useProductFormState.ts) and the backend's SeoService (which applies the
+// same fix to the real og:description meta tag).
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export function ProductSeoTab({
   productId,
@@ -39,6 +61,13 @@ export function ProductSeoTab({
   const query = useSeoMeta("PRODUCT", productId ?? 0, "EN", !!productId);
   const upsert = useUpsertSeoMeta();
   const storefrontUrl = useStorefrontUrl();
+  const domain = (() => {
+    try {
+      return new URL(storefrontUrl).hostname;
+    } catch {
+      return storefrontUrl;
+    }
+  })();
 
   useEffect(() => {
     if (query.data) {
@@ -65,7 +94,7 @@ export function ProductSeoTab({
   }
 
   const effectiveTitle = title || name;
-  const effectiveDescription = metaDescription || description;
+  const effectiveDescription = stripHtml(metaDescription || description);
   const effectiveImageUrl = ogImageUrl || primaryImageUrl;
 
   async function handleSave() {
@@ -144,6 +173,11 @@ export function ProductSeoTab({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={primaryImageUrl} alt="" className="h-24 w-24 rounded-inner border border-dashed border-border object-cover opacity-80" />
             )}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-emerald-950">Link preview (approximate)</span>
+            <OgPreviewCard imageUrl={effectiveImageUrl} title={effectiveTitle} description={effectiveDescription} domain={domain} />
           </div>
 
           <div className="mt-5 flex items-center gap-3">

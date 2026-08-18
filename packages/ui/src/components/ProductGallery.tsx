@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { cn } from "../lib/cn";
 
 export interface ProductGalleryImage {
@@ -59,11 +60,11 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
               aria-label={`View image ${i + 1}`}
               onClick={() => setActive(i)}
               className={cn(
-                "h-[50px] w-[50px] shrink-0 overflow-hidden rounded border bg-white md:h-[80px] md:w-[80px]",
+                "relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded border bg-white md:h-[80px] md:w-[80px]",
                 active === i ? "border-[#F48721]" : "border-[rgba(34,40,49,0.11)]",
               )}
             >
-              <img src={image.url} alt="" className="h-full w-full object-contain" />
+              <Image src={image.url} alt="" fill sizes="80px" className="object-contain" />
             </button>
           ))}
           {videoUrl && (
@@ -96,7 +97,18 @@ export function ProductGallery({ images, videoUrl, className }: ProductGalleryPr
           />
         ) : (
           current?.url && (
-            <img src={current.url} alt={current.alt ?? ""} className="h-full w-full rounded object-contain" />
+            <Image
+              src={current.url}
+              alt={current.alt ?? ""}
+              fill
+              // The single biggest LCP element on a product page (brief §4)
+              // only when it's the FIRST slide — later slides are switched
+              // to client-side by clicking a thumbnail, never the initial
+              // paint, so they stay lazy like everything else below the fold.
+              priority={active === 0}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="rounded object-contain"
+            />
           )
         )}
 

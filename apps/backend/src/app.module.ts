@@ -3,7 +3,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ClientThrottlerGuard } from './common/throttler/client-throttler.guard';
 import * as Joi from 'joi';
 import * as path from 'node:path';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -163,6 +164,6 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     PromoVideosModule,
     NetProfitModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ClientThrottlerGuard }],
 })
 export class AppModule {}

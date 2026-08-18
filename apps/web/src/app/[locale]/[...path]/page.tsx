@@ -22,6 +22,19 @@ import type { components } from "@/lib/api/schema";
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
 export const revalidate = 3600;
 
+// Deliberately empty — no paths are pre-rendered at build time, but
+// exporting this at all is what makes Next.js treat the segment as
+// ISR-eligible-on-first-hit rather than fully dynamic (same fix as
+// products/[slug] and blog/[slug] — see PERF-BRIEF.md §3 and
+// product-detail.tsx's comment on this exact gotcha; without it,
+// `revalidate` above was silently ignored and every CMS page / legacy-URL
+// redirect through this catch-all was a full SSR pass on every request).
+// `dynamicParams` defaults to true, so any path is still rendered on demand
+// and then cached per `revalidate` above.
+export async function generateStaticParams() {
+  return [];
+}
+
 async function getStaticPage(slug: string, locale: "EN" | "BN") {
   try {
     const res = await api.GET("/api/v1/pages/{slug}", {
