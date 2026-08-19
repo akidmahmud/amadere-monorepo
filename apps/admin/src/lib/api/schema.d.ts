@@ -6533,7 +6533,7 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
-            videoUrl?: string;
+            videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
              * @default false
@@ -6599,7 +6599,7 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
-            videoUrl?: string;
+            videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
              * @default false

@@ -122,7 +122,9 @@ export function useProductFormState(initial?: AdminProduct) {
       status,
       isFeatured,
       flagLabel,
-      videoUrl: videoUrl || undefined,
+      // Explicit null (not undefined) so removing the link clears it —
+      // see the costPriceUnit note below.
+      videoUrl: videoUrl.trim() || null,
       hasVariants,
       trackInventory,
       allowBackorder,

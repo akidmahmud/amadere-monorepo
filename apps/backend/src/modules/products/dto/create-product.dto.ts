@@ -77,10 +77,13 @@ export class CreateProductDto {
   @IsEnum(ProductFlagLabel)
   flagLabel?: ProductFlagLabel | null;
 
-  @ApiPropertyOptional()
+  // Nullable so clearing the field in the admin form actually wipes it —
+  // an omitted/undefined value means "leave unchanged" on update, same
+  // convention as costPriceUnit.
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
-  videoUrl?: string;
+  videoUrl?: string | null;
 
   @ApiPropertyOptional({
     default: false,
