@@ -18,7 +18,8 @@ export function LoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [phone, setPhone] = useState("");
+  // Phone or email — the credentials login accepts both.
+  const [credential, setCredential] = useState("");
   const [password, setPassword] = useState("");
 
   const requestOtp = useRequestOtp();
@@ -115,9 +116,10 @@ export function LoginForm() {
           <h4 className="mb-3.5 font-ui text-sm font-semibold text-ink">Login With Credentials</h4>
           <Input
             className="mb-3.5"
-            placeholder="017***********"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Mobile number or email"
+            autoComplete="username"
+            value={credential}
+            onChange={(e) => setCredential(e.target.value)}
           />
           <Input
             type="password"
@@ -136,8 +138,8 @@ export function LoginForm() {
           <Button
             variant="green"
             block
-            disabled={!phone || !password || login.isPending}
-            onClick={() => login.mutate({ phone, password }, { onSuccess: goToRedirect })}
+            disabled={!credential || !password || login.isPending}
+            onClick={() => login.mutate({ identifier: credential, password }, { onSuccess: goToRedirect })}
           >
             Login
           </Button>

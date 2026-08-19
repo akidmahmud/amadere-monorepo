@@ -91,10 +91,22 @@ export function useRemoveFromWishlist(locale: string) {
   });
 }
 
-export function useAddresses() {
+// `enabled` exists for the checkout page, which mounts for guests too — the
+// endpoint is CustomerJwtGuard-protected, so firing it without a session is a
+// guaranteed 401 (twice, with react-query's retry) on every guest checkout.
+// Defaults to true so the account-area caller (AddressesManager, only
+// reachable behind a login) is unchanged.
+//
+// The backend already returns these ordered `isDefault desc, createdAt desc`
+// (CustomersService.listAddresses), so addresses[0] is the address to
+// default to — no client-side sorting, and no need to read `isDefault`,
+// which the generated type doesn't expose here anyway (see the DTO-name
+// collision noted in useCheckoutPrefill).
+export function useAddresses(enabled = true) {
   return useQuery({
     queryKey: ["addresses"],
     queryFn: () => proxyFetch<AddressDto[]>("/customers/me/addresses"),
+    enabled,
   });
 }
 

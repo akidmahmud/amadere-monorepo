@@ -33,6 +33,7 @@ import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemov
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
+import { useCheckoutPrefill } from "@/hooks/useCheckoutPrefill";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 import type { components } from "@/lib/api/schema";
 
@@ -314,6 +315,11 @@ export function CheckoutForm() {
     },
   });
 
+  // Signed-in customers get their name/phone/email/address filled in for
+  // them; guests are untouched. Only ever fills fields that are still empty
+  // (see the hook) so it can't overwrite someone typing while it resolves.
+  const { prefilledFromAddress } = useCheckoutPrefill(form);
+
   const { register, control, handleSubmit, watch, formState } = form;
   const paymentProvider = watch("paymentProvider");
   const billingSameAsShipping = watch("billingSameAsShipping");
@@ -571,6 +577,11 @@ export function CheckoutForm() {
 
             <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
+              {prefilledFromAddress && (
+                <p className="mb-3.5 font-body text-xs text-muted">
+                  Filled in from your saved address — edit anything that&apos;s changed.
+                </p>
+              )}
               <AddressFields
                 prefix="shippingAddress"
                 onFraudResult={setFraudResult}

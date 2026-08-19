@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -93,10 +94,18 @@ export class CustomerAuthService {
     return { pending: true };
   }
 
+  // Accepts phone OR email. Reuses findByIdentifier — the same resolver the
+  // OTP flows already used — rather than a second phone-only lookup, so
+  // "which identifiers can sign in" has one answer across every auth path.
   async login(dto: LoginDto): Promise<TokenPair> {
-    const customer = await this.prisma.client.customer.findFirst({
-      where: { phone: { in: phoneLookupCandidates(dto.phone) } },
-    });
+    const identifier = (dto.identifier ?? dto.phone ?? '').trim();
+    if (!identifier) {
+      throw new BadRequestException('identifier is required');
+    }
+    const customer = await this.findByIdentifier(identifier);
+    // Deliberately one message for "no such account", "account has no
+    // password" and "wrong password" — distinguishing them would let anyone
+    // probe which phone numbers and emails have accounts here.
     if (
       !customer?.passwordHash ||
       !(await verifyPassword(dto.password, customer.passwordHash))

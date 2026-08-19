@@ -55,10 +55,14 @@ function useAfterAuthSuccess(locale: string) {
   };
 }
 
+// `identifier` is a phone number OR an email — the backend resolves either
+// via findByIdentifier (same helper the OTP flows use). It still accepts the
+// old `phone` key as a deprecated alias, so this rename doesn't have to land
+// in the same deploy as the backend.
 export function useLogin(locale: string) {
   const onAuthed = useAfterAuthSuccess(locale);
   return useMutation({
-    mutationFn: (args: { phone: string; password: string }) => localAuthCall("/auth/login", args),
+    mutationFn: (args: { identifier: string; password: string }) => localAuthCall("/auth/login", args),
     onSuccess: onAuthed,
   });
 }
