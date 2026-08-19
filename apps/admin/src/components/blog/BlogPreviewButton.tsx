@@ -45,7 +45,18 @@ export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
               // token (not `?previewToken=`) so the real post route never
               // has to read searchParams and can stay statically cached —
               // see PERF-BRIEF.md §3 / post-detail.tsx.
-              setPreviewUrl(`${storefrontUrl}/blog/${slug}/preview/${token}`);
+              //
+              // The `/en` prefix is load-bearing, NOT cosmetic — it's why
+              // ProductPreviewButton always worked and this one always
+              // 404'd. The token is a JWT, so it contains dots, and
+              // apps/web's proxy.ts matcher excludes every path containing
+              // one (`.*\..*`, there to skip static files). next-intl's
+              // locale proxy therefore never runs on a preview URL and
+              // never rewrites `/blog/...` to `/en/blog/...`, leaving a
+              // 4-segment path that can't match [locale]/blog/[slug]/
+              // preview/[token]. Sending the locale explicitly means the
+              // route resolves without needing the rewrite at all.
+              setPreviewUrl(`${storefrontUrl}/en/blog/${slug}/preview/${token}`);
             },
           });
         }}
