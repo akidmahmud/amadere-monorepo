@@ -5,6 +5,7 @@ import { Button, Card } from "@amader/admin-ui";
 import { useDeleteSeoMeta, useSeoMeta, useUpsertSeoMeta, type SeoEntityType } from "@/hooks/useSeoMeta";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
+import { SeoCharCount } from "@/components/SeoCharCount";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -197,10 +198,12 @@ export function SeoMetaCard({
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary">Meta title</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder={fallbackTitle} />
+            <SeoCharCount value={title} limit="title" />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary">Meta description</span>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500" placeholder={fallbackDescription} />
+            <SeoCharCount value={description} limit="description" />
           </label>
 
           {!buffered && (
@@ -216,10 +219,12 @@ export function SeoMetaCard({
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-secondary">OG title</span>
                 <input value={form.ogTitle} onChange={(e) => setForm((f) => ({ ...f, ogTitle: e.target.value }))} className={inputClass} />
+                <SeoCharCount value={form.ogTitle} limit="title" />
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-secondary">OG description</span>
                 <input value={form.ogDescription} onChange={(e) => setForm((f) => ({ ...f, ogDescription: e.target.value }))} className={inputClass} />
+                <SeoCharCount value={form.ogDescription} limit="description" />
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-secondary">OG image URL</span>

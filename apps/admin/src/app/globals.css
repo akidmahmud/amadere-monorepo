@@ -22,6 +22,38 @@
 .ck-content h3 { font-size: 1.3rem; font-weight: 600; line-height: 1.35; margin: 0.6em 0 0.35em; }
 .ck-content h4 { font-size: 1.1rem; font-weight: 600; line-height: 1.4; margin: 0.6em 0 0.3em; }
 
+/* Third instance of the exact same preflight problem as the headings above
+   and the tables below — and the one users actually reported as "CKEditor
+   adds space I didn't add" and "bullet/numbered lists don't work".
+
+   Tailwind's preflight sets `margin: 0; padding: 0` on `*` and
+   `list-style: none` on `ol, ul, menu`. CKEditor's own content stylesheet
+   only re-declares the marker TYPE (`.ck-content ol { list-style-type:
+   decimal }`) because it assumes the browser's default `padding-left: 40px`
+   is still there. With preflight it isn't, so:
+
+   - Lists kept their markers but lost all indentation, and an `outside`
+     marker with zero padding renders past the editable's left edge — a
+     list became visually indistinguishable from a paragraph, which reads
+     as "the list button does nothing".
+   - Every `<p>` had margin 0, so the ONLY vertical spacing in the whole
+     document came from CKEditor's own
+     `.ck-editor__editable_inline > :first-child/:last-child` rules — an
+     unexplained gap at the very top and bottom and nothing between the
+     paragraphs. Content pasted from Word/Docs (which carries its own inline
+     `line-height`/`margin`) then spaced itself while typed paragraphs
+     didn't, giving the uneven gaps in the report.
+
+   Values deliberately match apps/web's `.rich-content` (globals.css) so the
+   editor shows what the storefront will actually render — the storefront
+   side was already correct, which is why this only ever looked broken in
+   the admin. Keep the two in sync when either changes. */
+.ck-content p { margin: 0 0 1em; }
+.ck-content ul, .ck-content ol { margin: 0 0 1em; padding-left: 1.4em; }
+/* A nested list is inside its parent's <li>; the 1em above would add a gap
+   in the middle of the list instead of after it. */
+.ck-content li > ul, .ck-content li > ol { margin-bottom: 0; }
+
 /* Same root cause as the headings above — Tailwind's preflight strips
    `border-collapse`/borders/padding from every table/td/th, so an inserted
    table rendered as plain stacked text with no grid lines at all. CKEditor

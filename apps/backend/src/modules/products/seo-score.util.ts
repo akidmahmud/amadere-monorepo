@@ -22,8 +22,8 @@ export function computeSeoChecks(input: SeoScoreInput): SeoCheck[] {
   const descLen = input.metaDescription?.trim().length ?? 0;
   const bodyLen = input.description?.trim().length ?? 0;
   return [
-    { label: 'Title set', passed: titleLen >= 10 && titleLen <= 65 },
-    { label: 'Meta description set', passed: descLen >= 50 && descLen <= 160 },
+    { label: 'Title set', passed: titleLen >= 10 && titleLen <= 200 },
+    { label: 'Meta description set', passed: descLen >= 50 && descLen <= 450 },
     { label: 'SEO-friendly URL', passed: /^[a-z0-9]+(-[a-z0-9]+)*$/.test(input.slug) },
     { label: 'Image alt text', passed: !!input.primaryImageAlt?.trim() },
     { label: 'Meta description present', passed: descLen > 0 },

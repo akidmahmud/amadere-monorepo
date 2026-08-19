@@ -7,6 +7,7 @@ import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
 import { MediaPicker } from "@/components/MediaPicker";
 import { OgPreviewCard } from "@/components/OgPreviewCard";
+import { SeoCharCount } from "@/components/SeoCharCount";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -150,6 +151,7 @@ export function ProductSeoTab({
               className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
               placeholder={name}
             />
+            <SeoCharCount value={title} limit="title" />
           </label>
           <label className="mt-4 flex flex-col gap-1.5">
             <span className="text-xs font-bold text-emerald-950">Meta description (optional)</span>
@@ -159,6 +161,7 @@ export function ProductSeoTab({
               rows={3}
               className="rounded-lg border border-emerald-800/20 bg-white p-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
             />
+            <SeoCharCount value={metaDescription} limit="description" />
           </label>
           <div className="mt-4 flex flex-col gap-1.5">
             <MediaPicker label="Social/share preview image (optional)" value={ogImageUrl || undefined} onChange={setOgImageUrl} />
