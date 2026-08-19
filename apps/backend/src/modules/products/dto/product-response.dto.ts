@@ -36,6 +36,9 @@ export class AdminProductMediaDto {
   altText!: string | null;
   isPrimary!: boolean;
   sortOrder!: number;
+  /** Optional variant this image belongs to. Null = shared gallery image
+   * shown for every variant (the default). */
+  variantId!: number | null;
 }
 
 export class AdminProductVariantDto {
@@ -191,6 +194,9 @@ export class PublicProductMediaDto {
   fullUrl!: string | null;
   type!: MediaType;
   isPrimary!: boolean;
+  /** Optional variant this image belongs to — the PDP gallery jumps to it
+   * when that variant is selected. Null = shared image for every variant. */
+  variantId!: number | null;
 }
 
 export class PublicProductVariantAttributeValueDto {

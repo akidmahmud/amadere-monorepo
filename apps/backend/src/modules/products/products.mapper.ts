@@ -71,6 +71,7 @@ export function toAdminProductDto(
       altText: m.media.altText,
       isPrimary: m.isPrimary,
       sortOrder: m.sortOrder,
+      variantId: m.variantId,
     })),
     variants: product.variants.map((v) => ({
       id: v.id,
@@ -194,6 +195,9 @@ export function toPublicProductDto(
       fullUrl: m.media.fullUrl,
       type: m.media.type,
       isPrimary: m.isPrimary,
+      // Drives the PDP gallery jumping to the selected variant's own image
+      // (null = shared gallery image, shown for every variant).
+      variantId: m.variantId,
     })),
     variants: product.variants.map((v) => ({
       id: v.id,

@@ -9,17 +9,30 @@ export interface GalleryImage {
   id: number;
   url: string;
   alt?: string | null;
+  /** Variant this image is pinned to. null/undefined = shared image, shown
+   * for every variant on the storefront. */
+  variantId?: number | null;
+}
+
+/** Minimal shape of a saved variant — enough to label the picker. */
+export interface GalleryVariantOption {
+  id: number;
+  label: string;
 }
 
 export interface ProductMediaGalleryProps {
   images: GalleryImage[];
   onChange: (images: GalleryImage[]) => void;
+  /** Saved variants available to pin an image to. Empty (the default) hides
+   * the picker entirely — a simple product has nothing to assign to, and a
+   * brand-new product's variants have no ids until it's saved once. */
+  variants?: GalleryVariantOption[];
 }
 
 // Products reference media by id (`mediaIds: number[]`, first = primary),
 // unlike every other module's single-image MediaPicker which only tracks a
 // URL — so this is its own component, not a reuse of MediaPicker.
-export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryProps) {
+export function ProductMediaGallery({ images, onChange, variants = [] }: ProductMediaGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLibrary, setShowLibrary] = useState(false);
   const upload = useUploadMedia();
@@ -56,6 +69,12 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
 
   function setAlt(id: number, alt: string) {
     onChange(images.map((img) => (img.id === id ? { ...img, alt } : img)));
+  }
+
+  // Local form state only — persisted with the rest of the product on Save
+  // (unlike alt text, which has its own media endpoint and saves on blur).
+  function setVariant(id: number, variantId: number | null) {
+    onChange(images.map((img) => (img.id === id ? { ...img, variantId } : img)));
   }
 
   function saveAlt(id: number, alt: string) {
@@ -116,6 +135,23 @@ export function ProductMediaGallery({ images, onChange }: ProductMediaGalleryPro
               placeholder="Alt text (for SEO)"
               className="mt-2 h-8 w-full rounded-lg border border-emerald-800/15 bg-emerald-50/20 px-2.5 text-xs font-medium text-emerald-950 placeholder:text-emerald-900/40 outline-none transition-all focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-amber-400/30"
             />
+            {/* Pin this image to a variant — the storefront gallery jumps to
+                it when that variant is picked. Only rendered when the
+                product actually has saved variants. */}
+            {variants.length > 0 && (
+              <select
+                value={img.variantId != null ? String(img.variantId) : ""}
+                onChange={(e) => setVariant(img.id, e.target.value ? Number(e.target.value) : null)}
+                className="mt-1.5 h-8 w-full rounded-lg border border-emerald-800/15 bg-emerald-50/20 px-2 text-xs font-medium text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-amber-400/30"
+              >
+                <option value="">All variants (shared)</option>
+                {variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         ))}
       </div>

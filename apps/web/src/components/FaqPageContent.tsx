@@ -2,7 +2,7 @@
 
 import { useLocale } from "next-intl";
 import { useState } from "react";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 
 // Pixel-perfect recreation of the approved FAQ mockup
 // (amader-faq-pure-white-google-sans.html) — real bilingual content, not
@@ -461,43 +461,14 @@ type CategoryFilter = "all" | FaqCategory["key"];
 export function FaqPageContent() {
   const locale = useLocale();
   const isBn = locale === "bn";
-  const router = useRouter();
-  const pathname = usePathname();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
-
-  function switchLocale(next: "bn" | "en") {
-    if (next === locale) return;
-    router.replace(pathname, { locale: next });
-  }
 
   return (
     <div className="bg-white" style={{ color: INK }}>
-      {/* ===== Language toggle (site header already carries nav/cart/search —
-          this page only needs its own bn/en pill, matching the mockup) ===== */}
-      <div className="mx-auto flex max-w-[960px] justify-end px-6 pt-7">
-        <div className="relative inline-flex rounded-full border p-[3px]" style={{ borderColor: RULE }}>
-          <span
-            className="absolute top-[3px] bottom-[3px] left-[3px] w-[calc(50%-3px)] rounded-full transition-transform duration-300 ease-out"
-            style={{ background: FOREST, transform: isBn ? "translateX(0)" : "translateX(100%)" }}
-          />
-          <button
-            type="button"
-            onClick={() => switchLocale("bn")}
-            className="relative z-[2] rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors duration-200"
-            style={{ color: isBn ? "#fff" : INK_SOFT }}
-          >
-            বাংলা
-          </button>
-          <button
-            type="button"
-            onClick={() => switchLocale("en")}
-            className="relative z-[2] rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors duration-200"
-            style={{ color: !isBn ? "#fff" : INK_SOFT }}
-          >
-            English
-          </button>
-        </div>
-      </div>
+      {/* The mockup's own bn/en pill used to sit here — removed per explicit
+          request, since the site header already has a language switcher and
+          two on one page is redundant. The page still renders bilingually
+          off `useLocale()`; only the duplicate control is gone. */}
 
       {/* ===== Hero ===== */}
       <section className="mx-auto max-w-[960px] px-6 pt-9 pb-10 text-center">

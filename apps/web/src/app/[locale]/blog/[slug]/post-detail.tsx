@@ -151,16 +151,19 @@ export async function PostDetailBody({
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
             />
 
+            {/* Labels, not links — per explicit request tags no longer get
+                their own browsable page. They still drive what shows up in
+                Related Posts (findRelatedPosts matches on shared tags), so
+                they're still doing real work, just not as navigation. */}
             {post.tags.length > 0 && (
               <div className="mt-8 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
-                  <AppLink
+                  <span
                     key={tag.slug}
-                    href={`/blog/tag/${tag.slug}`}
                     className="rounded-full bg-beige px-3 py-1 font-ui text-xs text-ink"
                   >
                     #{tag.name}
-                  </AppLink>
+                  </span>
                 ))}
               </div>
             )}

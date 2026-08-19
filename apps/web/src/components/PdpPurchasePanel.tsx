@@ -18,6 +18,7 @@ import { pushEcommerceEvent, productToGa4Item } from "@/lib/analytics-events";
 import { useMe } from "@/hooks/useAuth";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from "@/hooks/useAccount";
 import { useToast } from "@/components/ToastProvider";
+import { useSelectedVariant } from "@/components/SelectedVariantProvider";
 import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
 import { CallNowButton } from "@/components/CallNowButton";
 import type { WhatsappConfig } from "@/lib/whatsapp";
@@ -62,7 +63,13 @@ export function PdpPurchasePanel({
   whatsappConfig: WhatsappConfig | null;
 }) {
   const packOptions = useMemo(() => buildPackSizeOptions(product), [product]);
-  const [selectedVariantId, setSelectedVariantId] = useState(() => defaultVariantId(product));
+  // Selection lives in SelectedVariantProvider when the PDP wraps this (so
+  // the gallery can react to it — see PdpGallery), and falls back to local
+  // state anywhere that provider isn't present.
+  const variantCtx = useSelectedVariant();
+  const [localVariantId, setLocalVariantId] = useState(() => defaultVariantId(product));
+  const selectedVariantId = variantCtx ? variantCtx.selectedVariantId : localVariantId;
+  const setSelectedVariantId = variantCtx ? variantCtx.setSelectedVariantId : setLocalVariantId;
   const [qty, setQty] = useState(product.minOrderQuantity || 1);
   const openCartDrawer = useCartDrawerStore((s) => s.open);
   const locale = toApiLocale(useLocale());

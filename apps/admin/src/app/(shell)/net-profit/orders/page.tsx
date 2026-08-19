@@ -38,10 +38,34 @@ const COLUMN_LABELS: Record<OptionalColumn, string> = {
 
 const DEFAULT_FILTERS: OrderFilterState = { q: "" };
 
+// Rolling windows measured back from "now", in hours. "today" is
+// deliberately NOT in here — it's a calendar day, handled separately below.
+const ROLLING_WINDOW_HOURS: Record<string, number> = {
+  "1h": 1,
+  "6h": 6,
+  "12h": 12,
+  "24h": 24,
+  "7d": 7 * 24,
+  "30d": 30 * 24,
+};
+
+// The custom inputs are datetime-local ("2026-08-19T14:30"), but a filter
+// saved before that change is date-only ("2026-08-19"). Widen the bare-date
+// form to cover the whole day so an old saved filter doesn't silently
+// collapse to midnight and return nothing.
+function parseCustomBound(value: string, edge: "start" | "end"): Date {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!dateOnly) return new Date(value);
+  return new Date(edge === "start" ? `${value}T00:00:00.000` : `${value}T23:59:59.999`);
+}
+
 function resolveDateRange(value: string | undefined, customFrom?: string, customTo?: string): { from?: string; to?: string } {
   if (value === "custom") {
     if (!customFrom || !customTo) return {};
-    return { from: new Date(customFrom).toISOString(), to: new Date(`${customTo}T23:59:59.999`).toISOString() };
+    return {
+      from: parseCustomBound(customFrom, "start").toISOString(),
+      to: parseCustomBound(customTo, "end").toISOString(),
+    };
   }
   if (!value) return {};
   const to = new Date();
@@ -49,12 +73,14 @@ function resolveDateRange(value: string | undefined, customFrom?: string, custom
     // Calendar day (local midnight to now), not a rolling 24h window — the
     // rolling-window version below meant "Today" at, say, 2am actually
     // included nearly all of yesterday (anything after 2am the day before),
-    // which is exactly the reported bug.
+    // which is exactly the reported bug. "Last 24 hours" is the rolling
+    // equivalent for anyone who actually wants that.
     const from = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 0, 0, 0, 0);
     return { from: from.toISOString(), to: to.toISOString() };
   }
-  const days = value === "7d" ? 7 : 30;
-  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+  const hours = ROLLING_WINDOW_HOURS[value];
+  if (!hours) return {};
+  const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
   return { from: from.toISOString(), to: to.toISOString() };
 }
 

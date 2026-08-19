@@ -941,6 +941,7 @@ model ProductVariant {
   orderItems      OrderItem[]
   licenseCodes    ProductLicenseCode[]
   bundleItems     ProductBundleItem[]
+  media           ProductMedia[]
 
   // Missing before — every "load a product with its variants" query (admin
   // list/detail, storefront PDP, cart/order line lookups) joined this table
@@ -966,11 +967,20 @@ model ProductMedia {
   mediaId   Int     @map("media_id")
   sortOrder Int     @default(0) @map("sort_order")
   isPrimary Boolean @default(false) @map("is_primary")
+  // Optional per-variant image: when the shopper picks this variant on the
+  // PDP, the gallery jumps to the image assigned to it. Nullable and
+  // SetNull-on-delete because the overwhelmingly common case is a shared
+  // gallery with no variant assignment at all — an image with variantId
+  // null behaves exactly as before, and deleting a variant must never take
+  // the product's image row down with it.
+  variantId Int?    @map("variant_id")
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media   Media          @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@id([productId, mediaId])
+  @@index([variantId])
   @@map("product_media")
 }
 

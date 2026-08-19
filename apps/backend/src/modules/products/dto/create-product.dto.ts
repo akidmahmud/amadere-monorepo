@@ -23,6 +23,24 @@ import {
 import { ProductTranslationDto } from './product-translation.dto';
 import { CreateProductVariantDto } from './create-product-variant.dto';
 
+// Assigns one gallery image to one variant, so the PDP can swap the gallery
+// when that variant is selected. Sent alongside `mediaIds` (which still owns
+// gallery order and which image is primary) rather than replacing it, so
+// every existing caller that only sends mediaIds keeps working unchanged.
+export class MediaVariantAssignmentDto {
+  @ApiProperty()
+  @IsInt()
+  mediaId!: number;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Variant id, or null to clear the assignment.',
+  })
+  @IsOptional()
+  @IsInt()
+  variantId!: number | null;
+}
+
 export class CreateProductDto {
   @ApiProperty()
   @IsString()
@@ -196,6 +214,17 @@ export class CreateProductDto {
   @IsArray()
   @IsInt({ each: true })
   mediaIds?: number[];
+
+  @ApiPropertyOptional({
+    type: [MediaVariantAssignmentDto],
+    description:
+      'Optional per-image variant assignment. Any mediaId omitted here stays a shared gallery image shown for every variant. Only meaningful for products whose variants already exist (i.e. on edit), since a brand-new product creates its variants in the same request and they have no ids yet.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MediaVariantAssignmentDto)
+  mediaVariantAssignments?: MediaVariantAssignmentDto[];
 
   @ApiPropertyOptional({
     type: [CreateProductVariantDto],

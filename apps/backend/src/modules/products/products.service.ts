@@ -79,6 +79,20 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
+// Resolves the variant a given gallery image is pinned to, for the
+// per-variant PDP image feature. Undefined (not null) when the caller sent
+// no assignments at all, so Prisma leaves the column at its default rather
+// than actively writing NULL — keeps a client that doesn't know about this
+// field from silently clearing existing assignments on an unrelated save.
+function variantIdForMedia(
+  dto: { mediaVariantAssignments?: { mediaId: number; variantId: number | null }[] },
+  mediaId: number,
+): number | null | undefined {
+  if (!dto.mediaVariantAssignments) return undefined;
+  const match = dto.mediaVariantAssignments.find((a) => a.mediaId === mediaId);
+  return match ? match.variantId : null;
+}
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -501,6 +515,7 @@ export class ProductsService {
                 mediaId,
                 sortOrder: index,
                 isPrimary: index === 0,
+                variantId: variantIdForMedia(dto, mediaId),
               })),
             }
           : undefined,
@@ -618,6 +633,7 @@ export class ProductsService {
                 mediaId,
                 sortOrder: index,
                 isPrimary: index === 0,
+                variantId: variantIdForMedia(dto, mediaId),
               })),
             }
           : undefined,

@@ -332,6 +332,19 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     <span className="text-muted">Shipping fee</span>
                     {order.shippingMethod && <p className="text-xs text-muted">{order.shippingMethod}</p>}
                     {order.shipment?.weight && <p className="text-xs text-muted">{order.shipment.weight} kg</p>}
+                    {/* Advisory only — the weight-based courier estimate
+                        (base + per-kg + outside-Dhaka surcharge). Labelled
+                        and greyed explicitly because it used to be written
+                        straight into shippingAmount on dispatch, silently
+                        overriding the checkout-agreed fee (and free
+                        shipping). It is no longer charged to anyone — see
+                        ShipmentsService.dispatch. */}
+                    {order.shipment?.cost && (
+                      <p className="text-xs text-muted/70">
+                        Courier est. ৳{order.shipment.cost}{" "}
+                        <span className="italic">(not charged)</span>
+                      </p>
+                    )}
                   </div>
                   {editingShipping ? (
                     <div className="flex items-center gap-1.5">
@@ -445,13 +458,31 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
 
             {/* Confirmation / payment / delivery timeline card */}
             <div className="rounded-card border border-border bg-surface p-4">
-              <div className="flex items-center gap-2 border-b border-border pb-3 text-sm font-semibold uppercase tracking-wide text-text">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 text-sm font-semibold uppercase tracking-wide text-text">
                 <Icon
                   name={(order.status as unknown as string) !== "PENDING" ? "check_circle" : "cancel"}
                   size={18}
                   className={(order.status as unknown as string) !== "PENDING" ? "text-[#1e7439]" : "text-[#e5484d]"}
                 />
                 {(order.status as unknown as string) !== "PENDING" ? "Order was confirmed" : "Order is not confirmed"}
+                {/* Only while still PENDING — every other status (Processing,
+                    Completed, Canceled, ...) already counts as "confirmed"
+                    by the check above, so offering it there would either be
+                    a no-op or a silent backwards status change. Shares
+                    useUpdateOrderStatus with the Cancel button below, so the
+                    Order Manager list and Shipments queue refresh on success
+                    via invalidateOrder — no separate wiring needed. */}
+                {(order.status as unknown as string) === "PENDING" && (
+                  <button
+                    type="button"
+                    disabled={updateStatus.isPending}
+                    onClick={() => updateStatus.mutate({ status: "CONFIRMED", note: "Confirmed by staff" })}
+                    className="ml-auto rounded-sm px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+                    style={{ backgroundColor: GREEN }}
+                  >
+                    {updateStatus.isPending ? "Confirming…" : "Confirm order"}
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-2 py-3 text-sm font-semibold uppercase tracking-wide text-text">

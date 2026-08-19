@@ -37,6 +37,11 @@ const KEY = ADMIN_ORDERS_KEY;
 // compared by content by TanStack Query, so the literal is enough to
 // invalidate the same cache entries.
 const ORDER_MANAGER_KEY = ["net-profit-order-manager"];
+// Same reasoning as ORDER_MANAGER_KEY above — literal rather than imported
+// from useShipments.ts to keep this file free of cross-hook imports. The
+// Shipments dispatch queue shows Total / pending-COD amounts per order and
+// opens this same OrderDetailModal, so an edit there must refresh it.
+const SHIPMENTS_KEY = ["admin-shipments"];
 
 // Origin/Payment/Division/Source/Status are also columns on the Order
 // Manager list (OrderManagerTable.tsx), so any edit needs to invalidate that
@@ -47,6 +52,7 @@ const ORDER_MANAGER_KEY = ["net-profit-order-manager"];
 function invalidateOrder(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: KEY });
   qc.invalidateQueries({ queryKey: ORDER_MANAGER_KEY });
+  qc.invalidateQueries({ queryKey: SHIPMENTS_KEY });
 }
 
 // A courier webhook (status push, or this file's own delivery→Paid payment

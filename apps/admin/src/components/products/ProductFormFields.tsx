@@ -285,7 +285,20 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
             <span>Media</span>
             <span className="text-[#f43f5e]">*</span>
           </h3>
-          <ProductMediaGallery images={form.images} onChange={form.setImages} />
+          {/* Variant options only once the product is saved and its variants
+              actually have ids — a not-yet-created product's variants are
+              still local form state with nothing to pin an image to. SKU is
+              the only human-readable field on AdminProductVariantDto (its
+              attributeValueIds are raw ids), so fall back to the id. */}
+          <ProductMediaGallery
+            images={form.images}
+            onChange={form.setImages}
+            variants={
+              productId && variants
+                ? variants.map((v) => ({ id: v.id, label: v.sku || `Variant #${v.id}` }))
+                : []
+            }
+          />
           <label className="mt-5 flex flex-col gap-1.5">
             <span className="text-xs font-bold text-emerald-950">Video URL (optional)</span>
             <input

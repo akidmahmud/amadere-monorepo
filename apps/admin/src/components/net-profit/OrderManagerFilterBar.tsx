@@ -24,8 +24,17 @@ const selectStyle = {
 const PAYMENT_PROVIDERS = ["COD", "BKASH", "NAGAD", "SSLCOMMERZ", "BANK_TRANSFER"];
 const COURIER_PROVIDERS = ["STEADFAST", "PATHAO", "REDX", "ECOURIER"];
 const RISK_LEVELS: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "UNKNOWN"];
+// Hour presets sit above the day ones so the common "what's come in since
+// I last looked" case is the first thing in the list. "Custom" is a real
+// datetime range (not date-only) — an ad campaign or a courier cutoff is
+// frequently a few hours inside one day, which whole-day filtering can't
+// express.
 const DATE_RANGES = [
   { value: "", label: "All dates" },
+  { value: "1h", label: "Last 1 hour" },
+  { value: "6h", label: "Last 6 hours" },
+  { value: "12h", label: "Last 12 hours" },
+  { value: "24h", label: "Last 24 hours" },
   { value: "today", label: "Today" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
@@ -131,8 +140,12 @@ export function OrderManagerFilterBar({
 
       {filters.dateRange === "custom" && (
         <>
+          {/* datetime-local, not date — picking a time is the whole point of
+              a custom range here. resolveDateRange (page.tsx) still accepts
+              a bare "YYYY-MM-DD" and widens it to the full day, so any
+              previously-saved date-only value keeps working. */}
           <input
-            type="date"
+            type="datetime-local"
             value={filters.dateFrom ?? ""}
             onChange={(e) => set("dateFrom", e.target.value || undefined)}
             className="h-[38px] rounded-[9px] border px-2.5 text-[0.76rem] outline-none"
@@ -140,7 +153,7 @@ export function OrderManagerFilterBar({
           />
           <span style={{ color: FAINT }}>to</span>
           <input
-            type="date"
+            type="datetime-local"
             value={filters.dateTo ?? ""}
             onChange={(e) => set("dateTo", e.target.value || undefined)}
             className="h-[38px] rounded-[9px] border px-2.5 text-[0.76rem] outline-none"

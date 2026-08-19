@@ -78,7 +78,10 @@ export class PostgresSearchProvider implements SearchProvider {
           take: 1,
         },
         variants: {
-          select: { price: true },
+          // salePrice as well as price — a variant-only product carries
+          // BOTH on the variant, never on the parent row, so selecting just
+          // `price` meant those products could never show a sale price.
+          select: { price: true, salePrice: true },
           orderBy: { price: 'asc' },
           take: 1,
         },
@@ -95,13 +98,31 @@ export class PostgresSearchProvider implements SearchProvider {
       .map(({ match, product: p }) => {
         const translation =
           p.translations.find((t) => t.locale === locale) ?? p.translations[0];
+        // Variant-only products carry no price/salePrice on the parent row
+        // — fall through to the cheapest variant for both, same precedence
+        // apps/web's toProductCardData uses so search results and product
+        // cards can't disagree about the same product.
         const price = p.price ?? p.variants[0]?.price ?? null;
+        const rawSalePrice = p.salePrice ?? p.variants[0]?.salePrice ?? null;
+        // Sale start/end are product-level (variants have no window of their
+        // own). Without this check an expired — or not-yet-started — sale
+        // price was shown in search while the PDP correctly charged full
+        // price; the pricing service enforces the same window server-side.
+        const now = Date.now();
+        const inSaleWindow =
+          (!p.saleStartsAt || p.saleStartsAt.getTime() <= now) &&
+          (!p.saleEndsAt || p.saleEndsAt.getTime() >= now);
+        const onSale =
+          rawSalePrice !== null &&
+          price !== null &&
+          rawSalePrice.lessThan(price) &&
+          inSaleWindow;
         return {
           id: p.id,
           slug: p.slug,
           name: translation?.name ?? p.slug,
           price: price ? price.toString() : null,
-          salePrice: p.salePrice ? p.salePrice.toString() : null,
+          salePrice: onSale ? rawSalePrice.toString() : null,
           primaryImageUrl: p.media[0]?.media.url ?? null,
           score: match.score,
         };

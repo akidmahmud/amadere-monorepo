@@ -108,7 +108,7 @@ export function useProductFormState(initial?: AdminProduct) {
   const [categoryIds, setCategoryIds] = useState<number[]>(initial?.categoryIds ?? []);
   const [tagIds, setTagIds] = useState<number[]>(initial?.tagIds ?? []);
   const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
-  const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })) ?? []);
+  const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText, variantId: m.variantId })) ?? []);
 
   function toBasePayload() {
     const cleanFaqs = faqs
@@ -167,6 +167,14 @@ export function useProductFormState(initial?: AdminProduct) {
       tagIds,
       attributeIds,
       mediaIds: images.map((i) => i.id),
+      // Sent alongside mediaIds (which still owns order + primary) so the
+      // backend can pin images to variants. Always sent — an explicit empty
+      // list is how "no image is pinned any more" is expressed; omitting it
+      // means "don't touch existing assignments" server-side.
+      mediaVariantAssignments: images.map((i) => ({
+        mediaId: i.id,
+        variantId: i.variantId ?? null,
+      })),
     };
   }
 
@@ -208,7 +216,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
-    setImages(product.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText })));
+    setImages(product.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText, variantId: m.variantId })));
   }
 
   // Pure client-side gate before a save request ever goes out — the backend

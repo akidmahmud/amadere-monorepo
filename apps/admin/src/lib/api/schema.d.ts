@@ -6257,6 +6257,7 @@ export interface components {
             fullUrl: string | null;
             type: Record<string, never>;
             isPrimary: boolean;
+            variantId: number | null;
         };
         PublicProductVariantAttributeValueDto: {
             attributeId: number;
@@ -6421,6 +6422,7 @@ export interface components {
             altText: string | null;
             isPrimary: boolean;
             sortOrder: number;
+            variantId: number | null;
         };
         AdminProductVariantDto: {
             id: number;
@@ -6494,6 +6496,11 @@ export interface components {
             howToUse?: string;
             /** @description PDP "FAQ" tab — list of question/answer pairs */
             faqs?: components["schemas"]["ProductFaqDto"][];
+        };
+        MediaVariantAssignmentDto: {
+            mediaId: number;
+            /** @description Variant id, or null to clear the assignment. */
+            variantId: number | null;
         };
         CreateProductVariantDto: {
             sku?: string;
@@ -6569,6 +6576,8 @@ export interface components {
             attributeIds?: number[];
             /** @description Media ids, in gallery order (first = primary image) */
             mediaIds?: number[];
+            /** @description Optional per-image variant assignment. Any mediaId omitted here stays a shared gallery image shown for every variant. Only meaningful for products whose variants already exist (i.e. on edit), since a brand-new product creates its variants in the same request and they have no ids yet. */
+            mediaVariantAssignments?: components["schemas"]["MediaVariantAssignmentDto"][];
             /** @description Required when hasVariants is true */
             variants?: components["schemas"]["CreateProductVariantDto"][];
         };
@@ -6633,6 +6642,8 @@ export interface components {
             attributeIds?: number[];
             /** @description Media ids, in gallery order (first = primary image) */
             mediaIds?: number[];
+            /** @description Optional per-image variant assignment. Any mediaId omitted here stays a shared gallery image shown for every variant. Only meaningful for products whose variants already exist (i.e. on edit), since a brand-new product creates its variants in the same request and they have no ids yet. */
+            mediaVariantAssignments?: components["schemas"]["MediaVariantAssignmentDto"][];
             /** @description Required when hasVariants is true */
             variants?: components["schemas"]["CreateProductVariantDto"][];
         };

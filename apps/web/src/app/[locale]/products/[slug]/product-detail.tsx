@@ -3,11 +3,12 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import {
-  ProductGallery,
   ProductTabs,
   RatingStars,
   type ProductTab,
 } from "@amader/ui";
+import { PdpGallery } from "@/components/PdpGallery";
+import { SelectedVariantProvider } from "@/components/SelectedVariantProvider";
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
 import { FaqAccordion } from "@/components/FaqAccordion";
@@ -22,6 +23,7 @@ import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toDisplayImageUrl, toEmbeddableVideoUrl } from "@/lib/media";
+import { defaultVariantId } from "@/lib/pdp";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
@@ -118,11 +120,12 @@ export async function ProductDetailBody({
     .map(toProductCardData);
   const crossSellProducts = product.crossSell.map(toProductCardData);
 
+  // variantId rides along so PdpGallery can jump to a variant's own image
+  // when it's selected (null = shared image, used for every variant).
   const images = product.media
     .filter((m) => (m.type as unknown as string) !== "VIDEO")
-    .map((m) => toDisplayImageUrl(m.url))
-    .filter((url): url is string => Boolean(url))
-    .map((url) => ({ url }));
+    .map((m) => ({ url: toDisplayImageUrl(m.url), variantId: m.variantId }))
+    .filter((img): img is { url: string; variantId: number | null } => Boolean(img.url));
 
   // Admin-authored WYSIWYG HTML, not user-generated — same trust level as
   // the description block above and blog post content elsewhere. Still
@@ -215,8 +218,12 @@ export async function ProductDetailBody({
             string concatenation, since `cn` here is clsx without
             tailwind-merge). */}
         <div className="mx-1 mb-10 rounded-xl bg-white p-2 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0 sm:p-6">
+          {/* Wraps BOTH the gallery and the purchase panel so picking a
+              variant in one can move the other — they're siblings in this
+              grid and have no other shared state. */}
+          <SelectedVariantProvider initialVariantId={product.hasVariants ? defaultVariantId(product) : undefined}>
           <div className="grid grid-cols-2 items-start gap-5 max-lg:grid-cols-1 max-lg:gap-3">
-            <ProductGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
+            <PdpGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
 
             {/* Info column (everything below the gallery) scaled down on
                 mobile — the gallery/swiper image itself is deliberately
@@ -246,6 +253,7 @@ export async function ProductDetailBody({
               <PdpPurchasePanel product={product} whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null} />
             </div>
           </div>
+          </SelectedVariantProvider>
         </div>
 
 
@@ -281,45 +289,12 @@ export async function ProductDetailBody({
         )}
       </div>
 
-      {relatedProducts.length > 0 && (
-        <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-[#222831]">Related Products</h2>
-            {category && (
-              <AppLink href={`/categories/${category.slug}`} className="text-sm font-medium text-green hover:underline">
-                More Products →
-              </AppLink>
-            )}
-          </div>
-          {/* No arrows (swipe/autoplay only, per explicit request) and a
-              slower autoplay. Card widths mirror Cross Sell Products' grid
-              breakpoints exactly (2/3/5 columns) so both sections show the
-              same card size — computed against this Carousel's own 18px gap
-              (gap-4.5), not Cross Sell's 16px grid gap, so the math differs
-              slightly even though the resulting column count matches.
-              snap-start (paired with the Carousel's own snap-x snap-mandatory)
-              is what actually guarantees exactly N full cards show at rest —
-              without it, autoplay/swipes can stop at any scroll offset and
-              show partial cards peeking on both edges. */}
-          <RelatedProductsCarousel products={relatedProducts} />
-        </div>
-      )}
-
-      {crossSellProducts.length > 0 && (
-        <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-[#222831]">Cross Sell Products</h2>
-            <AppLink href="/products" className="text-sm font-medium text-green hover:underline">
-              More Products →
-            </AppLink>
-          </div>
-          <CrossSellProductGrid products={crossSellProducts} />
-        </div>
-      )}
-
-      {/* Target of the tab bar's "Reviews" jump-link (scrollTargetId="reviews"
-          above) — scroll-margin so the sticky header (if any) doesn't cover
-          the heading when the browser lands here. */}
+      {/* Reviews sit ABOVE Related/Cross Sell per explicit request — social
+          proof for the product the visitor actually came for, before we
+          start pointing them at other products. Also the target of the tab
+          bar's "Reviews" jump-link (scrollTargetId="reviews" above) —
+          scroll-margin so the sticky header doesn't cover the heading when
+          the browser lands here. */}
       <div id="reviews" className="mx-auto max-w-full scroll-mt-20 px-5 py-10 sm:max-w-[80%]">
         <div className="rounded-none bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:rounded-lg">
           <h2 className="mb-4 text-xl font-bold text-[#222831]">Customer Reviews</h2>
@@ -390,6 +365,42 @@ export async function ProductDetailBody({
           <WriteReviewForm productId={product.id} />
         </div>
       </div>
+
+      {relatedProducts.length > 0 && (
+        <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-[#222831]">Related Products</h2>
+            {category && (
+              <AppLink href={`/categories/${category.slug}`} className="text-sm font-medium text-green hover:underline">
+                More Products →
+              </AppLink>
+            )}
+          </div>
+          {/* No arrows (swipe/autoplay only, per explicit request) and a
+              slower autoplay. Card widths mirror Cross Sell Products' grid
+              breakpoints exactly (2/3/5 columns) so both sections show the
+              same card size — computed against this Carousel's own 18px gap
+              (gap-4.5), not Cross Sell's 16px grid gap, so the math differs
+              slightly even though the resulting column count matches.
+              snap-start (paired with the Carousel's own snap-x snap-mandatory)
+              is what actually guarantees exactly N full cards show at rest —
+              without it, autoplay/swipes can stop at any scroll offset and
+              show partial cards peeking on both edges. */}
+          <RelatedProductsCarousel products={relatedProducts} />
+        </div>
+      )}
+
+      {crossSellProducts.length > 0 && (
+        <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-[#222831]">Cross Sell Products</h2>
+            <AppLink href="/products" className="text-sm font-medium text-green hover:underline">
+              More Products →
+            </AppLink>
+          </div>
+          <CrossSellProductGrid products={crossSellProducts} />
+        </div>
+      )}
     </main>
     </ProductFloatingBarProvider>
   );

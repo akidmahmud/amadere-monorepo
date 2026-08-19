@@ -123,8 +123,16 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-body text-[13px] text-ink">{hit.name}</span>
-                            <span className="block font-ui text-xs font-semibold text-green-deep">
-                              ৳{hit.salePrice ?? hit.price}
+                            {/* salePrice is non-null only when a sale is
+                                genuinely active and below the regular price
+                                (enforced in postgres-search.provider), so
+                                its presence alone is enough to show the
+                                struck-through original next to it. */}
+                            <span className="flex items-baseline gap-1.5 font-ui text-xs font-semibold text-green-deep">
+                              <span>৳{hit.salePrice ?? hit.price}</span>
+                              {hit.salePrice && hit.price && (
+                                <span className="font-normal text-muted line-through">৳{hit.price}</span>
+                              )}
                             </span>
                           </span>
                         </Link>

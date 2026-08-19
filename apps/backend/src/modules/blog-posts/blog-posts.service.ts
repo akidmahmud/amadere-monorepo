@@ -607,30 +607,57 @@ export class BlogPostsService {
     return { author, posts };
   }
 
+  // Shared TAGS decide what's related (per explicit request) — previously
+  // this matched on category OR tag, which on a site where most posts sit in
+  // the same one or two categories meant "related" was really just "recent".
+  // If a post shares no tags with anything (or has no tags at all), fall
+  // back to a random selection rather than returning nothing — an empty
+  // Related Posts block is a dead end for the reader.
   private async findRelatedPosts(post: BlogPostWithRelations, locale: Locale) {
-    const categoryIds = post.categories.map((c) => c.categoryId);
     const tagIds = post.tags.map((t) => t.tagId);
-    if (categoryIds.length === 0 && tagIds.length === 0) return [];
 
-    const related = await this.prisma.client.blogPost.findMany({
-      where: {
-        id: { not: post.id },
-        deletedAt: null,
-        status: 'PUBLISHED',
-        OR: [
-          ...(categoryIds.length
-            ? [{ categories: { some: { categoryId: { in: categoryIds } } } }]
-            : []),
-          ...(tagIds.length
-            ? [{ tags: { some: { tagId: { in: tagIds } } } }]
-            : []),
-        ],
-      },
-      include: BLOG_POST_INCLUDE,
-      orderBy: { publishedAt: 'desc' },
-      take: RELATED_POSTS_LIMIT,
-    });
-    return related.map((p) => toPublicBlogPostSummaryDto(p, locale));
+    const byTag = tagIds.length
+      ? await this.prisma.client.blogPost.findMany({
+          where: {
+            id: { not: post.id },
+            deletedAt: null,
+            status: 'PUBLISHED',
+            tags: { some: { tagId: { in: tagIds } } },
+          },
+          include: BLOG_POST_INCLUDE,
+          orderBy: { publishedAt: 'desc' },
+          take: RELATED_POSTS_LIMIT,
+        })
+      : [];
+
+    if (byTag.length >= RELATED_POSTS_LIMIT) {
+      return byTag.map((p) => toPublicBlogPostSummaryDto(p, locale));
+    }
+
+    // Top up with random published posts, excluding the current post and
+    // anything already matched by tag. ORDER BY RANDOM() over ids only (not
+    // the full row + its relations) so the random pick stays cheap; the
+    // chosen rows are then loaded properly with BLOG_POST_INCLUDE.
+    const excludeIds = [post.id, ...byTag.map((p) => p.id)];
+    const needed = RELATED_POSTS_LIMIT - byTag.length;
+    const randomRows = await this.prisma.client.$queryRaw<{ id: number }[]>`
+      SELECT id FROM blog_posts
+      WHERE deleted_at IS NULL
+        AND status = 'PUBLISHED'
+        AND id != ALL(${excludeIds}::int[])
+      ORDER BY RANDOM()
+      LIMIT ${needed}
+    `;
+    const fillers = randomRows.length
+      ? await this.prisma.client.blogPost.findMany({
+          where: { id: { in: randomRows.map((r) => r.id) } },
+          include: BLOG_POST_INCLUDE,
+        })
+      : [];
+
+    return [...byTag, ...fillers].map((p) =>
+      toPublicBlogPostSummaryDto(p, locale),
+    );
   }
 
   private async setStatus(

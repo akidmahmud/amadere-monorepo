@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { cn } from "../lib/cn";
 
@@ -14,6 +14,12 @@ export interface ProductGalleryProps {
   /** Embeddable video URL (e.g. YouTube/Vimeo) shown as an extra gallery slide. */
   videoUrl?: string;
   className?: string;
+  /** Optionally drive which slide is showing from outside — used by the PDP
+   * to jump to the selected variant's own image. Left undefined the gallery
+   * stays fully self-controlled (thumbnails/arrows only), exactly as before.
+   * Not a fully controlled prop: it seeds/overrides the internal index when
+   * it changes, but clicking a thumbnail afterwards still works normally. */
+  activeIndex?: number;
 }
 
 const chevronLeft = (
@@ -43,8 +49,16 @@ const playIcon = (
 // literal unstyled-Swiper-default arrow blue (#007AFF), not a brand color.
 // Unchanged down to mobile widths — the reference keeps this side-by-side
 // layout at 390px too, no stacking breakpoint.
-export function ProductGallery({ images, videoUrl, className }: ProductGalleryProps) {
-  const [active, setActive] = useState(0);
+export function ProductGallery({ images, videoUrl, className, activeIndex }: ProductGalleryProps) {
+  const [active, setActive] = useState(activeIndex ?? 0);
+
+  // Jump to the externally-requested slide when it changes (variant picked
+  // on the PDP). Deliberately not a hard controlled binding — after the jump
+  // the shopper can still browse thumbnails freely without the parent
+  // yanking them back.
+  useEffect(() => {
+    if (activeIndex !== undefined) setActive(activeIndex);
+  }, [activeIndex]);
   const slideCount = images.length + (videoUrl ? 1 : 0);
   const showVideo = videoUrl && active === images.length;
   const current = images[Math.min(active, images.length - 1)];

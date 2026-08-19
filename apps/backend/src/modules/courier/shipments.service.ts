@@ -14,7 +14,6 @@ import {
 } from '../../common/pagination.util';
 import { OrdersService } from '../orders/orders.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
-import { lockOrderRow } from '../orders/order-totals.util';
 import { BalanceOutcome, CourierProvider } from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
 import { PathaoCourierProvider } from './providers/pathao-courier.provider';
@@ -113,20 +112,30 @@ export class ShipmentsService {
       throw new ConflictException('Order has no shipping address');
 
     const weight = await this.computeOrderWeight(order.items);
+    // ⚠️ ADVISORY ONLY — never charged to the customer. This weight-based
+    // figure (ShippingChargeCalculator: base + per-kg + outside-Dhaka
+    // surcharge) is stored on the Shipment row and surfaced in the admin UI
+    // as a grey "approx." estimate for internal/profit purposes.
+    //
+    // It must NOT touch order.shippingAmount, order.totalAmount, or
+    // codAmount. It previously did all three, which meant: an order quoted
+    // ৳80 at checkout silently became ৳120 the moment staff hit "Send";
+    // any manual shipping-fee correction was wiped; and — worst — an order
+    // with FREE SHIPPING (coupon/upsell, honored correctly at checkout as
+    // ৳0) came back at ৳60-160 with the courier instructed to collect that
+    // from the customer. What the customer agreed to at checkout is final;
+    // see computeCheckoutFees (accounts.service.ts) for that real figure.
     const cost = await this.charges.calculate(weight, shippingAddress.division);
-    // The courier's quoted cost can differ from whatever shippingAmount was
-    // estimated at checkout — recompute totalAmount the same way
-    // OrdersService.updateAmounts does, so it stays correct once dispatch
-    // sets the real shippingAmount below, and so codAmount (what the
-    // courier actually collects from the customer) isn't computed off a
-    // stale total. This is an estimate for the courier API call below (COD
-    // amount has to be quoted before dispatch) — the order's own stored
-    // totalAmount is recomputed from a fresh, lock-protected read after the
-    // dispatch call returns (see the `tx` block below), since a manual
-    // shipping-fee edit or item change racing against this slow external
-    // call could otherwise leave shippingAmount and totalAmount mismatched.
+    // Recomputed (rather than trusting order.totalAmount) so a stale total
+    // can't mis-quote what the courier collects — but from the order's OWN
+    // shippingAmount, i.e. the checkout-agreed fee, free shipping's ৳0, or a
+    // staff correction, whichever applies.
     const correctedTotalAmount = Decimal.max(
-      order.subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.codFee).plus(cost),
+      order.subTotal
+        .minus(order.discountAmount)
+        .plus(order.taxAmount)
+        .plus(order.codFee)
+        .plus(order.shippingAmount),
       new Decimal(0),
     );
     const pendingCod = order.payments.some(
@@ -213,17 +222,14 @@ export class ShipmentsService {
     });
 
     if (result.success) {
-      await this.prisma.client.$transaction(async (tx) => {
-        await lockOrderRow(tx, order.id);
-        const fresh = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
-        const finalTotalAmount = Decimal.max(
-          fresh.subTotal.minus(fresh.discountAmount).plus(fresh.taxAmount).plus(fresh.codFee).plus(cost),
-          new Decimal(0),
-        );
-        await tx.order.update({
-          where: { id: order.id },
-          data: { shippingAmount: cost, shippingMethod: dto.provider, totalAmount: finalTotalAmount },
-        });
+      // Records WHICH courier carried it — deliberately nothing else. The
+      // weight-based `cost` is advisory and lives on the Shipment row only
+      // (see the comment where it's calculated above); shippingAmount and
+      // totalAmount keep whatever checkout/staff set. No row lock or
+      // recompute needed now that no money field is being rewritten here.
+      await this.prisma.client.order.update({
+        where: { id: order.id },
+        data: { shippingMethod: dto.provider },
       });
       if (order.status === 'PENDING') {
         await this.orders.updateStatus(

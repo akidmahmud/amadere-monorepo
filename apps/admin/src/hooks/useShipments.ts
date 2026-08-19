@@ -10,7 +10,13 @@ export type ShipmentQueueRow = components["schemas"]["ShipmentQueueRowDto"];
 export type BalanceOutcome = { unavailable?: false; balance: number } | { unavailable: true };
 
 type Paginated<T> = { items?: T[]; total?: number };
-const KEY = ["admin-shipments"];
+// Exported so useOrders.ts's invalidateOrder can invalidate this list too —
+// the dispatch queue renders order amounts (Total / pending COD), so an
+// order edit made from the modal *opened out of this very table* has to
+// refresh it. Without that it silently showed stale figures until a manual
+// Reload.
+export const ADMIN_SHIPMENTS_KEY = ["admin-shipments"];
+const KEY = ADMIN_SHIPMENTS_KEY;
 
 export function useShipmentQueue(filters: { page?: number; pageSize?: number; search?: string }) {
   return useQuery({
