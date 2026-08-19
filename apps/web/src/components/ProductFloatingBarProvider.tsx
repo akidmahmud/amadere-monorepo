@@ -29,6 +29,7 @@ export function ProductFloatingBarProvider({
   const locale = toApiLocale(useLocale());
   const addToCart = useAddToCart(locale);
   const openCartDrawer = useCartDrawerStore((s) => s.open);
+  const closeCartDrawer = useCartDrawerStore((s) => s.close);
   const router = useRouter();
   const update = useProductFloatingBarStore((s) => s._update);
   const reset = useProductFloatingBarStore((s) => s._reset);
@@ -48,16 +49,21 @@ export function ProductFloatingBarProvider({
   const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
 
   // --- Handlers (stable refs via useCallback) ---
+  // Same as PdpPurchasePanel: open on tap, close again only if the add
+  // failed. The sticky bar is the one control a mobile shopper reaches for
+  // most, so waiting out the round trip before anything moved was the worst
+  // place to do it.
   const handleAddToCart = useCallback(() => {
+    openCartDrawer();
     addToCart.mutate(
       {
         productId: product.id,
         variantId: product.hasVariants ? Number(selectedVariantId) : undefined,
         quantity: product.minOrderQuantity || 1,
       },
-      { onSuccess: () => openCartDrawer() },
+      { onError: () => closeCartDrawer() },
     );
-  }, [addToCart, product.id, product.hasVariants, product.minOrderQuantity, selectedVariantId, openCartDrawer]);
+  }, [addToCart, product.id, product.hasVariants, product.minOrderQuantity, selectedVariantId, openCartDrawer, closeCartDrawer]);
 
   const handleBuyNow = useCallback(() => {
     addToCart.mutate(

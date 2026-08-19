@@ -72,6 +72,7 @@ export function PdpPurchasePanel({
   const setSelectedVariantId = variantCtx ? variantCtx.setSelectedVariantId : setLocalVariantId;
   const [qty, setQty] = useState(product.minOrderQuantity || 1);
   const openCartDrawer = useCartDrawerStore((s) => s.open);
+  const closeCartDrawer = useCartDrawerStore((s) => s.close);
   const locale = toApiLocale(useLocale());
   const addToCart = useAddToCart(locale);
   const router = useRouter();
@@ -120,19 +121,28 @@ export function PdpPurchasePanel({
   // products (trackInventory: false) whose `stock` column is unused/stale.
   const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
 
-  function addItem(onSuccess: () => void) {
+  function addItem(onSuccess: () => void, onError?: () => void) {
     addToCart.mutate(
       {
         productId: product.id,
         variantId: product.hasVariants ? Number(selectedVariantId) : undefined,
         quantity: qty,
       },
-      { onSuccess },
+      { onSuccess, onError },
     );
   }
 
+  // Drawer opens on the tap, not on the response — the round trip is the
+  // whole reason the button felt dead, and the drawer renders its own
+  // pending state (SiteCartDrawer) while the line is still in flight. It
+  // closes again if the add actually fails, so a stock/network error never
+  // leaves an open drawer implying success.
   function handleAddToCart() {
-    addItem(() => openCartDrawer());
+    openCartDrawer();
+    addItem(
+      () => {},
+      () => closeCartDrawer(),
+    );
   }
 
   // The backend's `/cart/buy-now` is a pricing-only quote — it never touches
@@ -269,7 +279,7 @@ export function PdpPurchasePanel({
               onClick={handleAddToCart}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md border-2 border-green bg-transparent text-sm font-semibold uppercase text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Add To Cart
+              {addToCart.isPending ? "Adding…" : "Add To Cart"}
             </button>
             <button
               type="button"
@@ -277,7 +287,7 @@ export function PdpPurchasePanel({
               onClick={handleBuyNow}
               className="flex h-11 w-full animate-[wiggle_2.5s_ease-in-out_infinite] items-center justify-center gap-2 rounded-md bg-green text-sm font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Buy Now
+              {addToCart.isPending ? "Adding…" : "Buy Now"}
             </button>
           </>
         )}

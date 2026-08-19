@@ -15,6 +15,7 @@ export function useCardAddToCart() {
   const locale = toApiLocale(useLocale());
   const addToCart = useAddToCart(locale);
   const openCart = useCartDrawerStore((s) => s.open);
+  const closeCart = useCartDrawerStore((s) => s.close);
   const toast = useToast();
 
   // Returns a Promise<boolean> (never rejects) rather than void, so a caller
@@ -24,14 +25,16 @@ export function useCardAddToCart() {
   // call site just ignores the return value, same fire-and-forget behavior
   // as before.
   function handleAddToCart(productId: number, packValue?: string): Promise<boolean> {
+    // Opened up-front rather than on resolve (the drawer shows its own
+    // pending row meanwhile) and closed again on failure, so the toast isn't
+    // competing with a drawer that looks like the add worked.
+    openCart();
     return addToCart
       .mutateAsync({ productId, variantId: packValue ? Number(packValue) : undefined })
       .then(
-        () => {
-          openCart();
-          return true;
-        },
+        () => true,
         (error) => {
+          closeCart();
           toast.push(error instanceof Error ? error.message : "Couldn't add to cart");
           return false;
         },

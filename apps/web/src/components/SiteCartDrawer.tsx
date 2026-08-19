@@ -24,6 +24,7 @@ import {
   useRemoveCoupon,
   useUpdateCartItem,
   useAddToCart,
+  useIsAddingToCart,
 } from "@/hooks/useCart";
 
 export function SiteCartDrawer() {
@@ -40,6 +41,12 @@ export function SiteCartDrawer() {
   const addToCart = useAddToCart(locale);
 
   const hasItems = (cart?.items.length ?? 0) > 0;
+  // The drawer now opens the instant the button is tapped rather than after
+  // the round trip, so on a first add there is a window where the cart is
+  // genuinely still empty — without this it would flash "your cart is
+  // empty" and a Continue Shopping button at the exact moment the shopper
+  // just added something.
+  const isAdding = useIsAddingToCart();
   const closeDrawer = useCartDrawerStore((s) => s.close);
   const isOpen = useCartDrawerStore((s) => s.isOpen);
 
@@ -66,7 +73,17 @@ export function SiteCartDrawer() {
       subtotal={hasItems && cart ? formatMoney(cart.total) : undefined}
       onCheckout={() => router.push("/checkout")}
     >
-      {!hasItems && (
+      {!hasItems && isAdding && (
+        <div className="flex items-center gap-3 py-6" aria-live="polite">
+          <div className="h-14 w-14 shrink-0 animate-pulse rounded-md bg-cream" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-2/3 animate-pulse rounded bg-cream" />
+            <div className="h-3 w-1/3 animate-pulse rounded bg-cream" />
+          </div>
+        </div>
+      )}
+
+      {!hasItems && !isAdding && (
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <p className="font-body text-sm text-muted">{t("empty")}</p>
           <Button

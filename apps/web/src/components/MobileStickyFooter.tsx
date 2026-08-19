@@ -167,7 +167,7 @@ export function MobileStickyFooter() {
               onClick={onBuyNow ?? undefined}
               className="flex h-[40px] flex-1 animate-[wiggle_2.5s_ease-in-out_infinite] items-center justify-center gap-1.5 rounded-lg bg-[#D3A01F] font-ui text-xs font-bold uppercase tracking-wide text-white transition-colors active:bg-[#b88a1a] disabled:opacity-60"
             >
-              Buy Now
+              {isPending ? "Adding…" : "Buy Now"}
             </button>
             <button
               type="button"
@@ -175,8 +175,8 @@ export function MobileStickyFooter() {
               onClick={onAddToCart ?? undefined}
               className="flex h-[40px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#166534] font-ui text-xs font-bold uppercase tracking-wide text-white transition-colors active:bg-[#14532d] disabled:opacity-60"
             >
-              {cartActionIcon}
-              Add to Cart
+              {!isPending && cartActionIcon}
+              {isPending ? "Adding…" : "Add to Cart"}
             </button>
           </div>
         </div>

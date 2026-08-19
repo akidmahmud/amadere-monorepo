@@ -33,6 +33,7 @@ import {
   suggestInternalLinks,
 } from './internal-links.util';
 import { SeoService } from '../seo/seo.service';
+import { RevalidationService } from '../../common/revalidation/revalidation.service';
 import { TokenService } from '../../common/auth/token.service';
 import {
   buildArticleJsonLd,
@@ -50,7 +51,22 @@ export class BlogPostsService {
     private readonly prisma: PrismaService,
     private readonly seo: SeoService,
     private readonly tokens: TokenService,
+    private readonly revalidation: RevalidationService,
   ) {}
+
+  // Fire-and-forget, same contract as ProductsService.revalidateProduct —
+  // blog was the one content module that never called this, so an admin edit
+  // sat behind the post/listing routes' own `revalidate = 3600` for up to an
+  // hour before appearing on the storefront.
+  private revalidateBlog(...slugs: (string | null | undefined)[]): void {
+    const paths = new Set(['/blog', '/en/blog', '/bn/blog']);
+    for (const slug of slugs) {
+      if (!slug) continue;
+      paths.add(`/en/blog/${slug}`);
+      paths.add(`/bn/blog/${slug}`);
+    }
+    void this.revalidation.revalidate([...paths]);
+  }
 
   async adminList(
     page: number,
@@ -149,6 +165,7 @@ export class BlogPostsService {
       },
       include: BLOG_POST_INCLUDE,
     });
+    this.revalidateBlog(post.slug);
     return toAdminBlogPostDto(post);
   }
 
@@ -207,6 +224,9 @@ export class BlogPostsService {
       include: BLOG_POST_INCLUDE,
     });
     await this.recordRevisions(id, before, dto, adminUserId);
+    // Both slugs — a rename has to bust the old URL too, or the previous
+    // path keeps serving the stale cached page until its own window rolls.
+    this.revalidateBlog(before.slug, post.slug);
     return toAdminBlogPostDto(post);
   }
 
@@ -303,6 +323,7 @@ export class BlogPostsService {
       },
       include: BLOG_POST_INCLUDE,
     });
+    this.revalidateBlog(updated.slug);
     return toAdminBlogPostDto(updated);
   }
 
@@ -312,11 +333,12 @@ export class BlogPostsService {
   }
 
   async delete(id: number): Promise<void> {
-    await this.loadOrThrow(id);
+    const post = await this.loadOrThrow(id);
     await this.prisma.client.blogPost.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    this.revalidateBlog(post.slug);
   }
 
   private static readonly TRASH_RETENTION_DAYS = 30;
@@ -381,7 +403,9 @@ export class BlogPostsService {
       where: { id },
       data: { deletedAt: null },
     });
-    return this.adminGet(id);
+    const restored = await this.adminGet(id);
+    this.revalidateBlog(restored.slug);
+    return restored;
   }
 
   // Runs daily — anything soft-deleted more than 30 days ago is gone for
@@ -669,6 +693,7 @@ export class BlogPostsService {
       data: { status },
       include: BLOG_POST_INCLUDE,
     });
+    this.revalidateBlog(post.slug);
     return toAdminBlogPostDto(post);
   }
 

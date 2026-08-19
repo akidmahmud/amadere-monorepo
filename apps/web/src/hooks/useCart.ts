@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { getGuestToken, setGuestToken, clearGuestToken } from "@/lib/guest-token";
 import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
@@ -57,9 +57,11 @@ function useCartMutation<TArgs>(
   locale: string,
   mutationFn: (args: TArgs) => Promise<CartViewDto>,
   onTrack?: (cart: CartViewDto, args: TArgs) => void,
+  mutationKey?: unknown[],
 ) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey,
     mutationFn,
     onSuccess: (cart, args) => {
       persistGuestToken(cart);
@@ -104,7 +106,19 @@ export function useAddToCart(locale: string) {
         items: [item],
       });
     },
+    // Named so any component can ask "is an add in flight right now?" via
+    // useIsAddingToCart below, without being the one that owns the mutation
+    // — the cart drawer is opened by PDP/card buttons that live elsewhere in
+    // the tree, and it needs to know not to flash its empty state.
+    ADD_TO_CART_MUTATION_KEY,
   );
+}
+
+const ADD_TO_CART_MUTATION_KEY = ["cart", "add"];
+
+/** True while any Add to Cart / Buy Now anywhere on the page is in flight. */
+export function useIsAddingToCart(): boolean {
+  return useIsMutating({ mutationKey: ADD_TO_CART_MUTATION_KEY }) > 0;
 }
 
 export function useUpdateCartItem(locale: string) {
