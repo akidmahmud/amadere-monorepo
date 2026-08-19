@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 export interface PriceRangeSliderProps {
   min: number;
   max: number;
@@ -30,10 +32,17 @@ export function PriceRangeSlider({
   const leftPct = ((valueMin - min) / span) * 100;
   const rightPct = ((valueMax - min) / span) * 100;
 
+  // When the two thumbs meet they stack, and only the one on top can be
+  // grabbed — so keep the last-moved thumb on top. Without this, dragging the
+  // min thumb to the far right buries it under the max thumb permanently.
+  const [minOnTop, setMinOnTop] = useState(() => valueMin >= valueMax);
+
   function handleMinInput(next: number) {
+    setMinOnTop(true);
     onChange(Math.min(next, valueMax), valueMax);
   }
   function handleMaxInput(next: number) {
+    setMinOnTop(false);
     onChange(valueMin, Math.max(next, valueMin));
   }
 
@@ -62,6 +71,7 @@ export function PriceRangeSlider({
           value={valueMin}
           onChange={(e) => handleMinInput(Number(e.currentTarget.value))}
           className={thumbClass}
+          style={{ zIndex: minOnTop ? 2 : 1 }}
           aria-label="Minimum price"
         />
         <input
@@ -72,6 +82,7 @@ export function PriceRangeSlider({
           value={valueMax}
           onChange={(e) => handleMaxInput(Number(e.currentTarget.value))}
           className={thumbClass}
+          style={{ zIndex: minOnTop ? 1 : 2 }}
           aria-label="Maximum price"
         />
       </div>

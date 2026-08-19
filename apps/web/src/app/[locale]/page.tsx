@@ -134,12 +134,16 @@ function renderSection(
     }
 
     case "PRODUCT_COLLECTION": {
-      if (!section.collection || section.collection.products.length === 0) return null;
+      if (!section.collection) return null;
+      // Sold-out products are dropped from the homepage carousel rather than
+      // shown greyed out — the collection page still lists them.
+      const products = section.collection.products.map(toProductCardData).filter((p) => !p.outOfStock);
+      if (products.length === 0) return null;
       return (
         <div className={WRAPPER} key={section.id}>
           <ProductCarouselSectionClient
             heading={section.heading ?? section.collection.name}
-            products={section.collection.products.map(toProductCardData)}
+            products={products}
             viewAllHref={`/collections/${section.collection.slug}`}
             viewAllLabel="View All"
             visibleCount={5}

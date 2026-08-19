@@ -7,9 +7,18 @@ export interface FaqAccordionItem {
   answer: string;
 }
 
-const chevron = (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
+// Plus that turns into a minus: the vertical stroke rotates onto the
+// horizontal one, so one icon covers both states with no swap.
+const plusMinus = (isOpen: boolean) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <line
+      x1="12"
+      y1="5"
+      x2="12"
+      y2="19"
+      className={`origin-center transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+    />
   </svg>
 );
 
@@ -33,9 +42,9 @@ export function FaqAccordion({ faqs }: { faqs: FaqAccordionItem[] }) {
             >
               <span className="font-body text-sm font-bold text-text">{faq.question}</span>
               <span
-                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-green transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-green"
               >
-                {chevron}
+                {plusMinus(isOpen)}
               </span>
             </button>
             {/* grid-template-rows 0fr→1fr — animates height to "auto" without
