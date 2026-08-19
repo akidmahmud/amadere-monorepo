@@ -69,16 +69,55 @@ export class CustomersService {
     customerId: number,
     dto: UpdateProfileDto,
   ): Promise<CustomerProfileDto> {
-    const customer = await this.prisma.client.customer.update({
-      where: { id: customerId },
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        avatarUrl: dto.avatarUrl,
-        dob: dto.dob ? new Date(dto.dob) : undefined,
-      },
-    });
-    return toCustomerProfileDto(customer);
+    // Lower-cased on the way in so the same address can't be stored twice
+    // under different casing and slip past the @unique index — the login
+    // lookup is an exact match on this column, so a customer who saved
+    // "Foo@Bar.com" and later typed "foo@bar.com" would otherwise not be
+    // found by their own email.
+    const email = dto.email?.trim().toLowerCase();
+
+    // Only read the current row when there's actually an email change to
+    // reason about — every other field is a blind PATCH as before.
+    let emailVerifiedAt: null | undefined = undefined;
+    if (email) {
+      const current = await this.prisma.client.customer.findUniqueOrThrow({
+        where: { id: customerId },
+        select: { email: true },
+      });
+      // Changing the address invalidates any prior verification. Leaving
+      // emailVerifiedAt set would mark an address this customer has never
+      // proven they control as verified — and with email now accepted at
+      // password login, anything that later trusts that flag would be
+      // trusting a self-asserted value.
+      if (current.email !== email) emailVerifiedAt = null;
+    }
+
+    try {
+      const customer = await this.prisma.client.customer.update({
+        where: { id: customerId },
+        data: {
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          avatarUrl: dto.avatarUrl,
+          dob: dto.dob ? new Date(dto.dob) : undefined,
+          email,
+          emailVerifiedAt,
+        },
+      });
+      return toCustomerProfileDto(customer);
+    } catch (err) {
+      // Customer.email is @unique. Catching the constraint rather than
+      // pre-checking with a findFirst is what actually makes this safe —
+      // a check-then-write leaves a race window where two requests both
+      // see the address as free. P2002 is Prisma's unique-violation code.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('That email is already in use');
+      }
+      throw err;
+    }
   }
 
   async changePassword(
@@ -323,6 +362,27 @@ export class CustomersService {
         // phone/email in the meantime — that surfaces as a real P2002 below
         // instead of silently overwriting the other customer's row.
         const customer = await this.prisma.client.customer.findUniqueOrThrow({ where: { id: customerId } });
+
+        if (dto.action === 'purge') {
+          // Only ever reachable from the Deleted Customers tab. Requiring
+          // deletedAt is the guard that stops a live customer being
+          // destroyed by a mistyped id — a purge has no undo, unlike every
+          // other action here.
+          if (customer.deletedAt === null) {
+            failed.push({ customerId, error: 'Only a deleted customer can be permanently removed' });
+            continue;
+          }
+          // Order.customerId is onDelete: SetNull (as are DiscountRedemption
+          // and Due), so order and accounting history SURVIVES this and
+          // simply detaches from the customer — deliberately, since those
+          // rows are financial records, not personal data. What does cascade
+          // away is everything customer-owned: notes, call logs, addresses,
+          // social accounts, cart, wishlist, discount assignments, reviews.
+          await this.prisma.client.customer.delete({ where: { id: customerId } });
+          succeeded.push(customerId);
+          continue;
+        }
+
         await this.prisma.client.customer.update({
           where: { id: customerId },
           data:

@@ -99,7 +99,9 @@ export interface BulkCustomerActionResult {
 export function useBulkCustomerAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { customerIds: number[]; action: "delete" | "restore" | "assign"; assignedAdminId?: number | null }) =>
+    // "delete" is the soft delete (to the trash tab); "purge" is the
+    // irreversible hard delete, accepted only for already-trashed customers.
+    mutationFn: (input: { customerIds: number[]; action: "delete" | "restore" | "assign" | "purge"; assignedAdminId?: number | null }) =>
       proxyFetch<BulkCustomerActionResult>("/admin/customers/bulk", { method: "POST", body: JSON.stringify(input) }),
     // Both the working list and the trash list move rows between each other
     // on delete/restore — invalidating just LIST_KEY (which the trash query

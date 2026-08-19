@@ -5733,7 +5733,13 @@ export interface components {
             pending: true;
         };
         LoginDto: {
-            phone: string;
+            /** @description Phone number or email */
+            identifier?: string;
+            /**
+             * @deprecated
+             * @description Deprecated — use `identifier`
+             */
+            phone?: string;
             password: string;
         };
         TokenPair: Record<string, never>;
@@ -7327,6 +7333,8 @@ export interface components {
         UpdateProfileDto: {
             firstName?: string;
             lastName?: string;
+            /** Format: email */
+            email?: string;
             /** Format: uri */
             avatarUrl?: string;
             /** @description YYYY-MM-DD */
@@ -7438,6 +7446,16 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        AdminCustomerPurchasedProductDto: {
+            productId: number | null;
+            name: string;
+            sku: string | null;
+            totalQuantity: number;
+            orderCount: number;
+            totalSpent: string;
+            /** Format: date-time */
+            lastPurchasedAt: string;
+        };
         AdminCustomerNoteDto: {
             id: number;
             type: string;
@@ -7471,6 +7489,7 @@ export interface components {
             createdAt: string;
             defaultAddress: components["schemas"]["AdminCustomerAddressSummaryDto"] | null;
             orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
+            purchasedProducts: components["schemas"]["AdminCustomerPurchasedProductDto"][];
             notes: components["schemas"]["AdminCustomerNoteDto"][];
             callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
             isFavorite: boolean;
@@ -7539,7 +7558,7 @@ export interface components {
         BulkCustomerActionDto: {
             customerIds: number[];
             /** @enum {string} */
-            action: "delete" | "restore" | "assign";
+            action: "delete" | "restore" | "assign" | "purge";
             assignedAdminId?: number | null;
         };
         UpdateCustomerDto: {

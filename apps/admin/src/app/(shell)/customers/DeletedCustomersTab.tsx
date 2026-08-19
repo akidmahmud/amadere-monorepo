@@ -5,10 +5,12 @@ import { CustomersTable } from "@/components/customers/CustomersTable";
 import { useAssignableStaff, useBulkCustomerAction, useDeletedCustomers } from "@/hooks/useCustomers";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { useToast } from "@/components/ToastProvider";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 const MUTED = "#64766b";
 const LINE = "#e5ebe6";
 const GREEN = "#2e7d43";
+const DANGER = "#c0392b";
 
 // Same table component the main "Customers" list uses (full column set,
 // green header, inline-editable cells) — the only difference is the data
@@ -23,6 +25,7 @@ export function DeletedCustomersTab() {
   const [restoringId, setRestoringId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmPurge, setConfirmPurge] = useState(false);
 
   // The bulk endpoint always 200s and reports per-customer success/failure
   // in the response body (e.g. a restore can legitimately conflict if
@@ -78,6 +81,32 @@ export function DeletedCustomersTab() {
     );
   }
 
+  // Irreversible, unlike every other action on this screen — hence a
+  // ConfirmDialog that spells out what survives (orders) and what doesn't,
+  // rather than a native confirm() that can't.
+  function bulkPurge() {
+    if (selected.size === 0) return;
+    bulk.mutate(
+      { customerIds: [...selected], action: "purge" },
+      {
+        onSuccess: (result) => {
+          setConfirmPurge(false);
+          setSelected(new Set());
+          if (result.failed.length > 0) {
+            toast.push(
+              result.failed.length === 1
+                ? result.failed[0].error
+                : `${result.failed.length} customers couldn't be permanently deleted`,
+              "error",
+            );
+          } else {
+            toast.push(`Permanently deleted ${result.succeeded.length} customer(s)`, "success");
+          }
+        },
+      },
+    );
+  }
+
   return (
     <div className="flex flex-col gap-[18px]">
       <p className="text-[0.8rem] font-semibold" style={{ color: MUTED }}>
@@ -87,7 +116,7 @@ export function DeletedCustomersTab() {
 
       <div className="flex flex-wrap items-center gap-2.5 rounded-card border p-[12px_16px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
         <span className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
-          {selected.size > 0 ? `${selected.size} selected` : "Select customers to restore"}
+          {selected.size > 0 ? `${selected.size} selected` : "Select customers to restore or delete permanently"}
         </span>
         <button
           type="button"
@@ -97,6 +126,15 @@ export function DeletedCustomersTab() {
           style={{ borderColor: GREEN, background: GREEN }}
         >
           Restore
+        </button>
+        <button
+          type="button"
+          disabled={selected.size === 0 || bulk.isPending}
+          onClick={() => setConfirmPurge(true)}
+          className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold text-white disabled:opacity-40"
+          style={{ borderColor: DANGER, background: DANGER }}
+        >
+          Delete permanently
         </button>
         <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
           {data?.total ?? 0} deleted customers
@@ -118,6 +156,16 @@ export function DeletedCustomersTab() {
         onToggleAll={toggleAll}
         onRestore={handleRestore}
         restoringId={restoringId}
+      />
+
+      <ConfirmDialog
+        open={confirmPurge}
+        onClose={() => setConfirmPurge(false)}
+        onConfirm={bulkPurge}
+        title="Delete permanently?"
+        description={`This removes ${selected.size} customer(s) for good — there is no undo and no restore window. Their notes, call logs, saved addresses, wishlist, cart and reviews go with them. Past orders are kept for your records but will no longer be linked to a customer.`}
+        confirmLabel="Delete permanently"
+        pending={bulk.isPending}
       />
 
       {selectedId && <CustomerDetailModal customerId={selectedId} onClose={() => setSelectedId(null)} />}

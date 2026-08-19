@@ -12,7 +12,7 @@ type ReviewDto = components["schemas"]["ReviewDto"];
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { firstName?: string; lastName?: string; dob?: string }) =>
+    mutationFn: (args: { firstName?: string; lastName?: string; email?: string; dob?: string }) =>
       proxyFetch<CustomerProfileDto>("/customers/me", { method: "PATCH", body: JSON.stringify(args) }),
     onSuccess: (profile) => queryClient.setQueryData(["me"], profile),
   });

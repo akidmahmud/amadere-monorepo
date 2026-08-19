@@ -1,7 +1,10 @@
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsOptional } from 'class-validator';
 
-export const BULK_CUSTOMER_ACTIONS = ['delete', 'restore', 'assign'] as const;
+// 'delete' is the SOFT delete (moves to the Deleted Customers tab).
+// 'purge' is the irreversible hard delete, and is only accepted for a
+// customer already sitting in that trash — see adminBulkAction.
+export const BULK_CUSTOMER_ACTIONS = ['delete', 'restore', 'assign', 'purge'] as const;
 export type BulkCustomerAction = (typeof BULK_CUSTOMER_ACTIONS)[number];
 
 export class BulkCustomerActionDto {

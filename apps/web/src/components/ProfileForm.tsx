@@ -14,6 +14,7 @@ export function ProfileForm() {
 
   const [firstName, setFirstName] = useState(me?.firstName ?? "");
   const [lastName, setLastName] = useState(me?.lastName ?? "");
+  const [email, setEmail] = useState(me?.email ?? "");
   const [dob, setDob] = useState(me?.dob ? me.dob.slice(0, 10) : "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -38,7 +39,12 @@ export function ProfileForm() {
           <Input placeholder="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </div>
         <div className="mb-3.5 grid grid-cols-2 gap-3">
-          <Input value={me.email ?? ""} disabled placeholder="Email" />
+          {/* Phone stays read-only — it's the account's identity for OTP
+              login and order lookup, so changing it isn't a profile edit.
+              Email is editable: most migrated accounts carry a synthetic
+              `<phone>@temporary.com` address, and it's now also a password
+              login identifier. */}
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
           <Input value={me.phone ?? ""} disabled placeholder="Phone" />
         </div>
         <label className="mb-3.5 block">
@@ -51,12 +57,26 @@ export function ProfileForm() {
             className="max-w-[200px]"
           />
         </label>
+        {updateProfile.isError && (
+          <p className="mb-2 font-body text-xs text-red-600">
+            {updateProfile.error instanceof Error ? updateProfile.error.message : "Couldn't save changes"}
+          </p>
+        )}
         {updateProfile.isSuccess && <p className="mb-2 font-body text-xs text-green">Saved!</p>}
         <Button
           variant="green"
           disabled={updateProfile.isPending}
           onClick={() =>
-            updateProfile.mutate({ firstName: firstName || undefined, lastName: lastName || undefined, dob: dob || undefined })
+            // `|| undefined` on each field is the PATCH contract: omitted
+            // means "leave unchanged". An empty email box therefore keeps
+            // the current address rather than trying (and failing) to clear
+            // it.
+            updateProfile.mutate({
+              firstName: firstName || undefined,
+              lastName: lastName || undefined,
+              email: email.trim() || undefined,
+              dob: dob || undefined,
+            })
           }
         >
           Save Changes

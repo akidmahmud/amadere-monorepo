@@ -170,6 +170,65 @@ function OrderHistoryTab({ orders }: { orders: { id: number; orderNumber: string
   );
 }
 
+// What this customer actually buys, folded across all of their orders —
+// answering that from Order History alone meant opening every order in turn.
+// Backend excludes CANCELED/RETURNED orders (see toPurchasedProducts), so
+// these totals are goods the customer really kept.
+function PurchasedProductsTab({
+  products,
+}: {
+  products: {
+    productId: number | null;
+    name: string;
+    sku: string | null;
+    totalQuantity: number;
+    orderCount: number;
+    totalSpent: string;
+    lastPurchasedAt: string;
+  }[];
+}) {
+  if (products.length === 0) {
+    return <p className="text-sm text-muted">No purchased products yet.</p>;
+  }
+  return (
+    <Card className="overflow-x-auto p-0">
+      <table className="w-full min-w-[640px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs font-semibold text-secondary">
+            <th className="px-4 py-3">Product</th>
+            <th className="px-4 py-3 text-right">Qty</th>
+            <th className="px-4 py-3 text-right">Orders</th>
+            <th className="px-4 py-3 text-right">Total spent</th>
+            <th className="px-4 py-3 text-right">Last purchased</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((p) => (
+            <tr key={p.productId ?? p.name} className="border-b border-border last:border-0">
+              <td className="px-4 py-3">
+                {/* productId is null once the product row itself is deleted;
+                    the snapshot name still shows, just without a link. */}
+                {p.productId ? (
+                  <Link href={`/products/${p.productId}`} className="font-semibold text-brand-500 hover:underline">
+                    {p.name}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-text">{p.name}</span>
+                )}
+                {p.sku && <span className="ml-2 text-xs text-muted">{p.sku}</span>}
+              </td>
+              <td className="num px-4 py-3 text-right text-text">{p.totalQuantity}</td>
+              <td className="num px-4 py-3 text-right text-text">{p.orderCount}</td>
+              <td className="num px-4 py-3 text-right text-text">৳{p.totalSpent}</td>
+              <td className="px-4 py-3 text-right text-muted">{new Date(p.lastPurchasedAt).toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
 function ActivityTab({
   activity,
 }: {
@@ -242,6 +301,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
           { value: "notes", label: "Notes" },
           { value: "calls", label: "Call Log" },
           { value: "orders", label: "Order History" },
+          { value: "products", label: "Purchased Products" },
           { value: "activity", label: "Activity Timeline" },
         ]}
         value={tab}
@@ -250,6 +310,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
       {tab === "notes" && <NotesTab customerId={customerId} notes={customer.notes} />}
       {tab === "calls" && <CallLogTab customerId={customerId} calls={customer.callLogs} />}
       {tab === "orders" && <OrderHistoryTab orders={customer.orders} />}
+      {tab === "products" && <PurchasedProductsTab products={customer.purchasedProducts} />}
       {tab === "activity" && (
         // Backend's admin-customer.mapper.ts always populates `type` and
         // `occurredAt` on every activity entry (see toAdminCustomerDto) —

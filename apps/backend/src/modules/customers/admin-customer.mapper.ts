@@ -18,7 +18,22 @@ export const ADMIN_CUSTOMER_DETAIL_INCLUDE = {
   callLogs: { orderBy: { createdAt: 'desc' as const } },
   orders: {
     orderBy: { createdAt: 'desc' as const },
-    include: { statusHistory: { orderBy: { createdAt: 'asc' as const } } },
+    include: {
+      statusHistory: { orderBy: { createdAt: 'asc' as const } },
+      // Feeds purchasedProducts below. Added to the orders include rather
+      // than fetched as its own grouped query precisely because these
+      // orders are already being loaded — the aggregation is a fold over
+      // data that was on the wire regardless.
+      items: {
+        select: {
+          productId: true,
+          productNameSnapshot: true,
+          skuSnapshot: true,
+          quantity: true,
+          unitPrice: true,
+        },
+      },
+    },
   },
   // Same "isDefault first" pick CustomersService.adminUpdate() uses to
   // decide which saved address is "the" one — exposed here so the New Order
@@ -186,6 +201,21 @@ export class AdminCustomerAddressSummaryDto {
   alternativePhone!: string | null;
 }
 
+// One row per distinct product this customer has actually bought, folded
+// across all of their orders — the detail page previously showed order
+// history only, so answering "what does this person actually buy" meant
+// opening every order in turn.
+export class AdminCustomerPurchasedProductDto {
+  /** Null once the product row itself is deleted (OrderItem.productId is SetNull) — the snapshot name survives. */
+  productId!: number | null;
+  name!: string;
+  sku!: string | null;
+  totalQuantity!: number;
+  orderCount!: number;
+  totalSpent!: string;
+  lastPurchasedAt!: Date;
+}
+
 export class AdminCustomerDto {
   id!: number;
   name!: string;
@@ -197,6 +227,7 @@ export class AdminCustomerDto {
   createdAt!: Date;
   defaultAddress!: AdminCustomerAddressSummaryDto | null;
   orders!: AdminCustomerOrderSummaryDto[];
+  purchasedProducts!: AdminCustomerPurchasedProductDto[];
   notes!: AdminCustomerNoteDto[];
   callLogs!: AdminCustomerCallLogDto[];
   @ApiProperty({ type: 'array', items: { type: 'object', additionalProperties: true } })
@@ -217,6 +248,56 @@ export class AdminCustomerDto {
   familyDetails!: string | null;
   purchaseReason!: string | null;
   facebookProfileUrl!: string | null;
+}
+
+// CANCELED and RETURNED orders are excluded: the goods either never shipped
+// or came back, so counting them would tell staff this customer buys things
+// they don't actually have. PARTIALLY_RETURNED is kept whole — Order.status
+// alone doesn't say WHICH line was returned, and silently dropping the entire
+// order would understate it worse than leaving it in.
+const NON_PURCHASE_STATUSES = new Set(['CANCELED', 'RETURNED']);
+
+function toPurchasedProducts(c: CustomerWithDetail): AdminCustomerPurchasedProductDto[] {
+  const byProduct = new Map<string, AdminCustomerPurchasedProductDto & { orderIds: Set<number> }>();
+
+  for (const order of c.orders) {
+    if (NON_PURCHASE_STATUSES.has(order.status)) continue;
+    for (const item of order.items) {
+      // Keyed on productId where there is one so a product that was renamed
+      // between orders still folds into a single row; falls back to the
+      // snapshot name for items whose product row has since been deleted.
+      const key = item.productId !== null ? `id:${item.productId}` : `name:${item.productNameSnapshot}`;
+      const lineTotal = Number(item.unitPrice) * item.quantity;
+      const existing = byProduct.get(key);
+      if (existing) {
+        existing.totalQuantity += item.quantity;
+        existing.totalSpent = (Number(existing.totalSpent) + lineTotal).toFixed(2);
+        existing.orderIds.add(order.id);
+        // c.orders is ordered createdAt desc, so the first order to touch a
+        // product is its most recent purchase — keep that date and that
+        // order's spelling of the name.
+      } else {
+        byProduct.set(key, {
+          productId: item.productId,
+          name: item.productNameSnapshot,
+          sku: item.skuSnapshot,
+          totalQuantity: item.quantity,
+          orderCount: 0,
+          totalSpent: lineTotal.toFixed(2),
+          lastPurchasedAt: order.createdAt,
+          orderIds: new Set([order.id]),
+        });
+      }
+    }
+  }
+
+  return [...byProduct.values()]
+    .map(({ orderIds, ...row }) => ({ ...row, orderCount: orderIds.size }))
+    .sort(
+      (a, b) =>
+        b.totalQuantity - a.totalQuantity ||
+        b.lastPurchasedAt.getTime() - a.lastPurchasedAt.getTime(),
+    );
 }
 
 export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
@@ -275,6 +356,7 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
       totalAmount: o.totalAmount.toString(),
       createdAt: o.createdAt,
     })),
+    purchasedProducts: toPurchasedProducts(c),
     notes: c.notes.map((n) => ({
       id: n.id,
       type: n.type,

@@ -14,9 +14,19 @@ export interface PageHeaderProps {
 
 // Net Profit / WPFOK-parity dark gradient hero — see globals.css's
 // `.wpfok-scope` for why this exists as a scoped exception rather than a
-// base admin-ui component. Used outside /net-profit too, but only via an
-// explicit `style` override (never the CSS-var default, which only resolves
-// inside `.wpfok-scope`).
+// base admin-ui component.
+//
+// Every var() below carries a literal fallback matching what `.wpfok-scope`
+// defines. That is load-bearing, not belt-and-braces: outside that scope
+// these custom properties don't resolve at all, which made the whole
+// `linear-gradient(...)` declaration invalid and dropped the background
+// entirely — leaving this hero's `text-white` title and `text-white/70`
+// subtitle on the page's own white card. Reported from the customer detail
+// page, where the name was white-on-white and only the translucent purple
+// icon/badge chips were visible. `/customers/[id]` and `/customers/tiers`
+// were the two screens affected; everything else using this sits under
+// `.wpfok-scope`, where these same values come from the scope and nothing
+// changes. An explicit `style` override still wins over all of it.
 export function PageHeader({ icon, title, subtitle, actions, badge, className, style }: PageHeaderProps) {
   return (
     <div
@@ -25,13 +35,14 @@ export function PageHeader({ icon, title, subtitle, actions, badge, className, s
         className,
       )}
       style={{
-        background: "linear-gradient(135deg, var(--wpfok-black) 0%, #1a0d2e 50%, var(--brand-600) 100%)",
+        background:
+          "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, #1a0d2e 50%, var(--brand-600, #7200cc) 100%)",
         ...style,
       }}
     >
       <div
         className="pointer-events-none absolute -right-[15%] -top-1/2 h-[350px] w-[350px] rounded-full"
-        style={{ background: "radial-gradient(circle, var(--wpfok-glow) 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, var(--wpfok-glow, rgba(143, 0, 255, 0.15)) 0%, transparent 70%)" }}
       />
       <div className="relative flex items-center gap-3">
         {icon && (
