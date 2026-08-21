@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
+import { proxyFetch } from "@/lib/api/proxy-client";
 import { getGuestToken } from "@/lib/guest-token";
 import type { components } from "@/lib/api/schema";
 
 type CheckoutDto = components["schemas"]["CheckoutDto"];
+type OrderDto = components["schemas"]["OrderDto"];
 
 function cartHeaders(): Record<string, string> {
   const token = getGuestToken();
@@ -29,14 +31,20 @@ export function useRequestCodOtp() {
 export function usePlaceOrder(locale: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Must go through this app's own authenticated proxy, exactly like every
+    // cart call in useCart.ts — the backend resolves which cart to order from
+    // via the same CartIdentityGuard, and a logged-in customer is identified
+    // only by the Bearer token the proxy attaches server-side from the
+    // httpOnly cookie. The raw `api` client can't read that cookie, so it
+    // posted with no identity at all (the guest token is cleared at
+    // login-merge): the backend found no cart and checkout failed with
+    // "Cart is empty" while the cart panel beside it showed the items.
     mutationFn: async (dto: CheckoutDto) => {
-      const { data, error } = await api.POST("/api/v1/checkout", {
-        params: { query: { locale: locale as "EN" | "BN" } },
+      return proxyFetch<OrderDto>(`/checkout?locale=${locale}`, {
+        method: "POST",
         headers: cartHeaders(),
-        body: dto,
+        body: JSON.stringify(dto),
       });
-      if (error) throw error;
-      return data;
     },
     // The backend empties the cart's items as part of placing the order,
     // but nothing told the client — the cart badge/drawer kept showing the

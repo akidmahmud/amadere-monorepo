@@ -27,7 +27,7 @@ import { toProductCardData, type ProductCardData } from "@/lib/product-card-mapp
 import { pushEcommerceEvent, cartLineToGa4Item, addressToUserData } from "@/lib/analytics-events";
 import { getDeviceId } from "@/lib/device-id";
 import { getUtmParamsForCheckout } from "@/lib/utm";
-import { ApiError } from "@/lib/api/client";
+import { ProxyApiError } from "@/lib/api/proxy-client";
 import { makeCheckoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
@@ -528,7 +528,9 @@ export function CheckoutForm() {
   const submitForm = handleSubmit(onSubmit, onInvalid);
 
   const blockDetails =
-    placeOrder.error instanceof ApiError && !blockPopupDismissed && isBlockDetails(placeOrder.error.details)
+    placeOrder.error instanceof ProxyApiError &&
+    !blockPopupDismissed &&
+    isBlockDetails(placeOrder.error.details)
       ? placeOrder.error.details
       : null;
 
