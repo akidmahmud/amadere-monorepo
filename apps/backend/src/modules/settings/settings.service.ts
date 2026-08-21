@@ -171,7 +171,10 @@ export class SettingsService {
     // toggle — duplicated here (rather than importing OtpSecurityService
     // itself) to avoid pulling in its VPN-detector dependency just for one
     // boolean.
-    const { codOtpEnabled } = await this.netProfitSettings.getNamespace('otp', { codOtpEnabled: true });
+    const { codOtpEnabled, codOtpEmailEnabled } = await this.netProfitSettings.getNamespace('otp', {
+      codOtpEnabled: true,
+      codOtpEmailEnabled: true,
+    });
 
     return {
       siteName: typeof siteName === 'string' ? siteName : DEFAULT_SITE_NAME,
@@ -183,6 +186,7 @@ export class SettingsService {
       logoPaddingPx,
       logoMarginPx,
       codOtpEnabled,
+      codOtpEmailEnabled,
       seoTitle,
       seoDescription,
       seoImageUrl,

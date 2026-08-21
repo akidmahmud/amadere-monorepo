@@ -21,6 +21,10 @@ import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
+import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
+import { SettingsService } from '../settings/settings.service';
+import { ConfigService } from '@nestjs/config';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 import { generateOrderNumber } from './order-number.util';
@@ -43,6 +47,10 @@ export class CheckoutService {
     private readonly otpSecurity: OtpSecurityService,
     private readonly sms: SmsService,
     private readonly orderEmails: OrderEmailsService,
+    private readonly email: SmtpEmailProvider,
+    private readonly emailTemplates: EmailTemplatesService,
+    private readonly settings: SettingsService,
+    private readonly config: ConfigService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -75,6 +83,46 @@ export class CheckoutService {
         expiresAt: new Date(Date.now() + otpSettings.codOtpExpiryMinutes * 60 * 1000),
       },
     });
+    // Delivery only — the Otp row above is keyed on the PHONE whichever
+    // channel is used, because checkout() verifies with
+    // verifyCodOtp(shippingAddress.phone, ...). Storing it under the email
+    // would make a correct code fail verification.
+    //
+    // Falls back to SMS if EMAIL was asked for without an address, rather
+    // than silently sending nothing.
+    if (dto.channel === 'EMAIL' && dto.email) {
+      // Server-side guard, not just a hidden control: the storefront hides
+      // the picker when this is off, but the endpoint is public.
+      if (!otpSettings.codOtpEmailEnabled) {
+        throw new BadRequestException(
+          'Email delivery is turned off for checkout verification. Please use SMS.',
+        );
+      }
+      // Same admin-editable `customer_otp` template the signup/login codes
+      // use, so the wording is maintained in one place for every OTP email.
+      const rendered = await this.emailTemplates.render('customer_otp', {
+        code,
+        expiry_minutes: String(otpSettings.codOtpExpiryMinutes),
+        logo_url: (await this.settings.getSiteInfo()).logoUrl ?? '',
+        shop_url: this.config.get<string>('STOREFRONT_BASE_URL') ?? '',
+      });
+      const result = rendered
+        ? await this.email.send(dto.email, rendered.subject, rendered.html, { html: rendered.html })
+        : await this.email.send(
+            dto.email,
+            'Your order verification code',
+            `Your order verification code is ${code}. It expires in ${otpSettings.codOtpExpiryMinutes} minutes.`,
+          );
+      if (result.failed) {
+        // Loud, unlike the fire-and-forget SMS path: the customer is sitting
+        // in front of the popup waiting, and a silent failure would leave
+        // them entering a code that never arrives.
+        throw new BadRequestException(
+          'Could not send the code to that email address. Try SMS instead.',
+        );
+      }
+      return;
+    }
     await this.sms.sendTemplate('otp', dto.phone, 'EN', { code });
   }
 

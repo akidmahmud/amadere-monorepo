@@ -41,6 +41,14 @@ export class SiteInfoDto {
    * OtpSecuritySettings.codOtpEnabled. Storefront reads this to decide
    * whether to require/show the "Verify your phone" OTP step at all. */
   codOtpEnabled!: boolean;
+
+  /**
+   * OtpSecuritySettings.codOtpEmailEnabled. Storefront reads this to decide
+   * whether CodOtpPopup offers the SMS/email channel picker at all — false
+   * means every checkout code goes by SMS, as it did before email delivery
+   * existed.
+   */
+  codOtpEmailEnabled!: boolean;
   /** Site-wide SEO title — used for the homepage's <title>/og:title and as
    * the fallback for any page with no per-page SeoMeta override of its own.
    * Null = storefront falls back to its own hardcoded default. */

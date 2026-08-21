@@ -23,8 +23,18 @@ export async function proxyTokenIssuingCall(backendPath: string, body: unknown):
   if (!res.ok || !json.success) {
     return NextResponse.json(json, { status: res.status });
   }
+  // A token-bearing response is stripped to a bare {success} — the whole
+  // point of routing these through the server is that access/refresh tokens
+  // land in httpOnly cookies and are never readable by client JS.
   if (json.data?.accessToken) {
     await setAuthCookies(json.data.accessToken, json.data.refreshToken);
+    return NextResponse.json({ success: true });
   }
-  return NextResponse.json({ success: true });
+  // Everything else keeps its payload. /auth/register is the case that
+  // matters: it issues no tokens, it returns {pending, otpChannel,
+  // otpIdentifier}, and the verify step MUST echo back that exact
+  // otpIdentifier because OtpService keys the stored code on it. Blanket-
+  // stripping it left the client with `undefined` and threw in onSuccess,
+  // breaking every signup — nothing to do with tokens.
+  return NextResponse.json(json);
 }

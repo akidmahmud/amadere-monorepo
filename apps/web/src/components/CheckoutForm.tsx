@@ -33,6 +33,7 @@ import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemov
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
+import { useMe } from "@/hooks/useAuth";
 import { useCheckoutPrefill } from "@/hooks/useCheckoutPrefill";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 import type { components } from "@/lib/api/schema";
@@ -272,6 +273,9 @@ export function CheckoutForm() {
   }, []);
 
   const { data: siteInfo } = useSiteInfo();
+  // Cached query — useCheckoutPrefill already reads it, so this is a cache
+  // hit, not a second request.
+  const { data: me } = useMe();
   // Defaults true (OTP required) until the setting loads, matching the
   // historical always-on behavior. Read through a ref rather than closing
   // over `siteInfo.codOtpEnabled` directly in the resolver below — the
@@ -281,9 +285,18 @@ export function CheckoutForm() {
   const codOtpEnabledRef = useRef(true);
   codOtpEnabledRef.current = siteInfo?.codOtpEnabled ?? true;
 
+  // An account with no phone is an email-identity customer — someone who
+  // registered from outside Bangladesh, where we can't reach them by SMS.
+  // The order's email becomes their only channel, so it stops being
+  // optional. Read through a ref for the same reason as codOtpEnabled: the
+  // resolver's identity must stay stable, so it reads the current value at
+  // validation time rather than closing over whichever render made it.
+  const requireEmailRef = useRef(false);
+  requireEmailRef.current = !!me && !me.phone;
+
   const form = useForm<CheckoutFormValues>({
     resolver: (values, context, options) =>
-      zodResolver(makeCheckoutFormSchema(codOtpEnabledRef.current))(values, context, options),
+      zodResolver(makeCheckoutFormSchema(codOtpEnabledRef.current, requireEmailRef.current))(values, context, options),
     // Default mode is "onSubmit" — every field (phone/email included) only
     // ever validated after the first "Place Order" click, per explicit
     // report. "onBlur" validates a field the moment you leave it instead.

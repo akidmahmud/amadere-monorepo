@@ -105,7 +105,6 @@ export default async function CollectionPage({
   // actually in this collection, same reasoning as the price bounds above.
   const categoryMap = new Map<number, { id: number; slug: string; name: string; productCount: number }>();
   const brandMap = new Map<number, { id: number; slug: string; name: string }>();
-  const tagMap = new Map<number, { id: number; name: string }>();
   for (const p of collection.products as PublicProductDto[]) {
     for (const c of p.categories) {
       const existing = categoryMap.get(c.id);
@@ -113,7 +112,6 @@ export default async function CollectionPage({
       else categoryMap.set(c.id, { id: c.id, slug: c.slug, name: c.name, productCount: 1 });
     }
     if (p.brand) brandMap.set(p.brand.id, p.brand);
-    for (const t of p.tags) tagMap.set(t.id, { id: t.id, name: t.name });
   }
 
   const filteredProducts = collection.products.filter((p: PublicProductDto) => {
@@ -122,7 +120,6 @@ export default async function CollectionPage({
     if (filters.maxPrice !== undefined && price > filters.maxPrice) return false;
     if (filters.categoryIds.length > 0 && !p.categories.some((c) => filters.categoryIds.includes(c.id))) return false;
     if (filters.brandId !== undefined && p.brand?.id !== filters.brandId) return false;
-    if (filters.tagIds.length > 0 && !p.tags.some((t) => filters.tagIds.includes(t.id))) return false;
     if (filters.flagLabels.length > 0 && !(p.flagLabel && filters.flagLabels.includes(p.flagLabel as unknown as FlagLabelValue)))
       return false;
     return true;
@@ -169,7 +166,6 @@ export default async function CollectionPage({
         products={products}
         categories={Array.from(categoryMap.values())}
         brands={Array.from(brandMap.values())}
-        tags={Array.from(tagMap.values())}
         priceBounds={priceBounds}
         hidePlaceholderBanner
         title={collection.name}

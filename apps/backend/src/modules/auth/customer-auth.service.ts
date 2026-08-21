@@ -48,9 +48,21 @@ export class CustomerAuthService {
   //     finishes signing up (Customer.phone is @unique).
   //   - a phone that already belongs to a *verified* account still 409s.
   async register(dto: RegisterDto): Promise<RegisterPendingDto> {
-    const existingPhone = await this.prisma.client.customer.findFirst({
-      where: { phone: { in: phoneLookupCandidates(dto.phone) } },
-    });
+    // At least one identifier, or the account can never be signed into.
+    // Phone is optional specifically so customers abroad (no BD mobile) can
+    // register on their email instead — see RegisterDto.phone.
+    if (!dto.phone && !dto.email) {
+      throw new BadRequestException({
+        message: 'Enter a mobile number or an email address',
+        details: { field: 'phone' },
+      });
+    }
+
+    const existingPhone = dto.phone
+      ? await this.prisma.client.customer.findFirst({
+          where: { phone: { in: phoneLookupCandidates(dto.phone) } },
+        })
+      : null;
     if (existingPhone?.phoneVerifiedAt) {
       // `details.field` lets the client show this under the phone input
       // specifically instead of a generic form-level banner — same
@@ -61,11 +73,30 @@ export class CustomerAuthService {
         details: { field: 'phone' },
       });
     }
+    // Same "pending rows may be reused, verified ones may not" rule the
+    // phone branch above uses. Without the phoneVerifiedAt/emailVerifiedAt
+    // check an email-only signup could never be retried: the first attempt
+    // creates the row, and every retry (expired code, typo in the name)
+    // would 409 against the customer's own unverified row.
+    let existingEmail = null as Awaited<ReturnType<typeof this.prisma.client.customer.findUnique>>;
     if (dto.email) {
-      const existingEmail = await this.prisma.client.customer.findUnique({
+      existingEmail = await this.prisma.client.customer.findUnique({
         where: { email: dto.email },
       });
-      if (existingEmail && existingEmail.id !== existingPhone?.id) {
+      const belongsToSomeoneElse = existingEmail && existingEmail.id !== existingPhone?.id;
+      const alreadyVerified =
+        existingEmail?.phoneVerifiedAt !== null && existingEmail?.phoneVerifiedAt !== undefined
+          ? true
+          : !!existingEmail?.emailVerifiedAt;
+      if (belongsToSomeoneElse && alreadyVerified) {
+        throw new ConflictException({
+          message: 'Email already registered',
+          details: { field: 'email' },
+        });
+      }
+      if (belongsToSomeoneElse && existingPhone) {
+        // Two different pending rows (one found by phone, one by email) can't
+        // be merged without silently discarding one — make the customer pick.
         throw new ConflictException({
           message: 'Email already registered',
           details: { field: 'email' },
@@ -80,18 +111,40 @@ export class CustomerAuthService {
       email: dto.email,
       passwordHash,
     };
-    if (existingPhone) {
+    const pendingRow = existingPhone ?? existingEmail;
+    if (pendingRow) {
       await this.prisma.client.customer.update({
-        where: { id: existingPhone.id },
-        data,
+        where: { id: pendingRow.id },
+        // `phone` only when one was actually supplied — an email-only retry
+        // must not blank out a phone the row already carries.
+        data: dto.phone ? { ...data, phone: dto.phone } : data,
       });
     } else {
       await this.prisma.client.customer.create({
-        data: { ...data, phone: dto.phone },
+        data: { ...data, phone: dto.phone ?? null },
       });
     }
-    await this.otp.request(dto.phone, 'REGISTER');
-    return { pending: true };
+    // Channel choice. Only meaningful when an email was actually supplied —
+    // with no email there is nowhere else to send it, so PHONE stands.
+    // 'EMAIL' with no email is a client bug, and rejecting it beats silently
+    // sending to the phone and leaving the customer watching the wrong inbox.
+    if (dto.otpChannel === 'EMAIL' && !dto.email) {
+      throw new BadRequestException({
+        message: 'Choose email delivery only after entering an email address',
+        details: { field: 'email' },
+      });
+    }
+    // With no phone there is only one possible destination, so the channel
+    // is forced rather than defaulted — a client that omits otpChannel (or
+    // sends PHONE) on an email-only signup still gets the code delivered
+    // instead of a send to `undefined`.
+    const useEmail = !dto.phone || (dto.otpChannel === 'EMAIL' && !!dto.email);
+    const otpIdentifier = useEmail ? dto.email! : dto.phone!;
+
+    await this.otp.request(otpIdentifier, 'REGISTER');
+    // The verify call must reuse this exact identifier — OtpService keys the
+    // stored code on it (normalizing phones, leaving emails alone).
+    return { pending: true, otpChannel: useEmail ? 'EMAIL' : 'PHONE', otpIdentifier };
   }
 
   // Accepts phone OR email. Reuses findByIdentifier — the same resolver the
@@ -112,6 +165,29 @@ export class CustomerAuthService {
     ) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    // register() writes the password onto a PENDING row (phoneVerifiedAt
+    // null) on purpose — see its comment: the row has to exist so a
+    // re-submitted signup updates it instead of permanently squatting the
+    // @unique phone. But nothing here ever checked that flag, so the OTP
+    // step was decorative: anyone could sign up with a phone number they do
+    // not own, set a password, skip the code entirely and log straight in.
+    // Verified by reproduction before this line existed.
+    //
+    // Checked AFTER the password comparison, so the specific message is only
+    // ever shown to a caller who already proved they know the password — it
+    // leaks nothing a correct-password caller doesn't already have.
+    //
+    // Either factor counts: phone for the OTP signup path, email for
+    // accounts verified by an email code. Safe against the migrated
+    // customers (2,370 of them) — they carry no passwordHash at all and
+    // sign in by OTP, which sets these flags on the way through.
+    if (!customer.phoneVerifiedAt && !customer.emailVerifiedAt) {
+      throw new UnauthorizedException(
+        'Please verify your account with the OTP code before signing in',
+      );
+    }
+
     return this.tokens.signCustomerTokens(customer.id);
   }
 

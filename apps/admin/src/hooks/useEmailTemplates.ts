@@ -14,6 +14,25 @@ export function useEmailTemplates() {
   return useQuery({ queryKey: KEY, queryFn: () => proxyFetch<EmailTemplate[]>(BASE) });
 }
 
+export interface EmailTemplateImportResult {
+  created: string[];
+  updated: string[];
+  skipped: string[];
+}
+
+export function useImportEmailTemplates() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { templates: Record<string, unknown>[]; overwriteExisting: boolean }) =>
+      proxyFetch<EmailTemplateImportResult>(`${BASE}/import`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    // The list, every open editor, and the status tab all read these rows.
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useEmailTemplate(key: string) {
   return useQuery({
     queryKey: [...KEY, key],

@@ -8,5 +8,8 @@ import { SettingsService } from './settings.service';
   imports: [NetProfitSettingsModule],
   controllers: [AdminSettingsController, SiteInfoController],
   providers: [SettingsService],
+  // Exported so the OTP email senders can read the store logo for the
+  // branded template (auth notifier + checkout COD OTP).
+  exports: [SettingsService],
 })
 export class SettingsModule {}

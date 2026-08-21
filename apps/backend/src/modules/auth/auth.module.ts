@@ -10,10 +10,12 @@ import { SOCIAL_LOGIN_VERIFIER } from './notification/social-login-verifier.inte
 import { GoogleSocialLoginVerifier } from './notification/google-social-login-verifier';
 import { SmsModule } from '../net-profit/sms/sms.module';
 import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
+import { EmailTemplatesModule } from '../email-templates/email-templates.module';
+import { SettingsModule } from '../settings/settings.module';
 import { EmailSettingsModule } from '../email-settings/email-settings.module';
 
 @Module({
-  imports: [SmsModule, EmailSettingsModule],
+  imports: [SmsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule],
   controllers: [AuthController, AdminAuthController],
   providers: [
     CustomerAuthService,

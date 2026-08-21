@@ -8,6 +8,8 @@ import { OtpSecurityModule } from '../net-profit/otp-security/otp-security.modul
 import { SmsModule } from '../net-profit/sms/sms.module';
 import { NetProfitSettingsModule } from '../net-profit/settings/net-profit-settings.module';
 import { EmailSettingsModule } from '../email-settings/email-settings.module';
+import { EmailTemplatesModule } from '../email-templates/email-templates.module';
+import { SettingsModule } from '../settings/settings.module';
 import { CustomersModule } from '../customers/customers.module';
 import { OrderEmailsModule } from '../order-emails/order-emails.module';
 import { CheckoutController } from './checkout.controller';
@@ -18,7 +20,7 @@ import { OrdersService } from './orders.service';
 import { AdminOrderCreationService } from './admin-order-creation.service';
 
 @Module({
-  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, CustomersModule, OrderEmailsModule],
+  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
   providers: [CheckoutService, OrdersService, AdminOrderCreationService],
   exports: [OrdersService],

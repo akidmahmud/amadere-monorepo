@@ -14,6 +14,12 @@ export interface OtpSecuritySettings {
   codOtpEnabled: boolean;
   codOtpLength: number;
   codOtpExpiryMinutes: number;
+  // Whether the checkout OTP popup may deliver the code by EMAIL as well as
+  // SMS. Lives beside codOtpEnabled rather than under the SMS gateway
+  // settings because it governs the checkout OTP step, not the gateway.
+  // Turning it off removes the channel picker entirely and every code goes
+  // by SMS — the pre-existing behaviour.
+  codOtpEmailEnabled: boolean;
 }
 
 const DEFAULTS: OtpSecuritySettings = {
@@ -21,6 +27,7 @@ const DEFAULTS: OtpSecuritySettings = {
   codOtpEnabled: true,
   codOtpLength: 6,
   codOtpExpiryMinutes: 5,
+  codOtpEmailEnabled: true,
 };
 
 export interface VpnEvaluation {

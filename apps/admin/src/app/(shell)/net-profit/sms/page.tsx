@@ -329,6 +329,16 @@ function SettingsTab() {
               onChange={(v) => updateOtp.mutate({ codOtpEnabled: v })}
               label="Require phone OTP verification for Cash on Delivery orders"
             />
+            <ToggleSwitch
+              checked={otpSettings.codOtpEmailEnabled}
+              onChange={(v) => updateOtp.mutate({ codOtpEmailEnabled: v })}
+              label="Let customers receive the checkout code by email instead of SMS"
+            />
+            <p className="-mt-2 text-xs text-muted">
+              Adds an SMS / email choice to the checkout verification popup, for customers with no reachable
+              Bangladeshi mobile. Turn it off and every checkout code goes by SMS. Only appears for orders that
+              actually have an email address, and needs SMTP configured under Settings &rsaquo; Email.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-secondary">Code length (digits)</span>

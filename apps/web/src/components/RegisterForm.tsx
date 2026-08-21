@@ -69,8 +69,29 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  // Which delivery the customer picked. Only surfaced once they've entered an
+  // email — with no email there is nothing to choose between.
+  const [otpChannel, setOtpChannel] = useState<"PHONE" | "EMAIL">("PHONE");
+  // Where the code actually went, as reported by the server. Kept separate
+  // from `otpChannel` so the verify step submits the identifier the backend
+  // really keyed the code on, not what the form hoped it would be.
+  const [sentTo, setSentTo] = useState("");
+  const emailEntered = email.trim().length > 0;
+  const phoneEntered = phone.trim().length > 0;
+  // No phone means email is the only place a code can go, so the server
+  // forces EMAIL regardless of this value — mirrored here so the UI agrees.
+  const effectiveChannel = !phoneEntered ? "EMAIL" : emailEntered ? otpChannel : "PHONE";
 
-  const canSubmitDetails = firstName.trim() && lastName.trim() && isValidBdPhone(phone) && password.length >= 8;
+  // Phone OR email — a customer living abroad has no BD mobile, and the
+  // store's delivery contact is collected separately at checkout anyway.
+  // A phone that IS entered still has to be a valid BD mobile.
+  const phoneOk = phoneEntered ? isValidBdPhone(phone) : false;
+  const canSubmitDetails =
+    Boolean(firstName.trim()) &&
+    Boolean(lastName.trim()) &&
+    (phoneOk || emailEntered) &&
+    (!phoneEntered || phoneOk) &&
+    password.length >= 8;
   const strength = passwordStrength(password);
 
   // register() 409s with details.field = "phone" | "email" for a duplicate
@@ -87,17 +108,19 @@ export function RegisterForm() {
 
   function submitDetails() {
     register.mutate(
-      { firstName, lastName, phone, email: email || undefined, password },
-      { onSuccess: () => { setOtpSent(true); resendCooldown.start(); } },
+      { firstName, lastName, phone, email: email || undefined, password, otpChannel: effectiveChannel },
+      { onSuccess: (data) => { setSentTo(data.otpIdentifier); setOtpSent(true); resendCooldown.start(); } },
     );
   }
 
   if (otpSent) {
     return (
       <div className="mx-auto max-w-md rounded-[18px] bg-white p-9 shadow-brand">
-        <h1 className="mb-1 text-center font-serif text-xl font-semibold text-ink">Verify Your Phone</h1>
+        <h1 className="mb-1 text-center font-serif text-xl font-semibold text-ink">
+          {sentTo.includes("@") ? "Verify Your Email" : "Verify Your Phone"}
+        </h1>
         <p className="mb-6 text-center font-body text-sm text-muted">
-          We sent a code to {phone}. Enter it below to finish creating your account.
+          We sent a code to {sentTo || phone}. Enter it below to finish creating your account.
         </p>
         <Input
           className="mb-1"
@@ -117,7 +140,7 @@ export function RegisterForm() {
           disabled={!otpCode || verifyOtp.isPending}
           onClick={() =>
             verifyOtp.mutate(
-              { identifier: phone, code: otpCode, purpose: "REGISTER" },
+              { identifier: sentTo || phone, code: otpCode, purpose: "REGISTER" },
               { onSuccess: () => router.push("/account") },
             )
           }
@@ -129,8 +152,8 @@ export function RegisterForm() {
           disabled={!resendCooldown.canResend || register.isPending}
           onClick={() =>
             register.mutate(
-              { firstName, lastName, phone, email: email || undefined, password },
-              { onSuccess: () => resendCooldown.start() },
+              { firstName, lastName, phone, email: email || undefined, password, otpChannel: effectiveChannel },
+              { onSuccess: (data) => { setSentTo(data.otpIdentifier); resendCooldown.start(); } },
             )
           }
           className="mt-3 w-full text-center font-body text-sm text-green underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline disabled:opacity-50"
@@ -154,7 +177,16 @@ export function RegisterForm() {
       </div>
 
       <div className="mb-3.5">
-        <Input placeholder="Phone (e.g. 01712345678)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Input
+          placeholder="Phone (e.g. 01712345678)"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        {!phoneEntered && (
+          <p className="mt-1 font-body text-xs text-muted">
+            প্রবাসী হলে মোবাইল নম্বর ছাড়াই ইমেইল দিয়ে অ্যাকাউন্ট খুলতে পারবেন।
+          </p>
+        )}
         {conflictField === "phone" && (
           <p className="mt-1 font-body text-xs text-red-600">This phone number is already registered.</p>
         )}
@@ -162,6 +194,36 @@ export function RegisterForm() {
 
       <div className="mb-3.5">
         <Input placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+        {emailEntered && (
+          // Shown only once an email exists — with no email there's nothing
+          // to choose, so the customer goes straight to a phone code and is
+          // never asked a question with one possible answer.
+          <div className="mt-2.5 rounded-[10px] border border-line bg-cream/40 p-3">
+            <p className="mb-2 font-body text-xs font-semibold text-ink">Where should we send your code?</p>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 font-body text-sm text-ink">
+                <input
+                  type="radio"
+                  name="otpChannel"
+                  checked={otpChannel === "PHONE"}
+                  onChange={() => setOtpChannel("PHONE")}
+                  className="accent-green"
+                />
+                SMS to {phone || "your mobile number"}
+              </label>
+              <label className="flex items-center gap-2 font-body text-sm text-ink">
+                <input
+                  type="radio"
+                  name="otpChannel"
+                  checked={otpChannel === "EMAIL"}
+                  onChange={() => setOtpChannel("EMAIL")}
+                  className="accent-green"
+                />
+                Email to {email.trim()}
+              </label>
+            </div>
+          </div>
+        )}
         {conflictField === "email" && (
           <p className="mt-1 font-body text-xs text-red-600">This email address is already registered.</p>
         )}

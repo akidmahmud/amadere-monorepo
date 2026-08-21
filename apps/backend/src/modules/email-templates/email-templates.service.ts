@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { ImportEmailTemplateItemDto } from './dto/import-email-templates.dto';
 import { EmailSettingsService } from '../email-settings/email-settings.service';
 import {
   EmailTemplateDto,
@@ -131,6 +133,100 @@ export class EmailTemplatesService {
   private async getSettingsJson(): Promise<EmailTemplateSettingsJson> {
     const row = await this.prisma.client.setting.findUnique({ where: { key: SETTINGS_KEY } });
     return row ? { ...SETTINGS_DEFAULTS, ...(row.value as object) } : SETTINGS_DEFAULTS;
+  }
+
+  // Portable snapshot of every template — the shape import() below accepts,
+  // so an export from one environment restores into another. Deliberately
+  // omits `id` (meaningless across databases) and defaultSubject/
+  // defaultBodyHtml (those are the seeded originals that "Reset to default"
+  // restores; carrying another environment's copy across would quietly
+  // redefine what "default" means here).
+  async exportAll(keys?: string[]): Promise<{
+    version: number;
+    exportedAt: string;
+    templates: Record<string, unknown>[];
+  }> {
+    const rows = await this.prisma.client.emailTemplate.findMany({
+      where: keys && keys.length > 0 ? { key: { in: keys } } : undefined,
+      orderBy: { key: 'asc' },
+    });
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      templates: rows.map((r) => ({
+        key: r.key,
+        group: r.group,
+        title: r.title,
+        description: r.description,
+        subject: r.subject,
+        bodyHtml: r.bodyHtml,
+        variables: r.variables,
+        enabled: r.enabled,
+      })),
+    };
+  }
+
+  async import(
+    templates: ImportEmailTemplateItemDto[],
+    overwriteExisting: boolean,
+  ): Promise<{ created: string[]; updated: string[]; skipped: string[] }> {
+    const created: string[] = [];
+    const updated: string[] = [];
+    const skipped: string[] = [];
+
+    for (const t of templates) {
+      const existing = await this.prisma.client.emailTemplate.findUnique({
+        where: { key: t.key },
+      });
+
+      if (existing && !overwriteExisting) {
+        skipped.push(t.key);
+        continue;
+      }
+
+      const variables = (t.variables ?? []) as unknown as Prisma.InputJsonValue;
+
+      if (existing) {
+        // defaultSubject/defaultBodyHtml are NOT touched — "Reset to default"
+        // must still restore this installation's own seeded original, not
+        // whatever the imported file happened to contain.
+        await this.prisma.client.emailTemplate.update({
+          where: { key: t.key },
+          data: {
+            group: t.group,
+            title: t.title,
+            description: t.description ?? existing.description,
+            subject: t.subject,
+            bodyHtml: t.bodyHtml,
+            variables,
+            ...(t.enabled === undefined ? {} : { enabled: t.enabled }),
+          },
+        });
+        updated.push(t.key);
+      } else {
+        // A brand-new template has no prior "default" to preserve, so the
+        // imported content becomes its default too — otherwise "Reset to
+        // default" on it would blank the template out.
+        await this.prisma.client.emailTemplate.create({
+          data: {
+            key: t.key,
+            group: t.group,
+            title: t.title,
+            description: t.description ?? '',
+            subject: t.subject,
+            bodyHtml: t.bodyHtml,
+            defaultSubject: t.subject,
+            defaultBodyHtml: t.bodyHtml,
+            variables,
+            canDisable: true,
+            enabled: t.enabled ?? true,
+          },
+        });
+        created.push(t.key);
+      }
+    }
+
+    return { created, updated, skipped };
   }
 
   private substitute(text: string, variables: Record<string, string>): string {

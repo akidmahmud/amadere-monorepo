@@ -18,6 +18,26 @@ export interface TestimonialsBentoProps {
   autoplayMs?: number;
 }
 
+// Fallback for a review with no avatarUrl — which is most of them, since
+// reviews are written by customers and the storefront has no avatar upload.
+// The circle used to render as a bare beige disc, reading as a broken or
+// still-loading image rather than a deliberate placeholder.
+const personIcon = (
+  <svg
+    viewBox="0 0 24 24"
+    className="h-1/2 w-1/2 text-muted"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M4.5 20c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7" />
+  </svg>
+);
+
 const starIcon = (filled: boolean) => (
   <svg viewBox="0 0 24 24" width={14} height={14} fill="currentColor" className={`shrink-0 ${filled ? "text-gold" : "text-line"}`}>
     <path d="M12 2.5l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-.6z" />
@@ -35,10 +55,12 @@ function ReviewCard({ review }: { review: TestimonialReview }) {
         ))}
       </div>
       <div className="mt-auto flex items-center gap-2">
-        <span className="h-[52px] w-[52px] shrink-0 overflow-hidden rounded-full bg-beige">
-          {review.avatarUrl && (
+        <span className="grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-full bg-beige">
+          {review.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={review.avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            personIcon
           )}
         </span>
         <span>

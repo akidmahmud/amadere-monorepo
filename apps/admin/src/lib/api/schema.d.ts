@@ -452,6 +452,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/email-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminEmailTemplatesController_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_getSettings"];
+        put: operations["AdminEmailTemplatesController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminEmailTemplatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminEmailTemplatesController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/{key}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminEmailTemplatesController_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/email-templates/{key}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminEmailTemplatesController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSettingsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSettingsController_get"];
+        put: operations["AdminSettingsController_upsert"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/site": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SiteInfoController_getSiteInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/rbac/permissions": {
         parameters: {
             query?: never;
@@ -2564,86 +2724,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/email-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminEmailTemplatesController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/email-templates/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminEmailTemplatesController_getSettings"];
-        put: operations["AdminEmailTemplatesController_updateSettings"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/email-templates/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminEmailTemplatesController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["AdminEmailTemplatesController_update"];
-        trace?: never;
-    };
-    "/api/v1/admin/email-templates/{key}/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminEmailTemplatesController_reset"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/email-templates/{key}/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminEmailTemplatesController_preview"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/admin/shipments": {
         parameters: {
             query?: never;
@@ -4196,54 +4276,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminSettingsController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/settings/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminSettingsController_get"];
-        put: operations["AdminSettingsController_upsert"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/settings/site": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["SiteInfoController_getSiteInfo"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/admin/menu-items": {
         parameters: {
             query?: never;
@@ -5723,14 +5755,23 @@ export interface components {
         RegisterDto: {
             firstName: string;
             lastName: string;
-            phone: string;
+            phone?: string;
             /** Format: email */
             email?: string;
             password: string;
+            /**
+             * @default PHONE
+             * @enum {string}
+             */
+            otpChannel: "PHONE" | "EMAIL";
         };
         RegisterPendingDto: {
             /** @enum {number} */
             pending: true;
+            /** @enum {string} */
+            otpChannel: "PHONE" | "EMAIL";
+            /** @description The phone or email the code was sent to — echo this back to /auth/otp/verify. */
+            otpIdentifier: string;
         };
         LoginDto: {
             /** @description Phone number or email */
@@ -5851,6 +5892,96 @@ export interface components {
         };
         SendTestEmailDto: {
             to: string;
+        };
+        EmailTemplateDto: {
+            id: number;
+            key: string;
+            /** @enum {string} */
+            group: "BASE" | "ACL" | "CONTACT" | "ECOMMERCE" | "NEWSLETTER";
+            title: string;
+            description: string;
+            subject: string;
+            bodyHtml: string;
+            defaultSubject: string;
+            defaultBodyHtml: string;
+            variables: Record<string, never>[];
+            canDisable: boolean;
+            enabled: boolean;
+        };
+        ImportEmailTemplateItemDto: {
+            key: string;
+            /** @enum {string} */
+            group: "BASE" | "ACL" | "CONTACT" | "ECOMMERCE" | "NEWSLETTER";
+            title: string;
+            description?: string;
+            subject: string;
+            bodyHtml: string;
+            variables?: {
+                [key: string]: unknown;
+            }[];
+            enabled?: boolean;
+        };
+        ImportEmailTemplatesDto: {
+            templates: components["schemas"]["ImportEmailTemplateItemDto"][];
+            /** @default false */
+            overwriteExisting: boolean;
+        };
+        EmailTemplateSettingsDto: {
+            logoMediaId: number | null;
+            logoUrl: string | null;
+            contactEmail: string;
+            copyright: string;
+            logoHeight: number;
+            customCss: string;
+            orderNotificationEmail: string;
+        };
+        UpdateEmailTemplateSettingsDto: {
+            logoMediaId?: number | null;
+            contactEmail?: string;
+            copyright?: string;
+            logoHeight?: number;
+            customCss?: string;
+            orderNotificationEmail?: string;
+        };
+        UpdateEmailTemplateDto: {
+            subject?: string;
+            bodyHtml?: string;
+            enabled?: boolean;
+        };
+        PreviewEmailTemplateDto: {
+            subject?: string;
+            bodyHtml?: string;
+        };
+        EmailTemplatePreviewDto: {
+            subject: string;
+            html: string;
+        };
+        SettingDto: {
+            key: string;
+            value: Record<string, never>;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpsertSettingDto: {
+            /** @description Arbitrary JSON value for this setting key */
+            value: {
+                [key: string]: unknown;
+            };
+        };
+        SiteInfoDto: {
+            siteName: string;
+            logoUrl: string | null;
+            productsPageBannerUrl: string | null;
+            faviconUrl: string | null;
+            announcementSpeedSeconds: number;
+            productCardStyle: Record<string, never>;
+            logoPaddingPx: number;
+            logoMarginPx: number;
+            codOtpEnabled: boolean;
+            codOtpEmailEnabled: boolean;
+            seoTitle: string | null;
+            seoDescription: string | null;
+            seoImageUrl: string | null;
         };
         PermissionDto: {
             id: number;
@@ -6967,6 +7098,13 @@ export interface components {
         RequestCodOtpDto: {
             /** @description Shipping phone number the order will be placed under */
             phone: string;
+            /**
+             * @default PHONE
+             * @enum {string}
+             */
+            channel: "PHONE" | "EMAIL";
+            /** Format: email */
+            email?: string;
         };
         CheckoutAddressDto: {
             recipientName: string;
@@ -7602,51 +7740,6 @@ export interface components {
             /** @enum {string} */
             outcome: "CONNECTED" | "NO_ANSWER" | "VOICEMAIL" | "WRONG_NUMBER" | "DECLINED";
             notes?: string;
-        };
-        EmailTemplateDto: {
-            id: number;
-            key: string;
-            /** @enum {string} */
-            group: "BASE" | "ACL" | "CONTACT" | "ECOMMERCE" | "NEWSLETTER";
-            title: string;
-            description: string;
-            subject: string;
-            bodyHtml: string;
-            defaultSubject: string;
-            defaultBodyHtml: string;
-            variables: Record<string, never>[];
-            canDisable: boolean;
-            enabled: boolean;
-        };
-        EmailTemplateSettingsDto: {
-            logoMediaId: number | null;
-            logoUrl: string | null;
-            contactEmail: string;
-            copyright: string;
-            logoHeight: number;
-            customCss: string;
-            orderNotificationEmail: string;
-        };
-        UpdateEmailTemplateSettingsDto: {
-            logoMediaId?: number | null;
-            contactEmail?: string;
-            copyright?: string;
-            logoHeight?: number;
-            customCss?: string;
-            orderNotificationEmail?: string;
-        };
-        UpdateEmailTemplateDto: {
-            subject?: string;
-            bodyHtml?: string;
-            enabled?: boolean;
-        };
-        PreviewEmailTemplateDto: {
-            subject?: string;
-            bodyHtml?: string;
-        };
-        EmailTemplatePreviewDto: {
-            subject: string;
-            html: string;
         };
         ShipmentEventDto: {
             status: Record<string, never>;
@@ -8458,32 +8551,6 @@ export interface components {
             productMessageTemplate?: string;
             /** @description Sent from the site-wide floating WhatsApp button */
             floatingMessageTemplate?: string;
-        };
-        SettingDto: {
-            key: string;
-            value: Record<string, never>;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        UpsertSettingDto: {
-            /** @description Arbitrary JSON value for this setting key */
-            value: {
-                [key: string]: unknown;
-            };
-        };
-        SiteInfoDto: {
-            siteName: string;
-            logoUrl: string | null;
-            productsPageBannerUrl: string | null;
-            faviconUrl: string | null;
-            announcementSpeedSeconds: number;
-            productCardStyle: Record<string, never>;
-            logoPaddingPx: number;
-            logoMarginPx: number;
-            codOtpEnabled: boolean;
-            seoTitle: string | null;
-            seoDescription: string | null;
-            seoImageUrl: string | null;
         };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
@@ -9810,6 +9877,297 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminEmailTemplatesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"][];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminEmailTemplatesController_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportEmailTemplatesDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminEmailTemplatesController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateSettingsDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailTemplateSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateSettingsDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminEmailTemplatesController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewEmailTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePreviewDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplatePreviewDto"];
+                };
+            };
+        };
+    };
+    AdminSettingsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingDto"][];
+                };
+            };
+        };
+    };
+    AdminSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingDto"];
+                };
+            };
+        };
+    };
+    AdminSettingsController_upsert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertSettingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingDto"];
+                };
+            };
+        };
+    };
+    SiteInfoController_getSiteInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteInfoDto"];
+                };
             };
         };
     };
@@ -14445,175 +14803,6 @@ export interface operations {
             };
         };
     };
-    AdminEmailTemplatesController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateDto"][];
-                };
-            };
-        };
-    };
-    AdminEmailTemplatesController_getSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateSettingsDto"];
-                };
-            };
-        };
-    };
-    AdminEmailTemplatesController_updateSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateEmailTemplateSettingsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateSettingsDto"];
-                };
-            };
-        };
-    };
-    AdminEmailTemplatesController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateDto"];
-                };
-            };
-        };
-    };
-    AdminEmailTemplatesController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateEmailTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateDto"];
-                };
-            };
-        };
-    };
-    AdminEmailTemplatesController_reset: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateDto"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplateDto"];
-                };
-            };
-        };
-    };
-    AdminEmailTemplatesController_preview: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PreviewEmailTemplateDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplatePreviewDto"];
-                };
-            };
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmailTemplatePreviewDto"];
-                };
-            };
-        };
-    };
     AdminShipmentsController_list: {
         parameters: {
             query?: {
@@ -17858,90 +18047,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AdminSettingsController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingDto"][];
-                };
-            };
-        };
-    };
-    AdminSettingsController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingDto"];
-                };
-            };
-        };
-    };
-    AdminSettingsController_upsert: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpsertSettingDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingDto"];
-                };
-            };
-        };
-    };
-    SiteInfoController_getSiteInfo: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SiteInfoDto"];
                 };
             };
         };

@@ -19,7 +19,10 @@ export class LocalAuthError extends Error {
   }
 }
 
-async function localAuthCall(path: string, body: unknown): Promise<void> {
+// Returns the response payload (was `void`) — register() now needs to know
+// which channel the code actually went to. Every other caller ignores the
+// return value, so widening it changes nothing for them.
+async function localAuthCall<T = void>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -27,6 +30,7 @@ async function localAuthCall(path: string, body: unknown): Promise<void> {
   });
   const json = await res.json();
   if (!json.success) throw new LocalAuthError(json.error?.message ?? "Request failed", json.error?.details);
+  return json.data as T;
 }
 
 // Every successful login/OTP-verify needs the same follow-up: the account
@@ -81,8 +85,25 @@ export function useSocialLogin(locale: string) {
 // code arrives): the backend upserts the same pending row and re-sends.
 export function useRegister() {
   return useMutation({
-    mutationFn: (args: { firstName: string; lastName: string; phone: string; email?: string; password: string }) =>
-      localAuthCall("/auth/register", args),
+    mutationFn: (
+      args: {
+        firstName: string;
+        lastName: string;
+        phone: string;
+        email?: string;
+        password: string;
+        // Omitted = PHONE. Only ever sent as EMAIL when the customer both
+        // supplied an email and picked it.
+        otpChannel?: "PHONE" | "EMAIL";
+      },
+    ) =>
+      localAuthCall<{
+        pending: true;
+        otpChannel: "PHONE" | "EMAIL";
+        // Echo this back to /auth/otp/verify — the code is stored under this
+        // exact string, so guessing "phone" would fail an email signup.
+        otpIdentifier: string;
+      }>("/auth/register", args),
   });
 }
 

@@ -37,7 +37,7 @@ export default async function ProductsPage({
   const filters = parsePlpSearchParams(await searchParams);
   const pageSize = filters.pageSize ?? PAGE_SIZE;
 
-  const [productsRes, collectionsRes, tagsRes, brandsRes, siteInfoRes] = await Promise.all([
+  const [productsRes, collectionsRes, brandsRes, siteInfoRes] = await Promise.all([
     safeGet("/api/v1/products", {
       params: {
         query: {
@@ -45,7 +45,6 @@ export default async function ProductsPage({
           page: filters.page,
           pageSize,
           categoryIds: filters.categoryIds,
-          tagIds: filters.tagIds,
           brandId: filters.brandId,
           collectionIds: filters.collectionIds,
           flagLabels: filters.flagLabels,
@@ -58,9 +57,6 @@ export default async function ProductsPage({
     safeGet("/api/v1/collections", {
       params: { query: { locale: localeParam, pageSize: 50 } },
     }),
-    safeGet("/api/v1/tags", {
-      params: { query: { locale: localeParam, pageSize: 20 } },
-    }),
     safeGet("/api/v1/brands", {
       params: { query: { locale: localeParam, pageSize: 50 } },
     }),
@@ -71,8 +67,6 @@ export default async function ProductsPage({
   const total = productsRes.data?.total ?? 0;
   const collections = (collectionsRes.data?.items ??
     []) as components["schemas"]["PublicCollectionSummaryDto"][];
-  const tags = (tagsRes.data?.items ??
-    []) as components["schemas"]["PublicTagDto"][];
   const brands = (brandsRes.data?.items ??
     []) as components["schemas"]["PublicBrandDto"][];
   const bannerUrl = toDisplayImageUrl(siteInfoRes.data?.productsPageBannerUrl);
@@ -95,7 +89,6 @@ export default async function ProductsPage({
         pageSize={pageSize}
         products={products}
         collections={collections}
-        tags={tags}
         brands={brands}
         title="All Products"
         breadcrumbItems={[{ label: "Home", href: "/" }, { label: "All Products" }]}

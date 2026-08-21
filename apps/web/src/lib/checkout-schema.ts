@@ -40,13 +40,31 @@ const baseCheckoutSchema = z.object({
 // phone" popup, which only opens in reaction to this exact validation error)
 // keeps demanding a code nothing can supply. Defaults to `true` (the
 // historical always-required behavior) while the setting is still loading.
-export function makeCheckoutFormSchema(codOtpEnabled: boolean) {
+// `requireEmail` is true for an account with no phone number — i.e. a
+// customer who registered from outside Bangladesh on their email alone
+// (RegisterDto.phone is optional for exactly that reason). They can't be
+// reached by SMS, so the email on the order is their ONLY channel for
+// confirmation and delivery updates, and it stops being optional.
+// Everyone else is unaffected: a BD customer with a phone still gets the
+// historical optional-email behaviour.
+export function makeCheckoutFormSchema(codOtpEnabled: boolean, requireEmail = false) {
   return baseCheckoutSchema.superRefine((values, ctx) => {
     if (codOtpEnabled && values.paymentProvider === "COD" && !values.codOtpCode?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Verify your phone with the OTP sent to it",
+        // Deliberately says "the code sent to you" rather than naming the
+        // phone: the COD code can now go by SMS or email depending on what
+        // the customer picked in CodOtpPopup, so wording it as "your phone"
+        // would be wrong half the time.
+        message: "আপনাকে পাঠানো ওটিপি কোডটি দিয়ে যাচাই সম্পন্ন করুন।",
         path: ["codOtpCode"],
+      });
+    }
+    if (requireEmail && !values.shippingAddress.email?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Email is required — we'll send order updates here since your account has no mobile number",
+        path: ["shippingAddress", "email"],
       });
     }
     if (!values.billingSameAsShipping && !values.billingAddress) {

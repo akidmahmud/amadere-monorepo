@@ -35,11 +35,6 @@ export interface ProductListingCollection {
   name: string;
 }
 
-export interface ProductListingTag {
-  id: number;
-  name: string;
-}
-
 export interface ProductListingBrand {
   id: number;
   slug: string;
@@ -54,7 +49,6 @@ export interface ProductListingProps {
   products: ProductCardData[];
   categories?: ProductListingCategory[];
   collections?: ProductListingCollection[];
-  tags: ProductListingTag[];
   brands?: ProductListingBrand[];
   /** Price bounds across this listing's full (unfiltered) product set — omitted (no slider) if there's nothing to range over. */
   priceBounds?: { min: number; max: number };
@@ -87,7 +81,6 @@ export function ProductListing({
   products,
   categories,
   collections,
-  tags,
   brands,
   priceBounds,
   hidePlaceholderBanner,
@@ -177,23 +170,6 @@ export function ProductListing({
             }))}
           />,
           "brand",
-        )}
-      {tags.length > 0 &&
-        widget(
-          <FilterCheckboxGroup
-            heading="Health Concern"
-            linkComponent={AppLink}
-            options={tags.map((tag) => ({
-              label: tag.name,
-              active: filters.tagIds.includes(tag.id),
-              href: buildPlpHref(basePath, {
-                ...filters,
-                tagIds: toggleId(filters.tagIds, tag.id),
-                page: 1,
-              }),
-            }))}
-          />,
-          "tag",
         )}
     </>
   );

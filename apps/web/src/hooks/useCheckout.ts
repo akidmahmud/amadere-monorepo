@@ -12,10 +12,14 @@ function cartHeaders(): Record<string, string> {
 
 export function useRequestCodOtp() {
   return useMutation({
-    mutationFn: async (phone: string) => {
+    // `phone` stays the identity the code is stored and verified against;
+    // `channel`/`email` only choose how it's delivered.
+    // `channel` is always supplied by CodOtpPopup (it defaults to PHONE in
+    // component state), and the generated request type has it required.
+    mutationFn: async (args: { phone: string; channel: "PHONE" | "EMAIL"; email?: string }) => {
       const { error } = await api.POST("/api/v1/checkout/cod-otp/request", {
         headers: cartHeaders(),
-        body: { phone },
+        body: { phone: args.phone, channel: args.channel, email: args.email },
       });
       if (error) throw error;
     },

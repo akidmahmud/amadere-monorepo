@@ -5723,17 +5723,32 @@ export interface components {
         RegisterDto: {
             firstName: string;
             lastName: string;
-            phone: string;
+            phone?: string;
             /** Format: email */
             email?: string;
             password: string;
+            /**
+             * @default PHONE
+             * @enum {string}
+             */
+            otpChannel: "PHONE" | "EMAIL";
         };
         RegisterPendingDto: {
             /** @enum {number} */
             pending: true;
+            /** @enum {string} */
+            otpChannel: "PHONE" | "EMAIL";
+            /** @description The phone or email the code was sent to — echo this back to /auth/otp/verify. */
+            otpIdentifier: string;
         };
         LoginDto: {
-            phone: string;
+            /** @description Phone number or email */
+            identifier?: string;
+            /**
+             * @deprecated
+             * @description Deprecated — use `identifier`
+             */
+            phone?: string;
             password: string;
         };
         TokenPair: Record<string, never>;
@@ -6533,7 +6548,7 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
-            videoUrl?: string;
+            videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
              * @default false
@@ -6599,7 +6614,7 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
-            videoUrl?: string;
+            videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
              * @default false
@@ -6961,6 +6976,13 @@ export interface components {
         RequestCodOtpDto: {
             /** @description Shipping phone number the order will be placed under */
             phone: string;
+            /**
+             * @default PHONE
+             * @enum {string}
+             */
+            channel: "PHONE" | "EMAIL";
+            /** Format: email */
+            email?: string;
         };
         CheckoutAddressDto: {
             recipientName: string;
@@ -7327,6 +7349,8 @@ export interface components {
         UpdateProfileDto: {
             firstName?: string;
             lastName?: string;
+            /** Format: email */
+            email?: string;
             /** Format: uri */
             avatarUrl?: string;
             /** @description YYYY-MM-DD */
@@ -7438,6 +7462,16 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        AdminCustomerPurchasedProductDto: {
+            productId: number | null;
+            name: string;
+            sku: string | null;
+            totalQuantity: number;
+            orderCount: number;
+            totalSpent: string;
+            /** Format: date-time */
+            lastPurchasedAt: string;
+        };
         AdminCustomerNoteDto: {
             id: number;
             type: string;
@@ -7471,6 +7505,7 @@ export interface components {
             createdAt: string;
             defaultAddress: components["schemas"]["AdminCustomerAddressSummaryDto"] | null;
             orders: components["schemas"]["AdminCustomerOrderSummaryDto"][];
+            purchasedProducts: components["schemas"]["AdminCustomerPurchasedProductDto"][];
             notes: components["schemas"]["AdminCustomerNoteDto"][];
             callLogs: components["schemas"]["AdminCustomerCallLogDto"][];
             isFavorite: boolean;
@@ -7539,7 +7574,7 @@ export interface components {
         BulkCustomerActionDto: {
             customerIds: number[];
             /** @enum {string} */
-            action: "delete" | "restore" | "assign";
+            action: "delete" | "restore" | "assign" | "purge";
             assignedAdminId?: number | null;
         };
         UpdateCustomerDto: {
@@ -8462,6 +8497,7 @@ export interface components {
             logoPaddingPx: number;
             logoMarginPx: number;
             codOtpEnabled: boolean;
+            codOtpEmailEnabled: boolean;
             seoTitle: string | null;
             seoDescription: string | null;
             seoImageUrl: string | null;

@@ -122,7 +122,6 @@ export default async function TagPage({
         total={total}
         pageSize={pageSize}
         products={products}
-        tags={[]}
         categories={categories}
         brands={brands}
       />

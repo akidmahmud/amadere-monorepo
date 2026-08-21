@@ -6,6 +6,8 @@ export type VpnPolicy = "allow" | "challenge" | "block";
 export interface OtpSecuritySettings {
   vpnPolicy: VpnPolicy;
   codOtpEnabled: boolean;
+  // Whether the checkout OTP popup may offer email delivery alongside SMS.
+  codOtpEmailEnabled: boolean;
   codOtpLength: number;
   codOtpExpiryMinutes: number;
 }
