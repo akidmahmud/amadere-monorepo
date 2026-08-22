@@ -26,6 +26,32 @@ function mediaTypeFromMime(mimeType: string): MediaType {
   throw new BadRequestException(`Unsupported media mime type: ${mimeType}`);
 }
 
+// The storage key becomes the public URL verbatim, so anything not safe in a
+// URL path breaks the image. `file.originalname` is whatever the customer's
+// file was called — "Sorishar tel Banner.webp", "ChatGPT Image Jul 16, 2026,
+// 10_43_41 AM.png" — and a raw space makes a URL the browser cannot fetch, so
+// the upload succeeds and the thumbnail renders blank forever after.
+//
+// The key already carries a randomUUID for uniqueness, so the original name
+// is purely cosmetic here and safe to mangle. Kept readable rather than
+// dropped entirely, because it is the only human hint of what a file is.
+export function sanitizeFilename(originalname: string): string {
+  const dot = originalname.lastIndexOf('.');
+  const stem = dot > 0 ? originalname.slice(0, dot) : originalname;
+  const ext = dot > 0 ? originalname.slice(dot + 1) : '';
+  const clean = (part: string) =>
+    part
+      .normalize('NFKD')
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^[-.]+|[-.]+$/g, '');
+  // A name that is entirely non-ASCII (e.g. all Bengali) sanitizes to an
+  // empty string — fall back rather than emit a key ending in a bare dash.
+  const safeStem = clean(stem).slice(0, 80) || 'file';
+  const safeExt = clean(ext).toLowerCase();
+  return safeExt ? `${safeStem}.${safeExt}` : safeStem;
+}
+
 @Injectable()
 export class MediaService {
   constructor(
@@ -49,7 +75,7 @@ export class MediaService {
     }
 
     const id = randomUUID();
-    const key = `${type.toLowerCase()}/${id}-${file.originalname}`;
+    const key = `${type.toLowerCase()}/${id}-${sanitizeFilename(file.originalname)}`;
     const { url } = await this.storage.upload(key, file.buffer, file.mimetype);
 
     // Card/full WebP derivatives — original stays as uploaded (untouched,
@@ -82,7 +108,7 @@ export class MediaService {
   // shouldn't clutter the admin's product-image picker.
   async uploadTransient(file: Express.Multer.File): Promise<string> {
     const type = mediaTypeFromMime(file.mimetype);
-    const key = `${type.toLowerCase()}/${randomUUID()}-${file.originalname}`;
+    const key = `${type.toLowerCase()}/${randomUUID()}-${sanitizeFilename(file.originalname)}`;
     const { url } = await this.storage.upload(key, file.buffer, file.mimetype);
     return url;
   }
