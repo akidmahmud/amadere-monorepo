@@ -27,6 +27,8 @@ export * from './bd-geo';
 export * from './bd-thanas';
 export * from './phone';
 export * from './ckeditor-fonts';
+export * from './footer';
+export * from './shipping-zones';
 
 export interface PaginatedResult<T> {
   items: T[];

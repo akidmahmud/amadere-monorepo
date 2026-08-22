@@ -4,22 +4,43 @@ import { DefaultLink, type LinkComponent } from "../lib/link-component";
 
 export interface FooterLinkColumn {
   heading: string;
-  links: { label: string; href: string }[];
+  links: { label: string; href: string; newTab?: boolean }[];
+}
+
+export interface FooterSocialLink {
+  /** A key in SOCIAL_ICONS, or 'custom' to render `imageUrl` instead. */
+  icon: string;
+  imageUrl?: string | null;
+  url: string;
+  label: string;
+}
+
+export interface FooterAppButton {
+  /** 'googlePlay' | 'appStore' | 'custom'. */
+  style: string;
+  imageUrl?: string | null;
+  /** Empty renders an inert button — see the comment at its render site. */
+  url: string;
+  lineOne: string;
+  lineTwo: string;
 }
 
 export interface FooterProps {
   brandMark: string;
   logoUrl?: string;
+  /** Rich text (HTML) authored in the admin's CKEditor. **Callers MUST
+   * sanitize this before passing it** — it is rendered with
+   * dangerouslySetInnerHTML. apps/web does so in SiteFooter via
+   * sanitizeHtml(). Plain text passes through unharmed. */
   description: string;
   address: string;
   phone: string;
+  phoneHref?: string;
   email?: string;
+  emailHref?: string;
   workingHours?: string;
-  facebookHref?: string;
-  instagramHref?: string;
-  youtubeHref?: string;
-  googlePlayHref?: string;
-  appStoreHref?: string;
+  social: FooterSocialLink[];
+  appButtons: FooterAppButton[];
   appDownloadLabel: string;
   columns: FooterLinkColumn[];
   copyrightLabel: string;
@@ -82,6 +103,82 @@ const appStoreIcon = (
     <path d="M16.5 3c.1 1-.3 2-.9 2.7-.6.7-1.6 1.3-2.6 1.2-.1-1 .4-2 1-2.6.6-.7 1.7-1.2 2.5-1.3ZM19.9 17c-.5 1.1-.7 1.6-1.4 2.6-.9 1.4-2.2 3.1-3.8 3.1-1.4 0-1.8-.9-3.7-.9s-2.3.9-3.7.9c-1.6 0-2.8-1.5-3.7-2.9C1.2 16.1.9 11.4 2.6 8.9c1.1-1.8 2.9-2.8 4.6-2.8 1.7 0 2.8 1 4.2 1 1.4 0 2.2-1 4.2-1 1.5 0 3.1.8 4.2 2.2-3.7 2-3.1 7.2.1 8.7Z" />
   </svg>
 );
+const tiktokIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
+    <path d="M16.5 3c.3 2 1.8 3.5 3.8 3.8v2.7c-1.4 0-2.7-.4-3.8-1.2v6.2c0 3.1-2.5 5.5-5.6 5.5S5.3 17.6 5.3 14.5 7.8 9 10.9 9c.3 0 .6 0 .9.1v2.8a2.8 2.8 0 1 0 2 2.7V3Z" />
+  </svg>
+);
+const whatsappIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
+    <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20Zm4.4-5.9c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1s-.7.8-.8.9-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.5s-.6-1.5-.9-2c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s1 2.6 1.1 2.8c.1.2 2 3 4.8 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3Z" />
+  </svg>
+);
+const linkedinIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
+    <path d="M4.5 3.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM3 9h3v11H3Zm6 0h2.9v1.5h.1c.4-.8 1.5-1.7 3.1-1.7 3.3 0 3.9 2.2 3.9 5V20h-3v-4.8c0-1.1 0-2.6-1.6-2.6s-1.9 1.3-1.9 2.5V20H9Z" />
+  </svg>
+);
+const xIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
+    <path d="M4 3h4.4l4 5.4L17 3h3l-6.2 7.9L21 21h-4.4l-4.4-5.9L6.7 21H3.6l6.7-8.5Z" />
+  </svg>
+);
+const telegramIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
+    <path d="M21 4 3 11.4c-.7.3-.7 1.3.1 1.5l4.4 1.4 1.7 5.3c.2.6 1 .8 1.4.3l2.4-2.6 4.5 3.4c.6.4 1.4.1 1.6-.6l3-16c.1-.7-.6-1.3-1.3-1.1Zm-3.3 3.6-6.9 6.3-.4 3.1-1.4-4.3 8.2-5.5c.2-.1.4.1.2.3Z" />
+  </svg>
+);
+const pinterestIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor">
+    <path d="M12 2a10 10 0 0 0-3.6 19.3c0-.8 0-1.8.2-2.6l1.4-6s-.3-.7-.3-1.7c0-1.6.9-2.8 2.1-2.8 1 0 1.5.7 1.5 1.6 0 1-.6 2.4-.9 3.8-.3 1.1.6 2.1 1.7 2.1 2.1 0 3.5-2.6 3.5-5.8 0-2.4-1.6-4.2-4.6-4.2-3.3 0-5.4 2.5-5.4 5.2 0 1 .3 1.6.7 2.1.2.2.2.3.1.6l-.3 1c-.1.3-.3.4-.6.3-1.6-.7-2.4-2.5-2.4-4.5 0-3.4 2.8-7.4 8.4-7.4 4.5 0 7.4 3.2 7.4 6.7 0 4.6-2.6 8-6.3 8-1.3 0-2.4-.7-2.8-1.4l-.8 3c-.2.9-.7 1.9-1.1 2.6A10 10 0 1 0 12 2Z" />
+  </svg>
+);
+
+// Neutral globe/link glyph shown when an icon lookup fails to produce
+// anything: a `custom` icon/style with no `imageUrl` (e.g. the Media row it
+// pointed at was deleted) or a name absent from SOCIAL_ICONS/APP_ICONS.
+// Without this, `SOCIAL_ICONS[item.icon] ?? null` renders an empty bordered
+// circle — present, but visibly broken. Two sizes so it matches whichever
+// row it renders in: the 40px social circle uses the other built-in
+// glyphs' 16px size, the app-button row uses their 20px size.
+const socialFallbackIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
+  </svg>
+);
+const appFallbackIcon = (
+  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
+  </svg>
+);
+
+const SOCIAL_ICONS: Record<string, React.ReactNode> = {
+  facebook: facebookIcon,
+  instagram: instagramIcon,
+  youtube: youtubeIcon,
+  tiktok: tiktokIcon,
+  whatsapp: whatsappIcon,
+  linkedin: linkedinIcon,
+  x: xIcon,
+  telegram: telegramIcon,
+  pinterest: pinterestIcon,
+};
+
+const APP_ICONS: Record<string, React.ReactNode> = {
+  googlePlay: googlePlayIcon,
+  appStore: appStoreIcon,
+};
+
+const GRID_COLS: Record<number, string> = {
+  1: "lg:grid-cols-[1.6fr_1fr]",
+  2: "lg:grid-cols-[1.6fr_1fr_1fr]",
+  3: "lg:grid-cols-[1.6fr_1fr_1fr_1fr]",
+  4: "lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]",
+};
 
 export function Footer({
   brandMark,
@@ -89,13 +186,12 @@ export function Footer({
   description,
   address,
   phone,
+  phoneHref,
   email,
+  emailHref,
   workingHours,
-  facebookHref,
-  instagramHref,
-  youtubeHref,
-  googlePlayHref,
-  appStoreHref,
+  social,
+  appButtons,
   appDownloadLabel,
   columns,
   copyrightLabel,
@@ -106,7 +202,7 @@ export function Footer({
   return (
     <footer className="border-t border-header-line bg-white">
       <div className="mx-auto max-w-[1440px] px-4 md:px-6">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:gap-x-8">
+        <div className={`grid grid-cols-2 gap-x-6 gap-y-10 py-4 pb-10 md:py-8 lg:gap-x-8 ${GRID_COLS[Math.min(Math.max(columns.length, 1), 4)]}`}>
           <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center">
               {logoUrl ? (
@@ -116,7 +212,12 @@ export function Footer({
                 <span className="font-bengali text-2xl font-bold text-header-green">{brandMark}</span>
               )}
             </Link>
-            <p className="max-w-[425px] font-header text-sm leading-[1.6] text-header-muted">{description}</p>
+            {/* eslint-disable-next-line react/no-danger -- admin-authored rich
+                text; sanitized by the caller, see the prop's doc comment. */}
+            <div
+              className="footer-description max-w-[425px] font-header text-sm leading-[1.6] text-header-muted"
+              dangerouslySetInnerHTML={{ __html: description }}
+            />
             <ul className="mt-5 flex flex-col gap-2.5">
               <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                 {pinIcon}
@@ -124,12 +225,24 @@ export function Footer({
               </li>
               <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                 {phoneIcon}
-                {phone}
+                {phoneHref ? (
+                  <a href={phoneHref} className="transition-colors hover:text-header-green">
+                    {phone}
+                  </a>
+                ) : (
+                  phone
+                )}
               </li>
               {email && (
                 <li className="flex items-center gap-2.5 font-header text-sm text-header-text">
                   {mailIcon}
-                  {email}
+                  {emailHref ? (
+                    <a href={emailHref} className="transition-colors hover:text-header-green">
+                      {email}
+                    </a>
+                  ) : (
+                    email
+                  )}
                 </li>
               )}
               {workingHours && (
@@ -139,57 +252,82 @@ export function Footer({
                 </li>
               )}
             </ul>
-            <div className="mt-5 flex gap-2">
-              {facebookHref && (
-                <a href={facebookHref} aria-label="Facebook" className="grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-header-green text-header-green transition-colors hover:bg-header-green hover:text-white">
-                  {facebookIcon}
-                </a>
-              )}
-              {instagramHref && (
-                <a href={instagramHref} aria-label="Instagram" className="grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-header-green text-header-green transition-colors hover:bg-header-green hover:text-white">
-                  {instagramIcon}
-                </a>
-              )}
-              {youtubeHref && (
-                <a href={youtubeHref} aria-label="YouTube" className="grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-header-green text-header-green transition-colors hover:bg-header-green hover:text-white">
-                  {youtubeIcon}
-                </a>
-              )}
+            <div className="mt-5 flex flex-wrap gap-2">
+              {social.map((item, index) => {
+                const iconContent =
+                  item.icon === "custom" && item.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.imageUrl} alt="" className="h-4 w-4 object-contain" />
+                  ) : (
+                    SOCIAL_ICONS[item.icon] ?? socialFallbackIcon
+                  );
+                const className =
+                  "grid h-10 w-10 place-items-center rounded-full border-[1.5px] border-header-green text-header-green transition-colors hover:bg-header-green hover:text-white";
+                // An empty-url entry stays visible but inert, the same
+                // treatment as an app button with no url below: a live
+                // `href=""` reloads the current page on click, and it would
+                // take keyboard focus for a control that does nothing.
+                return item.url ? (
+                  <a key={index} href={item.url} aria-label={item.label} className={className}>
+                    {iconContent}
+                  </a>
+                ) : (
+                  <span key={index} className={className}>
+                    {iconContent}
+                  </span>
+                );
+              })}
             </div>
-            {(googlePlayHref || appStoreHref) && (
+            {appButtons.length > 0 && (
               <>
                 <div className="mt-6 font-header text-base font-medium text-header-ink">{appDownloadLabel}</div>
                 <div className="mt-3 flex flex-wrap gap-2.5">
-                  {googlePlayHref && (
-                    <a href={googlePlayHref} aria-label="Get it on Google Play" className="inline-flex h-11 items-center gap-[9px] rounded-lg bg-[#111] px-3.5 text-white">
-                      {googlePlayIcon}
-                      <span className="leading-[1.15]">
-                        <span className="block text-[0.55rem] font-medium opacity-85">GET IT ON</span>
-                        <span className="block font-header text-[0.82rem] font-bold">Google Play</span>
+                  {appButtons.map((button, index) => {
+                    const content = (
+                      <>
+                        {button.style === "custom" && button.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={button.imageUrl} alt="" className="h-5 w-5 object-contain" />
+                        ) : (
+                          APP_ICONS[button.style] ?? appFallbackIcon
+                        )}
+                        <span className="leading-[1.15]">
+                          <span className="block text-[0.55rem] font-medium opacity-85">{button.lineOne}</span>
+                          <span className="block font-header text-[0.82rem] font-bold">{button.lineTwo}</span>
+                        </span>
+                      </>
+                    );
+                    const className = "inline-flex h-11 items-center gap-[9px] rounded-lg bg-[#111] px-3.5 text-white";
+                    // A button with no URL yet still renders — the owner explicitly asked
+                    // that these stay visible. It is a span, not href="#": that anchor
+                    // scrolls the visitor to the top of the page, and it would take
+                    // keyboard focus for a control that does nothing.
+                    return button.url ? (
+                      <a key={index} href={button.url} aria-label={`${button.lineOne} ${button.lineTwo}`} className={className}>
+                        {content}
+                      </a>
+                    ) : (
+                      <span key={index} className={className}>
+                        {content}
                       </span>
-                    </a>
-                  )}
-                  {appStoreHref && (
-                    <a href={appStoreHref} aria-label="Download on the App Store" className="inline-flex h-11 items-center gap-[9px] rounded-lg bg-[#111] px-3.5 text-white">
-                      {appStoreIcon}
-                      <span className="leading-[1.15]">
-                        <span className="block text-[0.55rem] font-medium opacity-85">Download on the</span>
-                        <span className="block font-header text-[0.82rem] font-bold">App Store</span>
-                      </span>
-                    </a>
-                  )}
+                    );
+                  })}
                 </div>
               </>
             )}
           </div>
 
-          {columns.map((column) => (
-            <div key={column.heading}>
+          {columns.map((column, columnIndex) => (
+            <div key={columnIndex}>
               <h4 className="mb-4 font-header text-base font-medium text-header-ink">{column.heading}</h4>
               <ul className="flex flex-col gap-1 md:gap-2">
-                {column.links.map((link) => (
-                  <li key={link.label}>
-                    <Link href={link.href} className="font-header text-sm leading-none text-header-muted transition-colors hover:text-header-green md:leading-normal">
+                {column.links.map((link, linkIndex) => (
+                  <li key={linkIndex}>
+                    <Link
+                      href={link.href}
+                      {...(link.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      className="font-header text-sm leading-none text-header-muted transition-colors hover:text-header-green md:leading-normal"
+                    >
                       {link.label}
                     </Link>
                   </li>

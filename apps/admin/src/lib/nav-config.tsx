@@ -24,6 +24,7 @@ const blogCategoriesIcon = <Icon name="topic" />;
 const blogTagsIcon = <Icon name="label" />;
 const pagesIcon = <Icon name="description" />;
 const menuItemsIcon = <Icon name="menu" />;
+const footerIcon = <Icon name="link" />;
 const announcementsIcon = <Icon name="campaign" />;
 const redirectsIcon = <Icon name="alt_route" />;
 const seoIcon = <Icon name="search" />;
@@ -116,6 +117,7 @@ export const adminNav: AppNavEntry[] = [
   { key: "blog-tags", label: "Blog Tags", href: "/blog-tags", icon: blogTagsIcon, permission: "blog_tag.view" },
   { key: "pages", label: "Pages", href: "/pages", icon: pagesIcon, permission: "page.view" },
   { key: "menu-items", label: "Menu Items", href: "/menu-items", icon: menuItemsIcon, permission: "menu_item.view" },
+  { key: "footer", label: "Footer", href: "/footer", icon: footerIcon, permission: "footer.view" },
   { key: "announcements", label: "Announcements", href: "/announcements", icon: announcementsIcon, permission: "announcement.view" },
 
   label("seo-label", "SEO"),

@@ -27,39 +27,13 @@
     "subtotal": "সাবটোটাল",
     "close": "কার্ট বন্ধ করুন"
   },
-  "footer": {
-    "description": "আমাদের™ is dedicated to bringing pure, natural food from trusted farms to every home in Bangladesh — প্রাকৃতিক খাবার, সুস্থ জীবন।",
-    "address": "ঢাকা, বাংলাদেশ",
-    "phone": "+৮৮০ ৯৬XX-XXXXXX",
-    "email": "support@amadere.com",
-    "appDownloadLabel": "মোবাইলে অ্যাপ ডাউনলোড করুন:",
-    "informationHeading": "তথ্য",
-    "aboutUs": "আমাদের সম্পর্কে",
-    "contactUs": "যোগাযোগ করুন",
-    "blog": "ব্লগ",
-    "terms": "শর্তাবলী",
-    "privacy": "গোপনীয়তা নীতি",
-    "careers": "ক্যারিয়ার",
-    "shopByHeading": "ক্যাটাগরি অনুযায়ী কিনুন",
-    "supportHeading": "সহায়তা",
-    "supportCenter": "সহায়তা কেন্দ্র",
-    "howToOrder": "কীভাবে অর্ডার করবেন",
-    "orderTracking": "অর্ডার ট্র্যাকিং",
-    "payment": "পেমেন্ট",
-    "shipping": "শিপিং",
-    "faq": "সচরাচর জিজ্ঞাসা",
-    "consumerPolicyHeading": "ভোক্তা নীতি",
-    "happyReturn": "হ্যাপি রিটার্ন",
-    "refundPolicy": "রিফান্ড নীতি",
-    "exchange": "এক্সচেঞ্জ",
-    "cancellation": "বাতিলকরণ",
-    "preOrder": "প্রি-অর্ডার",
-    "copyright": "কপিরাইট © {year} আমাদের লিমিটেড। সর্বস্বত্ব সংরক্ষিত।",
-    "payWith": "পে উইথ",
-    "sslLine1": "ভেরিফাইড বাই",
-    "sslLine2": "SSLCOMMERZ"
-  },
   "breadcrumb": {
     "home": "হোম"
+  },
+  "shipping": {
+    "ratesHeading": "ডেলিভারি চার্জ",
+    "allOtherDistricts": "অন্যান্য সব জেলা",
+    "appliedToYourDistrict": "হাইলাইট করা রেটটি আপনার নির্বাচিত জেলার জন্য প্রযোজ্য।",
+    "pickDistrictHint": "কোন রেট প্রযোজ্য দেখতে উপরে আপনার জেলা নির্বাচন করুন।"
   }
 }

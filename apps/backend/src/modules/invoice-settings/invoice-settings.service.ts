@@ -30,6 +30,14 @@ export interface InvoiceSettings {
   customFontFamily: string;
   languageSupport: InvoiceLanguageSupport;
   termsAndConditions: string;
+  // The contact strip printed at the foot of the invoice. These were three
+  // hardcoded literals in InvoiceDocument.tsx sitting next to a settings-driven
+  // companyPhone — so changing your company details updated one tile and left
+  // the others stale, which looks maintained but isn't. Empty hides its tile.
+  companyWebsite: string;
+  companyFacebook: string;
+  trustBadgeTitle: string;
+  trustBadgeSubtitle: string;
 }
 
 const DEFAULTS: InvoiceSettings = {
@@ -52,6 +60,12 @@ const DEFAULTS: InvoiceSettings = {
   customFontFamily: '',
   languageSupport: 'default',
   termsAndConditions: '',
+  // Carried over verbatim from the literals they replace, so existing
+  // invoices print exactly the same until an admin edits them.
+  companyWebsite: 'www.amadere.com',
+  companyFacebook: 'fb.com/amadere',
+  trustBadgeTitle: '100% Natural & Healthy',
+  trustBadgeSubtitle: 'Trusted by Thousands',
 };
 
 // Same generic-Setting-table pattern as every other *SettingsService this

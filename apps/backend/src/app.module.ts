@@ -57,6 +57,8 @@ import { MenusModule } from './modules/menus/menus.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
+import { FooterModule } from './modules/footer/footer.module';
+import { ShippingZonesModule } from './modules/shipping-zones/shipping-zones.module';
 import { PromoVideosModule } from './modules/promo-videos/promo-videos.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
 
@@ -161,6 +163,8 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     AnnouncementsModule,
     CollectionsModule,
     HomepageSectionsModule,
+    FooterModule,
+    ShippingZonesModule,
     PromoVideosModule,
     NetProfitModule,
   ],

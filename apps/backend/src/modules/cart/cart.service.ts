@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { Cart, Locale, PaymentProvider, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
+import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
 import { PricingService } from './pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { BuyNowDto } from './dto/buy-now.dto';
@@ -61,6 +62,7 @@ export class CartService {
     private readonly prisma: PrismaService,
     private readonly pricing: PricingService,
     private readonly events: EventEmitter2,
+    private readonly shippingZones: ShippingZonesService,
   ) {}
 
   async getView(
@@ -432,10 +434,11 @@ export class CartService {
   }
 
   private async serializePricing(pricing: Awaited<ReturnType<PricingService['price']>>, district?: string) {
+    const zones = await this.shippingZones.getConfig();
     // Neither tax nor the COD fee are charged on an order — both are
     // internal accounting-only figures, see computeCheckoutFees's own
     // comment (accounts.service.ts).
-    const { shippingFee } = computeCheckoutFees(pricing.discounts.some((d) => d.freeShipping), district);
+    const { shippingFee } = computeCheckoutFees(pricing.discounts.some((d) => d.freeShipping), district, zones);
     return {
       subTotal: pricing.subTotal.toString(),
       // Only entries that actually do something are shown. A coupon or

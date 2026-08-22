@@ -136,6 +136,55 @@ export default function InvoiceSettingsPage() {
       </Card>
 
       <Card className="flex flex-col gap-4">
+        <div>
+          <h3 className="font-ui text-sm font-bold text-text">Invoice footer strip</h3>
+          <p className="mt-0.5 text-xs text-muted">
+            The four tiles printed at the bottom of every invoice. Leave a field blank to hide
+            its tile — the remaining ones spread to fill the row. The phone comes from Company
+            phone above.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Website (shown under &ldquo;Visit Our Website&rdquo;)</span>
+            <input
+              value={draft.companyWebsite}
+              placeholder="www.amadere.com"
+              onChange={(e) => setField("companyWebsite", e.target.value)}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Facebook page (shown under &ldquo;Like Our Page&rdquo;)</span>
+            <input
+              value={draft.companyFacebook}
+              placeholder="fb.com/amadere"
+              onChange={(e) => setField("companyFacebook", e.target.value)}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Trust badge — title</span>
+            <input
+              value={draft.trustBadgeTitle}
+              placeholder="100% Natural & Healthy"
+              onChange={(e) => setField("trustBadgeTitle", e.target.value)}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Trust badge — subtitle</span>
+            <input
+              value={draft.trustBadgeSubtitle}
+              placeholder="Trusted by Thousands"
+              onChange={(e) => setField("trustBadgeSubtitle", e.target.value)}
+              className={inputClass}
+            />
+          </label>
+        </div>
+      </Card>
+
+      <Card className="flex flex-col gap-4">
         <h3 className="font-ui text-sm font-bold text-text">Typography & Language</h3>
         <ToggleSwitch
           checked={draft.customFontEnabled}

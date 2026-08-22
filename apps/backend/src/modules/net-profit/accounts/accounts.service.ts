@@ -11,6 +11,8 @@ import { ExpenseQueryDto } from './dto/expense-query.dto';
 import { CreateDueDto } from './dto/create-due.dto';
 import { DueQueryDto } from './dto/due-query.dto';
 import { ExpenseDto, toExpenseDto, DueDto, toDueDto } from './accounts.mapper';
+import { resolveZoneFee } from '../../shipping-zones/shipping-zones.matcher';
+import { ShippingZonesConfig } from '../../shipping-zones/shipping-zones.types';
 
 const Decimal = Prisma.Decimal;
 
@@ -37,26 +39,32 @@ export interface CodFeeSettings {
 // from the same VAT & Cash Flow tab (Settings > Accounts).
 export const COD_FEE_DEFAULTS: CodFeeSettings = { enabled: false, percent: 1 };
 
-// Checkout-time shipping fee — Dhaka DISTRICT (not the wider division) pays
-// the cheap rate, everywhere else pays the outside-Dhaka rate. This is what's
-// actually charged to the customer at order placement; ShipmentsService.
-// dispatch() later separately overwrites both shippingAmount and
-// totalAmount with the real courier cost (see ShippingChargeCalculator,
-// which does its own similar Dhaka-vs-not split for that unrelated number).
-export const DHAKA_SHIPPING_FEE = new Decimal(80);
-export const OUTSIDE_DHAKA_SHIPPING_FEE = new Decimal(120);
+// Checkout-time shipping fee. The Dhaka-vs-everywhere-else split this used
+// to hardcode is now admin-editable shipping zones (Shipments > Shipping
+// Rates); the shipped defaults reproduce the old 80/120 exactly, so nothing
+// changes until an admin edits a zone. This is what's actually charged to
+// the customer at order placement; ShipmentsService.dispatch() later
+// separately overwrites both shippingAmount and totalAmount with the real
+// courier cost (see ShippingChargeCalculator, which does its own similar
+// Dhaka-vs-not split for that unrelated number).
 
 // Single source of truth for the shipping-fee math — used by CheckoutService
 // when actually placing an order AND by CartService's checkout-preview
 // pricing, so what the customer sees on the checkout page can never drift
 // from what they're actually charged. `district` is optional because the
-// preview can be requested before the customer has typed an address yet —
-// treated as Dhaka (the cheaper default) until a real district is known,
-// same as the flat rate this replaces used to just always assume.
-export function computeCheckoutFees(freeShipping: boolean, district?: string): { shippingFee: Prisma.Decimal } {
+// preview can be requested before the customer has typed an address yet;
+// resolveZoneFee then quotes the first zone, preserving the old behaviour of
+// previewing the cheap Dhaka rate until a real district is known.
+//
+// `zones` is passed in rather than fetched here so this stays a pure,
+// directly-testable function — the callers own the DB read.
+export function computeCheckoutFees(
+  freeShipping: boolean,
+  district: string | undefined,
+  zones: ShippingZonesConfig,
+): { shippingFee: Prisma.Decimal } {
   if (freeShipping) return { shippingFee: new Decimal(0) };
-  const isDhaka = !district || district.trim().toLowerCase() === 'dhaka';
-  return { shippingFee: isDhaka ? DHAKA_SHIPPING_FEE : OUTSIDE_DHAKA_SHIPPING_FEE };
+  return { shippingFee: new Decimal(resolveZoneFee(zones, district).fee) };
 }
 
 export interface VatSummary {

@@ -1796,6 +1796,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shipping-zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShippingZonesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipping-zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminShippingZonesController_get"];
+        put: operations["AdminShippingZonesController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/checkout/cod-otp/request": {
         parameters: {
             query?: never;
@@ -4532,6 +4564,38 @@ export interface paths {
         patch: operations["AdminHomepageSectionsController_reorder"];
         trace?: never;
     };
+    "/api/v1/footer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FooterController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/footer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminFooterController_get"];
+        put: operations["AdminFooterController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/promo-videos": {
         parameters: {
             query?: never;
@@ -7095,6 +7159,32 @@ export interface components {
         MergeCartDto: {
             guestToken: string;
         };
+        PublicShippingZoneDto: {
+            name: string;
+            fee: number;
+            districts: string[];
+            /** @description The catch-all row for districts with no zone */
+            isFallback: boolean;
+        };
+        TranslatedDto: {
+            en: string;
+            bn: string;
+        };
+        ShippingZoneDto: {
+            name: components["schemas"]["TranslatedDto"];
+            /** @description What the customer pays, in BDT */
+            fee: number;
+            districts: string[];
+        };
+        ShippingFallbackDto: {
+            name: components["schemas"]["TranslatedDto"];
+            /** @description Applied to every district not assigned to a zone */
+            fee: number;
+        };
+        UpdateShippingZonesDto: {
+            zones: components["schemas"]["ShippingZoneDto"][];
+            fallback: components["schemas"]["ShippingFallbackDto"];
+        };
         RequestCodOtpDto: {
             /** @description Shipping phone number the order will be placed under */
             phone: string;
@@ -8478,6 +8568,14 @@ export interface components {
             companyZipcode?: string;
             companyEmail?: string;
             companyPhone?: string;
+            /** @description Invoice footer strip — blank hides the tile */
+            companyWebsite?: string;
+            /** @description Invoice footer strip — blank hides the tile */
+            companyFacebook?: string;
+            /** @description Invoice footer strip — blank hides the tile */
+            trustBadgeTitle?: string;
+            /** @description Invoice footer strip — blank hides the tile */
+            trustBadgeSubtitle?: string;
             companyTaxId?: string;
             companyLogoUrl?: string;
             invoicePrefix?: string;
@@ -8772,6 +8870,132 @@ export interface components {
             /** @description Required when type = PRODUCT_COLLECTION */
             collectionId?: number;
             translations?: components["schemas"]["HomepageSectionTranslationDto"][];
+        };
+        PublicFooterContactRowDto: {
+            label: string;
+            value: string;
+        };
+        PublicFooterContactDto: {
+            address: components["schemas"]["PublicFooterContactRowDto"];
+            phone: components["schemas"]["PublicFooterContactRowDto"];
+            email: components["schemas"]["PublicFooterContactRowDto"];
+            hours: components["schemas"]["PublicFooterContactRowDto"];
+        };
+        PublicFooterSocialDto: {
+            icon: string;
+            imageUrl: string | null;
+            url: string;
+            label: string;
+        };
+        PublicFooterAppButtonDto: {
+            style: string;
+            imageUrl: string | null;
+            url: string;
+            lineOne: string;
+            lineTwo: string;
+        };
+        PublicFooterAppsDto: {
+            downloadLabel: string;
+            buttons: components["schemas"]["PublicFooterAppButtonDto"][];
+        };
+        PublicFooterLinkDto: {
+            label: string;
+            href: string;
+            newTab: boolean;
+        };
+        PublicFooterColumnDto: {
+            heading: string;
+            links: components["schemas"]["PublicFooterLinkDto"][];
+        };
+        PublicFooterPaymentDto: {
+            label: string;
+            imageUrl: string | null;
+        };
+        PublicFooterLogoDto: {
+            imageUrl: string | null;
+        };
+        PublicFooterDto: {
+            brandMark: string;
+            description: string;
+            contact: components["schemas"]["PublicFooterContactDto"];
+            social: components["schemas"]["PublicFooterSocialDto"][];
+            apps: components["schemas"]["PublicFooterAppsDto"];
+            columns: components["schemas"]["PublicFooterColumnDto"][];
+            payment: components["schemas"]["PublicFooterPaymentDto"];
+            copyright: string;
+            logo: components["schemas"]["PublicFooterLogoDto"];
+        };
+        TranslatedPairDto: {
+            label: components["schemas"]["TranslatedDto"];
+            value: components["schemas"]["TranslatedDto"];
+        };
+        FooterPhoneFieldDto: {
+            label: components["schemas"]["TranslatedDto"];
+            /** @description A dialable tel: target; empty string allowed */
+            value: string;
+        };
+        FooterEmailFieldDto: {
+            label: components["schemas"]["TranslatedDto"];
+            /**
+             * Format: email
+             * @description A mailto: target; empty string allowed since the defaults ship with an empty email
+             */
+            value: string;
+        };
+        FooterContactDto: {
+            address: components["schemas"]["TranslatedPairDto"];
+            phone: components["schemas"]["FooterPhoneFieldDto"];
+            email: components["schemas"]["FooterEmailFieldDto"];
+            hours: components["schemas"]["TranslatedPairDto"];
+        };
+        FooterSocialLinkDto: {
+            /** @enum {string} */
+            icon: "facebook" | "instagram" | "youtube" | "tiktok" | "whatsapp" | "linkedin" | "x" | "telegram" | "pinterest" | "custom";
+            mediaId: number | null;
+            url: string;
+            label: components["schemas"]["TranslatedDto"];
+        };
+        FooterAppButtonDto: {
+            /** @enum {string} */
+            style: "googlePlay" | "appStore" | "custom";
+            mediaId: number | null;
+            /** @description Empty renders an inert button rather than hiding it */
+            url: string;
+            lineOne: components["schemas"]["TranslatedDto"];
+            lineTwo: components["schemas"]["TranslatedDto"];
+        };
+        FooterAppsDto: {
+            downloadLabel: components["schemas"]["TranslatedDto"];
+            buttons: components["schemas"]["FooterAppButtonDto"][];
+        };
+        FooterLinkDto: {
+            label: components["schemas"]["TranslatedDto"];
+            /** @example /about-us */
+            href: string;
+            newTab: boolean;
+        };
+        FooterColumnDto: {
+            heading: components["schemas"]["TranslatedDto"];
+            links: components["schemas"]["FooterLinkDto"][];
+        };
+        FooterPaymentDto: {
+            label: components["schemas"]["TranslatedDto"];
+            mediaId: number | null;
+        };
+        FooterLogoDto: {
+            /** @description Null means "use the site logo" */
+            mediaId: number | null;
+        };
+        UpdateFooterDto: {
+            brandMark: components["schemas"]["TranslatedDto"];
+            description: components["schemas"]["TranslatedDto"];
+            contact: components["schemas"]["FooterContactDto"];
+            social: components["schemas"]["FooterSocialLinkDto"][];
+            apps: components["schemas"]["FooterAppsDto"];
+            columns: components["schemas"]["FooterColumnDto"][];
+            payment: components["schemas"]["FooterPaymentDto"];
+            copyright: components["schemas"]["TranslatedDto"];
+            logo: components["schemas"]["FooterLogoDto"];
         };
         PublicPromoVideoDto: {
             id: number;
@@ -13017,6 +13241,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CartViewDto"];
+                };
+            };
+        };
+    };
+    ShippingZonesController_list: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicShippingZoneDto"][];
+                };
+            };
+        };
+    };
+    AdminShippingZonesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateShippingZonesDto"];
+                };
+            };
+        };
+    };
+    AdminShippingZonesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShippingZonesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateShippingZonesDto"];
                 };
             };
         };
@@ -18703,6 +18990,69 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    FooterController_get: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicFooterDto"];
+                };
+            };
+        };
+    };
+    AdminFooterController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateFooterDto"];
+                };
+            };
+        };
+    };
+    AdminFooterController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFooterDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateFooterDto"];
+                };
             };
         };
     };

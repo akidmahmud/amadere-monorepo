@@ -24,6 +24,11 @@ export interface InvoiceSettings {
   customFontFamily: string;
   languageSupport: InvoiceLanguageSupport;
   termsAndConditions: string;
+  // Invoice footer contact strip. Blank hides that tile.
+  companyWebsite: string;
+  companyFacebook: string;
+  trustBadgeTitle: string;
+  trustBadgeSubtitle: string;
 }
 
 const KEY = ["admin-invoice-settings"];

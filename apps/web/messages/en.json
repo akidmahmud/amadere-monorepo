@@ -27,39 +27,13 @@
     "subtotal": "Subtotal",
     "close": "Close cart"
   },
-  "footer": {
-    "description": "আমাদের™ is dedicated to bringing pure, natural food from trusted farms to every home in Bangladesh — প্রাকৃতিক খাবার, সুস্থ জীবন।",
-    "address": "Dhaka, Bangladesh",
-    "phone": "+880 96XX-XXXXXX",
-    "email": "support@amadere.com",
-    "appDownloadLabel": "Download App on Mobile:",
-    "informationHeading": "Information",
-    "aboutUs": "About Us",
-    "contactUs": "Contact Us",
-    "blog": "Blog",
-    "terms": "Terms & Conditions",
-    "privacy": "Privacy Policy",
-    "careers": "Careers",
-    "shopByHeading": "Shop By",
-    "supportHeading": "Support",
-    "supportCenter": "Support Center",
-    "howToOrder": "How to Order",
-    "orderTracking": "Order Tracking",
-    "payment": "Payment",
-    "shipping": "Shipping",
-    "faq": "FAQ",
-    "consumerPolicyHeading": "Consumer Policy",
-    "happyReturn": "Happy Return",
-    "refundPolicy": "Refund Policy",
-    "exchange": "Exchange",
-    "cancellation": "Cancellation",
-    "preOrder": "Pre-Order",
-    "copyright": "Copyright © {year} Amader Ltd. All rights reserved.",
-    "payWith": "Pay With",
-    "sslLine1": "Verified by",
-    "sslLine2": "SSLCOMMERZ"
-  },
   "breadcrumb": {
     "home": "Home"
+  },
+  "shipping": {
+    "ratesHeading": "Delivery charges",
+    "allOtherDistricts": "all other districts",
+    "appliedToYourDistrict": "Highlighted rate applies to your selected district.",
+    "pickDistrictHint": "Select your district above to see which rate applies."
   }
 }

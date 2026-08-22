@@ -1,8 +1,31 @@
+/* Storefront tokens, for the footer editor's live preview only — the real
+   @amader/ui Footer renders inside this admin app and needs its --header-*
+   colours and fonts to exist.
+
+   MUST stay above the admin-ui import: the two files both define
+   --color-muted and --font-ui, and in Tailwind v4 the later @theme wins.
+   Importing this second would silently restyle the whole admin panel. */
+@import "@amader/ui/tokens.css";
+
 @import "@amader/admin-ui/globals.css";
 
 /* Tailwind's default content scan doesn't reach into workspace packages —
    point it at the shared admin component library explicitly. */
 @source "../../../../packages/admin-ui/src";
+
+/* Same reason, for the storefront Footer rendered in the preview pane —
+   without this its utility classes are never generated. */
+@source "../../../../packages/ui/src";
+
+/* Import order alone does NOT settle --color-muted: admin-ui defines it inside
+   an @theme block, ui/tokens.css defines it in a plain :root, and Tailwind
+   emits plain CSS after @theme output — so ui wins on cascade order whichever
+   file is imported first (verified in the compiled chunk: admin-ui ~line 204,
+   ui ~line 8910). Hand it back explicitly. The storefront Footer uses only the
+   header-* tokens and never --color-muted, so the preview is unaffected. */
+:root {
+  --color-muted: var(--text-muted);
+}
 
 /* CKEditor 5's editable area has no min-height of its own — without this it
    renders barely tall enough for one line, per direct user report. */

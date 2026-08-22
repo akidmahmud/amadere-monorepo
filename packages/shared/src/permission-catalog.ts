@@ -168,6 +168,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('homepage_section', 'update'),
   perm('homepage_section', 'delete'),
 
+  perm('footer', 'view'),
+  perm('footer', 'update'),
+
+  perm('shipping_zone', 'view'),
+  perm('shipping_zone', 'update'),
+
   perm('promo_video', 'view'),
   perm('promo_video', 'create'),
   perm('promo_video', 'update'),

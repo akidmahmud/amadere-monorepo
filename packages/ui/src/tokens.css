@@ -122,3 +122,22 @@
     transform: translateX(-50%);
   }
 }
+
+/* The footer description is admin-authored rich text (CKEditor), so it can
+   contain <p>, <ul>, <strong> and links. Tailwind's preflight strips their
+   default margins/list markers, which would collapse a multi-paragraph
+   description into one run-on block. Scoped to the footer so it cannot
+   affect the storefront's other rich-content areas, which have their own
+   .rich-content rules. */
+.footer-description > :first-child { margin-top: 0; }
+.footer-description > :last-child { margin-bottom: 0; }
+.footer-description p { margin: 0 0 0.75em; }
+.footer-description ul,
+.footer-description ol { margin: 0 0 0.75em; padding-left: 1.25em; }
+.footer-description ul { list-style: disc; }
+.footer-description ol { list-style: decimal; }
+.footer-description li { margin: 0.15em 0; }
+.footer-description strong,
+.footer-description b { font-weight: 600; color: var(--header-ink); }
+.footer-description a { color: var(--header-green); text-decoration: underline; }
+.footer-description a:hover { color: var(--header-green-dark); }

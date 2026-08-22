@@ -1,4 +1,4 @@
-import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { getGuestToken, setGuestToken, clearGuestToken } from "@/lib/guest-token";
 import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
@@ -50,6 +50,14 @@ export function useCartQuery(locale: string, paymentProvider?: string, district?
   return useQuery({
     queryKey: cartKey(locale, paymentProvider, district),
     queryFn: () => fetchCart(locale, paymentProvider, district),
+    // paymentProvider and district are part of the key, so changing either
+    // dropdown on the checkout page starts a DIFFERENT query with an empty
+    // cache. Without this, `data` goes undefined for the round trip and the
+    // entire order summary — line items, totals, the Place Order button —
+    // blanks and re-mounts, which reads as the page reloading itself every
+    // time you pick a district. Keeping the previous result on screen means
+    // the panel stays put and the numbers just update.
+    placeholderData: keepPreviousData,
   });
 }
 

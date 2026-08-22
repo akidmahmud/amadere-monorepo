@@ -18,6 +18,7 @@ import { AdvancePaymentService } from '../net-profit/advance-payment/advance-pay
 import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
 import { SmsService } from '../net-profit/sms/sms.service';
 import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
+import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -51,6 +52,7 @@ export class CheckoutService {
     private readonly emailTemplates: EmailTemplatesService,
     private readonly settings: SettingsService,
     private readonly config: ConfigService,
+    private readonly shippingZones: ShippingZonesService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -231,6 +233,7 @@ export class CheckoutService {
     const { shippingFee } = computeCheckoutFees(
       pricing.discounts.some((d) => d.freeShipping),
       dto.shippingAddress.district,
+      await this.shippingZones.getConfig(),
     );
     const taxAmount = new Decimal(0);
     const codFee = new Decimal(0);

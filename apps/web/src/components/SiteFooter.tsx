@@ -1,88 +1,86 @@
-"use client";
-
 import { Footer } from "@amader/ui";
-import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { useSiteInfo } from "@/hooks/useSiteInfo";
-import { useNavMenu } from "@/hooks/useNavMenu";
-import { toApiLocale } from "@/lib/api-locale";
+import { AppLink } from "@/components/AppLink";
+import { sanitizeHtml } from "@/lib/sanitize-html";
+import type { components } from "@/lib/api/schema";
+
+type PublicFooter = components["schemas"]["PublicFooterDto"];
 
 export interface SiteFooterProps {
-  /** Same server-fetched values SiteHeader already receives from layout.tsx
-   * — reused here so the footer's logo/Shop-By column don't wait on a
-   * second client-side fetch of data the layout already has. */
+  /** Server-fetched in [locale]/layout.tsx, same as the logo and nav menu —
+   * the footer is on every page, so a client-side fetch would mean a visible
+   * pop-in on every navigation. */
+  footer?: PublicFooter;
   initialLogoUrl?: string | null;
-  initialNavMenu?: Parameters<typeof useNavMenu>[1];
 }
 
-export function SiteFooter({ initialLogoUrl, initialNavMenu }: SiteFooterProps = {}) {
-  const t = useTranslations("footer");
-  const locale = useLocale();
-  const { data: siteInfo } = useSiteInfo();
-  const { data: navMenu } = useNavMenu(toApiLocale(locale), initialNavMenu);
-  const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
+// Contact rows are label + value so the phone and email can be real links;
+// address and hours have no link target and render as plain text.
+function contactLine(label: string, value: string): string {
+  return [label, value].filter(Boolean).join(" ");
+}
 
-  const isBn = locale.toUpperCase() === "BN";
+// Predates this feature: the payment strip was always this one static asset
+// (see apps/web/public/images/payment-methods-placeholder.png). Now that
+// `footer.payment.imageUrl` comes from the backend and is null until an
+// admin uploads a payment image, we still need this literal as the fallback
+// so a fresh install doesn't show Footer's grey dashed placeholder box.
+const DEFAULT_PAYMENT_IMAGE_URL = "/images/payment-methods-placeholder.png";
 
-  const aboutLinks = [
-    { label: isBn ? "আমাদের™ সম্পর্কে" : "About Amader™", href: "/about-us" },
-    { label: isBn ? "আমাদের™ ব্র্যান্ড" : "Amader™ Brand", href: "/amader-brand" },
-    { label: isBn ? "যোগাযোগ" : "Contact Amader™", href: "/contact" },
-    { label: isBn ? "আমাদের™ অঙ্গীকার" : "Amader™ Commitment", href: "/amader-commitment" },
-    { label: isBn ? "কর্পোরেট সেলস" : "Corporate Sales", href: "/corporate-sales" },
-    { label: isBn ? "আমাদের™ ভিশন ও মিশন" : "Amader™ Vision Mission", href: "/vision-mission" },
-    { label: isBn ? "সচরাচর জিজ্ঞাসা" : "Frequently Asked Questions", href: "/faq" },
-  ];
+// Minimal static fallback for when the backend itself was unreachable at
+// render time (getPublic() merges over its own defaults for every other
+// case, so this branch never fires for an unset or partially-filled
+// footer_config — only for a fetch failure). Deliberately not a copy of the
+// full defaults document: the goal is "the site still has a footer", not
+// "the site has every link", so columns/social/appButtons stay empty and
+// contact fields stay blank rather than duplicating footer.defaults.ts here.
+const UNREACHABLE_FALLBACK_FOOTER: PublicFooter = {
+  brandMark: "আমাদের",
+  description: "",
+  contact: {
+    address: { label: "", value: "" },
+    phone: { label: "", value: "" },
+    email: { label: "", value: "" },
+    hours: { label: "", value: "" },
+  },
+  social: [],
+  apps: { downloadLabel: "", buttons: [] },
+  columns: [],
+  payment: { label: "", imageUrl: DEFAULT_PAYMENT_IMAGE_URL },
+  copyright: `Copyright © ${new Date().getFullYear()} Amader Ltd. All rights reserved.`,
+  logo: { imageUrl: null },
+};
 
-  const policyLinks = [
-    { label: isBn ? "শর্তাবলী" : "Terms & Conditions", href: "/terms-conditions" },
-    { label: isBn ? "গোপনীয়তা নীতি" : "Privacy Policies", href: "/privacy-policy" },
-    { label: isBn ? "রিটার্ন ও এক্সচেঞ্জ" : "Returns & Exchanges", href: "/refund-policy" },
-    { label: isBn ? "শিপিং ও ডেলিভারি" : "Shipping & Delivery", href: "/shipping-delivery" },
-    { label: isBn ? "কর্মক্ষেত্রের নীতি" : "Workplace Policy", href: "/workplace-policy" },
-    { label: isBn ? "স্বাস্থ্য ও নিরাপত্তা নীতি" : "Health & Safety Policy", href: "/health-safety-policy" },
-    { label: isBn ? "হালাল ব্যবসায়িক অঙ্গীকার" : "Halal Business Commitment", href: "/halal-commitment" },
-    { label: isBn ? "আমাদের অঙ্গীকার" : "Amader Commitment", href: "/amader-commitment" },
-    { label: isBn ? "কুকি নীতি" : "Cookie Policy", href: "/cookie-policy" },
-  ];
-
-  const categoryLinks = [
-    { label: isBn ? "আমাদের ছাতু" : "Amader Chatu", href: "/categories/amader-chatu" },
-    { label: isBn ? "আমাদের আটা" : "Amader Atta", href: "/categories/atta" },
-    { label: isBn ? "আমাদের তেল" : "Amader Oil", href: "/categories/amader-oil" },
-    { label: isBn ? "আমাদের মধু" : "Amader Modhu", href: "/categories/khati-modhu" },
-    { label: isBn ? "আমাদের হার্বস" : "Amader Herbs", href: "/categories/amader-herbs" },
-    { label: isBn ? "আমাদের সুপার ফুড" : "Amader Super Food", href: "/categories/amader-super-food" },
-    { label: isBn ? "আমাদের চাল" : "Amader Rice", href: "/categories/amader-rice" },
-    { label: isBn ? "আমাদের মশলা" : "Amader Spices", href: "/categories/amader-spices" },
-  ];
-
-  const descriptionText =
-    "Amader™ (আমাদের™) কেবল একটি ফুড ব্র্যান্ড নয়, এটি বিশুদ্ধতা, বিশ্বাস এবং যত্নের প্রতিশ্রুতি। Amader™ নিশ্চিত করে প্রতিটি পণ্য ১০০% বিশুদ্ধ, ন্যাচারাল এবং স্বাস্থ্যকর। আমাদের লক্ষ্য মানুষকে প্রাচীন ন্যাচারাল খাঁটি, স্বাস্থ্যকর খাবারের সাথে পুনরায় সংযুক্ত করে এমন একটি ভবিষ্যত তৈরি করা যেখানে স্বাস্থ্য, স্বাদ এবং প্রকৃতি মিলেমিশে বাস করে ওষুধ ছাড়া।";
+export function SiteFooter({ footer: footerProp, initialLogoUrl }: SiteFooterProps = {}) {
+  // The backend merges over its own defaults, so `footer` is only ever
+  // missing when the backend itself was unreachable at render time. The
+  // spec requires the footer render defaults rather than drop off the page
+  // in that case, so fall back to a minimal static footer instead of null.
+  const footer = footerProp ?? UNREACHABLE_FALLBACK_FOOTER;
 
   return (
     <Footer
-      brandMark="আমাদের"
-      logoUrl={logoUrl}
-      description={descriptionText}
-      address="Address: Salna, Gazipur"
-      phone="Call Us: +8801615980394"
-      workingHours="Working Hours: 10am to 8pm"
-      facebookHref="https://www.facebook.com/amaderecommerce"
-      instagramHref="https://www.instagram.com/amaderebuy"
-      youtubeHref="https://www.youtube.com/@amadere"
-      googlePlayHref="#"
-      appStoreHref="#"
-      appDownloadLabel={t("appDownloadLabel")}
-      columns={[
-        { heading: isBn ? "আমাদের™ সম্পর্কে" : "About Amader™", links: aboutLinks },
-        { heading: isBn ? "আমাদের™ পলিসি" : "Amader™ Policy", links: policyLinks },
-        { heading: isBn ? "পণ্য বিভাগ" : "Product Categories", links: categoryLinks },
-      ]}
-      copyrightLabel={t("copyright", { year: new Date().getFullYear() })}
-      payWithLabel={t("payWith")}
-      paymentImageUrl="/images/payment-methods-placeholder.png"
-      linkComponent={Link}
+      brandMark={footer.brandMark}
+      // A footer-specific logo wins; otherwise the site logo, which is what
+      // the footer showed before the footer had a logo field of its own.
+      logoUrl={footer.logo?.imageUrl ?? initialLogoUrl ?? undefined}
+      // Rich text from the admin's CKEditor, rendered by Footer via
+      // dangerouslySetInnerHTML — sanitize here, at the trust boundary,
+      // exactly as blog/page/product content already does.
+      description={sanitizeHtml(footer.description)}
+      address={contactLine(footer.contact.address.label, footer.contact.address.value)}
+      phone={contactLine(footer.contact.phone.label, footer.contact.phone.value)}
+      phoneHref={footer.contact.phone.value ? `tel:${footer.contact.phone.value}` : undefined}
+      email={footer.contact.email.value ? contactLine(footer.contact.email.label, footer.contact.email.value) : undefined}
+      emailHref={footer.contact.email.value ? `mailto:${footer.contact.email.value}` : undefined}
+      workingHours={contactLine(footer.contact.hours.label, footer.contact.hours.value)}
+      social={footer.social}
+      appButtons={footer.apps.buttons}
+      appDownloadLabel={footer.apps.downloadLabel}
+      columns={footer.columns}
+      copyrightLabel={footer.copyright.replace("{year}", String(new Date().getFullYear()))}
+      payWithLabel={footer.payment.label}
+      paymentImageUrl={footer.payment.imageUrl ?? DEFAULT_PAYMENT_IMAGE_URL}
+      linkComponent={AppLink}
     />
   );
 }

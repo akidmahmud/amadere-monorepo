@@ -445,36 +445,42 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
           </div>
         )}
 
-        <div className="mt-5 grid grid-cols-4 gap-4 rounded-md bg-[#f5f6fa] px-5 py-4 text-xs text-[#111]">
-          <div className="flex items-center gap-2">
-            {headsetIcon}
-            <div>
-              <p className="m-0 font-semibold">Need Help?</p>
-              <p className="m-0 text-[#666]">{settings?.companyPhone || "—"}</p>
+        {/* Contact strip. Every value comes from Settings > Invoices — the
+            website, Facebook and trust lines used to be hardcoded literals
+            here beside a settings-driven phone, so updating company details
+            refreshed one tile and silently left the rest stale. A blank
+            value now hides its tile rather than printing a dash. */}
+        {(() => {
+          const tiles = [
+            { icon: headsetIcon, label: "Need Help?", value: settings?.companyPhone },
+            { icon: globeIcon, label: "Visit Our Website", value: settings?.companyWebsite },
+            { icon: facebookIcon, label: "Like Our Page", value: settings?.companyFacebook },
+            {
+              icon: leafIcon,
+              label: settings?.trustBadgeTitle,
+              value: settings?.trustBadgeSubtitle,
+            },
+          ].filter((t) => t.label && t.value);
+
+          if (tiles.length === 0) return null;
+
+          return (
+            <div
+              className="mt-5 grid gap-4 rounded-md bg-[#f5f6fa] px-5 py-4 text-xs text-[#111]"
+              style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
+            >
+              {tiles.map((tile, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  {tile.icon}
+                  <div>
+                    <p className="m-0 font-semibold">{tile.label}</p>
+                    <p className="m-0 text-[#666]">{tile.value}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {globeIcon}
-            <div>
-              <p className="m-0 font-semibold">Visit Our Website</p>
-              <p className="m-0 text-[#666]">www.amadere.com</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {facebookIcon}
-            <div>
-              <p className="m-0 font-semibold">Like Our Page</p>
-              <p className="m-0 text-[#666]">fb.com/amadere</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {leafIcon}
-            <div>
-              <p className="m-0 font-semibold">100% Natural &amp; Healthy</p>
-              <p className="m-0 text-[#666]">Trusted by Thousands</p>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemov
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
+import { ShippingRatesNotice } from "@/components/ShippingRatesNotice";
 import { useMe } from "@/hooks/useAuth";
 import { useCheckoutPrefill } from "@/hooks/useCheckoutPrefill";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
@@ -614,6 +615,10 @@ export function CheckoutForm() {
                   </div>
                 }
               />
+              {/* Reads the same zone config the backend charges from, so the
+                  highlighted rate can never disagree with the Shipping fee
+                  line in the order summary. */}
+              <ShippingRatesNotice district={shippingDistrict} />
             </div>
 
             <div className="rounded-brand border border-line bg-white p-5">

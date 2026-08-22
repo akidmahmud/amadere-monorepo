@@ -91,12 +91,16 @@ export default async function LocaleLayout({
     // after a client-side fetch; server-fetching it here puts it in the
     // first HTML response instead.
     { data: announcements },
+    // Same fix again — the footer is on every page, so server-fetching it
+    // here avoids a client-side fetch and the pop-in that would come with it.
+    { data: footer },
   ] = await Promise.all([
     safeGet("/api/v1/settings/site"),
     safeGet("/api/v1/analytics/config"),
     safeGet("/api/v1/whatsapp/config"),
     safeGet("/api/v1/menu", { params: { query: { locale: locale.toUpperCase() } } }),
     safeGet("/api/v1/announcements", { params: { query: { locale: locale.toUpperCase() } } }),
+    safeGet("/api/v1/footer", { params: { query: { locale: locale.toUpperCase() } } }),
   ]);
 
   return (
@@ -172,7 +176,7 @@ export default async function LocaleLayout({
               <ProductCardStyleProvider value={(siteInfo?.productCardStyle as ProductCardStyle | undefined) ?? "ONE"}>
                 <div className="flex flex-1 flex-col">{children}</div>
               </ProductCardStyleProvider>
-              <SiteFooter initialLogoUrl={siteInfo?.logoUrl} initialNavMenu={navMenu} />
+              <SiteFooter footer={footer} initialLogoUrl={siteInfo?.logoUrl} />
               <SiteCartDrawer />
               <WhatsappFloatingButton config={(whatsappConfig as WhatsappConfig | undefined) ?? null} />
               <CartSummaryWidget />

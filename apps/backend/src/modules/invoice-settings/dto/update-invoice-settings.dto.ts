@@ -54,6 +54,30 @@ export class UpdateInvoiceSettingsDto {
   @MaxLength(50)
   companyPhone?: string;
 
+  @ApiPropertyOptional({ description: 'Invoice footer strip — blank hides the tile' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  companyWebsite?: string;
+
+  @ApiPropertyOptional({ description: 'Invoice footer strip — blank hides the tile' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  companyFacebook?: string;
+
+  @ApiPropertyOptional({ description: 'Invoice footer strip — blank hides the tile' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  trustBadgeTitle?: string;
+
+  @ApiPropertyOptional({ description: 'Invoice footer strip — blank hides the tile' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  trustBadgeSubtitle?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

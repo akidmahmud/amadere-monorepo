@@ -85,3 +85,13 @@ const DIVISION_BY_DISTRICT: Record<string, string> = Object.fromEntries(
 export function divisionForDistrict(district: string): string | null {
   return DIVISION_BY_DISTRICT[district.trim().toLowerCase()] ?? null;
 }
+
+// Flat list of every district, in division order. Used where a feature needs
+// to validate or offer the whole set rather than work division-by-division
+// (e.g. shipping-zone district assignment).
+export const BD_ALL_DISTRICTS: string[] = Object.values(BD_DISTRICTS_BY_DIVISION).flat();
+
+/** Case-insensitive membership check against the canonical district list. */
+export function isKnownDistrict(district: string): boolean {
+  return divisionForDistrict(district) !== null;
+}
