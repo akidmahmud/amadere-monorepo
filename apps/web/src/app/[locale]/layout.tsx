@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SiteCartDrawer } from "@/components/SiteCartDrawer";
+import { SiteCartDrawerLazy } from "@/components/SiteCartDrawerLazy";
 import { WhatsappFloatingButton } from "@/components/WhatsappFloatingButton";
 import { CartSummaryWidget } from "@/components/CartSummaryWidget";
 import { BackToTopButton } from "@/components/BackToTopButton";
@@ -218,7 +218,7 @@ export default async function LocaleLayout({
                 <div className="flex flex-1 flex-col">{children}</div>
               </ProductCardStyleProvider>
               <SiteFooter footer={footer} initialLogoUrl={siteInfo?.logoUrl} />
-              <SiteCartDrawer />
+              <SiteCartDrawerLazy />
               <WhatsappFloatingButton
                 config={(whatsappConfig as WhatsappConfig | undefined) ?? null}
               />

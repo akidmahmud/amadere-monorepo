@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   AnnouncementBar,
   Header,
-  MobileDrawer,
   Nav,
   useMobileNavDrawerStore,
 } from "@amader/ui";
@@ -19,6 +18,16 @@ import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { useNavMenu } from "@/hooks/useNavMenu";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { IMG, toDisplayImageUrl } from "@/lib/media";
+import dynamic from "next/dynamic";
+
+// Hidden until the hamburger is tapped, but its code shipped in the
+// initial bundle on every page. Loaded as its own chunk after hydration
+// instead — nothing renders before it arrives, because the drawer is
+// closed by default.
+const MobileDrawer = dynamic(
+  () => import("@amader/ui").then((m) => m.MobileDrawer),
+  { ssr: false },
+);
 
 function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
