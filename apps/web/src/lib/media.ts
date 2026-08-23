@@ -1,15 +1,31 @@
+import { IMG, cdnImageUrl } from "./image-url";
+
 /**
  * The B12 migration stored every media reference as a `legacy://` pseudo-URL
  * (R2 upload was a deliberate follow-up, never done — see backend AGENTS.md).
  * Treat anything that isn't a real http(s) URL as "no image yet" so
  * ProductCard/BentoBlogs/etc. fall back to their placeholder styling instead
  * of a broken <img>.
+ *
+ * It now also rewrites the URL to be served resized from the CDN edge. Most
+ * callers render a raw <img>, which never reaches the next/image loader, so
+ * without this they ship whatever was uploaded at full size. That is not
+ * theoretical: the site logo was a 1.77 MB PNG rendered at 56 pixels tall.
+ *
+ * `width` should be roughly 2x the CSS width the image renders at — pass one
+ * of the named IMG sizes. The default is deliberately generous, and
+ * `fit=scale-down` means a smaller source is never upscaled, so passing
+ * nothing is safe if the size genuinely is not known at the call site.
  */
 export function toDisplayImageUrl(
   url: string | null | undefined,
+  width: number = IMG.default,
 ): string | undefined {
-  return url && /^https?:\/\//.test(url) ? url : undefined;
+  if (!url || !/^https?:\/\//.test(url)) return undefined;
+  return cdnImageUrl(url, width);
 }
+
+export { IMG } from "./image-url";
 
 // Every YouTube URL shape an admin might paste — the share/watch link, the
 // youtu.be shortener, Shorts, live, or an already-correct /embed/ one.

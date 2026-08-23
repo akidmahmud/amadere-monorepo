@@ -1,7 +1,7 @@
 "use client";
 
 import { formatMoney } from "@amader/ui";
-import { toDisplayImageUrl } from "@/lib/media";
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 import type { components } from "@/lib/api/schema";
 
 type OrderDto = components["schemas"]["OrderDto"];
@@ -45,11 +45,16 @@ export function CustomerInvoiceDocument({
   siteName: string;
   logoUrl?: string | null;
 }) {
-  const billing = order.addresses.find((a) => (a.type as unknown as string) === "BILLING")
-    ?? order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
+  const billing =
+    order.addresses.find((a) => (a.type as unknown as string) === "BILLING") ??
+    order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
   const latestPayment = order.payments[order.payments.length - 1];
-  const paymentProvider = latestPayment ? (latestPayment.provider as unknown as string) : null;
-  const paymentStatus = latestPayment ? (latestPayment.status as unknown as string) : null;
+  const paymentProvider = latestPayment
+    ? (latestPayment.provider as unknown as string)
+    : null;
+  const paymentStatus = latestPayment
+    ? (latestPayment.status as unknown as string)
+    : null;
 
   const paidAmount = order.payments.reduce((sum, p) => {
     if ((p.status as unknown as string) !== "CAPTURED") return sum;
@@ -66,33 +71,60 @@ export function CustomerInvoiceDocument({
         <div className="mb-5 flex items-center justify-between">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={siteName} className="h-[50px] object-contain" />
+            <img
+              src={toDisplayImageUrl(logoUrl, IMG.logo)}
+              alt={siteName}
+              className="h-[50px] object-contain"
+            />
           ) : (
-            <div className="rounded-md px-4 py-2 text-xl font-bold text-white" style={{ backgroundColor: GREEN }}>
+            <div
+              className="rounded-md px-4 py-2 text-xl font-bold text-white"
+              style={{ backgroundColor: GREEN }}
+            >
               {siteName}
             </div>
           )}
-          <div className="text-[30px] font-bold uppercase text-[#111]">Invoice</div>
+          <div className="text-[30px] font-bold uppercase text-[#111]">
+            Invoice
+          </div>
         </div>
 
         <div className="mb-5 flex items-center">
-          <div className="mr-5 h-[3px] flex-1 rounded-full" style={{ backgroundColor: GREEN }} />
+          <div
+            className="mr-5 h-[3px] flex-1 rounded-full"
+            style={{ backgroundColor: GREEN }}
+          />
           <div className="flex gap-5 whitespace-nowrap text-[#111]">
             <p className="m-0">
-              Order No: <strong style={{ color: GREEN }}>{order.orderNumber}</strong>
+              Order No:{" "}
+              <strong style={{ color: GREEN }}>{order.orderNumber}</strong>
             </p>
             <p className="m-0">
-              Date: <strong style={{ color: GREEN }}>{new Date(order.createdAt).toLocaleDateString()}</strong>
+              Date:{" "}
+              <strong style={{ color: GREEN }}>
+                {new Date(order.createdAt).toLocaleDateString()}
+              </strong>
             </p>
           </div>
         </div>
 
         {billing && (
           <div className="mb-5">
-            <p className="mb-1 font-bold" style={{ color: GREEN }}>Billed To:</p>
+            <p className="mb-1 font-bold" style={{ color: GREEN }}>
+              Billed To:
+            </p>
             <p className="m-0">{billing.recipientName}</p>
             <p className="m-0">{billing.addressLine}</p>
-            <p className="m-0">{[billing.area, billing.district, billing.division, billing.postCode].filter(Boolean).join(", ")}</p>
+            <p className="m-0">
+              {[
+                billing.area,
+                billing.district,
+                billing.division,
+                billing.postCode,
+              ]
+                .filter(Boolean)
+                .join(", ")}
+            </p>
             <p className="m-0">{billing.phone}</p>
           </div>
         )}
@@ -116,16 +148,29 @@ export function CustomerInvoiceDocument({
                       <div className="flex items-center gap-2.5">
                         {imageUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={imageUrl} alt="" className="h-9 w-9 shrink-0 rounded object-cover print:hidden" />
+                          <img
+                            src={imageUrl}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded object-cover print:hidden"
+                          />
                         )}
                         <span>
-                          {item.name} {item.sku && <span className="text-[#b5b5b5]">({item.sku})</span>}
+                          {item.name}{" "}
+                          {item.sku && (
+                            <span className="text-[#b5b5b5]">({item.sku})</span>
+                          )}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5">{formatMoney(item.unitPrice)}</td>
+                    <td className="px-4 py-2.5">
+                      {formatMoney(item.unitPrice)}
+                    </td>
                     <td className="px-4 py-2.5">{item.quantity}</td>
-                    <td className="px-4 py-2.5 text-right">{formatMoney(String(Number(item.unitPrice) * item.quantity))}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      {formatMoney(
+                        String(Number(item.unitPrice) * item.quantity),
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -135,16 +180,29 @@ export function CustomerInvoiceDocument({
 
         <div className="flex items-start justify-between gap-5">
           <div className="flex w-[48%] flex-col gap-2.5 rounded-md border border-[#dbdfea] px-5 py-4">
-            <p className="m-0 font-bold" style={{ color: GREEN }}>Payment Information</p>
+            <p className="m-0 font-bold" style={{ color: GREEN }}>
+              Payment Information
+            </p>
             <div className="flex items-center justify-between text-[#111]">
               <span className="font-semibold">Payment Method</span>
-              <span>{paymentProvider ? PAYMENT_METHOD_LABEL[paymentProvider] ?? paymentProvider : "—"}</span>
+              <span>
+                {paymentProvider
+                  ? (PAYMENT_METHOD_LABEL[paymentProvider] ?? paymentProvider)
+                  : "—"}
+              </span>
             </div>
             <div className="flex items-center justify-between text-[#111]">
               <span className="font-semibold">Payment Status</span>
-              <span>{paymentStatus ? PAYMENT_STATUS_LABEL[paymentStatus] ?? paymentStatus : "—"}</span>
+              <span>
+                {paymentStatus
+                  ? (PAYMENT_STATUS_LABEL[paymentStatus] ?? paymentStatus)
+                  : "—"}
+              </span>
             </div>
-            <div className="flex justify-between font-bold" style={{ color: dueAmount > 0 ? "#c53030" : GREEN }}>
+            <div
+              className="flex justify-between font-bold"
+              style={{ color: dueAmount > 0 ? "#c53030" : GREEN }}
+            >
               <span>Due Amount</span>
               <span>{formatMoney(String(dueAmount))}</span>
             </div>
@@ -155,30 +213,49 @@ export function CustomerInvoiceDocument({
             )}
           </div>
           <div className="flex w-[48%] flex-col gap-1 text-[#111]">
-            <div className="flex justify-between"><span>Subtotal</span><span>{formatMoney(order.subTotal)}</span></div>
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{formatMoney(order.subTotal)}</span>
+            </div>
             {Number(order.discountAmount) > 0 && (
               <div className="flex justify-between" style={{ color: GREEN }}>
-                <span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+                <span>
+                  Discount{order.couponCode ? ` (${order.couponCode})` : ""}
+                </span>
                 <span>-{formatMoney(order.discountAmount)}</span>
               </div>
             )}
             {Number(order.shippingAmount) > 0 && (
-              <div className="flex justify-between"><span>Shipping</span><span>{formatMoney(order.shippingAmount)}</span></div>
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <span>{formatMoney(order.shippingAmount)}</span>
+              </div>
             )}
             {Number(order.taxAmount) > 0 && (
-              <div className="flex justify-between"><span>Tax</span><span>{formatMoney(order.taxAmount)}</span></div>
+              <div className="flex justify-between">
+                <span>Tax</span>
+                <span>{formatMoney(order.taxAmount)}</span>
+              </div>
             )}
             {Number(order.codFee) > 0 && (
-              <div className="flex justify-between"><span>COD Fee</span><span>{formatMoney(order.codFee)}</span></div>
+              <div className="flex justify-between">
+                <span>COD Fee</span>
+                <span>{formatMoney(order.codFee)}</span>
+              </div>
             )}
             <div className="mt-1 flex justify-between border-t border-dashed border-[#c7ccd6] pt-2.5 text-base font-bold">
               <span className="text-[#111]">Grand Total</span>
-              <span style={{ color: GREEN }}>{formatMoney(order.totalAmount)}</span>
+              <span style={{ color: GREEN }}>
+                {formatMoney(order.totalAmount)}
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="mt-5 rounded-md py-3 text-center text-sm font-semibold text-white" style={{ backgroundColor: GREEN }}>
+        <div
+          className="mt-5 rounded-md py-3 text-center text-sm font-semibold text-white"
+          style={{ backgroundColor: GREEN }}
+        >
           Thank you for shopping with {siteName}!
         </div>
       </div>

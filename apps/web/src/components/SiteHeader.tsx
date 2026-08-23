@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnnouncementBar, Header, MobileDrawer, Nav, useMobileNavDrawerStore } from "@amader/ui";
+import {
+  AnnouncementBar,
+  Header,
+  MobileDrawer,
+  Nav,
+  useMobileNavDrawerStore,
+} from "@amader/ui";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname, Link } from "@/i18n/navigation";
 import { toApiLocale } from "@/lib/api-locale";
@@ -12,7 +18,7 @@ import { useSearchSuggestions } from "@/hooks/useSearch";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { useNavMenu } from "@/hooks/useNavMenu";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
-import { toDisplayImageUrl } from "@/lib/media";
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 
 function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -35,25 +41,40 @@ export interface SiteHeaderProps {
   initialAnnouncements?: Parameters<typeof useAnnouncements>[1];
 }
 
-export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncements }: SiteHeaderProps = {}) {
+export function SiteHeader({
+  initialLogoUrl,
+  initialNavMenu,
+  initialAnnouncements,
+}: SiteHeaderProps = {}) {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const { data: cart } = useCartQuery(toApiLocale(locale));
-  const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const cartCount =
+    cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const { data: me } = useMe();
   const { data: wishlist } = useWishlist(toApiLocale(locale), !!me);
   const { data: siteInfo } = useSiteInfo();
   const { data: navMenu } = useNavMenu(toApiLocale(locale), initialNavMenu);
-  const { data: announcements } = useAnnouncements(toApiLocale(locale), initialAnnouncements);
-  const logoUrl = siteInfo?.logoUrl ?? initialLogoUrl ?? undefined;
+  const { data: announcements } = useAnnouncements(
+    toApiLocale(locale),
+    initialAnnouncements,
+  );
+  // Served resized from the CDN. This one image bypassed every
+  // optimisation the app has: measured live at 1,773,628 bytes for a
+  // logo rendered at max-h-[56px], on every page, and preloaded.
+  const logoUrl = toDisplayImageUrl(
+    siteInfo?.logoUrl ?? initialLogoUrl,
+    IMG.logo,
+  );
   const logoPaddingPx = siteInfo?.logoPaddingPx ?? 0;
   const logoMarginPx = siteInfo?.logoMarginPx ?? 0;
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebounced(searchQuery, 250);
-  const { data: suggestions, isLoading: suggestionsLoading } = useSearchSuggestions(debouncedQuery, toApiLocale(locale));
+  const { data: suggestions, isLoading: suggestionsLoading } =
+    useSearchSuggestions(debouncedQuery, toApiLocale(locale));
 
   const otherLocale = locale === "en" ? "bn" : "en";
   const switchLocale = () => router.replace(pathname, { locale: otherLocale });
@@ -98,14 +119,19 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
         blogLabel={t("header.blog")}
         searchPlaceholder={t("header.searchPlaceholder")}
         searchAriaLabel={t("header.searchAria")}
-        onSearchSubmit={(query) => query.trim() && router.push(`/search?q=${encodeURIComponent(query.trim())}`)}
+        onSearchSubmit={(query) =>
+          query.trim() &&
+          router.push(`/search?q=${encodeURIComponent(query.trim())}`)
+        }
         onSearchQueryChange={setSearchQuery}
         searchSuggestions={
           searchQuery.trim().length >= 2
             ? (close) => (
                 <div className="max-h-[70vh] overflow-y-auto py-1.5">
                   {suggestionsLoading ? (
-                    <p className="px-4 py-3 text-center font-body text-xs text-muted">Searching…</p>
+                    <p className="px-4 py-3 text-center font-body text-xs text-muted">
+                      Searching…
+                    </p>
                   ) : suggestions?.items?.length ? (
                     <>
                       {suggestions.items.map((hit) => (
@@ -118,11 +144,17 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
                           <span className="h-10 w-10 shrink-0 overflow-hidden rounded-[8px] bg-beige">
                             {hit.primaryImageUrl && (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={toDisplayImageUrl(hit.primaryImageUrl)} alt="" className="h-full w-full object-cover" />
+                              <img
+                                src={toDisplayImageUrl(hit.primaryImageUrl)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             )}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate font-body text-[13px] text-ink">{hit.name}</span>
+                            <span className="block truncate font-body text-[13px] text-ink">
+                              {hit.name}
+                            </span>
                             {/* salePrice is non-null only when a sale is
                                 genuinely active and below the regular price
                                 (enforced in postgres-search.provider), so
@@ -131,7 +163,9 @@ export function SiteHeader({ initialLogoUrl, initialNavMenu, initialAnnouncement
                             <span className="flex items-baseline gap-1.5 font-ui text-xs font-semibold text-green-deep">
                               <span>৳{hit.salePrice ?? hit.price}</span>
                               {hit.salePrice && hit.price && (
-                                <span className="font-normal text-muted line-through">৳{hit.price}</span>
+                                <span className="font-normal text-muted line-through">
+                                  ৳{hit.price}
+                                </span>
                               )}
                             </span>
                           </span>

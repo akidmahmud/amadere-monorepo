@@ -20,8 +20,11 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
-import { toProductCardData, toPromoVideoProductData } from "@/lib/product-card-mapper";
-import { toDisplayImageUrl } from "@/lib/media";
+import {
+  toProductCardData,
+  toPromoVideoProductData,
+} from "@/lib/product-card-mapper";
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 import { toBlogCardData } from "@/lib/blog-mapper";
 import { FeaturedDealsSectionClient } from "@/components/FeaturedDealsSectionClient";
 import { HealthConcernSection } from "@/components/HealthConcernSection";
@@ -66,20 +69,34 @@ type HomepageSectionType =
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
-  "type" | "config" | "topSellingProducts" | "justForYouProducts" | "featuredDealsProducts"
+  | "type"
+  | "config"
+  | "topSellingProducts"
+  | "justForYouProducts"
+  | "featuredDealsProducts"
 > & {
   type: HomepageSectionType;
   config: Record<string, unknown>;
-  topSellingProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
-  justForYouProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
-  featuredDealsProducts: (components["schemas"]["PublicProductDto"] | null)[] | null;
+  topSellingProducts:
+    (components["schemas"]["PublicProductDto"] | null)[] | null;
+  justForYouProducts:
+    (components["schemas"]["PublicProductDto"] | null)[] | null;
+  featuredDealsProducts:
+    (components["schemas"]["PublicProductDto"] | null)[] | null;
 };
 
 // Fixed homepage position now (§ "Promo Videos" is no longer a reorderable
 // HomepageSection type) — its own type, its own fetch, spliced into the
 // section render list at a fixed index rather than sorted in by sortOrder.
 type PublicPromoVideo = components["schemas"]["PublicPromoVideoDto"] & {
-  source: "YOUTUBE" | "TIKTOK" | "INSTAGRAM" | "FACEBOOK" | "CUSTOM_URL" | "R2" | "GIF";
+  source:
+    | "YOUTUBE"
+    | "TIKTOK"
+    | "INSTAGRAM"
+    | "FACEBOOK"
+    | "CUSTOM_URL"
+    | "R2"
+    | "GIF";
 };
 
 // Same 1440px container / 16px-mobile-24px-desktop gutter as the header, nav,
@@ -105,26 +122,61 @@ function renderSection(
 
   switch (section.type) {
     case "HERO_BANNER": {
-      const slides = config.slides as { imageUrl: string; linkUrl?: string }[] | undefined;
+      // Admin-uploaded banner art goes straight into a raw <img>, so it has
+      // to be routed through the CDN here or the browser gets the original
+      // upload at full size.
+      const slides = (
+        config.slides as { imageUrl: string; linkUrl?: string }[] | undefined
+      )?.map((s) => ({
+        ...s,
+        imageUrl: toDisplayImageUrl(s.imageUrl, IMG.banner) ?? s.imageUrl,
+      }));
       // sideBanners (array, multiple) supersedes the old singular
       // stripImageUrl/stripLinkUrl — fall back to wrapping those as a
       // one-item array so sections saved before this change keep rendering
       // their existing side banner unchanged.
-      const sideBanners = (config.sideBanners as { imageUrl: string; linkUrl?: string }[] | undefined) ?? (config.stripImageUrl
-        ? [{ imageUrl: config.stripImageUrl as string, linkUrl: config.stripLinkUrl as string | undefined }]
-        : undefined);
+      const sideBanners = (
+        (config.sideBanners as
+          { imageUrl: string; linkUrl?: string }[] | undefined) ??
+        (config.stripImageUrl
+          ? [
+              {
+                imageUrl: config.stripImageUrl as string,
+                linkUrl: config.stripLinkUrl as string | undefined,
+              },
+            ]
+          : undefined)
+      )?.map((b) => ({
+        ...b,
+        imageUrl: toDisplayImageUrl(b.imageUrl, IMG.banner) ?? b.imageUrl,
+      }));
       return (
         // Full-bleed edge-to-edge (no padding, no top gap), unlike every
         // other section — kept only the max-width cap for ultra-wide
         // monitors.
         <div className="mx-auto w-full max-w-[1920px]" key={section.id}>
-          <HeroCarousel slides={slides} sideBanners={sideBanners} linkComponent={AppLink} />
+          <HeroCarousel
+            slides={slides}
+            sideBanners={sideBanners}
+            linkComponent={AppLink}
+          />
         </div>
       );
     }
 
     case "HOME_BANNER_TWO": {
-      const slides = config.slides as { imageUrl: string; mobileImageUrl?: string; linkUrl?: string }[] | undefined;
+      const slides = (
+        config.slides as
+          | { imageUrl: string; mobileImageUrl?: string; linkUrl?: string }[]
+          | undefined
+      )?.map((s) => ({
+        ...s,
+        imageUrl: toDisplayImageUrl(s.imageUrl, IMG.banner) ?? s.imageUrl,
+        mobileImageUrl: s.mobileImageUrl
+          ? (toDisplayImageUrl(s.mobileImageUrl, IMG.banner) ??
+            s.mobileImageUrl)
+          : undefined,
+      }));
       if (!slides || slides.length === 0) return null;
       return (
         <div className="mx-auto w-full max-w-[1920px]" key={section.id}>
@@ -137,7 +189,9 @@ function renderSection(
       if (!section.collection) return null;
       // Sold-out products are dropped from the homepage carousel rather than
       // shown greyed out — the collection page still lists them.
-      const products = section.collection.products.map(toProductCardData).filter((p) => !p.outOfStock);
+      const products = section.collection.products
+        .map(toProductCardData)
+        .filter((p) => !p.outOfStock);
       if (products.length === 0) return null;
       return (
         <div className={WRAPPER} key={section.id}>
@@ -154,7 +208,9 @@ function renderSection(
     }
 
     case "BANNER_STRIP": {
-      const imageUrl = config.imageUrl as string | undefined;
+      const rawImageUrl = config.imageUrl as string | undefined;
+      const imageUrl =
+        toDisplayImageUrl(rawImageUrl, IMG.banner) ?? rawImageUrl;
       if (!imageUrl) return null;
       const linkUrl = config.linkUrl as string | undefined;
       // Fixed 1690x195 box per design spec — crops to fill (object-cover),
@@ -179,7 +235,9 @@ function renderSection(
       if (selected.length === 0) return null;
       return (
         <div className={`${WRAPPER} py-9`} key={section.id}>
-          <SectionHeading>{section.heading ?? "Our Range of Categories"}</SectionHeading>
+          <SectionHeading>
+            {section.heading ?? "Our Range of Categories"}
+          </SectionHeading>
           <Carousel autoplayMs={4000}>
             {selected.map((category) => (
               <CategoryCard
@@ -219,7 +277,9 @@ function renderSection(
     }
 
     case "TOP_SELLING_PRODUCTS": {
-      const configItems = (config.items as { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
+      const configItems =
+        (config.items as
+          { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
       const resolvedProducts = section.topSellingProducts ?? [];
       const items = configItems
         .map((item, i) => {
@@ -230,7 +290,11 @@ function renderSection(
         .filter((item): item is NonNullable<typeof item> => item !== null);
       if (items.length === 0) return null;
       return (
-        <TopSellingProductsSectionClient key={section.id} heading={section.heading ?? undefined} items={items} />
+        <TopSellingProductsSectionClient
+          key={section.id}
+          heading={section.heading ?? undefined}
+          items={items}
+        />
       );
     }
 
@@ -240,13 +304,18 @@ function renderSection(
     // No backing collection to derive a view-all target from, so it links to
     // the full catalog instead.
     case "JUST_FOR_YOU": {
-      const configItems = (config.items as { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
+      const configItems =
+        (config.items as
+          { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
       const resolvedProducts = section.justForYouProducts ?? [];
       const items = configItems
         .map((item, i) => {
           const product = resolvedProducts[i];
           if (!product) return null;
-          return { ...toProductCardData(product), flagLabel: item.showBadge ? "Best Selling" : undefined };
+          return {
+            ...toProductCardData(product),
+            flagLabel: item.showBadge ? "Best Selling" : undefined,
+          };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
       if (items.length === 0) return null;
@@ -266,13 +335,18 @@ function renderSection(
     // the hardcoded, bundle-driven "Exclusive Combo Deals" section — plain
     // hand-picked products now, no bundle/combo entity behind it.
     case "FEATURED_DEALS": {
-      const configItems = (config.items as { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
+      const configItems =
+        (config.items as
+          { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
       const resolvedProducts = section.featuredDealsProducts ?? [];
       const items = configItems
         .map((item, i) => {
           const product = resolvedProducts[i];
           if (!product) return null;
-          return { ...toProductCardData(product), flagLabel: item.showBadge ? "Best Selling" : undefined };
+          return {
+            ...toProductCardData(product),
+            flagLabel: item.showBadge ? "Best Selling" : undefined,
+          };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
       if (items.length === 0) return null;
@@ -293,15 +367,19 @@ function renderSection(
       // When the admin explicitly picked posts (postIds), show all of them —
       // `config.limit` is a leftover default for the "latest N posts" mode
       // and shouldn't silently drop an explicitly-selected post.
-      const limit = postIds?.length ?? (config.limit as number | undefined) ?? 8;
-      const selected = (postIds?.length ? ctx.blogPosts.filter((p) => postIds.includes(p.id)) : ctx.blogPosts).slice(
-        0,
-        limit,
-      );
+      const limit =
+        postIds?.length ?? (config.limit as number | undefined) ?? 8;
+      const selected = (
+        postIds?.length
+          ? ctx.blogPosts.filter((p) => postIds.includes(p.id))
+          : ctx.blogPosts
+      ).slice(0, limit);
       if (selected.length === 0) return null;
       return (
         <div className={`${WRAPPER_HALF} py-9`} key={section.id}>
-          <SectionHeading className="mb-10">{section.heading ?? "আমাদের ব্লগ"}</SectionHeading>
+          <SectionHeading className="mb-10">
+            {section.heading ?? "আমাদের ব্লগ"}
+          </SectionHeading>
           <BlogCardGrid
             posts={selected.map((post) => toBlogCardData(post))}
             viewAllHref="/blog"
@@ -313,11 +391,17 @@ function renderSection(
     }
 
     case "CERTIFICATION_ROW": {
-      const rawItems = config.items as { imageUrl?: string; label?: string }[] | undefined;
-      const items = rawItems?.map((item) => ({ imageUrl: toDisplayImageUrl(item.imageUrl), label: item.label }));
+      const rawItems = config.items as
+        { imageUrl?: string; label?: string }[] | undefined;
+      const items = rawItems?.map((item) => ({
+        imageUrl: toDisplayImageUrl(item.imageUrl),
+        label: item.label,
+      }));
       return (
         <div className={`${WRAPPER_HALF} py-9`} key={section.id}>
-          <SectionHeading>{section.heading ?? "Our Certification"}</SectionHeading>
+          <SectionHeading>
+            {section.heading ?? "Our Certification"}
+          </SectionHeading>
           <CertificationRow items={items} />
         </div>
       );
@@ -325,20 +409,32 @@ function renderSection(
 
     case "TESTIMONIAL_BENTO": {
       const rawReviews = config.reviews as
-        | { quote: string; name: string; role?: string; avatarUrl?: string; rating?: number }[]
+        | {
+            quote: string;
+            name: string;
+            role?: string;
+            avatarUrl?: string;
+            rating?: number;
+          }[]
         | undefined;
-      const reviews = rawReviews?.map((r) => ({ ...r, avatarUrl: toDisplayImageUrl(r.avatarUrl) }));
+      const reviews = rawReviews?.map((r) => ({
+        ...r,
+        avatarUrl: toDisplayImageUrl(r.avatarUrl),
+      }));
       if (!reviews || reviews.length === 0) return null;
       return (
         <div className={`${WRAPPER_HALF} py-9`} key={section.id}>
-          <SectionHeading>{section.heading ?? "500+ Happy Clients"}</SectionHeading>
+          <SectionHeading>
+            {section.heading ?? "500+ Happy Clients"}
+          </SectionHeading>
           <TestimonialsBento reviews={reviews} />
         </div>
       );
     }
 
     case "CIRCLE_BADGE_BAR": {
-      const items = config.items as { imageUrl?: string; label: string }[] | undefined;
+      const items = config.items as
+        { imageUrl?: string; label: string }[] | undefined;
       if (!items || items.length === 0) return null;
       return (
         <div className={WRAPPER} key={section.id}>
@@ -348,7 +444,8 @@ function renderSection(
     }
 
     case "AD_BANNER": {
-      const images = config.images as { imageUrl: string; linkUrl?: string }[] | undefined;
+      const images = config.images as
+        { imageUrl: string; linkUrl?: string }[] | undefined;
       if (!images || images.length === 0) return null;
       return (
         <div className={`${WRAPPER_HALF} py-5`} key={section.id}>
@@ -362,8 +459,11 @@ function renderSection(
     // the pill-tab switcher + promo tile; resolves via the same
     // collectionId FK as PRODUCT_COLLECTION now instead of config.tabs).
     case "TABBED_COLLECTION_CAROUSEL": {
-      if (!section.collection || section.collection.products.length === 0) return null;
-      const items = section.collection.products.map((product) => toProductCardData(product));
+      if (!section.collection || section.collection.products.length === 0)
+        return null;
+      const items = section.collection.products.map((product) =>
+        toProductCardData(product),
+      );
       return (
         <TabbedCollectionCarouselSection
           key={section.id}
@@ -384,15 +484,26 @@ function renderSection(
 // into the section list at a fixed index rather than sorted in by sortOrder.
 function renderPromoVideos(videos: PublicPromoVideo[]): ReactNode {
   if (videos.length === 0) return null;
-  const items = videos.map((v) => ({ source: v.source, url: v.url, thumbnailUrl: v.thumbnailUrl ?? undefined }));
-  const products = videos.map((v) => (v.product ? toPromoVideoProductData(v.product) : null));
+  const items = videos.map((v) => ({
+    source: v.source,
+    url: v.url,
+    thumbnailUrl: v.thumbnailUrl ?? undefined,
+  }));
+  const products = videos.map((v) =>
+    v.product ? toPromoVideoProductData(v.product) : null,
+  );
   return (
     <div className={WRAPPER_HALF} key="promo-videos">
       <PromoVideoSectionClient items={items} products={products} />
-      {videos.flatMap((v) => v.structuredData).map((item, i) => (
-        // eslint-disable-next-line react/no-danger
-        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }} />
-      ))}
+      {videos
+        .flatMap((v) => v.structuredData)
+        .map((item, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(item) }}
+          />
+        ))}
     </div>
   );
 }
@@ -419,19 +530,31 @@ export default async function Home({
   const firstTag = tags[0];
   const firstTagProductsPromise = firstTag
     ? safeGet("/api/v1/products", {
-        params: { query: { locale: localeParam, tagIds: [firstTag.id], pageSize: 8 } },
+        params: {
+          query: { locale: localeParam, tagIds: [firstTag.id], pageSize: 8 },
+        },
       })
     : Promise.resolve({ data: undefined });
 
-  const [sectionsRes, categoriesRes, blogRes, promoVideosRes, firstTagProductsRes] = await Promise.all([
-    safeGet("/api/v1/homepage-sections", { params: { query: { locale: localeParam } } }),
+  const [
+    sectionsRes,
+    categoriesRes,
+    blogRes,
+    promoVideosRes,
+    firstTagProductsRes,
+  ] = await Promise.all([
+    safeGet("/api/v1/homepage-sections", {
+      params: { query: { locale: localeParam } },
+    }),
     safeGet("/api/v1/categories", {
       params: { query: { locale: localeParam, pageSize: 10 } },
     }),
     safeGet("/api/v1/blog-posts", {
       params: { query: { locale: localeParam, pageSize: 8 } },
     }),
-    safeGet("/api/v1/promo-videos", { params: { query: { locale: localeParam } } }),
+    safeGet("/api/v1/promo-videos", {
+      params: { query: { locale: localeParam } },
+    }),
     firstTagProductsPromise,
   ]);
 
@@ -440,7 +563,8 @@ export default async function Home({
     []) as components["schemas"]["PublicCategoryDto"][];
   const blogPosts = (blogRes.data?.items ??
     []) as components["schemas"]["PublicBlogPostSummaryDto"][];
-  const promoVideos = (promoVideosRes.data ?? []) as unknown as PublicPromoVideo[];
+  const promoVideos = (promoVideosRes.data ??
+    []) as unknown as PublicPromoVideo[];
   const firstTagProducts = firstTagProductsRes.data?.items ?? [];
 
   // Promo Videos has a fixed homepage position (no longer a reorderable
@@ -453,11 +577,15 @@ export default async function Home({
   return (
     <main className="flex-1">
       {beforePromoVideos.map((section) => (
-        <Fragment key={section.id}>{renderSection(section, { categories, blogPosts })}</Fragment>
+        <Fragment key={section.id}>
+          {renderSection(section, { categories, blogPosts })}
+        </Fragment>
       ))}
       {renderPromoVideos(promoVideos)}
       {afterPromoVideos.map((section) => (
-        <Fragment key={section.id}>{renderSection(section, { categories, blogPosts })}</Fragment>
+        <Fragment key={section.id}>
+          {renderSection(section, { categories, blogPosts })}
+        </Fragment>
       ))}
 
       {firstTag && (

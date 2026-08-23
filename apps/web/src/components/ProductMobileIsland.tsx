@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "next-intl";
 import { formatMoney } from "@amader/ui";
@@ -29,7 +30,16 @@ type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 const LOW_STOCK_THRESHOLD = 10;
 
 const cartIcon = (
-  <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={22}
+    height={22}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
     <circle cx="19" cy="21" r="1.4" fill="currentColor" stroke="none" />
     <path d="M2.5 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 8H6" />
@@ -41,17 +51,43 @@ const whatsappIcon = (
   </svg>
 );
 const checkIcon = (
-  <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={22}
+    height={22}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.4}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 const closeIcon = (
-  <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={18}
+    height={18}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.4}
+    strokeLinecap="round"
+  >
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
 const chevronIcon = (
-  <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={12}
+    height={12}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
@@ -75,13 +111,16 @@ export function ProductMobileIsland({
   whatsappConfig: WhatsappConfig | null;
 }) {
   const [visible, setVisible] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState(() => defaultVariantId(product));
+  const [selectedVariantId, setSelectedVariantId] = useState(() =>
+    defaultVariantId(product),
+  );
   const [justAdded, setJustAdded] = useState<number | null>(null); // holds the cart's new total item count while the confirmation shows
   const locale = toApiLocale(useLocale());
   const addToCart = useAddToCart(locale);
   const { data: cart } = useCartQuery(locale);
   const packOptions = useMemo(() => buildPackSizeOptions(product), [product]);
-  const cartItemCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const cartItemCount =
+    cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   useEffect(() => {
     const target = document.getElementById("pdp-buy-buttons");
@@ -120,15 +159,25 @@ export function ProductMobileIsland({
   const stockCount = selectedVariant ? selectedVariant.stock : product.stock;
   // Same rule PdpPurchasePanel's own outOfStock uses: stock only blocks a
   // purchase when trackInventory is on AND allowBackorder is off.
-  const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
-  const lowStock = !outOfStock && product.trackInventory && stockCount > 0 && stockCount <= LOW_STOCK_THRESHOLD;
+  const outOfStock =
+    product.trackInventory && !product.allowBackorder && stockCount < 1;
+  const lowStock =
+    !outOfStock &&
+    product.trackInventory &&
+    stockCount > 0 &&
+    stockCount <= LOW_STOCK_THRESHOLD;
   // Out-of-stock swaps the quick-add button for a WhatsApp inquiry link —
   // per explicit request, a disabled bag icon that does nothing isn't
   // useful, whereas letting the shopper ask about restock/alternatives is.
   // Same link-building the PDP's own WhatsappOrderButton uses.
   const whatsappHref =
     whatsappConfig?.enabled && whatsappConfig.phoneNumber
-      ? buildWhatsappLink(whatsappConfig.phoneNumber, fillTemplate(whatsappConfig.productMessageTemplate, { productName: product.name }))
+      ? buildWhatsappLink(
+          whatsappConfig.phoneNumber,
+          fillTemplate(whatsappConfig.productMessageTemplate, {
+            productName: product.name,
+          }),
+        )
       : undefined;
 
   function handleQuickAdd() {
@@ -140,7 +189,9 @@ export function ProductMobileIsland({
       },
       {
         onSuccess: (data) => {
-          const newCount = data?.items.reduce((sum, item) => sum + item.quantity, 0) ?? cartItemCount;
+          const newCount =
+            data?.items.reduce((sum, item) => sum + item.quantity, 0) ??
+            cartItemCount;
           setJustAdded(newCount);
         },
       },
@@ -161,8 +212,12 @@ export function ProductMobileIsland({
               {checkIcon}
             </div>
             <div className="min-w-0 flex-1 pt-1">
-              <p className="truncate font-ui text-sm font-bold text-white">কার্টে যোগ করা হয়েছে</p>
-              <p className="truncate font-ui text-xs text-white/80">মোট {justAdded} টি আইটেম</p>
+              <p className="truncate font-ui text-sm font-bold text-white">
+                কার্টে যোগ করা হয়েছে
+              </p>
+              <p className="truncate font-ui text-xs text-white/80">
+                মোট {justAdded} টি আইটেম
+              </p>
             </div>
             <button
               type="button"
@@ -177,20 +232,30 @@ export function ProductMobileIsland({
           <>
             {imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
+              <img
+                src={toDisplayImageUrl(imageUrl, IMG.thumb)}
+                alt=""
+                className="h-11 w-11 shrink-0 rounded-xl object-cover"
+              />
             )}
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-ui text-sm font-bold text-white">{product.name}</span>
+                <span className="truncate font-ui text-sm font-bold text-white">
+                  {product.name}
+                </span>
                 {!outOfStock && (
-                  <span className="shrink-0 font-ui text-sm font-bold text-white">{formatMoney(price)}</span>
+                  <span className="shrink-0 font-ui text-sm font-bold text-white">
+                    {formatMoney(price)}
+                  </span>
                 )}
               </div>
               {outOfStock ? (
                 <span className="inline-block rounded-full bg-white px-2 py-0.5 font-ui text-[10px] font-bold text-[#1F7A4E]">
                   স্টক নেই
                 </span>
-              ) : product.hasVariants && packOptions.length > 0 && selectedVariantId ? (
+              ) : product.hasVariants &&
+                packOptions.length > 0 &&
+                selectedVariantId ? (
                 <div className="flex items-center gap-2">
                   <select
                     aria-label="Select pack size"
@@ -199,16 +264,28 @@ export function ProductMobileIsland({
                     className="-ml-0.5 max-w-[110px] rounded border-none bg-transparent font-ui text-xs text-white/80 outline-none"
                   >
                     {packOptions.map((option) => (
-                      <option key={option.value} value={option.value} className="text-ink">
+                      <option
+                        key={option.value}
+                        value={option.value}
+                        className="text-ink"
+                      >
                         {option.label}
                       </option>
                     ))}
                   </select>
                   <span className="text-white/70">{chevronIcon}</span>
-                  {lowStock && <span className="font-ui text-[10px] font-bold text-[#FFB300]">কম স্টক!</span>}
+                  {lowStock && (
+                    <span className="font-ui text-[10px] font-bold text-[#FFB300]">
+                      কম স্টক!
+                    </span>
+                  )}
                 </div>
               ) : (
-                lowStock && <span className="font-ui text-[10px] font-bold text-[#FFB300]">কম স্টক!</span>
+                lowStock && (
+                  <span className="font-ui text-[10px] font-bold text-[#FFB300]">
+                    কম স্টক!
+                  </span>
+                )
               )}
             </div>
             {outOfStock && whatsappHref ? (
