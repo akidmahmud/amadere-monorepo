@@ -23,6 +23,7 @@ import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
 import { googleSans } from "@/fonts";
 import "../globals.css";
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 
 const DEFAULT_TITLE = "আমাদের";
 const DEFAULT_DESCRIPTION = "আমাদের — organic & natural products";
@@ -125,14 +126,23 @@ export default async function LocaleLayout({
           app/icon.png file-convention favicon (which Next auto-injects its
           own <link> for) so there's exactly one favicon link, no ambiguity
           between a static build-time icon and this runtime-configurable one. */}
-      <link rel="icon" href={siteInfo?.faviconUrl ?? "/favicon-default.png"} />
+      <link
+        rel="icon"
+        href={
+          toDisplayImageUrl(siteInfo?.faviconUrl, IMG.icon) ??
+          "/favicon-default.png"
+        }
+      />
       {/* iOS home-screen icon — Safari doesn't reliably read icons out of
           manifest.ts (app/manifest.ts) for "Add to Home Screen", it wants
           this explicit link. Same admin-uploaded favicon, not a separate
           asset — a good square favicon works fine here too. */}
       <link
         rel="apple-touch-icon"
-        href={siteInfo?.faviconUrl ?? "/favicon-default.png"}
+        href={
+          toDisplayImageUrl(siteInfo?.faviconUrl, IMG.icon) ??
+          "/favicon-default.png"
+        }
       />
       {/* Tints mobile browser chrome (address bar) and the PWA splash
           screen to match the header's own nav-bar green, so the site reads

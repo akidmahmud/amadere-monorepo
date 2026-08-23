@@ -2,6 +2,7 @@ import { Footer } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 
 type PublicFooter = components["schemas"]["PublicFooterDto"];
 
@@ -50,7 +51,10 @@ const UNREACHABLE_FALLBACK_FOOTER: PublicFooter = {
   logo: { imageUrl: null },
 };
 
-export function SiteFooter({ footer: footerProp, initialLogoUrl }: SiteFooterProps = {}) {
+export function SiteFooter({
+  footer: footerProp,
+  initialLogoUrl,
+}: SiteFooterProps = {}) {
   // The backend merges over its own defaults, so `footer` is only ever
   // missing when the backend itself was unreachable at render time. The
   // spec requires the footer render defaults rather than drop off the page
@@ -62,22 +66,49 @@ export function SiteFooter({ footer: footerProp, initialLogoUrl }: SiteFooterPro
       brandMark={footer.brandMark}
       // A footer-specific logo wins; otherwise the site logo, which is what
       // the footer showed before the footer had a logo field of its own.
-      logoUrl={footer.logo?.imageUrl ?? initialLogoUrl ?? undefined}
+      logoUrl={toDisplayImageUrl(
+        footer.logo?.imageUrl ?? initialLogoUrl,
+        IMG.logo,
+      )}
       // Rich text from the admin's CKEditor, rendered by Footer via
       // dangerouslySetInnerHTML — sanitize here, at the trust boundary,
       // exactly as blog/page/product content already does.
       description={sanitizeHtml(footer.description)}
-      address={contactLine(footer.contact.address.label, footer.contact.address.value)}
-      phone={contactLine(footer.contact.phone.label, footer.contact.phone.value)}
-      phoneHref={footer.contact.phone.value ? `tel:${footer.contact.phone.value}` : undefined}
-      email={footer.contact.email.value ? contactLine(footer.contact.email.label, footer.contact.email.value) : undefined}
-      emailHref={footer.contact.email.value ? `mailto:${footer.contact.email.value}` : undefined}
-      workingHours={contactLine(footer.contact.hours.label, footer.contact.hours.value)}
+      address={contactLine(
+        footer.contact.address.label,
+        footer.contact.address.value,
+      )}
+      phone={contactLine(
+        footer.contact.phone.label,
+        footer.contact.phone.value,
+      )}
+      phoneHref={
+        footer.contact.phone.value
+          ? `tel:${footer.contact.phone.value}`
+          : undefined
+      }
+      email={
+        footer.contact.email.value
+          ? contactLine(footer.contact.email.label, footer.contact.email.value)
+          : undefined
+      }
+      emailHref={
+        footer.contact.email.value
+          ? `mailto:${footer.contact.email.value}`
+          : undefined
+      }
+      workingHours={contactLine(
+        footer.contact.hours.label,
+        footer.contact.hours.value,
+      )}
       social={footer.social}
       appButtons={footer.apps.buttons}
       appDownloadLabel={footer.apps.downloadLabel}
       columns={footer.columns}
-      copyrightLabel={footer.copyright.replace("{year}", String(new Date().getFullYear()))}
+      copyrightLabel={footer.copyright.replace(
+        "{year}",
+        String(new Date().getFullYear()),
+      )}
       payWithLabel={footer.payment.label}
       paymentImageUrl={footer.payment.imageUrl ?? DEFAULT_PAYMENT_IMAGE_URL}
       linkComponent={AppLink}

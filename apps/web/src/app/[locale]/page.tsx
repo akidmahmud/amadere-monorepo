@@ -487,7 +487,10 @@ function renderPromoVideos(videos: PublicPromoVideo[]): ReactNode {
   const items = videos.map((v) => ({
     source: v.source,
     url: v.url,
-    thumbnailUrl: v.thumbnailUrl ?? undefined,
+    // Rendered as a raw <img> in a 377/650 reel tile, so it never reaches the
+    // next/image loader — route it through the CDN here or the browser gets
+    // the full-size upload.
+    thumbnailUrl: toDisplayImageUrl(v.thumbnailUrl, IMG.card),
   }));
   const products = videos.map((v) =>
     v.product ? toPromoVideoProductData(v.product) : null,
