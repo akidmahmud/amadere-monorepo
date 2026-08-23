@@ -233,6 +233,7 @@ export function ProductMobileIsland({
             {imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                loading="lazy"
                 src={toDisplayImageUrl(imageUrl, IMG.thumb)}
                 alt=""
                 className="h-11 w-11 shrink-0 rounded-xl object-cover"

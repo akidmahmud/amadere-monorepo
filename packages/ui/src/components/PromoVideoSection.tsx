@@ -110,7 +110,7 @@ export function PlayingMedia({ card, muted = true }: { card: PromoVideoCard; mut
   }
   if (card.source === "GIF") {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={card.url} alt="" className="h-full w-full object-cover" />;
+    return <img loading="lazy" src={card.url} alt="" className="h-full w-full object-cover" />;
   }
   if (card.source === "YOUTUBE") {
     const id = youtubeId(card.url);
@@ -217,7 +217,7 @@ function EmbedFrame({
       />
       {thumbnailUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <img loading="lazy"
           src={thumbnailUrl}
           alt=""
           className={cn(
@@ -357,7 +357,7 @@ function PromoVideoCardTile({
           <div className="flex items-stretch overflow-hidden rounded-lg bg-white/10 backdrop-blur-md">
             {product.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <img loading="lazy"
                 src={product.imageUrl}
                 alt=""
                 className="h-20 w-20 shrink-0 object-cover"

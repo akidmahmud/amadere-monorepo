@@ -138,7 +138,7 @@ export function Footer({
             <Link href="/" className="mb-4 flex items-center">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt={brandMark} className="h-12 w-auto" />
+                <img loading="lazy" src={logoUrl} alt={brandMark} className="h-12 w-auto" />
               ) : (
                 <span className="font-bengali text-2xl font-bold text-header-green">{brandMark}</span>
               )}
@@ -188,7 +188,7 @@ export function Footer({
                 const iconContent =
                   item.icon === "custom" && item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.imageUrl} alt="" className="h-4 w-4 object-contain" />
+                    <img loading="lazy" src={item.imageUrl} alt="" className="h-4 w-4 object-contain" />
                   ) : (
                     SOCIAL_ICONS[item.icon] ?? socialFallbackIcon
                   );
@@ -218,7 +218,7 @@ export function Footer({
                       <>
                         {button.style === "custom" && button.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={button.imageUrl} alt="" className="h-5 w-5 object-contain" />
+                          <img loading="lazy" src={button.imageUrl} alt="" className="h-5 w-5 object-contain" />
                         ) : (
                           APP_ICONS[button.style] ?? appFallbackIcon
                         )}
@@ -274,7 +274,7 @@ export function Footer({
             <span className="font-header text-sm font-medium text-header-ink">{payWithLabel}</span>
             {paymentImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={paymentImageUrl} alt={payWithLabel} className="h-[58px] w-auto max-w-[359px] object-contain md:h-[80px] md:max-w-[500px]" />
+              <img loading="lazy" src={paymentImageUrl} alt={payWithLabel} className="h-[58px] w-auto max-w-[359px] object-contain md:h-[80px] md:max-w-[500px]" />
             ) : (
               <div className="flex h-[58px] w-[220px] items-center justify-center rounded border border-dashed border-header-line text-center font-header text-xs text-header-muted md:h-[80px] md:w-[400px]">
                 Payment methods placeholder

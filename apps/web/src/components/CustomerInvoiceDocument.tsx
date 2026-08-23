@@ -72,6 +72,7 @@ export function CustomerInvoiceDocument({
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              loading="lazy"
               src={toDisplayImageUrl(logoUrl, IMG.logo)}
               alt={siteName}
               className="h-[50px] object-contain"
@@ -149,6 +150,7 @@ export function CustomerInvoiceDocument({
                         {imageUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
+                            loading="lazy"
                             src={imageUrl}
                             alt=""
                             className="h-9 w-9 shrink-0 rounded object-cover print:hidden"

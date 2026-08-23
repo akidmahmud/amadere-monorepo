@@ -91,7 +91,7 @@ export function CartCrossSellRow({
         {items.map((item) => (
           <div key={item.id} className="w-32 shrink-0 rounded-lg border border-line bg-white p-2">
             <Link href={item.href} className="mb-1.5 block h-16 w-full overflow-hidden rounded-md bg-beige">
-              {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />}
+              {item.imageUrl && <img loading="lazy" src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />}
             </Link>
             <Link href={item.href} className="mb-1 block truncate font-ui text-[11px] text-ink">
               {item.name}

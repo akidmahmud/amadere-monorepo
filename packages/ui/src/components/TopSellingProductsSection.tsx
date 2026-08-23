@@ -153,7 +153,7 @@ export function TopSellingProductsSection({
                 <Link href={item.href} className="flex h-[220px] w-full shrink-0 items-center justify-center overflow-hidden md:h-[240px] md:w-[240px] md:self-center lg:h-[300px] lg:w-[300px]">
                   {item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <img loading="lazy"
                       src={item.imageUrl}
                       alt=""
                       className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"

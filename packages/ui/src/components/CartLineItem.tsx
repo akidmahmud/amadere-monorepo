@@ -32,7 +32,7 @@ export function CartLineItem({ item, onQuantityChange, onRemove, linkComponent: 
   return (
     <div className="flex items-center gap-3 border-b border-line py-3">
       <Link href={item.href} className="h-[46px] w-[46px] shrink-0 overflow-hidden rounded-lg border border-line bg-white">
-        {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />}
+        {item.imageUrl && <img loading="lazy" src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />}
       </Link>
       <div className="min-w-0 flex-1">
         <Link href={item.href} className="mb-1.5 block truncate font-ui text-[13px] text-ink">

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ckeditorGoogleFontsUrl } from "@amader/shared";
 import { ProductCardStyleProvider, type ProductCardStyle } from "@amader/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -159,45 +158,33 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
-      {/* The two origins actually on the critical rendering path — the
-          stylesheet below is render-blocking, and it in turn pulls a font
-          file from gstatic. Measured: the 2.88 KiB CSS took 624 ms, almost
-          all of it DNS + TLS to a cold origin, so opening the connection
-          early is nearly free time back.
+      {/* No web-font stylesheet here on purpose.
+          Open Sans and Noto Sans Bengali used to load from Google's CDN as
+          fallbacks. They cost two serial cross-origin round trips in the
+          critical rendering path — measured at 624 ms for the 2.9 KiB
+          stylesheet plus 1,558 ms for the font file, on a page whose whole
+          FCP was 3.6 s — and the stylesheet alone declared 62 @font-face
+          rules across 13 files.
 
-          `crossOrigin` on the gstatic hint is load-bearing, not decoration:
-          fonts are fetched in CORS mode, and a preconnect whose CORS mode
-          does not match the eventual request opens a connection the browser
-          then cannot reuse — it dials a second one and the hint is wasted.
-          googleapis serves plain CSS, so it must NOT have the attribute. */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      {/* Glyph-coverage fallbacks only now, not the primary typeface. The
-          self-hosted Google Sans (fonts.ts) does carry real Bengali outlines
-          (85 codepoints, U+0980-09FF) — it's NOT Latin-only, correcting an
-          earlier comment here that said otherwise (see PERF-BRIEF.md §2's
-          correction) — but it likely lacks the full conjunct-forming
-          OpenType features (akhn/blwf/half/pstf/vatu/cjct/rphf) proper
-          Bengali typography needs, which is presumably why Noto Sans Bengali
-          is still loaded here as the real fallback for Bengali text; Open
-          Sans backstops any Latin glyph Google Sans itself doesn't cover.
-          Not verified either way in this pass — dropping Noto Sans Bengali
-          would need real visual QA across conjunct-heavy Bengali strings
-          first, since a wrong call breaks Bengali rendering sitewide. The
-          old 'Google Sans Flex' CDN load (and the deferred ~17-family
-          CKEditor picker load) are gone — inline font-family from
-          admin-authored content is now force-overridden site-wide
-          (globals.css), so loading fonts nothing will ever render was pure
-          waste. */}
-      <link
-        rel="stylesheet"
-        href={ckeditorGoogleFontsUrl(["Open Sans", "Noto Sans Bengali"])}
-        precedence="default"
-      />
+          Both were removable, but only one of those was obvious:
+
+          Open Sans was pure waste. Google Sans (self-hosted, fonts.ts) is the
+          primary face and covers Latin, so Open Sans never rendered a glyph.
+
+          Noto Sans Bengali was the real question, and the comment that used
+          to sit here said Google Sans's Bengali conjunct support was "not
+          verified either way". It has been now. Inspecting feature tags was
+          misleading — Google Sans does not declare `blwf` (below-base forms),
+          which looks fatal for Bengali. But shaping real conjunct-heavy words
+          through HarfBuzz, the same engine the browser uses, shows the
+          conjuncts DO form: ক্রয় collapses 4 codepoints to 2 glyphs,
+          স্বাস্থ্য 9 to 6, with no orphaned hasanta in any of them. It gets
+          there via cjct/vatu and precomposed conjunct glyphs instead. Noto
+          Sans Bengali was verified as the control in the same run.
+
+          If Bengali ever does look wrong, re-add it here — but self-host it
+          the way fonts.ts self-hosts Google Sans rather than paying for the
+          cross-origin hops again. */}
       <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
         <AnalyticsScripts
           config={

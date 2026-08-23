@@ -33,7 +33,7 @@ export function FeatureTileRow({ tiles, linkComponent: Link = DefaultLink, count
         const content = (
           <div className="relative h-[320px] w-[200px] shrink-0 overflow-hidden rounded-brand bg-beige">
             {tile.imageUrl && (
-              <img src={tile.imageUrl} alt={tile.title ?? ""} className="h-full w-full object-cover" />
+              <img loading="lazy" src={tile.imageUrl} alt={tile.title ?? ""} className="h-full w-full object-cover" />
             )}
             {tile.title && (
               <p className="absolute inset-x-0 bottom-0 bg-black/40 px-3 py-2 text-sm font-medium text-white">

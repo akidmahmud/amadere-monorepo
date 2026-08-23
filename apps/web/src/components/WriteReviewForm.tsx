@@ -130,7 +130,7 @@ export function WriteReviewForm({ productId }: { productId: number }) {
             {images.map((url, i) => (
               <div key={url} className="relative h-14 w-14 overflow-hidden rounded-lg border border-line">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" className="h-full w-full object-cover" />
+                <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
                 <button
                   type="button"
                   aria-label="Remove image"

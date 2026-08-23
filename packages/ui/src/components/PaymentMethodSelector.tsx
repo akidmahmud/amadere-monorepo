@@ -84,7 +84,7 @@ const METHOD_ICONS: Record<string, ReactNode> = {
 function renderIcon(option: PaymentMethodOption) {
   if (option.icon) return option.icon;
   if (option.iconUrl) {
-    return <img src={option.iconUrl} alt={option.label} className="h-8.5 w-8.5 rounded-lg object-contain" />;
+    return <img loading="lazy" src={option.iconUrl} alt={option.label} className="h-8.5 w-8.5 rounded-lg object-contain" />;
   }
   const key = option.value.toUpperCase();
   if (METHOD_ICONS[key]) return METHOD_ICONS[key];

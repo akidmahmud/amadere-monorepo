@@ -36,7 +36,7 @@ export function BlogCard({ post, linkComponent: Link = DefaultLink }: BlogCardPr
           always visible regardless of its real aspect ratio — a thin
           letterbox bar beats cutting content off, per explicit request. */}
       <Link href={post.href} className="block aspect-square bg-beige">
-        {post.imageUrl && <img src={post.imageUrl} alt={post.title} className="h-full w-full object-contain" />}
+        {post.imageUrl && <img loading="lazy" src={post.imageUrl} alt={post.title} className="h-full w-full object-contain" />}
       </Link>
       <div className="p-4">
         {post.categoryLabel && (

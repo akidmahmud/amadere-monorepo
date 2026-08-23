@@ -143,7 +143,7 @@ export function MobileDrawer({
               <Link href={brandHref} className="flex items-center" onClick={close}>
                 {logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <img loading="lazy"
                     src={logoUrl}
                     alt={brandMark}
                     className="h-10 w-auto"

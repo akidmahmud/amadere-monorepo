@@ -82,7 +82,7 @@ function ReelSlide({
           <div className="flex items-center gap-3">
             {product.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-[10px] object-cover" />
+              <img loading="lazy" src={product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-[10px] object-cover" />
             )}
             <span className="line-clamp-2 min-w-0 flex-1 font-ui text-sm font-semibold text-ink">{product.name}</span>
           </div>

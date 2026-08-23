@@ -27,7 +27,7 @@ function Badge({ item }: { item: CertificationRowItem }) {
       title={item.label}
     >
       {item.imageUrl && (
-        <img src={item.imageUrl} alt={item.label ?? ""} className="absolute inset-0 h-full w-full object-contain p-1.5" />
+        <img loading="lazy" src={item.imageUrl} alt={item.label ?? ""} className="absolute inset-0 h-full w-full object-contain p-1.5" />
       )}
     </div>
   );

@@ -85,7 +85,7 @@ function ProductPanel({
       <div className="flex items-start gap-3">
         {product.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <img loading="lazy"
             src={product.imageUrl}
             alt=""
             className="h-20 w-20 shrink-0 rounded-[10px] bg-beige object-cover"
@@ -270,7 +270,7 @@ function PeekThumb({ card, label, onClick }: { card: PromoVideoCard; label: stri
     >
       {card.thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+        <img loading="lazy" src={card.thumbnailUrl} alt="" className="h-full w-full object-cover" />
       ) : (
         <div className="h-full w-full bg-white/10" />
       )}

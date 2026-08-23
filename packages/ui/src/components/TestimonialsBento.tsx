@@ -58,7 +58,7 @@ function ReviewCard({ review }: { review: TestimonialReview }) {
         <span className="grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-full bg-beige">
           {review.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={review.avatarUrl} alt="" className="h-full w-full object-cover" />
+            <img loading="lazy" src={review.avatarUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             personIcon
           )}
