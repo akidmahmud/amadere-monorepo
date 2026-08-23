@@ -12,6 +12,8 @@ export interface ProductFormSnapshot {
   slug: string;
   sku: string;
   brandId: number | undefined;
+  authorId: number | undefined;
+  isbn: string;
   productType: ProductType;
   status: PublishStatus;
   isFeatured: boolean;
@@ -37,6 +39,10 @@ export interface ProductFormSnapshot {
   keyBenefits: string;
   benefitPoints: string;
   howToUse: string;
+  bookEdition: string;
+  bookLanguage: string;
+  bookPublisher: string;
+  bookCountry: string;
   faqs: { question: string; answer: string }[];
   categoryIds: number[];
   tagIds: number[];
@@ -75,6 +81,11 @@ export function useProductFormState(initial?: AdminProduct) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
   const [brandId, setBrandId] = useState<number | undefined>(initial?.brandId ?? undefined);
+  // Book fields. authorId/isbn are locale-invariant and live on the product;
+  // the four bookXxx strings below are locale-varying and ride the
+  // translation rows, same as name/description/content.
+  const [authorId, setAuthorId] = useState<number | undefined>(initial?.authorId ?? undefined);
+  const [isbn, setIsbn] = useState(initial?.isbn ?? "");
   const [productType, setProductType] = useState<ProductType>(initial?.productType ?? "PHYSICAL");
   const [status, setStatus] = useState<PublishStatus>(initial?.status ?? "DRAFT");
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
@@ -102,6 +113,10 @@ export function useProductFormState(initial?: AdminProduct) {
   const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
   const [benefitPoints, setBenefitPoints] = useState(initial?.translations[0]?.benefitPoints ?? "");
   const [howToUse, setHowToUse] = useState(initial?.translations[0]?.howToUse ?? "");
+  const [bookEdition, setBookEdition] = useState(initial?.translations[0]?.bookEdition ?? "");
+  const [bookLanguage, setBookLanguage] = useState(initial?.translations[0]?.bookLanguage ?? "");
+  const [bookPublisher, setBookPublisher] = useState(initial?.translations[0]?.bookPublisher ?? "");
+  const [bookCountry, setBookCountry] = useState(initial?.translations[0]?.bookCountry ?? "");
   const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
     initial?.translations[0]?.faqs?.map((f) => ({ question: f.question, answer: f.answer })) ?? [],
   );
@@ -118,6 +133,11 @@ export function useProductFormState(initial?: AdminProduct) {
       slug,
       sku: sku || undefined,
       brandId,
+      // Explicit null (not undefined) so clearing the dropdown/field really
+      // unlinks — the update endpoint treats undefined as "leave unchanged",
+      // the same convention videoUrl and costPriceUnit already rely on.
+      authorId: authorId ?? null,
+      isbn: isbn.trim() || null,
       productType,
       status,
       isFeatured,
@@ -152,6 +172,10 @@ export function useProductFormState(initial?: AdminProduct) {
           keyBenefits: keyBenefits || undefined,
           benefitPoints: benefitPoints || undefined,
           howToUse: howToUse || undefined,
+          bookEdition: bookEdition || undefined,
+          bookLanguage: bookLanguage || undefined,
+          bookPublisher: bookPublisher || undefined,
+          bookCountry: bookCountry || undefined,
           faqs: cleanFaqs,
         },
         {
@@ -162,6 +186,10 @@ export function useProductFormState(initial?: AdminProduct) {
           keyBenefits: keyBenefits || undefined,
           benefitPoints: benefitPoints || undefined,
           howToUse: howToUse || undefined,
+          bookEdition: bookEdition || undefined,
+          bookLanguage: bookLanguage || undefined,
+          bookPublisher: bookPublisher || undefined,
+          bookCountry: bookCountry || undefined,
           faqs: cleanFaqs,
         },
       ],
@@ -189,6 +217,8 @@ export function useProductFormState(initial?: AdminProduct) {
     setSlug(product.slug);
     setSku(product.sku ?? "");
     setBrandId(product.brandId ?? undefined);
+    setAuthorId(product.authorId ?? undefined);
+    setIsbn(product.isbn ?? "");
     setProductType(product.productType);
     setStatus(product.status);
     setIsFeatured(product.isFeatured);
@@ -214,6 +244,10 @@ export function useProductFormState(initial?: AdminProduct) {
     setKeyBenefits(product.translations[0]?.keyBenefits ?? "");
     setBenefitPoints(product.translations[0]?.benefitPoints ?? "");
     setHowToUse(product.translations[0]?.howToUse ?? "");
+    setBookEdition(product.translations[0]?.bookEdition ?? "");
+    setBookLanguage(product.translations[0]?.bookLanguage ?? "");
+    setBookPublisher(product.translations[0]?.bookPublisher ?? "");
+    setBookCountry(product.translations[0]?.bookCountry ?? "");
     setFaqs(product.translations[0]?.faqs?.map((f) => ({ question: f.question, answer: f.answer })) ?? []);
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
@@ -241,7 +275,14 @@ export function useProductFormState(initial?: AdminProduct) {
     if (hasVariants) {
       if (variantCount === 0) missing.push("Variants (add at least one)");
     } else {
-      if (!price.trim() || Number(price) <= 0) missing.push("Price");
+      // A digital product may legitimately cost 0 — a free ebook is a
+      // first-class case of this feature (checkout renders "Get it free" and
+      // skips payment entirely). Physical products keep the strict > 0 rule.
+      const priceValue = Number(price);
+      const priceOk =
+        price.trim() !== "" &&
+        (productType === "DIGITAL" ? priceValue >= 0 : priceValue > 0);
+      if (!priceOk) missing.push("Price");
       // Only required when inventory is actually being tracked — unchecking
       // "Track inventory" means stock isn't meaningful for this product, so
       // it shouldn't block Save/Save & Exit.
@@ -252,9 +293,10 @@ export function useProductFormState(initial?: AdminProduct) {
 
   function getSnapshot(): ProductFormSnapshot {
     return {
-      slug, sku, brandId, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
+      slug, sku, brandId, authorId, isbn, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
       stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, costPriceUnit, shippableWeight,
-      minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse, faqs,
+      minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
+      bookEdition, bookLanguage, bookPublisher, bookCountry, faqs,
       categoryIds, tagIds, attributeIds, images,
     };
   }
@@ -263,6 +305,8 @@ export function useProductFormState(initial?: AdminProduct) {
     setSlug(s.slug);
     setSku(s.sku);
     setBrandId(s.brandId);
+    setAuthorId(s.authorId);
+    setIsbn(s.isbn);
     setProductType(s.productType);
     setStatus(s.status);
     setIsFeatured(s.isFeatured);
@@ -288,6 +332,10 @@ export function useProductFormState(initial?: AdminProduct) {
     setKeyBenefits(s.keyBenefits);
     setBenefitPoints(s.benefitPoints);
     setHowToUse(s.howToUse);
+    setBookEdition(s.bookEdition);
+    setBookLanguage(s.bookLanguage);
+    setBookPublisher(s.bookPublisher);
+    setBookCountry(s.bookCountry);
     setFaqs(s.faqs);
     setCategoryIds(s.categoryIds);
     setTagIds(s.tagIds);
@@ -299,6 +347,8 @@ export function useProductFormState(initial?: AdminProduct) {
     slug, setSlug,
     sku, setSku,
     brandId, setBrandId,
+    authorId, setAuthorId,
+    isbn, setIsbn,
     productType, setProductType,
     status, setStatus,
     isFeatured, setIsFeatured,
@@ -324,6 +374,10 @@ export function useProductFormState(initial?: AdminProduct) {
     keyBenefits, setKeyBenefits,
     benefitPoints, setBenefitPoints,
     howToUse, setHowToUse,
+    bookEdition, setBookEdition,
+    bookLanguage, setBookLanguage,
+    bookPublisher, setBookPublisher,
+    bookCountry, setBookCountry,
     faqs, setFaqs,
     categoryIds, setCategoryIds,
     tagIds, setTagIds,

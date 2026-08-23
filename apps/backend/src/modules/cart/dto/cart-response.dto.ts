@@ -58,6 +58,15 @@ export class CartLineItemDto {
   id!: number;
   productId!: number;
   variantId!: number | null;
+
+  // Snapshot of Product.productType for this line. The storefront needs it
+  // to decide whether the whole cart is digital-only (isDigitalOnly() in
+  // orders/digital-order.util.ts) and therefore whether checkout should
+  // collect a shipping address at all — it has no other way to know, and
+  // shippingFee === '0' is not a substitute (a free-shipping coupon zeroes
+  // that on a perfectly physical cart).
+  @ApiProperty({ enum: ['PHYSICAL', 'DIGITAL'] })
+  productType!: 'PHYSICAL' | 'DIGITAL';
   slug!: string;
   name!: string;
   imageUrl!: string | null;

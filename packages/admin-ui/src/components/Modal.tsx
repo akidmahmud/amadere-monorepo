@@ -15,15 +15,12 @@ export interface ModalProps {
 }
 
 const closeIcon = (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2}>
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
 
-// General-purpose centered overlay dialog — first use is MediaPicker's
-// "Browse library" grid, but it's a plain admin-ui primitive (like Card/
-// Button) so any future confirm-dialog/picker can reuse it instead of each
-// building its own backdrop+escape-key+scroll-lock handling.
+// General-purpose centered overlay dialog with modern backdrop blur glassmorphism and smooth animations.
 export function Modal({ open, onClose, title, children, className, tone = "light" }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -42,19 +39,22 @@ export function Modal({ open, onClose, title, children, className, tone = "light
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-md p-4 sm:p-6 transition-all duration-200"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "flex max-h-[85vh] w-full max-w-2xl flex-col rounded-card border border-border bg-surface shadow-card",
+          "flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-border/80 bg-surface shadow-2xl overflow-hidden transition-all duration-200",
           className,
         )}
       >
         <div
           className={cn(
-            "flex items-center justify-between border-b border-border px-5 py-4",
+            "flex items-center justify-between border-b border-border/60 px-6 py-4 bg-surface-2/50 backdrop-blur-sm",
             tone === "dark" && "border-transparent text-white",
           )}
           style={
@@ -63,21 +63,32 @@ export function Modal({ open, onClose, title, children, className, tone = "light
               : undefined
           }
         >
-          <h2 className={cn("font-ui text-base font-semibold", tone === "dark" ? "text-white" : "text-text")}>{title}</h2>
+          <div className="flex items-center gap-2">
+            {typeof title === "string" ? (
+              <h2 className={cn("font-ui text-base font-bold tracking-tight", tone === "dark" ? "text-white" : "text-text")}>
+                {title}
+              </h2>
+            ) : (
+              title
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
             className={cn(
-              "grid h-8 w-8 place-items-center rounded-sm transition-colors duration-150",
-              tone === "dark" ? "bg-white/10 text-white hover:bg-danger/60" : "text-secondary hover:bg-surface-2",
+              "grid h-8 w-8 place-items-center rounded-lg transition-all duration-150 active:scale-95",
+              tone === "dark"
+                ? "bg-white/10 text-white hover:bg-danger/80"
+                : "text-muted hover:text-text hover:bg-surface-2 border border-transparent hover:border-border",
             )}
           >
             {closeIcon}
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
       </div>
     </div>
   );
 }
+

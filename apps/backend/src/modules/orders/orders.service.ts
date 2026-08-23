@@ -15,6 +15,7 @@ import {
 import { PaymentsService } from '../payments/payments.service';
 import { PricingService } from '../cart/pricing.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
+import { DownloadsService } from '../digital-products/downloads.service';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
@@ -68,6 +69,7 @@ export class OrdersService {
     private readonly pricing: PricingService,
     private readonly events: EventEmitter2,
     private readonly orderEmails: OrderEmailsService,
+    private readonly downloads: DownloadsService,
   ) {}
 
   async adminList(
@@ -211,6 +213,18 @@ export class OrdersService {
       await this.orderEmails.sendOrderCanceled(id, adminUserId, adminUserId !== null ? dto.note : undefined);
     } else if (dto.status === 'COMPLETED') {
       await this.orderEmails.sendOrderDelivered(id, adminUserId);
+      // The second (non-manual-payment) unlock hook — a priced digital
+      // order paid by COD, bank transfer, or simply moved to COMPLETED
+      // directly in Order Manager never passes through
+      // ManualPaymentService.verify(), so nothing else would unlock it.
+      // Deliberately COMPLETED only, not CONFIRMED: this codebase also
+      // reaches CONFIRMED when an advance-payment HOLD is released
+      // (AdvancePaymentService.record), which is explicitly a PARTIAL
+      // payment — treating that as "paid" here would reopen the same
+      // full-payment gap just closed in ManualPaymentService.verify().
+      // unlockForOrder is idempotent, so overlapping with verify() is
+      // harmless.
+      await this.downloads.unlockForOrder(id);
     }
 
     this.events.emit(ORDER_STATUS_CHANGED_EVENT, {
@@ -307,6 +321,7 @@ export class OrdersService {
           variantId: dto.variantId ?? null,
           productNameSnapshot: product.translations[0]?.name ?? product.slug,
           skuSnapshot: variant?.sku ?? product.sku,
+          productTypeSnapshot: product.productType,
           unitPrice,
           quantity: dto.quantity,
         },
@@ -501,9 +516,18 @@ export class OrdersService {
       productId: number | null;
       variantId: number | null;
       quantity: number;
+      productTypeSnapshot: string;
     }[],
   ): Promise<void> {
     for (const item of items) {
+      // Shared rule across releaseReservations/decrementStockOnly/
+      // commitReservations: a digital line is never reserved at checkout
+      // (CheckoutService.checkout skips the reservation loop entirely for a
+      // digital-only order — see digital-order.util.ts), so it must never be
+      // released, decremented or committed here either. Skipping it is the
+      // fix; touching reservedStock/stock for a line that was never
+      // incremented would just drive it negative.
+      if (item.productTypeSnapshot === 'DIGITAL') continue;
       if (item.variantId) {
         await tx.productVariant.update({
           where: { id: item.variantId },
@@ -527,9 +551,14 @@ export class OrdersService {
       productId: number | null;
       variantId: number | null;
       quantity: number;
+      productTypeSnapshot: string;
     }[],
   ): Promise<void> {
     for (const item of items) {
+      // Same digital-line rule as releaseReservations/decrementStockOnly/
+      // commitReservations above: never reserved, so never restocked here
+      // either — a digital line has no stock to put back on the shelf.
+      if (item.productTypeSnapshot === 'DIGITAL') continue;
       if (item.variantId) {
         await tx.productVariant.update({
           where: { id: item.variantId },
@@ -554,9 +583,13 @@ export class OrdersService {
       productId: number | null;
       variantId: number | null;
       quantity: number;
+      productTypeSnapshot: string;
     }[],
   ): Promise<void> {
     for (const item of items) {
+      // Same digital-line rule as releaseReservations above: never reserved,
+      // so never decremented here either.
+      if (item.productTypeSnapshot === 'DIGITAL') continue;
       if (item.variantId) {
         await tx.productVariant.update({
           where: { id: item.variantId },
@@ -577,9 +610,17 @@ export class OrdersService {
       productId: number | null;
       variantId: number | null;
       quantity: number;
+      productTypeSnapshot: string;
     }[],
   ): Promise<void> {
     for (const item of items) {
+      // Same digital-line rule as releaseReservations/decrementStockOnly
+      // above: never reserved, so never committed here either. This is the
+      // one of the three that surfaces most visibly when skipped — every
+      // free digital order would drive its product to stock: -1,
+      // reservedStock: -1, visible in the admin Inventory report and CSV
+      // export.
+      if (item.productTypeSnapshot === 'DIGITAL') continue;
       if (item.variantId) {
         await tx.productVariant.update({
           where: { id: item.variantId },

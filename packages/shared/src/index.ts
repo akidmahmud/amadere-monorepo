@@ -29,6 +29,8 @@ export * from './phone';
 export * from './ckeditor-fonts';
 export * from './footer';
 export * from './shipping-zones';
+export * from './digital-products';
+export * from './authors';
 
 export interface PaginatedResult<T> {
   items: T[];

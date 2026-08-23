@@ -35,5 +35,47 @@
     "allOtherDistricts": "all other districts",
     "appliedToYourDistrict": "Highlighted rate applies to your selected district.",
     "pickDistrictHint": "Select your district above to see which rate applies."
+  },
+  "digitalPreview": {
+    "readMore": "Read preview",
+    "close": "Close preview",
+    "previewOf": "Free preview — {shown} of {total} pages",
+    "previewShown": "Free preview — {shown} pages",
+    "rangeOfTotal": "Free preview — pages {start}–{end} of {total}",
+    "range": "Free preview — pages {start}–{end}",
+    "pageOf": "Page {page} of {total}",
+    "endTitle": "That's the end of the free preview",
+    "endBody": "You've read {shown} of {total} pages. Get the full copy to keep reading — it's yours to download straight away.",
+    "endBodyRange": "You've read pages {start}–{end} of {total}. Get the full copy to keep reading — it's yours to download straight away.",
+    "endBodyNoTotal": "Get the full copy to keep reading — it's yours to download straight away.",
+    "buy": "Buy for {price}",
+    "buyFree": "Get it free",
+    "adding": "Adding…",
+    "addFailed": "Couldn't add to cart"
+  },
+  "relatedProducts": {
+    "manualHeading": "You may also like from our shop",
+    "autoHeading": "Related Products",
+    "moreProducts": "More Products"
+  },
+  "bookTabs": {
+    "summary": "Summary",
+    "specification": "Specification",
+    "author": "Author",
+    "spec": {
+      "edition": "Edition",
+      "isbn": "ISBN",
+      "pages": "No of Page",
+      "language": "Language",
+      "publisher": "Publisher",
+      "country": "Country",
+      "empty": "No specification has been added for this book yet.",
+      "type": "Type",
+      "mb": "MB",
+      "kb": "KB"
+    },
+    "authorPanel": {
+      "noBio": "No biography available for {name} yet."
+    }
   }
 }

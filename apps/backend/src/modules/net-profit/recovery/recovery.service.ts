@@ -15,6 +15,7 @@ import { ORDER_CREATED_EVENT } from '../../orders/orders.events';
 import type { OrderCreatedEvent } from '../../orders/orders.events';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
 import { toOrderAddressCreate } from '../../orders/order-address.util';
+import { DownloadsService } from '../../digital-products/downloads.service';
 import { IncompleteOrderDto, toIncompleteOrderDto } from './recovery.mapper';
 
 const SETTINGS_NAMESPACE = 'recovery';
@@ -106,6 +107,7 @@ export class RecoveryService {
     private readonly sms: SmsService,
     private readonly campaigns: CartCampaignsService,
     private readonly mergeTags: MergeTagsService,
+    private readonly downloads: DownloadsService,
   ) {}
 
   async getSettings(): Promise<RecoverySettings> {
@@ -312,12 +314,17 @@ export class RecoveryService {
     const productIds = snapshot.map((i) => i.productId);
     const products = await this.prisma.client.product.findMany({ where: { id: { in: productIds } } });
     const priceById = new Map(products.map((p) => [p.id, p.salePrice ?? p.price ?? new Prisma.Decimal(0)]));
+    // Same products already loaded for pricing above — reused here rather
+    // than a second query, so a staff-recreated digital order still snapshots
+    // DIGITAL and doesn't land in the courier dispatch queue.
+    const typeById = new Map(products.map((p) => [p.id, p.productType]));
 
     const items = snapshot.map((i) => ({
       productId: i.productId,
       quantity: i.quantity,
       unitPrice: priceById.get(i.productId) ?? new Prisma.Decimal(i.unitPrice),
       name: i.name,
+      productType: typeById.get(i.productId) ?? 'PHYSICAL',
     }));
     const subTotal = items.reduce((sum, i) => sum.plus(i.unitPrice.times(i.quantity)), new Prisma.Decimal(0));
 
@@ -334,6 +341,7 @@ export class RecoveryService {
             productNameSnapshot: i.name,
             unitPrice: i.unitPrice,
             quantity: i.quantity,
+            productTypeSnapshot: i.productType,
           })),
         },
         addresses: {
@@ -352,6 +360,13 @@ export class RecoveryService {
       data: { recovered: true, recoveredOrderId: order.id },
     });
     await this.campaigns.skipRemaining(id);
+
+    // Same gap as AdminOrderCreationService — the snapshot carries
+    // productTypeSnapshot: 'DIGITAL' for any digital line, but this order was
+    // built with a raw tx.order.create rather than checkout(), so nothing
+    // else creates the locked entitlement. Without this, a staff-recreated
+    // ebook order pays fine and unlockForOrder later just matches zero rows.
+    await this.downloads.createForOrder(order.id);
 
     return { orderId: order.id, orderNumber: order.orderNumber };
   }

@@ -6,8 +6,10 @@ import type { AppNavEntry } from "@amader/admin-ui";
 // reference below (adminNav) needs no changes beyond this block.
 const overviewIcon = <Icon name="dashboard" />;
 const productsIcon = <Icon name="inventory_2" />;
+const digitalProductsIcon = <Icon name="picture_as_pdf" />;
 const homepageSectionsIcon = <Icon name="view_agenda" />;
 const brandsIcon = <Icon name="storefront" />;
+const authorsIcon = <Icon name="edit_note" />;
 const categoriesIcon = <Icon name="category" />;
 const tagsIcon = <Icon name="sell" />;
 const attributesIcon = <Icon name="tune" />;
@@ -76,9 +78,24 @@ export const adminNav: AppNavEntry[] = [
 
   label("catalog-label", "Product Management"),
   { key: "products", label: "Products", href: "/products", icon: productsIcon, permission: "product.view" },
+  // Gated on product.view, not digital_product.view — the list/detail pages
+  // read through GET /admin/products (product.view), and no endpoint this
+  // section calls actually checks digital_product.view (only .update guards
+  // the three write endpoints). Nav must reflect the real gate, or a staff
+  // member with digital_product.* but not product.view sees the item, clicks
+  // it, and gets an unexplained 403. digital_product.view stays in the
+  // permission catalog (seeded, may become a real gate later) — just unused
+  // here.
+  { key: "digital-products", label: "Digital Products", href: "/digital-products", icon: digitalProductsIcon, permission: "product.view" },
   { key: "products-trash", label: "Deleted Products", href: "/products/trash", icon: trashIcon, permission: "product.view" },
   { key: "collections", label: "Collections", href: "/collections", icon: collectionsIcon, permission: "collection.view" },
   { key: "brands", label: "Brands", href: "/brands", icon: brandsIcon, permission: "brand.view" },
+  // author.view is a REAL gate here, unlike the Digital Products row above:
+  // every endpoint this section calls is /admin/authors/*, and each one
+  // carries @RequirePermission('author.view'|'.create'|'.update'|'.delete').
+  // So the nav promise and the API agree — a staff member who sees this row
+  // can actually open it.
+  { key: "authors", label: "Authors", href: "/authors", icon: authorsIcon, permission: "author.view" },
   { key: "categories", label: "Categories", href: "/categories", icon: categoriesIcon, permission: "category.view" },
   { key: "tags", label: "Tags", href: "/tags", icon: tagsIcon, permission: "tag.view" },
   { key: "attributes", label: "Attributes", href: "/attributes", icon: attributesIcon, permission: "attribute.view" },

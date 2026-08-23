@@ -8,6 +8,7 @@ import {
   StockStatus,
 } from '@amader/db';
 import { ResolvedSeoDto } from '../../seo/seo.mapper';
+import { PublicAuthorDto } from '../../authors/authors.mapper';
 
 export class AdminProductFaqDto {
   question!: string;
@@ -23,6 +24,12 @@ export class AdminProductTranslationDto {
   keyBenefits!: string | null;
   benefitPoints!: string | null;
   howToUse!: string | null;
+  /** Book "Specification" tab, locale-varying half — see
+   * ProductTranslationDto for why the ISBN is not here. */
+  bookEdition!: string | null;
+  bookLanguage!: string | null;
+  bookPublisher!: string | null;
+  bookCountry!: string | null;
   faqs!: AdminProductFaqDto[];
 }
 
@@ -39,6 +46,16 @@ export class AdminProductMediaDto {
   /** Optional variant this image belongs to. Null = shared gallery image
    * shown for every variant (the default). */
   variantId!: number | null;
+}
+
+// Free-sample preview images for a DIGITAL product (empty for PHYSICAL).
+// imageUrl is a public R2 object — safe to expose. Deliberately no
+// digitalFileKey anywhere on this DTO: it's the private storage key for the
+// underlying PDF on a public bucket, so leaking it hands out a permanent
+// unauthenticated download link.
+export class AdminProductPreviewPageDto {
+  pageNumber!: number;
+  imageUrl!: string;
 }
 
 export class AdminProductVariantDto {
@@ -66,6 +83,10 @@ export class AdminProductDto {
   slug!: string;
   sku!: string | null;
   brandId!: number | null;
+  /** Linked Author record (book author), null when none is picked. */
+  authorId!: number | null;
+  /** Book "Specification" tab, locale-invariant half. */
+  isbn!: string | null;
   productType!: ProductType;
   status!: ContentStatus;
   isFeatured!: boolean;
@@ -95,6 +116,16 @@ export class AdminProductDto {
   attributeIds!: number[];
   media!: AdminProductMediaDto[];
   variants!: AdminProductVariantDto[];
+  // Digital products only (DigitalProductsService owns writing these) — see
+  // AdminProductPreviewPageDto's own comment for why digitalFileKey is never
+  // exposed here.
+  digitalFileName!: string | null;
+  digitalFileSize!: number | null;
+  digitalPageCount!: number | null;
+  /** The inclusive page range shown as the free preview, e.g. 5..9. */
+  digitalPreviewStartPage!: number | null;
+  digitalPreviewEndPage!: number | null;
+  previewPages!: AdminProductPreviewPageDto[];
   /** Populated by the list endpoint only — not needed by create/update/detail responses. */
   createdAt?: Date;
   /** Rule-based 0-100 score (see seo-score.util.ts) — not AI-generated. List endpoint only. */
@@ -246,6 +277,18 @@ export class PublicProductDto {
   keyBenefits!: string | null;
   benefitPoints!: string | null;
   howToUse!: string | null;
+  /** Book "Specification" tab (DIGITAL products). All null on a PHYSICAL
+   * product — the storefront renders this tab only for DIGITAL. "No of
+   * Page" is digitalPageCount on PublicProductDetailDto and "Weight" is
+   * shippableWeight above; neither is duplicated here. */
+  isbn!: string | null;
+  bookEdition!: string | null;
+  bookLanguage!: string | null;
+  bookPublisher!: string | null;
+  bookCountry!: string | null;
+  /** The book's author — the PDP's "Author" tab. Null when no author is
+   * linked, or when the linked author has been soft-deleted. */
+  author!: PublicAuthorDto | null;
   brand!: PublicProductBrandDto | null;
   categories!: PublicProductCategorySummaryDto[];
   tags!: PublicProductTagSummaryDto[];
@@ -260,6 +303,18 @@ export class ProductFaqPublicDto {
   answer!: string;
 }
 
+// Free-sample preview images for a DIGITAL product (empty for PHYSICAL) —
+// the storefront's "আরও পড়ুন" preview modal renders these. Same rule as
+// AdminProductPreviewPageDto: imageUrl is a public R2 object and is MEANT to
+// be readable, but digitalFileKey/digitalFileName/digitalFileSize are
+// deliberately absent — the key is the paid PDF's storage key on a fully
+// public bucket, so exposing it here would be a permanent unauthenticated
+// download link straight past the paywall.
+export class PublicProductPreviewPageDto {
+  pageNumber!: number;
+  imageUrl!: string;
+}
+
 export class PublicProductDetailDto extends PublicProductDto {
   seo!: ResolvedSeoDto;
   structuredData!: Record<string, unknown>[];
@@ -269,4 +324,27 @@ export class PublicProductDetailDto extends PublicProductDto {
   // only, empty array when nothing's configured or every pick got unpublished.
   crossSell!: PublicProductDto[];
   frequentlyBoughtTogether!: PublicProductDto[];
+  /** Admin-picked "আমাদের শপে আরও দেখতে পারেন" list, in the exact order the
+   * admin dragged them into (ProductRelation.position). Empty when nothing
+   * is picked — the storefront then falls back to its existing automatic
+   * same-category Related Products section. */
+  relatedProducts!: PublicProductDto[];
+  /** Total pages in the source PDF. Null for a PHYSICAL product, and for a
+   * DIGITAL one whose file hasn't been uploaded yet. */
+  digitalPageCount!: number | null;
+  /** The inclusive page RANGE the free preview covers, e.g. 5..9 — the admin
+   * picks an excerpt, since a book's first pages are usually a cover, a
+   * copyright notice and a blank leaf. Both null for a PHYSICAL product and
+   * for a DIGITAL one with no file yet. previewPages carries the rendered
+   * images and each row's own real page number. */
+  digitalPreviewStartPage!: number | null;
+  digitalPreviewEndPage!: number | null;
+  /** The downloadable file's format, uppercased ("PDF") — the Specification
+   * tab's "Type" row. Derived from the stored filename, which is itself never
+   * exposed; null for a PHYSICAL product and for a DIGITAL one with no file. */
+  digitalFileFormat!: string | null;
+  /** Size in bytes of the downloadable file, shown beside the format so a
+   * buyer on mobile data knows what they are about to pull down. */
+  digitalFileSize!: number | null;
+  previewPages!: PublicProductPreviewPageDto[];
 }

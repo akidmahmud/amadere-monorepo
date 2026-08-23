@@ -13,17 +13,19 @@ import { EmailTemplatesModule } from '../email-templates/email-templates.module'
 import { SettingsModule } from '../settings/settings.module';
 import { CustomersModule } from '../customers/customers.module';
 import { OrderEmailsModule } from '../order-emails/order-emails.module';
+import { DigitalProductsModule } from '../digital-products/digital-products.module';
 import { CheckoutController } from './checkout.controller';
 import { OrdersController } from './orders.controller';
 import { AdminOrdersController } from './admin-orders.controller';
 import { CheckoutService } from './checkout.service';
+import { CheckoutAccountService } from './checkout-account.service';
 import { OrdersService } from './orders.service';
 import { AdminOrderCreationService } from './admin-order-creation.service';
 
 @Module({
-  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule],
+  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, DigitalProductsModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
-  providers: [CheckoutService, OrdersService, AdminOrderCreationService],
+  providers: [CheckoutService, CheckoutAccountService, OrdersService, AdminOrderCreationService],
   exports: [OrdersService],
 })
 export class OrdersModule {}

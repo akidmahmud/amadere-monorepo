@@ -772,6 +772,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/digital-products/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminDigitalProductsController_uploadFile"];
+        delete: operations["AdminDigitalProductsController_removeFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/digital-products/{id}/preview-range": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminDigitalProductsController_setPreviewRange"];
+        trace?: never;
+    };
+    "/api/v1/downloads/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DownloadsController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customers/me/downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerDownloadsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brands": {
         parameters: {
             query?: never;
@@ -850,6 +914,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/authors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAuthorsController_list"];
+        put?: never;
+        post: operations["AdminAuthorsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/authors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminAuthorsController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminAuthorsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminAuthorsController_update"];
         trace?: never;
     };
     "/api/v1/categories": {
@@ -1410,6 +1506,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminProductsController_updateFrequentlyBoughtTogether"];
+        trace?: never;
+    };
+    "/api/v1/admin/products/{id}/related": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminProductsController_getRelatedProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateRelatedProducts"];
         trace?: never;
     };
     "/api/v1/products/{productId}/reviews": {
@@ -6132,6 +6244,8 @@ export interface components {
             width: number | null;
             height: number | null;
             folderId: number | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         UploadMediaDto: {
             altText?: string;
@@ -6149,6 +6263,25 @@ export interface components {
         };
         CreateMediaFolderDto: {
             name: string;
+        };
+        AdminDigitalPreviewPageDto: {
+            pageNumber: number;
+            imageUrl: string;
+        };
+        AdminDigitalFileDto: {
+            id: number;
+            digitalFileName: string | null;
+            digitalFileSize: number | null;
+            digitalPageCount: number | null;
+            digitalPreviewStartPage: number | null;
+            digitalPreviewEndPage: number | null;
+            previewPages: components["schemas"]["AdminDigitalPreviewPageDto"][];
+        };
+        SetPreviewRangeDto: {
+            /** @description First page of the free preview (1-based, inclusive). */
+            startPage: number;
+            /** @description Last page of the free preview (inclusive). Must be >= startPage, within the document's page count, and cover at most 20 pages. */
+            endPage: number;
         };
         PublicBrandDto: {
             id: number;
@@ -6257,6 +6390,68 @@ export interface components {
             ogDescription?: string;
             ogImageUrl?: string;
             structuredDataType?: string;
+        };
+        AuthorSocialLinkResponseDto: {
+            /** @enum {string} */
+            icon: "facebook" | "instagram" | "youtube" | "tiktok" | "whatsapp" | "linkedin" | "x" | "telegram" | "pinterest";
+            url: string;
+            label?: string;
+        };
+        AdminAuthorTranslationDto: {
+            /** @enum {string} */
+            locale: "EN" | "BN";
+            name: string;
+            bio: string | null;
+        };
+        AdminAuthorDto: {
+            id: number;
+            slug: string;
+            photoUrl: string | null;
+            socialLinks: components["schemas"]["AuthorSocialLinkResponseDto"][];
+            sortOrder: number;
+            /** @enum {string} */
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            translations: components["schemas"]["AdminAuthorTranslationDto"][];
+            productCount: number;
+        };
+        AuthorSocialLinkDto: {
+            /** @enum {string} */
+            icon: "facebook" | "instagram" | "youtube" | "tiktok" | "whatsapp" | "linkedin" | "x" | "telegram" | "pinterest";
+            /** Format: uri */
+            url: string;
+            label?: string;
+        };
+        AuthorTranslationDto: {
+            /** @enum {string} */
+            locale: "EN" | "BN";
+            name: string;
+            bio?: string;
+        };
+        CreateAuthorDto: {
+            slug: string;
+            photoUrl?: string;
+            socialLinks?: components["schemas"]["AuthorSocialLinkDto"][];
+            /** @default 0 */
+            sortOrder: number;
+            /**
+             * @default PUBLISHED
+             * @enum {string}
+             */
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            translations: components["schemas"]["AuthorTranslationDto"][];
+        };
+        UpdateAuthorDto: {
+            slug?: string;
+            photoUrl?: string;
+            socialLinks?: components["schemas"]["AuthorSocialLinkDto"][];
+            /** @default 0 */
+            sortOrder: number;
+            /**
+             * @default PUBLISHED
+             * @enum {string}
+             */
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            translations?: components["schemas"]["AuthorTranslationDto"][];
         };
         PublicCategoryDto: {
             id: number;
@@ -6436,6 +6631,14 @@ export interface components {
             sortOrder: number;
             translations?: components["schemas"]["AttributeValueTranslationDto"][];
         };
+        PublicAuthorDto: {
+            id: number;
+            slug: string;
+            name: string;
+            bio: string | null;
+            photoUrl: string | null;
+            socialLinks: components["schemas"]["AuthorSocialLinkResponseDto"][];
+        };
         PublicProductBrandDto: {
             id: number;
             slug: string;
@@ -6504,6 +6707,12 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
+            isbn: string | null;
+            bookEdition: string | null;
+            bookLanguage: string | null;
+            bookPublisher: string | null;
+            bookCountry: string | null;
+            author: components["schemas"]["PublicAuthorDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -6514,6 +6723,10 @@ export interface components {
         ProductFaqPublicDto: {
             question: string;
             answer: string;
+        };
+        PublicProductPreviewPageDto: {
+            pageNumber: number;
+            imageUrl: string;
         };
         PublicProductDetailDto: {
             id: number;
@@ -6543,6 +6756,12 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
+            isbn: string | null;
+            bookEdition: string | null;
+            bookLanguage: string | null;
+            bookPublisher: string | null;
+            bookCountry: string | null;
+            author: components["schemas"]["PublicAuthorDto"] | null;
             brand: components["schemas"]["PublicProductBrandDto"] | null;
             categories: components["schemas"]["PublicProductCategorySummaryDto"][];
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
@@ -6554,6 +6773,13 @@ export interface components {
             faqs: components["schemas"]["ProductFaqPublicDto"][];
             crossSell: components["schemas"]["PublicProductDto"][];
             frequentlyBoughtTogether: components["schemas"]["PublicProductDto"][];
+            relatedProducts: components["schemas"]["PublicProductDto"][];
+            digitalPageCount: number | null;
+            digitalPreviewStartPage: number | null;
+            digitalPreviewEndPage: number | null;
+            digitalFileFormat: string | null;
+            digitalFileSize: number | null;
+            previewPages: components["schemas"]["PublicProductPreviewPageDto"][];
         };
         AdminProductListVariantDto: {
             id: number;
@@ -6613,6 +6839,10 @@ export interface components {
             keyBenefits: string | null;
             benefitPoints: string | null;
             howToUse: string | null;
+            bookEdition: string | null;
+            bookLanguage: string | null;
+            bookPublisher: string | null;
+            bookCountry: string | null;
             faqs: components["schemas"]["AdminProductFaqDto"][];
         };
         AdminProductMediaDto: {
@@ -6638,11 +6868,17 @@ export interface components {
             isDefault: boolean;
             attributeValueIds: number[];
         };
+        AdminProductPreviewPageDto: {
+            pageNumber: number;
+            imageUrl: string;
+        };
         AdminProductDto: {
             id: number;
             slug: string;
             sku: string | null;
             brandId: number | null;
+            authorId: number | null;
+            isbn: string | null;
             productType: Record<string, never>;
             status: Record<string, never>;
             isFeatured: boolean;
@@ -6671,6 +6907,12 @@ export interface components {
             attributeIds: number[];
             media: components["schemas"]["AdminProductMediaDto"][];
             variants: components["schemas"]["AdminProductVariantDto"][];
+            digitalFileName: string | null;
+            digitalFileSize: number | null;
+            digitalPageCount: number | null;
+            digitalPreviewStartPage: number | null;
+            digitalPreviewEndPage: number | null;
+            previewPages: components["schemas"]["AdminProductPreviewPageDto"][];
             /** Format: date-time */
             createdAt?: string;
             seoScore?: number;
@@ -6695,6 +6937,14 @@ export interface components {
             benefitPoints?: string;
             /** @description PDP "How to Use" tab */
             howToUse?: string;
+            /** @description Book Specification — edition, e.g. "1st Edition" */
+            bookEdition?: string;
+            /** @description Book Specification — language, e.g. "Bangla" */
+            bookLanguage?: string;
+            /** @description Book Specification — publisher name */
+            bookPublisher?: string;
+            /** @description Book Specification — country of publication */
+            bookCountry?: string;
             /** @description PDP "FAQ" tab — list of question/answer pairs */
             faqs?: components["schemas"]["ProductFaqDto"][];
         };
@@ -6720,6 +6970,10 @@ export interface components {
             slug: string;
             sku?: string;
             brandId?: number;
+            /** @description Book author (Author record id) */
+            authorId?: number | null;
+            /** @description Book Specification — ISBN (locale-invariant) */
+            isbn?: string | null;
             /**
              * @default PHYSICAL
              * @enum {string}
@@ -6786,6 +7040,10 @@ export interface components {
             slug?: string;
             sku?: string;
             brandId?: number;
+            /** @description Book author (Author record id) */
+            authorId?: number | null;
+            /** @description Book Specification — ISBN (locale-invariant) */
+            isbn?: string | null;
             /**
              * @default PHYSICAL
              * @enum {string}
@@ -6863,6 +7121,9 @@ export interface components {
             weightOverride?: number | null;
         };
         UpdateCrossSellDto: {
+            productIds: number[];
+        };
+        UpdateRelatedProductsDto: {
             productIds: number[];
         };
         ReviewReplyDto: {
@@ -7062,6 +7323,8 @@ export interface components {
             purchasedByCustomerId?: number;
         };
         CartLineItemDto: {
+            /** @enum {string} */
+            productType: "PHYSICAL" | "DIGITAL";
             id: number;
             productId: number;
             variantId: number | null;
@@ -7210,8 +7473,16 @@ export interface components {
             addressLine: string;
             postCode?: string;
         };
+        CheckoutCreateAccountDto: {
+            firstName: string;
+            lastName: string;
+            /** Format: email */
+            email?: string;
+            phone?: string;
+        };
         CheckoutDto: {
-            shippingAddress: components["schemas"]["CheckoutAddressDto"];
+            /** @description Required unless every cart line is a digital product */
+            shippingAddress?: components["schemas"]["CheckoutAddressDto"];
             /** @description Defaults to shippingAddress if omitted */
             billingAddress?: components["schemas"]["CheckoutAddressDto"];
             /** @enum {string} */
@@ -7235,6 +7506,8 @@ export interface components {
             landingPage?: string;
             referrerUrl?: string;
             referrerDomain?: string;
+            /** @description Digital-only checkout with no logged-in customer (identity.customerId): name/email/phone to create — or reuse — a passwordless account for. Ignored otherwise (a physical order already carries a shippingAddress). */
+            createAccount?: components["schemas"]["CheckoutCreateAccountDto"];
         };
         OrderItemDto: {
             id: number;
@@ -10848,6 +11121,119 @@ export interface operations {
             };
         };
     };
+    AdminDigitalProductsController_uploadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDigitalFileDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDigitalFileDto"];
+                };
+            };
+        };
+    };
+    AdminDigitalProductsController_removeFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDigitalFileDto"];
+                };
+            };
+        };
+    };
+    AdminDigitalProductsController_setPreviewRange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPreviewRangeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDigitalFileDto"];
+                };
+            };
+        };
+    };
+    DownloadsController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerDownloadsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
     BrandsController_list: {
         parameters: {
             query?: {
@@ -11086,6 +11472,129 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminAuthorsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["AdminAuthorDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminAuthorsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAuthorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuthorDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuthorDto"];
+                };
+            };
+        };
+    };
+    AdminAuthorsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuthorDto"];
+                };
+            };
+        };
+    };
+    AdminAuthorsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAuthorsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAuthorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuthorDto"];
+                };
             };
         };
     };
@@ -11770,6 +12279,7 @@ export interface operations {
                 sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
+                productType?: "PHYSICAL" | "DIGITAL";
                 status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
                 stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
                 /** @description ISO date — products created on/after this date */
@@ -11885,6 +12395,7 @@ export interface operations {
                 sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
+                productType?: "PHYSICAL" | "DIGITAL";
                 status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
                 stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
                 /** @description ISO date — products created on/after this date */
@@ -12342,6 +12853,52 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateCrossSellDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    AdminProductsController_getRelatedProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    AdminProductsController_updateRelatedProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRelatedProductsDto"];
             };
         };
         responses: {
@@ -13361,7 +13918,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrderDto"];
+                    "application/json": Record<string, never>;
                 };
             };
         };

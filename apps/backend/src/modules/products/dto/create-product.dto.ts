@@ -57,6 +57,20 @@ export class CreateProductDto {
   @IsInt()
   brandId?: number;
 
+  // Nullable so clearing the dropdown actually unlinks the author — an
+  // omitted/undefined value means "leave unchanged" on update, the same
+  // convention videoUrl and costPriceUnit already use below.
+  @ApiPropertyOptional({ nullable: true, description: 'Book author (Author record id)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  authorId?: number | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Book Specification — ISBN (locale-invariant)' })
+  @IsOptional()
+  @IsString()
+  isbn?: string | null;
+
   @ApiPropertyOptional({ enum: ProductType, default: ProductType.PHYSICAL })
   @IsOptional()
   @IsEnum(ProductType)

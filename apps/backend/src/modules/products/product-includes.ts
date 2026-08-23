@@ -5,6 +5,9 @@ export const PRODUCT_INCLUDE = {
     include: { faqs: { orderBy: { sortOrder: 'asc' as const } } },
   },
   brand: { include: { translations: true } },
+  // Book author (DIGITAL products) — null for everything else. Drives the
+  // PDP's "Author" tab; see toPublicAuthorDto for the resolved shape.
+  author: { include: { translations: true } },
   categories: { include: { category: { include: { translations: true } } } },
   tags: { include: { tag: { include: { translations: true } } } },
   attributes: { include: { attribute: { include: { translations: true } } } },
@@ -17,6 +20,10 @@ export const PRODUCT_INCLUDE = {
     },
     orderBy: { sortOrder: 'asc' as const },
   },
+  // Digital products only (empty for PHYSICAL) — the free-sample preview
+  // images the storefront shows before purchase. Harmless to always include;
+  // see DigitalProductsService for how these rows get written.
+  previewPages: { orderBy: { pageNumber: 'asc' as const } },
 } as const;
 
 // The admin Products table (and only that table) — deliberately excludes

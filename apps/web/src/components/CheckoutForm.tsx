@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import {
@@ -31,6 +32,7 @@ import { ProxyApiError } from "@/lib/api/proxy-client";
 import { makeCheckoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
+import type { CheckoutResult } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { ShippingRatesNotice } from "@/components/ShippingRatesNotice";
@@ -253,7 +255,7 @@ function CheckoutFbtSection({
 export function CheckoutForm() {
   const locale = toApiLocale(useLocale());
   const router = useRouter();
-  const [placedOrder, setPlacedOrder] = useState<components["schemas"]["OrderDto"] | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<CheckoutResult | null>(null);
   const [voucherInput, setVoucherInput] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [blockPopupDismissed, setBlockPopupDismissed] = useState(false);
@@ -263,6 +265,7 @@ export function CheckoutForm() {
   const checkoutStartedAtRef = useRef(Math.floor(Date.now() / 1000));
   const shippingAddressRef = useRef<HTMLDivElement>(null);
   const closeCartDrawer = useCartDrawerStore((s) => s.close);
+  const queryClient = useQueryClient();
 
   // The cart drawer can be left open from wherever the customer clicked
   // through to checkout from (e.g. "View Cart" inside it) — it has no
@@ -295,9 +298,17 @@ export function CheckoutForm() {
   const requireEmailRef = useRef(false);
   requireEmailRef.current = !!me && !me.phone;
 
+  // Assigned further down, once `cart` has loaded (the query is declared
+  // below this form). Read through a ref for the same reason as the two
+  // above: the resolver's identity must stay stable, so it reads the current
+  // value at validation time.
+  const digitalOnlyRef = useRef(false);
+
   const form = useForm<CheckoutFormValues>({
     resolver: (values, context, options) =>
-      zodResolver(makeCheckoutFormSchema(codOtpEnabledRef.current, requireEmailRef.current))(values, context, options),
+      zodResolver(
+        makeCheckoutFormSchema(codOtpEnabledRef.current, requireEmailRef.current, digitalOnlyRef.current),
+      )(values, context, options),
     // Default mode is "onSubmit" — every field (phone/email included) only
     // ever validated after the first "Place Order" click, per explicit
     // report. "onBlur" validates a field the moment you leave it instead.
@@ -320,6 +331,7 @@ export function CheckoutForm() {
         addressLine: "",
         postCode: "",
       },
+      contact: { firstName: "", lastName: "", email: "", phone: "" },
       billingSameAsShipping: true,
       paymentProvider: "COD",
       codOtpCode: "",
@@ -346,6 +358,37 @@ export function CheckoutForm() {
   // computeCheckoutFees on the backend, so this always matches what
   // usePlaceOrder will actually charge.
   const { data: cart } = useCartQuery(locale, paymentProvider, shippingDistrict);
+
+  // Every line is a digital product — the same rule the backend applies
+  // (isDigitalOnly, orders/digital-order.util.ts). There is nothing to ship,
+  // so no address, no shipping fee and no dispatch queue. A MIXED cart is
+  // deliberately NOT digital-only: it still has a parcel in it, so it keeps
+  // the physical behaviour exactly as before.
+  const digitalOnly = (cart?.items.length ?? 0) > 0 && !!cart?.items.every((i) => i.productType === "DIGITAL");
+  digitalOnlyRef.current = digitalOnly;
+  // A ৳0 digital order has no payment step at all (the backend completes and
+  // unlocks it immediately) — so nothing to choose a payment method for.
+  const isFreeOrder = digitalOnly && Number(cart?.grandTotal ?? 0) === 0;
+
+  // Same three rules as useCheckoutPrefill does for the address (never
+  // clobber typing, guests untouched, run once) — but for the digital-only
+  // "Your details" card, which that hook knows nothing about.
+  const contactPrefilled = useRef(false);
+  useEffect(() => {
+    if (contactPrefilled.current || !me) return;
+    contactPrefilled.current = true;
+    const current = form.getValues("contact");
+    const next = {
+      firstName: current.firstName || me.firstName || "",
+      lastName: current.lastName || me.lastName || "",
+      email: current.email || me.email || "",
+      phone: current.phone || me.phone || "",
+    };
+    for (const [key, value] of Object.entries(next)) {
+      if (!value) continue;
+      form.setValue(`contact.${key}` as "contact.firstName", value);
+    }
+  }, [me, form]);
   const updateItem = useUpdateCartItem(locale);
   const removeItem = useRemoveCartItem(locale);
   const placeOrder = usePlaceOrder(locale);
@@ -457,14 +500,34 @@ export function CheckoutForm() {
   if (placedOrder) {
     return (
       <div className="mx-auto max-w-[1180px] px-5 py-12">
+        {/* The email/phone on this digital order already belongs to an
+            account, so no session was issued — deliberately, see the
+            account-takeover note on CheckoutAccountService.ensureAccount.
+            Typing a stranger's email must never hand you their session, so
+            the download goes to the mailbox that owns the account instead. */}
+        {placedOrder.existingAccount && (
+          <p className="mb-6 rounded-brand border border-line bg-beige p-4 text-center font-body text-sm text-ink">
+            This email already has an account. We&apos;ve emailed your download link — {" "}
+            <AppLink href="/login" className="text-green underline">
+              sign in
+            </AppLink>{" "}
+            to see all your downloads.
+          </p>
+        )}
         <OrderConfirmation order={placedOrder} />
         <div className="mt-6 flex justify-center gap-3">
           <Button variant="ghost" onClick={() => router.push("/products")}>
             Continue Shopping
           </Button>
-          <Button variant="green" onClick={() => router.push("/track")}>
-            Track Order
-          </Button>
+          {digitalOnly && !placedOrder.existingAccount ? (
+            <Button variant="green" onClick={() => router.push("/account/downloads")}>
+              Go to My Downloads
+            </Button>
+          ) : (
+            <Button variant="green" onClick={() => router.push("/track")}>
+              Track Order
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -489,17 +552,55 @@ export function CheckoutForm() {
     setBlockPopupDismissed(false);
     placeOrder.mutate(
       {
-        shippingAddress: cleanAddress(values.shippingAddress),
-        billingAddress: values.billingSameAsShipping ? undefined : cleanAddress(values.billingAddress!),
+        // A digital-only order has no address at all — the backend's own
+        // guard only demands one when the cart is not digital-only, and
+        // sending an empty one would fail its validators. `createAccount`
+        // carries the buyer's name/email/phone in its place: it is what the
+        // backend creates the passwordless account from, and also what feeds
+        // the Net Profit blocker and the order email, which would otherwise
+        // see no contact details for this order at all. Harmless when the
+        // buyer is already signed in — checkout.service.ts only reads it when
+        // there is no session.
+        ...(digitalOnly
+          ? {
+              createAccount: {
+                firstName: values.contact.firstName.trim(),
+                lastName: values.contact.lastName.trim(),
+                email: values.contact.email.trim() || undefined,
+                phone: values.contact.phone.trim() || undefined,
+              },
+            }
+          : {
+              shippingAddress: cleanAddress(values.shippingAddress),
+              billingAddress: values.billingSameAsShipping ? undefined : cleanAddress(values.billingAddress!),
+            }),
         paymentProvider: values.paymentProvider,
-        codOtpCode: values.paymentProvider === "COD" ? values.codOtpCode : undefined,
+        codOtpCode: !digitalOnly && values.paymentProvider === "COD" ? values.codOtpCode : undefined,
         giftVoucherCode: values.giftVoucherCode?.trim() || undefined,
         customerNote: values.customerNote?.trim() || undefined,
         deviceId: getDeviceId(),
         checkoutStartedAt: checkoutStartedAtRef.current,
         ...getUtmParamsForCheckout(),
       },
-      { onSuccess: (order) => setPlacedOrder(order) },
+      {
+        onSuccess: (order) => {
+          // `existingAccount === false` is the ONLY signal that a session was
+          // just issued: the backend returned a token pair and the
+          // /api/backend proxy has already moved it into httpOnly cookies and
+          // stripped it from this body (client JS can never read a token
+          // here). Refetch `me` so AccountShell sees the new session instead
+          // of the cached "logged out" answer and bouncing to /login.
+          if (order.existingAccount === false) {
+            queryClient.invalidateQueries({ queryKey: ["me"] });
+            router.push("/account/downloads");
+            return;
+          }
+          // `existingAccount === true` -> no cookies were set, by design.
+          // Rendered as a notice on the confirmation screen below.
+          // undefined -> physical order, or already signed in: unchanged.
+          setPlacedOrder(order);
+        },
+      },
     );
   }
 
@@ -514,6 +615,13 @@ export function CheckoutForm() {
   // with the terms error showing right there on the page, letting a
   // customer complete COD verification without ever having agreed to them.
   function onInvalid(errors: FieldErrors<CheckoutFormValues>) {
+    // Digital-only: the address card isn't rendered, so the "Your details"
+    // card takes its place as the fields to scroll back to. It shares the
+    // same ref (only one of the two cards is ever mounted).
+    if (errors.contact) {
+      shippingAddressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (errors.shippingAddress) {
       shippingAddressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
@@ -591,6 +699,56 @@ export function CheckoutForm() {
               ))}
             </div>
 
+            {/* Nothing is shipped on a digital-only order, so the whole
+                address block — shipping card, shipping-rates notice and the
+                billing card below it — is not rendered at all. The compact
+                "Your details" card takes its place: the backend has no
+                OrderAddress to read a name/email/phone from on this path
+                (see CheckoutDto.createAccount). */}
+            {digitalOnly ? (
+              <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
+                <h2 className="mb-1 font-ui text-[15px] font-semibold text-green">Your details</h2>
+                {!me && (
+                  <p className="mb-4 font-body text-xs text-muted">
+                    We&apos;ll create your account so you can download anytime.
+                  </p>
+                )}
+                <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Input placeholder="First name" {...register("contact.firstName")} />
+                    {formState.errors.contact?.firstName && (
+                      <p className="mt-1 font-body text-xs text-red-600">{formState.errors.contact.firstName.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Input placeholder="Last name" {...register("contact.lastName")} />
+                    {formState.errors.contact?.lastName && (
+                      <p className="mt-1 font-body text-xs text-red-600">{formState.errors.contact.lastName.message}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="mb-3.5">
+                  <Input type="email" placeholder="Email" {...register("contact.email")} />
+                  {formState.errors.contact?.email && (
+                    <p className="mt-1 font-body text-xs text-red-600">{formState.errors.contact.email.message}</p>
+                  )}
+                </div>
+                <div className="mb-3.5">
+                  <Input placeholder="Mobile number (optional)" {...register("contact.phone")} />
+                  {formState.errors.contact?.phone && (
+                    <p className="mt-1 font-body text-xs text-red-600">{formState.errors.contact.phone.message}</p>
+                  )}
+                </div>
+                <div>
+                  <textarea
+                    rows={2}
+                    placeholder="Note for your order (optional)"
+                    className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 font-body text-sm outline-none focus:border-green"
+                    {...register("customerNote")}
+                  />
+                </div>
+              </div>
+            ) : (
             <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
               {prefilledFromAddress && (
@@ -620,7 +778,9 @@ export function CheckoutForm() {
                   line in the order summary. */}
               <ShippingRatesNotice district={shippingDistrict} />
             </div>
+            )}
 
+            {!digitalOnly && (
             <div className="rounded-brand border border-line bg-white p-5">
               <div className="flex items-center justify-between">
                 <h2 className="font-ui text-[15px] font-semibold text-green">Billing Address</h2>
@@ -636,9 +796,15 @@ export function CheckoutForm() {
                 </div>
               )}
             </div>
+            )}
           </div>
 
           <div>
+            {/* A ৳0 digital order has no payment step — the backend marks it
+                paid and unlocks the file the moment it is placed — so there
+                is nothing to pick a method for. A PRICED digital order still
+                shows this card and uses the existing manual-payment flow. */}
+            {!isFreeOrder && (
             <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Payment Method</h2>
               <Controller
@@ -688,6 +854,7 @@ export function CheckoutForm() {
                 </div>
               )}
             </div>
+            )}
 
             <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-3 font-ui text-[15px] font-semibold text-green">Have a coupon or discount code?</h2>
@@ -841,7 +1008,13 @@ export function CheckoutForm() {
             )}
 
             <Button type="submit" variant="green" block disabled={!hasItems || placeOrder.isPending}>
-              {placeOrder.isPending ? "Placing Order…" : "Place Order"}
+              {placeOrder.isPending
+                ? "Placing Order…"
+                : isFreeOrder
+                  ? "Get it free"
+                  : digitalOnly && cart
+                    ? `Place Order — ${formatMoney(cart.grandTotal)}`
+                    : "Place Order"}
             </Button>
           </div>
 

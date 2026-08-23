@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   ProductTabs,
   RatingStars,
@@ -11,6 +11,8 @@ import { PdpGallery } from "@/components/PdpGallery";
 import { SelectedVariantProvider } from "@/components/SelectedVariantProvider";
 import { AppLink } from "@/components/AppLink";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
+import { DigitalPreviewButton } from "@/components/DigitalPreviewButton";
+import { BookAuthorPanel, BookSpecificationPanel } from "@/components/BookTabPanels";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
 import { ProductFloatingBarProvider } from "@/components/ProductFloatingBarProvider";
@@ -91,6 +93,8 @@ export async function ProductDetailBody({
 }) {
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
+  const tRelated = await getTranslations("relatedProducts");
+  const tBook = await getTranslations("bookTabs");
 
   const product = await getProduct(slug, localeParam, previewToken);
   if (!product) {
@@ -99,6 +103,9 @@ export async function ProductDetailBody({
   }
 
   const category = product.categories[0];
+  // The generated OpenAPI types model backend enums as opaque objects
+  // (see the media `type` filter below for the same cast).
+  const isDigital = (product.productType as unknown as string) === "DIGITAL";
 
   const [reviewsRes, relatedRes, whatsappRes] = await Promise.all([
     safeGet("/api/v1/products/{productId}/reviews", {
@@ -114,10 +121,18 @@ export async function ProductDetailBody({
   ]);
 
   const reviews = reviewsRes.data as components["schemas"]["ProductReviewsPageDto"] | undefined;
-  const relatedProducts = ((relatedRes.data?.items ?? []) as components["schemas"]["PublicProductDto"][])
+  // Admin-picked list wins outright when it has anything in it, in the exact
+  // order the admin dragged (ProductRelation.position). The automatic
+  // same-category query below is the FALLBACK, unchanged from before this
+  // feature — so a product nobody has curated behaves exactly as it always
+  // did, and only a curated one gets the new heading.
+  const manualRelated = (product.relatedProducts ?? []).map(toProductCardData);
+  const autoRelated = ((relatedRes.data?.items ?? []) as components["schemas"]["PublicProductDto"][])
     .filter((p) => p.id !== product.id)
     .slice(0, 8)
     .map(toProductCardData);
+  const hasManualRelated = manualRelated.length > 0;
+  const relatedProducts = hasManualRelated ? manualRelated : autoRelated;
   const crossSellProducts = product.crossSell.map(toProductCardData);
 
   // variantId rides along so PdpGallery can jump to a variant's own image
@@ -136,7 +151,27 @@ export async function ProductDetailBody({
     return <div className="rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
   }
 
-  const tabs = [
+  // A DIGITAL product is a book, and its page should read like one: Summary,
+  // Specification, Author — not the physical catalogue's Description / How to
+  // Use / Key Benefits / Why Choose Us. Summary is a RELABEL of the existing
+  // long-form content field, not a new column, so an ebook written before
+  // this feature keeps whatever the admin already typed.
+  //
+  // Reviews stays in both sets: it is a jump-link to the review section this
+  // same page always renders, and a book has reviews like anything else.
+  const bookTabs = [
+    product.content && { id: "summary", label: tBook("summary"), content: htmlBlock(product.content) },
+    { id: "specification", label: tBook("specification"), content: <BookSpecificationPanel product={product} /> },
+    product.author && { id: "author", label: tBook("author"), content: <BookAuthorPanel author={product.author} /> },
+    { id: "reviews", label: "Reviews", content: null, scrollTargetId: "reviews" },
+    product.faqs.length > 0 && {
+      id: "faq",
+      label: "FAQ",
+      content: <FaqAccordion faqs={product.faqs} />,
+    },
+  ].filter(Boolean) as ProductTab[];
+
+  const physicalTabs = [
     product.content && { id: "description", label: "Description", content: htmlBlock(product.content) },
     // Jump-link, not a content tab — clicking it scrolls down to the
     // Customer Reviews section (id="reviews") further down this same page
@@ -171,6 +206,8 @@ export async function ProductDetailBody({
         : <p className="font-body text-sm text-secondary">No description available for {product.brand.name} yet.</p>,
     },
   ].filter(Boolean) as ProductTab[];
+
+  const tabs = isDigital ? bookTabs : physicalTabs;
 
   return (
     <ProductFloatingBarProvider product={product}>
@@ -223,7 +260,14 @@ export async function ProductDetailBody({
               grid and have no other shared state. */}
           <SelectedVariantProvider initialVariantId={product.hasVariants ? defaultVariantId(product) : undefined}>
           <div className="grid grid-cols-2 items-start gap-5 max-lg:grid-cols-1 max-lg:gap-3">
-            <PdpGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
+            {/* `relative` only so a DIGITAL product's "আরও পড়ুন"
+                call-out can sit over the image — DigitalPreviewButton
+                renders nothing at all for a PHYSICAL product, which is why
+                the gallery itself needs no branching. */}
+            <div className="relative">
+              <PdpGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
+              {isDigital && <DigitalPreviewButton product={product} />}
+            </div>
 
             {/* Info column (everything below the gallery) scaled down on
                 mobile — the gallery/swiper image itself is deliberately
@@ -246,6 +290,25 @@ export async function ProductDetailBody({
               <h1 className="mb-3 font-ui text-xl font-medium tracking-[-0.6px] text-[#222831] md:mb-4 md:text-2xl">
                 {product.name}
               </h1>
+              {/* Short description under the title — DIGITAL only, per
+                  explicit request. This is ProductTranslation.description
+                  (the admin's "Short Description"), which the PDP did not
+                  render ANYWHERE before this: it only fed SEO metadata and
+                  the Product JSON-LD, so there is no second copy further
+                  down the page to suppress. Physical products are untouched.
+
+                  Clamped to 3 lines, and kept visually secondary (text-sm,
+                  muted). The clamp is what keeps the price and the CTA above
+                  the fold at 390px — a blurb long enough to matter would
+                  otherwise push both down; the full text lives one tap away
+                  in the Summary tab. */}
+              {isDigital && product.description && (
+                <div
+                  className="mb-3 line-clamp-3 font-body text-sm leading-relaxed text-muted [&_p]:m-0"
+                  // eslint-disable-next-line react/no-danger
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
+                />
+              )}
               {reviews && reviews.reviewCount > 0 && (
                 <RatingStars rating={reviews.averageRating ?? 0} count={reviews.reviewCount} className="mb-3" />
               )}
@@ -368,11 +431,20 @@ export async function ProductDetailBody({
 
       {relatedProducts.length > 0 && (
         <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-[#222831]">Related Products</h2>
-            {category && (
-              <AppLink href={`/categories/${category.slug}`} className="text-sm font-medium text-green hover:underline">
-                More Products →
+          <div className="mb-4 flex items-center justify-between gap-3">
+            {/* Two headings, not one: a manually curated list is the section
+                the owner asked for by name ("আমাদের শপে আরও দেখতে পারেন"),
+                while an uncurated product keeps the automatic section's
+                original wording so nothing changes for it. Both come from
+                next-intl, so neither locale ever renders the other's text. */}
+            <h2 className="text-lg font-bold text-[#222831] sm:text-xl">
+              {hasManualRelated ? tRelated("manualHeading") : tRelated("autoHeading")}
+            </h2>
+            {/* The "browse the category" escape hatch only makes sense for
+                the category-derived list; a hand-picked one isn't a category. */}
+            {!hasManualRelated && category && (
+              <AppLink href={`/categories/${category.slug}`} className="shrink-0 text-sm font-medium text-green hover:underline">
+                {tRelated("moreProducts")} →
               </AppLink>
             )}
           </div>

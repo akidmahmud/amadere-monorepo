@@ -53,10 +53,17 @@ export function GoogleSignInButton({ locale, onSuccess }: { locale: string; onSu
         size: "large",
       });
       setTimeout(() => {
-        // GSI can inject an iframe even when the button visually failed (its
-        // logo <svg> loses Google's stylesheet and renders at 0x0) — check
-        // actual rendered size, not just DOM presence.
-        const rect = containerRef.current?.querySelector("svg")?.getBoundingClientRect();
+        // Measure whatever GSI injected, not specifically an <svg>. Google
+        // renders the button into an iframe in some browsers, and an <svg>
+        // inside a cross-origin iframe is invisible to querySelector — the
+        // old check found nothing there and hid a button that was working
+        // fine, a couple of seconds after it appeared.
+        //
+        // Size is still the signal, not mere DOM presence: a genuinely failed
+        // render (e.g. the origin isn't authorized for this client ID) leaves
+        // an element behind that lays out at 0x0.
+        const child = containerRef.current?.firstElementChild as HTMLElement | null;
+        const rect = child?.getBoundingClientRect();
         if (!rect || rect.width === 0 || rect.height === 0) setRenderFailed(true);
       }, 1500);
     }

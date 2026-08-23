@@ -1,14 +1,46 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentProvider } from '@amader/db';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsEmail, IsEnum, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { CheckoutAddressDto } from './checkout-address.dto';
+import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+
+// Contact fields for a digital-only checkout with no logged-in customer —
+// there's no shippingAddress to carry a name/email/phone for that case (see
+// CheckoutDto.shippingAddress), so this is the one place those are
+// collected. Consumed by CheckoutAccountService.ensureAccount() to create
+// (or reuse) a passwordless account before the order exists — see
+// checkout.service.ts's digital-only branch.
+export class CheckoutCreateAccountDto {
+  @ApiProperty()
+  @IsString()
+  firstName!: string;
+
+  @ApiProperty()
+  @IsString()
+  lastName!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @NormalizeBdPhone()
+  @IsBdPhone()
+  phone?: string;
+}
 
 export class CheckoutDto {
-  @ApiProperty({ type: CheckoutAddressDto })
+  @ApiPropertyOptional({
+    type: CheckoutAddressDto,
+    description: 'Required unless every cart line is a digital product',
+  })
+  @IsOptional()
   @ValidateNested()
   @Type(() => CheckoutAddressDto)
-  shippingAddress!: CheckoutAddressDto;
+  shippingAddress?: CheckoutAddressDto;
 
   @ApiPropertyOptional({
     type: CheckoutAddressDto,
@@ -95,4 +127,16 @@ export class CheckoutDto {
   @IsOptional()
   @IsString()
   referrerDomain?: string;
+
+  @ApiPropertyOptional({
+    type: CheckoutCreateAccountDto,
+    description:
+      'Digital-only checkout with no logged-in customer (identity.customerId): ' +
+      'name/email/phone to create — or reuse — a passwordless account for. ' +
+      'Ignored otherwise (a physical order already carries a shippingAddress).',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CheckoutCreateAccountDto)
+  createAccount?: CheckoutCreateAccountDto;
 }

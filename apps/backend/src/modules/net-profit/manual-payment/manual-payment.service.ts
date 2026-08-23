@@ -8,6 +8,7 @@ import { ORDER_STATUS_CHANGED_EVENT } from '../../orders/orders.events';
 import type { OrderStatusChangedEvent } from '../../orders/orders.events';
 import { AdvancePaymentService } from '../advance-payment/advance-payment.service';
 import { OrderEmailsService } from '../../order-emails/order-emails.service';
+import { DownloadsService } from '../../digital-products/downloads.service';
 import { SubmitManualPaymentDto, TRX_ID_PATTERNS } from './dto/submit-manual-payment.dto';
 import { ManualPaymentDto, toManualPaymentDto } from './manual-payment.mapper';
 
@@ -25,6 +26,7 @@ export class ManualPaymentService {
     private readonly advancePayment: AdvancePaymentService,
     private readonly events: EventEmitter2,
     private readonly orderEmails: OrderEmailsService,
+    private readonly downloads: DownloadsService,
   ) {}
 
   async submit(dto: SubmitManualPaymentDto): Promise<ManualPaymentDto> {
@@ -132,6 +134,34 @@ export class ManualPaymentService {
           from: order.status,
           to: config.orderStatusAfterVerify,
         } satisfies OrderStatusChangedEvent);
+      }
+    }
+
+    // Priced digital orders have no other payment-confirmation hook: bKash/
+    // Nagad/Rocket/Upay all route through this single verify() (see
+    // PaymentsService — COD is the only other configured provider, and it
+    // settles synchronously at checkout with nothing to "confirm" later).
+    // Called from here rather than gated on the config block above, since
+    // that block is itself conditional (no PaymentMethodConfig row, or the
+    // order already moved past PENDING/HOLD) — unlockForOrder is idempotent,
+    // so calling it on every successful verify is safe.
+    //
+    // But it must NOT fire on an advance: `advance.status === 'PAID'` above
+    // means the (partial) advance requirement is satisfied, not that the
+    // order itself is — AdvancePayment.required is a fraction of the order
+    // total, e.g. a ৳200 advance on a ৳1000 ebook. Gate on the order's
+    // actual total instead: sum every VERIFIED ManualPayment against this
+    // order (the row updated to VERIFIED above already counts) and only
+    // unlock once that sum covers totalAmount, so a partially-paid order
+    // never releases the file.
+    if (order) {
+      const verifiedTotal = await this.prisma.client.manualPayment.aggregate({
+        where: { orderId: submission.orderId, status: 'VERIFIED' },
+        _sum: { amount: true },
+      });
+      const paidSoFar = verifiedTotal._sum.amount ?? new Prisma.Decimal(0);
+      if (paidSoFar.greaterThanOrEqualTo(order.totalAmount)) {
+        await this.downloads.unlockForOrder(submission.orderId);
       }
     }
 

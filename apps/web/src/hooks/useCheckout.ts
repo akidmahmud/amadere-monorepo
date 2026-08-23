@@ -7,6 +7,22 @@ import type { components } from "@/lib/api/schema";
 type CheckoutDto = components["schemas"]["CheckoutDto"];
 type OrderDto = components["schemas"]["OrderDto"];
 
+// What POST /checkout actually returns for a digital-only order placed by a
+// logged-out buyer (CheckoutResultDto in checkout.service.ts). It is a plain
+// OrderDto for every other checkout, which is why both extras are optional.
+//
+// The backend also returns a `tokens` pair on that path, and it is
+// DELIBERATELY absent from this type: the /api/backend proxy moves it into
+// httpOnly cookies and strips it from the body before this code ever sees it
+// (see the token-stripping rule in app/api/backend/[...path]/route.ts).
+// Nothing on the client may read an access token — `existingAccount` is the
+// only signal it needs:
+//   undefined -> no account was resolved (physical order, or already signed in)
+//   false     -> a new passwordless account was created AND the session cookies are now set
+//   true      -> the email/phone already belongs to someone, so NO session was
+//                issued (account-takeover guard, see CheckoutAccountService.ensureAccount)
+export type CheckoutResult = OrderDto & { existingAccount?: boolean };
+
 function cartHeaders(): Record<string, string> {
   const token = getGuestToken();
   return token ? { "X-Guest-Token": token } : {};
@@ -40,7 +56,7 @@ export function usePlaceOrder(locale: string) {
     // login-merge): the backend found no cart and checkout failed with
     // "Cart is empty" while the cart panel beside it showed the items.
     mutationFn: async (dto: CheckoutDto) => {
-      return proxyFetch<OrderDto>(`/checkout?locale=${locale}`, {
+      return proxyFetch<CheckoutResult>(`/checkout?locale=${locale}`, {
         method: "POST",
         headers: cartHeaders(),
         body: JSON.stringify(dto),

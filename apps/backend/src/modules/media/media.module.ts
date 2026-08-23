@@ -11,6 +11,9 @@ import { R2MediaStorage } from './storage/r2-media-storage';
     MediaService,
     { provide: MEDIA_STORAGE, useClass: R2MediaStorage },
   ],
-  exports: [MediaService],
+  // MEDIA_STORAGE must be exported too — digital-products injects it
+  // directly to reach uploadPrivate()/getObjectStream(), which MediaService
+  // doesn't expose.
+  exports: [MediaService, MEDIA_STORAGE],
 })
 export class MediaModule {}

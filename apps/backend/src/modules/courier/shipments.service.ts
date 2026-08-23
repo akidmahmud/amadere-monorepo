@@ -373,6 +373,10 @@ export class ShipmentsService {
     // Manager's own working-list query (`deleted_at IS NULL`).
     const where: Prisma.OrderWhereInput = {
       deletedAt: null,
+      // Digital-only orders have nothing to pack. The queue is a packing
+      // list, so an ebook sitting in it forever is noise staff cannot
+      // action. Mixed orders still appear — they contain a parcel.
+      items: { some: { productTypeSnapshot: 'PHYSICAL' } },
       ...(search
         ? {
             OR: [

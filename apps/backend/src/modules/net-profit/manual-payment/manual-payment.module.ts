@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { AdvancePaymentModule } from '../advance-payment/advance-payment.module';
 import { MediaModule } from '../../media/media.module';
 import { OrderEmailsModule } from '../../order-emails/order-emails.module';
+import { DigitalProductsModule } from '../../digital-products/digital-products.module';
 import { AdminManualPaymentController } from './admin-manual-payment.controller';
 import { ManualPaymentPublicController } from './manual-payment.public.controller';
 import { ManualPaymentService } from './manual-payment.service';
 
 @Module({
-  imports: [AdvancePaymentModule, MediaModule, OrderEmailsModule],
+  imports: [AdvancePaymentModule, MediaModule, OrderEmailsModule, DigitalProductsModule],
   controllers: [AdminManualPaymentController, ManualPaymentPublicController],
   providers: [ManualPaymentService],
 })

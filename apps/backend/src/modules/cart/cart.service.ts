@@ -16,6 +16,7 @@ import { CART_UPDATED_EVENT, CartUpdatedEvent } from './cart.events';
 import { CartViewDto, PricingSummaryDto } from './dto/cart-response.dto';
 import { PRODUCT_INCLUDE } from '../products/product-includes';
 import { toPublicProductDto } from '../products/products.mapper';
+import { isDigitalOnly } from '../orders/digital-order.util';
 
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
@@ -81,7 +82,7 @@ export class CartService {
     dto: AddCartItemDto,
     locale: Locale,
   ): Promise<CartViewDto> {
-    const { productId, variantId, quantity } = await this.validateLine(dto);
+    const { productId, variantId, quantity, productType } = await this.validateLine(dto);
     const cart =
       (await this.findCart(identity)) ?? (await this.createCart(identity));
 
@@ -94,7 +95,10 @@ export class CartService {
       await this.prisma.client.cartItem.update({
         where: { id: existing.id },
         data: {
-          quantity: existing.quantity + (quantity ?? 1),
+          // Digital lines never accumulate — re-adding the same ebook leaves
+          // the quantity at 1 instead of stacking a second copy.
+          quantity:
+            productType === 'DIGITAL' ? 1 : existing.quantity + (quantity ?? 1),
           unitPriceSnapshot: unitPrice,
         },
       });
@@ -123,12 +127,18 @@ export class CartService {
     const cart = await this.requireCart(identity);
     const item = await this.prisma.client.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
+      include: { product: { select: { productType: true } } },
     });
     if (!item) throw new NotFoundException('Cart item not found');
 
     await this.prisma.client.cartItem.update({
       where: { id: itemId },
-      data: { quantity },
+      // This path never goes through validateLine, so the digital pin is
+      // re-applied here: the stepper must not be able to raise an ebook
+      // above one copy.
+      data: {
+        quantity: item.product.productType === 'DIGITAL' ? 1 : quantity,
+      },
     });
     this.emitUpdated(cart);
     return this.buildView(cart.id, locale, identity.customerId);
@@ -209,6 +219,18 @@ export class CartService {
       return this.buildView(customerCart.id, locale, customerId);
     }
 
+    // productType is needed to keep a digital line pinned at 1 through the
+    // merge — the same ebook sitting in both the guest and the customer cart
+    // would otherwise sum to 2.
+    const mergedTypes = new Map(
+      (
+        await this.prisma.client.product.findMany({
+          where: { id: { in: guestCart.items.map((i) => i.productId) } },
+          select: { id: true, productType: true },
+        })
+      ).map((p) => [p.id, p.productType]),
+    );
+
     for (const item of guestCart.items) {
       const existing = await this.prisma.client.cartItem.findFirst({
         where: {
@@ -220,7 +242,12 @@ export class CartService {
       if (existing) {
         await this.prisma.client.cartItem.update({
           where: { id: existing.id },
-          data: { quantity: existing.quantity + item.quantity },
+          data: {
+            quantity:
+              mergedTypes.get(item.productId) === 'DIGITAL'
+                ? 1
+                : existing.quantity + item.quantity,
+          },
         });
       } else {
         await this.prisma.client.cartItem.create({
@@ -246,12 +273,12 @@ export class CartService {
     locale: Locale,
     customerId?: number,
   ): Promise<PricingSummaryDto> {
-    const { productId, variantId, quantity } = await this.validateLine(dto);
+    const { productId, variantId, quantity, productType } = await this.validateLine(dto);
     const pricing = await this.pricing.price(
       [{ productId, variantId, quantity: quantity ?? 1 }],
       { customerId },
     );
-    return this.serializePricing(pricing);
+    return this.serializePricing(pricing, undefined, [{ productType }]);
   }
 
   // ------------------------------------------------------------------
@@ -309,16 +336,24 @@ export class CartService {
       variantId = null;
     }
 
-    const quantity = dto.quantity ?? 1;
-    if (quantity < product.minOrderQuantity) {
-      throw new BadRequestException(
-        `Minimum order quantity is ${product.minOrderQuantity}`,
-      );
-    }
-    if (product.maxOrderQuantity && quantity > product.maxOrderQuantity) {
-      throw new BadRequestException(
-        `Maximum order quantity is ${product.maxOrderQuantity}`,
-      );
+    // A digital product is a licence to download one file — a second copy of
+    // the same PDF is meaningless, so the quantity is pinned to 1 whatever the
+    // client asks for. min/maxOrderQuantity are physical-stock concepts and
+    // are skipped: an admin who left minOrderQuantity at 2 on a book must not
+    // make it unbuyable.
+    const isDigital = product.productType === 'DIGITAL';
+    const quantity = isDigital ? 1 : (dto.quantity ?? 1);
+    if (!isDigital) {
+      if (quantity < product.minOrderQuantity) {
+        throw new BadRequestException(
+          `Minimum order quantity is ${product.minOrderQuantity}`,
+        );
+      }
+      if (product.maxOrderQuantity && quantity > product.maxOrderQuantity) {
+        throw new BadRequestException(
+          `Maximum order quantity is ${product.maxOrderQuantity}`,
+        );
+      }
     }
 
     // Advisory only — the atomic hold at checkout (CheckoutService.reserveStock)
@@ -337,7 +372,7 @@ export class CartService {
         throw new BadRequestException('Insufficient stock');
     }
 
-    return { productId: product.id, variantId, quantity };
+    return { productId: product.id, variantId, quantity, productType: product.productType };
   }
 
   private async currentUnitPrice(productId: number, variantId: number | null) {
@@ -394,6 +429,7 @@ export class CartService {
           id: item.id,
           productId: item.productId,
           variantId: item.variantId,
+          productType: item.product.productType,
           slug: item.product.slug,
           name: translation?.name ?? item.product.slug,
           imageUrl: item.product.media[0]?.media.url ?? null,
@@ -413,7 +449,11 @@ export class CartService {
           lineTotal: priced?.lineTotal.toString() ?? '0',
         };
       }),
-      ...(await this.serializePricing(pricing, district)),
+      ...(await this.serializePricing(
+        pricing,
+        district,
+        cart.items.map((i) => ({ productType: i.product.productType })),
+      )),
       crossSell: recommendations.crossSell.map((p) => {
         // Variant-only products carry no price on the product itself (see
         // PublicProductDto.price's own comment) — same default-variant
@@ -433,12 +473,24 @@ export class CartService {
     };
   }
 
-  private async serializePricing(pricing: Awaited<ReturnType<PricingService['price']>>, district?: string) {
+  private async serializePricing(
+    pricing: Awaited<ReturnType<PricingService['price']>>,
+    district: string | undefined,
+    lines: { productType: string }[],
+  ) {
     const zones = await this.shippingZones.getConfig();
     // Neither tax nor the COD fee are charged on an order — both are
     // internal accounting-only figures, see computeCheckoutFees's own
     // comment (accounts.service.ts).
-    const { shippingFee } = computeCheckoutFees(pricing.discounts.some((d) => d.freeShipping), district, zones);
+    //
+    // A digital-only cart has nothing to ship, so the preview matches what
+    // checkout.service.ts will actually charge — computeCheckoutFees already
+    // early-returns 0 for freeShipping, so no change to the shared function.
+    const { shippingFee } = computeCheckoutFees(
+      pricing.discounts.some((d) => d.freeShipping) || isDigitalOnly(lines),
+      district,
+      zones,
+    );
     return {
       subTotal: pricing.subTotal.toString(),
       // Only entries that actually do something are shown. A coupon or

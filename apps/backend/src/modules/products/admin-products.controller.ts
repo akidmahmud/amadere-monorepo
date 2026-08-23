@@ -38,6 +38,7 @@ import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
 import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
 import { UpdateVariantWeightDto } from './dto/update-variant-weight.dto';
 import { UpdateCrossSellDto } from './dto/update-cross-sell.dto';
+import { UpdateRelatedProductsDto } from './dto/update-related-products.dto';
 
 @ApiTags('admin/products')
 @ApiBearerAuth()
@@ -251,5 +252,23 @@ export class AdminProductsController {
     @Body() dto: UpdateCrossSellDto,
   ): Promise<number[]> {
     return this.products.updateFrequentlyBoughtTogether(id, dto.productIds);
+  }
+
+  // Manual related products — available on EVERY product, physical and
+  // digital: the field is shared, only the storefront heading is new.
+  // The array order IS the display order (see UpdateRelatedProductsDto).
+  @Get(':id/related')
+  @RequirePermission('product.view')
+  getRelatedProducts(@Param('id', ParseIntPipe) id: number): Promise<number[]> {
+    return this.products.getRelatedProducts(id);
+  }
+
+  @Patch(':id/related')
+  @RequirePermission('product.update')
+  updateRelatedProducts(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRelatedProductsDto,
+  ): Promise<number[]> {
+    return this.products.updateRelatedProducts(id, dto.productIds);
   }
 }

@@ -12,7 +12,7 @@ export interface OrderEmailResult {
 }
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
-  include: { addresses: true; items: true; payments: true };
+  include: { addresses: true; items: true; payments: true; customer: true };
 }>;
 
 // The single place that sends order/shipment/payment-lifecycle emails —
@@ -101,6 +101,85 @@ export class OrderEmailsService {
     return this.sendToCustomer('payment_confirmed', orderId, adminUserId, { payment_amount: amount });
   }
 
+  // One email per newly-unlocked digital entitlement, each carrying its own
+  // token link — a two-ebook order gets two mails, because a token unlocks
+  // exactly one product.
+  //
+  // Same best-effort contract as every other method here: it never throws.
+  // That matters more for this one than for the rest — its only caller is
+  // DownloadsService.unlockForOrder, and a paid customer must never be
+  // locked out of their purchase because an SMTP host was unreachable.
+  async sendDigitalDownload(
+    orderId: number,
+    downloads: { token: string; productId: number }[],
+  ): Promise<OrderEmailResult[]> {
+    if (downloads.length === 0) return [];
+    let order: OrderWithRelations | null = null;
+    try {
+      order = await this.loadOrder(orderId);
+      if (!order) return [{ sent: false, reason: 'Order not found' }];
+
+      // Same two-source contact lookup as sendToCustomer — a digital-only
+      // order has no OrderAddress row, so the linked Customer is the source.
+      const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
+      const to = shipping?.email ?? order.customer?.email;
+      if (!to) {
+        return [
+          await this.logOutcome('digital_download', orderId, order.status, null, {
+            sent: false,
+            reason: 'No email on file',
+          }),
+        ];
+      }
+
+      const base = this.buildOrderVariables(order);
+      const results: OrderEmailResult[] = [];
+      for (const download of downloads) {
+        // productNameSnapshot off the order line, NOT a Product lookup: it is
+        // the name the buyer actually purchased under, and loading the
+        // Product row here would pull digitalFileKey into this service for no
+        // reason. The R2 bucket is fully public, so that key must never
+        // travel anywhere except the streaming endpoint.
+        const item = order.items.find((i) => i.productId === download.productId);
+        results.push(
+          await this.renderAndSend(
+            'digital_download',
+            to,
+            {
+              ...base,
+              product_name: this.escapeHtml(item?.productNameSnapshot ?? 'Your purchase'),
+              // Not escaped, and deliberately so: this is a URL this class
+              // built itself from a hex token, not customer input.
+              download_url: this.buildDownloadUrl(download.token),
+            },
+            orderId,
+            order.status,
+            null,
+          ),
+        );
+      }
+      return results;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'Unexpected error sending download email';
+      this.logger.warn(`sendDigitalDownload(order ${orderId}) failed: ${reason}`);
+      const result: OrderEmailResult = { sent: false, reason };
+      return [order ? await this.logOutcome('digital_download', orderId, order.status, null, result) : result];
+    }
+  }
+
+  // API_BASE_URL (this backend's own public origin), not STOREFRONT_BASE_URL:
+  // the download endpoint is GET /api/v1/downloads/:token on the API, and the
+  // storefront has no route that proxies it (its generic /api/backend proxy
+  // parses every response as JSON, which would destroy a PDF stream). This is
+  // byte-identical to the link apps/web's own downloadUrl() helper builds for
+  // the account Downloads list, and API_BASE_URL is already the established
+  // var for absolute links inside outgoing email — newsletter-campaigns
+  // builds its pixel/unsubscribe URLs the same way, default included.
+  private buildDownloadUrl(token: string): string {
+    const base = this.config.get<string>('API_BASE_URL') ?? 'http://localhost:3000';
+    return `${base.replace(/\/+$/, '')}/api/v1/downloads/${token}`;
+  }
+
   // Every public send* method funnels through here (directly, or via
   // sendNewOrderAdminNotice's own copy above) — this single top-level
   // try/catch (Fix 3) is what makes "no public method on this service can
@@ -122,7 +201,9 @@ export class OrderEmailsService {
       if (!order) return { sent: false, reason: 'Order not found' };
 
       const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
-      const to = shipping?.email;
+      // Digital-only orders have no shipping row — fall back to the linked
+      // Customer's email (see loadOrder's comment on the `customer` include).
+      const to = shipping?.email ?? order.customer?.email;
       if (!to) return this.logOutcome(key, orderId, order.status, adminUserId, { sent: false, reason: 'No email on file' });
 
       const variables = { ...this.buildOrderVariables(order), ...extraVariables };
@@ -201,6 +282,15 @@ export class OrderEmailsService {
         addresses: true,
         items: true,
         payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        // A digital-only order has no OrderAddress row at all (nothing to
+        // ship — checkout.service.ts skips creating one), so `to` below and
+        // buildOrderVariables() both need a second source for contact
+        // details. The linked Customer is that source: checkout.service.ts
+        // guarantees a digital order always has one (CheckoutAccountService
+        // resolves an account before the order is created), so this isn't
+        // an optional nicety — without it, the order-placed email/variables
+        // would silently have nothing to fall back to.
+        customer: true,
       },
     });
   }
@@ -215,10 +305,15 @@ export class OrderEmailsService {
   // are left alone — only the item name text inside each `<li>` is escaped.
   private buildOrderVariables(order: OrderWithRelations): Record<string, string> {
     const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
+    // Digital-only orders have no shipping row — fall back to the linked
+    // Customer (same reasoning as the `to` fallback above).
+    const customerName = order.customer
+      ? `${order.customer.firstName ?? ''} ${order.customer.lastName ?? ''}`.trim()
+      : '';
     return {
       order_id: order.orderNumber,
-      customer_name: this.escapeHtml(shipping?.recipientName ?? 'Customer'),
-      customer_phone: this.escapeHtml(shipping?.phone ?? ''),
+      customer_name: this.escapeHtml(shipping?.recipientName ?? (customerName || 'Customer')),
+      customer_phone: this.escapeHtml(shipping?.phone ?? order.customer?.phone ?? ''),
       customer_address: this.escapeHtml(
         [shipping?.addressLine, shipping?.area, shipping?.district].filter(Boolean).join(', '),
       ),

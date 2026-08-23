@@ -14,6 +14,9 @@ export class MediaDto {
   width!: number | null;
   height!: number | null;
   folderId!: number | null;
+  /** Column has always existed; exposed so the library's details panel can
+   * show when a file was uploaded. */
+  createdAt!: Date;
 }
 
 export function toMediaDto(media: Media): MediaDto {
@@ -27,6 +30,7 @@ export function toMediaDto(media: Media): MediaDto {
     width: media.width,
     height: media.height,
     folderId: media.folderId,
+    createdAt: media.createdAt,
   };
 }
 

@@ -15,7 +15,12 @@ import {
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { PRODUCT_INCLUDE, PRODUCT_LIST_INCLUDE } from './product-includes';
-import { toAdminProductDto, toAdminProductListItemDto, toPublicProductDto } from './products.mapper';
+import {
+  toAdminProductDto,
+  toAdminProductListItemDto,
+  toPublicProductDigitalFields,
+  toPublicProductDto,
+} from './products.mapper';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
@@ -358,6 +363,7 @@ export class ProductsService {
   private buildAdminWhere(filters: AdminProductQueryDto) {
     return {
       ...this.buildWhere(filters, { deletedAt: null }),
+      ...(filters.productType !== undefined ? { productType: filters.productType } : {}),
       ...(filters.status !== undefined ? { status: filters.status } : {}),
       ...(filters.stockStatus !== undefined ? { stockStatus: filters.stockStatus } : {}),
       ...(filters.createdFrom || filters.createdTo
@@ -464,13 +470,26 @@ export class ProductsService {
         slug: dto.slug,
         sku: dto.sku,
         brandId: dto.brandId,
+        authorId: dto.authorId,
+        isbn: dto.isbn,
         productType: dto.productType,
         status: dto.status,
         isFeatured: dto.isFeatured,
         flagLabel: dto.flagLabel,
         videoUrl: dto.videoUrl,
         hasVariants: dto.hasVariants,
-        trackInventory: dto.trackInventory,
+        // A digital product has no physical stock. reserveStock/
+        // releaseStock (stock-reservation.util.ts) are gated solely on
+        // trackInventory, so leaving it at the schema default of true —
+        // what an admin who never sees this field for a digital product
+        // would otherwise get — is exactly what would let a PDF acquire
+        // negative stock/reservedStock through an ordinary order-item
+        // edit (addItem/updateItemQuantity/removeItem), the same
+        // corruption already closed for order completion/cancellation
+        // (orders.service.ts). Forced, not validated-and-rejected: an
+        // admin who leaves the default alone should get a working
+        // digital product, not an error about a field they never saw.
+        trackInventory: dto.productType === 'DIGITAL' ? false : dto.trackInventory,
         allowBackorder: dto.allowBackorder,
         stock: dto.hasVariants ? 0 : dto.stock,
         stockStatus: dto.stockStatus,
@@ -497,6 +516,10 @@ export class ProductsService {
             keyBenefits: t.keyBenefits,
             benefitPoints: t.benefitPoints,
             howToUse: t.howToUse,
+            bookEdition: t.bookEdition,
+            bookLanguage: t.bookLanguage,
+            bookPublisher: t.bookPublisher,
+            bookCountry: t.bookCountry,
             faqs: t.faqs ? { create: t.faqs } : undefined,
           })),
         },
@@ -575,18 +598,31 @@ export class ProductsService {
       });
     }
 
+    // dto.productType is optional (PartialType) — undefined means 'leave
+    // the existing productType alone', so a plain update to an
+    // already-DIGITAL product (e.g. editing its title) must still force
+    // trackInventory false below, not just an update that explicitly sets
+    // productType: 'DIGITAL'.
+    const effectiveProductType = dto.productType ?? existing.productType;
+
     const product = await this.prisma.client.product.update({
       where: { id },
       data: {
         slug: dto.slug,
         sku: dto.sku,
         brandId: dto.brandId,
+        authorId: dto.authorId,
+        isbn: dto.isbn,
         productType: dto.productType,
         status: dto.status,
         isFeatured: dto.isFeatured,
         flagLabel: dto.flagLabel,
         videoUrl: dto.videoUrl,
-        trackInventory: dto.trackInventory,
+        // Same reasoning as create() above: reserveStock/releaseStock are
+        // gated solely on trackInventory, so a digital product must never
+        // carry true here, however it got to DIGITAL. Forced, not
+        // validated-and-rejected.
+        trackInventory: effectiveProductType === 'DIGITAL' ? false : dto.trackInventory,
         allowBackorder: dto.allowBackorder,
         stock: dto.stock,
         stockStatus: dto.stockStatus,
@@ -614,6 +650,10 @@ export class ProductsService {
                 keyBenefits: t.keyBenefits,
                 benefitPoints: t.benefitPoints,
                 howToUse: t.howToUse,
+                bookEdition: t.bookEdition,
+                bookLanguage: t.bookLanguage,
+                bookPublisher: t.bookPublisher,
+                bookCountry: t.bookCountry,
                 faqs: t.faqs ? { create: t.faqs } : undefined,
               })),
             }
@@ -935,6 +975,46 @@ export class ProductsService {
     return this.getCrossSell(productId);
   }
 
+  // Manual "আমাদের শপে আরও দেখতে পারেন" picker — the same ProductRelation
+  // table, type RELATED, but ordered: `position` is the array index the admin
+  // dragged the row to, so the returned ids are the display order, not
+  // insertion order. Cross-sell/FBT above deliberately keep writing position
+  // 0 for every row; their admin surfaces have no reordering.
+  async getRelatedProducts(productId: number): Promise<number[]> {
+    const rows = await this.prisma.client.productRelation.findMany({
+      where: { fromProductId: productId, type: 'RELATED' },
+      orderBy: [{ position: 'asc' }, { toProductId: 'asc' }],
+      select: { toProductId: true },
+    });
+    return rows.map((r) => r.toProductId);
+  }
+
+  async updateRelatedProducts(productId: number, productIds: number[]): Promise<number[]> {
+    await this.adminGet(productId);
+    const targetIds = productIds.filter((id) => id !== productId);
+    if (targetIds.length) {
+      const count = await this.prisma.client.product.count({
+        where: { id: { in: targetIds }, deletedAt: null },
+      });
+      if (count !== targetIds.length) throw new BadRequestException('One or more products not found');
+    }
+
+    await this.prisma.client.productRelation.deleteMany({
+      where: { fromProductId: productId, type: 'RELATED' },
+    });
+    if (targetIds.length) {
+      await this.prisma.client.productRelation.createMany({
+        data: targetIds.map((toProductId, position) => ({
+          fromProductId: productId,
+          toProductId,
+          type: 'RELATED' as const,
+          position,
+        })),
+      });
+    }
+    return this.getRelatedProducts(productId);
+  }
+
   async getFrequentlyBoughtTogether(productId: number): Promise<number[]> {
     const rows = await this.prisma.client.productRelation.findMany({
       where: { fromProductId: productId, type: 'FREQUENTLY_BOUGHT_TOGETHER' },
@@ -970,7 +1050,7 @@ export class ProductsService {
   // regardless of publish status since the admin needs to see what it picked).
   private async getPublicRelation(
     productId: number,
-    type: 'CROSS_SELL' | 'FREQUENTLY_BOUGHT_TOGETHER',
+    type: 'CROSS_SELL' | 'FREQUENTLY_BOUGHT_TOGETHER' | 'RELATED',
     locale: Locale,
   ): Promise<PublicProductDto[]> {
     const relations = await this.prisma.client.productRelation.findMany({
@@ -980,6 +1060,10 @@ export class ProductsService {
         toProduct: { deletedAt: null, status: 'PUBLISHED' },
       },
       include: { toProduct: { include: PRODUCT_INCLUDE } },
+      // Only RELATED rows carry a meaningful position; the other two types
+      // write 0 everywhere, so this tie-breaks to toProductId for them and
+      // their existing order is unchanged.
+      orderBy: [{ position: 'asc' }, { toProductId: 'asc' }],
     });
     return relations.map((r) => toPublicProductDto(r.toProduct, locale));
   }
@@ -1184,9 +1268,10 @@ export class ProductsService {
       imageUrl: imageUrls[0] ?? null,
     });
 
-    const [crossSell, frequentlyBoughtTogether, salesSum] = await Promise.all([
+    const [crossSell, frequentlyBoughtTogether, relatedProducts, salesSum] = await Promise.all([
       this.getPublicRelation(product.id, 'CROSS_SELL', locale),
       this.getPublicRelation(product.id, 'FREQUENTLY_BOUGHT_TOGETHER', locale),
+      this.getPublicRelation(product.id, 'RELATED', locale),
       this.prisma.client.orderItem.aggregate({
         where: { productId: product.id, order: { status: { not: 'CANCELED' } } },
         _sum: { quantity: true },
@@ -1247,7 +1332,20 @@ export class ProductsService {
     const faqJsonLd = buildFaqPageJsonLd(faqs);
     if (faqJsonLd) structuredData.push(faqJsonLd);
 
-    return { ...dto, salesCount, seo, structuredData, faqs, crossSell, frequentlyBoughtTogether };
+    return {
+      ...dto,
+      salesCount,
+      seo,
+      structuredData,
+      faqs,
+      crossSell,
+      frequentlyBoughtTogether,
+      relatedProducts,
+      // Preview images + page counts only — see
+      // toPublicProductDigitalFields for why nothing else digital
+      // may be spread in here.
+      ...toPublicProductDigitalFields(product),
+    };
   }
 
   private buildWhere(
@@ -1367,6 +1465,12 @@ export class ProductsService {
         where: { id: dto.brandId, deletedAt: null },
       });
       if (!brand) throw new BadRequestException('Brand not found');
+    }
+    if (dto.authorId !== undefined && dto.authorId !== null) {
+      const author = await this.prisma.client.author.findFirst({
+        where: { id: dto.authorId, deletedAt: null },
+      });
+      if (!author) throw new BadRequestException('Author not found');
     }
     if (dto.categoryIds?.length) {
       const count = await this.prisma.client.category.count({

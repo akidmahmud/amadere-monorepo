@@ -54,6 +54,33 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
     }
 
     const json = await res.json();
+
+    // GENERAL RULE, not a checkout special case: any backend response that
+    // carries a token pair has it moved into httpOnly cookies here and
+    // stripped from the body before it reaches the browser. This app's whole
+    // auth design (see the comment at the top of lib/auth-proxy.ts) rests on
+    // access/refresh tokens being unreadable by client JS — a token in a JSON
+    // body defeats that no matter which endpoint produced it.
+    //
+    // POST /checkout is the first endpoint to hit this path: a digital-only
+    // checkout by a logged-out buyer creates a passwordless account and
+    // returns its session (CheckoutResultDto in checkout.service.ts). Written
+    // as a blanket rule rather than matched on the path so any future
+    // token-issuing endpoint reached through this proxy is safe by default.
+    //
+    // Everything else in the payload — order id, orderNumber,
+    // `existingAccount` — passes through untouched: the client branches on it
+    // to decide where to send the buyer, and none of it is a secret.
+    if (res.ok && json?.data && typeof json.data === "object" && "tokens" in json.data) {
+      const tokens = json.data.tokens;
+      if (tokens?.accessToken) await setAuthCookies(tokens.accessToken, tokens.refreshToken);
+      // Stripped whether or not it held a pair: `tokens: null` is how the
+      // backend says "no session was issued" (an existing account was found),
+      // and the client reads `existingAccount` for that, not this.
+      const { tokens: _stripped, ...data } = json.data;
+      return NextResponse.json({ ...json, data }, { status: res.status });
+    }
+
     return NextResponse.json(json, { status: res.status });
   } catch {
     // Backend unreachable (down, restarting, wrong port) — a clean 503

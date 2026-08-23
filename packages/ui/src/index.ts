@@ -26,6 +26,7 @@ export * from "./components/AnnouncementBar";
 export * from "./components/Nav";
 export * from "./components/MobileDrawer";
 export * from "./components/Footer";
+export * from "./components/SocialIcon";
 export * from "./components/CartDrawer";
 
 export * from "./components/ProductCarouselSection";

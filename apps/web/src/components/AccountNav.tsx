@@ -6,6 +6,7 @@ import { useLogout } from "@/hooks/useAuth";
 const SECTIONS = [
   { href: "/account", label: "Profile" },
   { href: "/account/orders", label: "Orders" },
+  { href: "/account/downloads", label: "Downloads" },
   { href: "/account/wishlist", label: "Wishlist" },
   { href: "/account/addresses", label: "Addresses" },
   { href: "/account/reviews", label: "My Reviews" },

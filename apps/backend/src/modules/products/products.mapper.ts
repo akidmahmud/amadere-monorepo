@@ -1,6 +1,12 @@
 import { Locale, Prisma } from '@amader/db';
+import { toPublicAuthorDto } from '../authors/authors.mapper';
 import { PRODUCT_INCLUDE, PRODUCT_LIST_INCLUDE } from './product-includes';
-import { AdminProductDto, AdminProductListItemDto, PublicProductDto } from './dto/product-response.dto';
+import {
+  AdminProductDto,
+  AdminProductListItemDto,
+  PublicProductDto,
+  PublicProductPreviewPageDto,
+} from './dto/product-response.dto';
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof PRODUCT_INCLUDE;
@@ -26,6 +32,8 @@ export function toAdminProductDto(
     slug: product.slug,
     sku: product.sku,
     brandId: product.brandId,
+    authorId: product.authorId,
+    isbn: product.isbn,
     productType: product.productType,
     status: product.status,
     isFeatured: product.isFeatured,
@@ -54,6 +62,10 @@ export function toAdminProductDto(
       keyBenefits: t.keyBenefits,
       benefitPoints: t.benefitPoints,
       howToUse: t.howToUse,
+      bookEdition: t.bookEdition,
+      bookLanguage: t.bookLanguage,
+      bookPublisher: t.bookPublisher,
+      bookCountry: t.bookCountry,
       faqs: t.faqs.map((f) => ({
         question: f.question,
         answer: f.answer,
@@ -85,6 +97,15 @@ export function toAdminProductDto(
       weightOverride: decimalToString(v.weightOverride),
       isDefault: v.isDefault,
       attributeValueIds: v.attributeValues.map((av) => av.attributeValueId),
+    })),
+    digitalFileName: product.digitalFileName,
+    digitalFileSize: product.digitalFileSize,
+    digitalPageCount: product.digitalPageCount,
+    digitalPreviewStartPage: product.digitalPreviewStartPage,
+    digitalPreviewEndPage: product.digitalPreviewEndPage,
+    previewPages: product.previewPages.map((p) => ({
+      pageNumber: p.pageNumber,
+      imageUrl: p.imageUrl,
     })),
   };
 }
@@ -169,6 +190,18 @@ export function toPublicProductDto(
     keyBenefits: translation?.keyBenefits ?? null,
     benefitPoints: translation?.benefitPoints ?? null,
     howToUse: translation?.howToUse ?? null,
+    // Book "Specification" table (DIGITAL). Always mapped, not gated on
+    // productType — a PHYSICAL product simply has them all null, and the
+    // storefront branches on productType anyway.
+    isbn: product.isbn,
+    bookEdition: translation?.bookEdition ?? null,
+    bookLanguage: translation?.bookLanguage ?? null,
+    bookPublisher: translation?.bookPublisher ?? null,
+    bookCountry: translation?.bookCountry ?? null,
+    author:
+      product.author && !product.author.deletedAt
+        ? toPublicAuthorDto(product.author, locale)
+        : null,
     brand: product.brand
       ? {
           id: product.brand.id,
@@ -218,4 +251,55 @@ export function toPublicProductDto(
       }),
     })),
   };
+}
+
+// The DIGITAL half of the public PDP payload, kept out of toPublicProductDto
+// because only the detail endpoint needs it — the list/card shape would
+// otherwise carry a preview-image array per row for no reader.
+//
+// Every field is enumerated by hand rather than spread from the Prisma row:
+// digitalFileKey sits on that same row and IS the paid PDF's object key on a
+// public bucket, so any `...product` or broad `select` here would hand out a
+// permanent unauthenticated download link. That leak has already been shipped
+// and caught three times in this feature — keep the list explicit.
+export function toPublicProductDigitalFields(product: ProductWithRelations): {
+  digitalPageCount: number | null;
+  digitalPreviewStartPage: number | null;
+  digitalPreviewEndPage: number | null;
+  digitalFileFormat: string | null;
+  digitalFileSize: number | null;
+  previewPages: PublicProductPreviewPageDto[];
+} {
+  return {
+    digitalPageCount: product.digitalPageCount,
+    digitalPreviewStartPage: product.digitalPreviewStartPage,
+    digitalPreviewEndPage: product.digitalPreviewEndPage,
+    // DERIVED, never stored and never the raw filename — see
+    // digitalFileFormat() below for why the name itself stays private.
+    digitalFileFormat: digitalFileFormat(product.digitalFileName),
+    digitalFileSize: product.digitalFileSize,
+    previewPages: product.previewPages.map((p) => ({
+      pageNumber: p.pageNumber,
+      imageUrl: p.imageUrl,
+    })),
+  };
+}
+
+// The Specification tab's "Type" row — "PDF", not a MIME type and not a
+// lowercase extension.
+//
+// Derived from digitalFileName rather than stored, so the row can never
+// disagree with the file the buyer actually downloads (the upload endpoint
+// only accepts application/pdf today, but that is a validation rule, not a
+// promise about tomorrow).
+//
+// digitalFileName itself is deliberately NOT returned to the public. It is a
+// component of the R2 object key (`digital/{uuid}-{sanitizedFilename}.pdf`),
+// and while the uuid is the unguessable half, there is no reader for the name
+// on the storefront — only for its extension. Emitting less is free here.
+function digitalFileFormat(fileName: string | null): string | null {
+  if (!fileName) return null;
+  const dot = fileName.lastIndexOf('.');
+  if (dot < 0 || dot === fileName.length - 1) return null;
+  return fileName.slice(dot + 1).toUpperCase();
 }

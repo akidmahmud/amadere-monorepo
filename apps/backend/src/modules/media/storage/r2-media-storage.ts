@@ -1,11 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Readable } from 'node:stream';
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { MediaStorage, UploadedObject } from './media-storage.interface';
+import {
+  MediaStorage,
+  PrivateObject,
+  UploadedObject,
+} from './media-storage.interface';
 
 @Injectable()
 export class R2MediaStorage implements MediaStorage {
@@ -68,6 +74,34 @@ export class R2MediaStorage implements MediaStorage {
       }),
     );
     return { url: `${publicBaseUrl}/${key}` };
+  }
+
+  async uploadPrivate(
+    key: string,
+    body: Buffer,
+    contentType: string,
+  ): Promise<PrivateObject> {
+    const { client, bucket } = this.getClient();
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        // No CacheControl and no public URL returned. The object is only ever
+        // read back through getObjectStream() behind an entitlement check.
+        CacheControl: 'private, no-store',
+      }),
+    );
+    return { key };
+  }
+
+  async getObjectStream(key: string): Promise<Readable> {
+    const { client, bucket } = this.getClient();
+    const res = await client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
+    );
+    return res.Body as Readable;
   }
 
   async delete(key: string): Promise<void> {

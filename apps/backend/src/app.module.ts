@@ -17,7 +17,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { AdminUsersModule } from './modules/admin-users/admin-users.module';
 import { MediaModule } from './modules/media/media.module';
+import { DigitalProductsModule } from './modules/digital-products/digital-products.module';
 import { BrandsModule } from './modules/brands/brands.module';
+import { AuthorsModule } from './modules/authors/authors.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { AttributesModule } from './modules/attributes/attributes.module';
@@ -123,7 +125,9 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     RbacModule,
     AdminUsersModule,
     MediaModule,
+    DigitalProductsModule,
     BrandsModule,
+    AuthorsModule,
     CategoriesModule,
     TagsModule,
     AttributesModule,

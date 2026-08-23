@@ -52,6 +52,16 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('product', 'update'),
   perm('product', 'delete'),
 
+  perm('author', 'view'),
+  perm('author', 'create'),
+  perm('author', 'update'),
+  perm('author', 'delete'),
+
+  perm('digital_product', 'view'),
+  perm('digital_product', 'create'),
+  perm('digital_product', 'update'),
+  perm('digital_product', 'delete'),
+
   perm('search_synonym', 'view'),
   perm('search_synonym', 'create'),
   perm('search_synonym', 'update'),

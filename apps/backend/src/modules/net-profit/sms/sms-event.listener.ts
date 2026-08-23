@@ -72,9 +72,21 @@ export class SmsEventListener {
   private async orderWithPhone(orderId: number) {
     const order = await this.prisma.client.order.findUnique({
       where: { id: orderId },
-      include: { addresses: { where: { type: 'SHIPPING' }, take: 1 } },
+      include: {
+        addresses: { where: { type: 'SHIPPING' }, take: 1 },
+        // Digital-only orders have no SHIPPING OrderAddress row (nothing to
+        // ship) — fall back to the linked Customer's phone below.
+        // checkout.service.ts guarantees a digital order always has one
+        // (CheckoutAccountService resolves an account before the order is
+        // created), so this is the real second source, not a rare edge case.
+        customer: { select: { phone: true } },
+      },
     });
     if (!order) return null;
-    return { orderNumber: order.orderNumber, totalAmount: order.totalAmount, phone: order.addresses[0]?.phone };
+    return {
+      orderNumber: order.orderNumber,
+      totalAmount: order.totalAmount,
+      phone: order.addresses[0]?.phone ?? order.customer?.phone ?? undefined,
+    };
   }
 }

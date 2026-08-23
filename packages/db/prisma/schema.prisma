@@ -360,6 +360,7 @@ model Customer {
   notes          CustomerNote[]
   callLogs       CustomerCallLog[]
   dues           Due[]
+  digitalDownloads DigitalDownload[]
   assignedAdmin  AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
   @@map("customers")
@@ -565,6 +566,48 @@ model BrandTranslation {
   @@map("brand_translations")
 }
 
+// Book authors — a reusable record picked from a dropdown on each product,
+// NOT free text per book, so fixing a typo in a bio or swapping a photo
+// updates every title by that author at once. Modelled on Brand /
+// BrandTranslation directly above: locale-invariant columns here, the
+// name/bio pair on a translation row.
+model Author {
+  id        Int           @id @default(autoincrement())
+  slug      String        @unique
+  photoUrl  String?       @map("photo_url")
+  /// Social profile links shown as icons on the PDP's Author tab — there is
+  /// deliberately no follow button, so these are the only outbound action.
+  /// Shape: { icon: FooterSocialIcon, url: string, label?: string }[], reusing
+  /// the footer's admin-managed icon list (packages/shared/src/footer.ts)
+  /// rather than a second icon vocabulary. Json, not a child table, for the
+  /// same reason footer_config is: it is a short ordered list only ever read
+  /// and written whole.
+  socialLinks Json?       @map("social_links")
+  status    ContentStatus @default(PUBLISHED)
+  sortOrder Int           @default(0) @map("sort_order")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  deletedAt DateTime?     @map("deleted_at")
+
+  translations AuthorTranslation[]
+  products     Product[]
+
+  @@map("authors")
+}
+
+model AuthorTranslation {
+  id       Int     @id @default(autoincrement())
+  authorId Int     @map("author_id")
+  locale   Locale
+  name     String
+  bio      String?
+
+  author Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, locale])
+  @@map("author_translations")
+}
+
 // Self-referencing tree, same shape as the old app's category models —
 // this part of Botble's design was fine, kept as-is.
 model Category {
@@ -739,6 +782,32 @@ model Product {
   brandId    Int?    @map("brand_id")
 
   productType ProductType       @default(PHYSICAL) @map("product_type")
+  // --- Digital products (productType = DIGITAL) -----------------------
+  // The R2 object KEY, never a public URL. The file is served only by the
+  // entitlement-checked download endpoint; turning this into a public URL
+  // would make every paid book freely downloadable by anyone with the link.
+  digitalFileKey      String? @map("digital_file_key")
+  digitalFileName     String? @map("digital_file_name")
+  digitalFileSize     Int?    @map("digital_file_size")
+  digitalPageCount    Int?    @map("digital_page_count")
+  /// The inclusive page RANGE shown as the free preview (e.g. 5..9), not a
+  /// count from the front of the document — a book's first pages are usually
+  /// a cover, a copyright notice and a blank leaf. Both null until a file is
+  /// uploaded; the uploader then defaults them to
+  /// DIGITAL_PREVIEW_START_DEFAULT..DIGITAL_PREVIEW_PAGES_DEFAULT.
+  digitalPreviewStartPage Int? @map("digital_preview_start_page")
+  digitalPreviewEndPage   Int? @map("digital_preview_end_page")
+  /// The book's author — a reusable Author record, so editing an author's
+  /// photo/bio/socials updates every book by them at once. Drives the DIGITAL
+  /// PDP's "Author" tab; null (and unrendered) for a PHYSICAL product.
+  authorId    Int?    @map("author_id")
+  /// Book "Specification" table, locale-INVARIANT half. An ISBN is the same
+  /// string in every locale, so it lives here; edition/language/publisher/
+  /// country read differently in Bangla and English and live on
+  /// ProductTranslation instead. "No of Page" reuses digitalPageCount above
+  /// (the real page count of the file being sold) and "Weight" reuses
+  /// shippableWeight below — neither gets a duplicate column here.
+  isbn        String?
   status      ContentStatus     @default(DRAFT)
   isFeatured  Boolean           @default(false) @map("is_featured")
   flagLabel   ProductFlagLabel? @map("flag_label")
@@ -800,6 +869,7 @@ model Product {
   // stock, and costing method attach here. Do not build now.
 
   brand          Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  author         Author?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
   translations   ProductTranslation[]
   categories     ProductCategory[]
   tags           ProductTag[]
@@ -807,6 +877,8 @@ model Product {
   variants       ProductVariant[]
   media          ProductMedia[]
   files          ProductFile[]
+  previewPages     ProductPreviewPage[]
+  digitalDownloads DigitalDownload[]
   licenseCodes   ProductLicenseCode[]
   bundleItems    ProductBundleItem[]
   relationsFrom  ProductRelation[]    @relation("ProductRelationFrom")
@@ -853,6 +925,15 @@ model ProductTranslation {
   // competitorLabel?: string, rows: { feature: string, own: boolean,
   // competitor: boolean }[] }.
   comparisonTable Json? @map("comparison_table")
+
+  // Book "Specification" tab (DIGITAL products) — the locale-VARYING half.
+  // These are display strings, not codes: "1st Edition" / "১ম সংস্করণ",
+  // "Bangla" / "বাংলা", a publisher's name as it is written in each script.
+  // The ISBN sits on Product instead, since it is one string in every locale.
+  bookEdition   String? @map("book_edition")
+  bookLanguage  String? @map("book_language")
+  bookPublisher String? @map("book_publisher")
+  bookCountry   String? @map("book_country")
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   faqs    ProductFaq[]
@@ -1000,6 +1081,44 @@ model ProductFile {
   @@map("product_files")
 }
 
+model ProductPreviewPage {
+  id         Int    @id @default(autoincrement())
+  productId  Int    @map("product_id")
+  pageNumber Int    @map("page_number")
+  /// Public URL. These are the free sample and are meant to be readable.
+  imageUrl   String @map("image_url")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, pageNumber])
+  @@map("product_preview_pages")
+}
+
+/// A buyer's entitlement to one digital product from one order. Separate from
+/// OrderItem so a download can be counted and re-issued without rewriting
+/// order history.
+model DigitalDownload {
+  id             Int       @id @default(autoincrement())
+  orderId        Int       @map("order_id")
+  productId      Int       @map("product_id")
+  customerId     Int?      @map("customer_id")
+  /// Unguessable, emailed to the buyer. Works with no session so a guest can
+  /// download straight from the email link.
+  token          String    @unique
+  downloadCount  Int       @default(0) @map("download_count")
+  lastDownloadAt DateTime? @map("last_download_at")
+  /// Null until payment is confirmed. The endpoint refuses while null.
+  unlockedAt     DateTime? @map("unlocked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product   @relation(fields: [productId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@map("digital_downloads")
+}
+
 enum LicenseCodeStatus {
   AVAILABLE
   USED
@@ -1079,6 +1198,11 @@ model ProductRelation {
   fromProductId Int                 @map("from_product_id")
   toProductId   Int                 @map("to_product_id")
   type          ProductRelationType
+  /// Admin-chosen display order within one (fromProduct, type) group. Added
+  /// for the manual RELATED picker, whose whole point is that the merchant
+  /// decides which book to show first; CROSS_SELL/FBT write 0 for every row
+  /// and keep their existing insertion order.
+  position      Int                 @default(0)
 
   fromProduct Product @relation("ProductRelationFrom", fields: [fromProductId], references: [id], onDelete: Cascade)
   toProduct   Product @relation("ProductRelationTo", fields: [toProductId], references: [id], onDelete: Cascade)
@@ -1269,6 +1393,7 @@ model Order {
   advancePayment AdvancePayment?
   manualPayments ManualPayment[]
   profit         OrderProfit?
+  digitalDownloads DigitalDownload[]
 
   @@index([status])
   @@index([deletedAt])
@@ -1287,6 +1412,11 @@ model OrderItem {
   variantId           Int?      @map("variant_id")
   productNameSnapshot String    @map("product_name_snapshot")
   skuSnapshot         String?   @map("sku_snapshot")
+  /// Snapshotted like productNameSnapshot/skuSnapshot beside it. Neither
+  /// CartItem nor OrderItem carried product type before this feature, so
+  /// every "is this order digital?" check would otherwise re-join to Product
+  /// — and would answer wrongly if the product were later edited or deleted.
+  productTypeSnapshot ProductType @default(PHYSICAL) @map("product_type_snapshot")
   unitPrice           Decimal   @map("unit_price") @db.Decimal(10, 2)
   quantity            Int
   taxAmount           Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)

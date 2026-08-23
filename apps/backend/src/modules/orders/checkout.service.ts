@@ -31,9 +31,25 @@ import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 import { generateOrderNumber } from './order-number.util';
 import { reserveStock } from './stock-reservation.util';
 import { toOrderAddressCreate } from './order-address.util';
+import { isDigitalOnly } from './digital-order.util';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
+import { DownloadsService } from '../digital-products/downloads.service';
+import { OrdersService } from './orders.service';
+import { CheckoutAccountService } from './checkout-account.service';
+import type { EnsureAccountResult } from './checkout-account.service';
+import type { TokenPair } from '../../common/auth/token.types';
 
 const Decimal = Prisma.Decimal;
+
+// Only present when a digital-only checkout with no logged-in customer just
+// resolved (created or reused) a passwordless account — see
+// CheckoutAccountService.ensureAccount. tokens is null when that resolution
+// found a pre-existing verified (or password-protected) account instead of
+// issuing a session — see the security note on ensureAccount for why.
+export type CheckoutResultDto = OrderDto & {
+  tokens?: TokenPair | null;
+  existingAccount?: boolean;
+};
 
 @Injectable()
 export class CheckoutService {
@@ -53,6 +69,9 @@ export class CheckoutService {
     private readonly settings: SettingsService,
     private readonly config: ConfigService,
     private readonly shippingZones: ShippingZonesService,
+    private readonly downloads: DownloadsService,
+    private readonly orders: OrdersService,
+    private readonly checkoutAccount: CheckoutAccountService,
   ) {}
 
   async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
@@ -133,11 +152,42 @@ export class CheckoutService {
     dto: CheckoutDto,
     locale: Locale,
     ip?: string,
-  ): Promise<OrderDto> {
+  ): Promise<CheckoutResultDto> {
     const cart = await this.findCart(identity, locale);
     if (!cart || cart.items.length === 0) {
       throw new BadRequestException('Cart is empty');
     }
+
+    // A digital-only order has nothing to ship: no address, no stock hold,
+    // no dispatch-queue entry. Mixed carts are deliberately excluded — any
+    // physical line means there's still a parcel, so it behaves exactly as
+    // it always has.
+    const digitalOnly = isDigitalOnly(
+      cart.items.map((i) => ({ productType: i.product.productType })),
+    );
+    if (!digitalOnly && !dto.shippingAddress) {
+      throw new BadRequestException('A shipping address is required');
+    }
+    // A digital-only buyer with no session has no shippingAddress to supply
+    // a name/email/phone either — createAccount is the one place those are
+    // collected for this path (see CheckoutDto.createAccount).
+    if (digitalOnly && !identity.customerId && !dto.createAccount) {
+      throw new BadRequestException(
+        'Name and an email or phone are required to receive a digital order',
+      );
+    }
+
+    // A digital order has no OrderAddress row (nothing to ship), so
+    // shippingAddress can't supply contact details the way it does for a
+    // physical order — createAccount is the fallback source. Used below to
+    // feed the Net Profit blocker, which otherwise silently disables its
+    // phone-blocklist, duplicate-order and new-customer-high-value rules for
+    // every digital order (empty phone/email never matches anything).
+    const contactPhone = dto.shippingAddress?.phone ?? dto.createAccount?.phone ?? '';
+    const contactEmail = dto.shippingAddress?.email ?? dto.createAccount?.email ?? '';
+    const contactName =
+      dto.shippingAddress?.recipientName ??
+      (dto.createAccount ? `${dto.createAccount.firstName} ${dto.createAccount.lastName}`.trim() : '');
 
     const pricing = await this.pricing.price(
       cart.items.map((i) => ({
@@ -156,12 +206,16 @@ export class CheckoutService {
     // since several rules (minimum order amount, new-customer high value,
     // duplicate order) need the real cart total/product set.
     const blockResult = await this.blocker.evaluateCheckout({
-      phone: dto.shippingAddress.phone,
-      email: dto.shippingAddress.email ?? '',
+      // Fraud protection still runs for a digital-only order — it's keyed on
+      // phone, email, IP and device, all still collected (via createAccount
+      // when there's no shippingAddress) — so empty strings only remain when
+      // truly nothing was supplied, rather than being skipped outright.
+      phone: contactPhone,
+      email: contactEmail,
       ip: ip ?? '',
       deviceId: dto.deviceId ?? '',
-      name: dto.shippingAddress.recipientName,
-      address: this.compactAddress(dto.shippingAddress),
+      name: contactName,
+      address: dto.shippingAddress ? this.compactAddress(dto.shippingAddress) : '',
       orderTotal: pricing.total.toNumber(),
       productIds: cart.items.map((i) => i.productId),
       checkoutStartedAt: dto.checkoutStartedAt,
@@ -184,25 +238,35 @@ export class CheckoutService {
     let requireAdvancePercent: number | undefined;
     let codOtpVerified = false;
 
-    if (dto.paymentProvider === 'COD') {
+    // Both COD gates below are courier-delivery concepts, and a digital-only
+    // order is never handed to a courier: there is no delivery phone to send
+    // an OTP to, and the fraud gate scores delivery-refusal risk for a parcel
+    // that does not exist. Neither merely no-ops on this path — both read
+    // `dto.shippingAddress?.phone ?? ''`, and FraudService.evaluate() throws
+    // BadRequestException('Invalid Bangladeshi phone number') on an empty
+    // one, which made a digital-only COD checkout impossible whenever fraud
+    // detection was enabled. The Blocker above still runs on every order,
+    // digital included — it reads contactPhone/contactEmail from
+    // createAccount, so the real fraud protection for this path is untouched.
+    if (!digitalOnly && dto.paymentProvider === 'COD') {
       const otpSettings = await this.otpSecurity.getSettings();
       if (otpSettings.codOtpEnabled) {
-        await this.verifyCodOtp(dto.shippingAddress.phone, dto.codOtpCode);
+        await this.verifyCodOtp(dto.shippingAddress?.phone ?? '', dto.codOtpCode);
         codOtpVerified = true;
       }
 
       // Net Profit courier fraud gate (CLAUDE.net-profit.md §7.2) — only
       // applies to COD, since a prepaid order carries no delivery-refusal
       // risk. No-ops entirely when the feature is disabled/set to "off".
-      const gate = await this.fraud.evaluateCheckoutGate(dto.shippingAddress.phone);
+      const gate = await this.fraud.evaluateCheckoutGate(dto.shippingAddress?.phone ?? '');
       if (!gate.allowed) {
         const savingAmount = await this.fraud.savingAmountFor(pricing.total);
         await this.fraud.recordSaving(
-          dto.shippingAddress.phone,
+          dto.shippingAddress?.phone ?? '',
           savingAmount,
           'auto_block',
         );
-        await this.blocker.maybeAutoBlockFraud(dto.shippingAddress.phone);
+        await this.blocker.maybeAutoBlockFraud(dto.shippingAddress?.phone ?? '');
         throw new ForbiddenException(
           gate.blockMessage
             ? `${gate.blockMessage.en} / ${gate.blockMessage.bn}`
@@ -230,23 +294,45 @@ export class CheckoutService {
     // Accounts) and must never be added to what a customer actually pays —
     // see computeCheckoutFees's own comment. This order's taxAmount/codFee
     // are always 0.
+    //
+    // A digital-only order has nothing to ship. computeCheckoutFees already
+    // early-returns 0 for freeShipping, so this needs no change to the
+    // shared function and leaves the physical path untouched.
     const { shippingFee } = computeCheckoutFees(
-      pricing.discounts.some((d) => d.freeShipping),
-      dto.shippingAddress.district,
+      pricing.discounts.some((d) => d.freeShipping) || digitalOnly,
+      dto.shippingAddress?.district,
       await this.shippingZones.getConfig(),
     );
     const taxAmount = new Decimal(0);
     const codFee = new Decimal(0);
     const totalAmount = preFeeTotal.plus(shippingFee);
 
+    // Resolved last, right before the order is created — DownloadsService.
+    // createForOrder(order.id) (below) reads order.customerId, so an account
+    // must exist before that row does. Skipped entirely once a session
+    // (identity.customerId) is already present, and for any non-digital
+    // order — a guest can still check out for physical delivery exactly as
+    // before, unaffected by this feature.
+    let resolvedCustomerId = identity.customerId;
+    let checkoutAccountResult: EnsureAccountResult | null = null;
+    if (digitalOnly && !identity.customerId && dto.createAccount) {
+      checkoutAccountResult = await this.checkoutAccount.ensureAccount(dto.createAccount);
+      resolvedCustomerId = checkoutAccountResult.customerId;
+    }
+
     const order = await this.prisma.client.$transaction(async (tx) => {
-      for (const item of cart.items) {
-        await reserveStock(
-          tx,
-          item.productId,
-          item.variantId,
-          item.quantity,
-        );
+      // A PDF has no stock to hold — skip the reservation loop entirely for
+      // a digital-only order. Mixed carts still reserve every line, physical
+      // included, exactly as before.
+      if (!digitalOnly) {
+        for (const item of cart.items) {
+          await reserveStock(
+            tx,
+            item.productId,
+            item.variantId,
+            item.quantity,
+          );
+        }
       }
 
       const orderNumber = generateOrderNumber();
@@ -254,7 +340,7 @@ export class CheckoutService {
         data: {
           orderNumber,
           channel: 'WEBSITE',
-          customerId: identity.customerId ?? null,
+          customerId: resolvedCustomerId ?? null,
           subTotal: pricing.subTotal,
           discountAmount: pricing.totalDiscount,
           taxAmount,
@@ -288,23 +374,32 @@ export class CheckoutService {
                 productNameSnapshot:
                   item.product.translations[0]?.name ?? item.product.slug,
                 skuSnapshot: item.variant?.sku ?? item.product.sku,
+                productTypeSnapshot: item.product.productType,
                 unitPrice: priced.unitPrice,
                 quantity: item.quantity,
               };
             }),
           },
-          addresses: {
-            create: [
-              toOrderAddressCreate(
-                dto.shippingAddress,
-                OrderAddressType.SHIPPING,
-              ),
-              toOrderAddressCreate(
-                dto.billingAddress ?? dto.shippingAddress,
-                OrderAddressType.BILLING,
-              ),
-            ],
-          },
+          // Omitted entirely for a digital-only order — there is nothing to
+          // deliver, so no SHIPPING/BILLING OrderAddress rows are created.
+          // `dto.shippingAddress` is guaranteed present here whenever
+          // `digitalOnly` is false (enforced by the guard clause above).
+          ...(digitalOnly
+            ? {}
+            : {
+                addresses: {
+                  create: [
+                    toOrderAddressCreate(
+                      dto.shippingAddress!,
+                      OrderAddressType.SHIPPING,
+                    ),
+                    toOrderAddressCreate(
+                      dto.billingAddress ?? dto.shippingAddress!,
+                      OrderAddressType.BILLING,
+                    ),
+                  ],
+                },
+              }),
           statusHistory: {
             create: { status: 'PENDING', note: 'Order placed' },
           },
@@ -329,7 +424,7 @@ export class CheckoutService {
           await tx.discountRedemption.create({
             data: {
               discountId: discount.id,
-              customerId: identity.customerId,
+              customerId: resolvedCustomerId,
               orderId: created.id,
             },
           });
@@ -379,8 +474,26 @@ export class CheckoutService {
 
     this.events.emit(ORDER_CREATED_EVENT, {
       orderId: order.id,
-      customerId: identity.customerId ?? null,
+      customerId: resolvedCustomerId ?? null,
     } satisfies OrderCreatedEvent);
+
+    // One locked DigitalDownload row per digital line, for every order (not
+    // just digital-only ones) — a mixed cart's digital line still needs an
+    // entitlement even though the order also ships something.
+    await this.downloads.createForOrder(order.id);
+
+    // A free digital order has no payment step, so it is already "paid".
+    // Completing it matters beyond tidiness: profit.service.ts computes profit
+    // ONLY on the transition to COMPLETED, so an order that never completes is
+    // invisible in Net Profit while still showing in Order Manager.
+    if (digitalOnly && totalAmount.equals(0)) {
+      await this.downloads.unlockForOrder(order.id);
+      await this.orders.updateStatus(
+        order.id,
+        { status: 'COMPLETED', note: 'Free digital order — delivered instantly' },
+        null, // system-triggered, same convention as the courier webhook
+      );
+    }
 
     // Two independent advance-payment sources — the fraud gate's risk-based
     // trigger and the store-wide "always on" toggle (ADDENDUM Payments
@@ -401,14 +514,26 @@ export class CheckoutService {
       // store-wide toggle applies to every order regardless of risk, so
       // crediting it here would inflate the ledger with non-fraud entries.
       if (fraudRequired) {
-        await this.fraud.recordSaving(dto.shippingAddress.phone, required, 'advance_required', order.id);
+        await this.fraud.recordSaving(dto.shippingAddress?.phone ?? '', required, 'advance_required', order.id);
       }
     }
 
     await this.orderEmails.sendOrderPlaced(order.id);
     await this.orderEmails.sendNewOrderAdminNotice(order.id);
 
-    return this.getByIdInternal(order.id);
+    const orderDto = await this.getByIdInternal(order.id);
+    // tokens/existingAccount are only ever set on the digital-only,
+    // no-session branch above — every other checkout returns a plain
+    // OrderDto, byte-for-byte the same response shape as before this
+    // feature. The web app uses these to set the customer session cookies
+    // and to choose "you're in" vs. "sign in to download" messaging.
+    return checkoutAccountResult
+      ? {
+          ...orderDto,
+          tokens: checkoutAccountResult.tokens,
+          existingAccount: checkoutAccountResult.existingAccount,
+        }
+      : orderDto;
   }
 
   private async getByIdInternal(id: number) {

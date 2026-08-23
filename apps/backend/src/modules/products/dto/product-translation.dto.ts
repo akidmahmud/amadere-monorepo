@@ -101,6 +101,31 @@ export class ProductTranslationDto {
   @IsString()
   howToUse?: string;
 
+  // Book "Specification" tab (DIGITAL products only) — the locale-VARYING
+  // half. Display strings, not codes: "1st Edition" vs "১ম সংস্করণ". The
+  // ISBN lives on CreateProductDto instead, since it reads the same in
+  // every locale, and "No of Page"/"Weight" reuse digitalPageCount and
+  // shippableWeight rather than getting duplicate fields here.
+  @ApiPropertyOptional({ description: 'Book Specification — edition, e.g. "1st Edition"' })
+  @IsOptional()
+  @IsString()
+  bookEdition?: string;
+
+  @ApiPropertyOptional({ description: 'Book Specification — language, e.g. "Bangla"' })
+  @IsOptional()
+  @IsString()
+  bookLanguage?: string;
+
+  @ApiPropertyOptional({ description: 'Book Specification — publisher name' })
+  @IsOptional()
+  @IsString()
+  bookPublisher?: string;
+
+  @ApiPropertyOptional({ description: 'Book Specification — country of publication' })
+  @IsOptional()
+  @IsString()
+  bookCountry?: string;
+
   @ApiPropertyOptional({ type: [ProductFaqDto], description: 'PDP "FAQ" tab — list of question/answer pairs' })
   @IsOptional()
   @IsArray()

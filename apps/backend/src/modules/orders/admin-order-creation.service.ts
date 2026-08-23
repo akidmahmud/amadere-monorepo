@@ -12,6 +12,7 @@ import { toOrderAddressCreate } from './order-address.util';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
+import { DownloadsService } from '../digital-products/downloads.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -31,6 +32,7 @@ export class AdminOrderCreationService {
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
     private readonly orderEmails: OrderEmailsService,
+    private readonly downloads: DownloadsService,
   ) {}
 
   // Preview-only — reuses the exact same coupon validation the real create()
@@ -195,6 +197,7 @@ export class AdminOrderCreationService {
                 variantId: item.variantId ?? null,
                 productNameSnapshot: product.translations[0]?.name ?? product.slug,
                 skuSnapshot: variant?.sku ?? product.sku,
+                productTypeSnapshot: product.productType,
                 unitPrice: effective,
                 quantity: item.quantity,
               };
@@ -271,6 +274,12 @@ export class AdminOrderCreationService {
       orderId: order.id,
       customerId: dto.customerId ?? null,
     } satisfies OrderCreatedEvent);
+
+    // Task 5 propagated productTypeSnapshot: 'DIGITAL' into this path too
+    // (New Order panel / Reorder) — a staff-created order with a digital
+    // line needs the same locked entitlement real checkout creates, or a
+    // later payment confirmation has nothing to unlock.
+    await this.downloads.createForOrder(order.id);
 
     await this.orderEmails.sendOrderPlaced(order.id, adminId);
     await this.orderEmails.sendNewOrderAdminNotice(order.id);
