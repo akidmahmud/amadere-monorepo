@@ -82,7 +82,7 @@ body * {
 .amader-faq details[open] summary::after { content: "\2212"; }
 .amader-faq .faq-answer { margin-top: 16px; }
 .amader-faq .faq-lang-label { font-weight: 700; margin-bottom: 6px; }
-.amader-faq .faq-answer p { border-left: 3px solid var(--color-line); padding-left: 16px; font-style: italic; color: var(--color-ink); opacity: 0.85; margin: 0 0 14px; }
+.amader-faq .faq-answer p { border-left: 3px solid var(--color-line); padding-left: 16px; font-style: italic; font-family: var(--font-google-sans-italic), var(--font-body); color: var(--color-ink); opacity: 0.85; margin: 0 0 14px; }
 
 /* PDP "Buy Now" attention-getter — a periodic little shake, not a
    continuous shimmy, so it stays noticeable without being annoying. */

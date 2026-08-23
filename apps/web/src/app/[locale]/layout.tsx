@@ -20,7 +20,7 @@ import {
 import { UserIdentityTracker } from "@/components/UserIdentityTracker";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
-import { googleSans } from "@/fonts";
+import { googleSans, googleSansItalic } from "@/fonts";
 import "../globals.css";
 import { IMG, toDisplayImageUrl } from "@/lib/media";
 
@@ -67,6 +67,15 @@ export async function generateMetadata({
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
+
+// Origin only — preconnect takes a scheme+host, not a path.
+const apiOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_BASE_URL ?? "").origin;
+  } catch {
+    return null;
+  }
+})();
 
 export default async function LocaleLayout({
   children,
@@ -119,7 +128,10 @@ export default async function LocaleLayout({
   ]);
 
   return (
-    <html lang={locale} className={`h-full antialiased ${googleSans.variable}`}>
+    <html
+      lang={locale}
+      className={`h-full antialiased ${googleSans.variable} ${googleSansItalic.variable}`}
+    >
       {/* Admin-uploaded via Settings > Logo & Banners > Favicon — falls back
           to the static default in public/ when unset. Replaces the old
           app/icon.png file-convention favicon (which Next auto-injects its
@@ -155,6 +167,15 @@ export default async function LocaleLayout({
           handshake itself is often a big chunk of the perceived "video takes
           a while to start" delay, and it's the same three origins regardless
           of which video loads. */}
+      {/* The storefront calls the API directly from the browser
+          (NEXT_PUBLIC_API_BASE_URL is inlined into the client bundle), so
+          this is a real cross-origin connection on every page — and it was
+          never warmed. Lighthouse measured the cost at 510 ms of LCP, the
+          single largest preconnect saving available on this page.
+
+          Derived from the env var rather than hardcoded so staging and
+          production each warm their own API host. */}
+      {apiOrigin ? <link rel="preconnect" href={apiOrigin} /> : null}
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />

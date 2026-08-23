@@ -108,6 +108,13 @@ function HeroSlideImage({
       // switched to client-side by clicking a dot/arrow) — same "priority
       // only on what's actually the LCP candidate" rule as ProductGallery.
       priority={priority}
+      // Lighthouse's "LCP request discovery" audit flags this image for
+      // missing fetchpriority=high. `priority` alone puts a preload in the
+      // head but does not mark the element itself, so the browser still
+      // schedules it against everything else competing for bandwidth.
+      // Measured LCP breakdown: the file downloads in 30 ms — the cost is
+      // all in waiting, not transfer.
+      fetchPriority={priority ? "high" : undefined}
       sizes="(max-width: 1024px) 100vw, 70vw"
       // Mobile is object-contain per explicit "need to see the full image"
       // request — the only mode that shows 100% of the image with no crop

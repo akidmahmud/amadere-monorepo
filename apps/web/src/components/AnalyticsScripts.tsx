@@ -28,7 +28,9 @@ function injectRawHtml(html: string, target: "head" | "body") {
     if (node.nodeName === "SCRIPT") {
       const src = node as HTMLScriptElement;
       const script = document.createElement("script");
-      Array.from(src.attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
+      Array.from(src.attributes).forEach((attr) =>
+        script.setAttribute(attr.name, attr.value),
+      );
       script.text = src.text;
       parent.appendChild(script);
     } else {
@@ -41,9 +43,29 @@ function injectRawHtml(html: string, target: "head" | "body") {
 // (Settings tab under /analytics) — `config` comes from the public
 // GET /analytics/config endpoint, fetched server-side in the root layout so
 // there's no extra client round trip and no flash of untracked page load.
-// `strategy="afterInteractive"` per Next.js's own guidance for tag
-// managers/analytics (loads after hydration, never blocks first paint).
-export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) {
+// Two loading strategies, deliberately:
+//
+// `afterInteractive` for GA4/Google Ads/GTM. These route through the
+// server-side tagging proxy that also drives conversion measurement, so they
+// stay on the earlier strategy.
+//
+// `lazyOnload` for Meta, TikTok and Clarity. Measured on the live homepage,
+// these cost 385 ms, 347 ms and ~57 ms of main-thread time respectively
+// during the window that decides Total Blocking Time — which is 30% of the
+// Lighthouse performance score, and the largest remaining component of it.
+// lazyOnload runs them after the load event instead, so they still fire and
+// still track; they simply stop competing with rendering.
+//
+// The trade-off is real and worth knowing before changing it back: a visitor
+// who leaves before the load event completes will not be counted. That
+// matters most for Meta, since Facebook uses PageView volume to optimise ad
+// delivery. If attribution noticeably drops, move `meta` back to
+// afterInteractive — it is one word, and the other two can stay lazy.
+export function AnalyticsScripts({
+  config,
+}: {
+  config: PublicAnalyticsConfig;
+}) {
   useEffect(() => {
     if (config.utmEnabled) captureUtmParams();
   }, [config.utmEnabled]);
@@ -56,7 +78,8 @@ export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) 
     if ((window as unknown as Record<string, boolean>)[marker]) return;
     (window as unknown as Record<string, boolean>)[marker] = true;
     injectRawHtml(config.customScript.headerScript, "head");
-    if (config.customScript.bodyScript) injectRawHtml(config.customScript.bodyScript, "body");
+    if (config.customScript.bodyScript)
+      injectRawHtml(config.customScript.bodyScript, "body");
   }, [config.customScript]);
 
   const needsGtag = config.ga4 || config.googleAds;
@@ -115,7 +138,7 @@ export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) 
         <>
           <Script
             id="meta-pixel-init"
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             dangerouslySetInnerHTML={{
               __html: `
                 !function(f,b,e,v,n,t,s)
@@ -147,7 +170,7 @@ export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) 
       {config.tiktok && (
         <Script
           id="tiktok-pixel-init"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               !function (w, d, t) {
@@ -163,7 +186,7 @@ export function AnalyticsScripts({ config }: { config: PublicAnalyticsConfig }) 
       {config.clarity && (
         <Script
           id="clarity-init"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               (function(c,l,a,r,i,t,y){

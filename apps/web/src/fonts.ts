@@ -36,9 +36,38 @@ import localFont from "next/font/local";
 // re-subset from; nothing imports them, so they aren't shipped.
 export const googleSans = localFont({
   src: [
-    { path: "./fonts/GoogleSans-Variable.woff2", weight: "100 900", style: "normal" },
-    { path: "./fonts/GoogleSans-Variable-Italic.woff2", weight: "100 900", style: "italic" },
+    {
+      path: "./fonts/GoogleSans-Variable.woff2",
+      weight: "100 900",
+      style: "normal",
+    },
   ],
   variable: "--font-google-sans",
   display: "swap",
+});
+
+// Split out and NOT preloaded, deliberately.
+//
+// next/font/local preloads every face in a `src` array, so declaring italic
+// alongside normal meant a 269 KiB italic file was fetched at high priority
+// on every page view. Measured on the live site it was the single largest
+// first-party resource — larger than any JavaScript chunk, and larger than
+// the normal weight it sits next to.
+//
+// Italic is used in exactly one place site-wide: the FAQ answer paragraphs
+// (globals.css `.amader-faq .faq-answer p`). That rule points at
+// --font-google-sans-italic, so the file is fetched only on pages that
+// actually render it, and `display: swap` means the text is visible in the
+// upright face meanwhile.
+export const googleSansItalic = localFont({
+  src: [
+    {
+      path: "./fonts/GoogleSans-Variable-Italic.woff2",
+      weight: "100 900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-google-sans-italic",
+  display: "swap",
+  preload: false,
 });
