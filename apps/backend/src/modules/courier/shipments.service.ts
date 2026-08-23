@@ -8,6 +8,7 @@ import { CourierProviderName, OrderStatus, Prisma, ShipmentStatus } from '@amade
 import { mapRawCourierStatus, phoneLookupCandidates } from '@amader/shared';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import {
   paginationArgs,
   toPaginatedResult,
@@ -79,6 +80,7 @@ export class ShipmentsService {
     private readonly orders: OrdersService,
     private readonly courierSettings: CourierSettingsService,
     private readonly orderEmails: OrderEmailsService,
+    private readonly salesPosting: SalesPostingService,
     steadfast: SteadfastCourierProvider,
     pathao: PathaoCourierProvider,
     redx: RedxCourierProvider,
@@ -239,6 +241,22 @@ export class ShipmentsService {
         );
       }
       await this.orderEmails.sendOrderShipped(order.id, shipment.trackingCode, adminUserId);
+
+      // A dispatched COD order is a receivable against the courier, not cash:
+      // the money sits in their merchant balance until they settle, minus
+      // their delivery charge. Booking it as cash here would report money we
+      // cannot spend. Cleared by CodSettlementService when the payout lands.
+      // Best-effort by design — a ledger problem must not fail a dispatch.
+      if (codAmount && codAmount.greaterThan(0)) {
+        await this.salesPosting.openCodReceivable({
+          orderId: order.id,
+          shipmentId: shipment.id,
+          provider: dto.provider,
+          codAmount,
+          dispatchedAt: shipment.dispatchedAt ?? new Date(),
+        });
+      }
+
       return toShipmentDto(shipment);
     }
 
@@ -611,6 +629,11 @@ export class ShipmentsService {
     // every other provider is captured up front at checkout, not on
     // delivery — and only touches a still-PENDING payment so a payment an
     // admin already marked FAILED/REFUNDED/etc. is never silently overwritten.
+    //
+    // Deliberately posts NOTHING to the accounts ledger. The cash is in the
+    // courier's balance, not ours; the receivable opened at dispatch stays
+    // open until CodSettlementService records the actual payout. Do not "fix"
+    // this by booking cash here — that is the bug the ledger redesign removed.
     if (status === 'DELIVERED' || status === 'PARTIALLY_DELIVERED') {
       const payment = await this.prisma.client.payment.findFirst({
         where: { orderId: shipment.orderId },

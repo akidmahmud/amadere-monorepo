@@ -322,6 +322,81 @@ async function main() {
     });
   }
 
+  // --- Accounts module master data ---------------------------------------
+  // Every block below uses `update: {}` so re-seeding never overwrites a live
+  // edit — an admin who renames a category or sets a real opening balance
+  // keeps it.
+
+  console.log('Seeding accounts expense categories...');
+  // Mirrors the list the admin Accounts page used to hardcode as
+  // COMMON_CATEGORIES. "Courier & Logistics" is required by name:
+  // CodSettlementService books each courier payout's delivery charges
+  // against it and fails loudly if it is missing.
+  const expenseCategories = [
+    { name: 'Rent', isVatClaimable: true, sortOrder: 1 },
+    { name: 'Salaries', isVatClaimable: false, sortOrder: 2 },
+    { name: 'Utilities', isVatClaimable: true, sortOrder: 3 },
+    { name: 'Packaging', isVatClaimable: true, sortOrder: 4 },
+    { name: 'Courier & Logistics', isVatClaimable: true, sortOrder: 5 },
+    { name: 'Marketing', isVatClaimable: true, sortOrder: 6 },
+    { name: 'Software & Subscriptions', isVatClaimable: true, sortOrder: 7 },
+    { name: 'Office Supplies', isVatClaimable: true, sortOrder: 8 },
+    { name: 'Other', isVatClaimable: true, sortOrder: 9 },
+  ];
+  for (const category of expenseCategories) {
+    await prisma.expenseCategory.upsert({
+      where: { name: category.name },
+      create: category,
+      update: {},
+    });
+  }
+
+  console.log('Seeding accounts cost centres...');
+  await prisma.costCentre.upsert({
+    where: { name: 'Head Office' },
+    create: { name: 'Head Office', code: 'HO', sortOrder: 1 },
+    update: {},
+  });
+
+  console.log('Seeding accounts cash accounts...');
+  // Opening balances are 0 deliberately. The admin edits each account to its
+  // real balance before going live; seeding a guess would make every derived
+  // figure wrong in a way that looks authoritative.
+  const cashAccounts = [
+    { name: 'Cash in hand', type: 'CASH' as const, sortOrder: 1 },
+    { name: 'bKash', type: 'MOBILE_WALLET' as const, sortOrder: 2 },
+    { name: 'Bank', type: 'BANK' as const, sortOrder: 3 },
+  ];
+  for (const account of cashAccounts) {
+    const exists = await prisma.cashAccount.findFirst({ where: { name: account.name } });
+    if (!exists) {
+      await prisma.cashAccount.create({
+        data: { ...account, openingBalance: 0, openingDate: new Date() },
+      });
+    }
+  }
+
+  console.log('Seeding Steadfast courier party...');
+  // Three roles on one record is the point: Steadfast holds our COD cash
+  // (they owe us) and invoices us for delivery (we owe them). Only a single
+  // party record makes that net position queryable.
+  //
+  // Pathao, RedX and eCourier are deliberately NOT seeded — the store uses
+  // only Steadfast. Adding one later is a party row with its courierProvider
+  // set; nothing in the code hardcodes a courier name.
+  const steadfast = await prisma.party.findFirst({ where: { courierProvider: 'STEADFAST' } });
+  if (!steadfast) {
+    await prisma.party.create({
+      data: {
+        name: 'Steadfast',
+        type: 'COMPANY',
+        roles: ['COURIER', 'CUSTOMER', 'SUPPLIER'],
+        courierProvider: 'STEADFAST',
+        note: 'Holds COD cash on our behalf and invoices us for delivery.',
+      },
+    });
+  }
+
   console.log('Seeding Super Admin role...');
   const superAdminRole = await prisma.role.upsert({
     where: { name: 'Super Admin' },

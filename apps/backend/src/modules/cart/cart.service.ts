@@ -7,7 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
 import { Cart, Locale, PaymentProvider, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
+import { computeCheckoutFees } from '../net-profit/accounts/accounts.constants';
 import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
 import { PricingService } from './pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';

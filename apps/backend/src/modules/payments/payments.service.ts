@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, PaymentProvider as PaymentProviderEnum } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import { PaymentProvider } from './payment-provider.interface';
 import { CodPaymentProvider } from './providers/cod-payment.provider';
 import { UnconfiguredPaymentProvider } from './providers/unconfigured-payment.provider';
@@ -12,6 +13,7 @@ export class PaymentsService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly salesPosting: SalesPostingService,
     cod: CodPaymentProvider,
     manual: ManualPaymentProvider,
   ) {
@@ -47,7 +49,7 @@ export class PaymentsService {
       payment.transactionRef,
       amount,
     );
-    return this.prisma.client.payment.update({
+    const updated = await this.prisma.client.payment.update({
       where: { id: payment.id },
       data: {
         status: result.status,
@@ -55,5 +57,15 @@ export class PaymentsService {
         rawResponse: (result.rawResponse as object) ?? undefined,
       },
     });
+
+    // Money leaving the business. Best-effort: a ledger problem must not make
+    // a refund appear to have failed when the customer has been paid.
+    await this.salesPosting.postRefund({
+      orderId,
+      amount,
+      refundedAt: new Date(),
+    });
+
+    return updated;
   }
 }

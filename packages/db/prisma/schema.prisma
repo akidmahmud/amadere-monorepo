@@ -359,7 +359,7 @@ model Customer {
   tier           CustomerTier?        @relation(fields: [tierId], references: [id])
   notes          CustomerNote[]
   callLogs       CustomerCallLog[]
-  dues           Due[]
+  parties        Party[]
   digitalDownloads DigitalDownload[]
   assignedAdmin  AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
@@ -1394,6 +1394,8 @@ model Order {
   manualPayments ManualPayment[]
   profit         OrderProfit?
   digitalDownloads DigitalDownload[]
+  dues           Due[]
+  ledgerEntries  LedgerEntry[]
 
   @@index([status])
   @@index([deletedAt])
@@ -1572,8 +1574,11 @@ model Shipment {
   createdAt      DateTime            @default(now()) @map("created_at")
   updatedAt      DateTime            @updatedAt @map("updated_at")
 
-  order  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  events ShipmentEvent[]
+  codSettlementId Int? @map("cod_settlement_id")
+
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events        ShipmentEvent[]
+  codSettlement CodSettlement?  @relation(fields: [codSettlementId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([orderId, createdAt])
@@ -2787,55 +2792,317 @@ model DailyProfitCache {
 // admin UI seeds a dropdown with common e-commerce categories as a starting
 // point, not a closed set.
 model Expense {
-  id          Int      @id @default(autoincrement())
-  expenseDate DateTime @map("expense_date") @db.Date
-  category    String
-  amount      Decimal  @db.Decimal(12, 2)
-  // Counts as input VAT (Mushak) in the VAT summary when true — e.g. VAT
-  // paid on a supplier invoice, as opposed to a salary/rent line that has
-  // no VAT component.
-  isVatInput  Boolean  @default(false) @map("is_vat_input")
-  note        String?
-  createdBy   Int?     @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id                Int      @id @default(autoincrement())
+  voucherNo         String   @unique @map("voucher_no")
+  expenseDate       DateTime @map("expense_date") @db.Date
+  categoryId        Int      @map("category_id")
+  costCentreId      Int?     @map("cost_centre_id")
+  // The payee. Required: an expense with no counterparty cannot be aged,
+  // cannot carry a supplier BIN, and cannot net against what that party owes
+  // us. Free-text payee names were the old design core defect.
+  partyId           Int      @map("party_id")
 
+  // The VAT split is computed by computeExpenseAmounts() in @amader/shared --
+  // the same function the admin form calc strip calls, so what is shown can
+  // never differ from what is stored. Do not recompute these anywhere.
+  netAmount         Decimal  @map("net_amount") @db.Decimal(12, 2)
+  vatRate           Decimal  @default(0) @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount         Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  grossAmount       Decimal  @map("gross_amount") @db.Decimal(12, 2)
+  // Bangladeshi supplier bills are normally quoted VAT-inclusive. Without
+  // this flag the old code multiplied by the rate as if exclusive and
+  // overstated claimable input VAT by ~13%.
+  amountIncludesVat Boolean  @default(false) @map("amount_includes_vat")
+  // Mushak 6.3 challan number. No challan (or no supplier BIN) means the
+  // input-VAT rebate is lost on audit -- surfaced by the "at risk" report.
+  mushakChallanNo   String?  @map("mushak_challan_no")
+
+  // Withheld on the supplier behalf and owed to NBR. Not our money.
+  aitPercent        Decimal  @default(0) @map("ait_percent") @db.Decimal(5, 2)
+  aitAmount         Decimal  @default(0) @map("ait_amount") @db.Decimal(12, 2)
+  vdsPercent        Decimal  @default(0) @map("vds_percent") @db.Decimal(5, 2)
+  vdsAmount         Decimal  @default(0) @map("vds_amount") @db.Decimal(12, 2)
+  netPayable        Decimal  @map("net_payable") @db.Decimal(12, 2)
+
+  dueDate           DateTime? @map("due_date") @db.Date
+  attachmentUrl     String?   @map("attachment_url")
+  note              String?
+  // Vouchers are voided, never deleted: a voucher whose ledger rows have
+  // vanished cannot be reconciled against a bank statement.
+  voidedAt          DateTime? @map("voided_at")
+  createdBy         Int?      @map("created_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
+  costCentre     CostCentre?     @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
+  party          Party           @relation(fields: [partyId], references: [id])
+  dues           Due[]
+  ledgerEntries  LedgerEntry[]
+  codSettlements CodSettlement[]
+
+  // PHASE 2 HOOK: recurring expense templates attach here -- a
+  // RecurringExpenseTemplate table plus a cron that creates the voucher.
   @@index([expenseDate])
+  @@index([partyId])
+  @@index([categoryId])
   @@map("expenses")
 }
 
-enum DuePartyType {
-  CUSTOMER
-  SUPPLIER
+enum DueKind {
+  RECEIVABLE
+  PAYABLE
 }
 
-enum DueStatus {
-  PENDING
-  PARTIALLY_PAID
-  PAID
+enum DueSource {
+  MANUAL
+  EXPENSE
+  ORDER
+  COD_IN_TRANSIT
+  OPENING
+  WHOLESALE_INVOICE
 }
 
-// A due book (বাকি খাতা) entry — money the business is owed (CUSTOMER, e.g.
-// a credit sale) or owes (SUPPLIER, e.g. a restock invoice on credit). No
-// Purchase/Vendor module exists yet (out of scope, see AGENTS.finalize.md
-// §9), so `partyName` is free text for suppliers; `customerId` links a real
-// Customer record when the party is a known storefront customer.
+// Money the business is owed (RECEIVABLE) or owes (PAYABLE).
+//
+// There is deliberately no paidAmount or status column. Both are derived from
+// LedgerEntry rows carrying this due id. Storing a cumulative paidAmount
+// beside the movements is what made cash-flow reporting count a
+// three-instalment due three times.
 model Due {
-  id         Int          @id @default(autoincrement())
-  partyType  DuePartyType @map("party_type")
-  partyName  String       @map("party_name")
-  customerId Int?         @map("customer_id")
-  amount     Decimal      @db.Decimal(12, 2)
-  paidAmount Decimal      @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  status     DueStatus    @default(PENDING)
-  dueDate    DateTime?    @map("due_date") @db.Date
-  note       String?
-  createdBy  Int?         @map("created_by")
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
+  id        Int       @id @default(autoincrement())
+  docNo     String    @unique @map("doc_no")
+  kind      DueKind
+  partyId   Int       @map("party_id")
+  source    DueSource
+  amount    Decimal   @db.Decimal(12, 2)
+  issueDate DateTime  @map("issue_date") @db.Date
+  dueDate   DateTime? @map("due_date") @db.Date
+  // Set when this payable was generated from an unpaid expense voucher, or
+  // this receivable from a COD order. Generated, never retyped.
+  expenseId Int?      @map("expense_id")
+  orderId   Int?      @map("order_id")
+  note      String?
+  voidedAt  DateTime? @map("voided_at")
+  createdBy Int?      @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  party         Party         @relation(fields: [partyId], references: [id])
+  expense       Expense?      @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  order         Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  ledgerEntries LedgerEntry[]
 
-  @@index([status])
-  @@index([partyType])
+  @@index([kind])
+  @@index([partyId])
+  @@index([orderId])
   @@map("dues")
+}
+
+enum PartyType {
+  PERSON
+  COMPANY
+}
+
+enum PartyRole {
+  SUPPLIER
+  CUSTOMER
+  COURIER
+  STAFF
+  GOVERNMENT
+  OTHER
+}
+
+// One record per counterparty -- supplier, courier, landlord, wholesale
+// buyer, staff member. The reason this is one table rather than two free-text
+// name fields: a courier simultaneously holds our COD cash and invoices us
+// for delivery, and only a single party record makes that net position
+// queryable.
+model Party {
+  id                Int         @id @default(autoincrement())
+  name              String
+  type              PartyType   @default(COMPANY)
+  roles             PartyRole[]
+  phone             String?
+  email             String?
+  address           String?
+  bin               String?     // VAT registration -- required to claim input VAT
+  tin               String?
+  customerId        Int?        @map("customer_id")
+  openingReceivable Decimal     @default(0) @map("opening_receivable") @db.Decimal(12, 2)
+  openingPayable    Decimal     @default(0) @map("opening_payable") @db.Decimal(12, 2)
+  // PHASE 2 HOOK: wholesale credit terms live here so a wholesale invoice
+  // module attaches without altering this table.
+  creditLimit       Decimal?    @map("credit_limit") @db.Decimal(12, 2)
+  creditDays        Int?        @map("credit_days")
+  // Links this party to a courier provider. At most one party per provider;
+  // this is how a shipment finds the party it settles against. Adding Pathao
+  // later is one row here, not a code change -- nothing may hardcode a
+  // courier name.
+  courierProvider   CourierProviderName? @unique @map("courier_provider")
+  note              String?
+  isActive          Boolean     @default(true) @map("is_active")
+  deletedAt         DateTime?   @map("deleted_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  expenses       Expense[]
+  dues           Due[]
+  ledgerEntries  LedgerEntry[]
+  codSettlements CodSettlement[]
+
+  @@index([name])
+  @@map("parties")
+}
+
+enum CashAccountType {
+  CASH
+  BANK
+  MOBILE_WALLET
+}
+
+// A real place money sits. Balance is NOT stored -- it is
+// openingBalance + sum(IN) - sum(OUT) over LedgerEntry, so it cannot drift
+// from the movements that justify it.
+model CashAccount {
+  id             Int             @id @default(autoincrement())
+  name           String
+  type           CashAccountType
+  accountNumber  String?         @map("account_number")
+  openingBalance Decimal         @default(0) @map("opening_balance") @db.Decimal(12, 2)
+  openingDate    DateTime        @map("opening_date") @db.Date
+  isActive       Boolean         @default(true) @map("is_active")
+  sortOrder      Int             @default(0) @map("sort_order")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  ledgerEntries  LedgerEntry[]
+  codSettlements CodSettlement[]
+
+  @@map("cash_accounts")
+}
+
+enum LedgerDirection {
+  IN
+  OUT
+}
+
+enum LedgerSource {
+  SALE
+  COD_REMITTANCE
+  EXPENSE_PAYMENT
+  RECEIVABLE_RECEIPT
+  PAYABLE_PAYMENT
+  TRANSFER
+  OPENING
+  ADJUSTMENT
+  REFUND
+}
+
+// Every movement of money, one row each. Written only by LedgerService -- if
+// anything else inserts here, account balances and due payment status stop
+// being trustworthy, because both are derived from these rows.
+model LedgerEntry {
+  id           Int             @id @default(autoincrement())
+  entryDate    DateTime        @map("entry_date") @db.Date
+  // Direction carries the sign; amount is always positive. Allowing negative
+  // amounts too would make every SUM depend on which convention the writer
+  // happened to use.
+  direction    LedgerDirection
+  amount       Decimal         @db.Decimal(12, 2)
+  accountId    Int             @map("account_id")
+  partyId      Int?            @map("party_id")
+  source       LedgerSource
+  expenseId    Int?            @map("expense_id")
+  dueId        Int?            @map("due_id")
+  orderId      Int?            @map("order_id")
+  reference    String?         // bKash TrxID / cheque no / bank ref
+  note         String?
+  // Set when this entry reverses another. Reversal is how anything is undone;
+  // there is no delete path.
+  reversalOfId Int?            @map("reversal_of_id")
+  createdBy    Int?            @map("created_by")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  account    CashAccount   @relation(fields: [accountId], references: [id])
+  party      Party?        @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  expense    Expense?      @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  due        Due?          @relation(fields: [dueId], references: [id], onDelete: SetNull)
+  order      Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reversalOf LedgerEntry?  @relation("LedgerReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy LedgerEntry[] @relation("LedgerReversal")
+
+  @@index([entryDate])
+  @@index([accountId, entryDate])
+  @@index([partyId])
+  @@index([dueId])
+  @@index([expenseId])
+  @@map("ledger_entries")
+}
+
+model ExpenseCategory {
+  id             Int     @id @default(autoincrement())
+  name           String  @unique
+  isVatClaimable Boolean @default(true) @map("is_vat_claimable")
+  isActive       Boolean @default(true) @map("is_active")
+  sortOrder      Int     @default(0) @map("sort_order")
+
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model CostCentre {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  code      String?
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @default(0) @map("sort_order")
+
+  expenses Expense[]
+
+  @@map("cost_centres")
+}
+
+// A closed accounting period. Once a VAT return is filed for a month, that
+// month must stop changing; LedgerService refuses to post into a locked one.
+model PeriodLock {
+  id       Int      @id @default(autoincrement())
+  month    DateTime @unique @db.Date // first day of the locked month
+  lockedAt DateTime @default(now()) @map("locked_at")
+  lockedBy Int?     @map("locked_by")
+  note     String?
+
+  @@map("period_locks")
+}
+
+// One courier payout. The courier remits COD collected minus their delivery
+// charges; no webhook reports this, so an admin enters the figure that
+// matches one line on the bank statement.
+model CodSettlement {
+  id             Int                 @id @default(autoincrement())
+  provider       CourierProviderName
+  partyId        Int                 @map("party_id")
+  settlementDate DateTime            @map("settlement_date") @db.Date
+  codCollected   Decimal             @map("cod_collected") @db.Decimal(12, 2)
+  courierCharges Decimal             @map("courier_charges") @db.Decimal(12, 2)
+  netPayout      Decimal             @map("net_payout") @db.Decimal(12, 2)
+  // netPayout - (codCollected - courierCharges). Non-zero means the courier
+  // figures and ours disagree -- surfaced, never silently absorbed.
+  adjustment     Decimal             @default(0) @db.Decimal(12, 2)
+  accountId      Int                 @map("account_id")
+  expenseId      Int?                @map("expense_id")
+  reference      String?
+  note           String?
+  createdBy      Int?                @map("created_by")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  party     Party       @relation(fields: [partyId], references: [id])
+  account   CashAccount @relation(fields: [accountId], references: [id])
+  expense   Expense?    @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  shipments Shipment[]
+
+  @@index([provider, settlementDate])
+  @@map("cod_settlements")
 }

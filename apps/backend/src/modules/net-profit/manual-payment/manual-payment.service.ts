@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ManualPayStatus, PaymentProvider, Prisma } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
+import { SalesPostingService } from '../accounts/ledger/sales-posting.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { ORDER_STATUS_CHANGED_EVENT } from '../../orders/orders.events';
 import type { OrderStatusChangedEvent } from '../../orders/orders.events';
@@ -27,6 +28,7 @@ export class ManualPaymentService {
     private readonly events: EventEmitter2,
     private readonly orderEmails: OrderEmailsService,
     private readonly downloads: DownloadsService,
+    private readonly salesPosting: SalesPostingService,
   ) {}
 
   async submit(dto: SubmitManualPaymentDto): Promise<ManualPaymentDto> {
@@ -94,6 +96,16 @@ export class ManualPaymentService {
       await this.prisma.client.payment.update({
         where: { id: payment.id },
         data: { status: 'CAPTURED', transactionRef: submission.trxId },
+      });
+      // This is where prepaid money actually becomes ours — a verified
+      // bKash/Nagad/Rocket/Upay submission, not order placement. Best-effort:
+      // a ledger problem must never fail a verification the customer is
+      // waiting on.
+      await this.salesPosting.postPrepaidCapture({
+        orderId: submission.orderId,
+        amount: submission.amount,
+        capturedAt: new Date(),
+        reference: submission.trxId,
       });
     }
     if (payment && payment.status === 'PENDING') {

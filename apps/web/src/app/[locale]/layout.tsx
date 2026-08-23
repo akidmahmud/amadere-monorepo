@@ -14,7 +14,10 @@ import { BackToTopButton } from "@/components/BackToTopButton";
 import { MobileStickyFooter } from "@/components/MobileStickyFooter";
 import { QueryProvider } from "@/components/QueryProvider";
 import { ToastProvider } from "@/components/ToastProvider";
-import { AnalyticsScripts, type PublicAnalyticsConfig } from "@/components/AnalyticsScripts";
+import {
+  AnalyticsScripts,
+  type PublicAnalyticsConfig,
+} from "@/components/AnalyticsScripts";
 import { UserIdentityTracker } from "@/components/UserIdentityTracker";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
@@ -29,7 +32,11 @@ const DEFAULT_DESCRIPTION = "আমাদের — organic & natural products";
 // doesn't set its own `openGraph`/`title`/`description` via its own
 // generateMetadata (products/categories/brands/blog posts already do, via
 // the per-entity `seo` module, and simply override these at that level).
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
   const { locale } = await params;
   const { data: siteInfo } = await safeGet("/api/v1/settings/site");
   const title: string = siteInfo?.seoTitle || DEFAULT_TITLE;
@@ -44,7 +51,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       description,
       type: "website",
       locale: locale === "bn" ? "bn_BD" : "en_US",
-      images: ogImageUrl ? [{ url: ogImageUrl, width: 1200, height: 630 }] : undefined,
+      images: ogImageUrl
+        ? [{ url: ogImageUrl, width: 1200, height: 630 }]
+        : undefined,
     },
     twitter: {
       card: ogImageUrl ? "summary_large_image" : "summary",
@@ -98,9 +107,15 @@ export default async function LocaleLayout({
     safeGet("/api/v1/settings/site"),
     safeGet("/api/v1/analytics/config"),
     safeGet("/api/v1/whatsapp/config"),
-    safeGet("/api/v1/menu", { params: { query: { locale: locale.toUpperCase() } } }),
-    safeGet("/api/v1/announcements", { params: { query: { locale: locale.toUpperCase() } } }),
-    safeGet("/api/v1/footer", { params: { query: { locale: locale.toUpperCase() } } }),
+    safeGet("/api/v1/menu", {
+      params: { query: { locale: locale.toUpperCase() } },
+    }),
+    safeGet("/api/v1/announcements", {
+      params: { query: { locale: locale.toUpperCase() } },
+    }),
+    safeGet("/api/v1/footer", {
+      params: { query: { locale: locale.toUpperCase() } },
+    }),
   ]);
 
   return (
@@ -115,7 +130,10 @@ export default async function LocaleLayout({
           manifest.ts (app/manifest.ts) for "Add to Home Screen", it wants
           this explicit link. Same admin-uploaded favicon, not a separate
           asset — a good square favicon works fine here too. */}
-      <link rel="apple-touch-icon" href={siteInfo?.faviconUrl ?? "/favicon-default.png"} />
+      <link
+        rel="apple-touch-icon"
+        href={siteInfo?.faviconUrl ?? "/favicon-default.png"}
+      />
       {/* Tints mobile browser chrome (address bar) and the PWA splash
           screen to match the header's own nav-bar green, so the site reads
           as the same brand from the very first frame — same value as
@@ -131,6 +149,23 @@ export default async function LocaleLayout({
       <link rel="preconnect" href="https://www.youtube.com" />
       <link rel="preconnect" href="https://www.tiktok.com" />
       <link rel="preconnect" href="https://www.instagram.com" />
+      {/* The two origins actually on the critical rendering path — the
+          stylesheet below is render-blocking, and it in turn pulls a font
+          file from gstatic. Measured: the 2.88 KiB CSS took 624 ms, almost
+          all of it DNS + TLS to a cold origin, so opening the connection
+          early is nearly free time back.
+
+          `crossOrigin` on the gstatic hint is load-bearing, not decoration:
+          fonts are fetched in CORS mode, and a preconnect whose CORS mode
+          does not match the eventual request opens a connection the browser
+          then cannot reuse — it dials a second one and the hint is wasted.
+          googleapis serves plain CSS, so it must NOT have the attribute. */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossOrigin="anonymous"
+      />
       {/* Glyph-coverage fallbacks only now, not the primary typeface. The
           self-hosted Google Sans (fonts.ts) does carry real Bengali outlines
           (85 codepoints, U+0980-09FF) — it's NOT Latin-only, correcting an
@@ -148,7 +183,11 @@ export default async function LocaleLayout({
           admin-authored content is now force-overridden site-wide
           (globals.css), so loading fonts nothing will ever render was pure
           waste. */}
-      <link rel="stylesheet" href={ckeditorGoogleFontsUrl(["Open Sans", "Noto Sans Bengali"])} precedence="default" />
+      <link
+        rel="stylesheet"
+        href={ckeditorGoogleFontsUrl(["Open Sans", "Noto Sans Bengali"])}
+        precedence="default"
+      />
       <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
         <AnalyticsScripts
           config={
@@ -173,12 +212,19 @@ export default async function LocaleLayout({
                 initialNavMenu={navMenu}
                 initialAnnouncements={announcements}
               />
-              <ProductCardStyleProvider value={(siteInfo?.productCardStyle as ProductCardStyle | undefined) ?? "ONE"}>
+              <ProductCardStyleProvider
+                value={
+                  (siteInfo?.productCardStyle as
+                    ProductCardStyle | undefined) ?? "ONE"
+                }
+              >
                 <div className="flex flex-1 flex-col">{children}</div>
               </ProductCardStyleProvider>
               <SiteFooter footer={footer} initialLogoUrl={siteInfo?.logoUrl} />
               <SiteCartDrawer />
-              <WhatsappFloatingButton config={(whatsappConfig as WhatsappConfig | undefined) ?? null} />
+              <WhatsappFloatingButton
+                config={(whatsappConfig as WhatsappConfig | undefined) ?? null}
+              />
               <CartSummaryWidget />
               <BackToTopButton />
               <MobileStickyFooter />

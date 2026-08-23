@@ -19,6 +19,7 @@ export * from "./components/ToggleSwitch";
 export * from "./components/RangeSlider";
 export * from "./components/SettingsCard";
 export * from "./components/Table";
+export * from "./components/Field";
 export * from "./components/Skeleton";
 export * from "./components/DoughnutChart";
 export * from "./components/Icon";

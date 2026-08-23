@@ -17,7 +17,7 @@ import { BlockerService } from '../net-profit/blocker/blocker.service';
 import { AdvancePaymentService } from '../net-profit/advance-payment/advance-payment.service';
 import { OtpSecurityService } from '../net-profit/otp-security/otp-security.service';
 import { SmsService } from '../net-profit/sms/sms.service';
-import { computeCheckoutFees } from '../net-profit/accounts/accounts.service';
+import { computeCheckoutFees } from '../net-profit/accounts/accounts.constants';
 import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';

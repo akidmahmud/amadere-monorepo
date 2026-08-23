@@ -31,6 +31,7 @@ export * from './footer';
 export * from './shipping-zones';
 export * from './digital-products';
 export * from './authors';
+export * from './accounts-math';
 
 export interface PaginatedResult<T> {
   items: T[];

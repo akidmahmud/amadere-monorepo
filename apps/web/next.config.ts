@@ -5,33 +5,39 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@amader/ui"],
   // PERF-BRIEF.md §4/§5.
   //
-  // ⚠️ `unoptimized: true` is deliberate and load-bearing — DO NOT remove it
-  // without a plan for where image resizing actually runs.
+  // ⚠️ Resizing must NEVER run on the origin. Next's *built-in* optimizer
+  // downloads each image from R2, re-encodes it per requested width/format,
+  // and serves it from `/_next/image` — all on this single VPS. Enabling that
+  // (briefly, with AVIF on top — roughly 10-50x more CPU than WebP per
+  // encode) moved every image request off Cloudflare's CDN and onto the box.
+  // Under real ad traffic that saturated it and the whole site stopped
+  // loading on mobile data, not just images, since the same process serves
+  // the HTML. It never "finishes" either: encoding is on-demand per
+  // (image × width × format), and every deploy rebuilds .next and starts the
+  // cache over.
   //
-  // The components across this app render through next/image (correct sizing
-  // attributes, lazy-loading, no layout shift — all still active here). But
-  // Next.js's *built-in* optimizer runs on the origin: it downloads each
-  // image from R2, re-encodes it per requested width/format, and serves it
-  // from `/_next/image`. Enabling that (briefly, with AVIF on top — roughly
-  // 10-50x more CPU than WebP per encode) moved every image request off
-  // Cloudflare's CDN and onto this single VPS. Under real ad traffic that
-  // saturated the box and the whole site stopped loading on mobile data —
-  // not just images, since the same process serves the HTML. It never
-  // "finishes" either: encoding is on-demand per (image × width × format),
-  // and every deploy rebuilds .next and starts the cache over.
+  // The previous state was `unoptimized: true`, which kept the origin safe by
+  // doing no resizing at all — browsers downloaded the raw upload. Measured
+  // on the live homepage: the hero was a 1.77 MB PNG, which on Bangladeshi
+  // mobile data is essentially the whole LCP budget spent on one image.
   //
-  // With `unoptimized`, next/image emits the source URL directly and images
-  // are served by Cloudflare in front of R2 again — zero origin CPU.
+  // This is the third option the old comment called for: a custom loader
+  // pointing at Cloudflare Image Resizing, so resizing happens at the edge.
+  // Zero origin CPU — the failure mode above cannot recur — and that same
+  // hero comes down to 14.8 KB of AVIF at 800px wide.
   //
-  // The real fix (better than either state) is edge resizing: point
-  // R2_PUBLIC_BASE_URL at the cdn.amadere.com custom domain and use
-  // Cloudflare Image Resizing via a custom next/image `loader`, so resizing
-  // happens at Cloudflare's edge instead of on this server.
+  // Requires the R2 bucket to be served from the cdn.amadere.com custom
+  // domain (on the Cloudflare zone) — the loader rewrites legacy pub-*.r2.dev
+  // URLs to it, since /cdn-cgi/image/ does not exist on r2.dev.
   images: {
-    unoptimized: true,
+    loader: "custom",
+    loaderFile: "./src/lib/cloudflare-image-loader.ts",
     remotePatterns: [
       { protocol: "https", hostname: "cdn.amadere.com" },
-      { protocol: "https", hostname: "pub-51174804638049198acba5bbf211435e.r2.dev" },
+      {
+        protocol: "https",
+        hostname: "pub-51174804638049198acba5bbf211435e.r2.dev",
+      },
     ],
   },
 };
