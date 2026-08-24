@@ -16,6 +16,10 @@ import { BookAuthorPanel, BookSpecificationPanel } from "@/components/BookTabPan
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { PdpPurchasePanel } from "@/components/PdpPurchasePanel";
 import { ProductFloatingBarProvider } from "@/components/ProductFloatingBarProvider";
+import { ReviewsCarousel } from "@/components/ReviewsCarousel";
+
+// First page rendered server-side; the rest load on demand.
+const REVIEWS_PAGE_SIZE = 10;
 import { WriteReviewForm } from "@/components/WriteReviewForm";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { CrossSellProductGrid } from "@/components/CrossSellProductGrid";
@@ -109,7 +113,10 @@ export async function ProductDetailBody({
 
   const [reviewsRes, relatedRes, whatsappRes] = await Promise.all([
     safeGet("/api/v1/products/{productId}/reviews", {
-      params: { path: { productId: product.id }, query: { pageSize: 10 } },
+      // First page only. The rest load on demand via the "Load more"
+      // button in ReviewsCarousel, so a product with hundreds of reviews
+      // does not push all of them into the initial HTML.
+      params: { path: { productId: product.id }, query: { pageSize: REVIEWS_PAGE_SIZE } },
     }),
     category
       ? safeGet("/api/v1/products", {
@@ -369,14 +376,14 @@ export async function ProductDetailBody({
                 <RatingStars rating={reviews.averageRating ?? 0} />
                 <p className="mt-1 text-sm text-muted">({reviews.reviewCount} Reviews)</p>
               </div>
-              {/* Breakdown is computed from the currently-fetched review page
-                  (up to `pageSize` items), not a true all-time aggregate — no
-                  backend aggregate endpoint exists for this yet. Good enough for
-                  the review volume this site sees today without adding one. */}
+              {/* Percentages come from `ratingBreakdown`, a groupBy over every
+                  approved review on the backend. They used to be derived from
+                  whatever the first page happened to contain, which made them a
+                  sample of `pageSize` rather than the real distribution. */}
               <div className="flex flex-col justify-center gap-1.5">
                 {[5, 4, 3, 2, 1].map((star) => {
-                  const countAtStar = reviews.items.filter((r) => r.rating === star).length;
-                  const pct = reviews.items.length > 0 ? Math.round((countAtStar / reviews.items.length) * 100) : 0;
+                  const countAtStar = reviews.ratingBreakdown?.find((b) => b.rating === star)?.count ?? 0;
+                  const pct = reviews.reviewCount > 0 ? Math.round((countAtStar / reviews.reviewCount) * 100) : 0;
                   return (
                     <div key={star} className="flex items-center gap-3 text-sm">
                       <span className="w-16 shrink-0 text-[#F48721]">{"★".repeat(star)}</span>
@@ -392,9 +399,20 @@ export async function ProductDetailBody({
           )}
 
           {reviews && reviews.items.length > 0 && (
-            <div className="mb-8 space-y-4">
+            <ReviewsCarousel
+              productId={product.id}
+              initialCount={reviews.items.length}
+              total={reviews.reviewCount}
+              pageSize={REVIEWS_PAGE_SIZE}
+            >
               {reviews.items.map((review) => (
-                <div key={review.id} className="rounded-brand border border-line bg-white p-4">
+                <div
+                  key={review.id}
+                  // Full width and non-shrinking below sm so exactly one card
+                  // fills the viewport per snap position; auto width above it,
+                  // where the parent is a plain column again.
+                  className="w-full shrink-0 snap-center rounded-brand border border-line bg-white p-4 sm:w-auto sm:shrink"
+                >
                   <div className="mb-1.5 flex items-center justify-between">
                     <span className="font-ui text-sm font-semibold text-ink">{review.customerName}</span>
                     <RatingStars rating={review.rating} />
@@ -422,7 +440,7 @@ export async function ProductDetailBody({
                   )}
                 </div>
               ))}
-            </div>
+            </ReviewsCarousel>
           )}
 
           <WriteReviewForm productId={product.id} />

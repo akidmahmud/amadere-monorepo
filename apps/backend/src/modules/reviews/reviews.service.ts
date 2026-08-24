@@ -84,7 +84,7 @@ export class ReviewsService {
     pageSize: number,
   ): Promise<ProductReviewsPageDto> {
     const where = { productId, status: 'APPROVED' as ReviewStatus };
-    const [items, total, aggregate] = await Promise.all([
+    const [items, total, aggregate, byRating] = await Promise.all([
       this.prisma.client.review.findMany({
         where,
         include: REVIEW_INCLUDE,
@@ -93,13 +93,29 @@ export class ReviewsService {
       }),
       this.prisma.client.review.count({ where }),
       this.prisma.client.review.aggregate({ where, _avg: { rating: true } }),
+      // Star breakdown over EVERY approved review, not just this page. The
+      // product page used to derive its percentage bars from whatever the
+      // first page happened to contain, which made them a sample of 10 rather
+      // than the real distribution across all 50.
+      this.prisma.client.review.groupBy({
+        by: ['rating'],
+        where,
+        _count: { _all: true },
+      }),
     ]);
+    const counts = new Map(byRating.map((r) => [r.rating, r._count._all]));
     return {
       ...toPaginatedResult(items.map(toPublicReviewDto), total, page, pageSize),
       averageRating: aggregate._avg.rating
         ? Number(aggregate._avg.rating.toFixed(2))
         : null,
       reviewCount: total,
+      // Always all five buckets, zeros included, so the client renders a full
+      // set of bars without having to fill gaps itself.
+      ratingBreakdown: [5, 4, 3, 2, 1].map((rating) => ({
+        rating,
+        count: counts.get(rating) ?? 0,
+      })),
     };
   }
 

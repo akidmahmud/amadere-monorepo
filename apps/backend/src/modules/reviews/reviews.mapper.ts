@@ -28,10 +28,13 @@ function resolveProductName(
   return translation?.name ?? product.slug;
 }
 
+// Full name, both halves. This used to abbreviate the surname to an initial
+// ("Litushia A."); showing it in full is an explicit product decision, so a
+// reviewer's full name is now public on the product page.
 function customerDisplayName(customer: ReviewWithRelations['customer']) {
   const first = customer.firstName ?? 'Anonymous';
-  const lastInitial = customer.lastName ? ` ${customer.lastName[0]}.` : '';
-  return `${first}${lastInitial}`;
+  const last = customer.lastName ?? '';
+  return `${first} ${last}`.trim();
 }
 
 export class ReviewReplyDto {
@@ -109,6 +112,11 @@ export class AggregateRatingDto {
   count!: number;
 }
 
+export class RatingBreakdownEntryDto {
+  rating!: number;
+  count!: number;
+}
+
 export class ProductReviewsPageDto {
   items!: PublicReviewDto[];
   total!: number;
@@ -116,4 +124,6 @@ export class ProductReviewsPageDto {
   pageSize!: number;
   averageRating!: number | null;
   reviewCount!: number;
+  /** All five buckets, 5 down to 1, counted over every approved review. */
+  ratingBreakdown!: RatingBreakdownEntryDto[];
 }
