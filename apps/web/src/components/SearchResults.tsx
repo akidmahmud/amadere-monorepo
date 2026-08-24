@@ -7,7 +7,7 @@ import { Pager, SiteProductCard } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { useSearchProducts } from "@/hooks/useSearch";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 
@@ -28,7 +28,7 @@ export function SearchResults() {
     href: `/products/${hit.slug}`,
     productId: hit.id,
     name: hit.name,
-    imageUrl: toDisplayImageUrl(hit.primaryImageUrl),
+    imageUrl: toDisplayImageUrl(hit.primaryImageUrl, IMG.card),
     price: hit.salePrice ?? hit.price ?? "0",
     originalPrice: hit.salePrice ? (hit.price ?? undefined) : undefined,
   }));

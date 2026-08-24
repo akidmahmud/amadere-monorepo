@@ -5,7 +5,7 @@ import { SectionHeading } from "@amader/ui";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
@@ -108,8 +108,8 @@ export default async function BrandPage({
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-[1180px] px-5 pt-9 text-center">
-        {toDisplayImageUrl(brand.logoUrl) && (
-          <img src={toDisplayImageUrl(brand.logoUrl)} alt={brand.name} className="mx-auto mb-4 h-16 object-contain" />
+        {toDisplayImageUrl(brand.logoUrl, IMG.logo) && (
+          <img src={toDisplayImageUrl(brand.logoUrl, IMG.logo)} alt={brand.name} className="mx-auto mb-4 h-16 object-contain" />
         )}
         <SectionHeading>{brand.name}</SectionHeading>
         {brand.description && (

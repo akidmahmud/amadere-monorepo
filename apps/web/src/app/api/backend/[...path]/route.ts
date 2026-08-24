@@ -31,6 +31,11 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
   const body = req.method === "GET" || req.method === "DELETE" ? undefined : await req.text();
 
   const guestToken = req.headers.get("x-guest-token");
+  // Forwarded so the backend's per-visitor throttling still works through this
+  // hop. Without it every proxied request would arrive from the Next server's
+  // single IP and share one throttle bucket — the exact CGNAT problem the
+  // device id exists to avoid (see useSearch.ts).
+  const deviceId = req.headers.get("x-device-id");
 
   async function call(token: string | undefined) {
     return fetch(url, {
@@ -38,6 +43,7 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
       headers: {
         "Content-Type": "application/json",
         ...(guestToken ? { "X-Guest-Token": guestToken } : {}),
+        ...(deviceId ? { "X-Device-Id": deviceId } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body,

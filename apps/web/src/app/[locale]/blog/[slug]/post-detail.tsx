@@ -8,7 +8,7 @@ import { BlogViewTracker } from "@/components/BlogViewTracker";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { formatBlogDate, toBlogCardData } from "@/lib/blog-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
@@ -122,7 +122,7 @@ export async function PostDetailBody({
               {post.publishedAt && ` · ${formatBlogDate(post.publishedAt)}`}
             </p>
 
-            {toDisplayImageUrl(post.coverImageUrl) && (
+            {toDisplayImageUrl(post.coverImageUrl, IMG.banner) && (
               // post.coverImageUrl is already resolved server-side to fall
               // back to the small thumbnail (imageUrl) when the admin never
               // set a dedicated 1600x500 cover — see
@@ -138,7 +138,7 @@ export async function PostDetailBody({
               // at its own natural aspect ratio, capped so an extreme one
               // can't dominate the page.
               <img
-                src={toDisplayImageUrl(post.coverImageUrl)}
+                src={toDisplayImageUrl(post.coverImageUrl, IMG.banner)}
                 alt={post.title}
                 className="mx-auto mb-6 block max-h-[500px] max-w-full rounded-brand"
               />

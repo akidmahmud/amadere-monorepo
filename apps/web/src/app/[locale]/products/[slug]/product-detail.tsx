@@ -28,7 +28,7 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
-import { toDisplayImageUrl, toEmbeddableVideoUrl } from "@/lib/media";
+import { toDisplayImageUrl, toEmbeddableVideoUrl, IMG } from "@/lib/media";
 import { defaultVariantId } from "@/lib/pdp";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
@@ -146,7 +146,7 @@ export async function ProductDetailBody({
   // when it's selected (null = shared image, used for every variant).
   const images = product.media
     .filter((m) => (m.type as unknown as string) !== "VIDEO")
-    .map((m) => ({ url: toDisplayImageUrl(m.url), variantId: m.variantId }))
+    .map((m) => ({ url: toDisplayImageUrl(m.url, IMG.banner), variantId: m.variantId }))
     .filter((img): img is { url: string; variantId: number | null } => Boolean(img.url));
 
   // Admin-authored WYSIWYG HTML, not user-generated — same trust level as
@@ -423,7 +423,7 @@ export async function ProductDetailBody({
                       {review.images.map((url) => (
                         <Image
                           key={url}
-                          src={toDisplayImageUrl(url) ?? url}
+                          src={toDisplayImageUrl(url, IMG.icon) ?? url}
                           alt=""
                           width={64}
                           height={64}

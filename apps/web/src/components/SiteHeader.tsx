@@ -155,7 +155,7 @@ export function SiteHeader({
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 loading="lazy"
-                                src={toDisplayImageUrl(hit.primaryImageUrl)}
+                                src={toDisplayImageUrl(hit.primaryImageUrl, IMG.icon)}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />

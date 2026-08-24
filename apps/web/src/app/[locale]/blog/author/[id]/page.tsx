@@ -4,7 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { toApiLocale } from "@/lib/api-locale";
 import { safeGet } from "@/lib/api/client";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { BlogListing } from "@/components/BlogListing";
 
 // ISR per §7 (on-demand revalidation still needs the backend side — §14).
@@ -63,8 +63,8 @@ export default async function BlogAuthorPage({
       <div className="mx-auto max-w-[1180px] px-5 pt-9">
         <div className="mb-6 flex items-center justify-center gap-4">
           <div className="h-16 w-16 overflow-hidden rounded-full bg-beige">
-            {toDisplayImageUrl(author.avatarUrl) && (
-              <img src={toDisplayImageUrl(author.avatarUrl)} alt={authorName} className="h-full w-full object-cover" />
+            {toDisplayImageUrl(author.avatarUrl, IMG.icon) && (
+              <img src={toDisplayImageUrl(author.avatarUrl, IMG.icon)} alt={authorName} className="h-full w-full object-cover" />
             )}
           </div>
           <div>

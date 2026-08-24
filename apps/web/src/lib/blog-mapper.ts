@@ -1,3 +1,4 @@
+import { IMG } from "@/lib/image-url";
 import type { components } from "./api/schema";
 import { toDisplayImageUrl } from "./media";
 
@@ -27,7 +28,7 @@ export function toBlogCardData(post: PublicBlogPostSummaryDto) {
     href: `/blog/${post.slug}`,
     title: post.title,
     excerpt: post.excerpt,
-    imageUrl: toDisplayImageUrl(post.imageUrl),
+    imageUrl: toDisplayImageUrl(post.imageUrl, IMG.card),
     categoryLabel: post.categories[0]?.name,
     authorName,
     publishedAtLabel: formatBlogDate(post.publishedAt),

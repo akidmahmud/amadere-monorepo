@@ -10,7 +10,7 @@ import { toProductCardData } from "@/lib/product-card-mapper";
 import { isFilteredView, parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { ProductListing } from "@/components/ProductListing";
 import { CollectionDescription } from "@/components/CollectionDescription";
 
@@ -131,9 +131,9 @@ export default async function CategoryPage({
       <div className="mx-auto max-w-[1180px] px-5 pt-9">
         <SectionHeading>{category.name}</SectionHeading>
 
-        {toDisplayImageUrl(category.bannerImageUrl) && (
+        {toDisplayImageUrl(category.bannerImageUrl, IMG.banner) && (
           <img
-            src={toDisplayImageUrl(category.bannerImageUrl)}
+            src={toDisplayImageUrl(category.bannerImageUrl, IMG.banner)}
             alt={category.name}
             className="-mt-4 mb-6 aspect-[1180/300] w-full rounded-brand object-cover"
           />

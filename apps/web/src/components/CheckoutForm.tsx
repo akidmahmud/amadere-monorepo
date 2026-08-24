@@ -23,7 +23,7 @@ import { OrderConfirmation } from "@/components/OrderConfirmation";
 import { BlockPopup, type BlockPopupDetails } from "@/components/BlockPopup";
 import { CodOtpPopup } from "@/components/CodOtpPopup";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { toProductCardData, type ProductCardData } from "@/lib/product-card-mapper";
 import { pushEcommerceEvent, cartLineToGa4Item, addressToUserData } from "@/lib/analytics-events";
 import { getDeviceId } from "@/lib/device-id";
@@ -682,7 +682,7 @@ export function CheckoutForm() {
               {cart?.items.map((item) => (
                 <CartLineItem
                   key={item.id}
-                  item={{ ...item, href: `/products/${item.slug}`, imageUrl: toDisplayImageUrl(item.imageUrl) }}
+                  item={{ ...item, href: `/products/${item.slug}`, imageUrl: toDisplayImageUrl(item.imageUrl, IMG.thumb) }}
                   onQuantityChange={(quantity) => updateItem.mutate({ itemId: item.id, quantity })}
                   onRemove={() => {
                     if (cart) {

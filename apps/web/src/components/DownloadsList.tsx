@@ -3,7 +3,7 @@
 import { useLocale } from "next-intl";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { downloadUrl, useDownloads, type DigitalDownloadItem } from "@/hooks/useDownloads";
 
 function fileSizeLabel(bytes: number | null): string | null {
@@ -43,7 +43,7 @@ export function DownloadsList() {
       <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">My Downloads</h2>
       <div className="space-y-3">
         {data.map((item) => {
-          const cover = toDisplayImageUrl(item.product.media?.[0]?.media.url);
+          const cover = toDisplayImageUrl(item.product.media?.[0]?.media.url, IMG.thumb);
           const size = fileSizeLabel(item.product.digitalFileSize);
           return (
             <div

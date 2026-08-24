@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { formatMoney } from "@amader/ui";
 import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
 import { pushEcommerceEvent, addressToUserData } from "@/lib/analytics-events";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import type { components } from "@/lib/api/schema";
 
 type OrderDto = components["schemas"]["OrderDto"];
@@ -155,7 +155,7 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
         <h3 className="mb-3 font-ui text-[21px] font-semibold text-ink">Products</h3>
         <div className="space-y-4 border-b border-line pb-4">
           {order.items.map((item) => {
-            const imageUrl = toDisplayImageUrl(item.imageUrl);
+            const imageUrl = toDisplayImageUrl(item.imageUrl, IMG.thumb);
             return (
               <div key={item.id} className="flex items-center gap-4">
                 <div className="h-14 w-14 flex-none overflow-hidden rounded bg-beige">

@@ -142,7 +142,7 @@ export function CustomerInvoiceDocument({
             </thead>
             <tbody>
               {order.items.map((item) => {
-                const imageUrl = toDisplayImageUrl(item.imageUrl);
+                const imageUrl = toDisplayImageUrl(item.imageUrl, IMG.thumb);
                 return (
                   <tr key={item.id} className="border-b border-[#dbdfea]">
                     <td className="px-4 py-2.5">

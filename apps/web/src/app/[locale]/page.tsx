@@ -244,7 +244,7 @@ function renderSection(
                 key={category.id}
                 href={`/categories/${category.slug}`}
                 name={category.name}
-                imageUrl={toDisplayImageUrl(category.imageUrl)}
+                imageUrl={toDisplayImageUrl(category.imageUrl, IMG.card)}
                 linkComponent={AppLink}
               />
             ))}
@@ -269,7 +269,7 @@ function renderSection(
           items={selected.map((category) => ({
             href: `/categories/${category.slug}`,
             name: category.name,
-            imageUrl: toDisplayImageUrl(category.imageUrl),
+            imageUrl: toDisplayImageUrl(category.imageUrl, IMG.card),
           }))}
           linkComponent={AppLink}
         />
@@ -394,7 +394,7 @@ function renderSection(
       const rawItems = config.items as
         { imageUrl?: string; label?: string }[] | undefined;
       const items = rawItems?.map((item) => ({
-        imageUrl: toDisplayImageUrl(item.imageUrl),
+        imageUrl: toDisplayImageUrl(item.imageUrl, IMG.card),
         label: item.label,
       }));
       return (
@@ -419,7 +419,7 @@ function renderSection(
         | undefined;
       const reviews = rawReviews?.map((r) => ({
         ...r,
-        avatarUrl: toDisplayImageUrl(r.avatarUrl),
+        avatarUrl: toDisplayImageUrl(r.avatarUrl, IMG.icon),
       }));
       if (!reviews || reviews.length === 0) return null;
       return (

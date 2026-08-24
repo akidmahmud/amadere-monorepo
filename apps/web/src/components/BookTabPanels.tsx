@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { SOCIAL_ICONS, socialFallbackIcon } from "@amader/ui";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
 
@@ -90,7 +90,7 @@ export function BookSpecificationPanel({ product }: { product: PublicProductDeta
  */
 export function BookAuthorPanel({ author }: { author: NonNullable<PublicProductDetailDto["author"]> }) {
   const t = useTranslations("bookTabs");
-  const photo = toDisplayImageUrl(author.photoUrl);
+  const photo = toDisplayImageUrl(author.photoUrl, IMG.thumb);
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">

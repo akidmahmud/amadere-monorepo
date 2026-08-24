@@ -1,5 +1,5 @@
 import type { components } from "./api/schema";
-import { toDisplayImageUrl } from "./media";
+import { toDisplayImageUrl, IMG } from "./media";
 import { buildPackSizeOptions, defaultVariantId } from "./pdp";
 import { sanitizeHtml } from "./sanitize-html";
 
@@ -98,7 +98,14 @@ export function toProductCardData(product: PublicProductDto): ProductCardData {
     name: product.name,
     // ~400w WebP thumbnail when the derivative pipeline has processed this
     // media row, falling back to the original — see Media.cardUrl.
-    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url),
+    //
+    // The width here is only the `src` fallback. Cards render through
+    // next/image with a `sizes` attribute, and the Cloudflare loader rewrites
+    // the width for every srcset candidate (see cdnImageUrl's re-wrap branch),
+    // so what a browser actually downloads is decided by `sizes`, not by this
+    // number. Kept at card width rather than the 1280 default so the fallback
+    // `src` is not wildly oversized for the one case that uses it.
+    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url, IMG.card),
     price: onSale ? salePrice! : price,
     originalPrice: onSale ? price : undefined,
     flagLabel: product.flagLabel ? FLAG_LABEL_TEXT[product.flagLabel as unknown as ProductFlagLabel] : undefined,
@@ -149,7 +156,14 @@ export function toPromoVideoProductData(product: PublicProductDto): PromoVideoPr
     originalPrice: onSale ? price : undefined,
     // ~400w WebP thumbnail when the derivative pipeline has processed this
     // media row, falling back to the original — see Media.cardUrl.
-    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url),
+    //
+    // The width here is only the `src` fallback. Cards render through
+    // next/image with a `sizes` attribute, and the Cloudflare loader rewrites
+    // the width for every srcset candidate (see cdnImageUrl's re-wrap branch),
+    // so what a browser actually downloads is decided by `sizes`, not by this
+    // number. Kept at card width rather than the 1280 default so the fallback
+    // `src` is not wildly oversized for the one case that uses it.
+    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url, IMG.card),
     // Variant-only products reject a bare productId add ("This product
     // requires a variantId") — same defaultVariantId() used by
     // toProductCardData above, so the modal's one-click Add to Cart works

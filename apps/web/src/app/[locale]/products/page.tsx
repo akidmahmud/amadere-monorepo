@@ -4,7 +4,7 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { isFilteredView, parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
 import { ProductListing } from "@/components/ProductListing";
@@ -69,7 +69,7 @@ export default async function ProductsPage({
     []) as components["schemas"]["PublicCollectionSummaryDto"][];
   const brands = (brandsRes.data?.items ??
     []) as components["schemas"]["PublicBrandDto"][];
-  const bannerUrl = toDisplayImageUrl(siteInfoRes.data?.productsPageBannerUrl);
+  const bannerUrl = toDisplayImageUrl(siteInfoRes.data?.productsPageBannerUrl, IMG.banner);
 
   return (
     <main className="flex-1">

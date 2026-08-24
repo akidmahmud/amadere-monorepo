@@ -6,7 +6,7 @@ import { formatMoney } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
 import { useAddToCart } from "@/hooks/useCart";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import type { components } from "@/lib/api/schema";
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
@@ -233,7 +233,7 @@ function DigitalPreviewModal({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-beige/40 px-3 py-3 sm:px-5 sm:py-4">
           <div className="mx-auto flex max-w-[560px] flex-col gap-4">
             {pages.map((page) => {
-              const url = toDisplayImageUrl(page.imageUrl);
+              const url = toDisplayImageUrl(page.imageUrl, IMG.banner);
               if (!url) return null;
               const label = t("pageOf", {
                 page: page.pageNumber,

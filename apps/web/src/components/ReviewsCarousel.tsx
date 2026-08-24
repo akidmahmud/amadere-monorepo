@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RatingStars } from "@amader/ui";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 
 type Review = {
   id: number;
@@ -169,7 +169,7 @@ export function ReviewsCarousel({
                 {review.images.map((url) => (
                   <Image
                     key={url}
-                    src={toDisplayImageUrl(url) ?? url}
+                    src={toDisplayImageUrl(url, IMG.icon) ?? url}
                     alt=""
                     width={64}
                     height={64}

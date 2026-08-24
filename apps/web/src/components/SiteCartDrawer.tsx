@@ -15,7 +15,7 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import {
   useApplyCoupon,
@@ -114,7 +114,7 @@ export function SiteCartDrawer() {
           {cart.items.map((item) => (
             <CartLineItem
               key={item.id}
-              item={{ ...item, href: `/products/${item.slug}`, imageUrl: toDisplayImageUrl(item.imageUrl) }}
+              item={{ ...item, href: `/products/${item.slug}`, imageUrl: toDisplayImageUrl(item.imageUrl, IMG.thumb) }}
               onQuantityChange={(quantity) => updateItem.mutate({ itemId: item.id, quantity })}
               onRemove={() => {
                 pushEcommerceEvent("remove_from_cart", {
@@ -178,7 +178,7 @@ export function SiteCartDrawer() {
 
           <CartCrossSellRow
             heading="You May Also Like"
-            items={cart.crossSell.map((c) => ({ ...c, href: `/products/${c.slug}`, imageUrl: toDisplayImageUrl(c.imageUrl) }))}
+            items={cart.crossSell.map((c) => ({ ...c, href: `/products/${c.slug}`, imageUrl: toDisplayImageUrl(c.imageUrl, IMG.thumb) }))}
             onAdd={(productId) => addToCart.mutate({ productId })}
             linkComponent={AppLink}
           />

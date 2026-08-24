@@ -5,7 +5,7 @@ import { SiteProductCard } from "@amader/ui";
 import type { components } from "@/lib/api/schema";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl } from "@/lib/media";
+import { toDisplayImageUrl, IMG } from "@/lib/media";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import { useRemoveFromWishlist, useWishlist } from "@/hooks/useAccount";
 
@@ -21,7 +21,7 @@ function toWishlistCardData(item: WishlistItemDto) {
     href: `/products/${item.slug}`,
     productId: item.productId,
     name: item.name,
-    imageUrl: toDisplayImageUrl(item.image),
+    imageUrl: toDisplayImageUrl(item.image, IMG.card),
     price: item.salePrice ?? item.price ?? "0",
     originalPrice: item.salePrice ? (item.price ?? undefined) : undefined,
     outOfStock: (item.stockStatus as unknown as string) === "OUT_OF_STOCK",
