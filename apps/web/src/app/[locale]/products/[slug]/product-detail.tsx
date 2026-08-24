@@ -22,7 +22,7 @@ import { ReviewsCarousel } from "@/components/ReviewsCarousel";
 const REVIEWS_PAGE_SIZE = 10;
 import { WriteReviewForm } from "@/components/WriteReviewForm";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
-import { CrossSellProductGrid } from "@/components/CrossSellProductGrid";
+import { CrossSellProductCarousel } from "@/components/CrossSellProductCarousel";
 import { FrequentlyBoughtTogether } from "@/components/FrequentlyBoughtTogether";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
@@ -488,7 +488,7 @@ export async function ProductDetailBody({
               More Products →
             </AppLink>
           </div>
-          <CrossSellProductGrid products={crossSellProducts} />
+          <CrossSellProductCarousel products={crossSellProducts} />
         </div>
       )}
     </main>

@@ -5,26 +5,22 @@ import { AppLink } from "@/components/AppLink";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import type { ProductCardData } from "@/lib/product-card-mapper";
 
-export interface RelatedProductsCarouselProps {
+export interface CrossSellProductCarouselProps {
   products: ProductCardData[];
 }
 
-// Thin client boundary so the PDP's Server Component can still wire a real
-// Add to Cart (pack-picker included) here, same as every other product card
-// on the site.
+// Was CrossSellProductGrid — a static 2/3/5-column grid. Now a continuously
+// looping row, matching Related Products directly above it, so the two
+// sections on the PDP behave the same way instead of one scrolling and one
+// sitting still.
 //
-// Continuously looping row rather than the previous autoplay-and-rewind
-// Carousel, which visibly jumped back to the first card at the end. Hovering
-// pauses it, so a card can still be read and clicked.
-//
-// Fixed card widths, not the previous `w-[calc(50%-9px)]` percentages:
-// percentage widths resolve against the track, and a marquee track is
-// `w-max`, so they would collapse to nothing.
-export function RelatedProductsCarousel({ products }: RelatedProductsCarouselProps) {
+// Same client-boundary reasoning as RelatedProductsCarousel: the PDP is a
+// Server Component and cannot own the add-to-cart hook itself.
+export function CrossSellProductCarousel({ products }: CrossSellProductCarouselProps) {
   const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
 
   return (
-    <InfiniteMarquee secondsPerItem={10} gapPx={18} ariaLabel="Related products">
+    <InfiniteMarquee secondsPerItem={10} gapPx={16} ariaLabel="You may also like">
       {products.map((product) => (
         <div
           key={product.href}

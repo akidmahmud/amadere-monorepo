@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { PickerPrice } from "@/components/PickerPrice";
 
 export interface SearchPickerOption {
   id: number;
   label: string;
+  /** Optional — product pickers pass these so the list can show a price
+   *  beside each name. Non-product pickers (categories) simply omit them. */
+  price?: string | null;
+  salePrice?: string | null;
 }
 
 // Same search-then-checkbox-list pattern as CrossSellFields.tsx (selected
@@ -72,8 +77,9 @@ export function SearchPickerField({
             key={o.id}
             className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2"
           >
-            <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} className="h-3.5 w-3.5 accent-brand-500" />
-            {o.label}
+            <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} className="h-3.5 w-3.5 shrink-0 accent-brand-500" />
+            <span className="min-w-0 flex-1 truncate">{o.label}</span>
+            <PickerPrice price={o.price} salePrice={o.salePrice} />
           </label>
         ))}
         {filtered.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">{emptyHint}</p>}

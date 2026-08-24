@@ -77,7 +77,15 @@ export function usePickerProducts() {
     queryKey: ["picker-products"],
     queryFn: async () => {
       const res = await proxyFetch<components["schemas"]["AdminProductPickerItemDto"][]>("/admin/products/picker");
-      return res.map((p) => ({ id: p.id, label: p.name }));
+      // price/salePrice come through so the relation pickers (Related /
+      // Cross-sell / Frequently Bought Together) can show a price beside each
+      // name — choosing a bundle partner on name alone is guesswork.
+      return res.map((p) => ({
+        id: p.id,
+        label: p.name,
+        price: p.price,
+        salePrice: p.salePrice,
+      }));
     },
   });
 }

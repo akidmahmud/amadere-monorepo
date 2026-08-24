@@ -145,6 +145,23 @@ const DELIVERY_STATUS_RANK: Record<string, number> = {
   FAILED: 8,
 };
 
+// An order in a terminal state must never be handed to a courier. The Send
+// button used to key off `!row.shipment` alone, so a canceled order — which by
+// definition has no shipment — still rendered a live Send button and would
+// happily dispatch. The same guard filters bulk send, so a canceled order
+// cannot be swept up in "Send selected" either. The row checkbox stays
+// enabled on purpose — bulk print and bulk delete are still valid on a
+// canceled order, it is only dispatch that must not be.
+const NON_DISPATCHABLE_ORDER_STATUSES = new Set([
+  "CANCELED",
+  "RETURNED",
+  "PARTIALLY_RETURNED",
+]);
+
+function isDispatchable(row: ShipmentQueueRow): boolean {
+  return !NON_DISPATCHABLE_ORDER_STATUSES.has(row.status as unknown as string);
+}
+
 function getDeliveryStatusKey(row: ShipmentQueueRow): string {
   if (!row.shipment) return "UNSENT";
   return (row.shipment.status as unknown as string) || "UNSENT";
@@ -253,9 +270,14 @@ export function DispatchQueueTable() {
   }
 
   function sendSelected() {
-    if (selected.size === 0) return;
+    // Filter here as well as disabling the checkbox: a selection made before a
+    // refetch flipped an order to canceled would otherwise still dispatch it.
+    const dispatchable = rows
+      .filter((r) => selected.has(r.id) && isDispatchable(r) && !r.shipment)
+      .map((r) => r.id);
+    if (dispatchable.length === 0) return;
     dispatchBulk.mutate(
-      { orderIds: [...selected], provider: bulkProvider },
+      { orderIds: dispatchable, provider: bulkProvider },
       { onSuccess: () => setSelected(new Set()) },
     );
   }
@@ -575,9 +597,14 @@ export function DispatchQueueTable() {
                   ) : (
                     <button
                       type="button"
-                      disabled={dispatch.isPending}
+                      disabled={dispatch.isPending || !isDispatchable(row)}
+                      title={
+                        isDispatchable(row)
+                          ? undefined
+                          : `Cannot send a ${String(row.status).toLowerCase().replace(/_/g, " ")} order`
+                      }
                       onClick={() => sendOne(row)}
-                      className="h-8 rounded-inner bg-brand-500 px-3 text-[0.74rem] font-bold text-white hover:bg-brand-600 disabled:opacity-40"
+                      className="h-8 rounded-inner bg-brand-500 px-3 text-[0.74rem] font-bold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-brand-500"
                     >
                       Send
                     </button>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Card, FormSkeleton } from "@amader/admin-ui";
 import { usePickerProducts } from "@/hooks/usePickers";
+import { PickerPrice } from "@/components/PickerPrice";
 import { useCrossSell, useUpdateCrossSell } from "@/hooks/useCrossSell";
 
 function toggle(ids: number[], id: number, set: (ids: number[]) => void) {
@@ -64,8 +65,9 @@ export function CrossSellFields({ productId }: { productId: number }) {
           <div className="flex max-h-[210px] flex-col gap-0.5 overflow-y-auto rounded-inner border border-border p-1.5">
             {filteredProducts.map((p) => (
               <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
-                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(selected, p.id, setSelected)} className="h-3.5 w-3.5 accent-brand-500" />
-                {p.label}
+                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(selected, p.id, setSelected)} className="h-3.5 w-3.5 shrink-0 accent-brand-500" />
+                <span className="min-w-0 flex-1 truncate">{p.label}</span>
+                <PickerPrice price={p.price} salePrice={p.salePrice} />
               </label>
             ))}
             {filteredProducts.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No products match your search.</p>}

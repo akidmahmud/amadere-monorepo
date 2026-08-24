@@ -6,6 +6,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Card, FormSkeleton, Icon } from "@amader/admin-ui";
 import { usePickerProducts } from "@/hooks/usePickers";
+import { PickerPrice } from "@/components/PickerPrice";
 import { useRelatedProducts, useUpdateRelatedProducts } from "@/hooks/useRelatedProducts";
 
 // One picked product. Draggable because ORDER is the whole point of this
@@ -116,8 +117,9 @@ export function RelatedProductsFields({ productId }: { productId: number }) {
                 key={p.id}
                 className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2"
               >
-                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} className="h-3.5 w-3.5 accent-brand-500" />
-                {p.label}
+                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} className="h-3.5 w-3.5 shrink-0 accent-brand-500" />
+                <span className="min-w-0 flex-1 truncate">{p.label}</span>
+                <PickerPrice price={p.price} salePrice={p.salePrice} />
               </label>
             ))}
             {filteredProducts.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No products match your search.</p>}

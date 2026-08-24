@@ -32,6 +32,21 @@ const WITH_TRANSLATIONS_AND_PRODUCTS = {
   products: { orderBy: { sortOrder: 'asc' as const } },
 } as const;
 
+// Collection products are only ever rendered as CARDS — image, name, price
+// (see toProductCardData on the storefront, which touches neither of these
+// fields). `content` is the full CKEditor product-description HTML for the
+// detail page, and it dominates the payload: measured on the homepage, one
+// product serialised to 47 KB of which 39 KB was `content`, making the three
+// collection carousels 986 KB for 31 cards.
+//
+// Stripped after mapping rather than excluded from the query: PRODUCT_INCLUDE
+// is shared with the product detail page, which genuinely needs `content`, and
+// narrowing it there would be a far riskier change for a payload problem the
+// query time (0.18s) shows is not a database problem.
+function stripCardIrrelevantFields(product: PublicProductDto): PublicProductDto {
+  return { ...product, content: null };
+}
+
 @Injectable()
 export class CollectionsService {
   constructor(
@@ -222,7 +237,7 @@ export class CollectionsService {
     });
     return collectionProducts
       .filter((cp) => cp.product.status === 'PUBLISHED' && !cp.product.deletedAt)
-      .map((cp) => toPublicProductDto(cp.product, locale));
+      .map((cp) => stripCardIrrelevantFields(toPublicProductDto(cp.product, locale)));
   }
 
   private async assertSlugAvailable(

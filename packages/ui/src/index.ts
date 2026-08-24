@@ -31,6 +31,7 @@ export * from "./components/CartDrawer";
 
 export * from "./components/ProductCarouselSection";
 export * from "./components/CategoryCard";
+export * from "./components/InfiniteMarquee";
 export * from "./components/FeaturedCategoriesSection";
 export * from "./components/TopSellingProductsSection";
 export * from "./components/FeaturedDealsSection";

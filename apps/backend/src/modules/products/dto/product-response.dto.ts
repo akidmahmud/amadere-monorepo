@@ -142,6 +142,13 @@ export class AdminProductPickerItemDto {
   id!: number;
   slug!: string;
   name!: string;
+  /** Default variant's price, so the relation pickers (Related / Cross-sell /
+   *  Frequently Bought Together) can show a price beside each name — picking a
+   *  bundle partner blind on name alone is guesswork. Null when a product has
+   *  no variant priced yet. */
+  price!: string | null;
+  /** Set only when that variant is on sale. */
+  salePrice!: string | null;
 }
 
 // Same rationale as AdminProductPickerItemDto above, applied to the actual

@@ -172,15 +172,27 @@ export class ProductsService {
         id: true,
         slug: true,
         translations: { select: { name: true }, take: 1 },
+        // Price comes off the default variant (or the first one, for products
+        // that never flagged a default) — cheap here because it is two decimal
+        // columns, not the full variant include the list endpoint uses.
+        variants: {
+          select: { price: true, salePrice: true, isDefault: true },
+          orderBy: { id: 'asc' },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
-    return products.map((p) => ({
-      id: p.id,
-      slug: p.slug,
-      name: p.translations[0]?.name ?? p.slug,
-    }));
+    return products.map((p) => {
+      const variant = p.variants.find((v) => v.isDefault) ?? p.variants[0];
+      return {
+        id: p.id,
+        slug: p.slug,
+        name: p.translations[0]?.name ?? p.slug,
+        price: variant?.price?.toString() ?? null,
+        salePrice: variant?.salePrice?.toString() ?? null,
+      };
+    });
   }
 
   // Every distinct SEO_META row for the given products in one query — avoids
