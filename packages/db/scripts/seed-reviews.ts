@@ -35,6 +35,7 @@ import { config } from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createPrismaClient } from '../src/index';
+import { SEEDED_REVIEWER_EMAIL_DOMAIN } from '@amader/shared';
 
 config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -68,7 +69,7 @@ function seedEmail(name: string) {
   const hash = [...name]
     .reduce((h, c) => (h * 31 + (c.codePointAt(0) ?? 0)) >>> 0, 7)
     .toString(36);
-  return `review-${slug || `x${hash}`}@seed.invalid`;
+  return `review-${slug || `x${hash}`}${SEEDED_REVIEWER_EMAIL_DOMAIN}`;
 }
 
 /** The mapper renders `firstName lastName[0].` — "Ratul Ahmed" -> "Ratul A." */

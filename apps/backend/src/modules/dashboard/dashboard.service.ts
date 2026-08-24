@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EXCLUDE_SEEDED_REVIEWERS } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DashboardOverviewDto } from './dashboard.dto';
 
@@ -39,7 +40,13 @@ export class DashboardService {
         _sum: { totalAmount: true },
       }),
       this.prisma.client.order.count(),
-      this.prisma.client.customer.count(),
+      // Excludes seeded review authors, which are customer rows only
+      // because reviews.customer_id is NOT NULL. The top-customers list
+      // below needs no such guard -- it is derived from order spend, and
+      // a seeded author has no orders.
+      this.prisma.client.customer.count({
+        where: { ...EXCLUDE_SEEDED_REVIEWERS },
+      }),
       this.prisma.client.product.count(),
       this.prisma.client.order.count({ where: { status: 'COMPLETED' } }),
       this.prisma.client.order.aggregate({

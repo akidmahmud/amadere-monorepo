@@ -19,7 +19,13 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { AddressDto, toAddressDto } from './address.mapper';
 import { Prisma } from '@amader/db';
-import { PaginatedResult, phoneLookupCandidates, toBdCompact, divisionForDistrict } from '@amader/shared';
+import {
+  PaginatedResult,
+  phoneLookupCandidates,
+  toBdCompact,
+  divisionForDistrict,
+  EXCLUDE_SEEDED_REVIEWERS,
+} from '@amader/shared';
 import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
 import { toE164Bd } from '../../common/phone.util';
 import { CALL_PROVIDER } from './providers/call-provider.interface';
@@ -262,6 +268,11 @@ export class CustomersService {
     }
     return {
       deletedAt: deletedOnly ? { not: null } : null,
+      // Seeded review authors are customer rows only because
+      // reviews.customer_id is NOT NULL. They are not customers and must
+      // not appear in the CRM list or its CSV export, which shares this
+      // where clause.
+      ...EXCLUDE_SEEDED_REVIEWERS,
       ...(query.tierId ? { tierId: query.tierId } : {}),
       ...(birthdayIds ? { id: { in: birthdayIds } } : {}),
       ...(query.priority ? { priority: query.priority } : {}),
@@ -484,14 +495,16 @@ export class CustomersService {
       repeatCustomers,
       aovAgg,
     ] = await Promise.all([
-      this.prisma.client.customer.count({ where: { deletedAt: null } }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { lt: startOfThisMonth } } }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { gte: startOfThisMonth } } }),
+      // ...EXCLUDE_SEEDED_REVIEWERS on every count: seeded review authors would
+      // otherwise inflate the total and the month-on-month trend percentages.
+      this.prisma.client.customer.count({ where: { deletedAt: null, ...EXCLUDE_SEEDED_REVIEWERS } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { lt: startOfThisMonth }, ...EXCLUDE_SEEDED_REVIEWERS } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { gte: startOfThisMonth }, ...EXCLUDE_SEEDED_REVIEWERS } }),
       this.prisma.client.customer.count({
-        where: { deletedAt: null, createdAt: { gte: startOfLastMonth, lt: startOfThisMonth } },
+        where: { deletedAt: null, createdAt: { gte: startOfLastMonth, lt: startOfThisMonth }, ...EXCLUDE_SEEDED_REVIEWERS },
       }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, completedOrderCount: { gte: 2 } } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, status: 'ACTIVE', ...EXCLUDE_SEEDED_REVIEWERS } }),
+      this.prisma.client.customer.count({ where: { deletedAt: null, completedOrderCount: { gte: 2 }, ...EXCLUDE_SEEDED_REVIEWERS } }),
       this.prisma.client.order.aggregate({ _avg: { totalAmount: true } }),
     ]);
 

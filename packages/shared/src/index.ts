@@ -15,6 +15,7 @@ export interface ApiErrorResponse {
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 export * from './permission-catalog';
+export * from './seeded-reviewers';
 export * from './url-paths';
 export * from './courier-status';
 export * from './bd-geo';
