@@ -68,15 +68,6 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-// Origin only — preconnect takes a scheme+host, not a path.
-const apiOrigin = (() => {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_API_BASE_URL ?? "").origin;
-  } catch {
-    return null;
-  }
-})();
-
 export default async function LocaleLayout({
   children,
   params,
@@ -167,18 +158,18 @@ export default async function LocaleLayout({
           handshake itself is often a big chunk of the perceived "video takes
           a while to start" delay, and it's the same three origins regardless
           of which video loads. */}
-      {/* The storefront calls the API directly from the browser
-          (NEXT_PUBLIC_API_BASE_URL is inlined into the client bundle), so
-          this is a real cross-origin connection on every page — and it was
-          never warmed. Lighthouse measured the cost at 510 ms of LCP, the
-          single largest preconnect saving available on this page.
-
-          Derived from the env var rather than hardcoded so staging and
-          production each warm their own API host. */}
-      {apiOrigin ? <link rel="preconnect" href={apiOrigin} /> : null}
-      <link rel="preconnect" href="https://www.youtube.com" />
-      <link rel="preconnect" href="https://www.tiktok.com" />
-      <link rel="preconnect" href="https://www.instagram.com" />
+      {/* No preconnect to the API host any more. Every browser-side call now
+          goes through this app's own origin (`/api/backend/...`), so that
+          connection is never opened — PageSpeed reported the hint as
+          "Unused preconnect", meaning it was paying for a DNS + TCP + TLS
+          handshake that nothing used. */}
+      {/* No preconnect to youtube/tiktok/instagram either. PageSpeed reported
+          all three as "Unused preconnect": the promo video embeds load only
+          when someone opens the modal, so the page as delivered never touches
+          those origins and each hint was buying a DNS + TCP + TLS handshake
+          that went unused on every single page view. The connection is still
+          made on demand when a video is actually opened — this removes the
+          upfront cost, not the capability. */}
       {/* No web-font stylesheet here on purpose.
           Open Sans and Noto Sans Bengali used to load from Google's CDN as
           fallbacks. They cost two serial cross-origin round trips in the
