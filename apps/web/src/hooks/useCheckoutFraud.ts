@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
+import { proxyFetch } from "@/lib/api/proxy-client";
 
 export type FraudVerdict = "pass" | "needs_advance" | "block";
 
@@ -21,9 +21,10 @@ export interface FraudPreflightResult {
 export function useCheckoutFraudPreflight() {
   return useMutation({
     mutationFn: async (phone: string) => {
-      const { data, error } = await api.POST("/api/v1/net-profit/fraud/evaluate", { body: { phone } });
-      if (error) throw error;
-      return data as unknown as FraudPreflightResult;
+      return proxyFetch<FraudPreflightResult>("/net-profit/fraud/evaluate", {
+        method: "POST",
+        body: JSON.stringify({ phone }),
+      });
     },
   });
 }

@@ -69,14 +69,34 @@ export default async function ProductsPage({
     []) as components["schemas"]["PublicCollectionSummaryDto"][];
   const brands = (brandsRes.data?.items ??
     []) as components["schemas"]["PublicBrandDto"][];
-  const bannerUrl = toDisplayImageUrl(siteInfoRes.data?.productsPageBannerUrl, IMG.banner);
+  // Raw <img>, so it gets an explicit srcset rather than one fixed width.
+  // Measured on production at a 412px viewport: a single 1600w file was being
+  // downloaded for a 357x91 display box — a 4.5x overshoot on exactly the
+  // devices that can least afford it.
+  const bannerSrc = siteInfoRes.data?.productsPageBannerUrl;
+  const bannerUrl = toDisplayImageUrl(bannerSrc, IMG.banner);
+  const bannerSrcSet = bannerSrc
+    ? [480, 768, 1140, 1600]
+        .map((w) => `${toDisplayImageUrl(bannerSrc, w)} ${w}w`)
+        .join(", ")
+    : undefined;
 
   return (
     <main className="flex-1">
       {bannerUrl && (
         <div className="mx-auto max-w-[1180px] px-5 pt-6">
+          {/* Container is max-w-[1180px] with px-5, so the box is
+              (100vw - 40px) until it caps at 1140px. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bannerUrl}
+            srcSet={bannerSrcSet}
+            sizes="(max-width: 1220px) calc(100vw - 40px), 1140px"
+            width={1180}
+            height={300}
+            // Above the fold and a strong LCP candidate on this route: eager,
+            // and hinted so it is not queued behind lazy imagery further down.
+            fetchPriority="high"
             alt="All Products Banner"
             className="aspect-[1180/300] w-full rounded-brand object-cover"
           />

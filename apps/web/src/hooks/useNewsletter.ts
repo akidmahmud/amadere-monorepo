@@ -1,16 +1,22 @@
 import { useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
+import { proxyFetch } from "@/lib/api/proxy-client";
 
-// Anonymous, email-only — not tied to a customer account at all (confirmed
-// against the backend: `NewsletterSubscriber` is its own model keyed by
-// email, no link to `Customer`), so this works the same whether the visitor
-// is logged in or not. The footer's subscribe form has had this hook point
-// ready since F2; this is what finally wires it.
+// Anonymous, email-only — not tied to a customer account at all
+// (`NewsletterSubscriber` is its own model keyed by email, no link to
+// `Customer`), so this works the same whether the visitor is logged in or not.
+//
+// Routed through this app's own origin (`/api/backend/...`) rather than the
+// public API host. Measured on production: that hostname is unreachable from
+// a browser (ERR_CONNECTION_TIMED_OUT after ~21s) while the same-origin proxy
+// answers in ~0.4s. Same-origin also cannot fail this way in principle — the
+// request rides the hostname, certificate and CDN edge that already served
+// the HTML.
 export function useSubscribeNewsletter() {
   return useMutation({
-    mutationFn: async (email: string) => {
-      const { error } = await api.POST("/api/v1/newsletter/subscribe", { body: { email } });
-      if (error) throw error;
-    },
+    mutationFn: (email: string) =>
+      proxyFetch<unknown>("/newsletter/subscribe", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
   });
 }

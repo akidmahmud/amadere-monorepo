@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useLocale } from "next-intl";
 import { ProductCarouselSection, type ProductCarouselItem } from "@amader/ui";
 import { Link } from "@/i18n/navigation";
-import { safeGet } from "@/lib/api/client";
+import { proxyFetch } from "@/lib/api/proxy-client";
+import type { components } from "@/lib/api/schema";
 import { toApiLocale } from "@/lib/api-locale";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
@@ -22,6 +23,8 @@ export interface HealthConcernSectionProps {
 // Pill switching re-fetches from the same public typed client, client-side —
 // a plain useState/useTransition stopgap for F3; swap for TanStack Query once
 // it's wired for the rest of the interactive surfaces (cart/search/wishlist).
+type ProductApiItem = components["schemas"]["PublicProductDto"];
+
 export function HealthConcernSection({
   heading,
   viewAllLabel,
@@ -39,10 +42,24 @@ export function HealthConcernSection({
     const tagId = Number(value);
     setActiveTagId(tagId);
     startTransition(async () => {
-      const { data } = await safeGet("/api/v1/products", {
-        params: { query: { tagIds: [tagId], pageSize: 8, locale: toApiLocale(locale) } },
+      // Same-origin (`/api/backend/...`), not the public API host: measured
+      // on production, that hostname is unreachable from a browser
+      // (ERR_CONNECTION_TIMED_OUT after ~21s) while this path answers in
+      // ~0.4s. A failed switch leaves the current pill's products on screen
+      // rather than emptying the carousel.
+      const params = new URLSearchParams({
+        tagIds: String(tagId),
+        pageSize: "8",
+        locale: toApiLocale(locale),
       });
-      setProducts((data?.items ?? []).map(toProductCardData));
+      try {
+        const data = await proxyFetch<{ items?: ProductApiItem[] }>(
+          `/products?${params}`,
+        );
+        setProducts((data.items ?? []).map(toProductCardData));
+      } catch {
+        /* keep what is already rendered */
+      }
     });
   }
 

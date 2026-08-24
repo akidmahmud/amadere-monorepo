@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { getGuestToken } from "@/lib/guest-token";
 import type { components } from "@/lib/api/schema";
@@ -35,11 +34,11 @@ export function useRequestCodOtp() {
     // `channel` is always supplied by CodOtpPopup (it defaults to PHONE in
     // component state), and the generated request type has it required.
     mutationFn: async (args: { phone: string; channel: "PHONE" | "EMAIL"; email?: string }) => {
-      const { error } = await api.POST("/api/v1/checkout/cod-otp/request", {
+      await proxyFetch<unknown>("/checkout/cod-otp/request", {
+        method: "POST",
         headers: cartHeaders(),
-        body: { phone: args.phone, channel: args.channel, email: args.email },
+        body: JSON.stringify({ phone: args.phone, channel: args.channel, email: args.email }),
       });
-      if (error) throw error;
     },
   });
 }
@@ -82,11 +81,9 @@ export function useGiftVoucherCheck(code: string) {
   return useQuery({
     queryKey: ["gift-voucher-check", code],
     queryFn: async () => {
-      const { data, error } = await api.GET("/api/v1/gift-vouchers/{code}/check", {
-        params: { path: { code } },
-      });
-      if (error) throw error;
-      return data;
+      return proxyFetch<components["schemas"]["GiftVoucherCheckDto"]>(
+        `/gift-vouchers/${encodeURIComponent(code)}/check`,
+      );
     },
     enabled: code.trim().length > 0,
     retry: false,
@@ -96,9 +93,10 @@ export function useGiftVoucherCheck(code: string) {
 export function useTrackOrder() {
   return useMutation({
     mutationFn: async (args: { orderNumber: string; phone: string }) => {
-      const { data, error } = await api.POST("/api/v1/orders/track", { body: args });
-      if (error) throw error;
-      return data;
+      return proxyFetch<components["schemas"]["OrderDto"]>("/orders/track", {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
     },
   });
 }

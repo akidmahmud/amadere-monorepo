@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
+import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 
 type PaymentMethodConfigDto = components["schemas"]["PaymentMethodConfigDto"];
@@ -12,9 +12,7 @@ export function usePaymentMethodConfigs() {
   return useQuery({
     queryKey: ["payment-method-configs"],
     queryFn: async () => {
-      const { data, error } = await api.GET("/api/v1/net-profit/payment-methods");
-      if (error) throw error;
-      return data as PaymentMethodConfigDto[];
+      return proxyFetch<PaymentMethodConfigDto[]>("/net-profit/payment-methods");
     },
   });
 }
@@ -31,9 +29,10 @@ export interface SubmitManualPaymentInput {
 export function useSubmitManualPayment() {
   return useMutation({
     mutationFn: async (input: SubmitManualPaymentInput) => {
-      const { data, error } = await api.POST("/api/v1/net-profit/manual-payments", { body: input });
-      if (error) throw error;
-      return data;
+      return proxyFetch<unknown>("/net-profit/manual-payments", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
     },
   });
 }

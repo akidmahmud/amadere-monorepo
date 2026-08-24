@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/client";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { mergeGuestCartOnLogin } from "@/hooks/useCart";
 import type { components } from "@/lib/api/schema";
@@ -110,8 +109,10 @@ export function useRegister() {
 export function useRequestOtp() {
   return useMutation({
     mutationFn: async (args: { identifier: string; purpose: "REGISTER" | "LOGIN" }) => {
-      const { error } = await api.POST("/api/v1/auth/otp/request", { body: args });
-      if (error) throw error;
+      await proxyFetch<unknown>("/auth/otp/request", {
+        method: "POST",
+        body: JSON.stringify(args),
+      });
     },
   });
 }
