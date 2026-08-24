@@ -14,7 +14,8 @@
     "migrate:legacy": "tsx scripts/migrate.ts",
     "backfill:r2-media": "tsx scripts/backfill-r2-media.ts",
     "backfill:image-derivatives": "tsx scripts/backfill-image-derivatives.ts",
-    "seed:footer-pages": "tsx scripts/seed-footer-pages.ts"
+    "seed:footer-pages": "tsx scripts/seed-footer-pages.ts",
+    "seed:reviews": "tsx scripts/seed-reviews.ts"
   },
   "dependencies": {
     "@amader/shared": "workspace:*",
