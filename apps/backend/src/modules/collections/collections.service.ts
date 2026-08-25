@@ -226,6 +226,27 @@ export class CollectionsService {
     return toPublicCollectionDto(collection, products, locale);
   }
 
+  /**
+   * Collection metadata with an empty product list — name, slug, translations,
+   * everything a heading and a "View All" link need, without paying for the
+   * products themselves.
+   *
+   * Used by the homepage's shell response: the section still has to render its
+   * title and link before its products arrive, so dropping the collection
+   * entirely would leave nothing to show while loading.
+   */
+  async getShallowById(
+    id: number,
+    locale: Locale,
+  ): Promise<PublicCollectionDto | null> {
+    const collection = await this.prisma.client.collection.findFirst({
+      where: { id, deletedAt: null, status: 'PUBLISHED' },
+      include: WITH_TRANSLATIONS_AND_PRODUCTS,
+    });
+    if (!collection) return null;
+    return toPublicCollectionDto(collection, [], locale);
+  }
+
   private async loadPublicProducts(
     collectionId: number,
     locale: Locale,

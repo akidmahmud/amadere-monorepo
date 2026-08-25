@@ -18,6 +18,7 @@ import {
 import { AppLink } from "@/components/AppLink";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { safeGet } from "@/lib/api/client";
+import { LazySectionProducts } from "@/components/LazySectionProducts";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import {
@@ -116,9 +117,13 @@ function renderSection(
   ctx: {
     categories: components["schemas"]["PublicCategoryDto"][];
     blogPosts: components["schemas"]["PublicBlogPostSummaryDto"][];
+    // Needed by the lazily-loaded product rows, which fetch their own data
+    // client-side and so must be told which locale to ask for.
+    locale: "EN" | "BN";
   },
 ): ReactNode {
   const { config } = section;
+  const localeParam = ctx.locale;
 
   switch (section.type) {
     case "HERO_BANNER": {
@@ -186,22 +191,20 @@ function renderSection(
     }
 
     case "PRODUCT_COLLECTION": {
+      // `section.collection` is still resolved server-side, but shallowly —
+      // name and slug only — so the heading and View All link render with the
+      // page. Products arrive on scroll, and sold-out ones are dropped there
+      // (the collection page still lists them).
       if (!section.collection) return null;
-      // Sold-out products are dropped from the homepage carousel rather than
-      // shown greyed out — the collection page still lists them.
-      const products = section.collection.products
-        .map(toProductCardData)
-        .filter((p) => !p.outOfStock);
-      if (products.length === 0) return null;
       return (
         <div className={WRAPPER} key={section.id}>
-          <ProductCarouselSectionClient
+          <LazySectionProducts
+            sectionId={section.id}
+            locale={localeParam}
+            variant="collection"
             heading={section.heading ?? section.collection.name}
-            products={products}
             viewAllHref={`/collections/${section.collection.slug}`}
             viewAllLabel="View All"
-            visibleCount={5}
-            autoplayMs={4000}
           />
         </div>
       );
@@ -280,20 +283,17 @@ function renderSection(
       const configItems =
         (config.items as
           { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
-      const resolvedProducts = section.topSellingProducts ?? [];
-      const items = configItems
-        .map((item, i) => {
-          const product = resolvedProducts[i];
-          if (!product) return null;
-          return { ...toProductCardData(product), showBadge: item.showBadge };
-        })
-        .filter((item): item is NonNullable<typeof item> => item !== null);
-      if (items.length === 0) return null;
+      // Products arrive on scroll — see LazySectionProducts. `configItems` is
+      // still read here purely to skip a section an admin has left empty,
+      // which is knowable from the shell alone.
+      if (configItems.length === 0) return null;
       return (
-        <TopSellingProductsSectionClient
+        <LazySectionProducts
           key={section.id}
+          sectionId={section.id}
+          locale={localeParam}
+          variant="topSelling"
           heading={section.heading ?? undefined}
-          items={items}
         />
       );
     }
@@ -307,25 +307,16 @@ function renderSection(
       const configItems =
         (config.items as
           { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
-      const resolvedProducts = section.justForYouProducts ?? [];
-      const items = configItems
-        .map((item, i) => {
-          const product = resolvedProducts[i];
-          if (!product) return null;
-          return {
-            ...toProductCardData(product),
-            flagLabel: item.showBadge ? "Best Selling" : undefined,
-          };
-        })
-        .filter((item): item is NonNullable<typeof item> => item !== null);
-      if (items.length === 0) return null;
+      if (configItems.length === 0) return null;
       return (
-        <TabbedCollectionCarouselSection
+        <LazySectionProducts
           key={section.id}
-          title={section.heading ?? "Just For You"}
+          sectionId={section.id}
+          locale={localeParam}
+          variant="justForYou"
+          heading={section.heading ?? "Just For You"}
           viewAllHref="/products"
           viewAllLabel="Shop All"
-          items={items}
         />
       );
     }
@@ -338,25 +329,16 @@ function renderSection(
       const configItems =
         (config.items as
           { productId?: number; showBadge?: boolean }[] | undefined) ?? [];
-      const resolvedProducts = section.featuredDealsProducts ?? [];
-      const items = configItems
-        .map((item, i) => {
-          const product = resolvedProducts[i];
-          if (!product) return null;
-          return {
-            ...toProductCardData(product),
-            flagLabel: item.showBadge ? "Best Selling" : undefined,
-          };
-        })
-        .filter((item): item is NonNullable<typeof item> => item !== null);
-      if (items.length === 0) return null;
+      if (configItems.length === 0) return null;
       return (
         <div className={`${WRAPPER_HALF} pt-10 md:pt-14`} key={section.id}>
-          <FeaturedDealsSectionClient
+          <LazySectionProducts
+            sectionId={section.id}
+            locale={localeParam}
+            variant="featuredDeals"
             heading={section.heading ?? "Exclusive Deals"}
             viewAllHref="/products"
             viewAllLabel="View All"
-            items={items}
           />
         </div>
       );
@@ -459,17 +441,16 @@ function renderSection(
     // the pill-tab switcher + promo tile; resolves via the same
     // collectionId FK as PRODUCT_COLLECTION now instead of config.tabs).
     case "TABBED_COLLECTION_CAROUSEL": {
-      if (!section.collection || section.collection.products.length === 0)
-        return null;
-      const items = section.collection.products.map((product) =>
-        toProductCardData(product),
-      );
+      if (!section.collection) return null;
       return (
-        <TabbedCollectionCarouselSection
+        <LazySectionProducts
           key={section.id}
-          title={section.heading ?? section.collection.name}
+          sectionId={section.id}
+          locale={localeParam}
+          variant="justForYou"
+          heading={section.heading ?? section.collection.name}
           viewAllHref={`/collections/${section.collection.slug}`}
-          items={items}
+          viewAllLabel="Shop All"
         />
       );
     }
@@ -547,7 +528,8 @@ export default async function Home({
     firstTagProductsRes,
   ] = await Promise.all([
     safeGet("/api/v1/homepage-sections", {
-      params: { query: { locale: localeParam } },
+      // Shells only — each product row fetches its own products on scroll.
+      params: { query: { locale: localeParam, withProducts: "false" } },
     }),
     safeGet("/api/v1/categories", {
       params: { query: { locale: localeParam, pageSize: 10 } },
@@ -581,13 +563,13 @@ export default async function Home({
     <main className="flex-1">
       {beforePromoVideos.map((section) => (
         <Fragment key={section.id}>
-          {renderSection(section, { categories, blogPosts })}
+          {renderSection(section, { categories, blogPosts, locale: localeParam })}
         </Fragment>
       ))}
       {renderPromoVideos(promoVideos)}
       {afterPromoVideos.map((section) => (
         <Fragment key={section.id}>
-          {renderSection(section, { categories, blogPosts })}
+          {renderSection(section, { categories, blogPosts, locale: localeParam })}
         </Fragment>
       ))}
 

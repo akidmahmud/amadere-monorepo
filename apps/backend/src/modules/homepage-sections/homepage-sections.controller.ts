@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
@@ -16,9 +16,25 @@ import { PublicHomepageSectionDto } from './homepage-sections.mapper';
 export class HomepageSectionsController {
   constructor(private readonly sections: HomepageSectionsService) {}
 
+  // `?withProducts=false` returns section shells without any resolved product
+  // arrays — the homepage asks for that and loads each section's products from
+  // the route below as it scrolls. Anything else (including the param being
+  // absent) keeps the original behaviour, so no existing caller changes.
   @Get()
   @ApiOkResponse({ type: PublicHomepageSectionDto, isArray: true })
-  list(@Query() { locale }: LocaleQueryDto): Promise<PublicHomepageSectionDto[]> {
-    return this.sections.publicList(locale ?? 'EN');
+  list(
+    @Query() { locale }: LocaleQueryDto,
+    @Query('withProducts') withProducts?: string,
+  ): Promise<PublicHomepageSectionDto[]> {
+    return this.sections.publicList(locale ?? 'EN', withProducts !== 'false');
+  }
+
+  @Get(':id/products')
+  @ApiOkResponse({ description: "One section's resolved products." })
+  products(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() { locale }: LocaleQueryDto,
+  ) {
+    return this.sections.sectionProducts(id, locale ?? 'EN');
   }
 }
