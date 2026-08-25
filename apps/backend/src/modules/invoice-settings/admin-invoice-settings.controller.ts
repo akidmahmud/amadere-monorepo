@@ -15,8 +15,23 @@ import { UpdateInvoiceSettingsDto } from './dto/update-invoice-settings.dto';
 export class AdminInvoiceSettingsController {
   constructor(private readonly settings: InvoiceSettingsService) {}
 
+  // Gated on `order.view`, not `invoice_settings.view`.
+  //
+  // Reading these settings is how an invoice gets its company name, logo,
+  // address and footer — InvoiceDocument calls this on every print. But
+  // `invoice_settings.view` is not in PERMISSION_CATALOG, so it cannot be
+  // granted to any role: the only account that ever passed was a super admin,
+  // who skips the guard entirely (permission.guard.ts). Every other admin got
+  // a 403, the hook returned undefined, and the invoice silently fell back to
+  // the bare "Amader" default with no logo and no company details — two
+  // different documents for the same order depending on who pressed print.
+  //
+  // Whoever may view an order may print its invoice, so that is the permission
+  // this read belongs to. Nothing here is sensitive: it is the branding
+  // printed on the document handed to the customer. Writing stays restricted
+  // below.
   @Get()
-  @RequirePermission('invoice_settings.view')
+  @RequirePermission('order.view')
   get() {
     return this.settings.getSettings();
   }

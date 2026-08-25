@@ -36,6 +36,7 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [email, setEmail] = useState("");
+  const [dob, setDob] = useState("");
   const [address, setAddress] = useState<CustomerAddressValue>(EMPTY_CUSTOMER_ADDRESS);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const create = useCreateCustomer();
@@ -61,6 +62,7 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
       firstName: firstName || undefined,
       lastName: lastName || undefined,
       email: email || undefined,
+      dob: dob || undefined,
       ...(hasAddress
         ? {
             addressLine: address.addressLine,
@@ -116,6 +118,19 @@ export function CreateCustomerModal({ open, initialPhone, showAddress = true, on
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-text">Email</span>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-text">Date of birth (optional)</span>
+              {/* Native date input — the value is already the YYYY-MM-DD the
+                  API expects. Capped at today, since nobody is born tomorrow. */}
+              <input
+                type="date"
+                value={dob}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDob(e.target.value)}
+                className={inputClass}
+              />
             </label>
 
             <label className="flex flex-col gap-1.5">

@@ -16,7 +16,11 @@ export class AdminInvoiceTemplateSettingsController {
   constructor(private readonly settings: InvoiceTemplateSettingsService) {}
 
   @Get()
-  @RequirePermission('invoice_template_settings.view')
+  // Same reasoning as admin-invoice-settings.controller.ts: InvoiceDocument
+  // reads this on every print, and `invoice_template_settings.view` is absent
+  // from PERMISSION_CATALOG, so only a super admin (who bypasses the guard)
+  // could ever load it. Anyone who may view an order may print its invoice.
+  @RequirePermission('order.view')
   async get() {
     const settings = await this.settings.getSettings();
     return { ...settings, defaultTemplate: DEFAULT_INVOICE_TEMPLATE };

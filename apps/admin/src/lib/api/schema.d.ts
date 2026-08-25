@@ -8445,6 +8445,8 @@ export interface components {
             lastName?: string;
             /** Format: email */
             email?: string;
+            /** @description Birthday, ISO date (YYYY-MM-DD) */
+            dob?: string;
             addressLine?: string;
             division?: string;
             district?: string;

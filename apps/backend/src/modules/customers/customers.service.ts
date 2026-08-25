@@ -568,6 +568,10 @@ export class CustomersService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         email: dto.email,
+        // `dob` is a @db.Date column, so only the calendar day is stored — a
+        // bare "YYYY-MM-DD" parses as UTC midnight and lands on the intended
+        // day regardless of where the server runs.
+        dob: dto.dob ? new Date(dto.dob) : null,
         assignedAdminId: createdByAdminId ?? null,
       },
     });

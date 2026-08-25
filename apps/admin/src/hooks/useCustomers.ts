@@ -206,6 +206,8 @@ export function useCreateCustomer() {
       firstName?: string;
       lastName?: string;
       email?: string;
+      /** ISO date (YYYY-MM-DD). Optional. */
+      dob?: string;
       addressLine?: string;
       division?: string;
       district?: string;
