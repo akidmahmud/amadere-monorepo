@@ -544,36 +544,43 @@ export class CartService {
       },
     });
 
-    const seenFbtIds = new Set<number>();
-    let fbtRaw = fbtRelations
-      .map((r) => r.toProduct)
-      .filter((p) => (isInStock(p) && !seenFbtIds.has(p.id) ? (seenFbtIds.add(p.id), true) : false));
-
-    // Randomize order
-    fbtRaw = shuffleArray(fbtRaw);
-
-    // Fallback to random published products if fewer than 4 relations exist
-    if (fbtRaw.length < 4) {
-      const excludeIds = [...productIds, ...Array.from(seenFbtIds)];
-      const fallbackProducts = await this.prisma.client.product.findMany({
-        where: {
-          deletedAt: null,
-          status: 'PUBLISHED',
-          id: { notIn: excludeIds },
-        },
-        include: PRODUCT_INCLUDE,
-        take: 20,
-      });
-
-      const shuffledFallback = shuffleArray(fallbackProducts);
-      for (const p of shuffledFallback) {
-        if (fbtRaw.length >= 4) break;
-        if (isInStock(p) && !seenFbtIds.has(p.id)) {
-          seenFbtIds.add(p.id);
-          fbtRaw.push(p);
-        }
-      }
+    // "Frequently bought together" must mean exactly that. This used to pad the
+    // list with random published products whenever fewer than 4 real relations
+    // existed, so the section showed items nobody had paired with anything —
+    // presented under a heading claiming other customers bought them together.
+    // Now it shows the configured relations and nothing else, which means the
+    // section can be empty, and that is correct.
+    //
+    // When several cart items each have their own set, ONE cart item is picked
+    // at random and its set is shown whole, rather than merging every set into
+    // one row. A merged row is incoherent: the heading promises a bundle, and a
+    // union of unrelated pairings is not one.
+    const relationsBySource = new Map<number, typeof fbtRelations>();
+    for (const relation of fbtRelations) {
+      const bucket = relationsBySource.get(relation.fromProductId) ?? [];
+      bucket.push(relation);
+      relationsBySource.set(relation.fromProductId, bucket);
     }
+
+    const sourcesWithRelations = [...relationsBySource.keys()];
+    const chosenSource =
+      sourcesWithRelations.length > 0
+        ? shuffleArray(sourcesWithRelations)[0]
+        : undefined;
+
+    const seenFbtIds = new Set<number>();
+    let fbtRaw =
+      chosenSource === undefined
+        ? []
+        : (relationsBySource.get(chosenSource) ?? [])
+            .map((r) => r.toProduct)
+            .filter((p) =>
+              isInStock(p) && !seenFbtIds.has(p.id)
+                ? (seenFbtIds.add(p.id), true)
+                : false,
+            );
+
+    fbtRaw = shuffleArray(fbtRaw);
 
     const fbtProductIds = Array.from(seenFbtIds);
 

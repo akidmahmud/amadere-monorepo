@@ -40,7 +40,7 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
             with it: they fight an always-moving track, and hovering already
             pauses the row so a card can be read and clicked. */}
         {/* 145px tiles: ~12 needed to overflow a wide screen. */}
-        <InfiniteMarquee secondsPerItem={9} gapPx={16} minPerCopy={12} ariaLabel={heading}>
+        <InfiniteMarquee secondsPerItem={9} gapPx={16} minPerCopy={12} direction="right" ariaLabel={heading}>
           {items.map((item) => (
             <Link key={item.href} href={item.href} className="group block basis-[105px] text-center md:basis-[145px]">
               <div className="flex h-[100px] w-[100px] items-center justify-center overflow-hidden rounded-[20px] bg-white p-0.5 transition-transform duration-200 group-hover:-translate-y-1 md:h-[140px] md:w-[140px]">

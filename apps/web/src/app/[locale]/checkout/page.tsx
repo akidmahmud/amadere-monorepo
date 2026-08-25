@@ -20,7 +20,9 @@ export default async function CheckoutPage({
   setRequestLocale(locale);
 
   return (
-    <main className="flex-1">
+    // data-checkout drives the CSS in globals.css that hides the site footer
+    // on phones for this route only — see the rule there for why.
+    <main className="flex-1" data-checkout>
       <CheckoutForm />
     </main>
   );

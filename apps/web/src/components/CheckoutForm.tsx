@@ -73,182 +73,146 @@ function toBnNum(num: number | string): string {
   return str.replace(/\d/g, (d) => bnDigits[Number(d)]);
 }
 
+// Compact single-row bundle strip: [item] + [item] + [item] = [total + CTA].
+// Replaces a much heavier block (large icon header, subtitle, savings badge,
+// tall portrait cards, and a separate full-width summary bar underneath) that
+// took roughly a screen and a half on a phone for what is an optional add-on.
+// The arithmetic row reads as one sentence now, which is the point of the
+// pattern — three things plus each other equal this price.
 function CheckoutFbtSection({
   cards,
   onAddItems,
   isPending,
+  unchecked,
+  onToggle,
 }: {
   cards: ProductCardData[];
   onAddItems: (cardsToAdd: ProductCardData[]) => void;
   isPending?: boolean;
+  /** Ids the customer has deselected. Owned by CheckoutForm, because this
+   *  section renders twice — once for desktop above the form, once for
+   *  mobile below it — and two copies with their own state would silently
+   *  disagree about what is selected. Tracking the DEselected ids rather than
+   *  the selected ones keeps "everything on by default" true without needing
+   *  to re-seed state whenever the recommendation list changes. */
+  unchecked: Set<number>;
+  onToggle: (id: number) => void;
 }) {
-  const [checked, setChecked] = useState<Set<number>>(() => new Set(cards.map((c) => c.productId)));
-
   if (cards.length === 0) return null;
 
-  const checkedCards = cards.filter((c) => checked.has(c.productId));
+  const checkedCards = cards.filter((c) => !unchecked.has(c.productId));
   const total = checkedCards.reduce((sum, c) => sum + Number(c.price), 0);
   const originalTotal = checkedCards.reduce(
     (sum, c) => sum + (c.originalPrice ? Number(c.originalPrice) : Number(c.price)),
     0,
   );
   const saved = Math.max(0, originalTotal - total);
-  const savingsPercent = originalTotal > 0 && saved > 0 ? Math.round((saved / originalTotal) * 100) : 0;
-
-  function toggle(id: number) {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  const savingsPercent =
+    originalTotal > 0 && saved > 0 ? Math.round((saved / originalTotal) * 100) : 0;
 
   return (
-    <div className="w-full">
-      {/* Outer Card Container */}
-      <section className="rounded-3xl border border-[#E5EFE7] bg-white p-5 sm:p-6 md:p-8 shadow-sm">
-        {/* Top Header Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            {/* Basket Circle Icon */}
-            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-[#E5F5EB] text-[#008400]">
-              <svg className="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="font-ui text-xl sm:text-2xl font-extrabold text-[#1E293B] leading-tight">
-                অন্যরাও সাথে নিয়েছেন
-              </h2>
-              <p className="mt-0.5 font-body text-xs sm:text-sm font-medium text-[#64748B]">
-                একসাথে নিলে বেশি সাশ্রয়! নিচের আইটেমগুলো একসাথে নিন এবং বাঁচান।
-              </p>
-            </div>
-          </div>
+    <section className="rounded-2xl border border-[#E5EFE7] bg-white p-4 sm:p-5">
+      <h2 className="font-ui text-base font-bold text-[#1E293B] sm:text-lg">
+        অন্যরাও সাথে নিয়েছেন
+      </h2>
+      <p className="mb-4 mt-0.5 font-body text-xs text-[#64748B]">
+        একসাথে নিলে বেশি সাশ্রয়! নিচের আইটেমগুলো একসাথে নিন এবং বাঁচান।
+      </p>
 
-          {/* Savings Badge */}
-          <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-[#D5ECCF] bg-[#ECF7EE] px-4 py-2 text-sm font-bold text-[#008400] shrink-0">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            <span>সাশ্রয় করুন</span>
-          </div>
-        </div>
-
-        {/* Product Cards Row / Grid */}
-        <div className="my-6 flex flex-col gap-4 md:flex-row md:items-center">
-          {cards.map((card, index) => {
-            const isChecked = checked.has(card.productId);
-            return (
-              <Fragment key={card.productId}>
-                {index > 0 && (
-                  <div className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#CDE5D4] bg-white text-[#008400] font-bold text-lg shadow-sm">
-                    +
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "relative flex flex-col justify-between rounded-2xl border-2 bg-white p-4 shadow-sm transition-all flex-1 min-w-0 min-h-[250px]",
-                    isChecked ? "border-[#008400] shadow-md bg-white" : "border-[#E5E5E5] hover:border-slate-300"
-                  )}
-                >
-                  {/* Product Image */}
-                  <AppLink href={card.href} className="block h-36 w-full shrink-0 overflow-hidden rounded-xl bg-[#F8F9FA] p-2 mb-3">
-                    {card.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={card.imageUrl} alt={card.name} loading="lazy" className="h-full w-full object-contain" />
-                    )}
-                  </AppLink>
-
-                  {/* Title */}
-                  <p className="font-ui text-xs sm:text-sm font-bold text-[#1E293B] line-clamp-2 mb-3 leading-snug flex-1" title={card.name}>
-                    {card.name}
-                  </p>
-
-                  {/* Bottom Price & Checkbox Row */}
-                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
-                    <span className="font-ui text-base font-extrabold text-[#008400]">
-                      ৳{toBnNum(formatMoney(card.price).replace("৳", "").trim())}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggle(card.productId)}
-                      aria-label={`Toggle ${card.name}`}
-                      className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-lg border-2 transition-all cursor-pointer",
-                        isChecked ? "border-[#008400] bg-[#008400] text-white shadow-xs" : "border-slate-300 bg-white text-transparent hover:border-slate-400"
-                      )}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </Fragment>
-            );
-          })}
-
-          <div className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#CDE5D4] bg-white text-[#008400] font-bold text-lg shadow-sm">
-            =
-          </div>
-        </div>
-
-        {/* Bottom Total Summary Box */}
-        <div className="rounded-2xl border border-[#E0EFE4] bg-[#F2FAF4] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5">
-          {/* Left Side (Total Price & Savings) */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-[#DFF3E6] text-[#008400]">
-              <svg className="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="font-ui text-2xl sm:text-3xl font-extrabold text-[#008400]">
-                  ৳{toBnNum(total.toFixed(0))}
-                </span>
-                {saved > 0 && (
-                  <span className="font-ui text-sm sm:text-base font-semibold text-[#94A3B8] line-through">
-                    ৳{toBnNum(originalTotal.toFixed(0))}
-                  </span>
-                )}
-              </div>
-              {saved > 0 && (
-                <div className="mt-1 inline-flex items-center rounded-full bg-[#008400] px-3 py-0.5 text-xs font-bold text-white shadow-2xs">
-                  Save ৳{toBnNum(saved.toFixed(0))} ({toBnNum(savingsPercent)}%)
+      {/* Wraps rather than scrolls: a stacked column on a phone keeps every
+          item fully readable, where a horizontal scroller would hide the ones
+          that matter most behind a swipe. */}
+      <div className="flex flex-col items-stretch gap-2 lg:flex-row lg:flex-wrap">
+        {cards.map((card, index) => {
+          const isChecked = !unchecked.has(card.productId);
+          return (
+            <Fragment key={card.productId}>
+              {index > 0 && (
+                <div className="flex shrink-0 items-center justify-center font-ui text-lg font-bold text-[#94A3B8] lg:px-0.5">
+                  +
                 </div>
               )}
-            </div>
-          </div>
+              <button
+                type="button"
+                onClick={() => onToggle(card.productId)}
+                aria-pressed={isChecked}
+                aria-label={`${card.name} — ${isChecked ? "যোগ করা হয়েছে" : "যোগ করুন"}`}
+                className={cn(
+                  // The whole tile toggles, not just the box in the corner —
+                  // a 16px checkbox is a poor tap target on a phone.
+                  "relative flex flex-1 items-center gap-2.5 rounded-xl border-2 bg-white p-2 text-left transition-colors lg:min-w-[230px]",
+                  isChecked ? "border-[#1B753C]" : "border-[#E5E5E5] hover:border-slate-300",
+                )}
+              >
+                <span className="block h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#F8F9FA]">
+                  {card.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={card.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
+                  )}
+                </span>
 
-          {/* Right Side (CTA Button & Security Note) */}
-          <div className="flex flex-col items-center sm:items-end gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              disabled={isPending || checkedCards.length === 0}
-              onClick={() => onAddItems(checkedCards)}
-              className="flex w-full sm:w-auto min-w-[240px] items-center justify-center gap-3 rounded-xl bg-[#1B753C] hover:bg-[#155C2F] text-white px-6 py-3.5 font-bold text-base transition-all shadow-md active:scale-98 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span>{isPending ? "যোগ হচ্ছে…" : `কার্টে যোগ করুন (${toBnNum(checkedCards.length)})`}</span>
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#008400]">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span>১০০% নিরাপদ পেমেন্ট</span>
-            </div>
-          </div>
+                <span className="min-w-0 flex-1 pr-5">
+                  <span className="block truncate font-ui text-xs font-semibold text-[#1E293B]" title={card.name}>
+                    {card.name}
+                  </span>
+                  <span className="mt-0.5 block font-ui text-sm font-bold text-[#1B753C]">
+                    ৳{toBnNum(formatMoney(card.price).replace("৳", "").trim())}
+                  </span>
+                </span>
+
+                <span
+                  className={cn(
+                    "absolute bottom-2 right-2 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors",
+                    isChecked
+                      ? "border-[#1B753C] bg-[#1B753C] text-white"
+                      : "border-slate-300 bg-white text-transparent",
+                  )}
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              </button>
+            </Fragment>
+          );
+        })}
+
+        <div className="flex shrink-0 items-center justify-center font-ui text-lg font-bold text-[#94A3B8] lg:px-0.5">
+          =
         </div>
-      </section>
-    </div>
+
+        {/* Total and CTA as the last term of the equation, not a separate bar
+            below it. */}
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-[#1B753C] px-4 py-3 text-white">
+          <span className="flex items-baseline gap-1.5">
+            <span className="font-ui text-lg font-extrabold leading-none">
+              ৳{toBnNum(total.toFixed(0))}
+            </span>
+            {saved > 0 && (
+              // What the same items cost bought separately — the number the
+              // saving is measured against, so the claim below is checkable
+              // rather than asserted.
+              <span className="font-ui text-xs font-semibold leading-none text-white/60 line-through">
+                ৳{toBnNum(originalTotal.toFixed(0))}
+              </span>
+            )}
+          </span>
+          {saved > 0 && (
+            <span className="rounded-full bg-white/15 px-2 py-0.5 font-ui text-[0.7rem] font-bold leading-none text-white">
+              সাশ্রয় ৳{toBnNum(saved.toFixed(0))} ({toBnNum(savingsPercent)}%)
+            </span>
+          )}
+          <button
+            type="button"
+            disabled={isPending || checkedCards.length === 0}
+            onClick={() => onAddItems(checkedCards)}
+            className="mt-1 rounded-lg bg-white px-3 py-1.5 font-ui text-xs font-bold text-[#1B753C] transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending ? "যোগ হচ্ছে…" : `কার্টে যোগ করুন (${toBnNum(checkedCards.length)})`}
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -466,6 +430,89 @@ export function CheckoutForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shippingDistrict, cart]);
 
+  // Bengali on both locales by explicit request — this is the one control on
+  // the site whose wording the owner wants fixed regardless of the language
+  // toggle. The grand total rides on the button so the amount being committed
+  // to is visible at the moment of commitment, rather than only in the summary
+  // above it (which is scrolled off-screen on a phone).
+  // Rendered twice — once in the sidebar for desktop, once directly above the
+  // submit on phones — because the mobile order the owner asked for is
+  // summary -> add-ons -> terms -> submit, and terms lives inside the sidebar
+  // card while the add-ons are a full-width row after it. No amount of CSS
+  // `order` can slot a grid row between two children of the same column, so
+  // the block itself moves instead.
+  //
+  // Safe to render twice: the checkbox is a react-hook-form `Controller`, so
+  // both instances read and write the one `agreedToTerms` field rather than
+  // holding separate state. Only one is ever visible at a given width.
+  const renderTermsAgreement = (wrapperClass: string) => (
+    <div className={wrapperClass}>
+              <div className="mb-4 flex items-start gap-2.5">
+                <Controller
+                  name="agreedToTerms"
+                  control={control}
+                  render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />}
+                />
+                <span className="font-body text-xs text-ink leading-relaxed">
+                  {locale === "BN" ? (
+                    <>
+                      আমি{" "}
+                      <Link href="/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                        শর্তাবলী
+                      </Link>
+                      ,{" "}
+                      <Link href="/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                        গোপনীয়তা নীতি
+                      </Link>{" "}
+                      এবং{" "}
+                      <Link href="/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                        রিটার্ন ও রিফান্ড নীতি
+                      </Link>
+                      -র সাথে সম্মত।
+                    </>
+                  ) : (
+                    <>
+                      I have read and agree to the{" "}
+                      <Link href="/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                        Terms and Conditions
+                      </Link>
+                      ,{" "}
+                      <Link href="/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                        Privacy Policy
+                      </Link>{" "}
+                      &amp;{" "}
+                      <Link href="/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
+                        Refund and Return Policy
+                      </Link>
+                      .
+                    </>
+                  )}
+                </span>
+              </div>
+              {formState.errors.agreedToTerms && (
+                <p className="mb-3 font-body text-xs text-red-600">{formState.errors.agreedToTerms.message}</p>
+              )}
+    </div>
+  );
+
+  // Deselected add-ons, shared by both renders of CheckoutFbtSection below.
+  const [fbtUnchecked, setFbtUnchecked] = useState<Set<number>>(() => new Set());
+  const toggleFbt = (id: number) =>
+    setFbtUnchecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const placeOrderLabel = placeOrder.isPending
+    ? "অর্ডার হচ্ছে…"
+    : isFreeOrder
+      ? "ফ্রিতে নিন"
+      : cart
+        ? `অর্ডার করুন — ${formatMoney(cart.grandTotal)}`
+        : "অর্ডার করুন";
+
   const frequentlyBoughtCards = ((cart?.frequentlyBoughtTogether ?? []) as components["schemas"]["PublicProductDto"][])
     .map(toProductCardData)
     .filter((c) => !c.outOfStock);
@@ -666,6 +713,18 @@ export function CheckoutForm() {
             locale={locale}
             className="mb-6"
           />
+        )}
+
+        {hasItems && frequentlyBoughtCards.length > 0 && (
+          <div className="mb-6 hidden md:block">
+            <CheckoutFbtSection
+              cards={frequentlyBoughtCards}
+              onAddItems={handleAddMultipleCards}
+              isPending={addToCart.isPending}
+              unchecked={fbtUnchecked}
+              onToggle={toggleFbt}
+            />
+          </div>
         )}
 
         {!hasItems && (
@@ -957,96 +1016,56 @@ export function CheckoutForm() {
               </div>
             )}
 
-            <div className="mb-4 flex items-start gap-2.5">
-              <Controller
-                name="agreedToTerms"
-                control={control}
-                render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />}
-              />
-              <span className="font-body text-xs text-ink leading-relaxed">
-                {locale === "BN" ? (
-                  <>
-                    আমি{" "}
-                    <Link href="/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
-                      শর্তাবলী
-                    </Link>
-                    ,{" "}
-                    <Link href="/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
-                      গোপনীয়তা নীতি
-                    </Link>{" "}
-                    এবং{" "}
-                    <Link href="/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
-                      রিটার্ন ও রিফান্ড নীতি
-                    </Link>
-                    -র সাথে সম্মত।
-                  </>
-                ) : (
-                  <>
-                    I have read and agree to the{" "}
-                    <Link href="/terms-conditions" target="_blank" className="font-medium text-header-green underline hover:text-green">
-                      Terms and Conditions
-                    </Link>
-                    ,{" "}
-                    <Link href="/privacy-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
-                      Privacy Policy
-                    </Link>{" "}
-                    &amp;{" "}
-                    <Link href="/refund-policy" target="_blank" className="font-medium text-header-green underline hover:text-green">
-                      Refund and Return Policy
-                    </Link>
-                    .
-                  </>
-                )}
-              </span>
-            </div>
-            {formState.errors.agreedToTerms && (
-              <p className="mb-3 font-body text-xs text-red-600">{formState.errors.agreedToTerms.message}</p>
-            )}
+            {renderTermsAgreement("hidden md:block")}
 
             {placeOrderErrorMessage && (
               <p className="mb-3 font-body text-sm text-red-600">{placeOrderErrorMessage}</p>
             )}
 
-            <Button type="submit" variant="green" block disabled={!hasItems || placeOrder.isPending}>
-              {placeOrder.isPending
-                ? "Placing Order…"
-                : isFreeOrder
-                  ? "Get it free"
-                  : digitalOnly && cart
-                    ? `Place Order — ${formatMoney(cart.grandTotal)}`
-                    : "Place Order"}
-            </Button>
+            {/* Desktop only. On a phone the submit lives below the add-ons
+                section instead (see the md:hidden twin further down) — two
+                submit buttons on one screen is just a second chance to hit the
+                wrong one. Validation errors above stay visible at every width,
+                since they belong to the form rather than to either button. */}
+            <div className="hidden md:block">
+              <Button type="submit" variant="green" block disabled={!hasItems || placeOrder.isPending}>
+                {placeOrderLabel}
+              </Button>
+            </div>
           </div>
 
-          {/* Bottom Recommendations: Frequently Bought Together & Cross Sell */}
-          {hasItems && (frequentlyBoughtCards.length > 0 || crossSellCards.length > 0) && (
-            <div className="col-span-full mt-10 space-y-10 border-t border-line pt-10">
-              {frequentlyBoughtCards.length > 0 && (
-                <CheckoutFbtSection
-                  cards={frequentlyBoughtCards}
-                  onAddItems={handleAddMultipleCards}
-                  isPending={addToCart.isPending}
-                />
-              )}
+          {/* Phones only — sits between the order summary and the terms, which
+              is the order the owner asked for. Desktop renders the same section
+              directly under the upsell bar instead (above), where the page is
+              wide enough for the equation row to read on one line. Only one is
+              ever visible. */}
+          {hasItems && frequentlyBoughtCards.length > 0 && (
+            <div className="col-span-full mt-5 border-t border-line pt-5 md:hidden">
+              <CheckoutFbtSection
+                cards={frequentlyBoughtCards}
+                onAddItems={handleAddMultipleCards}
+                isPending={addToCart.isPending}
+                unchecked={fbtUnchecked}
+                onToggle={toggleFbt}
+              />
+            </div>
+          )}
 
-              {crossSellCards.length > 0 && (
-                <section>
-                  <h2 className="mb-4 font-ui text-lg font-bold text-green md:text-xl">
-                    সাথে নিতে পারেন
-                  </h2>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                    {crossSellCards.map((card) => (
-                      <SiteProductCard
-                        key={card.productId}
-                        {...card}
-                        linkComponent={AppLink}
-                        onAddToCart={(packValue) => handleCardAddToCart(card.productId, packValue)}
-                        addToCartPending={addToCart.isPending && isAddingId === card.productId}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
+          {/* The submit on phones — the last thing on the page, after the
+              add-ons, so nothing follows the decision to buy. Its desktop twin
+              is in the sidebar above and is hidden below md; only one is ever
+              on screen.
+
+              Gated on `hasItems` alone and deliberately NOT nested inside the
+              add-ons block above: a cart with no frequently-bought-together
+              relations would otherwise leave a phone with no submit button at
+              all, which is how this nearly shipped. */}
+          {hasItems && (
+            <div className="col-span-full mt-8 md:hidden">
+              {renderTermsAgreement("")}
+              <Button type="submit" variant="green" block disabled={placeOrder.isPending}>
+                {placeOrderLabel}
+              </Button>
             </div>
           )}
         </div>

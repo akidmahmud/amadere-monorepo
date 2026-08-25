@@ -123,6 +123,16 @@ export function MobileStickyFooter() {
   const outOfStock = useProductFloatingBarStore((s) => s.outOfStock);
   const showProductBar = isScrolledPast && !outOfStock && onAddToCart !== null;
 
+  // Nothing at all on checkout. `isCheckoutPage` was already being computed
+  // here but never actually used, so the bar kept covering the bottom of the
+  // page — including, at times, the place-order button. Every destination in
+  // it (Home, Menu, Cart, Blog, Account) leads away from a purchase in
+  // progress, which is exactly what a checkout page should not offer.
+  //
+  // Returned after the hooks above, never before, so the hook order stays
+  // identical on every render.
+  if (isCheckoutPage) return null;
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-[1000] md:hidden">
       {/* Container with a fixed height so transitions don't jump */}

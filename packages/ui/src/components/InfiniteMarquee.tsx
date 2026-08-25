@@ -26,6 +26,7 @@ export function InfiniteMarquee({
   secondsPerItem = 8,
   gapPx = 16,
   minPerCopy = 8,
+  direction = "left",
   className,
   ariaLabel,
 }: {
@@ -40,6 +41,17 @@ export function InfiniteMarquee({
    * item is duplicated markup, so do not set it higher than the row needs.
    */
   minPerCopy?: number;
+  /**
+   * Which way the cards travel. "left" is the classic marquee — items enter
+   * from the right and exit left. "right" reverses it, so the row reads in the
+   * same direction as the text beside it.
+   *
+   * Implemented with `animation-direction: reverse` on the one shared
+   * `marquee` keyframe rather than a second keyframe: the seam maths is
+   * identical either way, and one definition cannot drift out of step with a
+   * mirrored twin.
+   */
+  direction?: "left" | "right";
   className?: string;
   ariaLabel?: string;
 }) {
@@ -92,7 +104,10 @@ export function InfiniteMarquee({
           // target.
           "group-hover:[animation-play-state:paused]",
           "group-focus-within:[animation-play-state:paused]",
-        ].join(" ")}
+          direction === "right" ? "[animation-direction:reverse]" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         style={
           { "--marquee-duration": `${duration}s` } as React.CSSProperties
         }

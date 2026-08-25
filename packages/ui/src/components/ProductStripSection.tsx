@@ -94,7 +94,7 @@ export function ProductStripSection({
             track, and a marquee track is `w-max`, so they would collapse.
             Fitting exactly N per row does not matter here either — that
             constraint only existed to make snap-paging land cleanly. */}
-        <InfiniteMarquee secondsPerItem={10} gapPx={20} ariaLabel={title}>
+        <InfiniteMarquee secondsPerItem={10} gapPx={20} direction="right" ariaLabel={title}>
           {items.map((item) => (
             <div
               key={item.productId}

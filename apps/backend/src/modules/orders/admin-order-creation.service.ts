@@ -173,6 +173,14 @@ export class AdminOrderCreationService {
       const created = await tx.order.create({
         data: {
           orderNumber: generateOrderNumber(),
+          // Confirmed on creation, not left on the schema's PENDING default.
+          // A manual order is typed in by staff who already have the customer
+          // on the phone — the confirmation step exists to verify a
+          // self-service web order is real, and there is nothing left to verify
+          // here. Leaving it PENDING meant every admin-created order needed a
+          // pointless extra click in the order modal before it could be sent to
+          // a courier.
+          status: 'CONFIRMED',
           channel: dto.channel,
           customerId: dto.customerId ?? null,
           assignedAdminId: adminId,
@@ -207,7 +215,7 @@ export class AdminOrderCreationService {
             create: [shippingAddressData, billingAddressData],
           },
           statusHistory: {
-            create: { status: 'PENDING', note: 'Order created by staff', adminUserId: adminId },
+            create: { status: 'CONFIRMED', note: 'Order created and confirmed by staff', adminUserId: adminId },
           },
         },
       });

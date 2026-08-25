@@ -17,7 +17,7 @@ function NewOrderPageInner() {
       <PageHeader
         icon={newOrderIcon}
         title="New Order"
-        subtitle="Manually create an order for a phone/in-person sale."
+        subtitle="Manually create an order for phone, social media, or in-person sales."
         style={{ background: "linear-gradient(135deg, #430477 0%, #1C0531 100%)" }}
       />
       <NewOrderForm

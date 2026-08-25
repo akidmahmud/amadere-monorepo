@@ -94,3 +94,24 @@ body * {
   97% { transform: rotate(2deg); }
 }
 
+
+/* Checkout on phones drops the site footer.
+
+   The footer is a tall block of link columns, policies and payment marks. On a
+   narrow screen it sits directly under the last thing a customer needs to do,
+   so the page ends in a wall of navigation instead of the order being placed —
+   every one of those links leads away mid-purchase.
+
+   Done in CSS rather than by conditionally rendering, because the footer lives
+   in the locale layout and the layout is a Server Component with no knowledge
+   of the current route. `:has()` lets the page tell the layout what it is
+   without either one importing the other, and it is safely inside the
+   browserslist floor this app already targets (Chrome 111+/Safari 16.4+).
+
+   Desktop keeps the footer: the checkout column does not fill the viewport
+   there, and a bare page bottom looks broken. */
+@media (max-width: 767px) {
+  body:has(main[data-checkout]) footer {
+    display: none;
+  }
+}
