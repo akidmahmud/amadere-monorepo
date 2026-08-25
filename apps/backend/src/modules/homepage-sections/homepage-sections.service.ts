@@ -117,42 +117,12 @@ export class HomepageSectionsService {
     this.revalidateHomepage();
   }
 
-  /**
-   * `withProducts: false` returns the section shells only — headings, config,
-   * banners — and omits every resolved product array.
-   *
-   * Product data is essentially the entire payload: measured at 464 KB of a
-   * 468 KB response, across six sections. The homepage asks for shells and
-   * then fetches each section's products from `sectionProducts()` below when
-   * that section scrolls into view, so a visitor who never scrolls past the
-   * hero pays for none of it.
-   */
-  async publicList(
-    locale: Locale,
-    withProducts = true,
-  ): Promise<PublicHomepageSectionDto[]> {
+  async publicList(locale: Locale): Promise<PublicHomepageSectionDto[]> {
     const sections = await this.prisma.client.homepageSection.findMany({
       where: { isActive: true },
       include: WITH_TRANSLATIONS,
       orderBy: { sortOrder: 'asc' },
     });
-
-    if (!withProducts) {
-      return Promise.all(
-        sections.map(async (section) => {
-          // The collection is still resolved, shallowly: a carousel needs its
-          // name and slug to render a heading and a "View All" link before any
-          // products arrive. Only the products are deferred.
-          const collection =
-            (section.type === 'PRODUCT_COLLECTION' ||
-              section.type === 'TABBED_COLLECTION_CAROUSEL') &&
-            section.collectionId
-              ? await this.collections.getShallowById(section.collectionId, locale)
-              : null;
-          return toPublicHomepageSectionDto(section, collection, locale, null, null, null);
-        }),
-      );
-    }
 
     return Promise.all(
       sections.map(async (section) => {
@@ -186,50 +156,6 @@ export class HomepageSectionsService {
         );
       }),
     );
-  }
-
-  /**
-   * The products for a single section, resolved exactly as `publicList` would
-   * have. One endpoint rather than one per section type, so the client only
-   * needs the section id and does not have to know how a given type stores its
-   * products (a collection FK for the carousels, `config.items` ids for the
-   * rest).
-   *
-   * Returns the same shape the list endpoint nests, so the caller maps it with
-   * the code it already has.
-   */
-  async sectionProducts(
-    id: number,
-    locale: Locale,
-  ): Promise<{ products: (PublicProductDto | null)[] }> {
-    const section = await this.prisma.client.homepageSection.findFirst({
-      where: { id, isActive: true },
-      include: WITH_TRANSLATIONS,
-    });
-    if (!section) throw new NotFoundException('Section not found');
-
-    if (
-      (section.type === 'PRODUCT_COLLECTION' ||
-        section.type === 'TABBED_COLLECTION_CAROUSEL') &&
-      section.collectionId
-    ) {
-      const collection = await this.collections.getResolvedById(
-        section.collectionId,
-        locale,
-      );
-      return { products: collection?.products ?? [] };
-    }
-
-    if (
-      section.type === 'TOP_SELLING_PRODUCTS' ||
-      section.type === 'JUST_FOR_YOU' ||
-      section.type === 'FEATURED_DEALS'
-    ) {
-      return { products: await this.resolveConfigItemProducts(section.config, locale) };
-    }
-
-    // Every other type is banners/text and carries no products.
-    return { products: [] };
   }
 
   // Shared by TOP_SELLING_PRODUCTS, JUST_FOR_YOU, and FEATURED_DEALS — all

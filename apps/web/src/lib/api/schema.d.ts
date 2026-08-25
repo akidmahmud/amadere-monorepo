@@ -5140,22 +5140,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/homepage-sections/{id}/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HomepageSectionsController_products"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/admin/homepage-sections": {
         parameters: {
             query?: never;
@@ -20862,9 +20846,8 @@ export interface operations {
     };
     HomepageSectionsController_list: {
         parameters: {
-            query: {
+            query?: {
                 locale?: "EN" | "BN";
-                withProducts: string;
             };
             header?: never;
             path?: never;
@@ -20879,28 +20862,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PublicHomepageSectionDto"][];
                 };
-            };
-        };
-    };
-    HomepageSectionsController_products: {
-        parameters: {
-            query?: {
-                locale?: "EN" | "BN";
-            };
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description One section's resolved products. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
