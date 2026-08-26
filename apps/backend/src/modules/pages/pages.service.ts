@@ -73,6 +73,7 @@ export class PagesService {
 
   async create(dto: CreatePageDto): Promise<AdminPageDto> {
     await this.assertSlugAvailable(dto.slug);
+    await this.releaseSlugFromDeleted(dto.slug);
     const page = await this.prisma.client.page.create({
       data: {
         slug: dto.slug,
@@ -95,6 +96,7 @@ export class PagesService {
     // nothing at all.
     if (dto.slug && dto.slug !== current.slug) {
       await this.assertSlugAvailable(dto.slug, id);
+      await this.releaseSlugFromDeleted(dto.slug);
     }
 
     if (dto.translations) {
@@ -117,12 +119,37 @@ export class PagesService {
     return toAdminPageDto(page);
   }
 
+  /**
+   * Soft-delete, and RELEASE THE SLUG.
+   *
+   * `Page.slug` is `@unique` across the whole table, deleted rows included, so
+   * a soft-deleted page used to squat its slug forever — and with no page
+   * trash or restore anywhere in the admin, that row was unreachable. Delete
+   * "contact", try to create "contact" again, and you got
+   * `Slug "contact" is already in use` pointing at a page you could not see,
+   * open, or undelete.
+   *
+   * The slug is therefore moved aside to a tombstone rather than the row being
+   * destroyed: the layout revision history survives (it cascades on a real
+   * delete), and the name the owner actually cares about is free immediately.
+   * The id is in the tombstone so two deletions of the same slug cannot
+   * collide with each other.
+   */
   async delete(id: number): Promise<void> {
-    await this.adminGet(id);
+    const page = await this.adminGet(id);
     await this.prisma.client.page.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        slug: `${page.slug}__deleted__${id}`,
+      },
     });
+    // Purge the storefront cache under the ORIGINAL slug. Every other mutation
+    // here revalidates; delete did not — so a deleted page carried on being
+    // served from the ISR cache (`s-maxage=300` with a year of
+    // stale-while-revalidate behind it), which is the one case where serving
+    // stale content is actually wrong rather than merely old.
+    await this.revalidatePage(page.slug, page.kind === 'CHECKOUT');
   }
 
   async publicGetBySlug(
@@ -439,6 +466,27 @@ export class PagesService {
     if (paths.length > 0) await this.revalidation.revalidate(paths, 'page');
   }
 
+  /**
+   * Tombstone any ALREADY-deleted row still sitting on this slug.
+   *
+   * Rows deleted before delete() started renaming still hold their original
+   * slug. assertSlugAvailable now ignores deleted rows, so without this the
+   * check passes and Prisma's `@unique` constraint fires instead — a P2002
+   * surfacing as a 500 rather than a usable message. Renaming them on demand
+   * retro-fits the fix to the rows that predate it, with no migration.
+   */
+  private async releaseSlugFromDeleted(slug: string): Promise<void> {
+    const stale = await this.prisma.client.page.findFirst({
+      where: { slug, deletedAt: { not: null } },
+      select: { id: true },
+    });
+    if (!stale) return;
+    await this.prisma.client.page.update({
+      where: { id: stale.id },
+      data: { slug: `${slug}__deleted__${stale.id}` },
+    });
+  }
+
   private async assertSlugAvailable(
     slug: string,
     excludeId?: number,
@@ -449,8 +497,11 @@ export class PagesService {
     const reserved = checkReservedSlug(slug);
     if (reserved) throw new ConflictException(reserved);
 
-    const existing = await this.prisma.client.page.findUnique({
-      where: { slug },
+    // findFirst + `deletedAt: null`, not findUnique on the slug: rows deleted
+    // BEFORE the tombstone rename above existed still hold their original
+    // slug, and they must not keep blocking it either.
+    const existing = await this.prisma.client.page.findFirst({
+      where: { slug, deletedAt: null },
     });
     if (existing && existing.id !== excludeId) {
       throw new ConflictException(`Slug "${slug}" is already in use`);
