@@ -47,18 +47,21 @@ export function AddressFields({
   return (
     <div>
       <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Name before phone, per explicit request. The grid is source-order,
+            so swapping the two blocks moves the field on both the stacked
+            phone layout and the two-column desktop one. */}
+        <div>
+          <Input placeholder="Your Full Name *" {...register(`${prefix}.recipientName`)} />
+          {fieldErrors?.recipientName && (
+            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.recipientName.message}</p>
+          )}
+        </div>
         <div>
           <Input placeholder="017*********" {...register(`${prefix}.phone`)} />
           {fieldErrors?.phone && (
             <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.phone.message}</p>
           )}
           {onFraudResult && <CheckoutFraudBadge phone={watch(`${prefix}.phone`) ?? ""} onResult={onFraudResult} />}
-        </div>
-        <div>
-          <Input placeholder="Your Full Name *" {...register(`${prefix}.recipientName`)} />
-          {fieldErrors?.recipientName && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.recipientName.message}</p>
-          )}
         </div>
       </div>
 

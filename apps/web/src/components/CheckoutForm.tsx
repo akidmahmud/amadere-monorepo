@@ -37,6 +37,8 @@ import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { ShippingRatesNotice } from "@/components/ShippingRatesNotice";
 import { useMe } from "@/hooks/useAuth";
+import { SavedAddressPicker, type SavedAddress } from "@/components/SavedAddressPicker";
+import { useAddresses } from "@/hooks/useAccount";
 import { useCheckoutPrefill } from "@/hooks/useCheckoutPrefill";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 import type { components } from "@/lib/api/schema";
@@ -308,7 +310,58 @@ export function CheckoutForm() {
   // Signed-in customers get their name/phone/email/address filled in for
   // them; guests are untouched. Only ever fills fields that are still empty
   // (see the hook) so it can't overwrite someone typing while it resolves.
-  const { prefilledFromAddress } = useCheckoutPrefill(form);
+  const { prefilledFromAddress, prefilledAddressId } = useCheckoutPrefill(form);
+
+  // Saved addresses shown above the shipping fields for a signed-in
+  // customer. `!!me` keeps the request off guest checkouts entirely — the
+  // endpoint is CustomerJwtGuard-protected, so firing it without a session
+  // is a guaranteed 401.
+  const { data: savedAddressData } = useAddresses(!!me);
+  // See SavedAddressPicker for why the generated AddressDto is wrong for
+  // this endpoint and the real response shape is written out by hand.
+  const savedAddresses = (savedAddressData ?? []) as unknown as SavedAddress[];
+
+  // null means "typing a new one". Starts undefined so the prefill's own
+  // choice can seed it once the query resolves, without overriding a
+  // customer who has already picked a different card in the meantime.
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null | undefined>(undefined);
+  const effectiveAddressId = selectedAddressId === undefined ? prefilledAddressId : selectedAddressId;
+
+  // Clicking a card is an explicit instruction, so unlike the prefill hook
+  // (which must never clobber typing) this overwrites — including blanking
+  // the optional fields the chosen address leaves empty, or switching from
+  // an address with a landmark to one without would keep the old landmark.
+  function applySavedAddress(address: SavedAddress) {
+    setSelectedAddressId(address.id);
+    const next: Record<string, string> = {
+      recipientName: address.recipientName,
+      phone: address.phone,
+      district: address.district,
+      area: address.area ?? "",
+      landmark: address.landmark ?? "",
+      addressLine: address.addressLine,
+      postCode: address.postCode ?? "",
+    };
+    for (const [key, value] of Object.entries(next)) {
+      form.setValue(`shippingAddress.${key}` as "shippingAddress.recipientName", value, {
+        shouldValidate: form.formState.isSubmitted,
+        shouldDirty: true,
+      });
+    }
+  }
+
+  // Clears only the address itself. Name/phone/email stay: they belong to
+  // the person ordering, not to the address, and someone shipping to a new
+  // place is almost never also changing who they are.
+  function useNewAddress() {
+    setSelectedAddressId(null);
+    for (const key of ["district", "area", "landmark", "addressLine", "postCode"]) {
+      form.setValue(`shippingAddress.${key}` as "shippingAddress.district", "", {
+        shouldValidate: false,
+        shouldDirty: true,
+      });
+    }
+  }
 
   const { register, control, handleSubmit, watch, formState } = form;
   const paymentProvider = watch("paymentProvider");
@@ -810,7 +863,18 @@ export function CheckoutForm() {
             ) : (
             <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
-              {prefilledFromAddress && (
+
+              <SavedAddressPicker
+                addresses={savedAddresses}
+                selectedId={effectiveAddressId ?? null}
+                onSelect={applySavedAddress}
+                onUseNew={useNewAddress}
+              />
+
+              {/* Only worth saying when nothing above accounts for the filled
+                  boxes — with the picker showing a selected card, the note
+                  just repeats what the highlight already says. */}
+              {prefilledFromAddress && savedAddresses.length === 0 && (
                 <p className="mb-3.5 font-body text-xs text-muted">
                   Filled in from your saved address — edit anything that&apos;s changed.
                 </p>

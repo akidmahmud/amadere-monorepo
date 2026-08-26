@@ -35,6 +35,11 @@ export function useCheckoutPrefill(form: UseFormReturn<CheckoutFormValues>) {
   const { data: addresses, isLoading: addressesLoading } = useAddresses(!!me);
   const done = useRef(false);
   const [prefilledFromAddress, setPrefilledFromAddress] = useState(false);
+  // Which saved address the fields were filled from, so the picker above
+  // them can show that one as selected. Without it the form would open
+  // pre-filled with an address while every card sat unselected, which reads
+  // as "none of these" — the one state that is definitely wrong.
+  const [prefilledAddressId, setPrefilledAddressId] = useState<number | null>(null);
 
   useEffect(() => {
     if (done.current) return;
@@ -69,10 +74,14 @@ export function useCheckoutPrefill(form: UseFormReturn<CheckoutFormValues>) {
 
     done.current = true;
     setPrefilledFromAddress(!!address);
+    // Cast for the same DTO-name collision described above: the response
+    // really does carry `id` (backend address.mapper.ts), the generated type
+    // just isn't the one for this endpoint.
+    setPrefilledAddressId((address as { id?: number } | undefined)?.id ?? null);
   }, [me, meLoading, addresses, addressesLoading, form]);
 
   // Lets the form tell the customer WHY these boxes came pre-filled — an
   // address appearing on its own reads as a bug (or someone else's data) if
   // nothing accounts for it.
-  return { prefilledFromAddress };
+  return { prefilledFromAddress, prefilledAddressId };
 }

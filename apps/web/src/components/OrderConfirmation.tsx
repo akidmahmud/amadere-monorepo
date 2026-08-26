@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { formatMoney } from "@amader/ui";
 import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
+import { CustomerInvoiceDocument } from "@/components/CustomerInvoiceDocument";
+import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { pushEcommerceEvent, addressToUserData } from "@/lib/analytics-events";
 import { toDisplayImageUrl, IMG } from "@/lib/media";
 import type { components } from "@/lib/api/schema";
@@ -69,6 +71,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function OrderConfirmation({ order }: { order: OrderDto }) {
+  const { data: siteInfo } = useSiteInfo();
   const shipping = order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
   const latestPayment = order.payments[order.payments.length - 1];
 
@@ -113,7 +116,8 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
   );
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <>
+    <div className="mx-auto max-w-2xl print:hidden">
       <div className="mb-6 text-center">
         <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-full bg-green text-white">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-8 w-8">
@@ -122,6 +126,27 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
         </div>
         <h1 className="font-serif text-4xl font-semibold text-ink">Order Placed!</h1>
         <p className="font-body text-lg text-muted">Thank you — we&apos;ve received your order.</p>
+
+        {/* Prints the invoice block below rather than navigating to
+            /orders/[orderNumber]/invoice: that page is login-gated, and a
+            guest checkout has no session to gate on. The order data needed is
+            already in hand here (CheckoutResult is an OrderDto), so this
+            works for guests and signed-in customers alike, with no extra
+            request. Browser print / Save as PDF is the whole mechanism —
+            there is no PDF library in this codebase, same as the admin and
+            customer invoice pages. */}
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="mt-4 inline-flex items-center gap-2 rounded-[10px] border border-green px-4 py-2 font-ui text-sm font-semibold text-green transition hover:bg-green hover:text-white"
+        >
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12" />
+            <path d="m7 10 5 5 5-5" />
+            <path d="M5 21h14" />
+          </svg>
+          Download receipt
+        </button>
       </div>
 
       <div className="mb-5 rounded-brand border border-line bg-white p-6">
@@ -255,5 +280,17 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
         </div>
       )}
     </div>
+
+    {/* Screen-hidden, print-only: the receipt itself. Kept in the DOM rather
+        than rendered on demand so window.print() has something to print in
+        the same tick the button is clicked. */}
+    <div className="hidden print:block">
+      <CustomerInvoiceDocument
+        order={order}
+        siteName={siteInfo?.siteName ?? "আমাদের"}
+        logoUrl={siteInfo?.logoUrl}
+      />
+    </div>
+    </>
   );
 }
