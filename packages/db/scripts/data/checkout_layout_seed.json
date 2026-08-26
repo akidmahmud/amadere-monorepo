@@ -1,0 +1,27 @@
+{
+  "root": { "props": {} },
+  "content": [
+    { "type": "CheckoutUpsellBar", "props": { "id": "co-upsell" } },
+    { "type": "CheckoutFbt", "props": { "id": "co-fbt" } },
+    {
+      "type": "CheckoutRoot",
+      "props": {
+        "id": "co-root",
+        "main": [
+          { "type": "CheckoutOrderReview", "props": { "id": "co-review", "heading": "" } },
+          { "type": "CheckoutContactDetails", "props": { "id": "co-contact", "heading": "" } },
+          { "type": "CheckoutShippingAddress", "props": { "id": "co-ship", "heading": "" } },
+          { "type": "CheckoutBillingAddress", "props": { "id": "co-bill", "heading": "" } }
+        ],
+        "sidebar": [
+          { "type": "CheckoutPaymentMethod", "props": { "id": "co-pay", "heading": "" } },
+          { "type": "CheckoutCoupon", "props": { "id": "co-coupon", "heading": "" } },
+          { "type": "CheckoutGiftVoucher", "props": { "id": "co-voucher", "heading": "" } },
+          { "type": "CheckoutOrderSummary", "props": { "id": "co-summary", "heading": "" } },
+          { "type": "CheckoutTerms", "props": { "id": "co-terms" } },
+          { "type": "CheckoutPlaceOrder", "props": { "id": "co-place", "ctaLabel": "" } }
+        ]
+      }
+    }
+  ]
+}

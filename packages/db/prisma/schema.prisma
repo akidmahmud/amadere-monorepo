@@ -1957,17 +1957,31 @@ model BlogPostTag {
 // as a sluggable, SEO-bearing entity)
 // ---------------------------------------------------------------------
 
+// CONTENT is every page that existed before the page builder; the column
+// defaults to it so no backfill is needed.
+enum PageKind {
+  CONTENT
+  CHECKOUT
+}
+
 model Page {
   id         Int           @id @default(autoincrement())
   slug       String        @unique
   legacySlug String?       @map("legacy_slug")
   status     ContentStatus @default(DRAFT)
   legacyId   Int?          @unique @map("legacy_id")
+  kind       PageKind      @default(CONTENT)
+  // Exactly one CHECKOUT page may be active at a time — enforced in the
+  // service (cleared on every other page in the same transaction), and this
+  // is the flag /checkout resolves by. Zero active pages is a legitimate
+  // state: the route falls back to the hardcoded layout in code.
+  isDefaultCheckout Boolean  @default(false) @map("is_default_checkout")
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
   deletedAt  DateTime?     @map("deleted_at")
 
   translations PageTranslation[]
+  revisions    PageRevision[]
 
   @@map("pages")
 }
@@ -1977,12 +1991,37 @@ model PageTranslation {
   pageId  Int    @map("page_id")
   locale  Locale
   title   String
+  // Legacy HTML. NEVER removed: it is what every pre-builder page still
+  // renders from, and the fallback when `layout` is absent or invalid.
   content String
+  // Published Puck document for this locale. Null on every existing page.
+  layout  Json?
+  // Unpublished work in progress, autosaved by the editor. Kept separate
+  // from `layout` so a half-finished draft can never reach the storefront —
+  // publish is what copies draftLayout into layout.
+  draftLayout Json? @map("draft_layout")
 
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
   @@unique([pageId, locale])
   @@map("page_translations")
+}
+
+// Publish history. A broken checkout must be revertible in one click, so a
+// snapshot of the OUTGOING layout is written on every publish.
+model PageRevision {
+  id        Int      @id @default(autoincrement())
+  pageId    Int      @map("page_id")
+  locale    Locale
+  layout    Json
+  label     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  createdBy Int?     @map("created_by")
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, locale, createdAt])
+  @@map("page_revisions")
 }
 
 // ---------------------------------------------------------------------

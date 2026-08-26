@@ -142,32 +142,21 @@ export function ProductCard({
     // Add to Cart button) — colors are Amader's own (green/beige/ink), not
     // copied from their orange.
     <div className={cn("group relative flex h-full flex-col justify-between rounded border border-header-line bg-white p-2 text-[#020101] font-sans transition-shadow duration-300", className)}>
-      {/* Pixel-matched to ghorerbazar.com's `.flag-name` / `.save-label`:
-          plain elements (not the shared Badge, whose own base classes would
-          fight these exact values under plain clsx) — 10px/400, 2px 6px
-          padding, 4px radius, 6px inset from each top corner. */}
-      {(flagLabel || computedDiscountLabel) && (
-        // All badges grouped on the right, stacked in a column (not a
-        // wrapping row) per explicit request — flex-col + items-end so
-        // multiple badges stack one per line, each right-aligned. Only
-        // rendering the spans that actually have content (the old
-        // justify-between layout needed both slots present — even empty —
-        // to keep a lone badge pinned to its designated side; that's not
-        // needed here since items-end right-aligns regardless).
-        <div className="absolute inset-x-1.5 top-1.5 z-10 flex flex-col items-end gap-1">
-          {flagLabel && (
-            <span className="shrink-0 rounded bg-[#FF4900] px-1 py-0.5 text-[9px] font-normal leading-normal text-white">
-              {flagLabel}
-            </span>
-          )}
-          {computedDiscountLabel && (
-            <span className="shrink-0 rounded bg-[#008400] px-1 py-0.5 text-[9px] font-normal leading-normal text-white">
-              {computedDiscountLabel}
-            </span>
-          )}
-        </div>
-      )}
-      <Link href={href} onClick={onSelect} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden bg-beige">
+      <Link href={href} onClick={onSelect} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden rounded bg-beige">
+        {(flagLabel || computedDiscountLabel) && (
+          <div className="absolute right-0 top-0 z-10 flex flex-col items-end gap-1">
+            {flagLabel && (
+              <span className="shrink-0 rounded-bl-md bg-[#E7C22D] px-2 py-1 text-[10px] font-bold leading-none text-slate-950 shadow-sm">
+                {flagLabel}
+              </span>
+            )}
+            {computedDiscountLabel && (
+              <span className="shrink-0 rounded-l-md bg-[#008400] px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm">
+                {computedDiscountLabel}
+              </span>
+            )}
+          </div>
+        )}
         {imageUrl ? (
           <Image
             src={imageUrl}

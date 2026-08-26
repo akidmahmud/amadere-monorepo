@@ -108,12 +108,29 @@ export function useRegister() {
 
 export function useRequestOtp() {
   return useMutation({
-    mutationFn: async (args: { identifier: string; purpose: "REGISTER" | "LOGIN" }) => {
+    mutationFn: async (args: {
+      identifier: string;
+      purpose: "REGISTER" | "LOGIN" | "RESET_PASSWORD";
+    }) => {
       await proxyFetch<unknown>("/auth/otp/request", {
         method: "POST",
         body: JSON.stringify(args),
       });
     },
+  });
+}
+
+// Finishes a forgotten-password reset. Note this does NOT sign anyone in:
+// a RESET_PASSWORD code is rejected by /auth/otp/verify on purpose, so it
+// buys a new password and nothing else. The caller sends the customer back
+// to the login form afterwards.
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (args: { identifier: string; code: string; newPassword: string }) =>
+      proxyFetch<{ success: boolean }>("/auth/password/reset", {
+        method: "POST",
+        body: JSON.stringify(args),
+      }),
   });
 }
 

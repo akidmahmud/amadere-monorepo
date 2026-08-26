@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { RegisterForm } from "@/components/RegisterForm";
 import { getLanguageAlternates } from "@/i18n/alternates";
@@ -21,7 +22,13 @@ export default async function RegisterPage({
 
   return (
     <main className="flex-1 px-5 py-10">
-      <RegisterForm />
+      {/* RegisterForm is LoginForm in register mode, so it reads
+          useSearchParams() (the ?redirect= target) just like /login does and
+          needs the same boundary. Without it `next build` fails this route
+          with "useSearchParams() should be wrapped in a suspense boundary". */}
+      <Suspense fallback={null}>
+        <RegisterForm />
+      </Suspense>
     </main>
   );
 }

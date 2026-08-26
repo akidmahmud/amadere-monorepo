@@ -17,6 +17,8 @@ export interface ProductFloatingBarState {
   isPending: boolean;
   /** True when the product is genuinely out of stock (hides both CTA buttons) */
   outOfStock: boolean;
+  /** Direct link to WhatsApp chat for the product */
+  whatsappHref?: string | null;
   /** Internal — called by the provider to push state */
   _update: (patch: Partial<Omit<ProductFloatingBarState, "_update" | "_reset">>) => void;
   /** Internal — called on unmount to clear everything */
@@ -29,6 +31,7 @@ const INITIAL: Omit<ProductFloatingBarState, "_update" | "_reset"> = {
   onBuyNow: null,
   isPending: false,
   outOfStock: false,
+  whatsappHref: null,
 };
 
 export const useProductFloatingBarStore = create<ProductFloatingBarState>((set) => ({

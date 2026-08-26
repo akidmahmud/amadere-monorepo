@@ -1,0 +1,436 @@
+"use client";
+
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Puck, type Data } from "@puckeditor/core";
+import "@puckeditor/core/no-external.css";
+import { Button } from "@amader/admin-ui";
+import { adminConfig } from "@/lib/page-builder-config";
+import { usePage } from "@/hooks/usePages";
+import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
+import {
+  useSaveLayout,
+  usePublishLayout,
+  usePreviewToken,
+  useRevisions,
+  useRestoreRevision,
+  type BuilderLocale,
+} from "@/hooks/usePageBuilder";
+
+/**
+ * Page Builder editor (plan §8.2).
+ *
+ * `no-external.css`, not `puck.css`: the two are byte-identical apart from an
+ * `@import "https://rsms.me/inter/inter.css"` that would fetch a font from a
+ * third party on every editor load (plan §13.4).
+ *
+ * Puck's own stylesheet is fully CSS-module scoped, so it does not fight the
+ * admin's Tailwind preflight — verified in Phase 0.
+ *
+ * PREVIEW FIDELITY (the §8.2 decision, written down as that section asks):
+ * the canvas iframe is styled by the ADMIN's Tailwind build, extended with
+ * `@source "packages/page-builder/src"` in globals.css. Puck clones the parent
+ * document's stylesheets into its iframe, so whatever the admin page has, the
+ * canvas has. The plan floated serving the iframe from a storefront route
+ * instead; that does not fit Puck's model, because the canvas iframe is a
+ * React tree Puck renders itself rather than a URL it navigates to. This is
+ * the same approach the repo already uses for the footer editor's live
+ * preview, which imports `@amader/ui/tokens.css` and `@source`s
+ * `packages/ui/src` for exactly this reason. Blocks use only tokens from
+ * `@amader/ui/tokens.css`, which the admin already loads, so the colours and
+ * fonts in the canvas are the storefront's own.
+ */
+
+const EMPTY: Data = { root: { props: {} }, content: [] } as Data;
+
+const AUTOSAVE_MS = 2000;
+
+export default function PageBuilderPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: rawId } = use(params);
+  const id = Number(rawId);
+
+  const { data: page, isLoading } = usePage(id);
+  const storefrontUrl = useStorefrontUrl();
+  const [locale, setLocale] = useState<BuilderLocale>("EN");
+  const [publishErrors, setPublishErrors] = useState<string[]>([]);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [showRevisions, setShowRevisions] = useState(false);
+
+  const kind = (page?.kind as "CONTENT" | "CHECKOUT" | undefined) ?? "CONTENT";
+  const saveLayout = useSaveLayout(id);
+  const publish = usePublishLayout(id, kind);
+  const previewToken = usePreviewToken(id);
+  const restoreRevision = useRestoreRevision(id);
+  // Only fetched while the drawer is open -- the list is worthless closed and
+  // every publish invalidates it anyway.
+  const { data: revisions, isLoading: revisionsLoading } = useRevisions(
+    id,
+    showRevisions,
+  );
+
+  // Cast to compare `locale`: the Nest Locale enum reaches the OpenAPI
+  // document without members, so openapi-typescript renders the field as
+  // `Record<string, never>`. Same workaround the homepage-sections screens
+  // already use -- the value really is "EN" | "BN" at runtime.
+  const translation = page?.translations?.find(
+    (t) => (t as unknown as { locale?: string }).locale === locale,
+  );
+
+  /**
+   * The draft is what the owner was last working on; the published layout is
+   * the fallback for a locale that has never been drafted. Reading `layout`
+   * when `draftLayout` is null is what makes "open the builder on a live page"
+   * start from what is actually live rather than an empty canvas.
+   */
+  const initialData = useMemo(() => {
+    const doc = translation?.draftLayout ?? translation?.layout;
+    return (doc as Data | undefined) ?? EMPTY;
+  }, [translation]);
+
+  // Remounts Puck when the locale changes. Puck holds its own internal
+  // document state seeded from `data`, so changing the prop alone would leave
+  // the canvas showing the previous locale's blocks.
+  const puckKey = `${id}-${locale}-${translation ? "ready" : "empty"}`;
+
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef<Data | null>(null);
+  // Puck fires onChange once on mount, while it normalises the document it
+  // was handed. Treating that as an edit made the editor open already dirty:
+  // it nagged on the way out and wrote an autosave on every single open,
+  // neither of which the owner did anything to deserve. The first call still
+  // records the document (publish needs it) but does not mark it dirty.
+  const settled = useRef(false);
+
+  const flush = useCallback(() => {
+    const layout = latest.current;
+    if (!layout) return;
+    saveLayout.mutate(
+      { locale, layout },
+      {
+        onSuccess: () => {
+          setSavedAt(Date.now());
+          setDirty(false);
+        },
+      },
+    );
+  }, [locale, saveLayout]);
+
+  const onChange = useCallback(
+    (data: Data) => {
+      latest.current = data;
+      if (!settled.current) {
+        settled.current = true;
+        return;
+      }
+      setDirty(true);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(flush, AUTOSAVE_MS);
+    },
+    [flush],
+  );
+
+  // A debounce alone loses the last edit if the tab closes inside the window.
+  // beforeunload cannot await a fetch, so this warns instead of pretending to
+  // save — an honest prompt beats a save that silently did not happen.
+  useEffect(() => {
+    function warn(e: BeforeUnloadEvent) {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  async function handlePublish() {
+    setPublishErrors([]);
+    // Publish reads the draft server-side, so any pending debounce must land
+    // first or the owner publishes the version before their last edit.
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    if (latest.current) {
+      try {
+        await saveLayout.mutateAsync({ locale, layout: latest.current });
+        setDirty(false);
+        setSavedAt(Date.now());
+      } catch {
+        setPublishErrors(["Could not save the draft before publishing."]);
+        return;
+      }
+    }
+    try {
+      await publish.mutateAsync({ locale });
+    } catch (err) {
+      // The reasons arrive on ProxyApiError.details -- an array of strings,
+      // one per problem, each already written for the owner to read.
+      const e = err as { details?: unknown; message?: string };
+      const details = Array.isArray(e.details)
+        ? (e.details as unknown[]).map(String).filter(Boolean)
+        : [];
+      setPublishErrors(
+        details.length ? details : [e.message || "Publish failed."],
+      );
+    }
+  }
+
+  async function handlePreview() {
+    // Flush first: a preview that showed the version before the last edit
+    // would be worse than no preview at all.
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    if (latest.current) {
+      await saveLayout.mutateAsync({ locale, layout: latest.current });
+      setDirty(false);
+      setSavedAt(Date.now());
+    }
+    const { token } = await previewToken.mutateAsync();
+    const path = locale === "BN" ? `/bn/pages/` : `/pages/`;
+    window.open(
+      `${storefrontUrl}${path}${page?.slug}/preview/${token}`,
+      "_blank",
+      "noopener",
+    );
+  }
+
+  /**
+   * Copies the CURRENT locale's document into the other one's draft (plan
+   * §5.2). Structure is shared and the text is left for translating -- the
+   * owner should not have to rebuild the same design twice.
+   *
+   * Writes to the draft, never to the published layout: the other locale may
+   * be live, and a copy is a starting point rather than a decision.
+   */
+  async function handleCopyToOtherLocale() {
+    const other: BuilderLocale = locale === "EN" ? "BN" : "EN";
+    const doc = latest.current ?? initialData;
+    if (!doc) return;
+    if (
+      !window.confirm(
+        `Replace the ${other} draft with a copy of this ${locale} layout? ` +
+          `The ${other} published layout is not touched until you publish it.`,
+      )
+    ) {
+      return;
+    }
+    await saveLayout.mutateAsync({ locale: other, layout: doc });
+    setPublishErrors([]);
+    window.alert(`Copied to the ${other} draft. Switch to ${other} to translate the text.`);
+  }
+
+  if (!Number.isFinite(id)) return <p className="p-8">Invalid page id.</p>;
+  if (isLoading) return <p className="p-8 text-sm text-muted">Loading…</p>;
+  if (!page) return <p className="p-8 text-sm text-muted">Page not found.</p>;
+
+  return (
+    // Full-bleed: the shell's padded container is escaped with negative
+    // margins because the editor needs the whole viewport (§8.2), and the
+    // canvas is unusable inside a narrow column.
+    <div className="-m-4 flex h-[calc(100vh-64px)] flex-col md:-m-6">
+      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-white px-4 py-2.5">
+        <Link href={`/pages/${id}`} className="text-sm text-muted hover:underline">
+          ← Back
+        </Link>
+        <span className="font-semibold">{page.slug}</span>
+
+        <div className="ml-2 flex overflow-hidden rounded-md border border-line">
+          {(["EN", "BN"] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => {
+                // Flush before switching, or the pending debounce would write
+                // this locale's document under the one being switched to.
+                if (timer.current) {
+                  clearTimeout(timer.current);
+                  timer.current = null;
+                  flush();
+                }
+                latest.current = null;
+                // Remounting Puck for the new locale replays the mount
+                // onChange, so this has to be armed again or that replay
+                // would be treated as an edit.
+                settled.current = false;
+                setLocale(l);
+                setPublishErrors([]);
+              }}
+              className={`px-3 py-1 text-sm ${
+                locale === l ? "bg-green text-white" : "bg-white text-ink"
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-xs text-muted">
+          {saveLayout.isPending
+            ? "Saving…"
+            : dirty
+              ? "Unsaved changes"
+              : savedAt
+                ? `Draft saved ${new Date(savedAt).toLocaleTimeString()}`
+                : "Draft"}
+        </span>
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleCopyToOtherLocale}
+            disabled={saveLayout.isPending}
+          >
+            Copy to {locale === "EN" ? "BN" : "EN"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShowRevisions((v) => !v)}
+          >
+            Revisions
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handlePreview}
+            disabled={previewToken.isPending || saveLayout.isPending}
+          >
+            {previewToken.isPending ? "Opening…" : "Preview"}
+          </Button>
+          <Button
+            type="button"
+            onClick={handlePublish}
+            disabled={publish.isPending || saveLayout.isPending}
+          >
+            {publish.isPending ? "Publishing…" : `Publish ${locale}`}
+          </Button>
+        </div>
+      </header>
+
+      {publishErrors.length > 0 && (
+        // Inline and specific (§8.2): the backend names the missing block, and
+        // a generic "publish failed" toast would throw that away.
+        <div className="border-b border-red-200 bg-red-50 px-4 py-2.5">
+          <p className="text-sm font-semibold text-red-700">
+            Could not publish this layout
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-red-700">
+            {publishErrors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!translation && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          This page has no {locale} translation yet. Add one from the page
+          editor before building its {locale} layout.
+        </div>
+      )}
+
+      {showRevisions && (
+        <div className="border-b border-line bg-white px-4 py-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="font-ui text-sm font-semibold">Revisions</span>
+            <span className="text-xs text-muted">
+              A snapshot is taken of the outgoing layout every time you publish.
+            </span>
+            <button
+              type="button"
+              className="ml-auto text-sm text-muted hover:underline"
+              onClick={() => setShowRevisions(false)}
+            >
+              Close
+            </button>
+          </div>
+          {revisionsLoading ? (
+            <p className="text-sm text-muted">Loading…</p>
+          ) : !revisions || revisions.length === 0 ? (
+            <p className="text-sm text-muted">
+              No revisions yet — the first snapshot is written when you publish
+              over an existing layout.
+            </p>
+          ) : (
+            <ul className="max-h-52 divide-y divide-line overflow-auto rounded-md border border-line">
+              {revisions.map((r) => (
+                <li key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                  <span className="font-medium">{r.locale}</span>
+                  <span className="text-muted">
+                    {new Date(r.createdAt).toLocaleString()}
+                  </span>
+                  {r.label && <span className="text-muted">— {r.label}</span>}
+                  <button
+                    type="button"
+                    className="ml-auto font-semibold text-green hover:underline disabled:opacity-50"
+                    disabled={restoreRevision.isPending}
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          "Restore this revision? It replaces the current " +
+                            `${r.locale} layout immediately.`,
+                        )
+                      ) {
+                        return;
+                      }
+                      try {
+                        await restoreRevision.mutateAsync(r.id);
+                        // Full reload: Puck holds its own copy of the
+                        // document, so swapping it underneath would leave the
+                        // canvas showing the layout that was just replaced.
+                        window.location.reload();
+                      } catch (err) {
+                        const e = err as { details?: unknown; message?: string };
+                        const d = Array.isArray(e.details)
+                          ? (e.details as unknown[]).map(String)
+                          : [];
+                        setPublishErrors(d.length ? d : [e.message || "Restore failed."]);
+                        setShowRevisions(false);
+                      }
+                    }}
+                  >
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="min-h-0 flex-1">
+        <Puck
+          key={puckKey}
+          config={adminConfig}
+          data={initialData}
+          onChange={onChange}
+          iframe={{ enabled: true }}
+          viewports={[
+            { width: 390, label: "Mobile" },
+            { width: 768, label: "Tablet" },
+            { width: 1180, label: "Desktop" },
+          ]}
+          // Puck's own Publish button is hidden: publishing here has to flush
+          // the debounced draft first and surface the backend's validation
+          // errors, which the header button above does. An empty fragment
+          // rather than null -- the override's type demands an element.
+          overrides={{ headerActions: () => <></> }}
+        />
+      </div>
+    </div>
+  );
+}

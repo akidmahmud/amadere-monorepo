@@ -4564,6 +4564,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pages/checkout-layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PagesController_checkoutLayout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pages/{slug}": {
         parameters: {
             query?: never;
@@ -4610,6 +4626,134 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminPagesController_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminPagesController_saveLayout"];
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPagesController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/publish-checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPagesController_publishCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/preview-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPagesController_previewToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPagesController_revisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/revisions/{revisionId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPagesController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pages/{id}/set-default-checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPagesController_setDefaultCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pages/checkout/restore-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPagesController_restoreDefaultCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/redirects": {
@@ -9276,16 +9420,21 @@ export interface components {
             slug: string;
             title: string;
             content: string;
+            layout: Record<string, never> | null;
         };
         AdminPageTranslationDto: {
             locale: Record<string, never>;
             title: string;
             content: string;
+            layout: Record<string, never> | null;
+            draftLayout: Record<string, never> | null;
         };
         AdminPageDto: {
             id: number;
             slug: string;
             status: Record<string, never>;
+            kind: Record<string, never>;
+            isDefaultCheckout: boolean;
             translations: components["schemas"]["AdminPageTranslationDto"][];
         };
         PageTranslationDto: {
@@ -9311,6 +9460,26 @@ export interface components {
              */
             status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
             translations?: components["schemas"]["PageTranslationDto"][];
+        };
+        SaveLayoutDto: {
+            /** @enum {string} */
+            locale: "EN" | "BN";
+            /** @description Puck document (draft). */
+            layout: Record<string, never>;
+        };
+        PublishLayoutDto: {
+            /** @enum {string} */
+            locale: "EN" | "BN";
+            /** @description Label for the revision snapshot. */
+            label?: string;
+        };
+        PageRevisionDto: {
+            id: number;
+            locale: Record<string, never>;
+            label: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: number | null;
         };
         RedirectDto: {
             id: number;
@@ -19439,10 +19608,31 @@ export interface operations {
             };
         };
     };
+    PagesController_checkoutLayout: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active checkout layout, or null. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PagesController_getBySlug: {
         parameters: {
             query?: {
                 locale?: "EN" | "BN";
+                previewToken?: string;
             };
             header?: never;
             path: {
@@ -19583,6 +19773,171 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminPageDto"];
                 };
+            };
+        };
+    };
+    AdminPagesController_saveLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveLayoutDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPagesController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishLayoutDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPagesController_publishCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishLayoutDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPagesController_previewToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPagesController_revisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageRevisionDto"][];
+                };
+            };
+        };
+    };
+    AdminPagesController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                revisionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPagesController_setDefaultCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPagesController_restoreDefaultCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

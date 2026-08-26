@@ -10,6 +10,7 @@ import {
   CustomerRefreshPayload,
   ProductPreviewPayload,
   TokenPair,
+  PagePreviewPayload,
 } from './token.types';
 
 const ACCESS_EXPIRES_IN = '15m';
@@ -20,6 +21,10 @@ const TWO_FACTOR_PENDING_EXPIRES_IN = '5m';
 // doesn't stay a permanent, unlisted way to view unpublished content.
 const BLOG_PREVIEW_EXPIRES_IN = '7d';
 const PRODUCT_PREVIEW_EXPIRES_IN = '7d';
+// Shorter than the other two on purpose: a page-layout preview link exposes
+// unpublished work, and unlike a blog draft it is generated on every click of
+// Preview rather than shared around.
+const PAGE_PREVIEW_EXPIRES_IN = '2h';
 
 @Injectable()
 export class TokenService {
@@ -161,6 +166,24 @@ export class TokenService {
         secret: this.config.getOrThrow('ADMIN_JWT_ACCESS_SECRET'),
         expiresIn: PRODUCT_PREVIEW_EXPIRES_IN,
       },
+    );
+  }
+
+  async signPagePreviewToken(pageId: number): Promise<string> {
+    return this.jwt.signAsync(
+      { pageId, tokenType: 'page_preview' } satisfies PagePreviewPayload,
+      {
+        secret: this.config.getOrThrow('ADMIN_JWT_ACCESS_SECRET'),
+        expiresIn: PAGE_PREVIEW_EXPIRES_IN,
+      },
+    );
+  }
+
+  async verifyPagePreviewToken(token: string): Promise<PagePreviewPayload> {
+    return this.verify<PagePreviewPayload>(
+      token,
+      'ADMIN_JWT_ACCESS_SECRET',
+      'page_preview',
     );
   }
 

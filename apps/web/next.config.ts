@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@amader/ui"],
+  transpilePackages: ["@amader/ui", "@amader/page-builder"],
   // PERF-BRIEF.md §4/§5.
   //
   // ⚠️ Resizing must NEVER run on the origin. Next's *built-in* optimizer

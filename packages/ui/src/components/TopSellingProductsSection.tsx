@@ -144,7 +144,7 @@ export function TopSellingProductsSection({
                     plain element (not the shared Badge), ribbon-shaped
                     asymmetric radius, exact red/weight/padding. */}
                 {item.showBadge && (
-                  <span className="absolute right-3 top-3 z-[2] flex items-center gap-1 rounded-tl-[2px] rounded-tr-[8px] rounded-br-[2px] rounded-bl-[8px] bg-[#FF3F33] px-2 py-1 text-xs font-bold text-white md:right-3.5 md:top-3.5">
+                  <span className="absolute right-0 top-0 z-[2] flex items-center gap-1 rounded-bl-xl rounded-tr-[14px] bg-[#E7C22D] px-3 py-1.5 text-xs font-bold text-slate-950 shadow-sm">
                     {badgeIcon}
                     {bestBadgeLabel}
                   </span>

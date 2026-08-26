@@ -142,6 +142,10 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('page', 'create'),
   perm('page', 'update'),
   perm('page', 'delete'),
+  // Publishing a CHECKOUT layout is separated from ordinary page editing on
+  // purpose: page.update lets someone rearrange the About page, this lets
+  // them replace the live order form. Granted to Super Admin only by default.
+  perm('page', 'checkout_publish'),
 
   perm('seo_meta', 'view'),
   perm('seo_meta', 'update'),

@@ -17,6 +17,15 @@
    without this its utility classes are never generated. */
 @source "../../../../packages/ui/src";
 
+/* And for the page-builder blocks rendered in the Puck canvas. This is the
+   §8.2 preview-fidelity decision: the canvas iframe is styled by THIS build,
+   not the storefront's. Puck clones the parent document's stylesheets into
+   its iframe, and the blocks use only tokens from @amader/ui/tokens.css
+   (imported above), so the canvas shows the storefront's real colours and
+   fonts. Without this @source, every block class is absent and the canvas
+   renders unstyled. */
+@source "../../../../packages/page-builder/src";
+
 /* Import order alone does NOT settle --color-muted: admin-ui defines it inside
    an @theme block, ui/tokens.css defines it in a plain :root, and Tailwind
    emits plain CSS after @theme output — so ui wins on cascade order whichever

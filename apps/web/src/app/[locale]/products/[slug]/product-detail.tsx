@@ -217,7 +217,7 @@ export async function ProductDetailBody({
   const tabs = isDigital ? bookTabs : physicalTabs;
 
   return (
-    <ProductFloatingBarProvider product={product}>
+    <ProductFloatingBarProvider product={product} whatsappConfig={(whatsappRes.data as WhatsappConfig | undefined) ?? null}>
     <main className="flex-1">
       {previewToken && (
         <div className="sticky top-0 z-50 bg-[#7c3aed] py-2 text-center font-ui text-xs font-bold text-white">

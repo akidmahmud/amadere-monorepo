@@ -6,7 +6,7 @@ export class OtpRequestDto {
   @IsString()
   identifier!: string;
 
-  @ApiProperty({ enum: ['REGISTER', 'LOGIN'] })
-  @IsIn(['REGISTER', 'LOGIN'])
-  purpose!: 'REGISTER' | 'LOGIN';
+  @ApiProperty({ enum: ['REGISTER', 'LOGIN', 'RESET_PASSWORD'] })
+  @IsIn(['REGISTER', 'LOGIN', 'RESET_PASSWORD'])
+  purpose!: 'REGISTER' | 'LOGIN' | 'RESET_PASSWORD';
 }

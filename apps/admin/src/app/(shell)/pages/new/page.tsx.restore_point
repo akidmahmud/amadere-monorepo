@@ -1,0 +1,136 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button, Card } from "@amader/admin-ui";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { StatusSelect } from "@/components/StatusSelect";
+import { useCreatePage } from "@/hooks/usePages";
+import type { PublishStatus } from "@/hooks/useBrands";
+
+/**
+ * New page.
+ *
+ * The builder is the primary path now. Previously this screen opened straight
+ * into the CKEditor content field, which made the classic HTML editor look
+ * like the only way to build a page — the builder was reachable only by saving
+ * first, going back to the list, finding the row and clicking Builder.
+ *
+ * The classic editor is still here, collapsed behind a disclosure, because
+ * legacy pages are authored that way and nothing about them has changed.
+ */
+export default function NewPagePage() {
+  const router = useRouter();
+  const [slug, setSlug] = useState("");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState<PublishStatus>("DRAFT");
+  const [useClassicEditor, setUseClassicEditor] = useState(false);
+  const create = useCreatePage();
+
+  async function create_(openBuilder: boolean) {
+    const page = await create.mutateAsync({
+      slug,
+      status,
+      translations: [
+        { locale: "EN", title, content },
+        { locale: "BN", title, content },
+      ],
+    });
+    router.push(openBuilder ? `/pages/${page.id}/builder` : "/pages");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // Submitting the form (Enter, or the primary button) goes to the builder
+    // unless the author deliberately opened the classic editor and typed in
+    // it — that content is what they meant to write.
+    await create_(!(useClassicEditor && content.trim().length > 0));
+  }
+
+  const canSubmit = title.trim() && slug.trim() && !create.isPending;
+
+  return (
+    <Card className="max-w-2xl">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Title</span>
+          <input
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Slug</span>
+          <input
+            required
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="about-us"
+            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+          <span className="text-xs text-secondary">
+            The page will live at /{slug || "your-slug"}
+          </span>
+        </label>
+
+        <StatusSelect value={status} onChange={setStatus} />
+
+        {/* Collapsed by default. Opening it is the author saying they want the
+            classic HTML editor rather than the builder. */}
+        <div className="flex flex-col gap-1.5">
+          {!useClassicEditor ? (
+            <button
+              type="button"
+              onClick={() => setUseClassicEditor(true)}
+              className="self-start text-xs font-semibold text-secondary underline"
+            >
+              Use the classic HTML editor instead
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-secondary">Content</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseClassicEditor(false);
+                    setContent("");
+                  }}
+                  className="text-xs text-secondary underline"
+                >
+                  Cancel, use the builder
+                </button>
+              </div>
+              {/* A plain div, not <label> — see ProductFormFields.tsx's
+                  identical comment on its own RichTextEditor field. */}
+              <RichTextEditor value={content} onChange={setContent} />
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button type="submit" variant="primary" disabled={!canSubmit}>
+            {create.isPending ? "Creating…" : "Create & open builder"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!canSubmit}
+            onClick={() => create_(false)}
+          >
+            Create only
+          </Button>
+          <Link href="/pages">
+            <Button type="button" variant="ghost">
+              Cancel
+            </Button>
+          </Link>
+        </div>
+      </form>
+    </Card>
+  );
+}

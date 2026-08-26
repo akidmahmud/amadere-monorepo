@@ -105,21 +105,14 @@ export function ProductCardTwo({
           />
         ) : null}
         {(flagLabel || computedDiscountLabel) && (
-          // All badges grouped on the right, stacked in a column (not a
-          // wrapping row) per explicit request — flex-col + items-end so
-          // multiple badges stack one per line, each right-aligned. Only
-          // rendering the spans that actually have content (the old
-          // justify-between layout needed both slots present — even empty —
-          // to keep a lone badge pinned to its designated side; that's not
-          // needed here since items-end right-aligns regardless).
-          <div className="absolute inset-x-1.5 top-1.5 flex flex-col items-end gap-1">
+          <div className="absolute right-0 top-0 z-10 flex flex-col items-end gap-1">
             {flagLabel && (
-              <span className="shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink">
+              <span className="shrink-0 rounded-bl-xl bg-[#E7C22D] px-2.5 py-1 text-[10px] font-bold leading-none text-slate-950 shadow-sm">
                 {flagLabel}
               </span>
             )}
             {computedDiscountLabel && (
-              <span className="shrink-0 rounded-full bg-gold px-2 py-0.5 text-[10px] leading-normal text-ink">
+              <span className="shrink-0 rounded-l-xl bg-[#008400] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm">
                 {computedDiscountLabel}
               </span>
             )}

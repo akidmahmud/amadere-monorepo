@@ -4,6 +4,12 @@
    point it at the shared component library explicitly. */
 @source "../../../../packages/ui/src";
 
+/* Same reason for the page-builder blocks. Without this, a builder page
+   renders with only the utility classes that some other component happens to
+   use too -- block-specific ones like `max-w-[760px]` are simply absent, and
+   the page looks subtly wrong rather than obviously broken. */
+@source "../../../../packages/page-builder/src";
+
 body {
   /* Storefront-only page background, hardcoded rather than overriding
      --color-background — Tailwind v4's `@theme inline` in tokens.css
@@ -114,4 +120,56 @@ body * {
   body:has(main[data-checkout]) footer {
     display: none;
   }
+}
+
+/* A builder page marked "Full screen" owns the whole viewport: the storefront
+   header, nav and footer are hidden so a pasted landing-page design is not
+   framed by site chrome it was never drawn to sit inside.
+
+   Same :has() technique as the checkout footer rule above, and for the same
+   reason -- the header and footer live in the locale layout, a Server
+   Component that cannot know which page is rendering. The page tells the
+   layout what it is without either importing the other.
+
+   Written as "hide every sibling that does not CONTAIN the pasted page"
+   rather than naming header/nav/footer. Two reasons. The announcement ticker
+   is a plain <div>, so a tag list misses it. And a pasted landing page has its
+   own <header> and <nav> -- a hero and a brand bar -- so a blanket
+   `header { display: none }` would hide the page's own design along with the
+   site's. `:not(:has(...))` keeps only the branch the page lives on. */
+body:has([data-amader-fullbleed]) > *:not(:has([data-amader-fullbleed])):not([data-radix-popper-content-wrapper]):not(:has([data-radix-popper-content-wrapper])),
+body:has([data-amader-fullbleed]) > div > *:not(:has([data-amader-fullbleed])):not([data-radix-popper-content-wrapper]):not(:has([data-radix-popper-content-wrapper])) {
+  display: none;
+}
+
+/* Overlays are portalled to <body>, so they are siblings of the page and the
+   rule above would hide them. That silently broke every dropdown and modal on
+   a full-screen page -- the district Select opened, rendered nothing visible,
+   and left an overlay that swallowed every subsequent click.
+   Re-shown explicitly rather than by loosening the rule above, because the
+   default must stay "hide the chrome".
+
+   Excluded from the hide rule itself rather than re-shown afterwards. A
+   separate `display: revert` rule loses on specificity -- the hide selector
+   scores (0,3,2) against the exemption's (0,2,1) -- and winning that with
+   !important would be fighting our own stylesheet. Not matching in the first
+   place is the honest fix.
+
+   The symptom this caused is worth remembering: the dropdown reported
+   visibility:visible and opacity:1 while measuring 0x0, because the hidden
+   element was an ANCESTOR of the options, not the options themselves. */
+
+
+/* Nothing on the path down to the page may impose a frame.
+   `form:has(...)` is the important one and it is easy to miss: a page carrying
+   a checkout block is wrapped in CheckoutProvider's own
+   `<form class="mx-auto max-w-[1180px] px-5 py-9">`, so a full-screen landing
+   page was being squeezed into the checkout column's width and indented by its
+   padding. */
+body:has([data-amader-fullbleed]) main,
+body:has([data-amader-fullbleed]) form:has([data-amader-fullbleed]),
+body:has([data-amader-fullbleed]) > div:has([data-amader-fullbleed]) {
+  padding: 0;
+  margin: 0;
+  max-width: none;
 }

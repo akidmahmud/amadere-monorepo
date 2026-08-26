@@ -6,6 +6,12 @@ import { api, ApiError } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import {
+  isRenderableDocument,
+  documentUsesCheckoutBlocks,
+} from "@amader/page-builder/validate";
+import { PageBuilderRender } from "@/components/PageBuilderRender";
+import { CheckoutOnPage } from "@/components/checkout/CheckoutOnPage";
 import type { components } from "@/lib/api/schema";
 
 // The last-resort route at this segment level — Next.js always prefers a
@@ -94,6 +100,37 @@ export default async function CatchAllPage({
   if (slug) {
     const page = await getStaticPage(slug, toApiLocale(locale));
     if (page) {
+      // Rendering precedence (plan §5.1): a valid builder layout wins, and
+      // anything else falls through to the legacy HTML below completely
+      // untouched. That fallback is what makes this change zero-risk for the
+      // pages that already exist -- every one of them has layout = null.
+      //
+      // Validity is checked HERE, not inside PageBuilderRender: a document
+      // that went stale after publish (a block removed in a later deploy)
+      // must fall through to the legacy HTML below, and a component that
+      // rendered nothing would give a blank page instead.
+      //
+      // The heading is deliberately NOT rendered around a builder layout: a
+      // built page owns its own composition, and forcing an <h1> above it
+      // would give the owner a title they cannot move or remove.
+      if (page.layout && isRenderableDocument(page.layout, "CONTENT")) {
+        const rendered = <PageBuilderRender data={page.layout} />;
+        // A page carrying checkout blocks gets the checkout brain mounted
+        // around it, so the form on a landing page is the real one -- same
+        // validation, fraud preflight, COD OTP and order mutation as
+        // /checkout. Pages without checkout blocks skip it entirely: the
+        // provider fetches cart and payment config, which an About page has no
+        // business paying for.
+        return (
+          <main className="flex-1">
+            {documentUsesCheckoutBlocks(page.layout) ? (
+              <CheckoutOnPage>{rendered}</CheckoutOnPage>
+            ) : (
+              rendered
+            )}
+          </main>
+        );
+      }
       return (
         <main className="flex-1">
           <div className="mx-auto max-w-4xl px-5 py-12">

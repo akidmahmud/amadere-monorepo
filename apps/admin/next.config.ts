@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // the real storefront Footer rather than an admin-side mock. Both packages
   // ship raw .ts/.tsx from src (see their package.json "main"), so Next has
   // to transpile them itself.
-  transpilePackages: ["@amader/admin-ui", "@amader/ui"],
+  transpilePackages: ["@amader/admin-ui", "@amader/ui", "@amader/page-builder"],
 };
 
 export default nextConfig;

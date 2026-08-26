@@ -7,6 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 import { defaultVariantId } from "@/lib/pdp";
 import { toApiLocale } from "@/lib/api-locale";
 import { useAddToCart } from "@/hooks/useCart";
+import { buildWhatsappLink, fillTemplate, type WhatsappConfig } from "@/lib/whatsapp";
 import { useProductFloatingBarStore } from "./ProductFloatingBarContext";
 import type { components } from "@/lib/api/schema";
 
@@ -20,9 +21,11 @@ type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 //    transform into a product action bar without prop-drilling.
 export function ProductFloatingBarProvider({
   product,
+  whatsappConfig,
   children,
 }: {
   product: PublicProductDetailDto;
+  whatsappConfig?: WhatsappConfig | null;
   children: React.ReactNode;
 }) {
   const selectedVariantId = defaultVariantId(product);
@@ -35,24 +38,24 @@ export function ProductFloatingBarProvider({
   const reset = useProductFloatingBarStore((s) => s._reset);
 
   // --- Stock check (same rule as PdpPurchasePanel) ---
-  // Was reading product.stock unconditionally — the parent Product's own
-  // stock field is unused/stale (typically 0) for any variant product,
-  // since real stock lives on each ProductVariant. That made outOfStock
-  // true for essentially every variant product regardless of real stock,
-  // permanently hiding this sticky bar's Buy Now/Add to Cart buttons on
-  // mobile after scrolling — while PdpPurchasePanel's inline buttons stayed
-  // visible/correct because it already checked the variant's own stock.
   const selectedVariant = product.hasVariants
     ? product.variants.find((v) => String(v.id) === selectedVariantId)
     : undefined;
   const stockCount = selectedVariant ? selectedVariant.stock : product.stock;
   const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
 
+  // --- WhatsApp link computation ---
+  const whatsappHref =
+    whatsappConfig?.enabled && whatsappConfig.phoneNumber
+      ? buildWhatsappLink(
+          whatsappConfig.phoneNumber,
+          fillTemplate(whatsappConfig.productMessageTemplate, {
+            productName: product.name,
+          }),
+        )
+      : undefined;
+
   // --- Handlers (stable refs via useCallback) ---
-  // Same as PdpPurchasePanel: open on tap, close again only if the add
-  // failed. The sticky bar is the one control a mobile shopper reaches for
-  // most, so waiting out the round trip before anything moved was the worst
-  // place to do it.
   const handleAddToCart = useCallback(() => {
     openCartDrawer();
     addToCart.mutate(
@@ -83,8 +86,9 @@ export function ProductFloatingBarProvider({
       onBuyNow: handleBuyNow,
       isPending: addToCart.isPending,
       outOfStock,
+      whatsappHref,
     });
-  }, [handleAddToCart, handleBuyNow, addToCart.isPending, outOfStock, update]);
+  }, [handleAddToCart, handleBuyNow, addToCart.isPending, outOfStock, whatsappHref, update]);
 
   // --- Scroll-position check (was IntersectionObserver, replaced — see
   //     below) ---

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>Amader™ Fiber Mix — ৬টি প্রাকৃতিক বীজ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Code:wght@400;700&family=Anek+Bangla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --f-ui:'Google Sans','Anek Bangla','Hind Siliguri',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-lbl:'Google Sans Code','Google Sans',ui-monospace,'SF Mono',monospace;
+  --ink:#16281E; --ink-soft:#4E6156; --green:#2E7D32; --green-900:#0F2E1B;
+  --green-800:#173D24; --green-700:#1E5A2C; --green-100:#E3EDDF; --green-50:#EFF5EC;
+  --paper:#F5F1E6; --paper-hi:#FFFDF6; --honey:#D98C1F; --honey-200:#F3DDB2;
+  --honey-50:#FBF1DC; --salt:#C4675E; --line:rgba(22,40,30,.13);
+  --line-hi:rgba(255,255,255,.16); --sh-sm:0 2px 10px rgba(15,46,27,.06);
+  --sh-md:0 10px 30px rgba(15,46,27,.10); --sh-lg:0 24px 60px rgba(15,46,27,.22);
+  --wrap:780px; --pad:clamp(16px,4.6vw,24px); --r:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{
+  font-family:var(--f-ui); font-size:clamp(15.5px,4.05vw,16.5px); line-height:1.68;
+  background:var(--paper); color:var(--ink); overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(217,140,31,.055) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 78% 22%, rgba(46,125,50,.05) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 34% 61%, rgba(22,40,30,.045) 0 1.5px, transparent 2px);
+  background-size:340px 340px,290px 290px,410px 410px;
+}
+img,svg{max-width:100%;display:block}
+img{height:auto}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad);width:100%}
+
+/* ─── SECTION SHELL ─── */
+.band{padding-block:clamp(42px,9vw,68px)}
+.band--white{background:var(--paper-hi);border-block:1px solid var(--line)}
+.band--soft{background:var(--green-50)}
+.band--dark{background:var(--green-900);color:var(--paper)}
+.band--dark .eyebrow{color:var(--honey-200)}
+.band--dark .head-title{color:var(--paper-hi)}
+.band--dark .head-sub{color:rgba(245,241,230,.74)}
+.head{margin-bottom:clamp(22px,5vw,32px);max-width:580px}
+.eyebrow{font-family:var(--f-lbl);font-size:clamp(10.5px,2.9vw,11.5px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green);display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.eyebrow::before{content:'';width:22px;height:2px;background:currentColor;flex:none;opacity:.55}
+.head-title{font-weight:700;font-size:clamp(24px,6.4vw,38px);line-height:1.28;letter-spacing:-.015em}
+.head-title em{font-style:normal;color:var(--green)}
+.band--dark .head-title em{color:var(--honey-200)}
+.head-sub{margin-top:11px;font-size:clamp(14.5px,3.9vw,16px);color:var(--ink-soft);line-height:1.7}
+
+/* ─── ANNOUNCE / NAV ─── */
+.announce{background:var(--honey);color:#3A2405;text-align:center;padding:9px 14px;font-size:clamp(12px,3.3vw,13.5px);font-weight:500;line-height:1.45}
+.announce b{font-family:var(--f-lbl);font-weight:700}
+.nav{position:sticky;top:0;z-index:200;background:rgba(245,241,230,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-in{max-width:var(--wrap);margin:0 auto;padding:10px var(--pad);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.brand-mark{width:38px;height:38px;flex:none;border-radius:12px 12px 12px 5px;background:var(--green-900);color:var(--honey-200);display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
+.brand-name{font-size:clamp(16px,4.4vw,18px);font-weight:700;letter-spacing:-.02em;line-height:1.15;white-space:nowrap}
+.brand-name span{color:var(--green);font-size:.6em;vertical-align:super}
+.brand-sub{font-family:var(--f-lbl);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);line-height:1.3}
+.nav-actions{display:flex;align-items:center;gap:8px;flex:none}
+.nav-cta{background:var(--green-900);color:var(--paper-hi);border:none;border-radius:10px;padding:11px 17px;font-size:clamp(13.5px,3.6vw,14.5px);font-weight:500;min-height:42px;white-space:nowrap;display:inline-flex;align-items:center}
+
+/* ─── HERO ─── */
+.hero{background:var(--green-900);color:var(--paper);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(120% 90% at 88% 0%, rgba(46,125,50,.55), transparent 62%),
+  radial-gradient(90% 70% at 0% 100%, rgba(217,140,31,.18), transparent 60%)}
+.hero-in{max-width:var(--wrap);margin:0 auto;padding:clamp(28px,6vw,42px) var(--pad) clamp(34px,7vw,48px);position:relative;display:grid;grid-template-columns:1.08fr .92fr;gap:clamp(22px,4vw,34px);align-items:center}
+.hero-flag{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-lbl);font-size:clamp(9.5px,2.7vw,11px);letter-spacing:.13em;text-transform:uppercase;color:var(--honey-200);border:1px solid rgba(243,221,178,.32);border-radius:100px;padding:6px 13px;margin-bottom:16px}
+.hero-flag i{width:6px;height:6px;border-radius:50%;background:var(--honey);flex:none}
+.hero h1{font-weight:700;font-size:clamp(28px,8.4vw,48px);line-height:1.22;letter-spacing:-.025em;color:var(--paper-hi)}
+.hero h1 em{font-style:normal;color:var(--honey-200);box-shadow:inset 0 -.26em 0 rgba(217,140,31,.28)}
+.hero-lede{margin-top:13px;font-size:clamp(15px,4vw,16.5px);line-height:1.7;color:rgba(245,241,230,.82);max-width:42ch}
+.hero-strip{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+.chip{font-size:clamp(12px,3.3vw,13px);font-weight:500;padding:6px 11px;border-radius:9px;background:rgba(255,255,255,.08);border:1px solid var(--line-hi);color:rgba(245,241,230,.9)}
+.hero-btns{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{border:none;border-radius:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:52px;text-align:center}
+.btn-honey{background:var(--honey);color:#311F04;padding:15px 24px;font-size:clamp(15.5px,4.2vw,17px);box-shadow:0 8px 22px rgba(217,140,31,.32);flex:1 1 auto}
+.btn-ghost{background:transparent;color:var(--paper);border:1px solid var(--line-hi);padding:15px 20px;font-weight:500;font-size:clamp(14.5px,3.9vw,15.5px);flex:0 1 auto}
+.hero-shot{position:relative;width:100%}
+.hero-frame{border-radius:190px 190px 20px 20px;overflow:hidden;background:var(--paper-hi);border:1px solid rgba(255,255,255,.22);box-shadow:var(--sh-lg)}
+.hero-frame img{width:100%;aspect-ratio:1/1.06;object-fit:cover}
+.stamp{position:absolute;background:var(--paper-hi);color:var(--green-900);border-radius:12px;padding:8px 12px;box-shadow:0 8px 22px rgba(0,0,0,.24);line-height:1.25}
+.stamp b{display:block;font-size:14.5px;font-weight:700}
+.stamp span{font-family:var(--f-lbl);font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft)}
+.stamp-a{top:12px;right:-6px}
+.stamp-b{bottom:14px;left:-6px;background:var(--honey);color:#311F04}
+@media(max-width:760px){
+  .hero-in{grid-template-columns:1fr}
+  .hero-shot{order:-1;max-width:min(260px,68vw);margin:0 auto}
+  .hero-frame{border-radius:150px 150px 18px 18px}
+  .btn-honey,.btn-ghost{flex:1 1 100%}
+}
+
+/* ─── TICKER ─── */
+.ticker{background:var(--green-800);color:var(--paper);overflow:hidden;white-space:nowrap;padding:10px 0;border-block:1px solid rgba(255,255,255,.08)}
+.ticker-track{display:inline-flex;animation:slide 26s linear infinite;will-change:transform}
+.ticker-item{font-family:var(--f-lbl);font-size:clamp(10.5px,2.9vw,11.5px);letter-spacing:.14em;text-transform:uppercase;padding:0 clamp(14px,4vw,22px);color:rgba(245,241,230,.85)}
+.ticker-item::after{content:'·';margin-left:clamp(14px,4vw,22px);color:var(--honey)}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+/* ─── TRUST ─── */
+.trust{background:var(--paper-hi);border-bottom:1px solid var(--line);padding:16px 0}
+.trust-in{max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad);display:grid;grid-template-columns:repeat(5,1fr);gap:12px 8px}
+.trust-cell{text-align:center;font-size:clamp(11.5px,3.1vw,12.5px);font-weight:500;line-height:1.4;color:var(--green-900)}
+.trust-cell svg{width:22px;height:22px;margin:0 auto 5px;stroke:var(--green);fill:none;stroke-width:1.6}
+@media(max-width:620px){.trust-in{grid-template-columns:repeat(3,1fr);gap:14px 6px}}
+
+/* ─── PAIN ─── */
+.pain-list{display:grid;gap:11px}
+.pain-row{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.055);border:1px solid var(--line-hi);border-left:3px solid var(--salt);border-radius:0 14px 14px 0;padding:15px 16px}
+.pain-row b{font-family:var(--f-lbl);font-size:11px;letter-spacing:.08em;color:var(--honey-200);flex:none;padding-top:4px}
+.pain-row p{font-size:clamp(14.5px,3.9vw,15.5px);line-height:1.66;color:rgba(245,241,230,.88)}
+.pain-close{margin-top:22px;font-size:clamp(16px,4.4vw,21px);font-weight:500;line-height:1.6;color:var(--honey-200);border-top:1px solid var(--line-hi);padding-top:20px}
+
+/* ─── SEEDS ─── */
+.seeds{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(9px,2.6vw,12px)}
+.seed{background:var(--paper-hi);border:1px solid var(--line);border-radius:var(--r);padding:clamp(14px,4vw,18px) clamp(12px,3.4vw,15px)}
+.seed-dot{width:28px;height:28px;border-radius:50%;margin-bottom:12px;box-shadow:inset 0 -4px 8px rgba(0,0,0,.16)}
+.seed-bn{font-size:clamp(14.5px,4vw,16px);font-weight:700;color:var(--green-900);line-height:1.35}
+.seed-en{font-family:var(--f-lbl);font-size:clamp(9.5px,2.7vw,10.5px);letter-spacing:.05em;color:var(--ink-soft);margin-top:3px}
+.seed-tag{display:inline-block;margin-top:10px;font-size:clamp(11px,3vw,12px);font-weight:500;color:var(--green-700);background:var(--green-50);border:1px solid var(--green-100);border-radius:8px;padding:3px 9px}
+@media(max-width:620px){.seeds{grid-template-columns:1fr 1fr}}
+
+/* ─── STEPS ─── */
+.stepline{display:flex;gap:clamp(12px,3.6vw,16px);padding:clamp(15px,4vw,18px) 0;border-bottom:1px solid var(--line)}
+.stepline:last-child{border-bottom:none}
+.step-n{flex:none;width:38px;height:38px;border-radius:50%;background:var(--green-900);color:var(--honey-200);display:grid;place-items:center;font-size:16px;font-weight:700}
+.step-t{font-weight:700;font-size:clamp(15px,4.1vw,16.5px);color:var(--green-900);line-height:1.45}
+.step-d{font-size:clamp(13.8px,3.8vw,14.8px);color:var(--ink-soft);line-height:1.65;margin-top:3px}
+
+/* ─── PRICING ─── */
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,3.4vw,16px)}
+.plan{background:var(--paper-hi);border:1.5px solid var(--line);border-radius:18px;padding:clamp(20px,5vw,24px) clamp(16px,4.4vw,20px);position:relative}
+.plan-best{border-color:var(--green);box-shadow:0 8px 28px rgba(46,125,50,.14)}
+.plan-flag{position:absolute;top:-12px;left:16px;background:var(--green);color:#fff;font-family:var(--f-lbl);font-size:clamp(9.5px,2.7vw,10.5px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 11px;border-radius:8px}
+.plan-w{font-family:var(--f-lbl);font-size:clamp(10.5px,2.9vw,11.5px);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.plan-p{font-size:clamp(27px,7.6vw,34px);font-weight:700;letter-spacing:-.02em;color:var(--green-900);line-height:1.1;margin-top:6px}
+.plan-was{font-size:13.5px;color:var(--ink-soft);text-decoration:line-through;margin-top:2px}
+.plan-pick{display:block;text-align:center;width:100%;margin-top:16px;background:var(--green-900);color:var(--paper-hi);border-radius:11px;padding:13px;font-size:clamp(14px,3.8vw,15px);font-weight:700;min-height:46px}
+@media(max-width:620px){.plans{grid-template-columns:1fr}.plan-flag{left:auto;right:16px}}
+
+/* ─── FAQ ─── */
+.faq{display:grid;gap:10px}
+.qa{background:var(--paper-hi);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.qa[open]{border-color:var(--green)}
+.qa-q{cursor:pointer;list-style:none;padding:15px 16px;font-size:clamp(14.5px,4vw,15.5px);font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:12px;line-height:1.5;min-height:52px}
+.qa-q::-webkit-details-marker{display:none}
+.qa-ico{flex:none;width:24px;height:24px;border-radius:50%;background:var(--green-50);border:1px solid var(--green-100);position:relative}
+.qa-ico::before,.qa-ico::after{content:'';position:absolute;inset:50% 6px auto;height:1.8px;background:var(--green);transform:translateY(-50%);border-radius:2px}
+.qa-ico::after{transform:translateY(-50%) rotate(90deg)}
+.qa[open] .qa-ico{background:var(--green)}
+.qa[open] .qa-ico::before,.qa[open] .qa-ico::after{background:#fff}
+.qa[open] .qa-ico::after{opacity:0}
+.qa-a{padding:0 16px 16px;font-size:clamp(13.8px,3.8vw,14.8px);color:var(--ink-soft);line-height:1.75}
+
+/* ─── FOOTER ─── */
+.foot{background:var(--green-900);color:rgba(245,241,230,.72);padding:clamp(34px,8vw,46px) 0 24px}
+.foot-in{max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}
+.foot-bot{padding-top:17px;font-size:clamp(11.5px,3.2vw,12.5px);color:rgba(245,241,230,.42);text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+
+<div class="announce">লঞ্চ অফার চলছে — <b>১১% ছাড়</b> · সীমিত সময়ের জন্য</div>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top">
+      <div class="brand-mark">আ</div>
+      <div>
+        <div class="brand-name">Amader<span>™</span></div>
+        <div class="brand-sub">Fiber Mix</div>
+      </div>
+    </a>
+    <div class="nav-actions">
+      <a class="nav-cta" href="#order">অর্ডার করুন</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-in">
+    <div>
+      <span class="hero-flag"><i></i> Daily Fiber Routine · Bangladesh</span>
+      <h1>সকালটা <em>ভালো</em> হোক —<br>প্রতিদিন</h1>
+      <p class="hero-lede">৬টি প্রাকৃতিক বীজ, একটাই প্যাকেটে। Chemical নেই, Preservative নেই — আলাদা কিনে মাপার ঝামেলাও নেই।</p>
+      <div class="hero-strip">
+        <span class="chip">১০০% প্রাকৃতিক</span>
+        <span class="chip">৬টি বীজ</span>
+        <span class="chip">দিনে ১ চামচ</span>
+      </div>
+      <div class="hero-btns">
+        <a class="btn btn-honey" href="#order">এখনই অর্ডার করুন</a>
+        <a class="btn btn-ghost" href="#how">কীভাবে খাবেন</a>
+      </div>
+    </div>
+    <div class="hero-shot">
+      <div class="hero-frame">
+        <img src="https://amadere.com/storage/fiber-mixed/b2103f02-2241-4d81-b570-c093c540c694-800x800.webp" alt="Amader Fiber Mix" width="800" height="800">
+      </div>
+      <div class="stamp stamp-a"><b>৬টি বীজ</b><span>One Pack</span></div>
+      <div class="stamp stamp-b"><b>৪.৮ / ৫</b><span>Rating</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <span class="ticker-item">১০০% প্রাকৃতিক</span>
+    <span class="ticker-item">Chemical মুক্ত</span>
+    <span class="ticker-item">৬টি বীজ এক প্যাকেটে</span>
+    <span class="ticker-item">COD Available</span>
+    <span class="ticker-item">সারাদেশে ডেলিভারি</span>
+    <span class="ticker-item">১০০% প্রাকৃতিক</span>
+    <span class="ticker-item">Chemical মুক্ত</span>
+    <span class="ticker-item">৬টি বীজ এক প্যাকেটে</span>
+    <span class="ticker-item">COD Available</span>
+    <span class="ticker-item">সারাদেশে ডেলিভারি</span>
+  </div>
+</div>
+
+<div class="trust">
+  <div class="trust-in">
+    <div class="trust-cell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-4.5 7-10a7 7 0 10-14 0c0 5.5 7 10 7 10z"/><path d="M12 12c0-3 2-5 4-5"/></svg>১০০% প্রাকৃতিক</div>
+    <div class="trust-cell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg>সারাদেশে ডেলিভারি</div>
+    <div class="trust-cell"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19"/></svg>COD Available</div>
+    <div class="trust-cell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h11a5 5 0 010 10H8"/><path d="M7.5 5.5L4 9l3.5 3.5"/></svg>৭ দিনের রিটার্ন</div>
+    <div class="trust-cell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>নিরাপদ অর্ডার</div>
+  </div>
+</div>
+
+<section class="band band--dark">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">চেনা লাগে?</div>
+      <h2 class="head-title">সমস্যাটা পেটে নয় — <em>পাতে</em></h2>
+      <p class="head-sub">বেশিরভাগ সময় কারণ একটাই — রোজকার খাবারে Fiber নেই।</p>
+    </div>
+    <div class="pain-list">
+      <div class="pain-row"><b>০১</b><p>সকালে উঠে পেটটা ভার লাগে। দিনের শুরুটাই অস্বস্তি দিয়ে হয়।</p></div>
+      <div class="pain-row"><b>০২</b><p>গ্যাসের ওষুধ খাচ্ছেন। কাল আবার হয়। পরশু আবার হয়।</p></div>
+      <div class="pain-row"><b>০৩</b><p>খাওয়ার পরই ভারী লাগে। কাজে মন বসে না।</p></div>
+      <div class="pain-row"><b>০৪</b><p>ইসবগুল কিনেছেন, খাওয়া হয় না। প্রতিদিন মেপে মেশানো ঝামেলা।</p></div>
+    </div>
+    <p class="pain-close">রোজকার অভ্যাস বদলাতে হলে সেটা সহজ হতে হয়। এক চামচ — এইটুকুই।</p>
+  </div>
+</section>
+
+<section class="band band--white">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">ভেতরে যা আছে</div>
+      <h2 class="head-title">৬টি প্রাকৃতিক বীজ</h2>
+      <p class="head-sub">প্রতিটার আলাদা কাজ আছে। একসাথে যা করে — আলাদায় হয় না।</p>
+    </div>
+    <div class="seeds">
+      <div class="seed"><div class="seed-dot" style="background:#E8DCC0"></div><div class="seed-bn">ইসবগুলের ভুষি</div><div class="seed-en">Psyllium Husk</div><span class="seed-tag">Gel Fiber</span></div>
+      <div class="seed"><div class="seed-dot" style="background:#C9A96A"></div><div class="seed-bn">ইসবগুল বীজ</div><div class="seed-en">Psyllium Seeds</div><span class="seed-tag">Whole Seed</span></div>
+      <div class="seed"><div class="seed-dot" style="background:#3A3A3A"></div><div class="seed-bn">চিয়া সিড</div><div class="seed-en">Chia Seeds</div><span class="seed-tag">Omega-3</span></div>
+      <div class="seed"><div class="seed-dot" style="background:#1F2A22"></div><div class="seed-bn">তুলশী বীজ</div><div class="seed-en">Basil Seeds</div><span class="seed-tag">Mucilage</span></div>
+      <div class="seed"><div class="seed-dot" style="background:#7A4A2B"></div><div class="seed-bn">তোকমা</div><div class="seed-en">Tokma Seeds</div><span class="seed-tag">High Fiber</span></div>
+      <div class="seed"><div class="seed-dot" style="background:#C25E2A"></div><div class="seed-bn">হালিম দানা</div><div class="seed-en">Garden Cress</div><span class="seed-tag">Mineral Rich</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band band--soft" id="how">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">ব্যবহার পদ্ধতি</div>
+      <h2 class="head-title">গ্লাসে যা <em>ঘটে</em></h2>
+      <p class="head-sub">পানিতে ভেজালে বীজগুলো ফুলে জেল হয়ে যায়। প্রতিদিন মাত্র ৫ মিনিটের কাজ।</p>
+    </div>
+    <div class="steps">
+      <div class="stepline"><div class="step-n">১</div><div><div class="step-t">এক গ্লাস পানি নিন</div><div class="step-d">২৫০–৩০০ মিলি স্বাভাবিক বা হালকা কুসুম গরম পানি।</div></div></div>
+      <div class="stepline"><div class="step-n">২</div><div><div class="step-t">এক চামচ Fiber Mix + মধু + পিংক সল্ট</div><div class="step-d">সামান্য মধু ও হালকা পিংক সল্ট দিলে স্বাদ অনেক ভালো হয়।</div></div></div>
+      <div class="stepline"><div class="step-n">৩</div><div><div class="step-t">২৫–৩০ মিনিট ভিজিয়ে রাখুন</div><div class="step-d">যত বেশিক্ষণ ভেজাবেন তত ভালো — বীজগুলো ফুলে উঠবে।</div></div></div>
+      <div class="stepline"><div class="step-n">৪</div><div><div class="step-t">নেড়ে খেয়ে নিন</div><div class="step-d">সকাল হোক স্বাস্থ্যকর। তফাৎটা নিজেই টের পাবেন।</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">মূল্য তালিকা</div>
+      <h2 class="head-title">সাইজ বেছে নিন</h2>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <div class="plan-w">৫০০ গ্রাম</div>
+        <div class="plan-p">৳৭৯০</div>
+        <div class="plan-was">৳৮৯০</div>
+        <a class="plan-pick" href="#order">এইটা নিন</a>
+      </div>
+      <div class="plan plan-best">
+        <div class="plan-flag">সবচেয়ে জনপ্রিয়</div>
+        <div class="plan-w">১ কেজি</div>
+        <div class="plan-p">৳১,৫৮০</div>
+        <div class="plan-was">৳১,৭৮০</div>
+        <a class="plan-pick" href="#order">এইটা নিন</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     THE ONE CHANGE.
+
+     Your static .order-card (pack radios, qty, bill, fields, submit)
+     is replaced by this single placeholder. The real checkout block
+     is portalled into it after mount: live packs and prices from the
+     product, the real form, real validation, COD OTP and a real order.
+
+     Everything above and below is your HTML, untouched.
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="band band--dark" id="order">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">এখনই নিন</div>
+      <h2 class="head-title">অর্ডার <em>করুন</em></h2>
+      <p class="head-sub">ফর্ম পূরণ করুন, আমরা দ্রুত কনফার্ম করব। পণ্য হাতে পেয়ে তারপর পেমেন্ট।</p>
+    </div>
+
+    <div data-amader-block="CheckoutProductCard"
+         data-product-slug="jitroot-protein-fiber-blood-pressure-control"
+         data-cta-label="অর্ডার কনফার্ম করুন"
+         data-whatsapp-number="8801615980395"></div>
+  </div>
+</section>
+
+<section class="band band--white">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">প্রশ্ন ও উত্তর</div>
+      <h2 class="head-title">সাধারণ জিজ্ঞাসা</h2>
+    </div>
+    <div class="faq">
+      <details class="qa">
+        <summary class="qa-q">Fiber Mix কি প্রতিদিন খাওয়া যাবে? এটা কি কোনো ওষুধ?<span class="qa-ico"></span></summary>
+        <div class="qa-a">না, এটা ওষুধ না। সম্পূর্ণ প্রাকৃতিক ৬টা বীজের সমন্বয়। কোনো chemical নেই।</div>
+      </details>
+      <details class="qa">
+        <summary class="qa-q">কীভাবে খেলে সবচেয়ে ভালো কাজ করে?<span class="qa-ico"></span></summary>
+        <div class="qa-a">এক গ্লাস পানিতে এক চামচ, একটু মধু আর হালকা পিংক সল্ট মিশিয়ে ২৫–৩০ মিনিট রেখে দিন।</div>
+      </details>
+      <details class="qa">
+        <summary class="qa-q">ডায়াবেটিস বা ওজন নিয়ন্ত্রণে আছি — খেতে পারব?<span class="qa-ico"></span></summary>
+        <div class="qa-a">পারবেন। কোনো চিনি নেই। তবে বিশেষ স্বাস্থ্য সমস্যা থাকলে ডাক্তারের সাথে কথা বলে নেওয়া ভালো।</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="foot-in">
+    <div class="foot-bot">© 2026 Amader eBuy Ltd · Amader™ Fiber Mix কোনো ওষুধ নয় — এটি একটি খাদ্যপণ্য।</div>
+  </div>
+</footer>
+
+</body>
+</html>

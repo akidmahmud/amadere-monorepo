@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { phoneLookupCandidates, toBdCompact } from '@amader/shared';
+import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TokenService } from '../../common/auth/token.service';
 import { TokenPair } from '../../common/auth/token.types';
@@ -19,6 +20,7 @@ import { RegisterPendingDto } from './dto/register-pending.dto';
 import { LoginDto } from './dto/login.dto';
 import { OtpRequestDto } from './dto/otp-request.dto';
 import { OtpVerifyDto } from './dto/otp-verify.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { CustomerProfileDto, toCustomerProfileDto } from './customer.mapper';
 import { SOCIAL_LOGIN_VERIFIER } from './notification/social-login-verifier.interface';
@@ -196,10 +198,46 @@ export class CustomerAuthService {
     if (dto.purpose === 'REGISTER' && existing) {
       throw new ConflictException('Identifier already registered');
     }
-    if (dto.purpose === 'LOGIN' && !existing) {
+    // Same "must already exist" rule as LOGIN, and the same 404 — a reset
+    // request for an unknown identifier reveals nothing LOGIN doesn't
+    // already reveal, so keep one consistent behaviour rather than inventing
+    // a second enumeration policy here.
+    if (
+      (dto.purpose === 'LOGIN' || dto.purpose === 'RESET_PASSWORD') &&
+      !existing
+    ) {
       throw new NotFoundException('No account with this identifier');
     }
     await this.otp.request(dto.identifier, dto.purpose);
+  }
+
+  /**
+   * Completes a forgotten-password reset.
+   *
+   * The OTP is consumed with purpose RESET_PASSWORD, which is deliberately
+   * NOT accepted by /auth/otp/verify: that endpoint mints a token pair, and a
+   * reset code must not double as a login code. Proving ownership here buys
+   * exactly one thing -- a new password -- and the customer then logs in with
+   * it normally.
+   *
+   * An account with no password at all is allowed through: setting a first
+   * password after proving ownership of the identifier is the same operation
+   * at the same security level, and refusing would strand OTP-only accounts.
+   */
+  async resetPassword(dto: ResetPasswordDto): Promise<SuccessResponseDto> {
+    const customer = await this.findByIdentifier(dto.identifier);
+    // Checked before verify() so a valid code is not burned on a lookup that
+    // was always going to fail.
+    if (!customer)
+      throw new NotFoundException('No account with this identifier');
+
+    await this.otp.verify(dto.identifier, dto.code, 'RESET_PASSWORD');
+
+    await this.prisma.client.customer.update({
+      where: { id: customer.id },
+      data: { passwordHash: await hashPassword(dto.newPassword) },
+    });
+    return { success: true };
   }
 
   async verifyOtp(dto: OtpVerifyDto): Promise<TokenPair> {

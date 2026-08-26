@@ -5,6 +5,11 @@ export class ProxyApiError extends Error {
     public readonly status: number,
     public readonly code: string,
     message: string,
+    /** The API's `error.details`. Carried through because some failures are
+     *  only useful as a list -- publish validation names every missing block,
+     *  and collapsing that to a one-line message throws away the only part the
+     *  owner can act on. */
+    public readonly details?: unknown,
   ) {
     super(message);
     this.name = "ProxyApiError";
@@ -20,6 +25,13 @@ export async function proxyFetch<T>(path: string, init?: RequestInit): Promise<T
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   const body = (await res.json()) as { success: true; data: T } | ApiErrorResponse;
-  if (!body.success) throw new ProxyApiError(res.status, body.error.code, body.error.message);
+  if (!body.success) {
+    throw new ProxyApiError(
+      res.status,
+      body.error.code,
+      body.error.message,
+      (body.error as { details?: unknown }).details,
+    );
+  }
   return body.data;
 }

@@ -85,7 +85,7 @@ export function GoogleSignInButton({ locale, onSuccess }: { locale: string; onSu
 
   return (
     <>
-      <div className="mx-auto mb-4 flex max-w-[280px] items-center gap-3 font-body text-xs text-muted">
+      <div className="mx-auto mb-4 mt-6 flex max-w-[280px] items-center gap-3 font-body text-xs text-muted">
         <span className="h-px flex-1 bg-line" />
         or sign in with
         <span className="h-px flex-1 bg-line" />

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { TokenPair } from '../../common/auth/token.types';
+import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { CustomerJwtGuard } from '../../common/auth/customer-jwt.guard';
 import { CurrentCustomer } from '../../common/auth/current-customer.decorator';
 import { CustomerAuthService } from './customer-auth.service';
@@ -10,6 +11,7 @@ import { RegisterPendingDto } from './dto/register-pending.dto';
 import { LoginDto } from './dto/login.dto';
 import { OtpRequestDto } from './dto/otp-request.dto';
 import { OtpVerifyDto } from './dto/otp-verify.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { SocialLoginDto } from './dto/social-login.dto';
 import { CustomerProfileDto } from './customer.mapper';
@@ -53,6 +55,16 @@ export class AuthController {
   @ApiOkResponse({ type: TokenPair })
   verifyOtp(@Body() dto: OtpVerifyDto): Promise<TokenPair> {
     return this.customerAuth.verifyOtp(dto);
+  }
+
+  // Rate-limited like login rather than like otp/request: this one costs no
+  // SMS, but it IS a password-guessing surface if the code space is brute
+  // forced. otp.service.ts caps verify attempts at 5 per code on top of this.
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('password/reset')
+  @ApiOkResponse({ type: SuccessResponseDto })
+  resetPassword(@Body() dto: ResetPasswordDto): Promise<SuccessResponseDto> {
+    return this.customerAuth.resetPassword(dto);
   }
 
   @Post('social-login')

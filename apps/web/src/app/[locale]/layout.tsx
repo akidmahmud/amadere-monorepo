@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ProductCardStyleProvider, type ProductCardStyle } from "@amader/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -26,6 +26,32 @@ import { IMG, toDisplayImageUrl } from "@/lib/media";
 
 const DEFAULT_TITLE = "আমাদের";
 const DEFAULT_DESCRIPTION = "আমাদের — organic & natural products";
+
+/**
+ * Pinch-to-zoom is locked off, by request.
+ *
+ * There was no `viewport` export at all before this, so the app ran on Next's
+ * default (`width=device-width, initial-scale=1`) with zoom enabled.
+ *
+ * Two things to know before touching this:
+ *
+ * 1. iOS Safari has ignored `user-scalable=no` since iOS 10 -- deliberately,
+ *    as an accessibility protection. So this only takes effect on Android.
+ *    If zoom still happens on an iPhone, that is expected, not a bug here.
+ * 2. It fails WCAG 2.1 SC 1.4.4 (Resize Text), which requires content to
+ *    scale to 200%.
+ *
+ * Separately: form inputs are `text-sm` (14px). iOS auto-zooms on focus for
+ * anything under 16px and does not zoom back out -- `userScalable: false`
+ * does NOT suppress that either. Bumping form controls to 16px at mobile
+ * widths is the only fix for it.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 // Site-wide fallback (Settings > Site SEO Settings, apps/backend's
 // SiteInfoDto.seo*) — shown for the homepage/root URL and any page that
