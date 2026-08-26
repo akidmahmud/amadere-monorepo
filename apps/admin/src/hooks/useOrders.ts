@@ -14,8 +14,28 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "HOLD",
 ];
 
-export type OrderChannel = "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
-export const ORDER_CHANNELS: OrderChannel[] = ["WEBSITE", "WHATSAPP", "PHONE", "MARKETPLACE", "POS", "APP"];
+export type OrderChannel =
+  | "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP"
+  | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+export const ORDER_CHANNELS: OrderChannel[] = [
+  "WEBSITE", "WHATSAPP", "PHONE", "FACEBOOK", "INSTAGRAM",
+  "TIKTOK", "YOUTUBE", "X", "MARKETPLACE", "POS", "APP",
+];
+
+/** Display names — the raw enum leaks into the Origin dropdown otherwise. */
+export const ORDER_CHANNEL_LABELS: Record<OrderChannel, string> = {
+  WEBSITE: "Website",
+  WHATSAPP: "WhatsApp",
+  PHONE: "Telemarketing",
+  FACEBOOK: "Facebook",
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  YOUTUBE: "YouTube",
+  X: "X",
+  MARKETPLACE: "Marketplace",
+  POS: "In-store POS",
+  APP: "App",
+};
 
 export type PaymentProviderType = "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
 export const PAYMENT_PROVIDER_TYPES: PaymentProviderType[] = ["COD", "BKASH", "NAGAD", "ROCKET", "UPAY", "SSLCOMMERZ", "BANK_TRANSFER"];
@@ -114,7 +134,9 @@ export type ManualOrderPaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "
 
 export interface CreateManualOrderInput {
   customerId?: number;
-  channel: "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS";
+  channel:
+    | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS"
+    | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
   shippingAddress: CreateManualOrderAddress;
   billingAddress?: CreateManualOrderAddress;
   items: { productId: number; variantId?: number; quantity: number; unitPrice?: number }[];

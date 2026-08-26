@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/social-login": {
         parameters: {
             query?: never;
@@ -6444,7 +6460,7 @@ export interface components {
             /** @description Phone number or email */
             identifier: string;
             /** @enum {string} */
-            purpose: "REGISTER" | "LOGIN";
+            purpose: "REGISTER" | "LOGIN" | "RESET_PASSWORD";
         };
         OtpVerifyDto: {
             /** @description Phone number or email */
@@ -6452,6 +6468,16 @@ export interface components {
             code: string;
             /** @enum {string} */
             purpose: "REGISTER" | "LOGIN";
+        };
+        ResetPasswordDto: {
+            /** @description Phone number or email */
+            identifier: string;
+            /** @description The 6-digit RESET_PASSWORD OTP */
+            code: string;
+            newPassword: string;
+        };
+        SuccessResponseDto: {
+            success: boolean;
         };
         SocialLoginDto: {
             /** @enum {string} */
@@ -7298,6 +7324,7 @@ export interface components {
             name: string;
             price: string | null;
             salePrice: string | null;
+            stockStatus: Record<string, never>;
         };
         AdminDeletedProductDto: {
             id: number;
@@ -8511,9 +8538,6 @@ export interface components {
             avatarUrl?: string;
             /** @description YYYY-MM-DD */
             dob?: string;
-        };
-        SuccessResponseDto: {
-            success: boolean;
         };
         SetPasswordDto: {
             newPassword: string;
@@ -10476,6 +10500,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenPair"];
+                };
+            };
+        };
+    };
+    AuthController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
                 };
             };
         };

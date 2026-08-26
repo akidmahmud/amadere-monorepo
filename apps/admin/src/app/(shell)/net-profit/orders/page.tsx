@@ -281,6 +281,7 @@ export default function OrderManagerPage() {
     paymentProvider: uiFilters.paymentProvider,
     courierProvider: uiFilters.courierProvider,
     risk: uiFilters.risk,
+    assignedAdminId: uiFilters.assignedAdminId,
     division: uiFilters.division,
     ...dateRange,
     page,
@@ -406,6 +407,7 @@ export default function OrderManagerPage() {
               setPage(1);
             }}
             statuses={statusConfigs ?? []}
+            staff={staff ?? []}
           />
 
           <div className="flex flex-wrap items-center gap-2.5 rounded-card border p-[12px_16px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>

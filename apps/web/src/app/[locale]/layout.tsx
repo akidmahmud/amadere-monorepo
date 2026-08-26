@@ -223,7 +223,16 @@ export default async function LocaleLayout({
           If Bengali ever does look wrong, re-add it here — but self-host it
           the way fonts.ts self-hosts Google Sans rather than paying for the
           cross-origin hops again. */}
-      <body className="min-h-full flex flex-col pb-[55px] font-body md:pb-0">
+      {/* min-h-dvh, not min-h-full. `min-h-full` is `min-height: 100%`, and
+          nothing sets `html { height: 100% }` — so that percentage resolved
+          against an auto-height parent and did nothing at all. The body was
+          therefore only ever as tall as its content, which is why the FOOTER
+          appeared first on slower pages: until the page's own content arrived
+          it had no height, so the footer rendered directly under the header at
+          the top of the screen and was then shoved down. Viewport units need
+          no parent height, so the footer now starts below the fold on the
+          first paint and stays there. */}
+      <body className="min-h-dvh flex flex-col pb-[55px] font-body md:pb-0">
         <AnalyticsScripts
           config={
             (analyticsConfig as PublicAnalyticsConfig | undefined) ?? {

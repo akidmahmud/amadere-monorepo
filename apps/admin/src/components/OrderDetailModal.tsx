@@ -6,6 +6,7 @@ import { BD_DIVISIONS } from "@amader/shared";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
   ORDER_CHANNELS,
+  ORDER_CHANNEL_LABELS,
   PAYMENT_PROVIDER_TYPES,
   useAddOrderItem,
   useOrder,
@@ -741,7 +742,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     <span className="text-xs text-muted">Origin</span>
                     <select value={order.channel} onChange={(e) => updateDetails.mutate({ channel: e.target.value as OrderChannel })}
                       className="h-9 rounded-sm border border-border bg-surface px-2 text-sm text-text">
-                      {ORDER_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {ORDER_CHANNELS.map((c) => <option key={c} value={c}>{ORDER_CHANNEL_LABELS[c] ?? c}</option>)}
                     </select>
                   </label>
                   <label className="flex flex-col gap-1">

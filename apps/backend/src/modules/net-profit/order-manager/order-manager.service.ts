@@ -83,6 +83,16 @@ export class OrderManagerService {
     if (query.courierProvider) conditions.push(Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`);
     if (query.division) conditions.push(Prisma.sql`oa.division = ${query.division}`);
     if (query.risk) conditions.push(Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`);
+    // "none" rather than an empty/absent value for unassigned: absent already
+    // means "don't filter at all", so there would otherwise be no way to ask
+    // for the pile nobody has picked up -- which is the main thing a manager
+    // opens this filter to find.
+    if (query.assignedAdminId === 'none') {
+      conditions.push(Prisma.sql`o.assigned_admin_id IS NULL`);
+    } else if (query.assignedAdminId) {
+      const id = Number(query.assignedAdminId);
+      if (Number.isInteger(id)) conditions.push(Prisma.sql`o.assigned_admin_id = ${id}`);
+    }
     if (query.q) {
       const like = `%${query.q}%`;
       // Searches both stored phone formats (see FRAUD_CHECK_JOIN's comment

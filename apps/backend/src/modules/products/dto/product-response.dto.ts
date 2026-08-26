@@ -149,6 +149,13 @@ export class AdminProductPickerItemDto {
   price!: string | null;
   /** Set only when that variant is on sale. */
   salePrice!: string | null;
+  /** Product-level stock status. Relation pickers (Related / Cross-sell /
+   *  Frequently Bought Together) use it to leave sold-out products out of the
+   *  list — recommending something nobody can buy is a dead end for the
+   *  shopper. Deliberately returned rather than filtered server-side: the same
+   *  endpoint feeds collections, discounts and promo videos, where an
+   *  out-of-stock product is a perfectly valid pick. */
+  stockStatus!: StockStatus;
 }
 
 // Same rationale as AdminProductPickerItemDto above, applied to the actual

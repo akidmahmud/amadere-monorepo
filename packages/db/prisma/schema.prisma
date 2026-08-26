@@ -1308,6 +1308,14 @@ enum OrderChannel {
   MARKETPLACE
   POS
   APP
+  // Social sources for manually-entered orders — a DM on any of these is a
+  // real acquisition channel here, and lumping them into MARKETPLACE made the
+  // Overview channel breakdown useless for deciding where the ad spend goes.
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  X
 }
 
 model Order {

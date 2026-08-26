@@ -171,6 +171,10 @@ export class ProductsService {
       select: {
         id: true,
         slug: true,
+        // Product-level status, maintained by recomputeProductStock -- lets a
+        // picker hide (or mark) sold-out products without aggregating every
+        // variant client-side.
+        stockStatus: true,
         translations: { select: { name: true }, take: 1 },
         // Price comes off the default variant (or the first one, for products
         // that never flagged a default) — cheap here because it is two decimal
@@ -191,6 +195,7 @@ export class ProductsService {
         name: p.translations[0]?.name ?? p.slug,
         price: variant?.price?.toString() ?? null,
         salePrice: variant?.salePrice?.toString() ?? null,
+        stockStatus: p.stockStatus,
       };
     });
   }

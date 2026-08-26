@@ -28,7 +28,10 @@ export default async function LoginPage({
           EVERY page under this segment, which also made React stream the
           layout shell (header + footer) ahead of each page's own content.
           Scoped here instead, so only this page pays for it. */}
-      <Suspense fallback={null}>
+      {/* A real fallback, not null: an empty boundary gives <main> no
+          height while the form streams, so the footer slides up under the
+          header and then jumps back down. This reserves the card's space. */}
+      <Suspense fallback={<div className="mx-auto h-[620px] max-w-[460px] rounded-[28px] border border-emerald-100/90 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)]" />}>
         <LoginForm />
       </Suspense>
     </main>

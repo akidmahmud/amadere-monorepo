@@ -20,7 +20,13 @@ export function FrequentlyBoughtTogetherFields({ productId }: { productId: numbe
     if (current) setSelected(current);
   }, [current]);
 
-  const options = (products ?? []).filter((p) => p.id !== productId);
+  // Sold-out products are left out of the list -- recommending something
+  // nobody can buy is a dead end for the shopper. An already-picked product
+  // that has since gone out of stock stays visible, though: dropping it would
+  // strip its label off the chip above and leave no way to remove it.
+  const options = (products ?? []).filter(
+    (p) => p.id !== productId && (!p.outOfStock || selected.includes(p.id)),
+  );
 
   return (
     <Card className="flex max-w-2xl flex-col gap-4">

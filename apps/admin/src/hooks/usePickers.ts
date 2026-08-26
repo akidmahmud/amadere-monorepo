@@ -85,6 +85,17 @@ export function usePickerProducts() {
         label: p.name,
         price: p.price,
         salePrice: p.salePrice,
+        // Passed through, not filtered here: the relation pickers (Related /
+        // Cross-sell / FBT) drop sold-out products, but collections,
+        // discounts, promo videos and homepage sections share this hook and
+        // must still be able to pick one.
+        // Cast because the generated schema types every stockStatus in the
+        // API as `Record<string, never>` -- the DTO file carries no
+        // @ApiProperty decorators, so the enum never reaches the OpenAPI doc.
+        // All seven existing stockStatus fields have the same problem and the
+        // rest of the admin copes at the call site; not worth breaking that
+        // file's convention for one field.
+        outOfStock: (p.stockStatus as unknown as string) === "OUT_OF_STOCK",
       }));
     },
   });

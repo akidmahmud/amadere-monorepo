@@ -39,10 +39,20 @@ const PAYMENT_PROVIDER_CONFIG: Record<
   UPAY: { label: "Upay", icon: "account_balance_wallet", accentColor: "#00a7e1", bgActive: "bg-cyan-500/10 border-cyan-500 text-cyan-700 dark:text-cyan-400" },
 };
 
-const CHANNELS = ["WHATSAPP", "PHONE", "MARKETPLACE", "POS"] as const;
+// WEBSITE and APP are deliberately absent: those are set by the storefront
+// itself, and this form only ever creates orders staff took by hand.
+const CHANNELS = [
+  "WHATSAPP", "PHONE", "FACEBOOK", "INSTAGRAM",
+  "TIKTOK", "YOUTUBE", "X", "MARKETPLACE", "POS",
+] as const;
 const CHANNEL_CONFIG: Record<(typeof CHANNELS)[number], { label: string; icon: string }> = {
   WHATSAPP: { label: "WhatsApp", icon: "chat" },
   PHONE: { label: "Telemarketing", icon: "call" },
+  FACEBOOK: { label: "Facebook", icon: "thumb_up" },
+  INSTAGRAM: { label: "Instagram", icon: "photo_camera" },
+  TIKTOK: { label: "TikTok", icon: "music_note" },
+  YOUTUBE: { label: "YouTube", icon: "play_circle" },
+  X: { label: "X", icon: "close" },
   MARKETPLACE: { label: "Marketplace", icon: "store" },
   POS: { label: "In-store POS", icon: "point_of_sale" },
 };
@@ -822,7 +832,9 @@ export function NewOrderFormModern({
             {/* Channel Pills */}
             <div className="space-y-1.5">
               <span className="text-xs font-semibold tracking-wide text-secondary">Sales Channel</span>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {/* 3 columns, not 4: nine channels divide evenly into three
+                  rows instead of leaving a lone orphan on the last one. */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {CHANNELS.map((c) => {
                   const active = channel === c;
                   const cfg = CHANNEL_CONFIG[c];

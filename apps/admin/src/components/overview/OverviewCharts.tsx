@@ -24,6 +24,11 @@ const CHANNEL_COLORS: Record<string, string> = {
   MARKETPLACE: "#3a4356",
   POS: "#f7941d",
   APP: "#14b89b",
+  FACEBOOK: "#1877f2",
+  INSTAGRAM: "#d62976",
+  TIKTOK: "#010101",
+  YOUTUBE: "#ff0000",
+  X: "#536471",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -33,6 +38,11 @@ const CHANNEL_LABELS: Record<string, string> = {
   MARKETPLACE: "Marketplace",
   POS: "POS",
   APP: "App",
+  FACEBOOK: "Facebook",
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  YOUTUBE: "YouTube",
+  X: "X",
 };
 
 // Exact visual config ported from getcommerce-dashboard.html's `salesChart` —

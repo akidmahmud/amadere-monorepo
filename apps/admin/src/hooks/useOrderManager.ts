@@ -51,6 +51,8 @@ export interface OrderManagerFilters {
   paymentProvider?: string;
   courierProvider?: string;
   risk?: RiskLevel;
+  /** Admin id as a string, or "none" for unassigned. */
+  assignedAdminId?: string;
   division?: string;
   q?: string;
   from?: string;

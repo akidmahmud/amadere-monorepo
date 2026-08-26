@@ -36,10 +36,18 @@ const PAYMENT_PROVIDER_LABELS: Record<(typeof PAYMENT_PROVIDERS)[number], string
   UPAY: "Upay",
 };
 
-const CHANNELS = ["WHATSAPP", "PHONE", "MARKETPLACE", "POS"] as const;
+const CHANNELS = [
+  "WHATSAPP", "PHONE", "FACEBOOK", "INSTAGRAM",
+  "TIKTOK", "YOUTUBE", "X", "MARKETPLACE", "POS",
+] as const;
 const CHANNEL_LABELS: Record<(typeof CHANNELS)[number], string> = {
   WHATSAPP: "WhatsApp",
   PHONE: "Phone (Telemarketing)",
+  FACEBOOK: "Facebook",
+  INSTAGRAM: "Instagram",
+  TIKTOK: "TikTok",
+  YOUTUBE: "YouTube",
+  X: "X",
   MARKETPLACE: "Marketplace",
   POS: "In-store (POS)",
 };

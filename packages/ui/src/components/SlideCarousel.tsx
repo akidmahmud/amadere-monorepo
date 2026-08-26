@@ -36,9 +36,11 @@ export function SlideCarousel({
 }) {
   const items = Children.toArray(children);
   const trackRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [paused, setPaused] = useState(false);
+  const [onScreen, setOnScreen] = useState(false);
 
   // Measured after mount and on every resize. Before that, pageCount stays 1
   // and the controls stay hidden — the server cannot know the viewport width,
@@ -73,11 +75,37 @@ export function SlideCarousel({
     [pageCount],
   );
 
+  /**
+   * Autoplay only while the carousel is actually on screen.
+   *
+   * The homepage stacks five of these down a ~9000px page. Every one of them
+   * used to keep its timer running and keep animating a 700ms transform on a
+   * track holding up to eleven product cards -- four of them for a reader who
+   * could only ever see one. That is pure compositor work on a phone, and it
+   * never stops for as long as the tab is open.
+   *
+   * Advancing a carousel nobody is looking at is also just wrong on its own
+   * terms: scroll down and you arrive mid-rotation at whatever slide the
+   * timer happened to reach, having silently skipped the first ones.
+   */
   useEffect(() => {
-    if (!autoplayMs || pageCount <= 1 || paused) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      // A small margin so it is already moving by the time it scrolls in,
+      // rather than visibly starting from a standstill.
+      { rootMargin: "200px" },
+    );
+    io.observe(root);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!autoplayMs || pageCount <= 1 || paused || !onScreen) return;
     const timer = setInterval(() => go(1), autoplayMs);
     return () => clearInterval(timer);
-  }, [autoplayMs, pageCount, paused, go]);
+  }, [autoplayMs, pageCount, paused, onScreen, go]);
 
   if (items.length === 0) return null;
 
@@ -104,6 +132,7 @@ export function SlideCarousel({
 
   return (
     <div
+      ref={rootRef}
       className="relative"
       aria-label={ariaLabel}
       onMouseEnter={() => setPaused(true)}
@@ -138,26 +167,39 @@ export function SlideCarousel({
         </div>
       </div>
 
+      {/* Arrows are absolutely positioned, so they can appear after measuring
+          without moving anything. */}
       {pageCount > 1 && (
         <>
           {arrow("prev")}
           {arrow("next")}
-          <div className="mt-5 flex justify-center gap-2">
-            {Array.from({ length: pageCount }, (_, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Go to slide ${i + 1}`}
-                aria-current={i === page}
-                onClick={() => setPage(i)}
-                className={`h-2 rounded-full transition-all ${
-                  i === page ? "w-5 bg-header-green" : "w-2 bg-header-green/30"
-                }`}
-              />
-            ))}
-          </div>
         </>
       )}
+
+      {/* The dots ROW is always rendered, even while empty, and its height is
+          fixed. It used to live behind the same `pageCount > 1` guard as the
+          arrows — but pageCount is 1 until the effect measures the track, so
+          the server sent no row at all and hydration then inserted 28px into
+          every carousel at once. Everything below jumped down: one 0.33 CLS
+          hit on the homepage (five carousels), which reads as the page
+          "lurching" rather than as anything being slow. Reserving the space
+          costs an empty 28px strip under a carousel that only has one page,
+          which is the cheap side of that trade. */}
+      <div className="mt-5 flex h-2 justify-center gap-2">
+        {pageCount > 1 &&
+          Array.from({ length: pageCount }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === page}
+              onClick={() => setPage(i)}
+              className={`h-2 rounded-full transition-all ${
+                i === page ? "w-5 bg-header-green" : "w-2 bg-header-green/30"
+              }`}
+            />
+          ))}
+      </div>
     </div>
   );
 }

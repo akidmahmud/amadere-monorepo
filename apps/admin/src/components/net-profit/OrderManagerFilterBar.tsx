@@ -1,5 +1,6 @@
 "use client";
 
+import type { AssignableStaff } from "@/hooks/useCustomers";
 import type { RiskLevel } from "@/hooks/useFraud";
 import type { OrderManagerFilters } from "@/hooks/useOrderManager";
 import type { OrderStatusConfig } from "@/hooks/useOrderStatuses";
@@ -47,6 +48,8 @@ export interface OrderFilterState {
   paymentProvider?: string;
   courierProvider?: string;
   risk?: RiskLevel;
+  /** An admin id as a string, or "none" for orders nobody has picked up. */
+  assignedAdminId?: string;
   division?: string;
   dateRange?: string;
   dateFrom?: string;
@@ -58,11 +61,13 @@ export function OrderManagerFilterBar({
   onChange,
   onReset,
   statuses,
+  staff,
 }: {
   filters: OrderFilterState;
   onChange: (next: OrderFilterState) => void;
   onReset: () => void;
   statuses: OrderStatusConfig[];
+  staff: AssignableStaff[];
 }) {
   function set<K extends keyof OrderFilterState>(key: K, value: OrderFilterState[K]) {
     onChange({ ...filters, [key]: value });
@@ -117,6 +122,24 @@ export function OrderManagerFilterBar({
         {RISK_LEVELS.map((r) => (
           <option key={r} value={r}>
             {r}
+          </option>
+        ))}
+      </select>
+
+      {/* "Unassigned" is a real option, not the empty one: empty already means
+          "don't filter", so without it there is no way to ask for the pile
+          nobody has picked up yet. */}
+      <select
+        value={filters.assignedAdminId ?? ""}
+        onChange={(e) => set("assignedAdminId", e.target.value || undefined)}
+        className={selectClass}
+        style={selectStyle}
+      >
+        <option value="">All Staff</option>
+        <option value="none">Unassigned</option>
+        {staff.map((s) => (
+          <option key={s.id} value={String(s.id)}>
+            {s.name}
           </option>
         ))}
       </select>

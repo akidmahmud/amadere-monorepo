@@ -29,6 +29,15 @@ export class OrderManagerQueryDto extends PaginationQueryDto {
   @IsString()
   division?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Filter by the staff member an order is assigned to. Pass an admin id, ' +
+      'or the literal "none" for orders nobody has picked up yet.',
+  })
+  @IsOptional()
+  @IsString()
+  assignedAdminId?: string;
+
   @ApiPropertyOptional({ description: 'Free-text search — order number, recipient name, or phone' })
   @IsOptional()
   @IsString()
