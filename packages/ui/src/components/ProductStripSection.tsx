@@ -1,9 +1,9 @@
 "use client";
 
-import { InfiniteMarquee } from "./InfiniteMarquee";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import type { PackPickerOption } from "./PackPickerModal";
 import { SiteProductCard } from "./SiteProductCard";
+import { SlideCarousel } from "./SlideCarousel";
 
 const viewAllIcon = (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -52,9 +52,8 @@ export interface ProductStripSectionProps {
 // longer tabbed (dropped the pill-switcher + promo tile; one collection per
 // section now, matching this reference exactly). The reference's own
 // strip-arrow/strip-dots markup has no JS behind it in that file (unwired
-// placeholders) — the scroll-by-page/dot-tracking behavior here is a real,
-// working implementation, not a transcription of reference behavior that
-// doesn't exist.
+// placeholders); the paging here is a real implementation, not a
+// transcription of reference behavior that doesn't exist.
 export function ProductStripSection({
   title,
   viewAllHref,
@@ -83,41 +82,35 @@ export function ProductStripSection({
           </Link>
         </div>
 
-        {/* Continuous loop rather than the previous page-and-rewind
-            carousel, which visibly jumped back to the first card. Arrows and
-            page dots are gone with it — they need a fixed page model, which
-            an always-moving track does not have, and hovering pauses the row
-            so a card can still be read and clicked.
-
-            Card widths are fixed rather than the old
-            `basis-[calc((100%-Npx)/N)]`: percentage bases resolve against the
-            track, and a marquee track is `w-max`, so they would collapse.
-            Fitting exactly N per row does not matter here either — that
-            constraint only existed to make snap-paging land cleanly. */}
-        <InfiniteMarquee secondsPerItem={10} gapPx={20} direction="right" ariaLabel={title}>
+        {/* 5 cards to a slide at xl, stepping down as the viewport narrows so
+            a card never gets too cramped to read. SlideCarousel derives the
+            page count from this ladder by measuring, so changing a breakpoint
+            here needs no matching change there. */}
+        <SlideCarousel
+          slotClassName="basis-1/2 sm:basis-1/3 lg:basis-1/4 xl:basis-1/5"
+          gapPx={20}
+          autoplayMs={4500}
+          ariaLabel={title}
+        >
           {items.map((item) => (
-            <div
+            <SiteProductCard
               key={item.productId}
-              className="w-[150px] sm:w-[200px] md:w-[230px] xl:w-[260px]"
-            >
-              <SiteProductCard
-                href={item.href}
-                name={item.name}
-                imageUrl={item.imageUrl}
-                price={item.price}
-                originalPrice={item.originalPrice}
-                flagLabel={item.flagLabel}
-                packOptions={item.packOptions}
-                defaultPackValue={item.defaultPackValue}
-                outOfStock={item.outOfStock}
-                addToCartLabel={addToCartLabel}
-                addToCartPending={addToCartPendingId === item.productId}
-                onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
-                linkComponent={Link}
-              />
-            </div>
+              href={item.href}
+              name={item.name}
+              imageUrl={item.imageUrl}
+              price={item.price}
+              originalPrice={item.originalPrice}
+              flagLabel={item.flagLabel}
+              packOptions={item.packOptions}
+              defaultPackValue={item.defaultPackValue}
+              outOfStock={item.outOfStock}
+              addToCartLabel={addToCartLabel}
+              addToCartPending={addToCartPendingId === item.productId}
+              onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
+              linkComponent={Link}
+            />
           ))}
-        </InfiniteMarquee>
+        </SlideCarousel>
       </div>
     </section>
   );
