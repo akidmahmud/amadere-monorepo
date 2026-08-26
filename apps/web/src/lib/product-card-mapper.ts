@@ -157,13 +157,16 @@ export function toPromoVideoProductData(product: PublicProductDto): PromoVideoPr
     // ~400w WebP thumbnail when the derivative pipeline has processed this
     // media row, falling back to the original — see Media.cardUrl.
     //
-    // The width here is only the `src` fallback. Cards render through
-    // next/image with a `sizes` attribute, and the Cloudflare loader rewrites
-    // the width for every srcset candidate (see cdnImageUrl's re-wrap branch),
-    // so what a browser actually downloads is decided by `sizes`, not by this
-    // number. Kept at card width rather than the 1280 default so the fallback
-    // `src` is not wildly oversized for the one case that uses it.
-    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url, IMG.card),
+    // `badge` (256), not `card` (640), and NOT the next/image reasoning that
+    // applies to toProductCardData above — this data feeds the promo video
+    // reel, where the thumbnail renders as a raw <img> in an 80px box
+    // (`h-20 w-20` in PromoVideoSection). There is no srcset to correct an
+    // oversized request here, so the number is what gets downloaded.
+    //
+    // Lighthouse measured these as 400x400 files for a 140x140 display: 640
+    // was requested and the 400w `cardUrl` derivative came back whole. 256
+    // still covers the box at 3x density.
+    imageUrl: toDisplayImageUrl(primaryMedia?.cardUrl ?? primaryMedia?.url, IMG.badge),
     // Variant-only products reject a bare productId add ("This product
     // requires a variantId") — same defaultVariantId() used by
     // toProductCardData above, so the modal's one-click Add to Cart works

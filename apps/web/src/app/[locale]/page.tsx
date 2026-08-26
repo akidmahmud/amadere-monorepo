@@ -444,8 +444,17 @@ function renderSection(
     }
 
     case "AD_BANNER": {
-      const images = config.images as
-        { imageUrl: string; linkUrl?: string }[] | undefined;
+      // Routed through the CDN like every other banner type. This one was
+      // passing the admin's upload URL straight to a raw <img>, so the
+      // browser got the original file at full size: measured on production as
+      // a 1200x374 image, 68.2 KiB, displayed at 714x238 — the single largest
+      // image saving Lighthouse reported for the page.
+      const images = (
+        config.images as { imageUrl: string; linkUrl?: string }[] | undefined
+      )?.map((b) => ({
+        ...b,
+        imageUrl: toDisplayImageUrl(b.imageUrl, IMG.banner) ?? b.imageUrl,
+      }));
       if (!images || images.length === 0) return null;
       return (
         <div className={`${WRAPPER_HALF} py-5`} key={section.id}>

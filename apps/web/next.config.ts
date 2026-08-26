@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
   images: {
     loader: "custom",
     loaderFile: "./src/lib/cloudflare-image-loader.ts",
+    // Next's default deviceSizes run to 3840, so every responsive image
+    // offered 8 srcset candidates and the homepage carried 1,601 candidate
+    // URLs — markup the browser parses on every load.
+    //
+    // The widest container on the site is max-w-[1920px], so 2048 and 3840
+    // could only ever be chosen by a display wider than the layout itself.
+    // Dropping them removes two candidates per responsive image with no
+    // change to what any real viewport actually downloads.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     remotePatterns: [
       { protocol: "https", hostname: "cdn.amadere.com" },
       {
