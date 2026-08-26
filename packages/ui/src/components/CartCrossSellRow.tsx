@@ -35,27 +35,22 @@ export function CartCrossSellRow({
 }: CartCrossSellRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const autoplayDir = useRef<1 | -1>(1);
-
   function slide(direction: 1 | -1) {
     const el = scrollerRef.current;
     if (!el) return;
     const next = el.scrollLeft + direction * (CARD_WIDTH + CARD_GAP);
-    el.scrollTo({ left: next, behavior: "smooth" });
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    // Wraps at either end instead of stalling, so auto-slide loops forever.
+    if (next >= maxScroll - 1) el.scrollTo({ left: 0, behavior: "smooth" });
+    else if (next < 0) el.scrollTo({ left: maxScroll, behavior: "smooth" });
+    else el.scrollTo({ left: next, behavior: "smooth" });
   }
 
   useEffect(() => {
     if (!autoSlideMs || items.length < 2) return;
-    const id = setInterval(() => {
-      const el = scrollerRef.current;
-      if (!el) return;
-      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
-      const atStart = el.scrollLeft <= 4;
-      if (atEnd) autoplayDir.current = -1;
-      else if (atStart) autoplayDir.current = 1;
-      slide(autoplayDir.current);
-    }, autoSlideMs);
+    const id = setInterval(() => slide(1), autoSlideMs);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSlideMs, items.length]);
 
   if (items.length === 0) return null;
