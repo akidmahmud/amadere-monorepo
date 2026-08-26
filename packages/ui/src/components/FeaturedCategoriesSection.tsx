@@ -1,7 +1,6 @@
 "use client";
 
-
-import { InfiniteMarquee } from "./InfiniteMarquee";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 
@@ -17,6 +16,20 @@ export interface FeaturedCategoriesSectionProps {
   linkComponent?: LinkComponent;
 }
 
+const prevIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const nextIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+// card 105 + gap 16 = 121/card at mobile; scrolls ~3 cards per arrow click.
+const SCROLL_STEP = 360;
+
 // Pixel-matched to ghorerbazar.com's `.category.style-3.section-padding`
 // (mobile measured first, then desktop — per explicit request): 16px section
 // padding (flat, no responsive scale-up), near-full-bleed 105px/100px
@@ -26,6 +39,42 @@ export interface FeaturedCategoriesSectionProps {
 // elsewhere on our site — the reference itself doesn't color it either),
 // and small solid-circle arrows.
 export function FeaturedCategoriesSection({ heading = "Featured Categories", items, linkComponent: Link = DefaultLink }: FeaturedCategoriesSectionProps) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  function scrollBy(delta: number) {
+    trackRef.current?.scrollBy({ left: delta, behavior: "smooth" });
+  }
+
+  // Auto-advances every 4s, bouncing between the two ends — skips the tick
+  // entirely when everything already fits (no real overflow to scroll
+  // through).
+  // Travel direction for autoplay: +1 forwards, -1 back. Reverses at each end
+  // instead of snapping to the start, so the row reads 1-2-3-2-1-2-3 rather
+  // than 1-2-3-(jump)-1. A rewind is a jarring cut in a row that is otherwise
+  // moving steadily; turning round keeps the motion continuous.
+  //
+  // A ref rather than state: the interval reads it on every tick, and putting
+  // it in state would re-subscribe the interval on each reversal.
+  const autoplayDir = useRef(1);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const track = trackRef.current;
+      if (!track || track.scrollWidth <= track.clientWidth + 4) return;
+
+      // 4px of slack absorbs sub-pixel rounding at fractional zoom levels,
+      // where scrollLeft never lands exactly on the boundary.
+      const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      const atStart = track.scrollLeft <= 4;
+
+      if (atEnd) autoplayDir.current = -1;
+      else if (atStart) autoplayDir.current = 1;
+
+      scrollBy(SCROLL_STEP * autoplayDir.current);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
   if (items.length === 0) return null;
 
   return (
@@ -35,33 +84,51 @@ export function FeaturedCategoriesSection({ heading = "Featured Categories", ite
           {heading}
         </h2>
 
-        {/* Continuous loop rather than the previous step-and-rewind
-            carousel, which visibly jumped back to the start. Arrows are gone
-            with it: they fight an always-moving track, and hovering already
-            pauses the row so a card can be read and clicked. */}
-        {/* 145px tiles: ~12 needed to overflow a wide screen. */}
-        <InfiniteMarquee secondsPerItem={9} gapPx={16} minPerCopy={12} direction="right" ariaLabel={heading}>
-          {items.map((item) => (
-            <Link key={item.href} href={item.href} className="group block basis-[105px] text-center md:basis-[145px]">
-              <div className="flex h-[100px] w-[100px] items-center justify-center overflow-hidden rounded-[20px] bg-white p-0.5 transition-transform duration-200 group-hover:-translate-y-1 md:h-[140px] md:w-[140px]">
-                {item.imageUrl ? (
-                  <Image
-                    src={item.imageUrl}
-                    alt=""
-                    width={140}
-                    height={140}
-                    className="h-full w-full rounded-[20px] object-contain"
-                  />
-                ) : (
-                  <div className="h-full w-full rounded-[20px] bg-beige" />
-                )}
-              </div>
-              <div className="mt-2.5 font-body text-sm font-medium text-header-ink group-hover:text-header-green">
-                {item.name}
-              </div>
-            </Link>
-          ))}
-        </InfiniteMarquee>
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Scroll categories left"
+            onClick={() => scrollBy(-SCROLL_STEP)}
+            className="absolute -left-[18px] top-[52px] z-[5] grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-green text-white transition-colors hover:bg-green-dark md:top-[72px]"
+          >
+            {prevIcon}
+          </button>
+
+          <div
+            ref={trackRef}
+            className="flex gap-4 overflow-x-auto p-1 scroll-smooth [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {items.map((item) => (
+              <Link key={item.href} href={item.href} className="group flex-none basis-[105px] text-center [scroll-snap-align:start] md:basis-[145px]">
+                <div className="flex h-[100px] w-[100px] items-center justify-center overflow-hidden rounded-[20px] bg-white p-0.5 transition-transform duration-200 group-hover:-translate-y-1 md:h-[140px] md:w-[140px]">
+                  {item.imageUrl ? (
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      width={140}
+                      height={140}
+                      className="h-full w-full rounded-[20px] object-contain"
+                    />
+                  ) : (
+                    <div className="h-full w-full rounded-[20px] bg-beige" />
+                  )}
+                </div>
+                <div className="mt-2.5 font-body text-sm font-medium text-header-ink group-hover:text-header-green">
+                  {item.name}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            aria-label="Scroll categories right"
+            onClick={() => scrollBy(SCROLL_STEP)}
+            className="absolute -right-[18px] top-[52px] z-[5] grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-green text-white transition-colors hover:bg-green-dark md:top-[72px]"
+          >
+            {nextIcon}
+          </button>
+        </div>
       </div>
     </section>
   );

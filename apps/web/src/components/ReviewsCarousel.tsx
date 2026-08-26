@@ -77,6 +77,8 @@ export function ReviewsCarousel({
     };
   }, []);
 
+  const autoplayDir = useRef<1 | -1>(1);
+
   useEffect(() => {
     if (count < 2) return;
     const el = trackRef.current;
@@ -94,9 +96,14 @@ export function ReviewsCarousel({
       if (Date.now() < pausedUntil.current) return;
       if (document.hidden) return;
 
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+      const atStart = el.scrollLeft <= 4;
+      if (atEnd) autoplayDir.current = -1;
+      else if (atStart) autoplayDir.current = 1;
+
       const w = el.clientWidth;
       const current = Math.round(el.scrollLeft / w);
-      const next = current + 1 >= count ? 0 : current + 1;
+      const next = Math.max(0, Math.min(count - 1, current + autoplayDir.current));
       el.scrollTo({ left: next * w, behavior: "smooth" });
     };
 

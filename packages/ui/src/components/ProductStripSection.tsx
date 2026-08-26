@@ -1,16 +1,10 @@
 "use client";
 
-import { InfiniteMarquee } from "./InfiniteMarquee";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import type { PackPickerOption } from "./PackPickerModal";
 import { SiteProductCard } from "./SiteProductCard";
-
-const viewAllIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-    <line x1="5" y1="12" x2="19" y2="12" />
-    <polyline points="12 5 19 12 12 19" />
-  </svg>
-);
 
 export interface ProductStripItem {
   href: string;
@@ -47,6 +41,23 @@ export interface ProductStripSectionProps {
   linkComponent?: LinkComponent;
 }
 
+const prevIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const nextIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+const viewAllIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </svg>
+);
+
 // Pixel-matched to amader-home-top.html's "Amader Modhu — Natural Honey"
 // category product strip — used by TABBED_COLLECTION_CAROUSEL, which is no
 // longer tabbed (dropped the pill-switcher + promo tile; one collection per
@@ -65,6 +76,81 @@ export function ProductStripSection({
   addToCartLabel = "Add To Cart",
   linkComponent: Link = DefaultLink,
 }: ProductStripSectionProps) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [pageCount, setPageCount] = useState(1);
+  const [activePage, setActivePage] = useState(0);
+  // Paused while any interactive element inside a card (e.g. SiteProductCard's
+  // pack-size <select>) has focus — same mechanism as Carousel.tsx, but this
+  // component has its own independent autoplay loop rather than rendering
+  // through <Carousel>, so it needs its own copy. Picking a variant shouldn't
+  // have the strip advance out from under the shopper mid-selection.
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    function recompute() {
+      if (!track) return;
+      // ceil, not round: any real overflow (even 1.2 "pages" worth) must stay
+      // reachable via the arrows/dots — the track's native scrollbar is
+      // hidden, so rounding down to 1 page would strand real content with
+      // no way to reach it (confirmed live: a 6th card cut off at 1440px,
+      // 5 cards per row, silently unreachable until this was ceil'd).
+      setPageCount(Math.max(1, Math.ceil(track.scrollWidth / track.clientWidth)));
+    }
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [items.length]);
+
+  function handleScroll() {
+    const track = trackRef.current;
+    if (!track) return;
+    setActivePage(Math.round(track.scrollLeft / track.clientWidth));
+  }
+
+  function goToPage(page: number) {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollTo({ left: page * track.clientWidth, behavior: "smooth" });
+  }
+
+  function scrollByPage(delta: number) {
+    trackRef.current?.scrollBy({ left: delta * (trackRef.current?.clientWidth ?? 0), behavior: "smooth" });
+  }
+
+  // Auto-advances one page every 4.5s once there's more than one page,
+  // bouncing between the two ends — reads scrollLeft directly rather than the
+  // activePage state, so this doesn't need to re-subscribe on every page
+  // change.
+  // Travel direction for autoplay: +1 forwards, -1 back. Reverses at each end
+  // rather than snapping to the first page, so it reads 1-2-3-2-1-2-3 instead
+  // of 1-2-3-(jump)-1.
+  //
+  // A ref rather than state, so flipping direction does not re-subscribe the
+  // interval — the same reason this reads `scrollLeft` directly instead of
+  // depending on `activePage`.
+  const autoplayDir = useRef(1);
+
+  useEffect(() => {
+    if (pageCount <= 1 || paused) return;
+    const timer = setInterval(() => {
+      const track = trackRef.current;
+      if (!track) return;
+
+      // 4px of slack absorbs sub-pixel rounding at fractional zoom levels.
+      const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+      const atStart = track.scrollLeft <= 4;
+
+      if (atEnd) autoplayDir.current = -1;
+      else if (atStart) autoplayDir.current = 1;
+
+      scrollByPage(autoplayDir.current);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [pageCount, paused]);
+
   if (items.length === 0) return null;
 
   return (
@@ -83,41 +169,77 @@ export function ProductStripSection({
           </Link>
         </div>
 
-        {/* Continuous loop rather than the previous page-and-rewind
-            carousel, which visibly jumped back to the first card. Arrows and
-            page dots are gone with it — they need a fixed page model, which
-            an always-moving track does not have, and hovering pauses the row
-            so a card can still be read and clicked.
-
-            Card widths are fixed rather than the old
-            `basis-[calc((100%-Npx)/N)]`: percentage bases resolve against the
-            track, and a marquee track is `w-max`, so they would collapse.
-            Fitting exactly N per row does not matter here either — that
-            constraint only existed to make snap-paging land cleanly. */}
-        <InfiniteMarquee secondsPerItem={10} gapPx={20} direction="right" ariaLabel={title}>
-          {items.map((item) => (
-            <div
-              key={item.productId}
-              className="w-[150px] sm:w-[200px] md:w-[230px] xl:w-[260px]"
+        <div className="relative">
+          {pageCount > 1 && (
+            <button
+              type="button"
+              aria-label="Scroll left"
+              onClick={() => scrollByPage(-1)}
+              className="absolute -left-[14px] top-[150px] z-[5] hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-header-line bg-white text-header-green shadow-[0_4px_12px_rgba(30,43,34,.14)] transition-colors hover:bg-header-green hover:text-white md:grid"
             >
-              <SiteProductCard
-                href={item.href}
-                name={item.name}
-                imageUrl={item.imageUrl}
-                price={item.price}
-                originalPrice={item.originalPrice}
-                flagLabel={item.flagLabel}
-                packOptions={item.packOptions}
-                defaultPackValue={item.defaultPackValue}
-                outOfStock={item.outOfStock}
-                addToCartLabel={addToCartLabel}
-                addToCartPending={addToCartPendingId === item.productId}
-                onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
-                linkComponent={Link}
+              {prevIcon}
+            </button>
+          )}
+
+          <div
+            ref={trackRef}
+            onScroll={handleScroll}
+            onFocus={() => setPaused(true)}
+            onBlur={() => setPaused(false)}
+            className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {items.map((item) => (
+              <div
+                key={item.productId}
+                className="min-w-[150px] flex-none basis-[calc((100%-12px)/2)] snap-start sm:basis-[calc((100%-40px)/3)] lg:basis-[calc((100%-60px)/4)] xl:basis-[calc((100%-80px)/5)]"
+              >
+                <SiteProductCard
+                  href={item.href}
+                  name={item.name}
+                  imageUrl={item.imageUrl}
+                  price={item.price}
+                  originalPrice={item.originalPrice}
+                  flagLabel={item.flagLabel}
+                  packOptions={item.packOptions}
+                  defaultPackValue={item.defaultPackValue}
+                  outOfStock={item.outOfStock}
+                  addToCartLabel={addToCartLabel}
+                  addToCartPending={addToCartPendingId === item.productId}
+                  onAddToCart={(packValue) => onAddToCart?.(item.productId, packValue)}
+                  linkComponent={Link}
+                />
+              </div>
+            ))}
+          </div>
+
+          {pageCount > 1 && (
+            <button
+              type="button"
+              aria-label="Scroll right"
+              onClick={() => scrollByPage(1)}
+              className="absolute -right-[14px] top-[150px] z-[5] hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-header-line bg-white text-header-green shadow-[0_4px_12px_rgba(30,43,34,.14)] transition-colors hover:bg-header-green hover:text-white md:grid"
+            >
+              {nextIcon}
+            </button>
+          )}
+        </div>
+
+        {pageCount > 1 && (
+          <div className="mt-5 flex justify-center gap-2">
+            {Array.from({ length: pageCount }, (_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Go to page ${i + 1}`}
+                onClick={() => goToPage(i)}
+                className={cn(
+                  "h-2 rounded-full bg-[#d8cbb4] transition-[width,background-color] duration-200",
+                  i === activePage ? "w-5 rounded-[5px] bg-header-green" : "w-2",
+                )}
               />
-            </div>
-          ))}
-        </InfiniteMarquee>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

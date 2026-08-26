@@ -100,17 +100,21 @@ export function Carousel({
     row.scrollBy({ left: direction * row.clientWidth * 0.9, behavior: "smooth" });
   }
 
+  const autoplayDir = useRef<1 | -1>(1);
+
   useEffect(() => {
     if (!autoplayMs || !hasOverflow || paused) return;
     const timer = setInterval(() => {
       const row = rowRef.current;
       if (!row) return;
       const atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
+      const atStart = row.scrollLeft <= 4;
       if (atEnd) {
-        row.scrollTo({ left: 0, behavior: "smooth" });
-      } else {
-        scroll(1);
+        autoplayDir.current = -1;
+      } else if (atStart) {
+        autoplayDir.current = 1;
       }
+      scroll(autoplayDir.current);
     }, autoplayMs);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
