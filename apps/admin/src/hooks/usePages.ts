@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 import type { PublishStatus } from "@/hooks/useBrands";
@@ -17,6 +17,12 @@ export function usePages(q?: string) {
       const res = await proxyFetch<Paginated<AdminPage>>(url);
       return res.items ?? [];
     },
+    // Typing changes the query key, and without this every keystroke dropped
+    // back to `isLoading` with no data -- the whole list was replaced by the
+    // loading card and the page appeared to reload on each character. Keeping
+    // the previous results on screen while the next ones arrive is what makes
+    // it read as filtering rather than re-navigating.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -41,6 +47,35 @@ export function useUpdatePage(id: number) {
   return useMutation({
     mutationFn: (input: Partial<PageInput>) =>
       proxyFetch<AdminPage>(`/admin/pages/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/**
+ * Bulk publish / unpublish. There is no bulk endpoint, so this is N PATCHes
+ * fired together — fine at this catalogue's size, and it reuses the exact
+ * same route (and therefore the same validation) as saving one page.
+ *
+ * `Promise.allSettled`, not `all`: one page failing must not abandon the rest
+ * half-applied. The caller is told how many of each there were.
+ */
+export function useSetPagesStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { ids: number[]; status: "PUBLISHED" | "DRAFT" }) => {
+      const results = await Promise.allSettled(
+        input.ids.map((id) =>
+          proxyFetch<AdminPage>(`/admin/pages/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ status: input.status }),
+          }),
+        ),
+      );
+      return {
+        succeeded: results.filter((r) => r.status === "fulfilled").length,
+        failed: results.filter((r) => r.status === "rejected").length,
+      };
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

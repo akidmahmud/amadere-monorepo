@@ -31,14 +31,22 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await update.mutateAsync({
-      slug,
-      status,
-      translations: [
-        { locale: "EN", title, content },
-        { locale: "BN", title, content },
-      ],
-    });
+    // Caught, not left to reject. An unhandled rejection here skipped the
+    // redirect AND rendered nothing, so a rejected save (e.g. the slug 409)
+    // looked exactly like a button that does nothing. The message is shown
+    // below the actions instead.
+    try {
+      await update.mutateAsync({
+        slug,
+        status,
+        translations: [
+          { locale: "EN", title, content },
+          { locale: "BN", title, content },
+        ],
+      });
+    } catch {
+      return;
+    }
     router.push("/pages");
   }
 
@@ -151,6 +159,12 @@ export default function EditPagePage({ params }: { params: Promise<{ id: string 
               </Button>
             </Link>
           </div>
+
+          {update.isError && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              {update.error instanceof Error ? update.error.message : "Could not save this page."}
+            </p>
+          )}
         </form>
       </Card>
     </div>

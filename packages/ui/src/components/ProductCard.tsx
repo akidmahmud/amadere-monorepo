@@ -143,19 +143,10 @@ export function ProductCard({
     // copied from their orange.
     <div className={cn("group relative flex h-full flex-col justify-between rounded border border-header-line bg-white p-2 text-[#020101] font-sans transition-shadow duration-300", className)}>
       <Link href={href} onClick={onSelect} className="relative mb-0 flex aspect-square w-full items-center justify-center overflow-hidden rounded bg-beige">
-        {(flagLabel || computedDiscountLabel) && (
-          <div className="absolute right-0 top-0 z-10 flex flex-col items-end gap-1">
-            {flagLabel && (
-              <span className="shrink-0 rounded-bl-md bg-[#E7C22D] px-2 py-1 text-[10px] font-bold leading-none text-slate-950 shadow-sm">
-                {flagLabel}
-              </span>
-            )}
-            {computedDiscountLabel && (
-              <span className="shrink-0 rounded-l-md bg-[#008400] px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm">
-                {computedDiscountLabel}
-              </span>
-            )}
-          </div>
+        {flagLabel && (
+          <span className="absolute right-0 top-0 z-10 shrink-0 rounded-bl-md bg-[#E7C22D] px-2.5 py-1 text-[10px] font-bold leading-none text-slate-950 shadow-sm">
+            {flagLabel}
+          </span>
         )}
         {imageUrl ? (
           <Image
@@ -186,10 +177,23 @@ export function ProductCard({
         )}
       </Link>
       <div className="flex flex-1 flex-col justify-between pt-3">
-        <Link href={href} onClick={onSelect} className="mb-2 line-clamp-2 min-h-[34px] md:min-h-[38px] font-sans text-sm md:text-base font-medium text-[#020101] transition-colors hover:text-header-green">
-          {name}
-        </Link>
-        <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} align="left" />
+        <div>
+          <Link href={href} onClick={onSelect} className="mb-1.5 line-clamp-2 min-h-[34px] md:min-h-[38px] font-sans text-sm md:text-base font-medium text-[#020101] transition-colors hover:text-header-green">
+            {name}
+          </Link>
+          {computedDiscountLabel && (
+            <div className="mb-2 flex items-center">
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#1E602B] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-xs">
+                <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-white">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth={3.5} strokeLinecap="round" />
+                </svg>
+                <span>{computedDiscountLabel}</span>
+              </span>
+            </div>
+          )}
+          <PriceTag price={displayPrice} originalPrice={displayOriginalPrice} align="left" />
+        </div>
         <div className="mt-3">
           <button
             type="button"

@@ -1,5 +1,6 @@
 "use client";
 
+import { CHECKOUT_BLOCK_LABELS } from "../../block-names";
 import {
   createContext,
   useContext,
@@ -51,9 +52,20 @@ export function CheckoutSlot({
     // Visible rather than silent. A missing implementation means the layout is
     // being drawn somewhere that does not know how to render this block — the
     // author needs to see that, not discover it on the live page.
+    //
+    // In practice the place this shows up is the ADMIN BUILDER CANVAS, which
+    // deliberately supplies no slot map: the real card needs the cart, payment
+    // config and order mutation, none of which belong in the editor. It used
+    // to print the bare block name ("CheckoutProductCard"), which reads like a
+    // rendering bug rather than a preview — so it now says what it is and what
+    // will happen when the page is published.
+    const label = CHECKOUT_BLOCK_LABELS[name] ?? name;
     return (
       <div className="rounded-brand border border-dashed border-line bg-beige p-4 text-center font-body text-sm text-muted">
-        {name}
+        <span className="block font-semibold text-ink">{label}</span>
+        <span className="mt-1 block text-xs">
+          Preview only — the live order form appears on the published page.
+        </span>
       </div>
     );
   }

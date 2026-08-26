@@ -76,6 +76,33 @@ export type ContentBlockName = (typeof CONTENT_BLOCK_NAMES)[number];
 export type CheckoutBlockName = (typeof CHECKOUT_BLOCK_NAMES)[number];
 export type BlockName = (typeof ALL_BLOCK_NAMES)[number];
 
+/**
+ * Human names for the checkout blocks.
+ *
+ * Lives here rather than in blocks/checkout/index.tsx so the "use client"
+ * slot half can read it too — index.tsx imports the client half, so the
+ * client half importing index.tsx back would be circular. This module has no
+ * React in it, so both sides can depend on it freely.
+ */
+export const CHECKOUT_BLOCK_LABELS: Record<string, string> = {
+  CheckoutRoot: "Checkout root",
+  CheckoutOrderReview: "Order review",
+  CheckoutShippingAddress: "Shipping address",
+  CheckoutContactDetails: "Contact details",
+  CheckoutBillingAddress: "Billing address",
+  CheckoutPaymentMethod: "Payment method",
+  CheckoutOrderSummary: "Order summary",
+  CheckoutCoupon: "Coupon",
+  CheckoutGiftVoucher: "Gift voucher",
+  CheckoutCustomerNote: "Customer note",
+  CheckoutTerms: "Terms agreement",
+  CheckoutPlaceOrder: "Place order button",
+  CheckoutUpsellBar: "Upsell progress bar",
+  CheckoutFbt: "Frequently bought together",
+  CheckoutCrossSell: "Cross-sell",
+  CheckoutProductCard: "Product order card",
+};
+
 const CHECKOUT_SET: ReadonlySet<string> = new Set(CHECKOUT_BLOCK_NAMES);
 const ALL_SET: ReadonlySet<string> = new Set(ALL_BLOCK_NAMES);
 

@@ -85,8 +85,17 @@ export class PagesService {
   }
 
   async update(id: number, dto: UpdatePageDto): Promise<AdminPageDto> {
-    await this.adminGet(id);
-    if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
+    const current = await this.adminGet(id);
+    // Only validate a slug that is actually CHANGING. The uniqueness half
+    // already excluded self via excludeId, but the reserved-route half did
+    // not -- so a page whose slug was already reserved (seeded ones like
+    // "blog" and "homepage") threw 409 on every save, including a save that
+    // touched nothing but `status`. Drafting such a page was impossible, and
+    // the admin form swallowed the error, so it looked like the button did
+    // nothing at all.
+    if (dto.slug && dto.slug !== current.slug) {
+      await this.assertSlugAvailable(dto.slug, id);
+    }
 
     if (dto.translations) {
       await this.prisma.client.pageTranslation.deleteMany({

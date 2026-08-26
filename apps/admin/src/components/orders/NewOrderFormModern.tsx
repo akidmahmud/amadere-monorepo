@@ -478,8 +478,16 @@ export function NewOrderFormModern({
                 <button
                   type="button"
                   onClick={() => {
+                    // Also clears the address. Nulling only the customer left
+                    // the previous person's name, phone and street address in
+                    // the form. prefilledCustomerId is reset so re-picking the
+                    // SAME customer prefills again instead of no-opping on the
+                    // effect's already-done guard.
                     setCustomerId(null);
                     setSelectedCustomerInfo(null);
+                    setAddress(EMPTY_ADDRESS);
+                    setBillingAddress(EMPTY_ADDRESS);
+                    prefilledCustomerId.current = null;
                   }}
                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
                 >

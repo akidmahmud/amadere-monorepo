@@ -1,15 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
-import { useDeletePage, usePages } from "@/hooks/usePages";
+import { useDeletePage, usePages, useSetPagesStatus } from "@/hooks/usePages";
 
 export default function PagesPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  // Debounced separately from the input's own value, so typing stays instant
+  // while the API is only asked once the typing pauses. Bound to the query,
+  // the raw value fired a request per character.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PUBLISHED" | "DRAFT">("ALL");
-  const { data: pages, isLoading } = usePages(searchQuery);
+  const { data: pages, isLoading } = usePages(debouncedQuery);
   const deletePage = useDeletePage();
+  const setStatus = useSetPagesStatus();
+
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  function toggleSelected(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const filteredPages = useMemo(() => {
     if (!pages) return [];
@@ -19,6 +39,9 @@ export default function PagesPage() {
       return true;
     });
   }, [pages, statusFilter]);
+
+  const allVisibleSelected =
+    filteredPages.length > 0 && filteredPages.every((p) => selected.has(p.id));
 
   const stats = useMemo(() => {
     if (!pages) return { total: 0, published: 0, draft: 0 };
@@ -170,6 +193,61 @@ export default function PagesPage() {
         </Card>
       )}
 
+      {/* Bulk action bar — only once something is ticked, so it costs no space
+          in the normal case. */}
+      {filteredPages.length > 0 && (
+        <Card className="flex flex-wrap items-center gap-3 p-3">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-text">
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={(e) =>
+                setSelected(e.target.checked ? new Set(filteredPages.map((p) => p.id)) : new Set())
+              }
+              className="h-3.5 w-3.5 rounded border-border accent-brand-500"
+            />
+            {selected.size > 0 ? `${selected.size} selected` : "Select all"}
+          </label>
+
+          {selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={setStatus.isPending}
+                onClick={() => {
+                  setStatus.mutate(
+                    { ids: [...selected], status: "DRAFT" },
+                    { onSuccess: () => setSelected(new Set()) },
+                  );
+                }}
+              >
+                Move to Draft
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={setStatus.isPending}
+                onClick={() => {
+                  setStatus.mutate(
+                    { ids: [...selected], status: "PUBLISHED" },
+                    { onSuccess: () => setSelected(new Set()) },
+                  );
+                }}
+              >
+                Publish
+              </Button>
+              {setStatus.isPending && <span className="text-xs text-secondary">Updating…</span>}
+              {setStatus.data && setStatus.data.failed > 0 && (
+                <span className="text-xs font-semibold text-red-600">
+                  {setStatus.data.failed} of {setStatus.data.succeeded + setStatus.data.failed} failed
+                </span>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* Page Items Cards */}
       {!isLoading && filteredPages.length > 0 && (
         <div className="grid grid-cols-1 gap-3">
@@ -184,6 +262,13 @@ export default function PagesPage() {
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(page.id)}
+                      onChange={() => toggleSelected(page.id)}
+                      aria-label={`Select ${pageTitle}`}
+                      className="h-3.5 w-3.5 shrink-0 rounded border-border accent-brand-500"
+                    />
                     <span className="truncate text-base font-bold text-text">
                       {pageTitle}
                     </span>

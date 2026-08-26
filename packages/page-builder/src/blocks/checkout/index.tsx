@@ -1,5 +1,5 @@
 import type { Config } from "@puckeditor/core";
-import { CHECKOUT_BLOCK_NAMES } from "../../block-names";
+import { CHECKOUT_BLOCK_NAMES, CHECKOUT_BLOCK_LABELS } from "../../block-names";
 import { CheckoutSlot } from "./slots-context";
 import type { CheckoutSlotProps } from "./slots-context";
 
@@ -39,24 +39,7 @@ export {
  *  messages, or the payment provider list -- see plan §7.2 step 4. */
 const HEADING_FIELD = { heading: { type: "text" as const } };
 
-const LABELS: Record<string, string> = {
-  CheckoutRoot: "Checkout root",
-  CheckoutOrderReview: "Order review",
-  CheckoutShippingAddress: "Shipping address",
-  CheckoutContactDetails: "Contact details",
-  CheckoutBillingAddress: "Billing address",
-  CheckoutPaymentMethod: "Payment method",
-  CheckoutOrderSummary: "Order summary",
-  CheckoutCoupon: "Coupon",
-  CheckoutGiftVoucher: "Gift voucher",
-  CheckoutCustomerNote: "Customer note",
-  CheckoutTerms: "Terms agreement",
-  CheckoutPlaceOrder: "Place order button",
-  CheckoutUpsellBar: "Upsell progress bar",
-  CheckoutFbt: "Frequently bought together",
-  CheckoutCrossSell: "Cross-sell",
-  CheckoutProductCard: "Product order card",
-};
+const LABELS = CHECKOUT_BLOCK_LABELS;
 
 /** Blocks whose visible title the owner may reword. */
 const HAS_HEADING = new Set([

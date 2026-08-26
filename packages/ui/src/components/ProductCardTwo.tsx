@@ -104,34 +104,30 @@ export function ProductCardTwo({
             className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
           />
         ) : null}
-        {(flagLabel || computedDiscountLabel) && (
-          <div className="absolute right-0 top-0 z-10 flex flex-col items-end gap-1">
-            {flagLabel && (
-              <span className="shrink-0 rounded-bl-xl bg-[#E7C22D] px-2.5 py-1 text-[10px] font-bold leading-none text-slate-950 shadow-sm">
-                {flagLabel}
-              </span>
-            )}
-            {computedDiscountLabel && (
-              <span className="shrink-0 rounded-l-xl bg-[#008400] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm">
-                {computedDiscountLabel}
-              </span>
-            )}
-          </div>
+        {flagLabel && (
+          <span className="absolute right-0 top-0 z-10 shrink-0 rounded-bl-xl bg-[#E7C22D] px-2.5 py-1 text-[10px] font-bold leading-none text-slate-950 shadow-sm">
+            {flagLabel}
+          </span>
         )}
       </Link>
 
-      {/* flex-1 + justify-between (not a plain block div) — the button is a
-          separate flex child pinned to the card's bottom instead of just
-          trailing directly after the pack slot, so a card with no
-          pack/weight to show (no dropdown or label rendered above) doesn't
-          end up shorter than one that has one. Requires the root card div's
-          `h-full` above so there's actually spare height to distribute when
-          this card sits in the same grid row as a taller one. */}
       <div className="flex flex-1 flex-col justify-between pt-2.5">
         <div>
           <Link href={href} onClick={onSelect} className="block truncate font-sans text-[13px] leading-[130%] text-ink" title={name}>
             {name}
           </Link>
+
+          {computedDiscountLabel && (
+            <div className="mt-1.5 mb-1 flex items-center">
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#1E602B] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-xs">
+                <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-white">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth={3.5} strokeLinecap="round" />
+                </svg>
+                <span>{computedDiscountLabel}</span>
+              </span>
+            </div>
+          )}
 
           <p className="mt-1 flex items-baseline gap-2">
             <span className="font-sans text-lg font-semibold text-ink">{formatMoney(displayPrice)}</span>
