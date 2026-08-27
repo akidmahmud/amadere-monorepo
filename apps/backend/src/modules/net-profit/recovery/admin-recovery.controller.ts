@@ -44,10 +44,11 @@ export class AdminRecoveryController {
     @Query() { page, pageSize }: PaginationQueryDto,
     @Query('recovered', new ParseBoolPipe({ optional: true })) recovered?: boolean,
     @Query('q') q?: string,
+    @Query('stage') stage?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    const filters: RecoveryListFilters = { recovered, q, from, to };
+    const filters: RecoveryListFilters = { recovered, q, stage, from, to };
     return this.recovery.list(page ?? 1, pageSize ?? 20, filters);
   }
 
@@ -63,10 +64,11 @@ export class AdminRecoveryController {
     @Res() res: Response,
     @Query('recovered', new ParseBoolPipe({ optional: true })) recovered?: boolean,
     @Query('q') q?: string,
+    @Query('stage') stage?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ): Promise<void> {
-    const csv = await this.recovery.exportCsv({ recovered, q, from, to });
+    const csv = await this.recovery.exportCsv({ recovered, q, stage, from, to });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="incomplete-orders-${new Date().toISOString().slice(0, 10)}.csv"`);
     res.send(csv);

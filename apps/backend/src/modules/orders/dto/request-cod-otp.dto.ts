@@ -26,4 +26,12 @@ export class RequestCodOtpDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  // Recorded against the abandoned-cart row, not used for the OTP itself:
+  // when someone gets a code and never enters it, the recovery list needs a
+  // name to call, and a guest has none anywhere else.
+  @ApiPropertyOptional({ description: "Recipient name, for abandonment recovery only" })
+  @IsOptional()
+  @IsString()
+  name?: string;
 }

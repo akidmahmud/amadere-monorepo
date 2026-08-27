@@ -8,6 +8,8 @@ import {
   useDeleteIncompleteOrder,
   useImportRecoveryCsv,
   useIncompleteOrders,
+  ABANDONMENT_STAGES,
+  STAGE_LABELS,
   useRecoveryRate,
   useRecoverySettings,
   useSendRecovery,
@@ -152,11 +154,17 @@ function FunnelTab() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [recovered, setRecovered] = useState<string>("");
+  const [stage, setStage] = useState<string>("");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const filters: RecoveryFilters = {
     q: q || undefined,
     from: from || undefined,
     to: to || undefined,
     recovered: recovered === "" ? undefined : recovered === "true",
+    stage: stage || undefined,
+    page,
+    pageSize,
   };
   const { data, isLoading } = useIncompleteOrders(filters);
   const send = useSendRecovery();
@@ -205,12 +213,35 @@ function FunnelTab() {
           <span className="text-xs font-semibold text-secondary">Status</span>
           <select
             value={recovered}
-            onChange={(e) => setRecovered(e.target.value)}
+            onChange={(e) => {
+              setRecovered(e.target.value);
+              setPage(1);
+            }}
             className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
           >
             <option value="">All</option>
             <option value="false">Not recovered</option>
             <option value="true">Recovered</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Abandoned at</span>
+          <select
+            value={stage}
+            onChange={(e) => {
+              // Back to page 1: staying on page 4 of a filter that now has
+              // one page shows an empty table that looks like no results.
+              setStage(e.target.value);
+              setPage(1);
+            }}
+            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          >
+            <option value="">All stages</option>
+            {ABANDONMENT_STAGES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
           </select>
         </label>
       </Card>
@@ -270,7 +301,10 @@ function FunnelTab() {
               <tr key={row.id}>
                 <td>
                   <div className="flex flex-col gap-0.5">
-                    <span className="num text-sm font-semibold text-text">{row.phone ?? "no phone (guest)"}</span>
+                    {/* The name is the point of the row now: a list only shows
+                        shoppers who left at least one way to reach them. */}
+                    {row.name && <span className="text-sm font-semibold text-text">{row.name}</span>}
+                    {row.phone && <span className="num text-sm text-text">{row.phone}</span>}
                     {row.email && <span className="text-xs text-secondary">{row.email}</span>}
                   </div>
                 </td>
@@ -294,7 +328,17 @@ function FunnelTab() {
                   )}
                 </td>
                 <td>
-                  <span className="rounded-pill bg-surface-2 px-2.5 py-1 text-xs font-semibold text-secondary">{row.stage}</span>
+                  <span
+                    className={`rounded-pill px-2.5 py-1 text-xs font-semibold ${
+                      row.stage === "otp"
+                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                        : row.stage === "checkout"
+                          ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
+                          : "bg-surface-2 text-secondary"
+                    }`}
+                  >
+                    {STAGE_LABELS[row.stage] ?? row.stage}
+                  </span>
                 </td>
                 <td className="font-semibold text-text">৳{Number(row.subtotal).toLocaleString()}</td>
                 <td className="text-muted">{new Date(row.lastSeenAt).toLocaleString()}</td>
@@ -327,6 +371,39 @@ function FunnelTab() {
             ))}
           </tbody>
         </Table>
+
+        {/* Pagination. The endpoint has always been paginated (page/pageSize),
+            but nothing sent them, so the table silently showed the first 20
+            rows and there was no way to reach row 21. */}
+        {data && data.total > pageSize && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+            <span className="text-xs text-secondary">
+              {(data.page - 1) * data.pageSize + 1}–
+              {Math.min(data.page * data.pageSize, data.total)} of {data.total}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-xs font-semibold text-text">
+                Page {data.page} of {Math.max(1, Math.ceil(data.total / data.pageSize))}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={page >= Math.ceil(data.total / data.pageSize)}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {orderRow && <CreateOrderModal row={orderRow} onClose={() => setOrderRow(null)} />}

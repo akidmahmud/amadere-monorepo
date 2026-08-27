@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 
 export interface CartSnapshotItem {
@@ -10,9 +10,25 @@ export interface CartSnapshotItem {
   imageUrl: string | null;
 }
 
+/** Stages a shopper can be abandoned at, most-advanced last. */
+export const ABANDONMENT_STAGES = [
+  { value: "cart", label: "Cart abandonment" },
+  { value: "checkout", label: "Checkout abandonment" },
+  { value: "otp", label: "OTP abandonment" },
+] as const;
+
+export const STAGE_LABELS: Record<string, string> = {
+  cart: "Cart abandonment",
+  checkout: "Checkout abandonment",
+  otp: "OTP abandonment",
+  payment: "Payment abandonment",
+};
+
 export interface IncompleteOrder {
   id: number;
   customerId: number | null;
+  /** Typed at checkout — for a guest this is the only name there is. */
+  name: string | null;
   phone: string | null;
   email: string | null;
   cart: CartSnapshotItem[];
@@ -42,9 +58,13 @@ export interface RecoverySettings {
 
 export interface RecoveryFilters {
   recovered?: boolean;
+  /** "cart" | "checkout" | "otp" | "payment" */
+  stage?: string;
   q?: string;
   from?: string;
   to?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface CreateOrderInput {
@@ -83,6 +103,9 @@ export function useIncompleteOrders(filters: RecoveryFilters = {}) {
   return useQuery({
     queryKey: [...LIST_KEY, filters],
     queryFn: () => proxyFetch<Paginated<IncompleteOrder>>(`/admin/net-profit/recovery${toQueryString(filters)}`),
+    // Paging changes the key, and without this the table empties to a spinner
+    // on every page change instead of swapping rows underneath.
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -33,12 +33,50 @@ export function useRequestCodOtp() {
     // `channel`/`email` only choose how it's delivered.
     // `channel` is always supplied by CodOtpPopup (it defaults to PHONE in
     // component state), and the generated request type has it required.
-    mutationFn: async (args: { phone: string; channel: "PHONE" | "EMAIL"; email?: string }) => {
+    mutationFn: async (args: {
+      phone: string;
+      channel: "PHONE" | "EMAIL";
+      email?: string;
+      // Recorded against the abandoned-cart row only — see the `name` field
+      // on RequestCodOtpDto. A guest who gets a code and never enters it is
+      // otherwise just a phone number in a list.
+      name?: string;
+    }) => {
       await proxyFetch<unknown>("/checkout/cod-otp/request", {
         method: "POST",
         headers: cartHeaders(),
-        body: JSON.stringify({ phone: args.phone, channel: args.channel, email: args.email }),
+        body: JSON.stringify({
+          phone: args.phone,
+          channel: args.channel,
+          email: args.email,
+          name: args.name,
+        }),
       });
+    },
+  });
+}
+
+/**
+ * Tells the backend "this shopper has identified themselves but has not
+ * ordered", so an abandoned cart has someone to call.
+ *
+ * Fired from the checkout form as details are filled in, NOT on submit — the
+ * whole point is the shopper who never submits. Failures are swallowed: this
+ * is bookkeeping, and it must never surface an error over a form someone is
+ * still typing into.
+ */
+export function useRecordCheckoutAbandonment() {
+  return useMutation({
+    mutationFn: async (args: { name?: string; phone?: string; email?: string }) => {
+      try {
+        await proxyFetch<unknown>("/checkout/abandonment", {
+          method: "POST",
+          headers: cartHeaders(),
+          body: JSON.stringify(args),
+        });
+      } catch {
+        // Ignored on purpose — see above.
+      }
     },
   });
 }

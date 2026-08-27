@@ -22,6 +22,8 @@ import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
+import { CheckoutAbandonmentDto } from './dto/checkout-abandonment.dto';
+import { RecoveryService } from '../net-profit/recovery/recovery.service';
 import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { SettingsService } from '../settings/settings.service';
@@ -72,9 +74,14 @@ export class CheckoutService {
     private readonly downloads: DownloadsService,
     private readonly orders: OrdersService,
     private readonly checkoutAccount: CheckoutAccountService,
+    private readonly recovery: RecoveryService,
   ) {}
 
-  async requestCodOtp(dto: RequestCodOtpDto, ip?: string): Promise<void> {
+  async requestCodOtp(
+    identity: CartIdentity,
+    dto: RequestCodOtpDto,
+    ip?: string,
+  ): Promise<void> {
     const otpSettings = await this.otpSecurity.getSettings();
     if (!otpSettings.codOtpEnabled) {
       throw new BadRequestException('COD OTP verification is currently disabled');
@@ -142,9 +149,39 @@ export class CheckoutService {
           'Could not send the code to that email address. Try SMS instead.',
         );
       }
+      await this.markOtpSent(identity, dto);
       return;
     }
     await this.sms.sendTemplate('otp', dto.phone, 'EN', { code });
+    await this.markOtpSent(identity, dto);
+  }
+
+  /**
+   * The shopper pressed Place Order and a code actually reached them.
+   *
+   * Recorded at both delivery paths rather than next to the Otp row, because
+   * the email path throws when delivery fails — and a code that never arrived
+   * is not an OTP abandonment, it is a delivery failure. Someone who never
+   * got the code did not choose to walk away.
+   *
+   * If they go on to verify, the order-created listener flips the same row to
+   * recovered, so only the genuine drop-offs remain in the list.
+   */
+  private async markOtpSent(identity: CartIdentity, dto: RequestCodOtpDto): Promise<void> {
+    await this.recovery.captureCheckoutStage(identity, {
+      stage: 'otp',
+      name: dto.name,
+      phone: dto.phone,
+      email: dto.email,
+    });
+  }
+
+  /** Checkout-form beacon — see CheckoutAbandonmentDto. */
+  async recordAbandonment(
+    identity: CartIdentity,
+    dto: CheckoutAbandonmentDto,
+  ): Promise<void> {
+    await this.recovery.captureCheckoutStage(identity, { stage: 'checkout', ...dto });
   }
 
   async checkout(

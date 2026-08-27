@@ -10,6 +10,7 @@ import { SmsService } from '../sms/sms.service';
 import { CartCampaignsService } from '../cart-campaigns/cart-campaigns.service';
 import { MergeTagsService } from '../merge-tags/merge-tags.service';
 import { CART_UPDATED_EVENT } from '../../cart/cart.events';
+import type { CartIdentity } from '../../cart/cart.service';
 import type { CartUpdatedEvent } from '../../cart/cart.events';
 import { ORDER_CREATED_EVENT } from '../../orders/orders.events';
 import type { OrderCreatedEvent } from '../../orders/orders.events';
@@ -38,6 +39,8 @@ const RECOVERY_SETTINGS_DEFAULTS: RecoverySettings = {
 
 export interface RecoveryListFilters {
   recovered?: boolean;
+  /** "cart" | "checkout" | "otp" | "payment" */
+  stage?: string;
   q?: string;
   from?: string;
   to?: string;
@@ -175,6 +178,114 @@ export class RecoveryService {
     await this.campaigns.enqueueForIncomplete(created.id);
   }
 
+  /**
+   * Record how far a shopper got in checkout, with whatever contact details
+   * they typed.
+   *
+   * The `cart.updated` listener above only ever learns a phone or email when
+   * the shopper is SIGNED IN — a guest's row is created with all three
+   * contact fields null, which makes it unrecoverable and therefore noise.
+   * This is the other half: the checkout form is where a guest actually
+   * identifies themselves, so the details are folded onto the same row (keyed
+   * by cart) as they are entered.
+   *
+   * Upserts rather than inserts, so a shopper who reaches checkout and then
+   * triggers an OTP produces ONE row that advances `cart` -> `checkout` ->
+   * `otp`, not three rows to chase separately.
+   */
+  async captureCheckoutStage(
+    identity: CartIdentity,
+    input: { stage: 'checkout' | 'otp'; name?: string; phone?: string; email?: string },
+  ): Promise<void> {
+    try {
+      const cart = await this.prisma.client.cart.findFirst({
+        where: identity.customerId
+          ? { customerId: identity.customerId }
+          : identity.guestToken
+            ? { guestToken: identity.guestToken }
+            : { id: -1 },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  translations: { where: { locale: 'EN' }, take: 1 },
+                  media: { where: { isPrimary: true }, include: { media: true }, take: 1 },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+      if (!cart || cart.items.length === 0) return;
+
+      const subtotal = cart.items.reduce(
+        (sum, i) => sum.plus(i.unitPriceSnapshot.times(i.quantity)),
+        new Prisma.Decimal(0),
+      );
+      const snapshot: CartSnapshotItem[] = cart.items.map((i) => ({
+        productId: i.productId,
+        name: i.product.translations[0]?.name ?? i.product.slug,
+        slug: i.product.slug,
+        quantity: i.quantity,
+        unitPrice: i.unitPriceSnapshot.toString(),
+        imageUrl: i.product.media[0]?.media.url ?? null,
+      }));
+
+      // Never overwrite a known value with an empty one: the OTP request
+      // carries a phone but no name, and it must not wipe the name the
+      // checkout-stage capture already stored.
+      const contact = {
+        ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+        ...(input.phone?.trim() ? { phone: input.phone.trim() } : {}),
+        ...(input.email?.trim() ? { email: input.email.trim() } : {}),
+      };
+
+      const existing = await this.prisma.client.incompleteOrder.findUnique({
+        where: { cartId: cart.id },
+      });
+
+      if (existing) {
+        // Stage only ever moves FORWARD. A late cart.updated event (the
+        // shopper edits a quantity on the OTP screen) must not demote an
+        // `otp` row back to `cart`.
+        const rank: Record<string, number> = { cart: 0, checkout: 1, otp: 2, payment: 3 };
+        const stage =
+          (rank[input.stage] ?? 0) > (rank[existing.stage] ?? 0) ? input.stage : existing.stage;
+        await this.prisma.client.incompleteOrder.update({
+          where: { cartId: cart.id },
+          data: {
+            ...contact,
+            stage,
+            cart: snapshot as unknown as Prisma.InputJsonValue,
+            subtotal,
+            lastSeenAt: new Date(),
+          },
+        });
+        return;
+      }
+
+      const created = await this.prisma.client.incompleteOrder.create({
+        data: {
+          cartId: cart.id,
+          customerId: cart.customerId,
+          ...contact,
+          cart: snapshot as unknown as Prisma.InputJsonValue,
+          subtotal,
+          stage: input.stage,
+        },
+      });
+      await this.campaigns.enqueueForIncomplete(created.id);
+    } catch (err) {
+      // Never let recovery bookkeeping break a checkout. A shopper pressing
+      // Place Order must not see an error because an analytics row failed.
+      this.logger.error(
+        `captureCheckoutStage(${input.stage}) failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   // Best-effort match: a completed order's shipping phone or the logged-in
   // customerId against an outstanding IncompleteOrder — exact for
   // logged-in customers, phone-based for guests (no other link exists
@@ -223,8 +334,27 @@ export class RecoveryService {
   // reference) — so a name search needs its own lookup rather than a
   // relation filter, folded into the same OR as the phone/email match.
   private async buildWhere(filters: RecoveryListFilters): Promise<Prisma.IncompleteOrderWhereInput> {
-    const where: Prisma.IncompleteOrderWhereInput = {};
+    const where: Prisma.IncompleteOrderWhereInput = {
+      // An abandoned cart with no name, phone or email cannot be recovered by
+      // anyone -- there is nobody to contact. Those rows are still CAPTURED
+      // (a guest may identify themselves later at checkout, and the details
+      // land on this same row), they are just not listed as work to do.
+      //
+      // In AND, not as a bare OR: the `q` search below assigns `where.OR`
+      // outright, which would silently drop this requirement exactly when a
+      // search is active.
+      AND: [
+        {
+          OR: [
+            { name: { not: null } },
+            { phone: { not: null } },
+            { email: { not: null } },
+          ],
+        },
+      ],
+    };
     if (filters.recovered !== undefined) where.recovered = filters.recovered;
+    if (filters.stage) where.stage = filters.stage;
     if (filters.from || filters.to) {
       where.lastSeenAt = {
         ...(filters.from ? { gte: new Date(filters.from) } : {}),
@@ -240,6 +370,9 @@ export class RecoveryService {
       where.OR = [
         ...phoneLookupCandidates(q).map((c) => ({ phone: { contains: c, mode: 'insensitive' as const } })),
         { email: { contains: q, mode: 'insensitive' as const } },
+        // The name typed at checkout, which for a guest is the only name
+        // there is -- the customer-table lookup above cannot find them.
+        { name: { contains: q, mode: 'insensitive' as const } },
         ...(matchingCustomers.length > 0 ? [{ customerId: { in: matchingCustomers.map((c) => c.id) } }] : []),
       ];
     }
@@ -263,11 +396,11 @@ export class RecoveryService {
       where: await this.buildWhere(filters),
       orderBy: { lastSeenAt: 'desc' },
     });
-    const header = ['id', 'phone', 'email', 'subtotal', 'stage', 'recovered', 'recoveryAttempts', 'lastSeenAt', 'createdAt'];
+    const header = ['id', 'name', 'phone', 'email', 'subtotal', 'stage', 'recovered', 'recoveryAttempts', 'lastSeenAt', 'createdAt'];
     const lines = [header.join(',')];
     for (const r of rows) {
       lines.push(
-        [r.id, r.phone ?? '', r.email ?? '', r.subtotal.toString(), r.stage, r.recovered, r.recoveryAttempts, r.lastSeenAt.toISOString(), r.createdAt.toISOString()]
+        [r.id, r.name ?? '', r.phone ?? '', r.email ?? '', r.subtotal.toString(), r.stage, r.recovered, r.recoveryAttempts, r.lastSeenAt.toISOString(), r.createdAt.toISOString()]
           .map(csvField)
           .join(','),
       );

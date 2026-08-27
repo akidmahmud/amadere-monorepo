@@ -35,7 +35,16 @@ export function CodOtpPopup({
   // BD customer. Only offered at all when an email was actually entered.
   const [channel, setChannel] = useState<"PHONE" | "EMAIL">("PHONE");
   const sendTo = channel === "EMAIL" && emailAvailable ? shippingEmail : shippingPhone;
-  const sendArgs = { phone: shippingPhone, channel, email: emailAvailable ? shippingEmail : undefined };
+  // Read straight off the form rather than threaded through props: it is not
+  // used for the OTP at all, only recorded against the abandoned-cart row so
+  // a shopper who gets a code and never enters it has a name to call.
+  const recipientName = watch("shippingAddress.recipientName")?.trim() || undefined;
+  const sendArgs = {
+    phone: shippingPhone,
+    channel,
+    email: emailAvailable ? shippingEmail : undefined,
+    name: recipientName,
+  };
   const autoSentRef = useRef(false);
   const resendCooldown = useResendCooldown();
 

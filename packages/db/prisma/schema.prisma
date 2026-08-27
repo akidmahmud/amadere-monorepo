@@ -2683,11 +2683,22 @@ model IncompleteOrder {
   id               Int      @id @default(autoincrement())
   cartId           Int?     @unique @map("cart_id") // lets the cart.updated listener upsert idempotently per cart
   customerId       Int?     @map("customer_id")
+  /// Typed into the checkout form, so a guest who never signs in is still
+  /// reachable by name. Null for a logged-in customer whose name is on their
+  /// Customer row instead.
+  name             String?
   phone            String?
   email            String?
   cart             Json // snapshot of items
   subtotal         Decimal  @db.Decimal(10, 2)
-  stage            String // "cart" | "checkout" | "payment"
+  /// "cart" | "checkout" | "otp" | "payment" — how far the shopper got.
+  ///   cart     they filled a cart and left
+  ///   checkout they reached checkout and entered contact details
+  ///   otp      they pressed Place Order, the code was SENT, and they never
+  ///            entered it -- the closest anyone gets to buying without buying
+  /// Kept as a string, not an enum: it was already one, and the recovery
+  /// importer accepts stages from external systems that no enum could cover.
+  stage            String
   recovered        Boolean  @default(false)
   recoveredOrderId Int?     @map("recovered_order_id") // soft reference, no relation (order created independently)
   recoveryAttempts Int      @default(0) @map("recovery_attempts")
@@ -2697,6 +2708,8 @@ model IncompleteOrder {
   campaignQueue CartCampaignQueue[]
 
   @@index([recovered, lastSeenAt])
+  // The admin list filters on stage and sorts by lastSeenAt.
+  @@index([stage, lastSeenAt])
   @@map("incomplete_orders")
 }
 

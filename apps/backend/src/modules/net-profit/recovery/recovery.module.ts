@@ -11,5 +11,7 @@ import { RecoveryService } from './recovery.service';
   imports: [NetProfitSettingsModule, SmsModule, CartCampaignsModule, MergeTagsModule, DigitalProductsModule],
   controllers: [AdminRecoveryController],
   providers: [RecoveryService],
+  // CheckoutService records the checkout/OTP abandonment stages through it.
+  exports: [RecoveryService],
 })
 export class RecoveryModule {}

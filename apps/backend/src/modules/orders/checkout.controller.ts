@@ -7,6 +7,7 @@ import { CheckoutService } from './checkout.service';
 import type { CheckoutResultDto } from './checkout.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
+import { CheckoutAbandonmentDto } from './dto/checkout-abandonment.dto';
 import { OrderDto } from './orders.mapper';
 
 @ApiTags('checkout')
@@ -18,8 +19,27 @@ export class CheckoutController {
   constructor(private readonly checkout: CheckoutService) {}
 
   @Post('cod-otp/request')
-  requestCodOtp(@Body() dto: RequestCodOtpDto, @Ip() ip: string): Promise<void> {
-    return this.checkout.requestCodOtp(dto, ip);
+  requestCodOtp(
+    @Req() req: RequestWithCartIdentity,
+    @Body() dto: RequestCodOtpDto,
+    @Ip() ip: string,
+  ): Promise<void> {
+    return this.checkout.requestCodOtp(req.cartIdentity, dto, ip);
+  }
+
+  /**
+   * Fired by the checkout form once the shopper has entered contact details.
+   *
+   * Deliberately its own endpoint rather than a flag on some other call: it
+   * fires while the shopper is still typing, long before there is anything to
+   * validate or charge, and it must never be able to fail a real request.
+   */
+  @Post('abandonment')
+  recordAbandonment(
+    @Req() req: RequestWithCartIdentity,
+    @Body() dto: CheckoutAbandonmentDto,
+  ): Promise<void> {
+    return this.checkout.recordAbandonment(req.cartIdentity, dto);
   }
 
   @Post()

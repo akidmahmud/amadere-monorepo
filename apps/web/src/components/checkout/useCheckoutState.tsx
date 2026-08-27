@@ -6,7 +6,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, FormProvider, useForm, type FieldErrors } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import {
   Button,
   CartLineItem,
@@ -33,7 +33,7 @@ import { getUtmParamsForCheckout } from "@/lib/utm";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { makeCheckoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-schema";
 import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
-import { useGiftVoucherCheck, usePlaceOrder } from "@/hooks/useCheckout";
+import { useGiftVoucherCheck, usePlaceOrder, useRecordCheckoutAbandonment } from "@/hooks/useCheckout";
 import type { CheckoutResult } from "@/hooks/useCheckout";
 import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
@@ -282,6 +282,41 @@ export function useCheckoutState() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart]);
+
+  /**
+   * Abandonment beacon — records who this shopper is while they are still
+   * filling the form, so an abandoned cart has someone to contact.
+   *
+   * Debounced and de-duplicated on the values themselves: this fires from a
+   * form the shopper is actively typing into, and one row per keystroke would
+   * be both useless and expensive. It sends only once a phone or an email is
+   * actually present, because a name alone is not something anyone can be
+   * reached on.
+   *
+   * Not tied to submit, on purpose — the shopper who submits is the one case
+   * this is NOT about.
+   */
+  const recordAbandonment = useRecordCheckoutAbandonment();
+  const lastBeacon = useRef("");
+  const watchedName = useWatch({ control: form.control, name: "shippingAddress.recipientName" });
+  const watchedPhone = useWatch({ control: form.control, name: "shippingAddress.phone" });
+  const watchedEmail = useWatch({ control: form.control, name: "shippingAddress.email" });
+  useEffect(() => {
+    const name = watchedName?.trim() || undefined;
+    const phone = watchedPhone?.trim() || undefined;
+    const email = watchedEmail?.trim() || undefined;
+    if (!phone && !email) return;
+    const key = `${name ?? ""}|${phone ?? ""}|${email ?? ""}`;
+    if (key === lastBeacon.current) return;
+    const timer = setTimeout(() => {
+      lastBeacon.current = key;
+      recordAbandonment.mutate({ name, phone, email });
+    }, 1500);
+    return () => clearTimeout(timer);
+    // recordAbandonment is a stable mutation object; including it would
+    // re-arm the timer on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedName, watchedPhone, watchedEmail]);
 
   // add_payment_info — this checkout is a single page (no distinct
   // "shipping"/"payment" steps), so there's no page transition to hook;
