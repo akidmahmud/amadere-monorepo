@@ -90,6 +90,10 @@ export class AdminProductDto {
   productType!: ProductType;
   status!: ContentStatus;
   isFeatured!: boolean;
+  /** Catalog feed (Meta / Google Merchant / TikTok) — see CreateProductDto. */
+  googleProductCategory!: string | null;
+  customLabels!: string[];
+  excludeFromFeed!: boolean;
   flagLabel!: ProductFlagLabel | null;
   videoUrl!: string | null;
   hasVariants!: boolean;

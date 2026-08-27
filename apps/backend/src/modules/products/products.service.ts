@@ -9,6 +9,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ContentStatus, Locale, Prisma, SeoEntityType } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { CatalogFeedService } from '../catalog-feed/catalog-feed.service';
 import { RevalidationService } from '../../common/revalidation/revalidation.service';
 import {
   paginationArgs,
@@ -108,6 +109,7 @@ export class ProductsService {
     private readonly reviews: ReviewsService,
     private readonly tokens: TokenService,
     private readonly revalidation: RevalidationService,
+    private readonly catalogFeed: CatalogFeedService,
   ) {}
 
   // Fire-and-forget so admin saves stay fast even if the storefront is
@@ -115,6 +117,16 @@ export class ProductsService {
   // catches up regardless). Revalidates both locales' PDP plus the listing
   // page every write can affect (new/changed price, stock, status, ...).
   private revalidateProduct(slugs: (string | null | undefined)[]): void {
+    // The catalog feeds are derived from exactly this data, so any write that
+    // is worth revalidating a PDP for is worth rebuilding them: an advert
+    // quoting a price the product page no longer shows is worse than a stale
+    // page. Dropping the cache is O(1) -- the rebuild happens on the next
+    // fetch by Meta/Google/TikTok, not here.
+    //
+    // Stock movements from orders do NOT pass through here; the 30-minute
+    // scheduled rebuild is what catches those.
+    this.catalogFeed.invalidate();
+
     const paths = new Set(["/products", "/en/products", "/bn/products"]);
     for (const slug of slugs) {
       if (!slug) continue;
@@ -493,6 +505,11 @@ export class ProductsService {
         status: dto.status,
         isFeatured: dto.isFeatured,
         flagLabel: dto.flagLabel,
+        googleProductCategory: dto.googleProductCategory,
+        // `?? undefined` so an omitted array means "leave unchanged" rather
+        // than wiping the labels on every unrelated save.
+        customLabels: dto.customLabels ?? undefined,
+        excludeFromFeed: dto.excludeFromFeed,
         videoUrl: dto.videoUrl,
         hasVariants: dto.hasVariants,
         // A digital product has no physical stock. reserveStock/
@@ -634,6 +651,11 @@ export class ProductsService {
         status: dto.status,
         isFeatured: dto.isFeatured,
         flagLabel: dto.flagLabel,
+        googleProductCategory: dto.googleProductCategory,
+        // `?? undefined` so an omitted array means "leave unchanged" rather
+        // than wiping the labels on every unrelated save.
+        customLabels: dto.customLabels ?? undefined,
+        excludeFromFeed: dto.excludeFromFeed,
         videoUrl: dto.videoUrl,
         // Same reasoning as create() above: reserveStock/releaseStock are
         // gated solely on trackInventory, so a digital product must never

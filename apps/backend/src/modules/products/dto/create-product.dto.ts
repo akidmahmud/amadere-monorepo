@@ -91,6 +91,26 @@ export class CreateProductDto {
   @IsEnum(ProductFlagLabel)
   flagLabel?: ProductFlagLabel | null;
 
+  // --- Catalog feed ---------------------------------------------------
+  // Declared here because ValidationPipe runs with `whitelist: true`: an
+  // undeclared property is silently stripped, so the PATCH returns 200 and
+  // saves nothing at all.
+  @ApiPropertyOptional({ description: "Google product taxonomy id, e.g. '2474'", nullable: true })
+  @IsOptional()
+  @IsString()
+  googleProductCategory?: string | null;
+
+  @ApiPropertyOptional({ type: [String], description: 'custom_label_0..4, in order' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  customLabels?: string[];
+
+  @ApiPropertyOptional({ default: false, description: 'Keep this product out of every catalog feed' })
+  @IsOptional()
+  @IsBoolean()
+  excludeFromFeed?: boolean;
+
   // Nullable so clearing the field in the admin form actually wipes it —
   // an omitted/undefined value means "leave unchanged" on update, same
   // convention as costPriceUnit.

@@ -17,6 +17,9 @@ export interface ProductFormSnapshot {
   productType: ProductType;
   status: PublishStatus;
   isFeatured: boolean;
+  excludeFromFeed: boolean;
+  googleProductCategory: string;
+  customLabels: string;
   flagLabel: ProductFlagLabel | null;
   videoUrl: string;
   hasVariants: boolean;
@@ -89,6 +92,16 @@ export function useProductFormState(initial?: AdminProduct) {
   const [productType, setProductType] = useState<ProductType>(initial?.productType ?? "PHYSICAL");
   const [status, setStatus] = useState<PublishStatus>(initial?.status ?? "DRAFT");
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
+  // Catalog feed (Meta / Google Merchant / TikTok).
+  const [excludeFromFeed, setExcludeFromFeed] = useState(initial?.excludeFromFeed ?? false);
+  const [googleProductCategory, setGoogleProductCategory] = useState(initial?.googleProductCategory ?? "");
+  // Held as one comma-separated string: custom_label_0..4 are positional and
+  // an admin edits them as a list, not as five separate inputs.
+  // Joined on the way in, split on the way out: the API stores an array,
+  // the form edits one comma-separated line.
+  const [customLabels, setCustomLabels] = useState<string>(
+    Array.isArray(initial?.customLabels) ? initial.customLabels.join(", ") : "",
+  );
   const [flagLabel, setFlagLabel] = useState<ProductFlagLabel | null>(initial?.flagLabel ?? null);
   const [videoUrl, setVideoUrl] = useState(initial?.videoUrl ?? "");
   const [hasVariants, setHasVariants] = useState(initial?.hasVariants ?? false);
@@ -141,6 +154,9 @@ export function useProductFormState(initial?: AdminProduct) {
       productType,
       status,
       isFeatured,
+      excludeFromFeed,
+      googleProductCategory: googleProductCategory.trim() || null,
+      customLabels: customLabels.split(",").map((v: string) => v.trim()).filter(Boolean).slice(0, 5),
       flagLabel,
       // Explicit null (not undefined) so removing the link clears it —
       // see the costPriceUnit note below.
@@ -222,6 +238,9 @@ export function useProductFormState(initial?: AdminProduct) {
     setProductType(product.productType);
     setStatus(product.status);
     setIsFeatured(product.isFeatured);
+    setExcludeFromFeed(product.excludeFromFeed ?? false);
+    setGoogleProductCategory(product.googleProductCategory ?? "");
+    setCustomLabels((product.customLabels ?? []).join(", "));
     setFlagLabel(product.flagLabel);
     setVideoUrl(product.videoUrl ?? "");
     setHasVariants(product.hasVariants);
@@ -293,7 +312,7 @@ export function useProductFormState(initial?: AdminProduct) {
 
   function getSnapshot(): ProductFormSnapshot {
     return {
-      slug, sku, brandId, authorId, isbn, productType, status, isFeatured, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
+      slug, sku, brandId, authorId, isbn, productType, status, isFeatured, excludeFromFeed, googleProductCategory, customLabels, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
       stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, costPriceUnit, shippableWeight,
       minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
       bookEdition, bookLanguage, bookPublisher, bookCountry, faqs,
@@ -310,6 +329,9 @@ export function useProductFormState(initial?: AdminProduct) {
     setProductType(s.productType);
     setStatus(s.status);
     setIsFeatured(s.isFeatured);
+    setExcludeFromFeed(s.excludeFromFeed);
+    setGoogleProductCategory(s.googleProductCategory);
+    setCustomLabels(s.customLabels);
     setFlagLabel(s.flagLabel);
     setVideoUrl(s.videoUrl);
     setHasVariants(s.hasVariants);
@@ -352,6 +374,9 @@ export function useProductFormState(initial?: AdminProduct) {
     productType, setProductType,
     status, setStatus,
     isFeatured, setIsFeatured,
+    excludeFromFeed, setExcludeFromFeed,
+    googleProductCategory, setGoogleProductCategory,
+    customLabels, setCustomLabels,
     flagLabel, setFlagLabel,
     videoUrl, setVideoUrl,
     hasVariants, setHasVariants,

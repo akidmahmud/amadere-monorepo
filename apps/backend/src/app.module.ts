@@ -14,6 +14,7 @@ import { AuditLogModule } from './common/audit-log/audit-log.module';
 import { CredentialsModule } from './common/credentials/credentials.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CatalogFeedModule } from './modules/catalog-feed/catalog-feed.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { AdminUsersModule } from './modules/admin-users/admin-users.module';
 import { MediaModule } from './modules/media/media.module';
@@ -122,6 +123,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     CredentialsModule,
     HealthModule,
     AuthModule,
+    CatalogFeedModule,
     RbacModule,
     AdminUsersModule,
     MediaModule,

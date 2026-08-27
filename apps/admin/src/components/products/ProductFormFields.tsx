@@ -327,6 +327,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               <option value="FEATURED">Featured</option>
             </select>
           </label>
+
+
         </div>
       )}
 
@@ -531,14 +533,62 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
       )}
 
       {tab === "SEO" && (
-        <ProductSeoTab
-          productId={productId}
-          slug={form.slug}
-          name={form.name}
-          description={form.description}
-          primaryImageAlt={form.images[0]?.alt ?? ""}
-          primaryImageUrl={form.images[0]?.url}
-        />
+        <>
+          <ProductSeoTab
+            productId={productId}
+            slug={form.slug}
+            name={form.name}
+            description={form.description}
+            primaryImageAlt={form.images[0]?.alt ?? ""}
+            primaryImageUrl={form.images[0]?.url}
+          />
+          {/* Feed settings live beside SEO, not with Featured/Badge on the
+              Media tab: both are about how this product is found off-site. */}
+          <div className="mt-4 rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
+            <h4 className="mb-3 text-xs font-extrabold uppercase tracking-wide text-emerald-950/70">
+              Catalog feed (Facebook / Google / TikTok ads)
+            </h4>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-emerald-950">Google product category</span>
+              <input
+                value={form.googleProductCategory}
+                onChange={(e) => form.setGoogleProductCategory(e.target.value)}
+                placeholder="e.g. 2474"
+                className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30 placeholder:text-emerald-900/40"
+              />
+              <span className="text-[11px] text-emerald-900/60">
+                Google&apos;s numeric taxonomy id. Optional — improves how Google classifies the product.
+              </span>
+            </label>
+
+            <label className="mt-4 flex flex-col gap-1.5">
+              <span className="text-xs font-bold text-emerald-950">Custom labels</span>
+              <input
+                value={form.customLabels}
+                onChange={(e) => form.setCustomLabels(e.target.value)}
+                placeholder="fiber-mix, high-margin"
+                className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30 placeholder:text-emerald-900/40"
+              />
+              <span className="text-[11px] text-emerald-900/60">
+                Comma-separated, up to 5. Used only to segment ad campaigns — never shown to customers.
+              </span>
+            </label>
+
+            <label className="mt-4 flex cursor-pointer select-none items-center gap-2.5 text-sm font-bold text-emerald-950">
+              <input
+                type="checkbox"
+                checked={form.excludeFromFeed}
+                onChange={(e) => form.setExcludeFromFeed(e.target.checked)}
+                className="h-4 w-4 rounded accent-emerald-700"
+              />
+              Keep out of ad catalogs
+            </label>
+            <p className="mt-1 text-[11px] text-emerald-900/60">
+              Still sold normally on the site — just never advertised on Facebook, Google or TikTok.
+            </p>
+          </div>
+        </>
       )}
 
       {tab === "Analytics" && (productId ? <ProductAnalyticsTab productId={productId} /> : <SaveFirstNotice />)}

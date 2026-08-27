@@ -811,6 +811,23 @@ model Product {
   status      ContentStatus     @default(DRAFT)
   isFeatured  Boolean           @default(false) @map("is_featured")
   flagLabel   ProductFlagLabel? @map("flag_label")
+
+  // --- Catalog feed (Meta / Google Merchant / TikTok) -----------------
+  // Everything else these feeds need already exists on this model or on the
+  // default variant; only these two have no home. Both are optional: a feed
+  // row is still valid without them, Google just categorises it less well.
+  /// Google's numeric product taxonomy id, e.g. "2474". Google-specific but
+  /// Meta and TikTok accept the same value under the same name.
+  googleProductCategory String? @map("google_product_category")
+  /// custom_label_0..4 — free-text buckets used ONLY for ad-campaign
+  /// segmentation inside the ad platforms (e.g. "high-margin", "clearance").
+  /// Stored as an array rather than five columns: they are positional by
+  /// definition and nothing ever queries an individual one.
+  customLabels String[] @default([]) @map("custom_labels")
+  /// Excluded from every catalog feed while still purchasable on the site --
+  /// for products that must not be advertised (restricted categories, a
+  /// wholesale-only line, anything a platform has already rejected).
+  excludeFromFeed Boolean @default(false) @map("exclude_from_feed")
   sortOrder   Int               @default(0) @map("sort_order")
   viewCount   Int           @default(0) @map("view_count")
   videoUrl    String?       @map("video_url") // embedded video reference (product detail gallery)

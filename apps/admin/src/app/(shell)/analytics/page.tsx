@@ -22,6 +22,7 @@ import {
   useUtmSettings,
 } from "@/hooks/useAnalyticsSettings";
 import { useSitemapSettings } from "@/hooks/useSitemap";
+import { CatalogFeedTab } from "@/components/analytics/CatalogFeedTab";
 
 const analyticsIcon = <Icon name="monitoring" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -427,12 +428,14 @@ export default function AnalyticsPage() {
         options={[
           { value: "overview", label: "Overview" },
           { value: "settings", label: "Settings" },
+          { value: "feed", label: "Catalog Feed" },
         ]}
         value={tab}
         onChange={setTab}
       />
       {tab === "overview" && <OverviewTab />}
       {tab === "settings" && <SettingsTab />}
+      {tab === "feed" && <CatalogFeedTab />}
     </div>
   );
 }

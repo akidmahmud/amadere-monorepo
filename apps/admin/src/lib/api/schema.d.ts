@@ -628,6 +628,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/catalog-feed/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCatalogFeedController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog-feed/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCatalogFeedController_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/rbac/permissions": {
         parameters: {
             query?: never;
@@ -6665,6 +6697,20 @@ export interface components {
             seoDescription: string | null;
             seoImageUrl: string | null;
         };
+        FeedIssueDto: {
+            reason: string;
+            count: number;
+            productIds?: number[];
+        };
+        CatalogFeedStatusDto: {
+            productCount: number;
+            generatedAt: string;
+            metaUrl: string;
+            googleUrl: string;
+            tiktokUrl: string;
+            skipped: components["schemas"]["FeedIssueDto"][];
+            warnings: components["schemas"]["FeedIssueDto"][];
+        };
         PermissionDto: {
             id: number;
             resource: string;
@@ -7391,6 +7437,9 @@ export interface components {
             productType: Record<string, never>;
             status: Record<string, never>;
             isFeatured: boolean;
+            googleProductCategory: string | null;
+            customLabels: string[];
+            excludeFromFeed: boolean;
             flagLabel: Record<string, never> | null;
             videoUrl: string | null;
             hasVariants: boolean;
@@ -7497,6 +7546,15 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
+            /** @description Google product taxonomy id, e.g. '2474' */
+            googleProductCategory?: string | null;
+            /** @description custom_label_0..4, in order */
+            customLabels?: string[];
+            /**
+             * @description Keep this product out of every catalog feed
+             * @default false
+             */
+            excludeFromFeed: boolean;
             videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
@@ -7567,6 +7625,15 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
+            /** @description Google product taxonomy id, e.g. '2474' */
+            googleProductCategory?: string | null;
+            /** @description custom_label_0..4, in order */
+            customLabels?: string[];
+            /**
+             * @description Keep this product out of every catalog feed
+             * @default false
+             */
+            excludeFromFeed: boolean;
             videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
@@ -8334,7 +8401,7 @@ export interface components {
              * @description How this order was taken — never WEBSITE for a staff-created order
              * @enum {string}
              */
-            channel: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
+            channel: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
             shippingAddress: components["schemas"]["CheckoutAddressDto"];
             /** @description Defaults to shippingAddress if omitted */
             billingAddress?: components["schemas"]["CheckoutAddressDto"];
@@ -8398,7 +8465,7 @@ export interface components {
              * @description Origin — how the order was placed
              * @enum {string}
              */
-            channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
+            channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
             /** @description Shipping address's phone */
             phone?: string;
             /** @description Shipping address's address line */
@@ -11351,6 +11418,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteInfoDto"];
+                };
+            };
+        };
+    };
+    AdminCatalogFeedController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFeedStatusDto"];
+                };
+            };
+        };
+    };
+    AdminCatalogFeedController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFeedStatusDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFeedStatusDto"];
                 };
             };
         };
@@ -21644,6 +21757,8 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
+                assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
                 q?: string;
                 /** @description ISO date — orders created on/after this instant */
@@ -21676,6 +21791,8 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
+                assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
                 q?: string;
                 /** @description ISO date — orders created on/after this instant */
@@ -21710,6 +21827,8 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
+                assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
                 q?: string;
                 /** @description ISO date — orders created on/after this instant */
