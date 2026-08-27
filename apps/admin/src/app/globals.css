@@ -120,3 +120,19 @@
   max-height: 260px;
   overflow-y: auto;
 }
+
+/* A <button> gets `cursor: default` from the browser, unlike <a href>. Every
+   button in this admin was therefore showing an arrow — all 35 on the
+   Products page alone, including Delete, Duplicate, Import and the account
+   menu. Staff use these all day; a control that does not feel clickable reads
+   as broken.
+
+   Fixed once here rather than per button, so the next one written inherits it.
+   `:not(:disabled)` keeps the arrow on disabled controls, and the base layer
+   loses to an explicit `cursor-not-allowed` / `cursor-wait` utility. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}

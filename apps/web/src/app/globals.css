@@ -10,6 +10,26 @@
    the page looks subtly wrong rather than obviously broken. */
 @source "../../../../packages/page-builder/src";
 
+/* A <button> gets `cursor: default` from the browser -- unlike <a href>, which
+   gets `pointer` for free. So every button whose author remembered to add
+   `cursor-pointer` felt clickable and every button whose author did not felt
+   dead: on the product page alone, 28 enabled controls (Add to Cart, the
+   quantity steppers, the Description/Reviews/Brand tabs) showed an arrow,
+   while the links beside them showed a hand.
+
+   Fixed once here rather than by adding a class to each button, because the
+   next button someone writes would have the same problem.
+
+   `:not(:disabled)` so a disabled control keeps the arrow, and this sits in
+   the base layer so an explicit `cursor-not-allowed` / `cursor-wait` utility
+   still wins. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 body {
   /* Storefront-only page background, hardcoded rather than overriding
      --color-background — Tailwind v4's `@theme inline` in tokens.css
