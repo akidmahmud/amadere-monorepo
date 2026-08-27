@@ -135,7 +135,11 @@ export default async function CategoryPage({
           <img
             src={toDisplayImageUrl(category.bannerImageUrl, IMG.banner)}
             alt={category.name}
-            className="-mt-4 mb-6 aspect-[1180/300] w-full rounded-brand object-cover"
+            // 16:5 — the one banner ratio used everywhere on the site, and
+            // what the admin asks people to upload (1600x500). It used to be
+            // 1180/300 (3.93:1), so a correctly-sized upload was cropped top
+            // and bottom on every category page.
+            className="-mt-4 mb-6 aspect-[16/5] w-full rounded-brand object-cover"
           />
         )}
 

@@ -3,10 +3,16 @@
 import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
- * A paged carousel: the track holds every item and moves exactly one
- * container-width at a time, so a "slide" is a fixed group of N items
- * (5 products at xl, fewer as the viewport narrows) rather than a free
- * scroll that can stop half way through a card.
+ * A carousel that scrolls ONE ITEM at a time.
+ *
+ * N items are visible at once (5 products at xl, fewer as the viewport
+ * narrows) and the window walks along the row: 1-5, then 2-6, then 3-7. It
+ * used to jump a whole container-width per step, so a ten-product row was two
+ * static screens; now every product takes a turn at every position.
+ *
+ * Autoplay PING-PONGS. Stepping one item at a time, wrapping from the last
+ * window back to the first is a jarring full-width jump, so it walks to the
+ * end and then walks back — 1..10 then 10..1, continuously.
  *
  * N is *measured*, not configured. The caller controls how many fit purely
  * through `slotClassName` (a responsive flex-basis), and this component
@@ -14,10 +20,9 @@ import { Children, useCallback, useEffect, useRef, useState, type ReactNode } fr
  * as a prop as well would be two sources of truth for one number, and they
  * would drift the first time a breakpoint changed.
  *
- * Moving by `translateX(-page * 100%)` rather than by a pixel offset is what
- * keeps the two in step: each slot's basis is a fraction of the track, so one
- * track-width is always exactly N slots wide at every breakpoint, with no
- * arithmetic that has to be kept in sync with the CSS.
+ * Offsets stay in PERCENT rather than pixels: each slot's basis is exactly
+ * 1/N of the track, so one step is 100/N per cent at every breakpoint, with no
+ * arithmetic to keep in sync with the CSS.
  */
 export function SlideCarousel({
   children,
@@ -37,12 +42,20 @@ export function SlideCarousel({
   const items = Children.toArray(children);
   const trackRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState(0);
-  const [pageCount, setPageCount] = useState(1);
+  // `index` is the FIRST VISIBLE ITEM, not a page number: the track advances
+  // one product at a time, so with five on screen the window walks
+  // 1-5, 2-6, 3-7 ... rather than jumping 1-5, 6-10.
+  const [index, setIndex] = useState(0);
+  const [perSlide, setPerSlide] = useState(1);
   const [paused, setPaused] = useState(false);
   const [onScreen, setOnScreen] = useState(false);
+  // +1 walking towards the end, -1 walking back. Autoplay ping-pongs rather
+  // than wrapping: stepping one item at a time, a wrap from the last window
+  // straight back to the first is a jarring full-width jump, where reversing
+  // reads as one continuous motion.
+  const direction = useRef(1);
 
-  // Measured after mount and on every resize. Before that, pageCount stays 1
+  // Measured after mount and on every resize. Before that, perSlide stays 1
   // and the controls stay hidden — the server cannot know the viewport width,
   // and rendering a guessed number of dots would mean re-rendering different
   // markup on hydration.
@@ -56,12 +69,11 @@ export function SlideCarousel({
       if (!el || !slot || !slot.offsetWidth) return;
       // round, not floor: a slot basis of 1/3 lands on widths like 306.66px,
       // where floor would report 2 per slide instead of 3.
-      const perSlide = Math.max(1, Math.round(el.clientWidth / slot.offsetWidth));
-      const next = Math.max(1, Math.ceil(items.length / perSlide));
-      setPageCount(next);
-      // A resize that makes more fit per slide can leave the current page
-      // past the new end, which would strand the track on blank space.
-      setPage((p) => Math.min(p, next - 1));
+      const next = Math.max(1, Math.round(el.clientWidth / slot.offsetWidth));
+      setPerSlide(next);
+      // A resize that fits more per slide shrinks the last valid index, and
+      // staying past it would strand the track on blank space.
+      setIndex((i) => Math.min(i, Math.max(0, items.length - next)));
     }
 
     measure();
@@ -70,10 +82,31 @@ export function SlideCarousel({
     return () => ro.disconnect();
   }, [items.length]);
 
+  /**
+   * The last index that still fills the row.
+   *
+   * Ten items five-at-a-time stop at 5 (showing items 6-10). Going further
+   * would scroll blank space in from the right, which is what a plain
+   * modulo would do.
+   */
+  const maxIndex = Math.max(0, items.length - perSlide);
+
+  /** Manual arrows clamp; they do not wrap, so the ends stay reachable. */
   const go = useCallback(
-    (delta: number) => setPage((p) => (p + delta + pageCount) % pageCount),
-    [pageCount],
+    (delta: number) =>
+      setIndex((i) => Math.min(maxIndex, Math.max(0, i + delta))),
+    [maxIndex],
   );
+
+  /** Autoplay step: reverse at either end instead of wrapping. */
+  const advance = useCallback(() => {
+    setIndex((i) => {
+      if (maxIndex === 0) return 0;
+      if (i + direction.current > maxIndex) direction.current = -1;
+      else if (i + direction.current < 0) direction.current = 1;
+      return i + direction.current;
+    });
+  }, [maxIndex]);
 
   /**
    * Autoplay only while the carousel is actually on screen.
@@ -102,10 +135,10 @@ export function SlideCarousel({
   }, []);
 
   useEffect(() => {
-    if (!autoplayMs || pageCount <= 1 || paused || !onScreen) return;
-    const timer = setInterval(() => go(1), autoplayMs);
+    if (!autoplayMs || maxIndex === 0 || paused || !onScreen) return;
+    const timer = setInterval(advance, autoplayMs);
     return () => clearInterval(timer);
-  }, [autoplayMs, pageCount, paused, onScreen, go]);
+  }, [autoplayMs, maxIndex, paused, onScreen, advance]);
 
   if (items.length === 0) return null;
 
@@ -144,7 +177,11 @@ export function SlideCarousel({
         <div
           ref={trackRef}
           className="flex transition-transform duration-700 ease-in-out"
-          style={{ transform: `translateX(-${page * 100}%)` }}
+          // One slot is 100/perSlide of the TRACK width (its flex-basis is
+          // exactly that fraction), so shifting by index * that percentage
+          // moves precisely one product per step at every breakpoint, with no
+          // pixel arithmetic to keep in sync with the CSS.
+          style={{ transform: `translateX(-${(index * 100) / perSlide}%)` }}
         >
           {items.map((child, i) => (
             // Gap as symmetric padding inside each slot, never a flex `gap`:
@@ -169,7 +206,7 @@ export function SlideCarousel({
 
       {/* Arrows are absolutely positioned, so they can appear after measuring
           without moving anything. */}
-      {pageCount > 1 && (
+      {maxIndex > 0 && (
         <>
           {arrow("prev")}
           {arrow("next")}
@@ -186,16 +223,25 @@ export function SlideCarousel({
           costs an empty 28px strip under a carousel that only has one page,
           which is the cheap side of that trade. */}
       <div className="mt-5 flex h-2 justify-center gap-2">
-        {pageCount > 1 &&
-          Array.from({ length: pageCount }, (_, i) => (
+        {/* One dot per RESTING POSITION now that the track steps by a single
+            product — ten items five-at-a-time gives six, not two. Dots per
+            "page" would be lying about where the track can stop. */}
+        {maxIndex > 0 &&
+          Array.from({ length: maxIndex + 1 }, (_, i) => (
             <button
               key={i}
               type="button"
-              aria-label={`Go to slide ${i + 1}`}
-              aria-current={i === page}
-              onClick={() => setPage(i)}
+              aria-label={`Show products ${i + 1} to ${i + perSlide}`}
+              aria-current={i === index}
+              onClick={() => {
+                // Jumping backwards should leave autoplay heading forwards
+                // again, otherwise it immediately walks back off the position
+                // the reader just chose.
+                direction.current = i < index ? 1 : -1;
+                setIndex(i);
+              }}
               className={`h-2 rounded-full transition-all ${
-                i === page ? "w-5 bg-header-green" : "w-2 bg-header-green/30"
+                i === index ? "w-5 bg-header-green" : "w-2 bg-header-green/30"
               }`}
             />
           ))}

@@ -12,7 +12,10 @@ export interface PlaceholderBannerProps {
 }
 
 const heightClasses: Record<PlaceholderBannerVariant, string> = {
-  hero: "aspect-[1882/500]",
+  // 16:5, matching the real hero it stands in for — at 1882/500 the skeleton
+  // was a different shape from the banner that replaced it, so the page
+  // visibly jumped when the image arrived.
+  hero: "aspect-[16/5]",
   strip: "h-[150px]",
   tall: "h-[360px]",
   mid: "h-[300px]",
