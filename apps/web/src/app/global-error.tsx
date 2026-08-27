@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { isChunkLoadError, tryReloadForChunkError } from "@/lib/chunk-error";
+
 // PERF-BRIEF.md §8 — this app has no app/layout.tsx of its own; [locale]/layout.tsx
 // is the effective root layout (fonts, next-intl provider, site-info fetch,
 // header/footer). [locale]/error.tsx only catches errors thrown by its own
@@ -21,6 +24,16 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Same recovery as [locale]/error.tsx: a chunk error means this visitor is
+  // on a build whose JS no longer exists, and reset() re-requests the same
+  // dead URL. Only a document reload can fix it. See lib/chunk-error.ts.
+  const chunkError = isChunkLoadError(error);
+  const [reloading, setReloading] = useState(false);
+  useEffect(() => {
+    if (!chunkError) return;
+    setReloading(tryReloadForChunkError());
+  }, [chunkError]);
+
   return (
     <html lang="en">
       <body
@@ -39,13 +52,21 @@ export default function GlobalError({
         }}
       >
         <h1 style={{ fontSize: "1.5rem", fontWeight: 600, margin: 0 }}>
-          Something went wrong / কিছু একটা সমস্যা হয়েছে
+          {chunkError
+            ? "Updating… / আপডেট হচ্ছে…"
+            : "Something went wrong / কিছু একটা সমস্যা হয়েছে"}
         </h1>
         <p style={{ maxWidth: "28rem", color: "#6b7280", margin: 0 }}>
-          {error.message || "An unexpected error occurred. Please try again. / একটি অপ্রত্যাশিত সমস্যা হয়েছে, আবার চেষ্টা করুন।"}
+          {chunkError
+            ? "The site was just updated. Reloading for the newest version. / সাইটটি এইমাত্র আপডেট হয়েছে, নতুন সংস্করণ লোড হচ্ছে।"
+            : error.message || "An unexpected error occurred. Please try again. / একটি অপ্রত্যাশিত সমস্যা হয়েছে, আবার চেষ্টা করুন।"}
         </p>
         <button
-          onClick={reset}
+          hidden={reloading}
+          onClick={() => {
+            if (chunkError) window.location.reload();
+            else reset();
+          }}
           style={{
             borderRadius: "10px",
             background: "#21713d",
