@@ -1,5 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+
+/**
+ * @IsOptional() only skips validation for undefined/null — an empty string
+ * still runs @IsEmail() and fails. Every form that renders an optional field
+ * as a controlled input sends '' when the user leaves it blank, so "email is
+ * optional" was true in the decorator and false in practice: the admin's
+ * recover-an-abandoned-cart form could not submit without an email.
+ * Blank means "not given" here, on every optional field.
+ */
+const BlankToUndefined = () =>
+  Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value));
 import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class CheckoutAddressDto {
@@ -15,12 +27,14 @@ export class CheckoutAddressDto {
 
   // Steadfast's alternative_phone — a second contact number, optional
   // everywhere `phone` (the primary) is required.
+  @BlankToUndefined()
   @ApiPropertyOptional()
   @IsOptional()
   @NormalizeBdPhone()
   @IsBdPhone()
   alternativePhone?: string;
 
+  @BlankToUndefined()
   @ApiPropertyOptional()
   @IsOptional()
   @IsEmail()
@@ -30,6 +44,7 @@ export class CheckoutAddressDto {
   // auto-derived from `district` (see toOrderAddressCreate) rather than
   // asked for separately. Kept accepting a client-sent value for backward
   // compatibility, but nothing sends one anymore.
+  @BlankToUndefined()
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -49,6 +64,7 @@ export class CheckoutAddressDto {
   @IsString()
   area!: string;
 
+  @BlankToUndefined()
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -58,6 +74,7 @@ export class CheckoutAddressDto {
   @IsString()
   addressLine!: string;
 
+  @BlankToUndefined()
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

@@ -1,6 +1,6 @@
 "use client";
 
-import { InfiniteMarquee, SiteProductCard } from "@amader/ui";
+import { SiteProductCard, SlideCarousel } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import type { ProductCardData } from "@/lib/product-card-mapper";
@@ -9,35 +9,35 @@ export interface RelatedProductsCarouselProps {
   products: ProductCardData[];
 }
 
-// Thin client boundary so the PDP's Server Component can still wire a real
-// Add to Cart (pack-picker included) here, same as every other product card
-// on the site.
+// Uses SlideCarousel — the same mechanism as the homepage tabbed/featured
+// rows — so every product carousel on the site steps ONE product at a time
+// and ping-pongs (1..10 then 10..1) instead of scrolling continuously.
 //
-// Continuously looping row rather than the previous autoplay-and-rewind
-// Carousel, which visibly jumped back to the first card at the end. Hovering
-// pauses it, so a card can still be read and clicked.
+// Card count comes from `slotClassName` alone; SlideCarousel measures it, so
+// the 2/3/4/5-per-row ladder here matches the homepage's without either side
+// having to know the other's number.
 //
-// Fixed card widths, not the previous `w-[calc(50%-9px)]` percentages:
-// percentage widths resolve against the track, and a marquee track is
-// `w-max`, so they would collapse to nothing.
+// Same client-boundary reasoning as before: the PDP is a Server Component and
+// cannot own the add-to-cart hook itself.
 export function RelatedProductsCarousel({ products }: RelatedProductsCarouselProps) {
   const { handleAddToCart, isPending, pendingProductId } = useCardAddToCart();
 
   return (
-    <InfiniteMarquee secondsPerItem={10} gapPx={18} ariaLabel="Related products">
+    <SlideCarousel
+      slotClassName="basis-1/2 sm:basis-1/3 lg:basis-1/4 xl:basis-1/5"
+      gapPx={18}
+      autoplayMs={4500}
+      ariaLabel="Related products"
+    >
       {products.map((product) => (
-        <div
+        <SiteProductCard
           key={product.href}
-          className="w-[150px] sm:w-[200px] md:w-[230px] xl:w-[260px]"
-        >
-          <SiteProductCard
-            {...product}
-            linkComponent={AppLink}
-            addToCartPending={isPending && pendingProductId === product.productId}
-            onAddToCart={(packValue) => handleAddToCart(product.productId, packValue)}
-          />
-        </div>
+          {...product}
+          linkComponent={AppLink}
+          addToCartPending={isPending && pendingProductId === product.productId}
+          onAddToCart={(packValue) => handleAddToCart(product.productId, packValue)}
+        />
       ))}
-    </InfiniteMarquee>
+    </SlideCarousel>
   );
 }

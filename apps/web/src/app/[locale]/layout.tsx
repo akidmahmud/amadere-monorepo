@@ -11,6 +11,7 @@ import { WhatsappFloatingButton } from "@/components/WhatsappFloatingButton";
 import { CartSummaryWidget } from "@/components/CartSummaryWidget";
 import { BackToTopButton } from "@/components/BackToTopButton";
 import { MobileStickyFooter } from "@/components/MobileStickyFooter";
+import { DesktopProductStickyBar } from "@/components/DesktopProductStickyBar";
 import { QueryProvider } from "@/components/QueryProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import {
@@ -272,6 +273,7 @@ export default async function LocaleLayout({
               <CartSummaryWidget />
               <BackToTopButton />
               <MobileStickyFooter />
+              <DesktopProductStickyBar />
             </ToastProvider>
           </QueryProvider>
         </NextIntlClientProvider>

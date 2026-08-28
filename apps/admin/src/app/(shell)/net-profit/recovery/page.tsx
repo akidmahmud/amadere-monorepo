@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT } from "@amader/shared";
 import { Button, Card, Icon, Modal, PageHeader, Table, TableEmptyRow, Tabs } from "@amader/admin-ui";
 import {
   useClearAllIncomplete,
@@ -36,6 +37,12 @@ import {
 
 const cartIcon = <Icon name="shopping_cart" />;
 
+// Flat and alphabetical, like the storefront's — division is derived from
+// district server-side, so it is never asked for.
+const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
+  .flat()
+  .sort((a, b) => a.localeCompare(b));
+
 function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () => void }) {
   const createOrder = useCreateOrderFromIncomplete();
   // Pre-filled from whatever the shopper actually typed before leaving.
@@ -45,14 +52,18 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
   const [form, setForm] = useState<CreateOrderInput>({
     recipientName: row.name ?? "",
     phone: row.phone ?? "",
-    email: row.email ?? "",
-    division: captured.division ?? "",
+    addressLine: captured.addressLine ?? "",
     district: captured.district ?? "",
     area: captured.area ?? "",
     landmark: captured.landmark ?? "",
-    addressLine: captured.addressLine ?? "",
-    postCode: captured.postCode ?? "",
+    alternativePhone: captured.alternativePhone ?? "",
+    email: row.email ?? "",
   });
+  // Only districts Steadfast supplies a thana list for get a dropdown; the
+  // rest fall back to free text — same rule the storefront uses.
+  const thanaOptions = form.district ? BD_THANAS_BY_DISTRICT[form.district] : undefined;
+  const field =
+    "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
   return (
     <Modal open onClose={onClose} title="Create order from abandoned cart" tone="dark">
@@ -68,8 +79,22 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          // Blanks are sent as absent, not as "". The backend now coerces
+          // this too, but sending "" for an optional email meant this form
+          // could not submit at all without one.
+          const blank = (v?: string) => (v && v.trim() ? v.trim() : undefined);
           createOrder.mutate(
-            { id: row.id, ...form },
+            {
+              id: row.id,
+              recipientName: form.recipientName.trim(),
+              phone: form.phone.trim(),
+              addressLine: form.addressLine.trim(),
+              district: form.district,
+              area: form.area.trim(),
+              landmark: blank(form.landmark),
+              alternativePhone: blank(form.alternativePhone),
+              email: blank(form.email),
+            },
             {
               onSuccess: (r) => {
                 alert(`Order ${r.orderNumber} created.`);
@@ -80,64 +105,85 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
         }}
         className="grid grid-cols-2 gap-3"
       >
+        {/* Field order, labels and required-ness are the storefront checkout
+            form's, so staff recreating a cart see the same form the customer
+            abandoned rather than a differently-shaped one. */}
         <input
-          placeholder="Recipient name *"
+          placeholder="Your Full Name *"
           required
           value={form.recipientName}
           onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          className={field}
         />
         <input
-          placeholder="Phone *"
+          placeholder="017********* *"
           required
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          className={field}
         />
         <input
-          placeholder="Email (optional)"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="col-span-2 h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="Division *"
-          required
-          value={form.division}
-          onChange={(e) => setForm({ ...form, division: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="District *"
-          required
-          value={form.district}
-          onChange={(e) => setForm({ ...form, district: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="Area (optional)"
-          value={form.area}
-          onChange={(e) => setForm({ ...form, area: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="Landmark (optional)"
-          value={form.landmark}
-          onChange={(e) => setForm({ ...form, landmark: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="Address line *"
+          placeholder="House no. / building / street / area *"
           required
           value={form.addressLine}
           onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
-          className="col-span-2 h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          className={`col-span-2 ${field}`}
+        />
+        <select
+          required
+          value={form.district}
+          // Thana list is district-specific, so a district change clears it
+          // rather than leaving a thana that belongs to the old district.
+          onChange={(e) => setForm({ ...form, district: e.target.value, area: "" })}
+          className={field}
+        >
+          <option value="">Select District *</option>
+          {DISTRICT_OPTIONS.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+        {thanaOptions ? (
+          <select
+            required
+            value={form.area}
+            onChange={(e) => setForm({ ...form, area: e.target.value })}
+            className={field}
+          >
+            <option value="">Select Thana / Area *</option>
+            {thanaOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            placeholder="Thana / Area *"
+            required
+            value={form.area}
+            onChange={(e) => setForm({ ...form, area: e.target.value })}
+            className={field}
+          />
+        )}
+        <input
+          placeholder="Landmark (optional)"
+          value={form.landmark ?? ""}
+          onChange={(e) => setForm({ ...form, landmark: e.target.value })}
+          className={`col-span-2 ${field}`}
         />
         <input
-          placeholder="Postcode (optional)"
-          value={form.postCode}
-          onChange={(e) => setForm({ ...form, postCode: e.target.value })}
-          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          placeholder="Alternative Phone (optional)"
+          value={form.alternativePhone ?? ""}
+          onChange={(e) => setForm({ ...form, alternativePhone: e.target.value })}
+          className={field}
+        />
+        <input
+          placeholder="Recipient Email (optional)"
+          value={form.email ?? ""}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          className={field}
         />
         {createOrder.isError && (
           <p className="col-span-2 text-xs text-danger">

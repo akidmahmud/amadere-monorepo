@@ -69,16 +69,19 @@ export interface RecoveryFilters {
   pageSize?: number;
 }
 
+// Mirrors CheckoutAddressDto, in the storefront checkout's field order.
+// `division` is gone: the backend derives it from `district` (every BD
+// district belongs to exactly one), and asking staff for it here made the
+// recovery form ask for something the checkout page never collected.
 export interface CreateOrderInput {
   recipientName: string;
   phone: string;
-  email?: string;
-  division: string;
-  district: string;
-  area?: string;
-  landmark?: string;
   addressLine: string;
-  postCode?: string;
+  district: string;
+  area: string;
+  landmark?: string;
+  alternativePhone?: string;
+  email?: string;
 }
 
 interface Paginated<T> {

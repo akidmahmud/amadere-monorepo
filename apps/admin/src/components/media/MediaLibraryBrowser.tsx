@@ -288,9 +288,12 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
               </button>
             </div>
 
-            {/* Create Folder Button / Input */}
-            {folderId === null &&
-              (creatingFolder ? (
+            {/* Create Folder Button / Input.
+                NOT gated on being at the root: it creates inside whatever is
+                open (handleCreateFolder passes the current folderId as the
+                parent), so hiding it inside a folder made subfolders
+                impossible to create from the UI. */}
+            {creatingFolder ? (
                 <div className="flex items-center gap-1.5">
                   <input
                     autoFocus
@@ -323,10 +326,10 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
                   type="button"
                   onClick={() => setCreatingFolder(true)}
                   className="inline-flex h-8.5 items-center gap-1.5 rounded-xl border border-border/80 bg-surface px-3 text-xs font-bold text-text shadow-sm hover:bg-surface-2 hover:border-brand-500/50 transition-all"
-                >
-                  + New Folder
-                </button>
-              ))}
+              >
+                {folderId === null ? "+ New Folder" : "+ New Subfolder"}
+              </button>
+            )}
           </div>
         </div>
 

@@ -466,16 +466,9 @@ export async function ProductDetailBody({
               </AppLink>
             )}
           </div>
-          {/* No arrows (swipe/autoplay only, per explicit request) and a
-              slower autoplay. Card widths mirror Cross Sell Products' grid
-              breakpoints exactly (2/3/5 columns) so both sections show the
-              same card size — computed against this Carousel's own 18px gap
-              (gap-4.5), not Cross Sell's 16px grid gap, so the math differs
-              slightly even though the resulting column count matches.
-              snap-start (paired with the Carousel's own snap-x snap-mandatory)
-              is what actually guarantees exactly N full cards show at rest —
-              without it, autoplay/swipes can stop at any scroll offset and
-              show partial cards peeking on both edges. */}
+          {/* Same SlideCarousel the homepage rows use: one product per step,
+              ping-ponging at the ends. Cross Sell below shares the identical
+              slot ladder, so both PDP sections show the same card size. */}
           <RelatedProductsCarousel products={relatedProducts} />
         </div>
       )}

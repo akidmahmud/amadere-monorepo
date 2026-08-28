@@ -2,7 +2,8 @@
 
 import { useEffect, useCallback } from "react";
 import { useLocale } from "next-intl";
-import { useCartDrawerStore } from "@amader/ui";
+import { useCartDrawerStore, formatMoney } from "@amader/ui";
+import { IMG, toDisplayImageUrl } from "@/lib/media";
 import { useRouter } from "@/i18n/navigation";
 import { defaultVariantId } from "@/lib/pdp";
 import { toApiLocale } from "@/lib/api-locale";
@@ -43,6 +44,31 @@ export function ProductFloatingBarProvider({
     : undefined;
   const stockCount = selectedVariant ? selectedVariant.stock : product.stock;
   const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
+
+  // --- Display values for the desktop bar ---------------------------------
+  // Same price rule the PDP panel itself uses (sale price wins only when
+  // genuinely lower), so the sticky bar can never quote a different number
+  // from the panel it is standing in for.
+  const displayPrice = product.hasVariants
+    ? (selectedVariant?.salePrice ?? selectedVariant?.price ?? product.price ?? "0")
+    : (product.salePrice ?? product.price ?? "0");
+  const displayOriginal = product.hasVariants
+    ? (selectedVariant?.salePrice &&
+      Number(selectedVariant.salePrice) < Number(selectedVariant.price ?? 0)
+        ? selectedVariant.price
+        : undefined)
+    : product.salePrice && Number(product.salePrice) < Number(product.price ?? 0)
+      ? product.price
+      : undefined;
+  // String() because the generated schema types every media `type` as
+  // `Record<string, never>` — the product DTO carries no @ApiProperty enum,
+  // so the union never reaches the OpenAPI document. Same wart the catalog
+  // feed hit on stockStatus; the rest of the app casts at the call site too.
+  const firstImage = (product.media ?? []).find(
+    (m) => String(m.type) !== "VIDEO",
+  );
+  const displayImage =
+    toDisplayImageUrl(firstImage?.cardUrl ?? firstImage?.url, IMG.card) ?? null;
 
   // --- WhatsApp link computation ---
   const whatsappHref =
@@ -87,8 +113,23 @@ export function ProductFloatingBarProvider({
       isPending: addToCart.isPending,
       outOfStock,
       whatsappHref,
+      productName: product.name,
+      productImage: displayImage,
+      priceLabel: formatMoney(displayPrice),
+      originalPriceLabel: displayOriginal ? formatMoney(displayOriginal) : null,
     });
-  }, [handleAddToCart, handleBuyNow, addToCart.isPending, outOfStock, whatsappHref, update]);
+  }, [
+    handleAddToCart,
+    handleBuyNow,
+    addToCart.isPending,
+    outOfStock,
+    whatsappHref,
+    update,
+    product.name,
+    displayImage,
+    displayPrice,
+    displayOriginal,
+  ]);
 
   // --- Scroll-position check (was IntersectionObserver, replaced — see
   //     below) ---

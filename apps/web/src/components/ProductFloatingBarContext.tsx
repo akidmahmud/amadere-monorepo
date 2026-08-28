@@ -19,6 +19,17 @@ export interface ProductFloatingBarState {
   outOfStock: boolean;
   /** Direct link to WhatsApp chat for the product */
   whatsappHref?: string | null;
+  // --- Display fields, for the DESKTOP bar only ---------------------------
+  // The mobile bar is buttons only (no room), but a desktop bar spanning the
+  // viewport with two bare buttons and no context reads as a stray toolbar.
+  /** Product title shown in the desktop bar. */
+  productName?: string | null;
+  /** Small thumbnail for the desktop bar. */
+  productImage?: string | null;
+  /** Pre-formatted price, e.g. "৳790" — formatting stays with the product. */
+  priceLabel?: string | null;
+  /** Struck-through original, only when genuinely on sale. */
+  originalPriceLabel?: string | null;
   /** Internal — called by the provider to push state */
   _update: (patch: Partial<Omit<ProductFloatingBarState, "_update" | "_reset">>) => void;
   /** Internal — called on unmount to clear everything */
@@ -32,6 +43,10 @@ const INITIAL: Omit<ProductFloatingBarState, "_update" | "_reset"> = {
   isPending: false,
   outOfStock: false,
   whatsappHref: null,
+  productName: null,
+  productImage: null,
+  priceLabel: null,
+  originalPriceLabel: null,
 };
 
 export const useProductFloatingBarStore = create<ProductFloatingBarState>((set) => ({
