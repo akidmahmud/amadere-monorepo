@@ -4,26 +4,47 @@ import { PrismaService } from '../../../common/prisma/prisma.service';
 
 const KEY_PREFIX = 'net_profit.';
 
-// The WP-options replacement (spec §7.13, §3 translation table): every
-// Net Profit feature's config lives here instead of a dedicated table,
-// namespaced ("fraud.enabled", "sms.provider", ...) on top of the existing
-// generic `Setting` key/value store (packages/db, already used by
-// modules/settings for site name/logo) — not a parallel `NetProfitSetting`
-// model. In-memory cache, invalidated on every write.
+/**
+ * The WP-options replacement (spec §7.13, §3 translation table): every
+ * Net Profit feature's config lives here instead of a dedicated table,
+ * namespaced ("fraud.enabled", "sms.provider", ...) on top of the existing
+ * generic `Setting` key/value store (packages/db, already used by
+ * modules/settings for site name/logo) — not a parallel `NetProfitSetting`
+ * model.
+ *
+ * NO IN-MEMORY CACHE, deliberately.
+ *
+ * There used to be a process-local `Map` with no TTL and no cross-process
+ * invalidation. It made every Net Profit setting unreliable the moment the
+ * API ran more than one instance:
+ *
+ *   1. A GET lands on instance B. The key has no row yet, so B caches the
+ *      DEFAULT — permanently, since nothing ever expired it.
+ *   2. The admin flips the setting; the PUT lands on instance A. A writes the
+ *      database and updates *A's* map.
+ *   3. The page refetches, load-balanced back to B, which still answers from
+ *      its stale map.
+ *   4. The toggle silently snaps back to its old value.
+ *
+ * Reported as "the OTP toggle turns itself off", but it applied to all twelve
+ * namespaces — fraud, blocker, advance payment, cleanup, sms, otp, VAT, COD
+ * fee, cart campaigns, marketing cost, overview.
+ *
+ * The cache is not replaced with a TTL because a TTL only shortens the window
+ * in which the admin is lied to; it does not close it. `getNamespace` is now a
+ * SINGLE indexed range scan over ~12 rows, which is cheaper than the N
+ * separate `findUnique` calls the cached version made on every cold process
+ * anyway. Correct and faster is not a trade.
+ */
 @Injectable()
 export class NetProfitSettingsService {
-  private readonly cache = new Map<string, unknown>();
-
   constructor(private readonly prisma: PrismaService) {}
 
   async get<T>(key: string, defaultValue: T): Promise<T> {
-    if (this.cache.has(key)) return this.cache.get(key) as T;
     const row = await this.prisma.client.setting.findUnique({
       where: { key: KEY_PREFIX + key },
     });
-    const value = row ? (row.value as T) : defaultValue;
-    this.cache.set(key, value);
-    return value;
+    return row ? (row.value as T) : defaultValue;
   }
 
   async set(key: string, value: unknown): Promise<void> {
@@ -32,15 +53,30 @@ export class NetProfitSettingsService {
       create: { key: KEY_PREFIX + key, value: value as Prisma.InputJsonValue },
       update: { value: value as Prisma.InputJsonValue },
     });
-    this.cache.set(key, value);
   }
 
-  // Bulk fetch for a namespace's settings page, e.g. namespace="fraud" reads
-  // every "fraud.*" key at once. Keys not yet written fall back per `defaults`.
+  /**
+   * Every "<namespace>.*" key in one query. Keys never written fall back to
+   * `defaults`.
+   *
+   * The trailing dot in the prefix is load-bearing: without it the namespace
+   * "overview" would also match "overview_hourly", and one namespace would
+   * quietly inherit another's fields.
+   */
   async getNamespace<T extends object>(namespace: string, defaults: T): Promise<T> {
+    const prefix = `${KEY_PREFIX}${namespace}.`;
+    const rows = await this.prisma.client.setting.findMany({
+      where: { key: { startsWith: prefix } },
+      select: { key: true, value: true },
+    });
+    const stored = new Map(rows.map((r) => [r.key.slice(prefix.length), r.value]));
+
     const result = { ...defaults };
     for (const field of Object.keys(defaults) as (keyof T)[]) {
-      result[field] = await this.get(`${namespace}.${String(field)}`, defaults[field]);
+      const name = String(field);
+      // `has`, not a truthiness check: `false` and `0` are legitimate stored
+      // values and must win over the default.
+      if (stored.has(name)) result[field] = stored.get(name) as T[keyof T];
     }
     return result;
   }

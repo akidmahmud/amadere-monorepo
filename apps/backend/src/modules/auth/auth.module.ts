@@ -28,5 +28,8 @@ import { EmailSettingsModule } from '../email-settings/email-settings.module';
       useClass: GoogleSocialLoginVerifier,
     },
   ],
+  // OrdersModule's CheckoutService issues and verifies the COD OTP through
+  // this same service, so there is exactly one OTP implementation.
+  exports: [OtpService],
 })
 export class AuthModule {}

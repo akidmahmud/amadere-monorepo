@@ -33,7 +33,31 @@ export class OtpService {
     @Inject(OTP_NOTIFIER) private readonly notifier: OtpNotifier,
   ) {}
 
-  async request(identifier: string, purpose: OtpPurpose): Promise<void> {
+  /**
+   * Rate-limit, generate, store — and return the code WITHOUT delivering it.
+   *
+   * Split out of `request()` so the checkout's COD flow can reuse the exact
+   * same issuing rules while still choosing its own delivery channel (SMS or
+   * the customer's email, per the shop's OTP settings). Before this, checkout
+   * hand-rolled its own count/generate/create and drifted: it never
+   * normalised the identifier, so a caller passing a raw "0181..." would have
+   * stored a code that verification could never match.
+   *
+   * Returns the normalised identifier too, so the caller sends to exactly the
+   * string the code was filed under.
+   */
+  async issue(
+    identifier: string,
+    purpose: OtpPurpose,
+    opts: {
+      /** Digits. Clamped to 4-8; defaults to 6. */
+      length?: number;
+      /** Overrides the 5-minute default. */
+      ttlMs?: number;
+      ipAddress?: string;
+      isVpn?: boolean;
+    } = {},
+  ): Promise<{ code: string; identifier: string }> {
     const normalized = normalizeIdentifier(identifier);
     const recentCount = await this.prisma.client.otp.count({
       where: { identifier: normalized, purpose, createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } },
@@ -42,15 +66,24 @@ export class OtpService {
       throw new BadRequestException('Too many OTP requests — please try again later');
     }
 
-    const code = randomInt(100000, 1000000).toString();
+    const length = Math.min(8, Math.max(4, opts.length ?? 6));
+    const code = randomInt(10 ** (length - 1), 10 ** length).toString();
     await this.prisma.client.otp.create({
       data: {
         identifier: normalized,
         purpose,
         code,
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
+        ipAddress: opts.ipAddress,
+        isVpn: opts.isVpn ?? false,
+        expiresAt: new Date(Date.now() + (opts.ttlMs ?? OTP_TTL_MS)),
       },
     });
+    return { code, identifier: normalized };
+  }
+
+  /** Issue and deliver through the configured notifier. */
+  async request(identifier: string, purpose: OtpPurpose): Promise<void> {
+    const { code, identifier: normalized } = await this.issue(identifier, purpose);
     await this.notifier.send(normalized, code);
   }
 

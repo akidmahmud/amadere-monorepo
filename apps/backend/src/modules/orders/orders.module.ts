@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { RecoveryModule } from '../net-profit/recovery/recovery.module';
 import { ShippingZonesModule } from '../shipping-zones/shipping-zones.module';
 import { CartModule } from '../cart/cart.module';
@@ -24,7 +25,7 @@ import { OrdersService } from './orders.service';
 import { AdminOrderCreationService } from './admin-order-creation.service';
 
 @Module({
-  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, DigitalProductsModule, RecoveryModule],
+  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, DigitalProductsModule, RecoveryModule, AuthModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
   providers: [CheckoutService, CheckoutAccountService, OrdersService, AdminOrderCreationService],
   exports: [OrdersService],

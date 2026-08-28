@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { randomInt } from 'node:crypto';
 import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from '../cart/pricing.service';
@@ -24,6 +23,7 @@ import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
 import { CheckoutAbandonmentDto } from './dto/checkout-abandonment.dto';
 import { RecoveryService } from '../net-profit/recovery/recovery.service';
+import { OtpService } from '../auth/otp.service';
 import { SmtpEmailProvider } from '../net-profit/cart-campaigns/providers/smtp-email.provider';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { SettingsService } from '../settings/settings.service';
@@ -64,6 +64,8 @@ export class CheckoutService {
     private readonly blocker: BlockerService,
     private readonly advancePayment: AdvancePaymentService,
     private readonly otpSecurity: OtpSecurityService,
+    // The single OTP implementation — see auth/otp.service.ts.
+    private readonly otp: OtpService,
     private readonly sms: SmsService,
     private readonly orderEmails: OrderEmailsService,
     private readonly email: SmtpEmailProvider,
@@ -92,24 +94,15 @@ export class CheckoutService {
     // never even gets a real OTP row created.
     const vpnResult = await this.otpSecurity.evaluate(ip);
 
-    const recentCount = await this.prisma.client.otp.count({
-      where: { identifier: dto.phone, purpose: 'COD_VERIFICATION', createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } },
-    });
-    if (recentCount >= 5) {
-      throw new BadRequestException('Too many OTP requests — please try again later');
-    }
-
-    const length = Math.min(8, Math.max(4, otpSettings.codOtpLength));
-    const code = randomInt(10 ** (length - 1), 10 ** length).toString();
-    await this.prisma.client.otp.create({
-      data: {
-        identifier: dto.phone,
-        purpose: 'COD_VERIFICATION',
-        code,
-        ipAddress: ip,
-        isVpn: vpnResult.isVpn,
-        expiresAt: new Date(Date.now() + otpSettings.codOtpExpiryMinutes * 60 * 1000),
-      },
+    // ONE issuing path for every OTP in the app (auth/otp.service.ts). This
+    // used to hand-roll its own rate-limit count, code generator and
+    // otp.create beside OtpService's identical versions -- two copies of the
+    // same rules that had already drifted apart on identifier normalisation.
+    const { code } = await this.otp.issue(dto.phone, 'COD_VERIFICATION', {
+      length: otpSettings.codOtpLength,
+      ttlMs: otpSettings.codOtpExpiryMinutes * 60 * 1000,
+      ipAddress: ip,
+      isVpn: vpnResult.isVpn,
     });
     // Delivery only — the Otp row above is keyed on the PHONE whichever
     // channel is used, because checkout() verifies with
@@ -606,24 +599,21 @@ export class CheckoutService {
       throw new BadRequestException(
         'codOtpCode is required for Cash on Delivery',
       );
-    const otp = await this.prisma.client.otp.findFirst({
-      where: {
-        identifier: phone,
-        purpose: 'COD_VERIFICATION',
-        consumedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!otp || otp.attempts >= 5) throw new BadRequestException('Invalid or expired OTP');
-    if (otp.code !== code) {
-      await this.prisma.client.otp.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
+    // Same single implementation as every other OTP (auth/otp.service.ts).
+    // This was a line-for-line copy of it that also skipped the identifier
+    // normalisation OtpService does, so it only worked as long as every
+    // caller happened to pass an already-normalised phone.
+    //
+    // The exception is deliberately translated. OtpService throws 401, and
+    // the storefront's /api/backend proxy silently refreshes the session and
+    // REPLAYS the request on a 401 -- a mistyped code would quietly resubmit
+    // the whole checkout. A wrong code is a bad request, not an expired
+    // session.
+    try {
+      await this.otp.verify(phone, code, 'COD_VERIFICATION');
+    } catch {
       throw new BadRequestException('Invalid or expired OTP');
     }
-    await this.prisma.client.otp.update({
-      where: { id: otp.id },
-      data: { consumedAt: new Date() },
-    });
   }
 
   private async validateVoucher(code: string) {
