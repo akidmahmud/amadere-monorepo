@@ -5,7 +5,6 @@ import { Button } from "@amader/admin-ui";
 import { useSeoMeta, useUpsertSeoMeta } from "@/hooks/useSeoMeta";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
-import { MediaPicker } from "@/components/MediaPicker";
 import { OgPreviewCard } from "@/components/OgPreviewCard";
 import { SeoCharCount } from "@/components/SeoCharCount";
 
@@ -45,15 +44,17 @@ export function ProductSeoTab({
   name: string;
   description: string;
   primaryImageAlt: string;
-  /** The product's own first gallery image — same "no ogImageUrl override →
-   * primary product image" fallback the public API already applies
-   * server-side (products.service.ts's `imageUrl: imageUrls[0] ?? null`
-   * passed into SeoService.resolve()), shown here so the admin sees exactly
-   * what a shared product link will use even before setting an override. */
+  /** The product's primary gallery image. This IS the share image — the
+   * public API forces og:image to the primary photo for products
+   * (products.service.ts), so what is shown here is exactly what a shared
+   * link renders. */
   primaryImageUrl?: string;
 }) {
   const [title, setTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  // Still round-tripped on save so an existing stored value is preserved
+  // rather than silently cleared, but it no longer affects what a share
+  // renders — the primary image does.
   const [ogImageUrl, setOgImageUrl] = useState("");
   // Ephemeral, not derived from upsert.isSuccess — react-query doesn't reset
   // that flag on its own, so it would stay true forever after the first save
@@ -96,7 +97,7 @@ export function ProductSeoTab({
 
   const effectiveTitle = title || name;
   const effectiveDescription = stripHtml(metaDescription || description);
-  const effectiveImageUrl = ogImageUrl || primaryImageUrl;
+  const effectiveImageUrl = primaryImageUrl;
 
   async function handleSave() {
     await upsert.mutateAsync({
@@ -163,18 +164,29 @@ export function ProductSeoTab({
             />
             <SeoCharCount value={metaDescription} limit="description" />
           </label>
+          {/* The override picker that used to live here is gone: the share
+              image is now always the product's primary image, so a picker
+              here would have been a control that silently did nothing.
+              A stored override was a URL snapshot and went stale invisibly —
+              one product's pointed at a deleted file, so every share of it
+              showed no image while the product page looked fine. */}
           <div className="mt-4 flex flex-col gap-1.5">
-            <MediaPicker label="Social/share preview image (optional)" value={ogImageUrl || undefined} onChange={setOgImageUrl} />
-            <p className="text-xs text-emerald-950/60">
-              {ogImageUrl
-                ? "Overriding the product's own image for shared links (WhatsApp, Facebook, etc.)."
-                : primaryImageUrl
-                  ? "No override set — shared links will use the product's primary image below."
-                  : "No override set, and this product has no image yet — shared links won't show a preview image."}
-            </p>
-            {!ogImageUrl && primaryImageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={primaryImageUrl} alt="" className="h-24 w-24 rounded-inner border border-dashed border-border object-cover opacity-80" />
+            <span className="text-xs font-bold text-emerald-950">Social/share preview image</span>
+            {primaryImageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={primaryImageUrl} alt="" className="h-24 w-24 rounded-inner border border-dashed border-border object-cover" />
+                <p className="text-xs text-emerald-950/60">
+                  Shared links (WhatsApp, Facebook, X) use this product&apos;s primary
+                  image. Change the primary image in the Media tab and the share
+                  preview follows automatically.
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-emerald-950/60">
+                This product has no image yet, so shared links won&apos;t show a
+                preview image. Add one in the Media tab.
+              </p>
             )}
           </div>
 

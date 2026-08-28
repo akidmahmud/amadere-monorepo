@@ -1338,13 +1338,26 @@ export class ProductsService {
     }
 
     const dto = toPublicProductDto(product, locale);
-    const imageUrls = dto.media.map((m) => m.url);
-    const seo = await this.seo.resolve('PRODUCT', product.id, locale, {
+    // The product's primary photo IS its social/share image. Change the
+    // primary image and every share preview follows, with nothing to keep in
+    // sync by hand.
+    //
+    // This deliberately overrides a stored SeoMeta.ogImageUrl for PRODUCT.
+    // That override was a URL snapshot, and a snapshot goes stale silently:
+    // lal-ata's pointed at a `-full.webp` derivative that no longer exists in
+    // the bucket, so every Facebook/WhatsApp/X share of that product rendered
+    // with no image while the product page itself looked perfectly fine.
+    // Skips VIDEO — an mp4 in og:image is not a preview.
+    const imageUrls = dto.media.filter((m) => m.type !== 'VIDEO').map((m) => m.url);
+    const primaryImageUrl =
+      dto.media.find((m) => m.isPrimary && m.type !== 'VIDEO')?.url ?? imageUrls[0] ?? null;
+    const resolvedSeo = await this.seo.resolve('PRODUCT', product.id, locale, {
       title: dto.name,
       description: dto.description,
       canonicalPath: `/products/${dto.slug}`,
-      imageUrl: imageUrls[0] ?? null,
+      imageUrl: primaryImageUrl,
     });
+    const seo = { ...resolvedSeo, ogImageUrl: primaryImageUrl ?? resolvedSeo.ogImageUrl };
 
     const [crossSell, frequentlyBoughtTogether, relatedProducts, salesSum] = await Promise.all([
       this.getPublicRelation(product.id, 'CROSS_SELL', locale),

@@ -71,6 +71,11 @@ export async function generateMetadata({
   const ogImageUrl: string | undefined = siteInfo?.seoImageUrl ?? undefined;
 
   return {
+    // Makes every relative `alternates.canonical` and `openGraph.url` in the
+    // app resolve to an absolute URL. Without it Next emits them relative
+    // (`<link rel="canonical" href="/products/lal-ata">`) and omits og:url
+    // entirely — and a relative canonical is not a canonical.
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://amadere.com"),
     title,
     description,
     openGraph: {

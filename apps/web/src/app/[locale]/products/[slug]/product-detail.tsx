@@ -29,6 +29,11 @@ import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toDisplayImageUrl, toEmbeddableVideoUrl, IMG } from "@/lib/media";
+import { cdnImageUrl } from "@/lib/image-url";
+
+// Facebook/X's recommended og:image width. Not in the IMG scale, which names
+// on-page render sizes — this one is fixed by the platforms, not by layout.
+const OG_IMAGE_WIDTH = 1200;
 import { defaultVariantId } from "@/lib/pdp";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
@@ -74,14 +79,37 @@ export async function generateProductMetadata(
   }
 
   const path = `/products/${slug}`;
+  // Same CDN rewrite every <img> on the site goes through. og:image skipped
+  // it, so it emitted whatever raw URL the API returned — including the
+  // legacy *.r2.dev host, which is rate-limited and explicitly unsuitable for
+  // production traffic (see lib/image-url.ts). Also pins a width: crawlers
+  // fetch this image on every share, and the untransformed original can be
+  // multiple megabytes.
+  const ogImage = product.seo.ogImageUrl
+    ? cdnImageUrl(product.seo.ogImageUrl, OG_IMAGE_WIDTH)
+    : undefined;
+
   return {
     title: product.seo.title,
     description: product.seo.description ?? undefined,
     alternates: { canonical: path, languages: getLanguageAlternates(path) },
     openGraph: {
+      type: "website",
+      url: path,
       title: product.seo.ogTitle,
       description: product.seo.ogDescription ?? undefined,
-      images: product.seo.ogImageUrl ? [product.seo.ogImageUrl] : undefined,
+      images: ogImage ? [{ url: ogImage, alt: product.seo.ogTitle }] : undefined,
+    },
+    // Without this block the root layout's site-wide twitter tags survive
+    // untouched, so X/Twitter (and anything else preferring twitter:* over
+    // og:*) showed the brand's generic title and description on every single
+    // product share. Next only merges per-key, so setting `openGraph` alone
+    // does not displace them.
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title: product.seo.ogTitle,
+      description: product.seo.ogDescription ?? undefined,
+      images: ogImage ? [ogImage] : undefined,
     },
   };
 }
