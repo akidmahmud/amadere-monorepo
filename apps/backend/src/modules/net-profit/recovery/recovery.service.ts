@@ -195,7 +195,14 @@ export class RecoveryService {
    */
   async captureCheckoutStage(
     identity: CartIdentity,
-    input: { stage: 'checkout' | 'otp'; name?: string; phone?: string; email?: string },
+    input: {
+      stage: 'checkout' | 'otp';
+      name?: string;
+      phone?: string;
+      email?: string;
+      /** Whatever of the shipping form is filled in so far. */
+      address?: Record<string, string | undefined>;
+    },
   ): Promise<void> {
     try {
       const cart = await this.prisma.client.cart.findFirst({
@@ -242,6 +249,16 @@ export class RecoveryService {
         ...(input.email?.trim() ? { email: input.email.trim() } : {}),
       };
 
+      // Only the parts actually typed. Merged over whatever is already
+      // stored, for the same reason as the contact fields above: the OTP
+      // request carries no address and must not erase the one the checkout
+      // beacon captured a moment earlier.
+      const typedAddress = Object.fromEntries(
+        Object.entries(input.address ?? {})
+          .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : ''])
+          .filter(([, v]) => v !== ''),
+      );
+
       const existing = await this.prisma.client.incompleteOrder.findUnique({
         where: { cartId: cart.id },
       });
@@ -253,10 +270,17 @@ export class RecoveryService {
         const rank: Record<string, number> = { cart: 0, checkout: 1, otp: 2, payment: 3 };
         const stage =
           (rank[input.stage] ?? 0) > (rank[existing.stage] ?? 0) ? input.stage : existing.stage;
+        const mergedAddress = {
+          ...((existing.address as Record<string, unknown> | null) ?? {}),
+          ...typedAddress,
+        };
         await this.prisma.client.incompleteOrder.update({
           where: { cartId: cart.id },
           data: {
             ...contact,
+            ...(Object.keys(mergedAddress).length > 0
+              ? { address: mergedAddress as Prisma.InputJsonValue }
+              : {}),
             stage,
             cart: snapshot as unknown as Prisma.InputJsonValue,
             subtotal,
@@ -271,6 +295,9 @@ export class RecoveryService {
           cartId: cart.id,
           customerId: cart.customerId,
           ...contact,
+          ...(Object.keys(typedAddress).length > 0
+            ? { address: typedAddress as Prisma.InputJsonValue }
+            : {}),
           cart: snapshot as unknown as Prisma.InputJsonValue,
           subtotal,
           stage: input.stage,

@@ -9,6 +9,13 @@ export interface OrderManagerCourierAttempt {
   shipmentId: number;
 }
 
+export interface OrderManagerLine {
+  name: string;
+  sku: string | null;
+  quantity: number;
+  unitPrice: string;
+}
+
 export interface OrderManagerRow {
   id: number;
   orderNumber: string;
@@ -35,6 +42,8 @@ export interface OrderManagerRow {
   utmCampaign: string | null;
   assignedAdminId: number | null;
   assignedAdminName: string | null;
+  /** Every line on the order — product name, SKU and quantity as sold. */
+  items: OrderManagerLine[];
   /** Set only in the "Deleted Orders" tab's listing — null everywhere else. */
   deletedAt: string | null;
 }

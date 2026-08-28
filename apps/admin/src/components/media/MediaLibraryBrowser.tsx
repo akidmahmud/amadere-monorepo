@@ -106,6 +106,35 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
 
   const currentFolder = folders?.find((f) => f.id === folderId);
 
+  /**
+   * Ancestors of the open folder, root first, for the breadcrumb.
+   *
+   * Built client-side from the flat list the endpoint already returns rather
+   * than adding a "path" route — there are only ever a handful of folders,
+   * and one source of truth beats two. The visited guard stops a malformed
+   * parent chain (a cycle introduced by hand in the database) from hanging
+   * the admin.
+   */
+  const breadcrumb = useMemo(() => {
+    if (!folders || folderId === null) return [];
+    const byId = new Map(folders.map((f) => [f.id, f]));
+    const path: typeof folders = [];
+    const seen = new Set<number>();
+    let node = byId.get(folderId);
+    while (node && !seen.has(node.id)) {
+      seen.add(node.id);
+      path.unshift(node);
+      node = node.parentId === null ? undefined : byId.get(node.parentId);
+    }
+    return path;
+  }, [folders, folderId]);
+
+  /** Subfolders of wherever we are — root shows the top-level ones. */
+  const childFolders = useMemo(
+    () => (folders ?? []).filter((f) => (f.parentId ?? null) === folderId),
+    [folders, folderId],
+  );
+
   async function uploadFiles(files: File[], targetFolderId: number | null) {
     for (const file of files) {
       const item = await upload.mutateAsync(file);
@@ -116,7 +145,11 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
   function handleCreateFolder() {
     const name = newFolderName.trim();
     if (!name) return;
-    createFolder.mutate(name, { onSuccess: () => setNewFolderName("") });
+    // Nests under whatever is open; at the root this is null, i.e. top level.
+    createFolder.mutate(
+      { name, parentId: folderId },
+      { onSuccess: () => setNewFolderName("") },
+    );
     setCreatingFolder(false);
   }
 
@@ -148,8 +181,10 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
             {currentFolder && (
               <button
                 type="button"
-                onClick={() => setFolderId(null)}
-                aria-label="Back to All Media"
+                // Up one level, not straight to the root — with nesting,
+                // jumping to All Media from three levels deep loses your place.
+                onClick={() => setFolderId(currentFolder?.parentId ?? null)}
+                aria-label="Up one folder"
                 className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-sm hover:bg-surface-2 transition-all"
               >
                 {backIcon}
@@ -166,12 +201,22 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
             >
               All Media
             </button>
-            {currentFolder && (
-              <>
+            {breadcrumb.map((f, i) => (
+              <span key={f.id} className="flex items-center gap-2">
                 <span className="text-muted">/</span>
-                <span className="font-bold text-text">{currentFolder.name}</span>
-              </>
-            )}
+                {i === breadcrumb.length - 1 ? (
+                  <span className="font-bold text-text">{f.name}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setFolderId(f.id)}
+                    className="text-secondary transition-colors hover:text-brand-600"
+                  >
+                    {f.name}
+                  </button>
+                )}
+              </span>
+            ))}
           </div>
 
           {/* Controls: Search, Type Filter, View Switcher, New Folder */}
@@ -343,18 +388,24 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
         </div>
 
         {/* --- Folder List Grid --- */}
-        {folderId === null && folders && folders.length > 0 && (
+        {childFolders.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted px-1">Folders</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted px-1">
+              {folderId === null ? "Folders" : "Subfolders"}
+            </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {folders.map((f) => (
+              {childFolders.map((f) => (
                 <FolderTile
                   key={f.id}
                   folder={f}
                   dragOver={dragOverFolderId === f.id}
                   onOpen={() => setFolderId(f.id)}
                   onDelete={() => {
-                    if (confirm(`Delete folder "${f.name}"? Media inside stays as unfiled.`)) deleteFolder.mutate(f.id);
+                    const kids = (folders ?? []).filter((x) => x.parentId === f.id).length;
+                    const warning = kids > 0
+                      ? `Delete folder "${f.name}" and its ${kids} subfolder(s)? Media inside stays as unfiled.`
+                      : `Delete folder "${f.name}"? Media inside stays as unfiled.`;
+                    if (confirm(warning)) deleteFolder.mutate(f.id);
                   }}
                   onDragOver={() => setDragOverFolderId(f.id)}
                   onDragLeave={() => setDragOverFolderId(null)}

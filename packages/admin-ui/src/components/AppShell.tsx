@@ -15,6 +15,8 @@ export interface AppNavItem {
    * (e.g. Overview). Filtering itself happens where `nav` is built, not
    * here — AppShell just renders whatever list it's given. */
   permission?: string;
+  /** Red dot on this row — e.g. Recovery when new abandoned carts arrive. */
+  dot?: boolean;
 }
 
 /** A section header row in the sidebar — matches the reference's plain
@@ -256,6 +258,7 @@ export function AppShell({
                     label={item.label}
                     href={item.href}
                     active={item.href === resolvedActiveHref}
+                    dot={item.dot}
                     linkComponent={Link}
                   />
                 ))}

@@ -31,6 +31,8 @@ export interface IncompleteOrder {
   name: string | null;
   phone: string | null;
   email: string | null;
+  /** Partial shipping address typed before abandoning; pre-fills Create order. */
+  address: Record<string, string | undefined> | null;
   cart: CartSnapshotItem[];
   subtotal: string;
   stage: string;

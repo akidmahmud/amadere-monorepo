@@ -1492,6 +1492,22 @@ export interface paths {
         patch: operations["AdminProductsController_updateVariantPrice"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/{variantId}/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_setDefaultVariant"];
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/variants/{variantId}/sku": {
         parameters: {
             query?: never;
@@ -6826,11 +6842,14 @@ export interface components {
         MediaFolderDto: {
             id: number;
             name: string;
+            parentId: number | null;
             /** Format: date-time */
             createdAt: string;
         };
         CreateMediaFolderDto: {
             name: string;
+            /** @description Create this folder inside another one */
+            parentId?: number;
         };
         AdminDigitalPreviewPageDto: {
             pageNumber: number;
@@ -13544,6 +13563,26 @@ export interface operations {
                 "application/json": components["schemas"]["UpdateVariantPriceDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_setDefaultVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

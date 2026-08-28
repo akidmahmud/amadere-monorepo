@@ -204,6 +204,17 @@ export class AdminProductsController {
     return this.products.updateVariantPrice(id, variantId, dto);
   }
 
+  // No body: the URL already says which variant, and "make this the default"
+  // has no other parameter. Setting it necessarily unsets the previous one.
+  @Patch(':id/variants/:variantId/default')
+  @RequirePermission('product.update')
+  setDefaultVariant(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+  ): Promise<void> {
+    return this.products.setDefaultVariant(id, variantId);
+  }
+
   @Patch(':id/variants/:variantId/sku')
   @RequirePermission('product.update')
   updateVariantSku(

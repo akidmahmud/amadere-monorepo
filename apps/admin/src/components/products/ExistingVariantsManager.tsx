@@ -10,6 +10,7 @@ import {
   useUpdateVariantWeight,
   type AdminProductVariant,
   type CostPriceUnit,
+  useSetDefaultVariant,
 } from "@/hooks/useProducts";
 import { useUpdateVariantPrice } from "@/hooks/useProfit";
 import { useUpdateInventoryStock } from "@/hooks/useInventory";
@@ -75,6 +76,7 @@ function VariantEditRow({
   const updateStock = useUpdateInventoryStock();
   const updateSku = useUpdateVariantSku(productId);
   const updateWeight = useUpdateVariantWeight(productId);
+  const setDefault = useSetDefaultVariant(productId);
   const [price, setPrice] = useState(String(variant.price));
   const [salePrice, setSalePrice] = useState(variant.salePrice != null ? String(variant.salePrice) : "");
   const [stock, setStock] = useState(String(variant.stock));
@@ -199,6 +201,22 @@ function VariantEditRow({
         className="h-8 shrink-0 rounded-lg bg-gradient-to-r from-emerald-800 to-emerald-900 px-3.5 text-xs font-extrabold text-amber-300 shadow-xs ring-1 ring-amber-400/30 transition-all hover:from-emerald-700 hover:to-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {pending ? "Saving…" : "Save"}
+      </button>
+      {/* Was impossible: the default could only be chosen when ADDING a
+          variant, and the only "change" was remove-and-re-add, which throws
+          away the variant's stock, SKU and id. */}
+      <button
+        type="button"
+        disabled={variant.isDefault || setDefault.isPending}
+        title={variant.isDefault ? "Already the default variant" : "Make this the default variant"}
+        onClick={() => setDefault.mutate(variant.id, { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY }) })}
+        className={`h-8 shrink-0 rounded-lg border px-3 text-xs font-bold transition-all disabled:cursor-not-allowed ${
+          variant.isDefault
+            ? "border-amber-300 bg-amber-100 text-amber-800 opacity-70"
+            : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+        }`}
+      >
+        {variant.isDefault ? "Default" : setDefault.isPending ? "Setting…" : "Make default"}
       </button>
       <button
         type="button"

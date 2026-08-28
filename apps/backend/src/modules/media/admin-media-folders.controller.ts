@@ -27,7 +27,7 @@ export class AdminMediaFoldersController {
   @RequirePermission('media.upload')
   @ApiOkResponse({ type: MediaFolderDto })
   create(@Body() dto: CreateMediaFolderDto): Promise<MediaFolderDto> {
-    return this.media.createFolder(dto.name);
+    return this.media.createFolder(dto.name, dto.parentId);
   }
 
   @Delete(':id')

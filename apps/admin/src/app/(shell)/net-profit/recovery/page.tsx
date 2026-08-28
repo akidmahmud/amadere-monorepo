@@ -38,16 +38,20 @@ const cartIcon = <Icon name="shopping_cart" />;
 
 function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () => void }) {
   const createOrder = useCreateOrderFromIncomplete();
+  // Pre-filled from whatever the shopper actually typed before leaving.
+  // Staff used to retype every field of an address the customer had already
+  // entered — and had to phone them to ask for it again.
+  const captured = (row.address ?? {}) as Record<string, string | undefined>;
   const [form, setForm] = useState<CreateOrderInput>({
-    recipientName: "",
+    recipientName: row.name ?? "",
     phone: row.phone ?? "",
     email: row.email ?? "",
-    division: "",
-    district: "",
-    area: "",
-    landmark: "",
-    addressLine: "",
-    postCode: "",
+    division: captured.division ?? "",
+    district: captured.district ?? "",
+    area: captured.area ?? "",
+    landmark: captured.landmark ?? "",
+    addressLine: captured.addressLine ?? "",
+    postCode: captured.postCode ?? "",
   });
 
   return (

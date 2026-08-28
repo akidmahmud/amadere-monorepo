@@ -7,6 +7,8 @@ export class IncompleteOrderDto {
   name!: string | null;
   phone!: string | null;
   email!: string | null;
+  /** Partial shipping address the shopper typed before leaving. */
+  address!: unknown;
   cart!: unknown;
   subtotal!: string;
   stage!: string;
@@ -24,6 +26,7 @@ export function toIncompleteOrderDto(row: IncompleteOrder): IncompleteOrderDto {
     name: row.name,
     phone: row.phone,
     email: row.email,
+    address: row.address,
     cart: row.cart,
     subtotal: row.subtotal.toString(),
     stage: row.stage,

@@ -67,7 +67,19 @@ export function useRequestCodOtp() {
  */
 export function useRecordCheckoutAbandonment() {
   return useMutation({
-    mutationFn: async (args: { name?: string; phone?: string; email?: string }) => {
+    mutationFn: async (args: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      // Whatever of the shipping form is filled in — all optional, because
+      // the point is capturing a half-finished one.
+      addressLine?: string;
+      area?: string;
+      district?: string;
+      division?: string;
+      postCode?: string;
+      landmark?: string;
+    }) => {
       try {
         await proxyFetch<unknown>("/checkout/abandonment", {
           method: "POST",

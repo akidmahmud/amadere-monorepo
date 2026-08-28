@@ -98,7 +98,13 @@ export function useMediaFolders() {
 export function useCreateMediaFolder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => proxyFetch<MediaFolderDto>("/admin/media-folders", { method: "POST", body: JSON.stringify({ name }) }),
+    // `parentId` omitted (or null) creates a top-level folder; pass the
+    // folder currently being viewed to nest inside it.
+    mutationFn: ({ name, parentId }: { name: string; parentId?: number | null }) =>
+      proxyFetch<MediaFolderDto>("/admin/media-folders", {
+        method: "POST",
+        body: JSON.stringify({ name, parentId: parentId ?? undefined }),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: FOLDERS_KEY }),
   });
 }

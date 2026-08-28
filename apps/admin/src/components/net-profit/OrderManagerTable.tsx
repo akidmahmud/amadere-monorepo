@@ -452,7 +452,7 @@ export function OrderManagerTable({
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
 
-  const colCount = 15 + columns.size;
+  const colCount = 16 + columns.size;
   const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
   const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
@@ -479,6 +479,7 @@ export function OrderManagerTable({
               <TH>Order Status</TH>
               {columns.has("paymentStatus") && <TH>Payment Status</TH>}
               <TH>Assign</TH>
+              <TH style={{ minWidth: 230 }}>Products</TH>
               <TH>Total</TH>
               <TH>Phone</TH>
               <TH style={{ minWidth: 220 }}>Address</TH>
@@ -703,6 +704,34 @@ function OrderRow({
       )}
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <AssignCell order={o} staff={staff} />
+      </td>
+      {/* What was actually bought. An order can hold several lines, so each
+          gets its own row inside the cell with an explicit qty — collapsing
+          them to "3 items" would hide the one fact staff pick orders by.
+          Capped at 3 with a "+N more" tail so a 12-line wholesale order
+          cannot stretch the table row to a full screen. */}
+      <td className={td} style={tdStyle}>
+        {o.items.length === 0 ? (
+          <span style={{ color: FAINT }}>—</span>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            {o.items.slice(0, 3).map((it, i) => (
+              <div key={i} className="flex items-baseline gap-1.5 leading-tight">
+                <span className="shrink-0 font-bold" style={{ color: GREEN }}>
+                  {it.quantity}&times;
+                </span>
+                <span className="truncate" title={it.sku ? `${it.name} (${it.sku})` : it.name}>
+                  {it.name}
+                </span>
+              </div>
+            ))}
+            {o.items.length > 3 && (
+              <span className="text-[0.66rem]" style={{ color: FAINT }}>
+                +{o.items.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
       </td>
       <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
         ৳{Number(o.totalAmount).toLocaleString()}

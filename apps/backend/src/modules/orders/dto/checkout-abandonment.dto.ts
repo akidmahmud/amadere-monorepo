@@ -24,4 +24,36 @@ export class CheckoutAbandonmentDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  // Sent as whatever the shopper has typed SO FAR — every part optional,
+  // because the whole point is capturing a half-filled form.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  addressLine?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  area?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  division?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  postCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landmark?: string;
 }

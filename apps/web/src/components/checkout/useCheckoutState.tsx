@@ -307,22 +307,36 @@ export function useCheckoutState() {
   const watchedName = useWatch({ control: form.control, name: "shippingAddress.recipientName" });
   const watchedPhone = useWatch({ control: form.control, name: "shippingAddress.phone" });
   const watchedEmail = useWatch({ control: form.control, name: "shippingAddress.email" });
+  // The address the shopper has typed goes too — staff re-creating the order
+  // should not have to phone them back for a street they already entered.
+  const watchedAddress = useWatch({ control: form.control, name: "shippingAddress" });
   useEffect(() => {
     const name = watchedName?.trim() || undefined;
     const phone = watchedPhone?.trim() || undefined;
     const email = watchedEmail?.trim() || undefined;
+    // Still gated on a way to CONTACT them: an address with no phone or
+    // email is not a recoverable lead.
     if (!phone && !email) return;
-    const key = `${name ?? ""}|${phone ?? ""}|${email ?? ""}`;
+    const a = watchedAddress ?? {};
+    const address = {
+      addressLine: a.addressLine?.trim() || undefined,
+      area: a.area?.trim() || undefined,
+      district: a.district?.trim() || undefined,
+      division: a.division?.trim() || undefined,
+      postCode: a.postCode?.trim() || undefined,
+      landmark: a.landmark?.trim() || undefined,
+    };
+    const key = JSON.stringify([name, phone, email, address]);
     if (key === lastBeacon.current) return;
     const timer = setTimeout(() => {
       lastBeacon.current = key;
-      recordAbandonment.mutate({ name, phone, email });
+      recordAbandonment.mutate({ name, phone, email, ...address });
     }, 1500);
     return () => clearTimeout(timer);
     // recordAbandonment is a stable mutation object; including it would
     // re-arm the timer on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedName, watchedPhone, watchedEmail]);
+  }, [watchedName, watchedPhone, watchedEmail, watchedAddress]);
 
   // add_payment_info — this checkout is a single page (no distinct
   // "shipping"/"payment" steps), so there's no page transition to hook;

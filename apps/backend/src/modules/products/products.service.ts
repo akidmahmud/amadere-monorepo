@@ -918,6 +918,45 @@ export class ProductsService {
   // Editable in place (like price/stock) rather than requiring remove+re-add
   // — unlike attribute-value combos/isDefault, SKU carries no relational
   // structure that a bare update could leave inconsistent.
+  /**
+   * Promote one variant to be the product's default.
+   *
+   * There was no way to do this at all: the admin could only set a default
+   * when ADDING a variant, and the note in ExistingVariantsManager said
+   * changing it meant removing the variant and re-adding it — which throws
+   * away its stock, SKU and id, and would orphan anything referencing it.
+   *
+   * Runs in a transaction because "exactly one default" is the invariant
+   * being maintained: clearing the old one and setting the new one must not
+   * be separable, or a failure between them leaves the product with none (or
+   * two, which is what `find(v => v.isDefault)` silently resolves by order).
+   */
+  async setDefaultVariant(productId: number, variantId: number): Promise<void> {
+    const variant = await this.prisma.client.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+    if (!variant) throw new NotFoundException('Variant not found');
+
+    await this.prisma.client.$transaction([
+      this.prisma.client.productVariant.updateMany({
+        where: { productId, isDefault: true },
+        data: { isDefault: false },
+      }),
+      this.prisma.client.productVariant.update({
+        where: { id: variantId },
+        data: { isDefault: true },
+      }),
+    ]);
+
+    // The default variant is what the card, the PDP and the catalog feed all
+    // price from, so this is exactly as cache-visible as a price edit.
+    const product = await this.prisma.client.product.findUnique({
+      where: { id: productId },
+      select: { slug: true },
+    });
+    this.revalidateProduct([product?.slug]);
+  }
+
   async updateVariantSku(
     productId: number,
     variantId: number,

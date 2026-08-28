@@ -147,8 +147,16 @@ export class MediaService {
     return folders.map(toMediaFolderDto);
   }
 
-  async createFolder(name: string): Promise<MediaFolderDto> {
-    const folder = await this.prisma.client.mediaFolder.create({ data: { name } });
+  async createFolder(name: string, parentId?: number): Promise<MediaFolderDto> {
+    // Checked rather than left to the FK: a bad parentId would otherwise
+    // surface as a raw Prisma constraint error instead of a 404.
+    if (parentId !== undefined) {
+      const parent = await this.prisma.client.mediaFolder.findUnique({ where: { id: parentId } });
+      if (!parent) throw new NotFoundException('Parent folder not found');
+    }
+    const folder = await this.prisma.client.mediaFolder.create({
+      data: { name, parentId: parentId ?? null },
+    });
     return toMediaFolderDto(folder);
   }
 
@@ -157,7 +165,8 @@ export class MediaService {
     if (!folder) throw new NotFoundException('Folder not found');
     // Media inside is un-filed (schema's onDelete: SetNull), never deleted —
     // a folder is just an organizational label, not a container that owns
-    // the files' lifecycle.
+    // the files' lifecycle. Subfolders DO go, via the self-relation's
+    // onDelete: Cascade; their media is un-filed the same way.
     await this.prisma.client.mediaFolder.delete({ where: { id } });
   }
 

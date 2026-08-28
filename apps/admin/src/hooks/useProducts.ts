@@ -205,6 +205,16 @@ export function useRemoveVariant(productId: number) {
   });
 }
 
+/** Promote a variant to default. Setting one necessarily unsets the others. */
+export function useSetDefaultVariant(productId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (variantId: number) =>
+      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/default`, { method: "PATCH" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useUpdateVariantSku(productId: number) {
   const qc = useQueryClient();
   return useMutation({

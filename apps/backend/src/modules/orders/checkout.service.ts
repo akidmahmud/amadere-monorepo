@@ -174,7 +174,14 @@ export class CheckoutService {
     identity: CartIdentity,
     dto: CheckoutAbandonmentDto,
   ): Promise<void> {
-    await this.recovery.captureCheckoutStage(identity, { stage: 'checkout', ...dto });
+    const { name, phone, email, ...address } = dto;
+    await this.recovery.captureCheckoutStage(identity, {
+      stage: 'checkout',
+      name,
+      phone,
+      email,
+      address,
+    });
   }
 
   async checkout(

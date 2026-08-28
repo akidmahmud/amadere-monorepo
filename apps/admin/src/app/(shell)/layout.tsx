@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell, type AppNavEntry } from "@amader/admin-ui";
@@ -34,10 +34,28 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     !!me && (me.isSuperAdmin || me.permissions.includes("net_profit_recovery.manage"));
   const abandonment = useAbandonmentAlert(canSeeRecovery);
 
-  const nav = useMemo(
-    () => (me ? filterNavByPermissions(adminNav, me.isSuperAdmin, new Set(me.permissions)) : []),
-    [me],
-  );
+  // Opening Recovery any way at all counts as having seen it — via the bell,
+  // the sidebar, a bookmark or a link from elsewhere. Without this the dot
+  // would sit there while the admin is literally looking at the page.
+  useEffect(() => {
+    if (pathname === "/net-profit/recovery" && abandonment.unseen > 0) {
+      abandonment.acknowledge();
+    }
+  }, [pathname, abandonment]);
+
+  const nav = useMemo(() => {
+    if (!me) return [];
+    const visible = filterNavByPermissions(adminNav, me.isSuperAdmin, new Set(me.permissions));
+    // Red dot on Recovery itself, not just the bell: the bell is easy to miss
+    // and says nothing about WHERE the new work is. Same unseen count drives
+    // both, so they clear together when the page is opened.
+    if (abandonment.unseen === 0) return visible;
+    return visible.map((entry) =>
+      "href" in entry && entry.href === "/net-profit/recovery"
+        ? { ...entry, dot: true }
+        : entry,
+    );
+  }, [me, abandonment.unseen]);
 
   return (
     <AppShell

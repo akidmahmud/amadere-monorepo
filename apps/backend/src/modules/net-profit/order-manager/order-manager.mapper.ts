@@ -6,6 +6,14 @@ export interface OrderManagerCourierAttempt {
   shipmentId: number;
 }
 
+/** One line of an order — what was bought, as snapshotted at purchase time. */
+export class OrderManagerLineDto {
+  name!: string;
+  sku!: string | null;
+  quantity!: number;
+  unitPrice!: string;
+}
+
 export class OrderManagerRowDto {
   id!: number;
   orderNumber!: string;
@@ -32,6 +40,8 @@ export class OrderManagerRowDto {
   utmCampaign!: string | null;
   assignedAdminId!: number | null;
   assignedAdminName!: string | null;
+  /** Every line on the order, in order. Empty only for a corrupt order. */
+  items!: OrderManagerLineDto[];
   /** Set only in the "Deleted Orders" tab's listing — null everywhere else. */
   deletedAt!: Date | null;
 }

@@ -155,10 +155,18 @@ model Media {
 model MediaFolder {
   id        Int      @id @default(autoincrement())
   name      String
+  /// Self-reference: null = a top-level folder. Cascade, so deleting a
+  /// folder removes the subtree with it — the media inside is still only
+  /// un-filed (Media.folderId is SetNull), never deleted, because a folder
+  /// is an organisational label and does not own the files' lifecycle.
+  parentId  Int?     @map("parent_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  media Media[]
+  parent   MediaFolder?  @relation("MediaFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children MediaFolder[] @relation("MediaFolderTree")
+  media    Media[]
 
+  @@index([parentId])
   @@map("media_folders")
 }
 
@@ -2689,6 +2697,11 @@ model IncompleteOrder {
   name             String?
   phone            String?
   email            String?
+  /// Whatever of the shipping address the shopper had typed when they left —
+  /// { addressLine, area, district, division, postCode, landmark }. Stored as
+  /// JSON, like `cart` beside it, because it is only ever read back whole to
+  /// pre-fill the "create order from this cart" form; nothing filters on it.
+  address          Json?
   cart             Json // snapshot of items
   subtotal         Decimal  @db.Decimal(10, 2)
   /// "cart" | "checkout" | "otp" | "payment" — how far the shopper got.

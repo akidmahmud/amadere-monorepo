@@ -37,6 +37,8 @@ export function toMediaDto(media: Media): MediaDto {
 export class MediaFolderDto {
   id!: number;
   name!: string;
+  /** null = top-level. The browser builds the tree and breadcrumbs from this. */
+  parentId!: number | null;
   createdAt!: Date;
 }
 
@@ -44,6 +46,7 @@ export function toMediaFolderDto(folder: MediaFolder): MediaFolderDto {
   return {
     id: folder.id,
     name: folder.name,
+    parentId: folder.parentId,
     createdAt: folder.createdAt,
   };
 }

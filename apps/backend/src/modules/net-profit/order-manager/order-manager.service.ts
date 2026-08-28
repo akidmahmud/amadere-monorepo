@@ -16,7 +16,7 @@ import { ShipmentsService } from '../../courier/shipments.service';
 import { BlockerService } from '../blocker/blocker.service';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
-import { OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
+import { OrderManagerLineDto, OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
 
 interface RawOrderManagerRow {
   id: number;
@@ -43,6 +43,7 @@ interface RawOrderManagerRow {
   utm_campaign: string | null;
   assigned_admin_id: number | null;
   assigned_admin_name: string | null;
+  items: OrderManagerLineDto[] | null;
   deleted_at: Date | null;
 }
 
@@ -103,7 +104,20 @@ export class OrderManagerService {
         phoneLikes.map((p) => Prisma.sql`oa.phone ILIKE ${p}`),
         ' OR ',
       );
-      conditions.push(Prisma.sql`(o.order_number ILIKE ${like} OR ${phoneOr} OR oa.recipient_name ILIKE ${like})`);
+      // Also matches what was BOUGHT, not just who bought it: staff search by
+      // SKU ("which orders contain FIBER-500?") and by product name at least
+      // as often as by order number. EXISTS rather than a join, so an order
+      // with three matching lines still returns one row.
+      conditions.push(Prisma.sql`(
+        o.order_number ILIKE ${like}
+        OR ${phoneOr}
+        OR oa.recipient_name ILIKE ${like}
+        OR EXISTS (
+          SELECT 1 FROM order_items oi_s
+          WHERE oi_s.order_id = o.id
+            AND (oi_s.sku_snapshot ILIKE ${like} OR oi_s.product_name_snapshot ILIKE ${like})
+        )
+      )`);
     }
     if (query.from) conditions.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
     if (query.to) conditions.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
@@ -154,7 +168,8 @@ export class OrderManagerService {
              s.id AS shipment_id,
              s.status AS courier_status,
              ca.attempts AS courier_attempts,
-             COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level
+             COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level,
+             oi.items AS items
       FROM orders o
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
       LEFT JOIN admin_users au ON au.id = o.assigned_admin_id
@@ -172,6 +187,22 @@ export class OrderManagerService {
           ORDER BY provider, created_at DESC
         ) latest
       ) ca ON true
+      -- Every line of the order, aggregated here rather than fetched per row
+      -- afterwards: the table shows what was actually bought, and an order
+      -- with four products must not cost four extra queries per page.
+      -- Snapshots, not joins to products: an order shows what was sold, even
+      -- after the product is renamed or deleted.
+      LEFT JOIN LATERAL (
+        SELECT json_agg(
+                 json_build_object(
+                   'name', product_name_snapshot,
+                   'sku', sku_snapshot,
+                   'quantity', quantity,
+                   'unitPrice', unit_price
+                 ) ORDER BY id
+               ) AS items
+        FROM order_items WHERE order_id = o.id
+      ) oi ON true
       LEFT JOIN LATERAL (
         SELECT m.url
         FROM order_items oi
@@ -230,6 +261,8 @@ export class OrderManagerService {
       utmCampaign: r.utm_campaign,
       assignedAdminId: r.assigned_admin_id,
       assignedAdminName: r.assigned_admin_name,
+      // json_agg returns NULL, not [], for an order with no lines.
+      items: (r.items ?? []).map((i) => ({ ...i, unitPrice: String(i.unitPrice) })),
       deletedAt: r.deleted_at,
     }));
 
@@ -305,29 +338,116 @@ export class OrderManagerService {
     return { succeeded, failed };
   }
 
+  /**
+   * CSV in the exact shape of the sheet the shop already keeps by hand —
+   * columns and their order are fixed by that sheet, not chosen here.
+   *
+   * ONE ROW PER PRODUCT LINE, with the order-level fields repeated. An order
+   * with four products becomes four rows, which is what makes the file
+   * pivotable by product and is how the existing sheet is built. It also
+   * means the money columns REPEAT: total per order, never a column sum.
+   *
+   * Quantity and price are expressed BY WEIGHT, matching the sheet: a 500 g
+   * pack sold at 790 appears as qty 0.5 at 1580 per kg. Weight comes from the
+   * variant, falling back to the product. When neither has one the line falls
+   * back to plain units and unit price rather than inventing a conversion.
+   */
   private async exportCsv(orderIds: number[]): Promise<string> {
     const orders = await this.prisma.client.order.findMany({
       where: { id: { in: orderIds } },
-      include: { addresses: { where: { type: 'SHIPPING' } }, payments: { take: 1, orderBy: { createdAt: 'desc' } } },
+      include: {
+        addresses: { where: { type: 'SHIPPING' } },
+        payments: { take: 1, orderBy: { createdAt: 'desc' } },
+        shipments: { take: 1, orderBy: { createdAt: 'desc' } },
+        assignedAdmin: { select: { firstName: true, lastName: true } },
+        items: {
+          orderBy: { id: 'asc' },
+          include: {
+            variant: { select: { weightOverride: true } },
+            product: { select: { shippableWeight: true } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
-    const header = 'Order Number,Status,Total,Payment,Phone,Division,District,Created At';
-    const lines = orders.map((o) => {
+
+    const header = [
+      'Date', 'Order Number', 'Source', 'Origin', 'Customer Name', 'Address',
+      'Phone Number', 'Consignment ID', 'Product Name', 'Qty.', 'Price / kg',
+      'Invoice Value', 'Delivery Charge', 'Discount', 'Grand Total',
+      'Order Status', 'Payment Status', 'Payment Method', 'Notes / comment',
+      'Assign', 'Division', 'District', 'Created At',
+    ];
+
+    // dd/mm/yyyy and hh:mm:ss, matching the sheet rather than ISO.
+    const two = (n: number) => String(n).padStart(2, '0');
+    const dmy = (d: Date) => two(d.getDate()) + '/' + two(d.getMonth() + 1) + '/' + d.getFullYear();
+    const hms = (d: Date) => two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds());
+
+    const rows: string[][] = [];
+    for (const o of orders) {
       const addr = o.addresses[0];
       const payment = o.payments[0];
-      return [
+      const shipment = o.shipments[0];
+      const assignee = o.assignedAdmin
+        ? (String(o.assignedAdmin.firstName ?? '') + ' ' + String(o.assignedAdmin.lastName ?? '')).trim()
+        : '';
+
+      const shared = [
+        dmy(o.createdAt),
         o.orderNumber,
-        o.status,
-        o.totalAmount.toString(),
-        payment?.provider ?? '',
+        o.utmSource ?? '',
+        o.channel,
+        addr?.recipientName ?? '',
+        addr?.addressLine ?? '',
         addr?.phone ?? '',
+        shipment?.consignmentId ?? '',
+      ];
+      const tail = [
+        o.shippingAmount.toString(),
+        o.discountAmount.toString(),
+        o.totalAmount.toString(),
+        o.status,
+        payment?.status ?? '',
+        payment?.provider ?? '',
+        o.staffNote ?? o.customerNote ?? '',
+        assignee,
         addr?.division ?? '',
         addr?.district ?? '',
-        o.createdAt.toISOString(),
-      ]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(',');
-    });
-    return [header, ...lines].join('\n');
+        dmy(o.createdAt) + ', ' + hms(o.createdAt),
+      ];
+
+      // An order with no lines still gets one row, so it cannot vanish from
+      // an export the staff are reconciling against.
+      const items = o.items.length > 0 ? o.items : [null];
+      for (const item of items) {
+        let qty = '';
+        let pricePerKg = '';
+        let invoice = '';
+        if (item) {
+          const unit = Number(item.unitPrice);
+          invoice = (unit * item.quantity).toFixed(2);
+          const weightKg = Number(item.variant?.weightOverride ?? item.product?.shippableWeight ?? 0);
+          if (weightKg > 0) {
+            qty = String(Number((weightKg * item.quantity).toFixed(3)));
+            pricePerKg = (unit / weightKg).toFixed(2);
+          } else {
+            qty = String(item.quantity);
+            pricePerKg = unit.toFixed(2);
+          }
+        }
+        rows.push([
+          ...shared,
+          item?.productNameSnapshot ?? '',
+          qty,
+          pricePerKg,
+          invoice,
+          ...tail,
+        ]);
+      }
+    }
+
+    const esc = (v: string) => '"' + String(v).replace(/"/g, '""') + '"';
+    return [header, ...rows].map((r) => r.map(esc).join(',')).join('\n');
   }
 }
