@@ -11,6 +11,13 @@ import { ProductListing } from "@/components/ProductListing";
 
 const PAGE_SIZE = 24;
 
+// Every sibling listing route (categories, brands, collections, tags, blog)
+// declares this; /products was the only one that did not. Reading
+// searchParams below currently overrides it — next.config.ts sets the
+// matching Cache-Control explicitly so the edge caches this anyway — but the
+// declaration is what that header is derived from, so it belongs here.
+export const revalidate = 3600;
+
 export async function generateMetadata({
   searchParams,
 }: {

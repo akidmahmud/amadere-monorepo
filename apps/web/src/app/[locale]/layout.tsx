@@ -190,6 +190,20 @@ export default async function LocaleLayout({
           handshake itself is often a big chunk of the perceived "video takes
           a while to start" delay, and it's the same three origins regardless
           of which video loads. */}
+      {/* cdn.amadere.com IS preconnected, unlike the hosts below. It serves
+          the LCP image on every page (the custom Cloudflare image loader
+          points at it), so the handshake is on the critical path by
+          definition — the opposite of the "Unused preconnect" case that got
+          the others removed. Measured on a Slow-4G mobile trace of "/":
+          the hero was preloaded from byte 786 of the HTML yet not requested
+          until 673 ms, and 658 ms of a 1,042 ms LCP was resource load delay
+          with a 0.4 ms download. That gap is connection setup.
+
+          crossOrigin is required: the preload for that image is issued by
+          next/image as an anonymous-CORS request, and a preconnect whose
+          CORS mode does not match opens a second, unused connection. */}
+      <link rel="preconnect" href="https://cdn.amadere.com" crossOrigin="anonymous" />
+
       {/* No preconnect to the API host any more. Every browser-side call now
           goes through this app's own origin (`/api/backend/...`), so that
           connection is never opened — PageSpeed reported the hint as

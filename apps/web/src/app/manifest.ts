@@ -1,5 +1,14 @@
 import type { MetadataRoute } from "next";
 import { safeGet } from "@/lib/api/client";
+import { cdnImageUrl } from "@/lib/image-url";
+
+// Without this the route is dynamic: it awaits safeGet, so Next served it
+// with `max-age=0, must-revalidate` and `cf-cache-status: DYNAMIC`, hitting
+// the backend on EVERY page load. Measured on production it was 414 ms and
+// the single longest chain in the trace — for a 400-byte JSON file whose
+// contents change when an admin edits the site name or favicon, i.e. almost
+// never. A day is the right cadence for site identity.
+export const revalidate = 86400;
 
 // Site identity — what browsers/OS actually use for bookmarks, tab groups,
 // and "Add to Home Screen"/PWA install, beyond just the <link rel="icon">
@@ -9,7 +18,13 @@ import { safeGet } from "@/lib/api/client";
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const { data: siteInfo } = await safeGet("/api/v1/settings/site");
   const name = siteInfo?.siteName ?? "আমাদের";
-  const iconUrl = siteInfo?.faviconUrl ?? "/favicon-default.png";
+  // Through the CDN loader, like every other image on the site. The raw
+  // value is whatever the admin uploaded — on production it was a legacy
+  // pub-*.r2.dev URL pointing at a full-size PNG, served unresized as the
+  // install/home-screen icon. 512 is the largest size a PWA install prompt
+  // actually uses.
+  const rawIconUrl = siteInfo?.faviconUrl ?? "/favicon-default.png";
+  const iconUrl = cdnImageUrl(rawIconUrl, 512);
 
   return {
     name,
@@ -27,7 +42,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
       // (Settings recommends 32x32/64x64, but nothing enforces it) —
       // "any" is the correct declaration for a single icon of unverified
       // size rather than guessing/lying about dimensions.
-      { src: iconUrl, sizes: "any", type: "image/png" },
+      //
+      // No `type` either, and that is deliberate rather than an omission:
+      // the CDN loader uses format=auto, so the bytes come back as AVIF,
+      // WebP or PNG depending on what the requesting client accepts.
+      // Declaring "image/png" would be a claim we cannot keep, and the
+      // field is optional precisely for this case.
+      { src: iconUrl, sizes: "any" },
     ],
   };
 }
