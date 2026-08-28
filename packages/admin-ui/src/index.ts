@@ -24,5 +24,6 @@ export * from "./components/Skeleton";
 export * from "./components/DoughnutChart";
 export * from "./components/Icon";
 export * from "./components/RevenueProfitTrend";
+export * from "./components/SalesStatisticsChart";
 
 export * from "./lib/link-component";
