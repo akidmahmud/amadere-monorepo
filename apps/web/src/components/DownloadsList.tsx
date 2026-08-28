@@ -4,7 +4,7 @@ import { useLocale } from "next-intl";
 import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
 import { toDisplayImageUrl, IMG } from "@/lib/media";
-import { downloadUrl, useDownloads, type DigitalDownloadItem } from "@/hooks/useDownloads";
+import { downloadUrl, readUrl, useDownloads, type DigitalDownloadItem } from "@/hooks/useDownloads";
 
 function fileSizeLabel(bytes: number | null): string | null {
   if (!bytes || bytes <= 0) return null;
@@ -76,12 +76,25 @@ export function DownloadsList() {
                   PDF straight from the backend's token-gated endpoint, so it
                   must be a real navigation the browser can hand to its
                   download manager. */}
-              <a
-                href={downloadUrl(item.token)}
-                className="shrink-0 rounded-lg bg-green px-4 py-2.5 font-ui text-sm font-semibold text-white hover:opacity-90"
-              >
-                Download
-              </a>
+              <div className="flex shrink-0 items-center gap-2">
+                {/* Read opens the same file inline in a new tab, so the
+                    browser's own PDF viewer shows it without the reader
+                    losing their place in the account page behind it. */}
+                <a
+                  href={readUrl(item.token)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-green px-4 py-2.5 font-ui text-sm font-semibold text-green hover:bg-cream"
+                >
+                  Read
+                </a>
+                <a
+                  href={downloadUrl(item.token)}
+                  className="rounded-lg bg-green px-4 py-2.5 font-ui text-sm font-semibold text-white hover:opacity-90"
+                >
+                  Download
+                </a>
+              </div>
             </div>
           );
         })}

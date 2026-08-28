@@ -2,7 +2,6 @@
 
 import { Button } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
-import { AppLink } from "@/components/AppLink";
 import { OrderConfirmation } from "@/components/OrderConfirmation";
 import type { CheckoutResult } from "@/hooks/useCheckout";
 
@@ -15,45 +14,25 @@ import type { CheckoutResult } from "@/hooks/useCheckout";
  * `Element | { ... }`, which erased every property on the context.
  *
  * Same markup, same behaviour; the provider now does the short-circuit.
+ *
+ * PHYSICAL orders only. A digital order never reaches here — the buyer is
+ * sent straight to their downloads (or to login, if their email already had
+ * an account), because a confirmation screen whose only content is a button
+ * to the file is a step between them and the thing they paid for.
  */
-export function OrderPlacedPanel({
-  placedOrder,
-  digitalOnly,
-}: {
-  placedOrder: CheckoutResult;
-  digitalOnly: boolean;
-}) {
+export function OrderPlacedPanel({ placedOrder }: { placedOrder: CheckoutResult }) {
   const router = useRouter();
+
   return (
       <div className="mx-auto max-w-[1180px] px-5 py-12">
-        {/* The email/phone on this digital order already belongs to an
-            account, so no session was issued — deliberately, see the
-            account-takeover note on CheckoutAccountService.ensureAccount.
-            Typing a stranger's email must never hand you their session, so
-            the download goes to the mailbox that owns the account instead. */}
-        {placedOrder.existingAccount && (
-          <p className="mb-6 rounded-brand border border-line bg-beige p-4 text-center font-body text-sm text-ink">
-            This email already has an account. We&apos;ve emailed your download link — {" "}
-            <AppLink href="/login" className="text-green underline">
-              sign in
-            </AppLink>{" "}
-            to see all your downloads.
-          </p>
-        )}
         <OrderConfirmation order={placedOrder} />
         <div className="mt-6 flex justify-center gap-3">
           <Button variant="ghost" onClick={() => router.push("/products")}>
             Continue Shopping
           </Button>
-          {digitalOnly && !placedOrder.existingAccount ? (
-            <Button variant="green" onClick={() => router.push("/account/downloads")}>
-              Go to My Downloads
-            </Button>
-          ) : (
-            <Button variant="green" onClick={() => router.push("/track")}>
-              Track Order
-            </Button>
-          )}
+          <Button variant="green" onClick={() => router.push("/track")}>
+            Track Order
+          </Button>
         </div>
       </div>
   );

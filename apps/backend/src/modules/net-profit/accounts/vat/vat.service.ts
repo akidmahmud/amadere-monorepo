@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
 import { AccountsSettingsService } from '../accounts-settings.service';
@@ -23,6 +23,15 @@ export interface VatReturn {
   creditCarriedForward: string;
   withheldNotDeposited: string;
   lines: VatReturnLine[];
+}
+
+export interface VatExceptionRow {
+  productId: number;
+  name: string;
+  slug: string;
+  sku: string | null;
+  /** Percent. 0 is a real value here: explicitly zero-rated, not "unset". */
+  ratePercent: string;
 }
 
 export type VatRiskReason = 'NO_CHALLAN' | 'NO_SUPPLIER_BIN';
@@ -100,6 +109,76 @@ export class VatService {
     }) as unknown as Promise<ExpenseForVat[]>;
   }
 
+  /**
+   * Revenue per VAT-exception product from completed orders in range.
+   *
+   * Joins on the live Product rather than a snapshot on OrderItem: a VAT rate
+   * is a tax-treatment fact about the product, and NBR expects the current
+   * treatment applied consistently to a return, not whatever was configured
+   * on the day of each sale.
+   */
+  private async exceptionRevenueInRange(
+    from?: string,
+    to?: string,
+  ): Promise<{ revenue: Prisma.Decimal; ratePercent: Prisma.Decimal }[]> {
+    const items = await this.prisma.client.orderItem.findMany({
+      where: {
+        product: { vatRatePercent: { not: null } },
+        order: {
+          status: 'COMPLETED',
+          ...(from || to ? { completedAt: this.dateRange(from, to) } : {}),
+        },
+      },
+      select: {
+        unitPrice: true,
+        quantity: true,
+        product: { select: { vatRatePercent: true } },
+      },
+    });
+    return items.map((i) => ({
+      revenue: i.unitPrice.times(i.quantity),
+      ratePercent: i.product?.vatRatePercent ?? ZERO,
+    }));
+  }
+
+  /** Products that override the store VAT rate. */
+  async listExceptions(): Promise<VatExceptionRow[]> {
+    const rows = await this.prisma.client.product.findMany({
+      where: { vatRatePercent: { not: null }, deletedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        sku: true,
+        vatRatePercent: true,
+        translations: { where: { locale: 'EN' }, take: 1, select: { name: true } },
+      },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => ({
+      productId: r.id,
+      name: r.translations[0]?.name ?? r.slug,
+      slug: r.slug,
+      sku: r.sku,
+      ratePercent: (r.vatRatePercent ?? ZERO).toFixed(2),
+    }));
+  }
+
+  /**
+   * Set a product's own VAT rate. Pass null to remove the exception and put
+   * the product back on the store rate — which is NOT the same as setting 0,
+   * and is why this takes a nullable rate rather than a delete-by-zero.
+   */
+  async setException(productId: number, ratePercent: number | null): Promise<VatExceptionRow[]> {
+    if (ratePercent !== null && (ratePercent < 0 || ratePercent > 100)) {
+      throw new BadRequestException('VAT rate must be between 0 and 100');
+    }
+    await this.prisma.client.product.update({
+      where: { id: productId },
+      data: { vatRatePercent: ratePercent === null ? null : new Decimal(ratePercent) },
+    });
+    return this.listExceptions();
+  }
+
   async vatReturn(from?: string, to?: string): Promise<VatReturn> {
     const vat = await this.settings.getVatSettings();
     const expenses = await this.expensesInRange(from, to);
@@ -118,9 +197,31 @@ export class VatService {
     });
     const revenue = revenueAgg._sum.totalAmount ?? ZERO;
     const rate = new Decimal(vat.ratePercent);
-    const outputVat = rate.isZero()
+
+    // Products with their own rate (Accounts > VAT Exception) are taken out
+    // of the store-rate base and charged at theirs; everything else — other
+    // products, shipping, COD fee — stays on the store rate exactly as
+    // before. With no exceptions configured the two branches collapse back
+    // to `revenue x rate / (100 + rate)`, so this cannot silently move a
+    // previously-reported figure.
+    const exceptionLines = await this.exceptionRevenueInRange(from, to);
+    let exceptionRevenue = ZERO;
+    let exceptionVat = ZERO;
+    for (const line of exceptionLines) {
+      exceptionRevenue = exceptionRevenue.plus(line.revenue);
+      if (line.ratePercent.isZero()) continue;
+      exceptionVat = exceptionVat.plus(
+        line.revenue.times(line.ratePercent).dividedBy(line.ratePercent.plus(100)),
+      );
+    }
+
+    // Clamped: an order's items can exceed its total once a discount is
+    // applied, and a negative remainder would show up as VAT owed back.
+    const standardRevenue = Decimal.max(revenue.minus(exceptionRevenue), ZERO);
+    const standardVat = rate.isZero()
       ? ZERO
-      : revenue.times(rate).dividedBy(rate.plus(100)).toDecimalPlaces(2);
+      : standardRevenue.times(rate).dividedBy(rate.plus(100));
+    const outputVat = standardVat.plus(exceptionVat).toDecimalPlaces(2);
 
     let claimable = ZERO;
     let atRisk = ZERO;

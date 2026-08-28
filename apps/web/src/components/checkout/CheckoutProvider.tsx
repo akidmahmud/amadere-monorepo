@@ -37,7 +37,7 @@ export function CheckoutProvider({ children }: { children?: ReactNode }) {
   // is no form left to render.
   if (ctx.placedOrder) {
     return (
-      <OrderPlacedPanel placedOrder={ctx.placedOrder} digitalOnly={ctx.digitalOnly} />
+      <OrderPlacedPanel placedOrder={ctx.placedOrder} />
     );
   }
 

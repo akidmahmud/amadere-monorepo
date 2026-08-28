@@ -608,6 +608,40 @@ export function useVatAtRisk(range: DateRange) {
   });
 }
 
+export interface VatExceptionRow {
+  productId: number;
+  name: string;
+  slug: string;
+  sku: string | null;
+  /** Percent as a string. "0.00" is a real value: explicitly zero-rated. */
+  ratePercent: string;
+}
+
+export function useVatExceptions() {
+  return useQuery({
+    queryKey: [...KEY, "vat-exceptions"],
+    queryFn: () => proxyFetch<VatExceptionRow[]>(`${BASE}/vat/exceptions`),
+  });
+}
+
+export function useSetVatException() {
+  const qc = useQueryClient();
+  return useMutation({
+    // ratePercent null removes the exception (back to the store rate), which
+    // is not the same as 0 (explicitly zero-rated).
+    mutationFn: ({ productId, ratePercent }: { productId: number; ratePercent: number | null }) =>
+      proxyFetch<VatExceptionRow[]>(`${BASE}/vat/exceptions/${productId}`, {
+        method: "PUT",
+        body: JSON.stringify({ ratePercent }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...KEY, "vat-exceptions"] });
+      // The VAT return is computed from these rates, so it is now stale.
+      qc.invalidateQueries({ queryKey: [...KEY, "vat-return"] });
+    },
+  });
+}
+
 // --- Reports ---------------------------------------------------------------
 
 export function useAccountsOverview(range: DateRange) {

@@ -848,6 +848,14 @@ model Product {
   // computed count; set = show this instead, unconditionally (not a floor).
   salesCountOverride Int? @map("sales_count_override")
 
+  /// Per-product VAT rate override, in percent (e.g. 0 or 2.5).
+  ///
+  /// NULL means "use the store rate" (accounts_vat.ratePercent) — it is not
+  /// the same as 0, which is an explicit zero-rated/exempt product. Most
+  /// products never set this; the Accounts > VAT Exception tab lists exactly
+  /// the ones that do.
+  vatRatePercent Decimal? @map("vat_rate_percent") @db.Decimal(5, 2)
+
   // Simple (non-variant) products price/stock live directly here. Variant
   // products (hasVariants=true) keep price/stock on ProductVariant instead.
   hasVariants    Boolean     @default(false) @map("has_variants")

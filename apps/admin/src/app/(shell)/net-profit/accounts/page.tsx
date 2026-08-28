@@ -9,11 +9,12 @@ import {
   Tabs,
   fieldInputClass,
 } from "@amader/admin-ui";
-import type { DateRange } from "@/hooks/useAccounts";
+import { useVatSettings, type DateRange } from "@/hooks/useAccounts";
 import { OverviewTab } from "./_components/OverviewTab";
 import { ExpensesTab } from "./_components/ExpensesTab";
 import { DuesTab } from "./_components/DuesTab";
 import { VatCashFlowTab } from "./_components/VatCashFlowTab";
+import { VatExceptionTab } from "@/components/net-profit/VatExceptionTab";
 import { firstOfMonth, today } from "./_components/shared";
 
 const TABS = [
@@ -21,10 +22,13 @@ const TABS = [
   { value: "expenses", label: "Expenses" },
   { value: "dues", label: "Dues" },
   { value: "vat", label: "VAT & Cash Flow" },
+  { value: "vat-exception", label: "VAT Exception" },
 ];
 
 export default function AccountsPage() {
   const [tab, setTab] = useState("overview");
+  // The exception tab needs the store rate to say what "no exception" means.
+  const { data: vatSettings } = useVatSettings();
   const [range, setRange] = useState<DateRange>({
     from: firstOfMonth(),
     to: today(),
@@ -67,6 +71,9 @@ export default function AccountsPage() {
       {tab === "expenses" ? <ExpensesTab range={range} /> : null}
       {tab === "dues" ? <DuesTab range={range} /> : null}
       {tab === "vat" ? <VatCashFlowTab range={range} /> : null}
+      {tab === "vat-exception" ? (
+        <VatExceptionTab storeRatePercent={vatSettings?.ratePercent ?? 0} />
+      ) : null}
     </div>
   );
 }

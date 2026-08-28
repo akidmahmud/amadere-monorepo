@@ -133,6 +133,7 @@ export function MobileStickyFooter() {
   const isScrolledPast = useProductFloatingBarStore((s) => s.isScrolledPast);
   const onAddToCart = useProductFloatingBarStore((s) => s.onAddToCart);
   const onBuyNow = useProductFloatingBarStore((s) => s.onBuyNow);
+  const isDigital = useProductFloatingBarStore((s) => s.isDigital);
   const isPending = useProductFloatingBarStore((s) => s.isPending);
   const outOfStock = useProductFloatingBarStore((s) => s.outOfStock);
   const whatsappHref = useProductFloatingBarStore((s) => s.whatsappHref);
@@ -188,8 +189,22 @@ export function MobileStickyFooter() {
             <span className="mt-0.5 font-ui text-[11px] font-bold tracking-tight text-slate-800">Chat</span>
           </a>
 
-          {/* Add Cart + Buy Now buttons fill the remaining space */}
+          {/* Add Cart + Buy Now buttons fill the remaining space — or one
+              Download button, matching what the page itself offers for a
+              digital product. A bar advertising "Add Cart" over a page whose
+              only action is "Download" is the bar being wrong. */}
           <div className="flex flex-1 items-center gap-2.5">
+            {isDigital ? (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={onBuyNow ?? undefined}
+                className="flex h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full bg-[#10B981] hover:bg-[#0e9f6e] active:bg-[#059669] font-ui text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.35)] transition-all active:scale-[0.98] disabled:opacity-60"
+              >
+                <span>{isPending ? "Preparing…" : "Download"}</span>
+              </button>
+            ) : (
+              <>
             <button
               type="button"
               disabled={isPending}
@@ -208,6 +223,8 @@ export function MobileStickyFooter() {
               {!isPending && buyNowBoxIcon}
               <span>{isPending ? "Adding…" : "Buy Now"}</span>
             </button>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, OrderStatus } from '@amader/db';
+import { isDigitalOnly } from '../orders/digital-order.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailSettingsService } from '../email-settings/email-settings.service';
@@ -36,8 +37,36 @@ export class OrderEmailsService {
     private readonly config: ConfigService,
   ) {}
 
+  /**
+   * The order-placed email, picking the template by what was actually bought.
+   *
+   * `order_placed` is written for a parcel: it promises to "confirm it
+   * shortly", shows a payment method, and sits at the head of a COD delivery
+   * lifecycle. None of that is true of a PDF, which is paid for and available
+   * the moment checkout finishes — so a digital-only order gets
+   * `digital_order_placed` instead.
+   *
+   * Chosen here rather than at the call site so every caller gets it right:
+   * storefront checkout, the admin's manual order creation, and the admin's
+   * "resend confirmation" button all go through this one method.
+   *
+   * Mixed carts deliberately keep `order_placed` — there is still a parcel to
+   * deliver, and `isDigitalOnly` is false for them by design.
+   */
   async sendOrderPlaced(orderId: number, adminUserId?: number): Promise<OrderEmailResult> {
-    return this.sendToCustomer('order_placed', orderId, adminUserId ?? null);
+    return this.sendToCustomer(
+      (await this.isDigitalOnlyOrder(orderId)) ? 'digital_order_placed' : 'order_placed',
+      orderId,
+      adminUserId ?? null,
+    );
+  }
+
+  /** Every line on this order is a digital product. False if it cannot load. */
+  private async isDigitalOnlyOrder(orderId: number): Promise<boolean> {
+    const order = await this.loadOrder(orderId);
+    return order
+      ? isDigitalOnly(order.items.map((i) => ({ productType: i.productTypeSnapshot })))
+      : false;
   }
 
   async sendNewOrderAdminNotice(orderId: number): Promise<OrderEmailResult> {
@@ -88,7 +117,32 @@ export class OrderEmailsService {
     });
   }
 
+  /**
+   * Not sent for a digital-only order.
+   *
+   * "Your order has been delivered" describes a courier handing over a
+   * parcel. A PDF was available the moment checkout finished, so this email
+   * arrives days late to announce something that already happened — and only
+   * if staff happen to move the order through the delivery statuses at all.
+   *
+   * Skipped rather than given its own template: there is no digital
+   * equivalent of delivery to tell the buyer about. digital_order_placed and
+   * digital_download already cover everything they need.
+   *
+   * Still logged to order history, so "why did no email go out?" has an
+   * answer in the same place every other email outcome does.
+   */
   async sendOrderDelivered(orderId: number, adminUserId: number | null): Promise<OrderEmailResult> {
+    if (await this.isDigitalOnlyOrder(orderId)) {
+      const order = await this.loadOrder(orderId);
+      const result: OrderEmailResult = {
+        sent: false,
+        reason: 'Digital-only order — nothing was delivered',
+      };
+      return order
+        ? this.logOutcome('order_delivered', orderId, order.status, adminUserId, result)
+        : result;
+    }
     return this.sendToCustomer('order_delivered', orderId, adminUserId);
   }
 
@@ -320,6 +374,11 @@ export class OrderEmailsService {
       product_list: this.buildProductListHtml(order.items),
       order_note: this.escapeHtml(order.customerNote ?? ''),
       payment_method: order.payments[0]?.provider ?? 'N/A',
+      // Storefront link, unlike download_url which points at the API's
+      // token-gated file endpoint. Used by digital_order_placed, whose CTA
+      // goes to the account page rather than to any single file — the
+      // per-file links go out in digital_download instead.
+      downloads_url: `${this.config.get<string>('STOREFRONT_BASE_URL') ?? ''}/account/downloads`,
       total: `${order.currency} ${order.totalAmount.toString()}`,
     };
   }

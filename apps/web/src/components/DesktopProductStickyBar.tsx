@@ -24,6 +24,7 @@ export function DesktopProductStickyBar() {
   const onBuyNow = useProductFloatingBarStore((s) => s.onBuyNow);
   const isPending = useProductFloatingBarStore((s) => s.isPending);
   const outOfStock = useProductFloatingBarStore((s) => s.outOfStock);
+  const isDigital = useProductFloatingBarStore((s) => s.isDigital);
   const productName = useProductFloatingBarStore((s) => s.productName);
   const productImage = useProductFloatingBarStore((s) => s.productImage);
   const priceLabel = useProductFloatingBarStore((s) => s.priceLabel);
@@ -70,21 +71,24 @@ export function DesktopProductStickyBar() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2.5">
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={onAddToCart ?? undefined}
-            className="h-11 rounded-full border border-green px-6 font-ui text-sm font-semibold text-green transition-colors hover:bg-green hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isPending ? "Adding…" : "Add to Cart"}
-          </button>
+          {/* One action for a digital product, matching the page. */}
+          {!isDigital && (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={onAddToCart ?? undefined}
+              className="h-11 rounded-full border border-green px-6 font-ui text-sm font-semibold text-green transition-colors hover:bg-green hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending ? "Adding…" : "Add to Cart"}
+            </button>
+          )}
           <button
             type="button"
             disabled={isPending}
             onClick={onBuyNow ?? undefined}
             className="h-11 rounded-full bg-green px-7 font-ui text-sm font-semibold text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "Adding…" : "Buy Now"}
+            {isPending ? (isDigital ? "Preparing…" : "Adding…") : isDigital ? "Download" : "Buy Now"}
           </button>
         </div>
       </div>

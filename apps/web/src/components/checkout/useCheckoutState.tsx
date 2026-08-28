@@ -516,6 +516,9 @@ export function useCheckoutState() {
     }
 
     setBlockPopupDismissed(false);
+    // Captured here, before the order is placed: `digitalOnly` is derived
+    // from the cart, and the cart is empty by the time onSuccess runs.
+    const wasDigitalOnly = digitalOnly;
     placeOrder.mutate(
       {
         // A digital-only order has no address at all — the backend's own
@@ -548,6 +551,7 @@ export function useCheckoutState() {
         checkoutStartedAt: checkoutStartedAtRef.current,
         ...getUtmParamsForCheckout(),
       },
+
       {
         onSuccess: (order) => {
           // `existingAccount === false` is the ONLY signal that a session was
@@ -561,9 +565,32 @@ export function useCheckoutState() {
             router.push("/account/downloads");
             return;
           }
-          // `existingAccount === true` -> no cookies were set, by design.
-          // Rendered as a notice on the confirmation screen below.
-          // undefined -> physical order, or already signed in: unchanged.
+
+          // A digital order never gets a confirmation screen, per explicit
+          // request: the buyer came for a file, so send them where the file
+          // is instead of to a page whose only content is a button.
+          //
+          // Reads the value captured when the order was submitted, not
+          // `digitalOnly` live: the cart is emptied by this point, and
+          // `digitalOnly` is derived from cart contents, so recomputing it
+          // here would answer "false" for every order.
+          if (wasDigitalOnly) {
+            // `existingAccount === true` -> deliberately NO session was
+            // issued (see the account-takeover note on ensureAccount), so
+            // /account/downloads would bounce to login anyway. Go there
+            // directly, with a notice explaining why and where the file is,
+            // and come back to the downloads once signed in.
+            if (order.existingAccount) {
+              router.push("/login?redirect=/account/downloads&notice=digital-existing");
+              return;
+            }
+            // Already signed in when they bought — the session is fine.
+            queryClient.invalidateQueries({ queryKey: ["me"] });
+            router.push("/account/downloads");
+            return;
+          }
+
+          // Physical order: unchanged, confirmation screen as before.
           setPlacedOrder(order);
         },
       },

@@ -108,6 +108,9 @@ export function ProductFloatingBarProvider({
   // --- Push state into the global store ---
   useEffect(() => {
     update({
+      // A digital product's page offers one action; the sticky bars read this
+      // so they show "Download" instead of Add to Cart / Buy Now.
+      isDigital: (product.productType as unknown as string) === "DIGITAL",
       onAddToCart: handleAddToCart,
       onBuyNow: handleBuyNow,
       isPending: addToCart.isPending,
@@ -126,6 +129,7 @@ export function ProductFloatingBarProvider({
     whatsappHref,
     update,
     product.name,
+    product.productType,
     displayImage,
     displayPrice,
     displayOriginal,

@@ -117,6 +117,11 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/account";
+  // Set by the digital checkout when the buyer's email already had an
+  // account. No session was issued for it on purpose (see the
+  // account-takeover note on CheckoutAccountService.ensureAccount), so they
+  // land here instead of on their downloads and need to be told why.
+  const noticeDigitalExisting = searchParams.get("notice") === "digital-existing";
 
   const [mode, setMode] = useState<"login" | "register">(defaultMode);
 
@@ -443,6 +448,16 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
             <h1 className="font-ui text-2xl font-bold tracking-tight text-slate-800">Welcome Back</h1>
             <p className="mt-1 font-body text-xs text-slate-500">Sign in to your account</p>
           </div>
+
+          {noticeDigitalExisting && (
+            <div className="mb-4 rounded-xl border border-emerald-200 bg-[#F4FAF6] px-4 py-3 text-center font-body text-xs text-[#197B40]">
+              <p className="font-semibold">Your order is complete.</p>
+              <p className="mt-1">
+                This email already has an account, so sign in to read or download your
+                PDF. We&apos;ve also emailed you the download link.
+              </p>
+            </div>
+          )}
 
           {resetDone && (
             <p className="mb-4 rounded-xl border border-emerald-200 bg-[#F4FAF6] px-4 py-3 text-center font-body text-xs font-semibold text-[#197B40]">

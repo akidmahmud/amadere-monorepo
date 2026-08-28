@@ -23,6 +23,11 @@ export interface ProductFloatingBarState {
   // The mobile bar is buttons only (no room), but a desktop bar spanning the
   // viewport with two bare buttons and no context reads as a stray toolbar.
   /** Product title shown in the desktop bar. */
+  /**
+   * A digital product's page offers one action ("Download"), so the sticky
+   * bars must not contradict it with Add Cart / Buy Now.
+   */
+  isDigital?: boolean;
   productName?: string | null;
   /** Small thumbnail for the desktop bar. */
   productImage?: string | null;
@@ -43,6 +48,7 @@ const INITIAL: Omit<ProductFloatingBarState, "_update" | "_reset"> = {
   isPending: false,
   outOfStock: false,
   whatsappHref: null,
+  isDigital: false,
   productName: null,
   productImage: null,
   priceLabel: null,

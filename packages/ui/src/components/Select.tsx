@@ -1,7 +1,7 @@
 "use client";
 
 import * as RadixSelect from "@radix-ui/react-select";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 
 export interface SelectOption {
@@ -19,6 +19,14 @@ export interface SelectProps {
   disabled?: boolean;
   "aria-label"?: string;
   className?: string;
+  /**
+   * Show a filter box at the top of the list. Worth it past ~20 options —
+   * the district field has 64, where scrolling to find one is the slowest
+   * part of the checkout form.
+   */
+  searchable?: boolean;
+  /** Placeholder for the filter box. */
+  searchPlaceholder?: string;
 }
 
 const chevron = (
@@ -41,14 +49,48 @@ export function Select({
   variant = "bordered",
   disabled,
   className,
+  searchable = false,
+  searchPlaceholder = "Search…",
   ...aria
 }: SelectProps): ReactNode {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Radix Select focuses the option list itself on open, and its Content has
+  // no onOpenAutoFocus to intercept (that is Popover/Dropdown). Focusing on
+  // the next frame lands after Radix is done, so typing works immediately
+  // instead of needing a click into the box first.
+  useEffect(() => {
+    if (!open || !searchable) return;
+    const id = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [open, searchable]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    const matches = options.filter((o) => o.label.toLowerCase().includes(q));
+    // The selected option stays mounted even when it does not match. Radix
+    // reads the trigger's display text from the Item with that value, so
+    // filtering it out of the list blanks the closed trigger mid-typing.
+    const selected = options.find((o) => o.value === value);
+    return selected && !matches.some((o) => o.value === selected.value)
+      ? [selected, ...matches]
+      : matches;
+  }, [options, query, value]);
+
   return (
     <RadixSelect.Root
       value={value}
       defaultValue={defaultValue}
       onValueChange={onValueChange}
       disabled={disabled}
+      // Reset on close so reopening never starts inside a stale filter.
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setQuery("");
+      }}
     >
       <RadixSelect.Trigger
         aria-label={aria["aria-label"]}
@@ -82,11 +124,36 @@ export function Select({
           // normal-sized scrollable dropdown.
           style={{ maxHeight: "min(var(--radix-select-content-available-height), 300px)" }}
         >
+          {searchable && (
+            <div className="border-b border-line p-2">
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                className="w-full rounded-[8px] border border-line bg-white px-2.5 py-1.5 font-body text-sm text-ink outline-none focus:border-green"
+                // Radix Select runs its own typeahead on keydown and moves
+                // focus to the matching item, so without this every letter
+                // typed here jumps the list and pulls focus out of the box.
+                // Arrow keys and Enter are deliberately NOT stopped, so the
+                // keyboard can still move into and pick from the list.
+                onKeyDown={(e) => {
+                  if (!["ArrowDown", "ArrowUp", "Enter", "Escape", "Tab"].includes(e.key)) {
+                    e.stopPropagation();
+                  }
+                }}
+              />
+            </div>
+          )}
           <RadixSelect.ScrollUpButton className="flex items-center justify-center py-1 text-muted">
             {chevronUp}
           </RadixSelect.ScrollUpButton>
           <RadixSelect.Viewport className="p-1">
-            {options.map((option) => (
+            {searchable && filtered.length === 0 && (
+              <p className="px-3 py-4 text-center font-body text-sm text-muted">No matches</p>
+            )}
+            {(searchable ? filtered : options).map((option) => (
               <RadixSelect.Item
                 key={option.value}
                 value={option.value}

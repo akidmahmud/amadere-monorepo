@@ -38,6 +38,16 @@ export function downloadUrl(token: string): string {
   return `${backendBaseUrl}/api/v1/downloads/${token}`;
 }
 
+/**
+ * Same file, same token — served `Content-Disposition: inline` so the browser
+ * renders it instead of saving it. Opening this in a tab IS the reader: every
+ * target browser has a PDF viewer built in, and shipping a JS renderer to
+ * duplicate it would be a large download for no new capability.
+ */
+export function readUrl(token: string): string {
+  return `${backendBaseUrl}/api/v1/downloads/${token}?inline=1`;
+}
+
 export function useDownloads() {
   return useQuery({
     queryKey: ["my-downloads"],

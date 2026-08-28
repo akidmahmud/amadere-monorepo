@@ -83,6 +83,10 @@ export function AddressFields({
                 value={field.value}
                 onValueChange={field.onChange}
                 placeholder="Select District"
+                // 64 districts in one alphabetical list — scrolling to find
+                // one was the slowest step in the form.
+                searchable
+                searchPlaceholder="Search district…"
               />
             )}
           />

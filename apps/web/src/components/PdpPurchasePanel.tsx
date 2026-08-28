@@ -55,6 +55,14 @@ const heartIcon = (filled: boolean) => (
   </svg>
 );
 
+const downloadIcon = (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3v12" />
+    <path d="m7 12 5 5 5-5" />
+    <path d="M5 21h14" />
+  </svg>
+);
+
 export function PdpPurchasePanel({
   product,
   whatsappConfig,
@@ -120,6 +128,16 @@ export function PdpPurchasePanel({
   // !isBackorder` alone, which showed "Out of Stock" even for untracked
   // products (trackInventory: false) whose `stock` column is unused/stale.
   const outOfStock = product.trackInventory && !product.allowBackorder && stockCount < 1;
+
+  // A digital product is a PDF: there is nothing to add to a cart alongside
+  // other things and nothing to ship, so the two-button Add to Cart / Buy Now
+  // split has no meaning. One "Download" button, straight to checkout — the
+  // same path Buy Now already took (add the line, then push /checkout), just
+  // named for what the buyer is actually getting.
+  //
+  // Same cast as product-detail.tsx: the generated schema types productType
+  // as an opaque object because the DTO carries no @ApiProperty enum.
+  const isDigital = (product.productType as unknown as string) === "DIGITAL";
 
   function addItem(onSuccess: () => void, onError?: () => void) {
     addToCart.mutate(
@@ -299,7 +317,21 @@ export function PdpPurchasePanel({
           fall directly into the parent grid's second row instead of being
           squeezed into a single cell. */}
       <div id="pdp-buy-buttons" className="mb-3 flex flex-col gap-3 md:mb-4 md:grid md:grid-cols-2">
-        {!outOfStock && (
+        {!outOfStock && isDigital && (
+          // Spans both grid columns on desktop — it is the only purchase
+          // action here, so leaving it at half width would look like the
+          // other half failed to render.
+          <button
+            type="button"
+            disabled={addToCart.isPending}
+            onClick={handleBuyNow}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-green text-sm font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
+          >
+            {downloadIcon}
+            {addToCart.isPending ? "Preparing…" : "Download"}
+          </button>
+        )}
+        {!outOfStock && !isDigital && (
           <>
             <button
               type="button"
@@ -319,10 +351,16 @@ export function PdpPurchasePanel({
             </button>
           </>
         )}
-        <div className="grid grid-cols-2 gap-3 md:contents">
-          <WhatsappOrderButton config={whatsappConfig} productName={product.name} />
-          <CallNowButton config={whatsappConfig} />
-        </div>
+        {/* Contact buttons are for physical orders only, per explicit
+            request: a digital product's page carries exactly one action.
+            There is nothing to negotiate over the phone about a PDF that
+            downloads itself the moment checkout completes. */}
+        {!isDigital && (
+          <div className="grid grid-cols-2 gap-3 md:contents">
+            <WhatsappOrderButton config={whatsappConfig} productName={product.name} />
+            <CallNowButton config={whatsappConfig} />
+          </div>
+        )}
       </div>
 
 
