@@ -19,6 +19,9 @@ const FRAUD_SETTINGS_DEFAULTS: FraudSettingsDto = {
   advanceScoreThreshold: 50,
   advanceRequiredPercent: 100,
   blockEnabled: false,
+  // Off by default: turning it on silently starts demanding an OTP from
+  // real customers, which is the shop owner's call, not a default.
+  otpOnRiskEnabled: false,
   cacheTtlHours: 72,
   blockMessageEn:
     "Sorry, we couldn't confirm this order automatically. Please contact support or choose a different payment method.",
@@ -35,6 +38,14 @@ export interface CheckoutGateResult {
   verdict: FraudVerdict;
   blockMessage?: { en: string; bn: string };
   requireAdvancePercent?: number;
+  /**
+   * This customer must verify by OTP before the order is accepted.
+   *
+   * A separate flag rather than a fourth `verdict`, because it composes: a
+   * medium-risk customer can be asked for BOTH an advance payment and an OTP,
+   * and a verdict is one value.
+   */
+  requiresOtp?: boolean;
 }
 
 @Injectable()
@@ -112,7 +123,35 @@ export class FraudService {
     const successRate = total > 0 ? delivered / total : null;
     const riskLevel = this.deriveRiskLevel(successRate, total, settings);
 
-    const expiresAt = new Date(Date.now() + settings.cacheTtlHours * 60 * 60 * 1000);
+    /*
+     * "Every source was unavailable" is NOT "this customer has no history",
+     * even though both arrive here as total = 0.
+     *
+     * Caching them the same way meant a single courier outage (or a missing
+     * API key) wrote a 0-order row and kept serving it for cacheTtlHours --
+     * 72 by default. The courier could come back within the minute and that
+     * phone would still be judged on a fabricated empty record for three
+     * days. Cached for one minute instead: long enough to stop a retry storm
+     * during an outage, short enough that recovery is picked up immediately.
+     *
+     * The verdict itself still fails OPEN. Blocking every COD order because a
+     * third party is down would be far worse than letting a few through.
+     */
+    const allUnavailable =
+      this.sources.length > 0 &&
+      this.sources.every((src) => {
+        const entry = breakdown[src.name] as { unavailable?: boolean } | undefined;
+        return entry?.unavailable === true;
+      });
+    const expiresAt = new Date(
+      Date.now() +
+        (allUnavailable ? 60 * 1000 : settings.cacheTtlHours * 60 * 60 * 1000),
+    );
+    if (allUnavailable) {
+      this.logger.warn(
+        `Fraud sources all unavailable for ${phone} — failing open and caching for 60s only`,
+      );
+    }
 
     const saved = await this.prisma.client.fraudCheck.upsert({
       where: { phone },
@@ -181,32 +220,77 @@ export class FraudService {
     }
 
     const pct = noHistory ? 0 : (check.successRate ?? 0) * 100;
+    const risk = check.riskLevel as RiskLevel;
 
+    // Below the accept line at all -> not a trusted customer. Everything from
+    // here down is "out of threshold", which is exactly the population the
+    // OTP-on-risk toggle targets; a customer at or above acceptPercent
+    // returned `pass` above and never reaches this.
+    const requiresOtp = settings.otpOnRiskEnabled;
+
+    const advance: CheckoutGateResult = {
+      allowed: true,
+      riskLevel: risk,
+      verdict: 'needs_advance',
+      requireAdvancePercent: settings.advanceRequiredPercent,
+      requiresOtp,
+    };
+    const block: CheckoutGateResult = {
+      allowed: false,
+      riskLevel: risk,
+      verdict: 'block',
+      blockMessage: { en: settings.blockMessageEn, bn: settings.blockMessageBn },
+    };
+    // The "flag only" fall-through at the bottom is still a pass, but it is a
+    // pass for someone BELOW the threshold — so it carries requiresOtp too.
+    const pass: CheckoutGateResult = {
+      allowed: true,
+      riskLevel: risk,
+      verdict: 'pass',
+      requiresOtp,
+    };
+
+    // LOW — at or above the accept line. Trusted: no OTP, no advance, no
+    // block. Returned before `requiresOtp` can apply.
     if (pct >= settings.acceptPercent) {
-      return { allowed: true, riskLevel: check.riskLevel as RiskLevel, verdict: 'pass' };
+      return { allowed: true, riskLevel: risk, verdict: 'pass' };
     }
 
-    if (settings.advanceEnabled && pct < settings.advanceScoreThreshold) {
-      return {
-        allowed: true,
-        riskLevel: check.riskLevel as RiskLevel,
-        verdict: 'needs_advance',
-        requireAdvancePercent: settings.advanceRequiredPercent,
-      };
+    /*
+     * The order of the two bands below was INVERTED, and it inverted the whole
+     * point of the feature. The old code asked "advanceEnabled && pct <
+     * advanceScoreThreshold -> needs_advance" FIRST, then fell through to
+     * block — so with accept=80 / advance=50:
+     *
+     *   79% and 60% (MEDIUM) -> blocked outright
+     *   49%, 20% and 0%      -> allowed through on advance payment
+     *
+     * A phone that has never once accepted a delivery sailed through while a
+     * customer who takes 79% of theirs was turned away. deriveRiskLevel had
+     * it right all along (>= advanceScoreThreshold is MEDIUM, below is HIGH)
+     * and the comment there promises "the badge and the gate never disagree";
+     * they disagreed, backwards, in exactly the band that matters.
+     *
+     * HIGH is the worse band, so it gets the harder action.
+     */
+    if (pct < settings.advanceScoreThreshold) {
+      // HIGH: block if the shop will block; otherwise at least take the money
+      // upfront rather than waving them through.
+      if (settings.blockEnabled) return block;
+      if (settings.advanceEnabled) return advance;
+      return pass;
     }
 
-    if (settings.blockEnabled) {
-      return {
-        allowed: false,
-        riskLevel: check.riskLevel as RiskLevel,
-        verdict: 'block',
-        blockMessage: { en: settings.blockMessageEn, bn: settings.blockMessageBn },
-      };
-    }
+    // MEDIUM: worth an advance payment, not worth losing the sale over. Falls
+    // back to block only when the shop has advance turned off entirely, which
+    // is what blockEnabled ("reject when below acceptPercent and not already
+    // caught by advance") has always meant.
+    if (settings.advanceEnabled) return advance;
+    if (settings.blockEnabled) return block;
 
     // Below acceptPercent but neither advance nor block is enabled — the
     // "flag only" state from the base spec, expressed as fail-open here.
-    return { allowed: true, riskLevel: check.riskLevel as RiskLevel, verdict: 'pass' };
+    return pass;
   }
 
   // Read-only, never-throws peek at whatever evaluateCheckoutGate() just

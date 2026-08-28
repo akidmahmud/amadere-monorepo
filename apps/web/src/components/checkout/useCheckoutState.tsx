@@ -99,7 +99,13 @@ export function useCheckoutState() {
   // keep using it correctly, so it reads the *current* value at validation
   // time instead of the value from whichever render created it.
   const codOtpEnabledRef = useRef(true);
-  codOtpEnabledRef.current = siteInfo?.codOtpEnabled ?? true;
+  // Two independent reasons to require a code: the shop demands one from every
+  // COD customer (siteInfo), or the fraud pre-flight came back saying THIS
+  // customer is below the accept threshold (Fraud > "Require OTP for risky
+  // customers"). The backend re-derives the same thing at order time, so this
+  // only controls whether the popup is shown, never whether it is enforced.
+  codOtpEnabledRef.current =
+    (siteInfo?.codOtpEnabled ?? true) || fraudResult?.requiresOtp === true;
 
   // An account with no phone is an email-identity customer — someone who
   // registered from outside Bangladesh, where we can't reach them by SMS.

@@ -753,9 +753,24 @@ function OrderRow({
         </a>
       </td>
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-        <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}>
-          Check
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* The row already carried riskLevel and nothing ever showed it, so
+              spotting a risky order meant clicking Check on every line. HIGH
+              is the only level marked: colouring MEDIUM too would leave most
+              of the table shouting and the genuinely bad ones no louder. */}
+          {o.riskLevel === "HIGH" && (
+            <span
+              title="High risk — poor courier delivery history"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill bg-rose-500/15 px-2 py-0.5 text-[0.68rem] font-bold text-rose-700 dark:text-rose-400"
+            >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+              High risk
+            </span>
+          )}
+          <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}>
+            Check
+          </Button>
+        </div>
       </td>
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <CourierSendCell order={o} onConsign={(provider) => onConsign(o, provider)} />

@@ -35,6 +35,10 @@ export class FraudPublicController {
       successRatePercent: check?.successRate !== null && check?.successRate !== undefined ? Math.round(check.successRate * 1000) / 10 : null,
       totalOrders: check?.totalOrders ?? 0,
       requireAdvancePercent: gate.requireAdvancePercent,
+      // Lets the checkout page show the OTP step only for the customers who
+      // actually need it. The server re-derives this at order time, so a
+      // client that ignores it just fails verification instead of skipping it.
+      requiresOtp: gate.requiresOtp ?? false,
       blockMessage: gate.blockMessage,
     };
   }

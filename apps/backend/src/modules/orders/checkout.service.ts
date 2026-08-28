@@ -287,14 +287,17 @@ export class CheckoutService {
     // createAccount, so the real fraud protection for this path is untouched.
     if (!digitalOnly && dto.paymentProvider === 'COD') {
       const otpSettings = await this.otpSecurity.getSettings();
-      if (otpSettings.codOtpEnabled) {
-        await this.verifyCodOtp(dto.shippingAddress?.phone ?? '', dto.codOtpCode);
-        codOtpVerified = true;
-      }
 
       // Net Profit courier fraud gate (CLAUDE.net-profit.md §7.2) — only
       // applies to COD, since a prepaid order carries no delivery-refusal
       // risk. No-ops entirely when the feature is disabled/set to "off".
+      //
+      // Runs BEFORE the OTP check, not after it as it used to. The gate is
+      // now what decides whether this particular customer needs an OTP at
+      // all (Fraud > "Require OTP for risky customers"), so asking for the
+      // code first would mean demanding one from everybody — exactly the
+      // behaviour that toggle exists to avoid. A blocked customer is also
+      // rejected without being made to verify a phone first.
       const gate = await this.fraud.evaluateCheckoutGate(dto.shippingAddress?.phone ?? '');
       if (!gate.allowed) {
         const savingAmount = await this.fraud.savingAmountFor(pricing.total);
@@ -312,6 +315,14 @@ export class CheckoutService {
       }
       if (gate.requireAdvancePercent) {
         requireAdvancePercent = gate.requireAdvancePercent;
+      }
+
+      // Two independent reasons to demand a code: the shop asks EVERY COD
+      // customer for one, or this specific customer came back below the
+      // fraud accept threshold.
+      if (otpSettings.codOtpEnabled || gate.requiresOtp) {
+        await this.verifyCodOtp(dto.shippingAddress?.phone ?? '', dto.codOtpCode);
+        codOtpVerified = true;
       }
     }
 

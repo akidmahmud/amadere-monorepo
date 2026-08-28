@@ -192,7 +192,7 @@ function SettingsTab() {
           {current.advanceEnabled && (
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-secondary">Triggers below this success rate %</span>
+                <span className="text-xs font-semibold text-secondary">Medium-risk floor — advance is asked for between this and the accept threshold</span>
                 <RangeSlider
                   value={current.advanceScoreThreshold}
                   onChange={(v) => setForm({ ...current, advanceScoreThreshold: v })}
@@ -213,11 +213,26 @@ function SettingsTab() {
         </div>
       </SettingsCard>
 
+      <SettingsCard icon={shieldIcon} title="OTP for risky customers">
+        <div className="flex flex-col gap-2">
+          <ToggleSwitch
+            checked={current.otpOnRiskEnabled}
+            onChange={(checked) => setForm({ ...current, otpOnRiskEnabled: checked })}
+            label="Require phone OTP at checkout when the success rate is below the accept threshold"
+          />
+          <p className="text-xs text-secondary">
+            Trusted customers (at or above {current.acceptPercent}%) place the order without an OTP
+            step. Independent of Settings &rsaquo; Checkout OTP, which asks every COD customer for
+            one — if that is on, everyone is verified regardless of this.
+          </p>
+        </div>
+      </SettingsCard>
+
       <SettingsCard icon={shieldIcon} title="Checkout blocking">
         <ToggleSwitch
           checked={current.blockEnabled}
           onChange={(checked) => setForm({ ...current, blockEnabled: checked })}
-          label="Block checkouts below the accept threshold (and below the advance threshold, if advance is also on)"
+          label="Block high-risk checkouts — success rate below the advance threshold (or below the accept threshold when advance is off)"
         />
       </SettingsCard>
 

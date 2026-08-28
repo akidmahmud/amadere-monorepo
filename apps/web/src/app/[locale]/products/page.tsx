@@ -84,21 +84,25 @@ export default async function ProductsPage({
   return (
     <main className="flex-1">
       {bannerUrl && (
-        <div className="mx-auto max-w-[1180px] px-5 pt-6">
-          {/* Container is max-w-[1180px] with px-5, so the box is
-              (100vw - 40px) until it caps at 1140px. */}
+        <div className="mx-auto max-w-[1600px] px-5 pt-6">
+          {/* 1600 wide, matching the 1600x500 the admin asks for and the
+              other banners on the site. It was capped at 1180 (1140 after
+              padding), so a correct upload was scaled down as well as
+              cropped. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bannerUrl}
             srcSet={bannerSrcSet}
-            sizes="(max-width: 1220px) calc(100vw - 40px), 1140px"
-            width={1180}
-            height={300}
+            sizes="(max-width: 1640px) calc(100vw - 40px), 1600px"
+            width={1600}
+            height={500}
             // Above the fold and a strong LCP candidate on this route: eager,
             // and hinted so it is not queued behind lazy imagery further down.
             fetchPriority="high"
             alt="All Products Banner"
-            className="aspect-[1180/300] w-full rounded-brand object-cover"
+            // 16:5, same as every other banner and the 1600x500 the admin
+            // asks people to upload. 1180/300 (3.93:1) cropped it.
+            className="aspect-[16/5] w-full rounded-brand object-cover"
           />
         </div>
       )}

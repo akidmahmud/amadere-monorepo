@@ -19,14 +19,22 @@ export class FraudSettingsDto {
   @ApiProperty({ description: 'Require advance payment when successRate% is below this' })
   advanceEnabled!: boolean;
 
-  @ApiProperty({ description: 'successRate% below this (and above 0) triggers advance, not block (0-100, <= acceptPercent)' })
+  @ApiProperty({ description: 'Medium-risk floor: successRate% between this and acceptPercent asks for advance payment. BELOW this is high risk and is blocked. (0-100, <= acceptPercent)' })
   advanceScoreThreshold!: number;
 
   @ApiProperty({ description: 'Percent of order total required upfront when advance triggers' })
   advanceRequiredPercent!: number;
 
-  @ApiProperty({ description: 'Reject the checkout outright when successRate% is below acceptPercent (and not already caught by advance)' })
+  @ApiProperty({ description: 'Reject high-risk checkouts outright: successRate% below advanceScoreThreshold, or below acceptPercent when advance is disabled' })
   blockEnabled!: boolean;
+
+  @ApiProperty({
+    description:
+      'Require an OTP at checkout ONLY for customers below acceptPercent. ' +
+      'Trusted customers (at/above it) place the order without one. Independent ' +
+      'of Settings > Checkout OTP, which demands an OTP from everyone.',
+  })
+  otpOnRiskEnabled!: boolean;
 
   @ApiProperty()
   cacheTtlHours!: number;
@@ -82,6 +90,11 @@ export class UpdateFraudSettingsDto {
   @IsOptional()
   @IsBoolean()
   blockEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  otpOnRiskEnabled?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

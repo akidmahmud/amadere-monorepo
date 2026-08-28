@@ -130,19 +130,26 @@ export default async function CategoryPage({
     <main className="flex-1">
       <div className="mx-auto max-w-[1180px] px-5 pt-9">
         <SectionHeading>{category.name}</SectionHeading>
+      </div>
 
-        {toDisplayImageUrl(category.bannerImageUrl, IMG.banner) && (
+      {/* The banner gets its OWN 1600-wide container instead of sitting in
+          the page's 1180 content column. 16:5 fixed the cropping, but the
+          box was still only ~1140px across, so a 1600x500 upload was scaled
+          down to fit a column sized for text. Every banner on the site is
+          1600 wide now. */}
+      {toDisplayImageUrl(category.bannerImageUrl, IMG.banner) && (
+        <div className="mx-auto max-w-[1600px] px-5">
           <img
             src={toDisplayImageUrl(category.bannerImageUrl, IMG.banner)}
             alt={category.name}
-            // 16:5 — the one banner ratio used everywhere on the site, and
-            // what the admin asks people to upload (1600x500). It used to be
-            // 1180/300 (3.93:1), so a correctly-sized upload was cropped top
-            // and bottom on every category page.
-            className="-mt-4 mb-6 aspect-[16/5] w-full rounded-brand object-cover"
+            width={1600}
+            height={500}
+            className="mb-6 aspect-[16/5] w-full rounded-brand object-cover"
           />
-        )}
+        </div>
+      )}
 
+      <div className="mx-auto max-w-[1180px] px-5">
         {category.description && (
           // Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text —
           // sanitized the same way blog post content already is. Clamped to

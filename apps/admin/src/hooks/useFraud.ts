@@ -34,6 +34,8 @@ export interface FraudSettings {
   advanceScoreThreshold: number;
   advanceRequiredPercent: number;
   blockEnabled: boolean;
+  /** Ask ONLY below-threshold customers for an OTP at checkout. */
+  otpOnRiskEnabled: boolean;
   cacheTtlHours: number;
   blockMessageEn: string;
   blockMessageBn: string;

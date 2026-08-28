@@ -11,6 +11,8 @@ export interface FraudPreflightResult {
   successRatePercent: number | null;
   totalOrders: number;
   requireAdvancePercent?: number;
+  /** This customer is below the fraud accept threshold and must verify by OTP. */
+  requiresOtp?: boolean;
   blockMessage?: { en: string; bn: string };
 }
 

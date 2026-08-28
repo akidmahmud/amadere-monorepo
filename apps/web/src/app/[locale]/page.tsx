@@ -457,7 +457,10 @@ function renderSection(
       }));
       if (!images || images.length === 0) return null;
       return (
-        <div className={`${WRAPPER_HALF} py-5`} key={section.id}>
+        // Its own wrapper rather than WRAPPER_HALF: AdBannerSection caps
+        // itself at 1600 to match a 1600x500 upload, and the shared 1440
+        // wrapper was overriding that so the banner never reached full size.
+        <div className="mx-auto w-full max-w-[1600px] px-[2px] py-5 md:px-[3px]" key={section.id}>
           <AdBannerSection images={images} linkComponent={AppLink} />
         </div>
       );
