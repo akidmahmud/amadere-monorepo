@@ -77,9 +77,30 @@ export function AnalyticsScripts({
     const marker = "__amaderCustomScriptInjected";
     if ((window as unknown as Record<string, boolean>)[marker]) return;
     (window as unknown as Record<string, boolean>)[marker] = true;
-    injectRawHtml(config.customScript.headerScript, "head");
-    if (config.customScript.bodyScript)
-      injectRawHtml(config.customScript.bodyScript, "body");
+
+    // Deferred to after the load event on purpose — same timing next/script's
+    // `lazyOnload` gives the pixels below. This is the ONLY path a tag manager
+    // container reaches the page through (the native GA4/Meta/TikTok configs
+    // are all null in production), so injecting it during hydration put the
+    // container's entire cascade — Meta Pixel, TikTok Pixel, gtag, the unpkg
+    // meta-capi param builder — on the main thread exactly when the first taps
+    // land. Measured on the live homepage at 4x CPU: TikTok 533 ms, Facebook
+    // 360 ms, the container itself 327 ms. That is the INP bill.
+    //
+    // Same trade-off as the pixels below: a visitor who leaves before load
+    // completes is not counted. If attribution drops, the honest fix is fewer
+    // tags in the container, not moving this back.
+    const inject = () => {
+      injectRawHtml(config.customScript!.headerScript, "head");
+      if (config.customScript!.bodyScript)
+        injectRawHtml(config.customScript!.bodyScript, "body");
+    };
+    if (document.readyState === "complete") {
+      inject();
+      return;
+    }
+    window.addEventListener("load", inject, { once: true });
+    return () => window.removeEventListener("load", inject);
   }, [config.customScript]);
 
   const needsGtag = config.ga4 || config.googleAds;
