@@ -26,7 +26,11 @@ import { RequirePermission } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
+import { CancelIncompleteOrderDto } from './dto/cancel-incomplete-order.dto';
 import { RecoveryService, RecoveryListFilters } from './recovery.service';
+// `import type` is required: it appears in a decorated signature, and with
+// emitDecoratorMetadata a value import would be emitted as runtime metadata.
+import type { RecoveryOutcome } from './recovery.service';
 
 const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
@@ -47,8 +51,19 @@ export class AdminRecoveryController {
     @Query('stage') stage?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('outcome') outcome?: RecoveryOutcome,
   ) {
-    const filters: RecoveryListFilters = { recovered, q, stage, from, to };
+    // Defaults to the carts still worth chasing. A recovered or cancelled
+    // cart is a closed one — listing them here by default put customers who
+    // had already bought into the abandonment list.
+    const filters: RecoveryListFilters = {
+      outcome: outcome ?? 'open',
+      recovered,
+      q,
+      stage,
+      from,
+      to,
+    };
     return this.recovery.list(page ?? 1, pageSize ?? 20, filters);
   }
 
@@ -67,8 +82,19 @@ export class AdminRecoveryController {
     @Query('stage') stage?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('outcome') outcome?: RecoveryOutcome,
   ): Promise<void> {
-    const csv = await this.recovery.exportCsv({ recovered, q, stage, from, to });
+    // 'all' here, unlike the list: an export is a data dump, and defaulting
+    // it to open carts would mean the cancelReason column came out empty in
+    // every single row.
+    const csv = await this.recovery.exportCsv({
+      outcome: outcome ?? 'all',
+      recovered,
+      q,
+      stage,
+      from,
+      to,
+    });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="incomplete-orders-${new Date().toISOString().slice(0, 10)}.csv"`);
     res.send(csv);
@@ -103,6 +129,12 @@ export class AdminRecoveryController {
   async send(@Param('id', ParseIntPipe) id: number) {
     await this.recovery.sendRecovery(id);
     return { success: true };
+  }
+
+  @Post(':id/cancel')
+  @RequirePermission('net_profit_recovery.manage')
+  cancel(@Param('id', ParseIntPipe) id: number, @Body() dto: CancelIncompleteOrderDto) {
+    return this.recovery.cancel(id, dto.reason);
   }
 
   @Post(':id/create-order')

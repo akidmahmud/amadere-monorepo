@@ -2714,6 +2714,13 @@ model IncompleteOrder {
   stage            String
   recovered        Boolean  @default(false)
   recoveredOrderId Int?     @map("recovered_order_id") // soft reference, no relation (order created independently)
+  /// Staff gave up on this cart, and why. Nullable timestamp doubles as the
+  /// flag — canceled iff `canceledAt` is not null — so there is no way to be
+  /// canceled without a time, or to have a stale flag disagree with one.
+  /// Distinct from deleting the row: a cancelled cart keeps its reason for
+  /// reporting, and stops receiving win-back campaign messages.
+  canceledAt       DateTime? @map("canceled_at")
+  cancelReason     String?   @map("cancel_reason")
   recoveryAttempts Int      @default(0) @map("recovery_attempts")
   lastSeenAt       DateTime @default(now()) @map("last_seen_at")
   createdAt        DateTime @default(now()) @map("created_at")

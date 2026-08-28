@@ -1,16 +1,29 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT } from "@amader/shared";
-import { Button, Card, Icon, Modal, PageHeader, Table, TableEmptyRow, Tabs } from "@amader/admin-ui";
+import { Button, Card, Modal } from "@amader/admin-ui";
+import {
+  RecoveryStatsStrip,
+} from "@/components/net-profit/RecoveryStatsStrip";
+import {
+  RecoveryFilterBar,
+  type RecoveryFilterState,
+} from "@/components/net-profit/RecoveryFilterBar";
+import {
+  RecoveryTable,
+  RECOVERY_OPTIONAL_COLUMNS,
+  type RecoveryOptionalColumn,
+} from "@/components/net-profit/RecoveryTable";
 import {
   useClearAllIncomplete,
+  useCancelIncompleteOrder,
   useCreateOrderFromIncomplete,
   useDeleteIncompleteOrder,
   useImportRecoveryCsv,
   useIncompleteOrders,
   ABANDONMENT_STAGES,
-  STAGE_LABELS,
   useRecoveryRate,
   useRecoverySettings,
   useSendRecovery,
@@ -35,19 +48,134 @@ import {
   type DelayUnit,
 } from "@/hooks/useCartCampaigns";
 
-const cartIcon = <Icon name="shopping_cart" />;
+const GREEN = "#2e7d43";
+const GREEN_DARK = "#1d5230";
+const LINE = "#e5ebe6";
+const INK = "#1e2b22";
+const MUTED = "#64766b";
+const TEXT = "#374840";
 
-// Flat and alphabetical, like the storefront's — division is derived from
-// district server-side, so it is never asked for.
+const PAGE_SIZE_KEY = "wpfok-recovery-page-size";
+const COLUMNS_KEY = "wpfok-recovery-columns";
+const COLUMN_LABELS: Record<RecoveryOptionalColumn, string> = {
+  cartDetails: "Cart Items",
+  stage: "Stage",
+  subtotal: "Subtotal",
+  attempts: "Attempts",
+  lastSeen: "Last Seen",
+  cancelReason: "Cancel Reason",
+};
+
+const DEFAULT_FILTERS: RecoveryFilterState = { q: "" };
+
+const ROLLING_WINDOW_HOURS: Record<string, number> = {
+  "1h": 1,
+  "6h": 6,
+  "12h": 12,
+  "24h": 24,
+  "7d": 7 * 24,
+  "30d": 30 * 24,
+};
+
+function parseCustomBound(value: string, edge: "start" | "end"): Date {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!dateOnly) return new Date(value);
+  return new Date(edge === "start" ? `${value}T00:00:00.000` : `${value}T23:59:59.999`);
+}
+
+function resolveDateRange(value: string | undefined, customFrom?: string, customTo?: string): { from?: string; to?: string } {
+  if (value === "custom") {
+    if (!customFrom || !customTo) return {};
+    return {
+      from: parseCustomBound(customFrom, "start").toISOString(),
+      to: parseCustomBound(customTo, "end").toISOString(),
+    };
+  }
+  if (!value) return {};
+  const to = new Date();
+  if (value === "today") {
+    const from = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 0, 0, 0, 0);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
+  const hours = ROLLING_WINDOW_HOURS[value];
+  if (!hours) return {};
+  const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
   .flat()
   .sort((a, b) => a.localeCompare(b));
 
+function HeaderButton({ children, onClick, href, active }: { children: React.ReactNode; onClick?: () => void; href?: string; active?: boolean }) {
+  const className =
+    "inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold transition-colors duration-150 hover:bg-[#f2f6f3] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2e7d43] focus-visible:ring-offset-1";
+  const style = active
+    ? { borderColor: GREEN, color: "#fff", background: GREEN }
+    : { borderColor: LINE, color: TEXT, background: "#fff" };
+
+  if (href) {
+    return (
+      <Link href={href} className={className} style={style}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={className} style={style}>
+      {children}
+    </button>
+  );
+}
+
+function ScreenOptionsModal({
+  columns,
+  onToggleColumn,
+  pageSize,
+  onPageSize,
+  onClose,
+}: {
+  columns: Set<RecoveryOptionalColumn>;
+  onToggleColumn: (c: RecoveryOptionalColumn) => void;
+  pageSize: number;
+  onPageSize: (n: number) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal open onClose={onClose} title="Screen Options">
+      <div className="flex flex-col gap-5">
+        <div>
+          <p className="mb-2 text-xs font-semibold text-secondary">Columns</p>
+          <div className="flex flex-col gap-1.5">
+            {RECOVERY_OPTIONAL_COLUMNS.map((col) => (
+              <label key={col} className="flex items-center gap-2 text-sm text-text">
+                <input type="checkbox" checked={columns.has(col)} onChange={() => onToggleColumn(col)} />
+                {COLUMN_LABELS[col]}
+              </label>
+            ))}
+          </div>
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Rows per page</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSize(Number(e.target.value))}
+            className="h-10 w-32 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          >
+            {[20, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </Modal>
+  );
+}
+
 function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () => void }) {
   const createOrder = useCreateOrderFromIncomplete();
-  // Pre-filled from whatever the shopper actually typed before leaving.
-  // Staff used to retype every field of an address the customer had already
-  // entered — and had to phone them to ask for it again.
   const captured = (row.address ?? {}) as Record<string, string | undefined>;
   const [form, setForm] = useState<CreateOrderInput>({
     recipientName: row.name ?? "",
@@ -59,8 +187,6 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
     alternativePhone: captured.alternativePhone ?? "",
     email: row.email ?? "",
   });
-  // Only districts Steadfast supplies a thana list for get a dropdown; the
-  // rest fall back to free text — same rule the storefront uses.
   const thanaOptions = form.district ? BD_THANAS_BY_DISTRICT[form.district] : undefined;
   const field =
     "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -79,9 +205,6 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          // Blanks are sent as absent, not as "". The backend now coerces
-          // this too, but sending "" for an optional email meant this form
-          // could not submit at all without one.
           const blank = (v?: string) => (v && v.trim() ? v.trim() : undefined);
           createOrder.mutate(
             {
@@ -105,9 +228,6 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
         }}
         className="grid grid-cols-2 gap-3"
       >
-        {/* Field order, labels and required-ness are the storefront checkout
-            form's, so staff recreating a cart see the same form the customer
-            abandoned rather than a differently-shaped one. */}
         <input
           placeholder="Your Full Name *"
           required
@@ -132,8 +252,6 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
         <select
           required
           value={form.district}
-          // Thana list is district-specific, so a district change clears it
-          // rather than leaving a thana that belongs to the old district.
           onChange={(e) => setForm({ ...form, district: e.target.value, area: "" })}
           className={field}
         >
@@ -198,109 +316,293 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
   );
 }
 
-function FunnelTab() {
+const CANCEL_PRESET_REASONS = [
+  "Unreachable / No Response",
+  "Bought Elsewhere",
+  "Duplicate Order",
+  "Price / Delivery Fee Too High",
+  "Out of Stock",
+  "Test / Invalid Cart",
+] as const;
+
+function CancelCartModal({ row, onClose }: { row: IncompleteOrder; onClose: () => void }) {
+  const cancel = useCancelIncompleteOrder();
+  const [reason, setReason] = useState("");
+  const trimmed = reason.trim();
+
+  function selectPreset(preset: string) {
+    if (reason === preset) {
+      setReason("");
+    } else {
+      setReason(preset);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Cancel Abandoned Cart" className="max-w-lg">
+      <div className="flex flex-col gap-4">
+        {/* Customer & Subtotal Summary Header */}
+        <div className="flex items-center justify-between gap-3 rounded-card border p-3" style={{ background: "#f8fbf9", borderColor: LINE }}>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="font-bold text-[#1e2b22] text-sm truncate">{row.name || "Anonymous Shopper"}</span>
+            <span className="text-[0.72rem] font-semibold text-[#64766b]">
+              {[row.phone, row.email].filter(Boolean).join(" · ") || `Cart #${row.id}`}
+            </span>
+          </div>
+          <div className="flex flex-col items-end shrink-0">
+            <span className="text-[0.68rem] font-semibold text-secondary">Subtotal</span>
+            <span className="text-[1.1rem] font-extrabold text-[#1e2b22]">৳{Number(row.subtotal).toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* Cart Contents Preview */}
+        {row.cart.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-card border p-3" style={{ background: "#fff", borderColor: LINE }}>
+            <span className="text-[0.72rem] font-bold text-secondary">Cart Contents ({row.cart.length} items)</span>
+            <div className="flex flex-col gap-1.5 max-h-36 overflow-auto">
+              {row.cart.map((item) => (
+                <div key={item.productId} className="flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {item.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.imageUrl} alt={item.name} className="h-7 w-7 rounded-inner border border-border object-cover shrink-0" />
+                    ) : (
+                      <span className="grid h-7 w-7 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted shrink-0">—</span>
+                    )}
+                    <span className="truncate font-semibold text-text">{item.name}</span>
+                  </div>
+                  <span className="font-bold text-[#2e7d43] shrink-0">
+                    {item.quantity} × ৳{item.unitPrice}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!trimmed) return;
+            cancel.mutate({ id: row.id, reason: trimmed }, { onSuccess: onClose });
+          }}
+          className="flex flex-col gap-3"
+        >
+          {/* Quick Preset Chips */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[0.74rem] font-bold text-text">Quick Reason Presets</span>
+            <div className="flex flex-wrap gap-1.5">
+              {CANCEL_PRESET_REASONS.map((preset) => {
+                const isSelected = reason === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => selectPreset(preset)}
+                    className="rounded-pill px-2.5 py-1 text-[0.72rem] font-bold transition-all"
+                    style={
+                      isSelected
+                        ? { background: GREEN, color: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.1)" }
+                        : { background: "#f2f6f3", color: "#64766b", border: `1px solid ${LINE}` }
+                    }
+                  >
+                    {preset}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Reason Textarea */}
+          <label className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-[0.74rem] font-bold text-text">
+              <span>Cancellation Reason *</span>
+              <span className="text-[0.68rem] font-normal text-secondary">{reason.length} / 500</span>
+            </div>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              maxLength={500}
+              required
+              autoFocus
+              placeholder="Enter reason or select a preset above..."
+              className="rounded-[9px] border bg-surface p-3 text-xs text-text outline-none focus:border-[#2e7d43]"
+              style={{ borderColor: LINE }}
+            />
+            <span className="text-[0.68rem] text-secondary">
+              This reason will be recorded against Cart #{row.id} and included in export reports.
+            </span>
+          </label>
+
+          {cancel.isError && (
+            <p className="text-xs text-danger font-semibold">
+              {cancel.error instanceof Error ? cancel.error.message : "Couldn't cancel this cart"}
+            </p>
+          )}
+
+          {/* Action Buttons */}
+          <div className="mt-1 flex items-center justify-end gap-2 border-t pt-3" style={{ borderColor: LINE }}>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Keep Cart Active
+            </Button>
+            <button
+              type="submit"
+              disabled={cancel.isPending || !trimmed}
+              className="inline-flex h-9 items-center gap-1.5 rounded-[9px] px-4 text-[0.76rem] font-bold text-white shadow-sm disabled:opacity-40"
+              style={{ background: "#e5484d" }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+              {cancel.isPending ? "Cancelling…" : "Cancel Cart"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+function FunnelSection({
+  columns,
+  showScreenOptions,
+  setShowScreenOptions,
+  pageSize,
+  setPageSize,
+}: {
+  columns: Set<RecoveryOptionalColumn>;
+  showScreenOptions: boolean;
+  setShowScreenOptions: (open: boolean) => void;
+  pageSize: number;
+  setPageSize: (n: number) => void;
+}) {
   const { data: rate } = useRecoveryRate();
-  const [q, setQ] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [recovered, setRecovered] = useState<string>("");
-  const [stage, setStage] = useState<string>("");
+  const { data: campaignSettings } = useCampaignSettings();
+  const [uiFilters, setUiFilters] = useState<RecoveryFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+
+  useEffect(() => {
+    const t = setTimeout(() => setPage(1), 350);
+    return () => clearTimeout(t);
+  }, [uiFilters.q]);
+
+  const dateRange = useMemo(
+    () => resolveDateRange(uiFilters.dateRange, uiFilters.dateFrom, uiFilters.dateTo),
+    [uiFilters.dateRange, uiFilters.dateFrom, uiFilters.dateTo],
+  );
+
   const filters: RecoveryFilters = {
-    q: q || undefined,
-    from: from || undefined,
-    to: to || undefined,
-    recovered: recovered === "" ? undefined : recovered === "true",
-    stage: stage || undefined,
+    q: uiFilters.q || undefined,
+    ...dateRange,
+    // "" means "use the API default", which is open carts only.
+    outcome: (uiFilters.outcome || undefined) as RecoveryFilters["outcome"],
+    stage: uiFilters.stage || undefined,
     page,
     pageSize,
   };
+
   const { data, isLoading } = useIncompleteOrders(filters);
   const send = useSendRecovery();
   const del = useDeleteIncompleteOrder();
   const clearAll = useClearAllIncomplete();
   const importCsv = useImportRecoveryCsv();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [orderRow, setOrderRow] = useState<IncompleteOrder | null>(null);
+  const [cancelRow, setCancelRow] = useState<IncompleteOrder | null>(null);
+  const [sendingId, setSendingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (!data) return;
+    setSelected((prev) => (prev.size === data.items.length ? new Set() : new Set(data.items.map((o) => o.id))));
+  }
+
+  function handleSendSms(id: number) {
+    setSendingId(id);
+    send.mutate(id, {
+      onSettled: () => setSendingId(null),
+    });
+  }
+
+  function handleDelete(id: number) {
+    if (confirm("Delete this abandoned-cart row?")) {
+      setDeletingId(id);
+      del.mutate(id, {
+        onSettled: () => setDeletingId(null),
+      });
+    }
+  }
+
+  function handleBulkSendSms() {
+    if (selected.size === 0) return;
+    const targetRows = (data?.items ?? []).filter((r) => selected.has(r.id) && !r.recovered && r.phone);
+    if (targetRows.length === 0) {
+      alert("No non-recovered carts with phone numbers selected.");
+      return;
+    }
+    if (confirm(`Send recovery SMS to ${targetRows.length} selected cart(s)?`)) {
+      targetRows.forEach((r) => send.mutate(r.id));
+      setSelected(new Set());
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="flex flex-col items-center gap-1 py-4">
-          <span className="text-2xl font-semibold text-text">{rate?.total ?? 0}</span>
-          <span className="text-xs text-muted">Abandoned carts</span>
-        </Card>
-        <Card className="flex flex-col items-center gap-1 py-4">
-          <span className="text-2xl font-semibold text-success">{rate?.ratePercent ?? 0}%</span>
-          <span className="text-xs text-muted">Recovery rate</span>
-        </Card>
-        <Card className="flex flex-col items-center gap-1 py-4">
-          <span className="text-2xl font-semibold text-success">৳{Number(rate?.recoveredValue ?? 0).toLocaleString()}</span>
-          <span className="text-xs text-muted">Recovered value</span>
-        </Card>
-      </div>
+    <div className="flex flex-col gap-[18px]">
+      <RecoveryStatsStrip
+        total={rate?.total ?? 0}
+        ratePercent={rate?.ratePercent ?? 0}
+        recoveredValue={rate?.recoveredValue ?? 0}
+        campaignEnabled={campaignSettings?.enabled}
+      />
 
-      <Card className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Search</span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Phone, email, name…"
-            className="h-10 w-52 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">From</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">To</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Status</span>
-          <select
-            value={recovered}
-            onChange={(e) => {
-              setRecovered(e.target.value);
-              setPage(1);
-            }}
-            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          >
-            <option value="">All</option>
-            <option value="false">Not recovered</option>
-            <option value="true">Recovered</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-secondary">Abandoned at</span>
-          <select
-            value={stage}
-            onChange={(e) => {
-              // Back to page 1: staying on page 4 of a filter that now has
-              // one page shows an empty table that looks like no results.
-              setStage(e.target.value);
-              setPage(1);
-            }}
-            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          >
-            <option value="">All stages</option>
-            {ABANDONMENT_STAGES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </Card>
+      <RecoveryFilterBar
+        filters={uiFilters}
+        onChange={(next) => {
+          setUiFilters(next);
+          setPage(1);
+        }}
+        onReset={() => {
+          setUiFilters(DEFAULT_FILTERS);
+          setPage(1);
+        }}
+      />
 
-      <div className="flex flex-wrap gap-2.5">
+      {/* Action / Bulk Bar */}
+      <div className="flex flex-wrap items-center gap-2.5 rounded-card border p-[12px_16px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+        <span className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+          {selected.size > 0 ? `${selected.size} selected` : "Select carts to act on"}
+        </span>
+        <button
+          type="button"
+          disabled={selected.size === 0 || send.isPending}
+          onClick={handleBulkSendSms}
+          className="inline-flex h-[38px] items-center rounded-[9px] px-3.5 text-[0.75rem] font-bold text-white disabled:opacity-40"
+          style={{ background: GREEN }}
+        >
+          Send Bulk SMS
+        </button>
         <a href={recoveryExportUrl(filters)} className="inline-flex">
-          <Button type="button" variant="ghost">
+          <button
+            type="button"
+            className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold"
+            style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
+          >
             Export CSV
-          </Button>
+          </button>
         </a>
         <input
           ref={fileRef}
@@ -313,155 +615,61 @@ function FunnelTab() {
             e.target.value = "";
           }}
         />
-        <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} disabled={importCsv.isPending}>
-          {importCsv.isPending ? "Importing…" : "Import CSV"}
-        </Button>
-        <Button
+        <button
           type="button"
-          variant="ghost"
+          disabled={importCsv.isPending}
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
+          style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
+        >
+          {importCsv.isPending ? "Importing…" : "Import CSV"}
+        </button>
+        <button
+          type="button"
           disabled={clearAll.isPending}
           onClick={() => {
-            if (confirm("Delete all non-recovered abandoned-cart rows matching the current filters?")) {
-              clearAll.mutate(filters.recovered);
+            if (confirm("Delete all OPEN abandoned-cart rows matching current filters?\n\nRecovered and cancelled carts are kept — cancelled ones hold the reason someone recorded.")) {
+              clearAll.mutate(undefined);
             }
           }}
+          className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
+          style={{ borderColor: "#f8ccd3", background: "#feeaec", color: "#e5484d" }}
         >
-          Clear all (not recovered)
-        </Button>
+          Clear All (Not Recovered)
+        </button>
+        <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+          {data?.total ?? 0} abandoned carts
+        </span>
       </div>
 
-      {isLoading && <p className="text-sm text-muted">Loading…</p>}
-
-      <Card className="overflow-hidden p-0">
-        <Table>
-          <thead>
-            <tr>
-              <th>Customer</th>
-              <th>Cart</th>
-              <th>Stage</th>
-              <th>Subtotal</th>
-              <th>Last seen</th>
-              <th>Attempts</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {data && data.items.length === 0 && <TableEmptyRow colSpan={7}>No abandoned carts captured yet.</TableEmptyRow>}
-            {data?.items.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <div className="flex flex-col gap-0.5">
-                    {/* The name is the point of the row now: a list only shows
-                        shoppers who left at least one way to reach them. */}
-                    {row.name && <span className="text-sm font-semibold text-text">{row.name}</span>}
-                    {row.phone && <span className="num text-sm text-text">{row.phone}</span>}
-                    {row.email && <span className="text-xs text-secondary">{row.email}</span>}
-                  </div>
-                </td>
-                <td>
-                  {row.cart.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {row.cart.map((item) => (
-                        <div key={item.productId} className="flex items-center gap-1.5" title={item.name}>
-                          {item.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.imageUrl} alt={item.name} className="h-8 w-8 rounded-inner border border-border object-cover" />
-                          ) : (
-                            <span className="grid h-8 w-8 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
-                          )}
-                          <span className="text-xs text-secondary">×{item.quantity}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted">—</span>
-                  )}
-                </td>
-                <td>
-                  <span
-                    className={`rounded-pill px-2.5 py-1 text-xs font-semibold ${
-                      row.stage === "otp"
-                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        : row.stage === "checkout"
-                          ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
-                          : "bg-surface-2 text-secondary"
-                    }`}
-                  >
-                    {STAGE_LABELS[row.stage] ?? row.stage}
-                  </span>
-                </td>
-                <td className="font-semibold text-text">৳{Number(row.subtotal).toLocaleString()}</td>
-                <td className="text-muted">{new Date(row.lastSeenAt).toLocaleString()}</td>
-                <td className="text-muted">{row.recoveryAttempts}</td>
-                <td className="text-right">
-                  {row.recovered ? (
-                    <span className="rounded-pill bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
-                      Recovered (order #{row.recoveredOrderId})
-                    </span>
-                  ) : (
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="ghost" disabled={send.isPending || !row.phone} onClick={() => send.mutate(row.id)}>
-                        Send SMS
-                      </Button>
-                      <Button type="button" variant="primary" onClick={() => setOrderRow(row)}>
-                        Create order
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={del.isPending}
-                        onClick={() => confirm("Delete this abandoned-cart row?") && del.mutate(row.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-
-        {/* Pagination. The endpoint has always been paginated (page/pageSize),
-            but nothing sent them, so the table silently showed the first 20
-            rows and there was no way to reach row 21. */}
-        {data && data.total > pageSize && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-            <span className="text-xs text-secondary">
-              {(data.page - 1) * data.pageSize + 1}–
-              {Math.min(data.page * data.pageSize, data.total)} of {data.total}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-xs font-semibold text-text">
-                Page {data.page} of {Math.max(1, Math.ceil(data.total / data.pageSize))}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={page >= Math.ceil(data.total / data.pageSize)}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
+      <RecoveryTable
+        items={data?.items ?? []}
+        total={data?.total ?? 0}
+        filters={{ page, pageSize }}
+        onFiltersChange={(next) => {
+          if (next.page !== undefined) setPage(next.page);
+          if (next.pageSize !== undefined) setPageSize(next.pageSize);
+        }}
+        columns={columns}
+        selected={selected}
+        onToggle={toggle}
+        onToggleAll={toggleAll}
+        onSendSms={handleSendSms}
+        onCreateOrder={setOrderRow}
+        onDelete={handleDelete}
+        onCancel={setCancelRow}
+        sendingId={sendingId}
+        deletingId={deletingId}
+        isLoading={isLoading}
+      />
 
       {orderRow && <CreateOrderModal row={orderRow} onClose={() => setOrderRow(null)} />}
+      {cancelRow && <CancelCartModal row={cancelRow} onClose={() => setCancelRow(null)} />}
     </div>
   );
 }
 
-function SettingsTab() {
+function SettingsSection() {
   const { data, isLoading } = useRecoverySettings();
   const update = useUpdateRecoverySettings();
 
@@ -521,7 +729,7 @@ function SettingsTab() {
   );
 }
 
-function CampaignsTab() {
+function CampaignsSection() {
   const { data: templates, isLoading } = useCampaignTemplates();
   const create = useCreateCampaignTemplate();
   const update = useUpdateCampaignTemplate();
@@ -631,7 +839,7 @@ function CampaignsTab() {
   );
 }
 
-function QueueTab() {
+function QueueSection() {
   const { data: queue, isLoading } = useCampaignQueue();
   const { data: logs } = useCampaignLogs();
   const retry = useRetryCampaignQueueItem();
@@ -693,26 +901,95 @@ function QueueTab() {
 }
 
 export default function RecoveryPage() {
-  const [tab, setTab] = useState("funnel");
+  const [section, setSection] = useState<"funnel" | "campaigns" | "queue" | "settings">("funnel");
+  const [pageSize, setPageSizeState] = useState(20);
+  const [columns, setColumns] = useState<Set<RecoveryOptionalColumn>>(new Set(RECOVERY_OPTIONAL_COLUMNS));
+  const [showScreenOptions, setShowScreenOptions] = useState(false);
+
+  useEffect(() => {
+    const savedSize = Number(localStorage.getItem(PAGE_SIZE_KEY));
+    if (savedSize) setPageSizeState(savedSize);
+    const savedCols = localStorage.getItem(COLUMNS_KEY);
+    if (savedCols) {
+      try {
+        setColumns(new Set(JSON.parse(savedCols) as RecoveryOptionalColumn[]));
+      } catch {
+        /* ignore malformed value */
+      }
+    }
+  }, []);
+
+  function toggleColumn(col: RecoveryOptionalColumn) {
+    setColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(col)) next.delete(col);
+      else next.add(col);
+      localStorage.setItem(COLUMNS_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }
+
+  function setPageSize(n: number) {
+    localStorage.setItem(PAGE_SIZE_KEY, String(n));
+    setPageSizeState(n);
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader icon={cartIcon} title="Recovery & Cart Abandonment" subtitle="Abandoned-cart funnel, automated win-back campaigns, and manual recovery." />
-      <Tabs
-        variant="pill"
-        options={[
-          { value: "funnel", label: "Funnel" },
-          { value: "campaigns", label: "Campaigns" },
-          { value: "queue", label: "Queue & Log" },
-          { value: "settings", label: "Settings" },
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
-      {tab === "funnel" && <FunnelTab />}
-      {tab === "campaigns" && <CampaignsTab />}
-      {tab === "queue" && <QueueTab />}
-      {tab === "settings" && <SettingsTab />}
+    <div className="flex flex-col gap-[18px]">
+      {/* Top Header matching Order Manager */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[1.45rem] font-extrabold tracking-tight" style={{ color: INK }}>
+            Recovery Manager
+          </h1>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+            Dashboard <span style={{ color: "#94a69a" }}>›</span> Net Profit <span style={{ color: "#94a69a" }}>›</span>{" "}
+            <span style={{ color: GREEN }}>Recovery</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <HeaderButton active={section === "funnel"} onClick={() => setSection("funnel")}>
+            Funnel
+          </HeaderButton>
+          <HeaderButton active={section === "campaigns"} onClick={() => setSection("campaigns")}>
+            Campaigns
+          </HeaderButton>
+          <HeaderButton active={section === "queue"} onClick={() => setSection("queue")}>
+            Queue & Log
+          </HeaderButton>
+          <HeaderButton active={section === "settings"} onClick={() => setSection("settings")}>
+            Settings
+          </HeaderButton>
+          {section === "funnel" && (
+            <HeaderButton onClick={() => setShowScreenOptions(true)}>
+              Screen Options
+            </HeaderButton>
+          )}
+        </div>
+      </div>
+
+      {section === "funnel" && (
+        <FunnelSection
+          columns={columns}
+          showScreenOptions={showScreenOptions}
+          setShowScreenOptions={setShowScreenOptions}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+        />
+      )}
+      {section === "campaigns" && <CampaignsSection />}
+      {section === "queue" && <QueueSection />}
+      {section === "settings" && <SettingsSection />}
+
+      {showScreenOptions && (
+        <ScreenOptionsModal
+          columns={columns}
+          onToggleColumn={toggleColumn}
+          pageSize={pageSize}
+          onPageSize={setPageSize}
+          onClose={() => setShowScreenOptions(false)}
+        />
+      )}
     </div>
   );
 }

@@ -557,6 +557,7 @@ export default async function Home({
     blogRes,
     promoVideosRes,
     firstTagProductsRes,
+    siteInfoRes,
   ] = await Promise.all([
     safeGet("/api/v1/homepage-sections", {
       params: { query: { locale: localeParam } },
@@ -571,6 +572,11 @@ export default async function Home({
       params: { query: { locale: localeParam } },
     }),
     firstTagProductsPromise,
+    // Only for the <h1> below. Added to the existing Promise.all rather than
+    // awaited separately, so it costs no extra round trip on the critical
+    // path — and reads the admin-configured title instead of hardcoding a
+    // second copy of the site's identity here.
+    safeGet("/api/v1/settings/site"),
   ]);
 
   const sections = (sectionsRes.data ?? []) as unknown as HomepageSection[];
@@ -589,8 +595,20 @@ export default async function Home({
   const beforePromoVideos = sections.slice(0, PROMO_VIDEOS_SLOT);
   const afterPromoVideos = sections.slice(PROMO_VIDEOS_SLOT);
 
+  // The homepage had NO <h1> at all — its highest heading was the first
+  // section's <h2> ("FEATURED CATEGORIES"). Every page-builder section is a
+  // peer, so none of them can legitimately claim to be the page's subject,
+  // which is why the level was never there to take.
+  //
+  // Visually hidden rather than rendered: the design intentionally opens on
+  // the hero image, and adding visible title text above it would change the
+  // page to satisfy a machine. sr-only keeps the document outline correct for
+  // screen readers and search engines without touching the layout.
+  const siteTitle = siteInfoRes.data?.seoTitle || "Amader™";
+
   return (
     <main className="flex-1">
+      <h1 className="sr-only">{siteTitle}</h1>
       {beforePromoVideos.map((section) => (
         <Fragment key={section.id}>
           {renderSection(section, { categories, blogPosts })}

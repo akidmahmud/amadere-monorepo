@@ -8,9 +8,9 @@ import { proxyFetch } from "@/lib/api/proxy-client";
  * Rings when a new abandoned cart appears.
  *
  * Reuses the recovery list endpoint rather than adding a "count" route: it
- * already returns `total` for the exact set the Recovery page shows — not
- * recovered, and contactable — so the bell can never disagree with the page
- * it links to.
+ * already returns `total` for the exact set the Recovery page shows — open
+ * (neither recovered nor cancelled) and contactable — so the bell can never
+ * disagree with the page it links to.
  */
 
 const SEEN_KEY = "amader:abandonment-seen-total";
@@ -75,7 +75,11 @@ export function useAbandonmentAlert(enabled: boolean) {
     queryKey: ["abandonment-alert"],
     queryFn: () =>
       proxyFetch<{ total: number }>(
-        "/admin/net-profit/recovery?recovered=false&page=1&pageSize=1",
+        // outcome=open, matching the Recovery page's own default. `recovered=false`
+        // was equivalent until carts could be CANCELLED — after that it still
+        // counted cancelled rows, so the bell would ring for a cart staff had
+        // already closed and which the page it links to no longer lists.
+        "/admin/net-profit/recovery?outcome=open&page=1&pageSize=1",
       ),
     enabled,
     refetchInterval: POLL_MS,

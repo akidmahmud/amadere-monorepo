@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@amader/db';
@@ -37,7 +37,30 @@ const RECOVERY_SETTINGS_DEFAULTS: RecoverySettings = {
   quietHoursEnd: 8,
 };
 
+/**
+ * Which outcomes to list.
+ *
+ * "open" is what the abandonment funnel is FOR: carts still worth chasing.
+ * A recovered cart is a customer who bought, and a cancelled one is a cart
+ * staff already closed — neither is work to do, and leaving both in the
+ * default view meant someone who completed an order was still sitting in the
+ * "Cart Abandonment" list, which is exactly what it says they did not do.
+ *
+ * Deliberately NOT defaulted inside buildWhere: the list wants "open" and the
+ * CSV export wants "all" (an export defaulting to open would leave the
+ * cancelReason column empty in every row, which is the opposite of why that
+ * column exists). Each caller states its own default.
+ */
+export type RecoveryOutcome = 'open' | 'recovered' | 'cancelled' | 'all';
+
 export interface RecoveryListFilters {
+  outcome?: RecoveryOutcome;
+  /**
+   * @deprecated superseded by `outcome`, and now inert on the list and export
+   * endpoints — both controllers always supply an `outcome`, which takes
+   * precedence. Kept only for `clearAll`, which passes it through and then
+   * forces `recovered: false` itself regardless.
+   */
   recovered?: boolean;
   /** "cart" | "checkout" | "otp" | "payment" */
   stage?: string;
@@ -53,6 +76,22 @@ export interface CartSnapshotItem {
   quantity: number;
   unitPrice: string;
   imageUrl: string | null;
+}
+
+/**
+ * "2 x Gawa Ghee | 1 x Kalojira Honey" from the cart snapshot.
+ *
+ * Multiplication sign is a plain "x", not the U+00D7 the admin table uses:
+ * this string goes into a CSV that people open in Excel, where a stray
+ * non-ASCII character in an otherwise ASCII column is a reliable way to get
+ * mojibake in someone's spreadsheet.
+ */
+function formatCartProducts(cart: unknown): string {
+  const items = Array.isArray(cart) ? (cart as CartSnapshotItem[]) : [];
+  return items
+    .filter((i) => i && typeof i.name === 'string')
+    .map((i) => `${i.quantity} x ${i.name}`)
+    .join(' | ');
 }
 
 function csvField(value: string | number | boolean): string {
@@ -122,6 +161,37 @@ export class RecoveryService {
     return this.getSettings();
   }
 
+  /**
+   * The IncompleteOrder for this cart, if it is still an OPEN one.
+   *
+   * `cartId` is unique, so without this there is exactly one abandonment row
+   * per cart for all time — and both capture paths would happily rewrite a
+   * row staff had already closed. Reported: a cart was cancelled with a
+   * reason, the same customer came back and abandoned again, and instead of a
+   * new row appearing the cancelled one silently had its products swapped
+   * underneath the recorded reason. The new abandonment was invisible and the
+   * old reason no longer described what it was attached to.
+   *
+   * A closed row (cancelled, or recovered) is therefore DETACHED rather than
+   * reused: it keeps its history — reason, products as they were, recovered
+   * order — and gives the cart id up so the caller can open a fresh row.
+   * `cartId` is nullable and Postgres allows many NULLs under a unique
+   * constraint, so any number of closed rows can coexist for one cart.
+   *
+   * Returns null when the caller should create a new row.
+   */
+  private async openRowForCart(cartId: number) {
+    const existing = await this.prisma.client.incompleteOrder.findUnique({ where: { cartId } });
+    if (!existing) return null;
+    if (!existing.canceledAt && !existing.recovered) return existing;
+
+    await this.prisma.client.incompleteOrder.update({
+      where: { id: existing.id },
+      data: { cartId: null },
+    });
+    return null;
+  }
+
   @OnEvent(CART_UPDATED_EVENT)
   async onCartUpdated(event: CartUpdatedEvent): Promise<void> {
     const cart = await this.prisma.client.cart.findUnique({
@@ -152,10 +222,10 @@ export class RecoveryService {
       imageUrl: i.product.media[0]?.media.url ?? null,
     }));
 
-    const existing = await this.prisma.client.incompleteOrder.findUnique({ where: { cartId: cart.id } });
+    const existing = await this.openRowForCart(cart.id);
     if (existing) {
       await this.prisma.client.incompleteOrder.update({
-        where: { cartId: cart.id },
+        where: { id: existing.id },
         data: { cart: snapshot as unknown as Prisma.InputJsonValue, subtotal, lastSeenAt: new Date() },
       });
       return;
@@ -259,9 +329,7 @@ export class RecoveryService {
           .filter(([, v]) => v !== ''),
       );
 
-      const existing = await this.prisma.client.incompleteOrder.findUnique({
-        where: { cartId: cart.id },
-      });
+      const existing = await this.openRowForCart(cart.id);
 
       if (existing) {
         // Stage only ever moves FORWARD. A late cart.updated event (the
@@ -275,7 +343,7 @@ export class RecoveryService {
           ...typedAddress,
         };
         await this.prisma.client.incompleteOrder.update({
-          where: { cartId: cart.id },
+          where: { id: existing.id },
           data: {
             ...contact,
             ...(Object.keys(mergedAddress).length > 0
@@ -326,25 +394,42 @@ export class RecoveryService {
     if (!order) return;
     const phone = order.addresses[0]?.phone;
 
-    const candidate = await this.prisma.client.incompleteOrder.findFirst({
-      where: {
-        recovered: false,
-        OR: [
-          event.customerId ? { customerId: event.customerId } : undefined,
-          phone ? { phone } : undefined,
-        ].filter((c): c is NonNullable<typeof c> => c !== undefined),
-      },
-      orderBy: { lastSeenAt: 'desc' },
-    });
-    if (!candidate) return;
+    const where: Prisma.IncompleteOrderWhereInput = {
+      recovered: false,
+      // A cancelled cart stays cancelled. Staff already decided its outcome,
+      // and silently relabelling it "recovered" would overwrite the reason
+      // they recorded.
+      canceledAt: null,
+      OR: [
+        event.customerId ? { customerId: event.customerId } : undefined,
+        // Every stored representation, not a bare equality. This DB holds
+        // three live formats for one real number (see phoneLookupCandidates)
+        // and the order's phone is normalized while older abandonment rows
+        // may not be — an exact match therefore found nothing, which is why
+        // customers who completed checkout stayed in the abandonment list.
+        phone ? { phone: { in: phoneLookupCandidates(phone) } } : undefined,
+      ].filter((c): c is NonNullable<typeof c> => c !== undefined),
+    };
 
-    await this.prisma.client.incompleteOrder.update({
-      where: { id: candidate.id },
+    // updateMany, not "the newest one": the complaint this fixes is that a
+    // customer who bought was still being chased, and clearing only the most
+    // recent row leaves every earlier one doing exactly that. Someone who
+    // buys has been recovered — that is what the metric is supposed to mean.
+    const candidates = await this.prisma.client.incompleteOrder.findMany({
+      where,
+      select: { id: true },
+    });
+    if (candidates.length === 0) return;
+
+    await this.prisma.client.incompleteOrder.updateMany({
+      where: { id: { in: candidates.map((c) => c.id) } },
       data: { recovered: true, recoveredOrderId: order.id },
     });
     // ADDENDUM §C2 stop condition — a recovered order cancels the rest of
     // that cart's scheduled campaign steps.
-    await this.campaigns.skipRemaining(candidate.id);
+    for (const c of candidates) {
+      await this.campaigns.skipRemaining(c.id);
+    }
   }
 
   async list(page: number, pageSize: number, filters: RecoveryListFilters = {}): Promise<PaginatedResult<IncompleteOrderDto>> {
@@ -380,7 +465,18 @@ export class RecoveryService {
         },
       ],
     };
-    if (filters.recovered !== undefined) where.recovered = filters.recovered;
+    if (filters.outcome && filters.outcome !== 'all') {
+      if (filters.outcome === 'open') {
+        where.recovered = false;
+        where.canceledAt = null;
+      } else if (filters.outcome === 'recovered') {
+        where.recovered = true;
+      } else {
+        where.canceledAt = { not: null };
+      }
+    } else if (!filters.outcome && filters.recovered !== undefined) {
+      where.recovered = filters.recovered;
+    }
     if (filters.stage) where.stage = filters.stage;
     if (filters.from || filters.to) {
       where.lastSeenAt = {
@@ -413,7 +509,12 @@ export class RecoveryService {
   // Only clears unrecovered rows — a recovered row is a real conversion
   // record (links to a real order), not abandonment noise to bulk-delete.
   async clearAll(filters: RecoveryListFilters = {}): Promise<number> {
-    const where = { ...(await this.buildWhere(filters)), recovered: false };
+    // Never deletes a recovered OR a cancelled cart. Recovered rows are the
+    // record that the funnel worked; cancelled rows carry the reason someone
+    // typed, which is the entire point of cancelling a cart rather than
+    // deleting it — a bulk "clear" that quietly destroyed those reasons would
+    // undo the feature.
+    const where = { ...(await this.buildWhere(filters)), recovered: false, canceledAt: null };
     const result = await this.prisma.client.incompleteOrder.deleteMany({ where });
     return result.count;
   }
@@ -423,11 +524,42 @@ export class RecoveryService {
       where: await this.buildWhere(filters),
       orderBy: { lastSeenAt: 'desc' },
     });
-    const header = ['id', 'name', 'phone', 'email', 'subtotal', 'stage', 'recovered', 'recoveryAttempts', 'lastSeenAt', 'createdAt'];
+    const header = [
+      'id',
+      'name',
+      'phone',
+      'email',
+      // What they were actually going to buy. Without it the export says
+      // someone abandoned 1,250 taka and nothing about of what, which is the
+      // one thing that makes the row actionable.
+      'products',
+      'subtotal',
+      'stage',
+      'recovered',
+      'canceled',
+      'cancelReason',
+      'recoveryAttempts',
+      'lastSeenAt',
+      'createdAt',
+    ];
     const lines = [header.join(',')];
     for (const r of rows) {
       lines.push(
-        [r.id, r.name ?? '', r.phone ?? '', r.email ?? '', r.subtotal.toString(), r.stage, r.recovered, r.recoveryAttempts, r.lastSeenAt.toISOString(), r.createdAt.toISOString()]
+        [
+          r.id,
+          r.name ?? '',
+          r.phone ?? '',
+          r.email ?? '',
+          formatCartProducts(r.cart),
+          r.subtotal.toString(),
+          r.stage,
+          r.recovered,
+          r.canceledAt ? 'true' : 'false',
+          r.cancelReason ?? '',
+          r.recoveryAttempts,
+          r.lastSeenAt.toISOString(),
+          r.createdAt.toISOString(),
+        ]
           .map(csvField)
           .join(','),
       );
@@ -529,6 +661,34 @@ export class RecoveryService {
     await this.downloads.createForOrder(order.id);
 
     return { orderId: order.id, orderNumber: order.orderNumber };
+  }
+
+  /**
+   * Staff giving up on a cart, with the reason recorded.
+   *
+   * Deliberately not a delete: the reason is the point — it is what turns a
+   * pile of dead carts into something you can read a pattern out of ("price",
+   * "duplicate order", "customer unreachable"). Deleting the row throws that
+   * away along with the cart itself.
+   *
+   * Stops any queued win-back messages, for the same reason recovering does:
+   * continuing to SMS someone whose cart staff have explicitly written off is
+   * the worst of both worlds.
+   */
+  async cancel(id: number, reason: string): Promise<IncompleteOrderDto> {
+    const existing = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    if (existing.recovered) {
+      throw new BadRequestException('This cart was already recovered, so there is nothing to cancel');
+    }
+    const trimmed = reason.trim();
+    if (!trimmed) throw new BadRequestException('A cancellation reason is required');
+
+    const row = await this.prisma.client.incompleteOrder.update({
+      where: { id },
+      data: { canceledAt: new Date(), cancelReason: trimmed },
+    });
+    await this.campaigns.skipRemaining(id);
+    return toIncompleteOrderDto(row);
   }
 
   async recoveryRate(): Promise<{ total: number; recovered: number; ratePercent: number; recoveredValue: string }> {

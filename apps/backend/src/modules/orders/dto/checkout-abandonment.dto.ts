@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 /**
  * A beacon from the checkout page: "this shopper has told us who they are but
@@ -15,8 +16,21 @@ export class CheckoutAbandonmentDto {
   @IsString()
   name?: string;
 
+  // Normalized to the site-wide 880XXXXXXXXXX shape, like every other phone
+  // field, so the row this creates can actually be matched later. Orders
+  // store the normalized form (CheckoutAddressDto has @NormalizeBdPhone),
+  // and this beacon used to store whatever was typed — so a shopper who
+  // typed "01840193060", abandoned, then completed checkout left a row whose
+  // phone never equalled the order's "8801840193060", and they stayed in the
+  // abandonment list forever despite having bought.
+  //
+  // Deliberately NO @IsBdPhone() beside it: this beacon fires WHILE the
+  // customer is typing, so a half-entered number is expected and must not
+  // 400. NormalizeBdPhone falls through to the raw value when it cannot
+  // parse, which is exactly the behaviour wanted here.
   @ApiPropertyOptional()
   @IsOptional()
+  @NormalizeBdPhone()
   @IsString()
   phone?: string;
 

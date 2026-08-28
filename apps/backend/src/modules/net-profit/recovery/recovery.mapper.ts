@@ -14,6 +14,9 @@ export class IncompleteOrderDto {
   stage!: string;
   recovered!: boolean;
   recoveredOrderId!: number | null;
+  /** Staff gave up on this cart. Canceled iff this is non-null. */
+  canceledAt!: Date | null;
+  cancelReason!: string | null;
   recoveryAttempts!: number;
   lastSeenAt!: Date;
   createdAt!: Date;
@@ -32,6 +35,8 @@ export function toIncompleteOrderDto(row: IncompleteOrder): IncompleteOrderDto {
     stage: row.stage,
     recovered: row.recovered,
     recoveredOrderId: row.recoveredOrderId,
+    canceledAt: row.canceledAt,
+    cancelReason: row.cancelReason,
     recoveryAttempts: row.recoveryAttempts,
     lastSeenAt: row.lastSeenAt,
     createdAt: row.createdAt,

@@ -155,7 +155,12 @@ export function TopSellingProductsSection({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img loading="lazy"
                       src={item.imageUrl}
-                      alt=""
+                      // Not alt="" — this image is the ONLY content of a
+                      // link, so an empty alt left the link with no
+                      // accessible name at all ("link", full stop). The
+                      // product name is in a sibling heading, which names the
+                      // card but not this link.
+                      alt={item.name}
                       className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
                     />
                   ) : (

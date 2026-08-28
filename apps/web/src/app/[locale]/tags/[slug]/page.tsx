@@ -107,7 +107,7 @@ export default async function TagPage({
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-[1180px] px-5 pt-9">
-        <SectionHeading>{tag.name}</SectionHeading>
+        <SectionHeading as="h1">{tag.name}</SectionHeading>
         {tag.description && (
           // Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text
           // — sanitized the same way the category page's own description is.

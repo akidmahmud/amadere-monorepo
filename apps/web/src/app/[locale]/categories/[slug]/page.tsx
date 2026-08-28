@@ -129,7 +129,7 @@ export default async function CategoryPage({
   return (
     <main className="flex-1">
       <div className="mx-auto max-w-[1180px] px-5 pt-9">
-        <SectionHeading>{category.name}</SectionHeading>
+        <SectionHeading as="h1">{category.name}</SectionHeading>
       </div>
 
       {/* The banner gets its OWN 1600-wide container instead of sitting in

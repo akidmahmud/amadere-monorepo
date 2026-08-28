@@ -140,6 +140,11 @@ export function ProductCardTwo({
             <select
               value={selected}
               onChange={(e) => setSelected(e.target.value)}
+              // The product name is only in a sibling <Link>, so on its own
+              // this control announced as a bare "combo box". A grid of these
+              // gave a screen reader thirty identically nameless dropdowns
+              // with no way to tell which product each belonged to.
+              aria-label={`Pack size for ${name}`}
               className="mt-[5px] h-[33px] w-full rounded-full border border-ink/70 bg-cream px-3 font-sans text-sm text-ink outline-none"
             >
               {packOptions!.map((o) => (

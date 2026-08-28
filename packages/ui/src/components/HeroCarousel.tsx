@@ -274,7 +274,20 @@ export function HeroCarousel({ slides, sideBanners, linkComponent: Link = Defaul
                         i === index ? "z-[1] opacity-100" : "opacity-0",
                       )}
                     >
-                      {slide.linkUrl ? <Link href={slide.linkUrl}>{img}</Link> : img}
+                      {/* A linked banner whose only content is an image with
+                          alt="" is a link with no accessible name — a screen
+                          reader announces "link" and nothing else. A slide
+                          carries only imageUrl + linkUrl, so there is no real
+                          text to use; the index at least makes each one
+                          distinguishable and announceable. Per-slide alt text
+                          entered in the admin is the proper fix. */}
+                      {slide.linkUrl ? (
+                        <Link href={slide.linkUrl} aria-label={`Promotion ${i + 1}`}>
+                          {img}
+                        </Link>
+                      ) : (
+                        img
+                      )}
                     </div>
                   );
                 })}
@@ -384,7 +397,14 @@ export function HeroCarousel({ slides, sideBanners, linkComponent: Link = Defaul
                     i === sideIndex ? "z-[1] opacity-100" : "opacity-0",
                   )}
                 >
-                  {banner.linkUrl ? <Link href={banner.linkUrl}>{bannerImg}</Link> : bannerImg}
+                  {banner.linkUrl ? (
+                    // Same nameless-link problem as the main slides above.
+                    <Link href={banner.linkUrl} aria-label={`Promotion banner ${i + 1}`}>
+                      {bannerImg}
+                    </Link>
+                  ) : (
+                    bannerImg
+                  )}
                 </div>
               );
             })}

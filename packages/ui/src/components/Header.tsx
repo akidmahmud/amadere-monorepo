@@ -385,18 +385,25 @@ export function Header({
             <span className={desktopActionIconClass}>{globeIcon}</span>
             <span className={desktopActionLabelClass}>{localeSwitchLabel}</span>
           </button>
-          <Link href={trackOrderHref} className={desktopActionClass}>
+          {/* aria-label as well as the visible text, because
+              desktopActionLabelClass is `hidden ... xl:block`: under 1280px
+              the label is display:none, which removes it from the accessible
+              name too, leaving three icon-only links announcing as just
+              "link" on every tablet and small laptop. The label is the same
+              string either way, so nothing is being overridden. The cart
+              button beside these already did this. */}
+          <Link href={trackOrderHref} className={desktopActionClass} aria-label={trackOrderLabel}>
             <span className={desktopActionIconClass}>{trackIcon}</span>
             <span className={desktopActionLabelClass}>{trackOrderLabel}</span>
           </Link>
           {accountHref && accountLabel && (
-            <Link href={accountHref} className={desktopActionClass}>
+            <Link href={accountHref} className={desktopActionClass} aria-label={accountLabel}>
               <span className={desktopActionIconClass}>{accountIcon}</span>
               <span className={desktopActionLabelClass}>{accountLabel}</span>
             </Link>
           )}
           {wishlistHref && wishlistLabel && (
-            <Link href={wishlistHref} className={desktopActionClass}>
+            <Link href={wishlistHref} className={desktopActionClass} aria-label={wishlistLabel}>
               <span className={desktopActionIconClass}>
                 {wishlistIcon}
                 <Badge count={wishlistCount} />

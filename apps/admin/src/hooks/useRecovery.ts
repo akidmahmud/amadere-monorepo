@@ -38,6 +38,9 @@ export interface IncompleteOrder {
   stage: string;
   recovered: boolean;
   recoveredOrderId: number | null;
+  /** Staff gave up on this cart. Canceled iff this is non-null. */
+  canceledAt: string | null;
+  cancelReason: string | null;
   recoveryAttempts: number;
   lastSeenAt: string;
   createdAt: string;
@@ -58,7 +61,11 @@ export interface RecoverySettings {
   quietHoursEnd: number;
 }
 
+export type RecoveryOutcome = "open" | "recovered" | "cancelled" | "all";
+
 export interface RecoveryFilters {
+  /** Omitted = the API's default, which is "open". */
+  outcome?: RecoveryOutcome;
   recovered?: boolean;
   /** "cart" | "checkout" | "otp" | "payment" */
   stage?: string;
@@ -147,6 +154,20 @@ export function useClearAllIncomplete() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_KEY });
       qc.invalidateQueries({ queryKey: RATE_KEY });
+    },
+  });
+}
+
+export function useCancelIncompleteOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      proxyFetch<IncompleteOrder>(`/admin/net-profit/recovery/${id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: LIST_KEY });
     },
   });
 }

@@ -111,7 +111,7 @@ export default async function BrandPage({
         {toDisplayImageUrl(brand.logoUrl, IMG.logo) && (
           <img src={toDisplayImageUrl(brand.logoUrl, IMG.logo)} alt={brand.name} className="mx-auto mb-4 h-16 object-contain" />
         )}
-        <SectionHeading>{brand.name}</SectionHeading>
+        <SectionHeading as="h1">{brand.name}</SectionHeading>
         {brand.description && (
           // Admin-authored WYSIWYG HTML (via RichTextEditor), not plain text
           // — sanitized the same way the category page's own description is.

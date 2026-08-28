@@ -2,7 +2,16 @@
 
 import { Fragment, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart, Button, Card, Icon, Modal, PageHeader, RangeSlider, SettingsCard, StatCard, Table, TableEmptyRow, Tabs, ToggleSwitch } from "@amader/admin-ui";
+import Link from "next/link";
+import { Button, Card, Icon, Modal, RangeSlider, RevenueProfitTrend, SettingsCard, Table, TableEmptyRow, ToggleSwitch } from "@amader/admin-ui";
+import {
+  ReportsStatsStrip,
+} from "@/components/net-profit/ReportsStatsStrip";
+import {
+  ReportsFilterBar,
+  resolveRange,
+  type RangeKey,
+} from "@/components/net-profit/ReportsFilterBar";
 import {
   useBulkSetProductCost,
   useFallbackProfitSettings,
@@ -29,154 +38,61 @@ import { useFraudSettings, useUpdateFraudSettings } from "@/hooks/useFraud";
 import { useHourlySlot, useNetProfitOverviewRange, useSetHourlySlot } from "@/hooks/useNetProfitOverview";
 import { useTopProducts } from "@/hooks/useSalesReport";
 
-const reportIcon = <Icon name="bar_chart" />;
-const dollarIcon = <Icon name="attach_money" />;
-const barIcon = <Icon name="bar_chart" />;
-const clockIcon = <Icon name="schedule" />;
-const starIcon = <Icon name="star" fill />;
-const calendarIcon = <Icon name="calendar_month" />;
-const bagIcon = <Icon name="shopping_bag" />;
-const gridIcon = <Icon name="grid_view" />;
-const mailIcon = <Icon name="mail" />;
-const megaphoneIcon = <Icon name="campaign" />;
-const filterIcon = <Icon name="filter_alt" fill />;
+const GREEN = "#2e7d43";
+const GREEN_HEADER = "#2f7d33";
+const LINE = "#e5ebe6";
+const INK = "#1e2b22";
+const MUTED = "#64766b";
+const TEXT = "#374840";
+const FAINT = "#94a69a";
 
-function SectionHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle?: string }) {
+function HeaderButton({ children, onClick, href, active }: { children: React.ReactNode; onClick?: () => void; href?: string; active?: boolean }) {
+  const className =
+    "inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold transition-colors duration-150 hover:bg-[#f2f6f3] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2e7d43] focus-visible:ring-offset-1";
+  const style = active
+    ? { borderColor: GREEN, color: "#fff", background: GREEN }
+    : { borderColor: LINE, color: TEXT, background: "#fff" };
+
+  if (href) {
+    return (
+      <Link href={href} className={className} style={style}>
+        {children}
+      </Link>
+    );
+  }
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-2.5">
+    <button type="button" onClick={onClick} className={className} style={style}>
+      {children}
+    </button>
+  );
+}
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3 border-b pb-2" style={{ borderColor: LINE }}>
       <div className="flex items-center gap-2">
-        <span className="text-brand-500 [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>
-        <h2 className="font-ui text-[15px] font-bold text-text">{title}</h2>
+        <span className="h-2 w-2 rounded-full" style={{ background: GREEN }} />
+        <h2 className="text-[1.05rem] font-extrabold tracking-tight" style={{ color: INK }}>
+          {title}
+        </h2>
       </div>
-      {subtitle && <span className="text-xs italic text-muted">{subtitle}</span>}
+      {subtitle && <span className="text-[0.74rem] font-medium" style={{ color: MUTED }}>{subtitle}</span>}
     </div>
   );
 }
 
-type RangeKey = "today" | "yesterday" | "7d" | "month" | "year" | "all" | "custom";
-const RANGE_OPTIONS: { value: RangeKey; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "7d", label: "Last 7 Days" },
-  { value: "month", label: "This Month" },
-  { value: "year", label: "This Year" },
-  { value: "all", label: "All Time" },
-];
-
-// Calendar month/year-to-date, not a rolling window — matches the plugin's
-// own get_date_range() semantics rather than a generic "last N days".
-function resolveRange(key: RangeKey, customFrom: string, customTo: string): { from: Date; to: Date } {
-  const now = new Date();
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-  switch (key) {
-    case "yesterday": {
-      const y = new Date(now);
-      y.setDate(y.getDate() - 1);
-      return { from: startOfDay(y), to: endOfDay(y) };
-    }
-    case "7d": {
-      const from = new Date(now);
-      from.setDate(from.getDate() - 6);
-      return { from: startOfDay(from), to: endOfDay(now) };
-    }
-    case "month":
-      return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) };
-    case "year":
-      return { from: new Date(now.getFullYear(), 0, 1), to: endOfDay(now) };
-    case "all":
-      return { from: new Date(2000, 0, 1), to: endOfDay(now) };
-    case "custom":
-      return {
-        from: customFrom ? startOfDay(new Date(customFrom)) : startOfDay(now),
-        to: customTo ? endOfDay(new Date(customTo)) : endOfDay(now),
-      };
-    default:
-      return { from: startOfDay(now), to: endOfDay(now) };
-  }
-}
-
-function FilterBar({
-  rangeKey,
-  setRangeKey,
-  customFrom,
-  setCustomFrom,
-  customTo,
-  setCustomTo,
-  exportParams,
-}: {
-  rangeKey: RangeKey;
-  setRangeKey: (r: RangeKey) => void;
-  customFrom: string;
-  setCustomFrom: (v: string) => void;
-  customTo: string;
-  setCustomTo: (v: string) => void;
-  exportParams: URLSearchParams;
-}) {
-  const [showCustom, setShowCustom] = useState(false);
-  const activeLabel = rangeKey === "custom" ? "Custom" : RANGE_OPTIONS.find((r) => r.value === rangeKey)?.label;
-
-  return (
-    <Card>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-brand-500 [&>svg]:h-4 [&>svg]:w-4">{filterIcon}</span>
-          <span className="font-ui text-sm font-bold text-text">Filter</span>
-          <span className="rounded-pill bg-brand-500 px-3 py-1 text-xs font-semibold text-white">{activeLabel}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <a href={`/api/backend/admin/net-profit/reports/sales/export?${exportParams.toString()}`} download>
-            <Button type="button" variant="ghost"><Icon name="description" size={16} /> CSV</Button>
-          </a>
-          <a href={`/api/backend/admin/net-profit/reports/sales/export.html?${exportParams.toString()}`} download>
-            <Button type="button" variant="ghost"><Icon name="code" size={16} /> HTML</Button>
-          </a>
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        {RANGE_OPTIONS.map((r) => (
-          <button
-            key={r.value}
-            type="button"
-            onClick={() => {
-              setRangeKey(r.value);
-              setShowCustom(false);
-            }}
-            className={`rounded-pill px-3 py-1.5 text-xs font-semibold ${
-              rangeKey === r.value ? "bg-brand-500 text-white" : "bg-surface-2 text-secondary"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => {
-            setRangeKey("custom");
-            setShowCustom((v) => !v);
-          }}
-          className={`ml-auto inline-flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-semibold ${
-            rangeKey === "custom" ? "bg-brand-500 text-white" : "bg-surface-2 text-secondary"
-          }`}
-        >
-          <Icon name="calendar_month" size={16} /> Custom
-        </button>
-      </div>
-      {showCustom && (
-        <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-border pt-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">From</span>
-            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">To</span>
-            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500" />
-          </label>
-        </div>
-      )}
-    </Card>
-  );
-}
+const TH = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
+  <th
+    className="sticky top-0 z-[5] px-3 py-3 text-left text-[0.72rem] font-bold whitespace-nowrap text-white"
+    style={{
+      background: GREEN_HEADER,
+      borderRight: "1px solid rgba(255,255,255,.13)",
+      ...style,
+    }}
+  >
+    {children}
+  </th>
+);
 
 function DashboardTab() {
   const [rangeKey, setRangeKey] = useState<RangeKey>("today");
@@ -199,9 +115,12 @@ function DashboardTab() {
 
   const exportParams = new URLSearchParams({ groupBy: "day", from: fromIso, to: toIso });
 
+  const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
+  const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
+
   return (
     <div className="flex flex-col gap-5">
-      <FilterBar
+      <ReportsFilterBar
         rangeKey={rangeKey}
         setRangeKey={setRangeKey}
         customFrom={customFrom}
@@ -211,114 +130,163 @@ function DashboardTab() {
         exportParams={exportParams}
       />
 
+      <ReportsStatsStrip
+        revenue={Number(report?.revenue ?? 0)}
+        cogs={Number(report?.cogs ?? 0)}
+        adSpend={Number(report?.adSpend ?? 0)}
+        shipping={Number(report?.shipping ?? 0)}
+        netProfit={Number(report?.netProfit ?? 0)}
+        marginPercent={Number(report?.marginPercent ?? 0)}
+      />
+
       <div>
-        <SectionHeader icon={dollarIcon} title="Profit Summary" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <StatCard variant="success" label="Total Revenue" value={`৳${Number(report?.revenue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-          <StatCard variant="danger" label="Buy Cost" value={`৳${Number(report?.cogs ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-          <StatCard variant="warning" label="Ads Cost" value={`৳${Number(report?.adSpend ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-          <StatCard variant="recovery" label="Shipping" value={`৳${Number(report?.shipping ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`} />
-          <StatCard variant="primary" label="Net Profit" value={`৳${Number(report?.netProfit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}>
-            <span className="mt-2 inline-block rounded-pill bg-success/10 px-2 py-0.5 text-xs font-semibold text-success">{report?.marginPercent ?? 0}%</span>
-          </StatCard>
-        </div>
+        <SectionHeader title="Revenue & Profit Trend" />
+        <RevenueProfitTrend
+          data={(cache ?? []).map((d) => ({
+            reportDate: d.reportDate,
+            totalRevenue: Number(d.totalRevenue || 0),
+            netProfit: Number(d.netProfit || 0),
+            totalBuyCost: Number(d.totalBuyCost || 0),
+            totalAdsCost: Number(d.totalAdsCost || 0),
+          }))}
+        />
       </div>
 
       <div>
-        <SectionHeader icon={barIcon} title="Revenue & Profit Trend" />
-        <BarChart title="" currentLabel="Revenue" compareLabel="Profit" data={chartData.length > 0 ? chartData : [{ label: "—", current: 0, compare: 0 }]} />
-      </div>
-
-      <div>
-        <SectionHeader icon={clockIcon} title="Hourly Sales Performance" subtitle="Sales amount and order count by hour of day." />
-        <Card>
+        <SectionHeader title="Hourly Sales Performance" subtitle="Sales amount and order count by hour of day" />
+        <div className="rounded-card border p-4 shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {overview?.hourlyPerformance.map((slot) => (
               <div
                 key={slot.label}
-                className="rounded-inner p-4 text-white"
-                style={{ background: "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, #3d1a66 55%, var(--brand-500) 100%)" }}
+                className="rounded-[10px] p-4 text-white shadow-sm"
+                style={{ background: "linear-gradient(135deg, #1e2b22 0%, #2e7d43 100%)" }}
               >
-                <div className="text-xs font-semibold text-white/85">{slot.label}</div>
-                <div className="num mt-1.5 text-lg font-bold">৳ {Number(slot.revenue).toFixed(2)}</div>
-                <div className="my-2.5 h-1 overflow-hidden rounded-pill bg-white/20">
+                <div className="text-[0.72rem] font-semibold text-white/85">{slot.label}</div>
+                <div className="mt-1.5 text-[1.15rem] font-extrabold">৳ {Number(slot.revenue).toFixed(2)}</div>
+                <div className="my-2.5 h-1.5 overflow-hidden rounded-pill bg-white/20">
                   <div className="h-full rounded-pill bg-white" style={{ width: `${Math.max(slot.barWidth, slot.orders > 0 ? 6 : 2)}%` }} />
                 </div>
-                <div className="text-xs text-white/75">{slot.orders} orders</div>
+                <div className="text-[0.7rem] font-medium text-white/80">{slot.orders} orders</div>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       </div>
 
       <div>
-        <SectionHeader icon={starIcon} title="Top Selling Products" />
-        <Card className="overflow-hidden p-0">
-          <Table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Product</th>
-                <th>Sale Price</th>
-                <th>Single Profit</th>
-                <th>Sold</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topProducts && topProducts.length === 0 && <TableEmptyRow colSpan={5}>No data found.</TableEmptyRow>}
-              {topProducts?.map((p, i) => (
-                <tr key={p.productId}>
-                  <td className="text-secondary">{i + 1}</td>
-                  <td className="min-w-0 max-w-[280px] truncate text-text">{p.name}</td>
-                  <td className="num text-text">৳{(p.quantity > 0 ? Number(p.revenue) / p.quantity : 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                  <td className={p.profitPerUnit === null ? "text-muted" : Number(p.profitPerUnit) >= 0 ? "text-success" : "text-danger"}>
-                    {p.profitPerUnit === null ? "—" : `৳${Number(p.profitPerUnit).toLocaleString()}`}
-                  </td>
-                  <td className="num text-secondary">{p.quantity}</td>
+        <SectionHeader title="Top Selling Products" />
+        <div className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+          <div className="overflow-auto" style={{ maxHeight: "400px" }}>
+            <table className="w-full border-separate border-spacing-0">
+              <thead>
+                <tr>
+                  <TH style={{ width: 50 }}>#</TH>
+                  <TH>Product</TH>
+                  <TH>Sale Price</TH>
+                  <TH>Single Profit</TH>
+                  <TH>Sold Qty</TH>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
+              </thead>
+              <tbody>
+                {topProducts && topProducts.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center text-sm" style={{ color: FAINT }}>
+                      No sales data found for this period.
+                    </td>
+                  </tr>
+                )}
+                {topProducts?.map((p, i) => (
+                  <tr key={p.productId} className="[&:hover>td]:bg-[#f7fbf8]">
+                    <td className={td} style={{ ...tdStyle, color: FAINT }}>
+                      {i + 1}
+                    </td>
+                    <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
+                      <span className="block max-w-[320px] truncate" title={p.name}>
+                        {p.name}
+                      </span>
+                    </td>
+                    <td className={td} style={tdStyle}>
+                      ৳{(p.quantity > 0 ? Number(p.revenue) / p.quantity : 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className={td} style={tdStyle}>
+                      {p.profitPerUnit === null ? (
+                        <span style={{ color: FAINT }}>—</span>
+                      ) : (
+                        <span className={Number(p.profitPerUnit) >= 0 ? "font-bold text-success" : "font-bold text-danger"}>
+                          ৳{Number(p.profitPerUnit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
+                    </td>
+                    <td className={td} style={{ ...tdStyle, fontWeight: 700, color: GREEN }}>
+                      {p.quantity}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div>
-        <SectionHeader icon={calendarIcon} title="Daily Profit Log" />
-        <Card className="overflow-hidden p-0">
-          <Table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Revenue</th>
-                <th>Buy Cost</th>
-                <th>Ads Cost</th>
-                <th>Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cache && cache.length === 0 && <TableEmptyRow colSpan={5}>No daily profit computed yet.</TableEmptyRow>}
-              {[...(cache ?? [])].reverse().map((d) => (
-                <tr key={d.reportDate}>
-                  <td className="num text-text">{d.reportDate}</td>
-                  <td className="text-secondary">৳{Number(d.totalRevenue).toLocaleString()}</td>
-                  <td className="text-secondary">৳{Number(d.totalBuyCost).toLocaleString()}</td>
-                  <td className="text-secondary">৳{Number(d.totalAdsCost).toLocaleString()}</td>
-                  <td className={`font-semibold ${Number(d.netProfit) >= 0 ? "text-success" : "text-danger"}`}>৳{Number(d.netProfit).toLocaleString()}</td>
+        <SectionHeader title="Daily Profit Log" />
+        <div className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+          <div className="overflow-auto" style={{ maxHeight: "450px" }}>
+            <table className="w-full border-separate border-spacing-0">
+              <thead>
+                <tr>
+                  <TH>Date</TH>
+                  <TH>Revenue</TH>
+                  <TH>Buy Cost</TH>
+                  <TH>Ads Cost</TH>
+                  <TH>Net Profit</TH>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
+              </thead>
+              <tbody>
+                {cache && cache.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center text-sm" style={{ color: FAINT }}>
+                      No daily profit log records found.
+                    </td>
+                  </tr>
+                )}
+                {[...(cache ?? [])].reverse().map((d) => (
+                  <tr key={d.reportDate} className="[&:hover>td]:bg-[#f7fbf8]">
+                    <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
+                      {d.reportDate}
+                    </td>
+                    <td className={td} style={tdStyle}>
+                      ৳{Number(d.totalRevenue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className={td} style={tdStyle}>
+                      ৳{Number(d.totalBuyCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className={td} style={tdStyle}>
+                      ৳{Number(d.totalAdsCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className={td} style={tdStyle}>
+                      <span className={Number(d.netProfit) >= 0 ? "font-extrabold text-success" : "font-extrabold text-danger"}>
+                        ৳{Number(d.netProfit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-const editIcon = <Icon name="edit" size={13} />;
+const editIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
 
-// Click the pencil (or the value) to edit in place; blur/Enter saves,
-// Escape cancels. Shared by all three editable columns in the Variations
-// modal — they differ only in what onSave does with the number.
 function EditableAmount({ value, onSave }: { value: string | null; onSave: (n: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
@@ -341,7 +309,8 @@ function EditableAmount({ value, onSave }: { value: string | null; onSave: (n: n
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           if (e.key === "Escape") setEditing(false);
         }}
-        className="num h-8 w-24 rounded-sm border border-brand-500 bg-surface px-2 text-sm text-text outline-none"
+        className="h-8 w-24 rounded-[8px] border bg-white px-2 text-[0.75rem] font-bold outline-none"
+        style={{ borderColor: GREEN }}
       />
     );
   }
@@ -355,8 +324,8 @@ function EditableAmount({ value, onSave }: { value: string | null; onSave: (n: n
       }}
       className="group/edit flex items-center gap-1.5"
     >
-      <span className="num font-semibold text-text">{value === null ? "—" : `৳${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</span>
-      <span className="text-brand-500 opacity-60 group-hover/edit:opacity-100">{editIcon}</span>
+      <span className="text-[0.76rem] font-semibold text-text">{value === null ? "—" : `৳${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</span>
+      <span className="text-[#2e7d43] opacity-60 group-hover/edit:opacity-100">{editIcon}</span>
     </button>
   );
 }
@@ -409,7 +378,7 @@ function VariantsModal({ productId, productName, onClose }: { productId: number;
                       onSave={(n) => setVariantCost.mutate({ variantId: v.id, buyPrice: n })}
                     />
                   </td>
-                  <td className={profit === null ? "text-muted" : profit >= 0 ? "text-success" : "text-danger"}>
+                  <td className={profit === null ? "text-muted" : profit >= 0 ? "text-success font-bold" : "text-danger font-bold"}>
                     {profit === null ? "—" : `৳${profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                   </td>
                 </tr>
@@ -422,9 +391,6 @@ function VariantsModal({ productId, productName, onClose }: { productId: number;
   );
 }
 
-// Regular/Sale price edit here saves straight through the same product-edit
-// endpoint the Catalog page uses (`PATCH /admin/products/:id`) — this table
-// doesn't own pricing, it's just another place to edit it quickly.
 function PriceCell({ productId, value }: { productId: number; value: number }) {
   const [draft, setDraft] = useState(String(value));
   const update = useUpdateProduct(productId);
@@ -442,14 +408,11 @@ function PriceCell({ productId, value }: { productId: number; value: number }) {
       onBlur={() => {
         const n = Number(draft);
         if (draft !== "" && !Number.isNaN(n) && n !== value) {
-          // useUpdateProduct only invalidates the Catalog page's own cache
-          // (admin-products) — this table reads from the net-profit
-          // product-cost endpoint instead, so Single Profit needs its own
-          // invalidation or it'd keep showing stale price/salePrice.
           update.mutate({ price: n }, { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCT_COST_KEY }) });
         }
       }}
-      className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
+      className="h-8 w-24 rounded-[8px] border bg-white px-2 text-[0.75rem] font-semibold outline-none hover:border-[#2e7d43] focus:border-[#2e7d43]"
+      style={{ borderColor: LINE, color: TEXT }}
     />
   );
 }
@@ -470,16 +433,14 @@ function SalePriceCell({ productId, value }: { productId: number; value: number 
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
-        // The backend's UpdateProductDto validates salePrice as a plain
-        // number (no null) — clearing a sale back to "no sale" isn't
-        // something this quick editor can express, only setting a new one.
         if (draft === "") return;
         const n = Number(draft);
         if (!Number.isNaN(n) && n !== value) {
           update.mutate({ salePrice: n }, { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCT_COST_KEY }) });
         }
       }}
-      className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
+      className="h-8 w-24 rounded-[8px] border bg-white px-2 text-[0.75rem] font-semibold outline-none hover:border-[#2e7d43] focus:border-[#2e7d43]"
+      style={{ borderColor: LINE, color: TEXT }}
     />
   );
 }
@@ -490,59 +451,79 @@ function ProductRow({
   costDraft,
   onCostDraftChange,
   onOpenVariants,
+  td,
+  tdStyle,
 }: {
   product: ProductCostRow;
   index: number;
   costDraft: string | undefined;
   onCostDraftChange: (v: string) => void;
   onOpenVariants: () => void;
+  td: string;
+  tdStyle: { color: string; borderColor: string; background: string };
 }) {
   const salePrice = Number(p.salePrice ?? p.price ?? 0);
   const cost = costDraft !== undefined ? Number(costDraft) : p.costPerItem !== null ? Number(p.costPerItem) : null;
   const singleProfit = p.variantCount > 0 || cost === null ? null : salePrice - cost;
 
   return (
-    <Fragment>
-      <tr>
-        <td className="text-secondary">{i + 1}</td>
-        <td className="min-w-0 max-w-[300px]">
-          <div className="flex items-center gap-2.5">
-            {p.thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.thumbnailUrl} alt="" className="h-9 w-9 shrink-0 rounded-inner border border-border object-cover" />
-            ) : (
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
-            )}
-            <span className="min-w-0 truncate text-text">{p.name}</span>
-            {p.variantCount > 0 && (
-              <span className="shrink-0 rounded-pill bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-500">
-                Variable ({p.variantCount})
-              </span>
-            )}
-          </div>
-        </td>
-        <td><PriceCell productId={p.id} value={Number(p.price ?? 0)} /></td>
-        <td><SalePriceCell productId={p.id} value={p.salePrice === null ? null : Number(p.salePrice)} /></td>
-        <td>
-          {p.variantCount > 0 ? (
-            <Button type="button" variant="ghost" onClick={onOpenVariants}>
-              <Icon name="tune" size={16} /> Variations
-            </Button>
+    <tr className="[&:hover>td]:bg-[#f7fbf8]">
+      <td className={td} style={{ ...tdStyle, color: FAINT }}>
+        {i + 1}
+      </td>
+      <td className={td} style={tdStyle}>
+        <div className="flex items-center gap-2.5">
+          {p.thumbnailUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.thumbnailUrl} alt="" className="h-8 w-8 shrink-0 rounded-inner border border-border object-cover" />
           ) : (
-            <input
-              type="number"
-              min={0}
-              value={costDraft ?? p.costPerItem ?? "0"}
-              onChange={(e) => onCostDraftChange(e.target.value)}
-              className="num h-9 w-24 rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500"
-            />
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
           )}
-        </td>
-        <td className={singleProfit === null ? "text-muted" : singleProfit >= 0 ? "text-success" : "text-danger"}>
-          {singleProfit === null ? "—" : `৳${singleProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-        </td>
-      </tr>
-    </Fragment>
+          <span className="min-w-0 max-w-[280px] truncate text-text font-semibold">{p.name}</span>
+          {p.variantCount > 0 && (
+            <span className="shrink-0 rounded-pill bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-400">
+              Variable ({p.variantCount})
+            </span>
+          )}
+        </div>
+      </td>
+      <td className={td} style={tdStyle}>
+        <PriceCell productId={p.id} value={Number(p.price ?? 0)} />
+      </td>
+      <td className={td} style={tdStyle}>
+        <SalePriceCell productId={p.id} value={p.salePrice === null ? null : Number(p.salePrice)} />
+      </td>
+      <td className={td} style={tdStyle}>
+        {p.variantCount > 0 ? (
+          <button
+            type="button"
+            onClick={onOpenVariants}
+            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold"
+            style={{ borderColor: LINE, color: TEXT }}
+          >
+            Variations
+          </button>
+        ) : (
+          <input
+            type="number"
+            min={0}
+            value={costDraft ?? p.costPerItem ?? "0"}
+            onChange={(e) => onCostDraftChange(e.target.value)}
+            className="h-8 w-24 rounded-[8px] border bg-white px-2 text-[0.75rem] font-semibold outline-none hover:border-[#2e7d43] focus:border-[#2e7d43]"
+            style={{ borderColor: LINE, color: TEXT }}
+          />
+        )}
+      </td>
+      <td className={td} style={tdStyle}>
+        {singleProfit === null ? (
+          <span style={{ color: FAINT }}>—</span>
+        ) : (
+          <span className={singleProfit >= 0 ? "font-bold text-success" : "font-bold text-danger"}>
+            ৳{singleProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -560,68 +541,87 @@ function ProductsTab() {
   const [expanded, setExpanded] = useState<number | null>(null);
 
   const dirtyRows = Object.entries(drafts).filter(([, v]) => v !== "");
+  const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
+  const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
   return (
-    <div>
-      <SectionHeader icon={bagIcon} title="Quick Owner Buy Price Editor" />
-      <Card className="overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
+    <div className="flex flex-col gap-4">
+      <SectionHeader title="Quick Owner Buy Price Editor" />
+      <div className="flex flex-wrap items-center gap-3 rounded-card border p-[14px_16px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+        <div className="relative w-[260px]">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products…"
-            className="h-10 w-64 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+            placeholder="Search products by title..."
+            className="h-[38px] w-full rounded-[9px] border py-0 pr-[34px] pl-3 text-[0.76rem] outline-none"
+            style={{ borderColor: LINE, color: "#374840" }}
           />
-          <Button
-            type="button"
-            variant="primary"
-            className="ml-auto"
-            disabled={bulkSet.isPending || dirtyRows.length === 0}
-            onClick={() =>
-              bulkSet.mutate(
-                dirtyRows.map(([productId, v]) => ({ productId: Number(productId), costPerItem: Number(v) })),
-                { onSuccess: () => setDrafts({}) },
-              )
-            }
-          >
-            {bulkSet.isPending ? (
-              "Saving…"
-            ) : (
-              <>
-                <Icon name="check" size={16} /> Save All{dirtyRows.length > 0 ? ` (${dirtyRows.length})` : ""}
-              </>
-            )}
-          </Button>
+          <svg className="pointer-events-none absolute top-1/2 right-[11px] -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
         </div>
+        <button
+          type="button"
+          disabled={bulkSet.isPending || dirtyRows.length === 0}
+          onClick={() =>
+            bulkSet.mutate(
+              dirtyRows.map(([productId, v]) => ({ productId: Number(productId), costPerItem: Number(v) })),
+              { onSuccess: () => setDrafts({}) },
+            )
+          }
+          className="ml-auto inline-flex h-[38px] items-center gap-2 rounded-[9px] px-4 text-[0.78rem] font-bold text-white shadow-sm disabled:opacity-40"
+          style={{ background: GREEN }}
+        >
+          {bulkSet.isPending ? "Saving…" : `Save All ${dirtyRows.length > 0 ? `(${dirtyRows.length})` : ""}`}
+        </button>
+      </div>
 
-        {isLoading && <p className="p-4 text-sm text-muted">Loading…</p>}
-
-        <Table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th>Regular Price</th>
-              <th>Sale Price</th>
-              <th>Owner Buy Price</th>
-              <th>Single Profit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data && data.items.length === 0 && <TableEmptyRow colSpan={6}>No products found.</TableEmptyRow>}
-            {data?.items.map((p, i) => (
-              <ProductRow
-                key={p.id}
-                product={p}
-                index={i}
-                costDraft={drafts[p.id]}
-                onCostDraftChange={(v) => setDrafts({ ...drafts, [p.id]: v })}
-                onOpenVariants={() => setExpanded(p.id)}
-              />
-            ))}
-          </tbody>
-        </Table>
-      </Card>
+      <div className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+        <div className="overflow-auto" style={{ maxHeight: "62vh" }}>
+          <table className="w-full border-separate border-spacing-0">
+            <thead>
+              <tr>
+                <TH style={{ width: 50 }}>#</TH>
+                <TH>Product</TH>
+                <TH>Regular Price</TH>
+                <TH>Sale Price</TH>
+                <TH>Owner Buy Price</TH>
+                <TH>Single Profit</TH>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm" style={{ color: FAINT }}>
+                    Loading product buy prices…
+                  </td>
+                </tr>
+              )}
+              {!isLoading && data && data.items.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-8 text-center text-sm" style={{ color: FAINT }}>
+                    No products found matching your search.
+                  </td>
+                </tr>
+              )}
+              {!isLoading &&
+                data?.items.map((p, i) => (
+                  <ProductRow
+                    key={p.id}
+                    product={p}
+                    index={i}
+                    costDraft={drafts[p.id]}
+                    onCostDraftChange={(v) => setDrafts({ ...drafts, [p.id]: v })}
+                    onOpenVariants={() => setExpanded(p.id)}
+                    td={td}
+                    tdStyle={tdStyle}
+                  />
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {expanded !== null && (
         <VariantsModal
@@ -641,7 +641,7 @@ function FallbackProfitCard() {
   const current = form ?? data;
 
   return (
-    <SettingsCard icon={dollarIcon} title="Fallback Profit">
+    <SettingsCard icon={<Icon name="attach_money" />} title="Fallback Profit">
       {isLoading || !current ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : (
@@ -737,7 +737,7 @@ function SettingsTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SettingsCard icon={megaphoneIcon} title={`Today's Marketing Cost (${today})`}>
+      <SettingsCard icon={<Icon name="campaign" />} title={`Today's Marketing Cost (${today})`}>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary">Ads Cost (৳)</span>
@@ -771,7 +771,7 @@ function SettingsTab() {
         </p>
       </SettingsCard>
 
-      <SettingsCard icon={gridIcon} title="Report Configuration">
+      <SettingsCard icon={<Icon name="grid_view" />} title="Report Configuration">
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-4">
             <div className="rounded-inner bg-surface-2 p-3">
@@ -826,7 +826,7 @@ function SettingsTab() {
 
       <FallbackProfitCard />
 
-      <SettingsCard icon={mailIcon} title="Auto Report Delivery">
+      <SettingsCard icon={<Icon name="mail" />} title="Auto Report Delivery">
         <div className="flex flex-col gap-4">
           <div className="rounded-inner bg-surface-2 p-3">
             <ToggleSwitch
@@ -867,24 +867,37 @@ function SettingsTab() {
 }
 
 export default function SalesReportPage() {
-  const [tab, setTab] = useState("dashboard");
+  const [section, setSection] = useState<"dashboard" | "products" | "settings">("dashboard");
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader icon={reportIcon} title="Sales Report" subtitle="Net profit analysis, top products, and sales performance insights." />
-      <Tabs
-        variant="pill"
-        options={[
-          { value: "dashboard", label: "Dashboard" },
-          { value: "products", label: "Products" },
-          { value: "settings", label: "Settings" },
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
-      {tab === "dashboard" && <DashboardTab />}
-      {tab === "products" && <ProductsTab />}
-      {tab === "settings" && <SettingsTab />}
+    <div className="flex flex-col gap-[18px]">
+      {/* Top Header matching Order Manager */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[1.45rem] font-extrabold tracking-tight" style={{ color: INK }}>
+            Reports & Profit Analytics
+          </h1>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[0.76rem] font-semibold" style={{ color: MUTED }}>
+            Dashboard <span style={{ color: "#94a69a" }}>›</span> Net Profit <span style={{ color: "#94a69a" }}>›</span>{" "}
+            <span style={{ color: GREEN }}>Reports</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <HeaderButton active={section === "dashboard"} onClick={() => setSection("dashboard")}>
+            Dashboard
+          </HeaderButton>
+          <HeaderButton active={section === "products"} onClick={() => setSection("products")}>
+            Products
+          </HeaderButton>
+          <HeaderButton active={section === "settings"} onClick={() => setSection("settings")}>
+            Settings
+          </HeaderButton>
+        </div>
+      </div>
+
+      {section === "dashboard" && <DashboardTab />}
+      {section === "products" && <ProductsTab />}
+      {section === "settings" && <SettingsTab />}
     </div>
   );
 }
