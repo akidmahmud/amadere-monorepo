@@ -65,11 +65,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
       );
     }
 
+    const flatMessage = Array.isArray(message) ? message.join(', ') : message;
+
+    // Nest's built-in route-not-found handler throws a NotFoundException whose
+    // message echoes the method and full path ("Cannot POST /api/v1/customers/
+    // login"), leaking the internal /api/v1 route layout to anyone probing.
+    // Only that framework-generated echo is replaced — real application 404s
+    // (e.g. "Product not found") carry a custom message and are left intact.
+    const safeMessage =
+      status === HttpStatus.NOT_FOUND &&
+      typeof flatMessage === 'string' &&
+      /^Cannot (GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /.test(flatMessage)
+        ? 'Not Found'
+        : flatMessage;
+
     const body: ApiErrorResponse = {
       success: false,
       error: {
         code: HttpStatus[status] ?? String(status),
-        message: Array.isArray(message) ? message.join(', ') : message,
+        message: safeMessage,
         ...(details !== undefined ? { details } : {}),
       },
     };

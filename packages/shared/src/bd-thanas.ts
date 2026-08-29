@@ -8,6 +8,18 @@
 // every other district still falls back to free-text entry until its own
 // list is supplied the same way (see that file's fallback logic).
 export const BD_THANAS_BY_DISTRICT: Record<string, string[]> = {
+  // Key must match BD_DISTRICTS_BY_DIVISION exactly, or AddressFields falls
+  // back to free text and the dropdown silently never appears.
+  'Dhaka Sub-Urban': [
+    'Ashulia',
+    'Dhamrai',
+    'Dohar',
+    'Hemayetpur',
+    'Keraniganj Model',
+    'Nawabganj',
+    'Savar',
+    'South Keraniganj',
+  ],
   Dhaka: [
     'Adabor',
     'Airport',

@@ -30,6 +30,10 @@ async function bootstrap() {
   // X-Forwarded-For instead.
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
+  // Express advertises `x-powered-by: Express` by default. No reason to hand
+  // the stack to anyone probing — disable it.
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+
   // Storefront search is client-driven (fetches this API directly from the
   // browser, unlike everything else which is server-rendered or proxied) —
   // without CORS the browser silently drops the response and search looks

@@ -6,6 +6,17 @@
 export const BD_DISTRICTS_BY_DIVISION: Record<string, string[]> = {
   Dhaka: [
     'Dhaka',
+    // Not an official government district — a delivery district, added per
+    // explicit request so the areas couriers treat as sub-urban Dhaka
+    // (Savar, Ashulia, Keraniganj, Dhamrai, Dohar, Nawabganj) can be picked
+    // and priced separately from Dhaka metro. Listed right after 'Dhaka' so
+    // the two read together in the (otherwise alphabetical-by-division)
+    // source, though every dropdown sorts alphabetically anyway.
+    //
+    // It sits in the Dhaka division on purpose: divisionForDistrict below is
+    // what every address write derives `division` from, and a district in no
+    // division would resolve to null and store a blank one.
+    'Dhaka Sub-Urban',
     'Gazipur',
     'Narayanganj',
     'Narsingdi',

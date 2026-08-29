@@ -95,6 +95,10 @@ const MANIFEST_HEADERS = [
 const withBn = (paths: string[]) => paths.flatMap((p) => [p, `/bn${p}`]);
 
 const nextConfig: NextConfig = {
+  // Drop the `x-powered-by: Next.js` framework fingerprint from every
+  // response — no need to advertise the stack to anyone probing.
+  poweredByHeader: false,
+
   transpilePackages: ["@amader/ui", "@amader/page-builder"],
 
   async headers() {

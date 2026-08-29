@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Drop the `x-powered-by: Next.js` framework fingerprint from every
+  // response.
+  poweredByHeader: false,
+
   // @amader/ui is here for the footer editor's live preview, which renders
   // the real storefront Footer rather than an admin-side mock. Both packages
   // ship raw .ts/.tsx from src (see their package.json "main"), so Next has
