@@ -71,9 +71,16 @@ export interface RecoveryListFilters {
 
 export interface CartSnapshotItem {
   productId: number;
+  /**
+   * Which variant/pack, when the product has them. Optional because rows
+   * captured before this field existed do not carry it — their price still
+   * comes through `unitPrice` below, which was always the real one.
+   */
+  variantId?: number | null;
   name: string;
   slug: string;
   quantity: number;
+  /** What the shopper was actually being charged, at capture time. */
   unitPrice: string;
   imageUrl: string | null;
 }
@@ -215,6 +222,7 @@ export class RecoveryService {
     const subtotal = cart.items.reduce((sum, i) => sum.plus(i.unitPriceSnapshot.times(i.quantity)), new Prisma.Decimal(0));
     const snapshot: CartSnapshotItem[] = cart.items.map((i) => ({
       productId: i.productId,
+      variantId: i.variantId,
       name: i.product.translations[0]?.name ?? i.product.slug,
       slug: i.product.slug,
       quantity: i.quantity,
@@ -596,6 +604,17 @@ export class RecoveryService {
   // historical, matching the plugin's own simplicity here: no coupon/
   // discount replay, no fraud/blocker/OTP gates — this is a staff action on
   // behalf of a customer who already tried to buy, not a live checkout).
+  /** JSON-sourced money, or null when it is not a usable number. */
+  private parseDecimal(raw: unknown): Prisma.Decimal | null {
+    if (typeof raw !== 'string' && typeof raw !== 'number') return null;
+    try {
+      const d = new Prisma.Decimal(raw);
+      return d.isFinite() && d.greaterThanOrEqualTo(0) ? d : null;
+    } catch {
+      return null;
+    }
+  }
+
   async createOrderFromIncomplete(id: number, dto: CheckoutAddressDto): Promise<{ orderId: number; orderNumber: string }> {
     const incomplete = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
     if (incomplete.recovered) throw new Error('This cart has already been recovered');
@@ -604,20 +623,54 @@ export class RecoveryService {
     if (snapshot.length === 0) throw new Error('This cart has no items to recreate');
 
     const productIds = snapshot.map((i) => i.productId);
-    const products = await this.prisma.client.product.findMany({ where: { id: { in: productIds } } });
-    const priceById = new Map(products.map((p) => [p.id, p.salePrice ?? p.price ?? new Prisma.Decimal(0)]));
-    // Same products already loaded for pricing above — reused here rather
-    // than a second query, so a staff-recreated digital order still snapshots
-    // DIGITAL and doesn't land in the courier dispatch queue.
-    const typeById = new Map(products.map((p) => [p.id, p.productType]));
+    const products = await this.prisma.client.product.findMany({
+      where: { id: { in: productIds } },
+      // Variants carry their own price: a `hasVariants` product has NULL
+      // price/salePrice on the Product row itself (see the schema note), so
+      // pricing from Product alone yields zero for every such item.
+      include: { variants: { select: { id: true, price: true, salePrice: true } } },
+    });
+    const productById = new Map(products.map((p) => [p.id, p]));
 
-    const items = snapshot.map((i) => ({
-      productId: i.productId,
-      quantity: i.quantity,
-      unitPrice: priceById.get(i.productId) ?? new Prisma.Decimal(i.unitPrice),
-      name: i.name,
-      productType: typeById.get(i.productId) ?? 'PHYSICAL',
-    }));
+    const items = snapshot.map((i) => {
+      const product = productById.get(i.productId);
+      const variant = i.variantId
+        ? product?.variants.find((v) => v.id === i.variantId)
+        : undefined;
+
+      // The SNAPSHOT price wins. It is what the shopper was actually being
+      // charged when they walked away, which is the whole point of recreating
+      // their cart — and it is the only source that is right for a variant
+      // product, whose Product row holds no price at all.
+      //
+      // This was the bug: pricing came from `p.salePrice ?? p.price ?? 0`, so
+      // every variant product came back as 0 taka in Order Manager. The
+      // intended `?? snapshot.unitPrice` fallback never fired either, because
+      // the map DID hold that product id — with a value of zero.
+      //
+      // Parsed rather than trusted blindly (it is JSON), and 0 is a legitimate
+      // value (a free ebook), so only a genuinely unparseable price falls
+      // through to the live one.
+      const snapshotPrice = this.parseDecimal(i.unitPrice);
+      const unitPrice =
+        snapshotPrice ??
+        variant?.salePrice ??
+        variant?.price ??
+        product?.salePrice ??
+        product?.price ??
+        new Prisma.Decimal(0);
+
+      return {
+        productId: i.productId,
+        variantId: variant?.id ?? null,
+        quantity: i.quantity,
+        unitPrice,
+        name: i.name,
+        // Reused from the same load, so a staff-recreated digital order still
+        // snapshots DIGITAL and doesn't land in the courier dispatch queue.
+        productType: product?.productType ?? 'PHYSICAL',
+      };
+    });
     const subTotal = items.reduce((sum, i) => sum.plus(i.unitPrice.times(i.quantity)), new Prisma.Decimal(0));
 
     const order = await this.prisma.client.order.create({
@@ -630,6 +683,7 @@ export class RecoveryService {
         items: {
           create: items.map((i) => ({
             productId: i.productId,
+            variantId: i.variantId,
             productNameSnapshot: i.name,
             unitPrice: i.unitPrice,
             quantity: i.quantity,
