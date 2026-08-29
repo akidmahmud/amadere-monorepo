@@ -266,8 +266,23 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                             disabled={updateItem.isPending}
                             onClick={() => {
                               const quantity = Math.max(1, Number(quantityDrafts[item.id]));
-                              updateItem.mutate({ itemId: item.id, quantity });
-                              setQuantityDrafts((d) => { const c = { ...d }; delete c[item.id]; return c; });
+                              // Clear the draft ONLY on success. It used to be
+                              // cleared immediately after mutate(), so a
+                              // rejected edit (e.g. 409 Insufficient stock)
+                              // silently snapped the box back to the old
+                              // number — which reads as "the button does
+                              // nothing" rather than as a refusal.
+                              updateItem.mutate(
+                                { itemId: item.id, quantity },
+                                {
+                                  onSuccess: () =>
+                                    setQuantityDrafts((d) => {
+                                      const c = { ...d };
+                                      delete c[item.id];
+                                      return c;
+                                    }),
+                                },
+                              );
                             }}
                             className="rounded-sm border px-2 py-0.5 text-xs font-semibold"
                             style={{ borderColor: GREEN, color: GREEN }}
@@ -289,6 +304,22 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   </div>
                 ))}
               </div>
+
+              {/* Quantity/remove failures were invisible: only addItem's error
+                  was ever rendered, so a rejected quantity change looked like
+                  a dead button. Most often this is the stock guard refusing to
+                  reserve more of an out-of-stock line, which staff can act on
+                  once they can actually read it. */}
+              {(updateItem.error || removeItem.error) && (
+                <p className="mt-2 text-xs text-danger">
+                  {(() => {
+                    const err = updateItem.error ?? removeItem.error;
+                    return err instanceof ProxyApiError || err instanceof Error
+                      ? err.message
+                      : "Couldn't update this item";
+                  })()}
+                </p>
+              )}
 
               {/* Summary */}
               <div className="mt-3 flex flex-col gap-2 text-sm">

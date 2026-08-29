@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT } from "@amader/shared";
+import { OrderDetailModal, type OrderDetailModalRow } from "@/components/OrderDetailModal";
 import { Button, Card, Modal } from "@amader/admin-ui";
 import {
   RecoveryStatsStrip,
@@ -174,7 +175,16 @@ function ScreenOptionsModal({
   );
 }
 
-function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () => void }) {
+function CreateOrderModal({
+  row,
+  onClose,
+  onCreated,
+}: {
+  row: IncompleteOrder;
+  onClose: () => void;
+  /** Hands the new order straight to the Order Manager modal. */
+  onCreated: (order: OrderDetailModalRow) => void;
+}) {
   const createOrder = useCreateOrderFromIncomplete();
   const captured = (row.address ?? {}) as Record<string, string | undefined>;
   const [form, setForm] = useState<CreateOrderInput>({
@@ -220,8 +230,20 @@ function CreateOrderModal({ row, onClose }: { row: IncompleteOrder; onClose: () 
             },
             {
               onSuccess: (r) => {
-                alert(`Order ${r.orderNumber} created.`);
+                // No alert(): the order almost always needs a look straight
+                // away — quantities adjusted, an item added, a status set —
+                // and an OK button that dumps staff back to the funnel list
+                // makes them go and find the order they just made.
                 onClose();
+                onCreated({
+                  id: r.orderId,
+                  orderNumber: r.orderNumber,
+                  // Nothing is consigned yet at creation, and the phone is
+                  // the one just typed into this form. Everything else the
+                  // modal needs it fetches by id.
+                  shipmentId: null,
+                  shippingPhone: form.phone.trim() || null,
+                });
               },
             },
           );
@@ -514,6 +536,7 @@ function FunnelSection({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [orderRow, setOrderRow] = useState<IncompleteOrder | null>(null);
   const [cancelRow, setCancelRow] = useState<IncompleteOrder | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<OrderDetailModalRow | null>(null);
   const [sendingId, setSendingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -663,7 +686,19 @@ function FunnelSection({
         isLoading={isLoading}
       />
 
-      {orderRow && <CreateOrderModal row={orderRow} onClose={() => setOrderRow(null)} />}
+      {orderRow && (
+        <CreateOrderModal
+          row={orderRow}
+          onClose={() => setOrderRow(null)}
+          onCreated={setCreatedOrder}
+        />
+      )}
+      {/* The same Order Manager modal the orders list opens, on the order
+          that was just created — so the next edit happens here rather than
+          after hunting for it in another tab. */}
+      {createdOrder && (
+        <OrderDetailModal row={createdOrder} onClose={() => setCreatedOrder(null)} />
+      )}
       {cancelRow && <CancelCartModal row={cancelRow} onClose={() => setCancelRow(null)} />}
     </div>
   );
