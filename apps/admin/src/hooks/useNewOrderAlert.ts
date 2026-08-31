@@ -13,6 +13,14 @@ import type { AdminOrder } from "@/hooks/useOrders";
  * already the exact set the Orders page shows, newest first, so the bell can
  * never disagree with the page it links to — the same reasoning
  * useAbandonmentAlert applies to the recovery list.
+ *
+ * **Only orders the customer placed themselves.** `channel=WEBSITE` covers a
+ * storefront checkout and a recovered abandoned cart (which inherits the
+ * default), and excludes anything staff typed in — a manual order is not news
+ * to the person who just created it, and ringing for it trains everyone to
+ * ignore the bell. Filtered server-side rather than in this hook because the
+ * query only takes ten rows: a burst of manual entry would otherwise push
+ * every real order off the page and silence the alert completely.
  */
 
 const SEEN_KEY = "amader:orders-seen-newest-id";
@@ -53,7 +61,7 @@ export function useNewOrderAlert(enabled: boolean) {
     queryKey: ["new-order-alert"],
     queryFn: () =>
       proxyFetch<{ items: AdminOrder[]; total: number }>(
-        `/admin/orders?page=1&pageSize=${PAGE_SIZE}`,
+        `/admin/orders?page=1&pageSize=${PAGE_SIZE}&channel=WEBSITE`,
       ),
     enabled,
     refetchInterval: POLL_MS,
@@ -62,11 +70,15 @@ export function useNewOrderAlert(enabled: boolean) {
     retry: false,
   });
 
-  const orders = useMemo(() => (enabled ? (data?.items ?? []) : []), [enabled, data]);
+  const orders = useMemo(
+    () => (enabled ? (data?.items ?? []) : []),
+    [enabled, data],
+  );
   // Ids are monotonic, so the largest is the newest — more reliable than
   // trusting list order, and unlike a count it does not go backwards when an
   // order is deleted.
-  const newestId = orders.length > 0 ? Math.max(...orders.map((o) => o.id)) : null;
+  const newestId =
+    orders.length > 0 ? Math.max(...orders.map((o) => o.id)) : null;
 
   const [seenId, setSeenId] = useState<number | null>(null);
   const primed = useRef(false);

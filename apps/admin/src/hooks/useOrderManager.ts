@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { ADMIN_ORDERS_KEY } from "./useOrders";
 import type { RiskLevel } from "./useFraud";
+import { WORKLOAD_SINCE } from "@/lib/page-title";
 
 export interface OrderManagerCourierAttempt {
   provider: string;
@@ -90,7 +91,10 @@ const LIST_REFETCH_INTERVAL_MS = 15_000;
 export function useOrderManagerList(filters: OrderManagerFilters) {
   return useQuery({
     queryKey: [...KEY, filters],
-    queryFn: () => proxyFetch<Paginated<OrderManagerRow>>(`/admin/net-profit/orders${toQueryString(filters)}`),
+    queryFn: () =>
+      proxyFetch<Paginated<OrderManagerRow>>(
+        `/admin/net-profit/orders${toQueryString(filters)}`,
+      ),
     refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
 }
@@ -101,18 +105,52 @@ export function useOrderManagerList(filters: OrderManagerFilters) {
 export function useDeletedOrdersList(filters: OrderManagerFilters) {
   return useQuery({
     queryKey: [...KEY, "trash", filters],
-    queryFn: () => proxyFetch<Paginated<OrderManagerRow>>(`/admin/net-profit/orders/trash${toQueryString(filters)}`),
+    queryFn: () =>
+      proxyFetch<Paginated<OrderManagerRow>>(
+        `/admin/net-profit/orders/trash${toQueryString(filters)}`,
+      ),
   });
 }
 
 // Counts per status honoring every OTHER active filter — powers the
 // status pill-tabs' live counts (Order Manager parity).
-export function useOrderManagerStatusCounts(filters: Omit<OrderManagerFilters, "status" | "page" | "pageSize">) {
+export function useOrderManagerStatusCounts(
+  filters: Omit<OrderManagerFilters, "status" | "page" | "pageSize">,
+) {
   return useQuery({
     queryKey: [...KEY, "status-counts", filters],
-    queryFn: () => proxyFetch<Record<string, number>>(`/admin/net-profit/orders/status-counts${toQueryString(filters)}`),
+    queryFn: () =>
+      proxyFetch<Record<string, number>>(
+        `/admin/net-profit/orders/status-counts${toQueryString(filters)}`,
+      ),
     refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
+}
+
+/**
+ * How many recent orders are sitting unreviewed, for the sidebar's Order
+ * Manager badge.
+ *
+ * Reads the same `status-counts` endpoint the Order Manager's own pill-tabs
+ * use, so the badge and the page cannot disagree. PENDING specifically:
+ * CONFIRMED means a human already looked, and a staff-created order is written
+ * CONFIRMED from the start, so this is exactly the set still needing someone.
+ *
+ * Bounded by WORKLOAD_SINCE. Unbounded it read 386 — 373 of which were months
+ * of never-actioned backlog nobody intends to touch, drowning the 13 that are
+ * actually live.
+ */
+export function usePendingOrderCount(enabled: boolean) {
+  const { data } = useQuery({
+    queryKey: [...KEY, "status-counts", "sidebar", WORKLOAD_SINCE],
+    queryFn: () =>
+      proxyFetch<Record<string, number>>(
+        `/admin/net-profit/orders/status-counts?from=${WORKLOAD_SINCE}`,
+      ),
+    enabled,
+    refetchInterval: LIST_REFETCH_INTERVAL_MS,
+  });
+  return data?.PENDING ?? 0;
 }
 
 export interface BulkActionResult {
@@ -125,7 +163,10 @@ export function useUpdateOrderNote(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (note: string) =>
-      proxyFetch(`/admin/net-profit/orders/${id}/note`, { method: "PATCH", body: JSON.stringify({ note }) }),
+      proxyFetch(`/admin/net-profit/orders/${id}/note`, {
+        method: "PATCH",
+        body: JSON.stringify({ note }),
+      }),
     // Also invalidates admin-orders — OrderDetailModal's useOrder(id) reads
     // from that key, not this module's, so without this the modal keeps
     // showing the pre-save note until something else happens to refetch it.
@@ -141,10 +182,21 @@ export function useBulkOrderAction() {
   return useMutation({
     mutationFn: (input: {
       orderIds: number[];
-      action: "consign" | "block" | "hold" | "export" | "delete" | "restore" | "assign";
+      action:
+        | "consign"
+        | "block"
+        | "hold"
+        | "export"
+        | "delete"
+        | "restore"
+        | "assign";
       courierProvider?: string;
       assignedAdminId?: number | null;
-    }) => proxyFetch<BulkActionResult>("/admin/net-profit/orders/bulk", { method: "POST", body: JSON.stringify(input) }),
+    }) =>
+      proxyFetch<BulkActionResult>("/admin/net-profit/orders/bulk", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     // Both the working list and the trash list move rows between each other
     // on delete/restore — invalidating just KEY (which the trash query key
     // extends via [...KEY, "trash", ...]) covers both in one call.
@@ -156,7 +208,10 @@ export function useAssignOrder(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (assignedAdminId: number | null) =>
-      proxyFetch(`/admin/net-profit/orders/${id}/assign`, { method: "PATCH", body: JSON.stringify({ assignedAdminId }) }),
+      proxyFetch(`/admin/net-profit/orders/${id}/assign`, {
+        method: "PATCH",
+        body: JSON.stringify({ assignedAdminId }),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: ADMIN_ORDERS_KEY });

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { IncompleteOrder } from "@/hooks/useRecovery";
 import { ting } from "@/lib/ting";
+import { WORKLOAD_SINCE } from "@/lib/page-title";
 
 /**
  * Rings when a new abandoned cart appears.
@@ -57,7 +58,7 @@ export function useAbandonmentAlert(enabled: boolean) {
         // was equivalent until carts could be CANCELLED — after that it still
         // counted cancelled rows, so the bell would ring for a cart staff had
         // already closed and which the page it links to no longer lists.
-        "/admin/net-profit/recovery?outcome=open&page=1&pageSize=1",
+        `/admin/net-profit/recovery?outcome=open&from=${WORKLOAD_SINCE}&page=1&pageSize=1`,
       ),
     enabled,
     refetchInterval: POLL_MS,
@@ -123,5 +124,10 @@ export function useAbandonmentAlert(enabled: boolean) {
     setUnseen(0);
   }
 
-  return { unseen, acknowledge, pollMs: POLL_MS };
+  // `total` is every open cart, not just the ones that arrived since this
+  // session started. The bell wants the delta (what is NEW); the sidebar badge
+  // wants the workload (what is WAITING), and a badge that cleared itself
+  // because someone glanced at a dropdown would be telling a different story
+  // than the page it points at.
+  return { unseen, total: total ?? 0, acknowledge, pollMs: POLL_MS };
 }

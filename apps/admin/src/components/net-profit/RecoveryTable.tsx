@@ -15,7 +15,14 @@ const GREEN_HEADER = "#2f7d33";
 // phone number looks and behaves the same wherever staff meet one.
 const BLUE = "#4299e1";
 
-export const RECOVERY_OPTIONAL_COLUMNS = ["cartDetails", "stage", "subtotal", "attempts", "lastSeen", "cancelReason"] as const;
+export const RECOVERY_OPTIONAL_COLUMNS = [
+  "cartDetails",
+  "stage",
+  "subtotal",
+  "attempts",
+  "lastSeen",
+  "cancelReason",
+] as const;
 export type RecoveryOptionalColumn = (typeof RECOVERY_OPTIONAL_COLUMNS)[number];
 
 export interface RecoveryTableFiltersLike {
@@ -23,13 +30,23 @@ export interface RecoveryTableFiltersLike {
   pageSize?: number;
 }
 
-const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1 | 2; style?: React.CSSProperties }) => (
+const TH = ({
+  children,
+  sticky,
+  style,
+}: {
+  children: React.ReactNode;
+  sticky?: 1 | 2;
+  style?: React.CSSProperties;
+}) => (
   <th
     className="sticky top-0 z-[5] px-3 py-3 text-left text-[0.72rem] font-bold whitespace-nowrap text-white"
     style={{
       background: GREEN_HEADER,
       borderRight: "1px solid rgba(255,255,255,.13)",
-      ...(sticky === 1 ? { position: "sticky", left: 0, zIndex: 7, width: 42, minWidth: 42 } : {}),
+      ...(sticky === 1
+        ? { position: "sticky", left: 0, zIndex: 7, width: 42, minWidth: 42 }
+        : {}),
       ...(sticky === 2 ? { position: "sticky", left: 42, zIndex: 7 } : {}),
       ...style,
     }}
@@ -41,7 +58,11 @@ const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1
 function formatDate(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   return {
-    date: d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    date: d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
     time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
   };
 }
@@ -58,7 +79,6 @@ export function RecoveryTable({
   onSendSms,
   onCreateOrder,
   onDelete,
-  onCancel,
   sendingId,
   deletingId,
   isLoading,
@@ -74,7 +94,6 @@ export function RecoveryTable({
   onSendSms: (id: number) => void;
   onCreateOrder: (row: IncompleteOrder) => void;
   onDelete: (id: number) => void;
-  onCancel: (row: IncompleteOrder) => void;
   sendingId?: number | null;
   deletingId?: number | null;
   isLoading: boolean;
@@ -86,41 +105,70 @@ export function RecoveryTable({
   const end = Math.min(page * pageSize, total);
 
   const colCount = 4 + columns.size;
-  const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
-  const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
+  const td =
+    "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
+  const tdStyle = {
+    color: TEXT,
+    borderColor: "#eef3ef",
+    background: "#fff",
+  } as const;
 
   return (
-    <div className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+    <div
+      className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]"
+      style={{ background: "#fff", borderColor: LINE }}
+    >
       <div className="overflow-auto" style={{ maxHeight: "62vh" }}>
-        <table className="border-separate border-spacing-0" style={{ minWidth: 1200, width: "100%" }}>
+        <table
+          className="border-separate border-spacing-0"
+          style={{ minWidth: 1200, width: "100%" }}
+        >
           <thead>
             <tr>
               <TH sticky={1}>
-                <input type="checkbox" checked={items.length > 0 && selected.size === items.length} onChange={onToggleAll} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
+                <input
+                  type="checkbox"
+                  checked={items.length > 0 && selected.size === items.length}
+                  onChange={onToggleAll}
+                  className="h-[15px] w-[15px]"
+                  style={{ accentColor: GREEN }}
+                />
               </TH>
               <TH sticky={2} style={{ minWidth: 220 }}>
                 Customer
               </TH>
-              {columns.has("cartDetails") && <TH style={{ minWidth: 240 }}>Cart Items</TH>}
+              {columns.has("cartDetails") && (
+                <TH style={{ minWidth: 240 }}>Cart Items</TH>
+              )}
               {columns.has("stage") && <TH>Stage</TH>}
               {columns.has("subtotal") && <TH>Subtotal</TH>}
               {columns.has("lastSeen") && <TH>Last Seen</TH>}
               {columns.has("attempts") && <TH>Attempts</TH>}
-              {columns.has("cancelReason") && <TH style={{ minWidth: 200 }}>Cancel Reason</TH>}
+              {columns.has("cancelReason") && (
+                <TH style={{ minWidth: 200 }}>Cancel Reason</TH>
+              )}
               <TH style={{ textAlign: "right" }}>Status / Actions</TH>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={colCount} className="px-3 py-8 text-center text-sm" style={{ color: FAINT }}>
+                <td
+                  colSpan={colCount}
+                  className="px-3 py-8 text-center text-sm"
+                  style={{ color: FAINT }}
+                >
                   Loading abandoned carts…
                 </td>
               </tr>
             )}
             {!isLoading && items.length === 0 && (
               <tr>
-                <td colSpan={colCount} className="px-3 py-8 text-center text-sm" style={{ color: FAINT }}>
+                <td
+                  colSpan={colCount}
+                  className="px-3 py-8 text-center text-sm"
+                  style={{ color: FAINT }}
+                >
                   No abandoned carts match these filters.
                 </td>
               </tr>
@@ -132,12 +180,38 @@ export function RecoveryTable({
 
                 return (
                   <tr key={row.id} className="[&:hover>td]:bg-[#f7fbf8]">
-                    <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }} onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={isSelected} onChange={() => onToggle(row.id)} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
+                    <td
+                      className={td}
+                      style={{
+                        ...tdStyle,
+                        position: "sticky",
+                        left: 0,
+                        zIndex: 6,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggle(row.id)}
+                        className="h-[15px] w-[15px]"
+                        style={{ accentColor: GREEN }}
+                      />
                     </td>
-                    <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
+                    <td
+                      className={td}
+                      style={{
+                        ...tdStyle,
+                        position: "sticky",
+                        left: 42,
+                        zIndex: 6,
+                        boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)",
+                      }}
+                    >
                       <div className="flex flex-col gap-0.5">
-                        <span className="font-bold text-[#2e7d43]">{row.name || "Anonymous Shopper"}</span>
+                        <span className="font-bold text-[#2e7d43]">
+                          {row.name || "Anonymous Shopper"}
+                        </span>
                         {row.phone && (
                           // Click-to-call straight from the row: chasing an
                           // abandoned cart IS a phone call, so making staff
@@ -155,7 +229,14 @@ export function RecoveryTable({
                             {row.phone}
                           </a>
                         )}
-                        {row.email && <span className="text-[0.68rem] font-normal" style={{ color: MUTED }}>{row.email}</span>}
+                        {row.email && (
+                          <span
+                            className="text-[0.68rem] font-normal"
+                            style={{ color: MUTED }}
+                          >
+                            {row.email}
+                          </span>
+                        )}
                       </div>
                     </td>
                     {columns.has("cartDetails") && (
@@ -163,16 +244,31 @@ export function RecoveryTable({
                         {row.cart.length > 0 ? (
                           <div className="flex flex-wrap gap-2">
                             {row.cart.map((item) => (
-                              <div key={item.productId} className="flex items-center gap-1.5" title={`${item.name} (৳${item.unitPrice})`}>
+                              <div
+                                key={item.productId}
+                                className="flex items-center gap-1.5"
+                                title={`${item.name} (৳${item.unitPrice})`}
+                              >
                                 {item.imageUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={item.imageUrl} alt={item.name} className="h-8 w-8 rounded-inner border border-border object-cover" />
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.name}
+                                    className="h-8 w-8 rounded-inner border border-border object-cover"
+                                  />
                                 ) : (
-                                  <span className="grid h-8 w-8 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">—</span>
+                                  <span className="grid h-8 w-8 place-items-center rounded-inner bg-surface-2 text-[10px] text-muted">
+                                    —
+                                  </span>
                                 )}
                                 <div className="flex flex-col leading-tight">
-                                  <span className="text-[0.72rem] font-semibold text-text max-w-[140px] truncate">{item.name}</span>
-                                  <span className="text-[0.66rem] font-bold" style={{ color: GREEN }}>
+                                  <span className="text-[0.72rem] font-semibold text-text max-w-[140px] truncate">
+                                    {item.name}
+                                  </span>
+                                  <span
+                                    className="text-[0.66rem] font-bold"
+                                    style={{ color: GREEN }}
+                                  >
                                     {item.quantity} × ৳{item.unitPrice}
                                   </span>
                                 </div>
@@ -200,14 +296,20 @@ export function RecoveryTable({
                       </td>
                     )}
                     {columns.has("subtotal") && (
-                      <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
+                      <td
+                        className={td}
+                        style={{ ...tdStyle, fontWeight: 700, color: INK }}
+                      >
                         ৳{Number(row.subtotal).toLocaleString()}
                       </td>
                     )}
                     {columns.has("lastSeen") && (
                       <td className={td} style={tdStyle}>
                         <div>{date}</div>
-                        <div className="text-[0.66rem]" style={{ color: FAINT }}>
+                        <div
+                          className="text-[0.66rem]"
+                          style={{ color: FAINT }}
+                        >
                           {time}
                         </div>
                       </td>
@@ -225,13 +327,18 @@ export function RecoveryTable({
                       // would hide the only part of the row that explains it.
                       <td className={`${td} whitespace-normal`} style={tdStyle}>
                         {row.cancelReason ? (
-                          <span title={row.cancelReason}>{row.cancelReason}</span>
+                          <span title={row.cancelReason}>
+                            {row.cancelReason}
+                          </span>
                         ) : (
                           <span style={{ color: FAINT }}>—</span>
                         )}
                       </td>
                     )}
-                    <td className={td} style={{ ...tdStyle, textAlign: "right" }}>
+                    <td
+                      className={td}
+                      style={{ ...tdStyle, textAlign: "right" }}
+                    >
                       {row.recovered ? (
                         <span className="inline-flex items-center gap-1 rounded-pill bg-success/10 px-3 py-1 text-[0.72rem] font-bold text-success">
                           ✓ Recovered (Order #{row.recoveredOrderId})
@@ -266,24 +373,31 @@ export function RecoveryTable({
                           >
                             Create Order
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onCancel(row)}
-                            className="inline-flex h-8 items-center rounded-[8px] border px-3 text-[0.72rem] font-bold transition-colors hover:bg-surface-2"
-                            style={{ borderColor: LINE, color: "#6b7280" }}
-                            title="Cancel this cart and record why"
-                          >
-                            Cancel
-                          </button>
+                          {/* Cancel used to sit here beside Delete. Both meant
+                              "staff are done with this cart", and asking someone
+                              to choose between them was a distinction they could
+                              not act on. Delete is now the single action: it
+                              bins the cart, keeps it restorable for 30 days, and
+                              the reason is editable in the Trash tab afterwards
+                              rather than demanded up front. */}
                           <button
                             type="button"
                             disabled={deletingId === row.id}
                             onClick={() => onDelete(row.id)}
                             className="grid h-8 w-8 place-items-center rounded-[8px] border text-[#e5484d] transition-colors duration-150 hover:bg-[#e5484d] hover:text-white disabled:opacity-40"
                             style={{ borderColor: "#f8ccd3" }}
-                            title="Delete abandoned cart"
+                            title="Move to trash — restorable for 30 days"
                           >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="13"
+                              height="13"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <path d="M3 6h18" />
                               <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
@@ -300,9 +414,14 @@ export function RecoveryTable({
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-wrap items-center justify-between gap-3.5 border-t p-[13px_18px]" style={{ borderColor: LINE }}>
+      <div
+        className="flex flex-wrap items-center justify-between gap-3.5 border-t p-[13px_18px]"
+        style={{ borderColor: LINE }}
+      >
         <div className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
-          {total === 0 ? "No abandoned carts" : `Showing ${start} to ${end} of ${total} abandoned carts`}
+          {total === 0
+            ? "No abandoned carts"
+            : `Showing ${start} to ${end} of ${total} abandoned carts`}
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -312,12 +431,23 @@ export function RecoveryTable({
             className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border disabled:opacity-40"
             style={{ borderColor: LINE, color: TEXT }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+            .filter(
+              (n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1,
+            )
             .reduce<number[]>((acc, n) => {
               if (acc.length && n - acc[acc.length - 1] > 1) acc.push(-1);
               acc.push(n);
@@ -325,7 +455,11 @@ export function RecoveryTable({
             }, [])
             .map((n, i) =>
               n === -1 ? (
-                <span key={`dots-${i}`} className="px-1 text-[0.74rem]" style={{ color: FAINT }}>
+                <span
+                  key={`dots-${i}`}
+                  className="px-1 text-[0.74rem]"
+                  style={{ color: FAINT }}
+                >
                   …
                 </span>
               ) : (
@@ -334,7 +468,11 @@ export function RecoveryTable({
                   type="button"
                   onClick={() => onFiltersChange({ ...filters, page: n })}
                   className="h-[30px] min-w-[30px] rounded-[8px] border px-2 text-[0.74rem] font-bold"
-                  style={n === page ? { background: GREEN, borderColor: GREEN, color: "#fff" } : { borderColor: LINE, color: TEXT }}
+                  style={
+                    n === page
+                      ? { background: GREEN, borderColor: GREEN, color: "#fff" }
+                      : { borderColor: LINE, color: TEXT }
+                  }
                 >
                   {n}
                 </button>
@@ -347,13 +485,28 @@ export function RecoveryTable({
             className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border disabled:opacity-40"
             style={{ borderColor: LINE, color: TEXT }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
           <select
             value={pageSize}
-            onChange={(e) => onFiltersChange({ ...filters, pageSize: Number(e.target.value), page: 1 })}
+            onChange={(e) =>
+              onFiltersChange({
+                ...filters,
+                pageSize: Number(e.target.value),
+                page: 1,
+              })
+            }
             className="h-[30px] rounded-[8px] border bg-white px-2 text-[0.72rem] font-semibold outline-none"
             style={{ borderColor: LINE, color: MUTED }}
           >

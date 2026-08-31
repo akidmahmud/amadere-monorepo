@@ -122,7 +122,10 @@ export class OverviewService {
         select: { value: true },
       }),
       this.prisma.client.incompleteOrder.findMany({
-        where: { createdAt: { gte: from, lte: to } },
+        // Deleted carts are out of the funnel entirely — see
+        // RecoveryService.buildWhere, which applies the same rule to the list
+        // this overview summarises.
+        where: { createdAt: { gte: from, lte: to }, deletedAt: null },
         select: { subtotal: true, recovered: true },
       }),
       // "OTP Verified" — plugin counts checkout-verification OTPs only, so

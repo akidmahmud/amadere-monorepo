@@ -3,7 +3,7 @@ import { OrderChannel, PaymentProvider, PaymentStatus } from '@amader/db';
 import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsPositive,
-  IsString, Min, ValidateNested,
+  IsString, Min, NotEquals, ValidateNested,
 } from 'class-validator';
 import { CheckoutAddressDto } from './checkout-address.dto';
 
@@ -40,6 +40,14 @@ export class CreateManualOrderDto {
     description: 'How this order was taken — never WEBSITE for a staff-created order',
   })
   @IsEnum(OrderChannel)
+  // Documented as "never WEBSITE" since this DTO was written, but nothing
+  // enforced it, and the admin's Origin dropdown offered Website. That made
+  // WEBSITE ambiguous — it could mean "the customer placed this" or "staff
+  // picked Website from a list" — and the header bell needs it to mean only
+  // the first. Rejected here so the invariant is real, not just documented.
+  @NotEquals(OrderChannel.WEBSITE, {
+    message: 'A staff-created order must record how it was actually taken, not WEBSITE',
+  })
   channel!: OrderChannel;
 
   @ApiProperty({ type: CheckoutAddressDto })

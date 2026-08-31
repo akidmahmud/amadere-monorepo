@@ -49,12 +49,19 @@ export class AdminOrdersController {
   @Get()
   @RequirePermission('order.view')
   @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({
+    name: 'channel',
+    required: false,
+    description:
+      'Filter by order origin. WEBSITE = placed by the customer (checkout, or a recovered cart); anything else was typed in by staff.',
+  })
   @ApiPaginatedResponse(OrderDto)
   list(
     @Query() { page, pageSize }: PaginationQueryDto,
     @Query('status') status?: string,
+    @Query('channel') channel?: string,
   ): Promise<PaginatedResult<OrderDto>> {
-    return this.orders.adminList(page ?? 1, pageSize ?? 20, status);
+    return this.orders.adminList(page ?? 1, pageSize ?? 20, status, channel);
   }
 
   @Post()

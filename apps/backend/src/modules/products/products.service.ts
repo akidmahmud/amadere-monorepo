@@ -1507,7 +1507,9 @@ export class ProductsService {
 
   private buildOrderBy(
     sort: ProductSort | undefined,
-  ): Prisma.ProductOrderByWithRelationInput {
+  ):
+    | Prisma.ProductOrderByWithRelationInput
+    | Prisma.ProductOrderByWithRelationInput[] {
     switch (sort) {
       case ProductSort.PRICE_ASC:
         return { price: 'asc' };
@@ -1516,8 +1518,15 @@ export class ProductsService {
       case ProductSort.BEST_SELLING:
         return { viewCount: 'desc' };
       case ProductSort.NEWEST:
-      default:
         return { createdAt: 'desc' };
+      case ProductSort.DEFAULT:
+      default:
+        // The shop's own order. `sortOrder` is the curation lever — it is 0
+        // on every product today, so this currently resolves to newest-first,
+        // which is exactly what the storefront showed before. The moment a
+        // product is given a rank it floats to the top of its category with
+        // no further code change.
+        return [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
     }
   }
 

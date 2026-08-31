@@ -94,6 +94,24 @@ export const adminNav: AppNavEntry[] = [
     icon: shipmentsIcon,
     permission: "shipment.view",
   },
+  // Order Manager and Recovery live here rather than under Net Profit: both
+  // are day-to-day order handling, not profit reporting. Their hrefs stay on
+  // /net-profit/* — the pages did not move, only where the menu files them —
+  // so permissions, deep links and the Recovery red dot are unaffected.
+  {
+    key: "net-profit-orders",
+    label: "Order Manager",
+    href: "/net-profit/orders",
+    icon: orderManagerIcon,
+    permission: "net_profit_orders.view",
+  },
+  {
+    key: "net-profit-recovery",
+    label: "Recovery",
+    href: "/net-profit/recovery",
+    icon: recoveryIcon,
+    permission: "net_profit_recovery.manage",
+  },
 
   // Its own section, not a row under Orders: wholesale is a separate book
   // with its own customers, and burying it under retail orders would imply
@@ -273,13 +291,6 @@ export const adminNav: AppNavEntry[] = [
     permission: "net_profit_fraud.view",
   },
   {
-    key: "net-profit-orders",
-    label: "Order Manager",
-    href: "/net-profit/orders",
-    icon: orderManagerIcon,
-    permission: "net_profit_orders.view",
-  },
-  {
     key: "net-profit-blocker",
     label: "Order Blocker",
     href: "/net-profit/blocker",
@@ -299,13 +310,6 @@ export const adminNav: AppNavEntry[] = [
     href: "/net-profit/payments",
     icon: paymentsIcon,
     permission: "net_profit_advance.manage",
-  },
-  {
-    key: "net-profit-recovery",
-    label: "Recovery",
-    href: "/net-profit/recovery",
-    icon: recoveryIcon,
-    permission: "net_profit_recovery.manage",
   },
   {
     key: "net-profit-reports",

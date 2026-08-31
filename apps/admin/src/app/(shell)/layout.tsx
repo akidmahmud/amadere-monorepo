@@ -3,24 +3,45 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { AppShell, type AppNavEntry, type AppNotification } from "@amader/admin-ui";
+import {
+  AppShell,
+  type AppNavEntry,
+  type AppNotification,
+} from "@amader/admin-ui";
 import { adminNav } from "@/lib/nav-config";
 import { pageTitleFor } from "@/lib/page-title";
 import { useAdminLogout, useAdminMe } from "@/hooks/useAdminAuth";
-import { useAbandonedCartNotifications, useAbandonmentAlert } from "@/hooks/useAbandonmentAlert";
+import {
+  useAbandonedCartNotifications,
+  useAbandonmentAlert,
+} from "@/hooks/useAbandonmentAlert";
 import { useNewOrderAlert } from "@/hooks/useNewOrderAlert";
+import { usePendingOrderCount } from "@/hooks/useOrderManager";
 
 // A super admin sees every row (matches the backend PermissionGuard's own
 // bypass). Anyone else only sees rows whose `permission` they've been
 // granted via a role — rows with no `permission` (e.g. Documentation) stay
 // visible to everyone. AppShell already drops a section label whose group
 // ends up with zero visible items, so filtering here is all that's needed.
-function filterNavByPermissions(nav: AppNavEntry[], isSuperAdmin: boolean, granted: Set<string>): AppNavEntry[] {
+function filterNavByPermissions(
+  nav: AppNavEntry[],
+  isSuperAdmin: boolean,
+  granted: Set<string>,
+): AppNavEntry[] {
   if (isSuperAdmin) return nav;
-  return nav.filter((entry) => !("permission" in entry) || !entry.permission || granted.has(entry.permission));
+  return nav.filter(
+    (entry) =>
+      !("permission" in entry) ||
+      !entry.permission ||
+      granted.has(entry.permission),
+  );
 }
 
-export default function ShellLayout({ children }: { children: React.ReactNode }) {
+export default function ShellLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: me } = useAdminMe();
@@ -32,20 +53,30 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   // Only poll for abandoned carts when this admin may actually see them --
   // otherwise the request 403s once a minute for everyone else.
   const canSeeRecovery =
-    !!me && (me.isSuperAdmin || me.permissions.includes("net_profit_recovery.manage"));
+    !!me &&
+    (me.isSuperAdmin || me.permissions.includes("net_profit_recovery.manage"));
   const abandonment = useAbandonmentAlert(canSeeRecovery);
 
   // Gated the same way as the abandoned-cart poll: without order.view the
   // request 403s every 30 seconds for anyone who cannot see orders anyway.
-  const canSeeOrders = !!me && (me.isSuperAdmin || me.permissions.includes("order.view"));
+  const canSeeOrders =
+    !!me && (me.isSuperAdmin || me.permissions.includes("order.view"));
   const orderAlert = useNewOrderAlert(canSeeOrders);
+
+  // Sidebar workload badges. Deliberately NOT the bell's `unseen` counts: the
+  // bell answers "what arrived since I last looked", which resets the moment
+  // someone opens the dropdown. A badge on a nav row has to answer "how much
+  // is waiting behind this link", or it contradicts the page it points at.
+  const pendingOrders = usePendingOrderCount(canSeeOrders);
 
   // The abandoned-cart ROWS are fetched only after the bell has been opened
   // once — they carry cart snapshots, and the cheap count-only poll in
   // useAbandonmentAlert exists precisely so every admin isn't pulling them
   // every minute just to keep a closed dropdown warm.
   const [bellOpened, setBellOpened] = useState(false);
-  const abandonedCarts = useAbandonedCartNotifications(canSeeRecovery && bellOpened);
+  const abandonedCarts = useAbandonedCartNotifications(
+    canSeeRecovery && bellOpened,
+  );
 
   // One bell, both kinds of notification: new orders first (time-sensitive),
   // then a single roll-up row for abandoned carts rather than one row per
@@ -55,7 +86,10 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       id: `order-${o.id}`,
       title: `New order ${o.orderNumber}`,
       subtitle: `${o.currency} ${o.totalAmount}`,
-      meta: new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      meta: new Date(o.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       href: `/net-profit/orders?search=${encodeURIComponent(o.orderNumber)}`,
       unread: o.unread,
     })),
@@ -64,12 +98,15 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       // holding 2 of one product read "1 item".
       const itemCount = c.cart.reduce((sum, line) => sum + line.quantity, 0);
       return {
-      id: `cart-${c.id}`,
-      title: `Abandoned cart — ${c.name?.trim() || "Anonymous shopper"}`,
-      subtitle: `${itemCount} item${itemCount === 1 ? "" : "s"} · BDT ${c.subtotal}${c.phone ? ` · ${c.phone}` : ""}`,
-      meta: new Date(c.lastSeenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      href: "/net-profit/recovery",
-      unread: false,
+        id: `cart-${c.id}`,
+        title: `Abandoned cart — ${c.name?.trim() || "Anonymous shopper"}`,
+        subtitle: `${itemCount} item${itemCount === 1 ? "" : "s"} · BDT ${c.subtotal}${c.phone ? ` · ${c.phone}` : ""}`,
+        meta: new Date(c.lastSeenAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        href: "/net-profit/recovery",
+        unread: false,
       };
     }),
     // Shown until the rows themselves arrive (they are only fetched once the
@@ -99,17 +136,28 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
   const nav = useMemo(() => {
     if (!me) return [];
-    const visible = filterNavByPermissions(adminNav, me.isSuperAdmin, new Set(me.permissions));
-    // Red dot on Recovery itself, not just the bell: the bell is easy to miss
-    // and says nothing about WHERE the new work is. Same unseen count drives
-    // both, so they clear together when the page is opened.
-    if (abandonment.unseen === 0) return visible;
-    return visible.map((entry) =>
-      "href" in entry && entry.href === "/net-profit/recovery"
-        ? { ...entry, dot: true }
+    const visible = filterNavByPermissions(
+      adminNav,
+      me.isSuperAdmin,
+      new Set(me.permissions),
+    );
+
+    // Counts on the two rows that carry a live queue.
+    const badges: Record<string, number> = {
+      "/net-profit/orders": pendingOrders,
+      "/net-profit/recovery": abandonment.total,
+    };
+    const withBadges = visible.map((entry) =>
+      "href" in entry && badges[entry.href]
+        ? { ...entry, badge: badges[entry.href] }
         : entry,
     );
-  }, [me, abandonment.unseen]);
+    // No red dot on Recovery any more. It used to mark "something new arrived",
+    // but the row now carries the actual count, and a dot sitting where a
+    // number belongs just reads as a number that failed to load. Zero waiting
+    // means nothing is drawn, which is the honest state.
+    return withBadges;
+  }, [me, abandonment.total, pendingOrders]);
 
   return (
     <AppShell

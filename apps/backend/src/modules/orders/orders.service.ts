@@ -79,8 +79,17 @@ export class OrdersService {
     page: number,
     pageSize: number,
     status?: string,
+    channel?: string,
   ): Promise<PaginatedResult<OrderDto>> {
-    const where = status ? { status: status as never } : {};
+    // `channel` is what separates an order a customer placed themselves from
+    // one staff typed in: WEBSITE is set by CheckoutService, and inherited by
+    // default on a recovery order, while a staff-created order must pick a
+    // real origin (CreateManualOrderDto rejects WEBSITE). The header bell
+    // filters on it so manual entry does not ring like a new sale.
+    const where = {
+      ...(status ? { status: status as never } : {}),
+      ...(channel ? { channel: channel as never } : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.client.order.findMany({
         where,

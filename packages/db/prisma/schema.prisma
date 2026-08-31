@@ -2731,6 +2731,13 @@ model IncompleteOrder {
   /// reporting, and stops receiving win-back campaign messages.
   canceledAt       DateTime? @map("canceled_at")
   cancelReason     String?   @map("cancel_reason")
+  /// Soft delete with a 30-day window, same contract as BlogPost/Product:
+  /// staff delete a cart they are done with, it leaves every working list and
+  /// every funnel statistic immediately, and it stays restorable until the
+  /// nightly purge removes it for good. `cancelReason` doubles as the note on
+  /// a deleted row — it is editable in place from the trash tab, which is why
+  /// deleting does not demand one up front the way cancelling used to.
+  deletedAt        DateTime? @map("deleted_at")
   recoveryAttempts Int       @default(0) @map("recovery_attempts")
   lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -2740,6 +2747,8 @@ model IncompleteOrder {
   @@index([recovered, lastSeenAt])
   // The admin list filters on stage and sorts by lastSeenAt.
   @@index([stage, lastSeenAt])
+  // Every working list excludes deleted rows, and the trash tab selects them.
+  @@index([deletedAt])
   @@map("incomplete_orders")
 }
 

@@ -11,12 +11,20 @@ export interface NavItemProps {
   active?: boolean;
   /** Unread marker — a plain red dot, no count. */
   dot?: boolean;
+  /** How much work is waiting behind this row (new orders, open carts).
+   *  Zero and undefined both render nothing — an empty queue is not news. */
+  badge?: number;
   linkComponent?: LinkComponent;
+}
+
+/** Four digits of workload is a backlog, not a number anyone reads. */
+function formatBadge(count: number): string {
+  return count > 999 ? "999+" : String(count);
 }
 
 // Flat sidebar row — sizing/spacing matched to the GetCommerce reference's
 // own .nav-item (10px/12px padding, 9px radius, .82rem/600 weight, 11px gap).
-export function NavItem({ icon, label, href, active, dot, linkComponent: Link = DefaultLink }: NavItemProps) {
+export function NavItem({ icon, label, href, active, dot, badge, linkComponent: Link = DefaultLink }: NavItemProps) {
   return (
     <Link
       href={href}
@@ -33,7 +41,23 @@ export function NavItem({ icon, label, href, active, dot, linkComponent: Link = 
           narrow screens but never the row, so a dot pinned to the icon would
           sit under it. aria-label because a bare dot says nothing to a
           screen reader. */}
-      {dot && (
+      {badge !== undefined && badge > 0 && (
+        <span
+          role="status"
+          aria-label={`${label}: ${badge} waiting`}
+          className={cn(
+            "flex-none rounded-pill px-1.5 py-0.5 text-[0.68rem] font-bold tabular-nums",
+            // On the active row the brand fill is already behind it, so a
+            // second coloured chip would fight it — go translucent instead.
+            active
+              ? "bg-white/25 text-sidebar-text-active"
+              : "bg-red-500 text-white",
+          )}
+        >
+          {formatBadge(badge)}
+        </span>
+      )}
+      {dot && badge === undefined && (
         <span
           role="status"
           aria-label={`${label} has new items`}

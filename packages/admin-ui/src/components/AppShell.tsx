@@ -17,10 +17,13 @@ export interface AppNavItem {
   permission?: string;
   /** Red dot on this row — e.g. Recovery when new abandoned carts arrive. */
   dot?: boolean;
+  /** Count of work waiting behind this row. Takes the place of `dot`, since a
+   *  number says everything a dot does and more. */
+  badge?: number;
 }
 
-/** A section header row in the sidebar — matches the reference's plain
- * `.nav-label` separators, not a collapsible group. */
+/** A section header in the sidebar. Clicking it collapses the rows beneath,
+ * so a long nav can be folded down to the sections someone actually uses. */
 export interface AppNavSectionLabel {
   type: "label";
   key: string;
@@ -126,19 +129,39 @@ const brandIcon = (
   </svg>
 );
 
+const sectionChevron = (
+  <svg
+    viewBox="0 0 24 24"
+    width="14"
+    height="14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);
+
 function isLabel(entry: AppNavEntry): entry is AppNavSectionLabel {
   return "type" in entry && entry.type === "label";
 }
 
 interface RenderGroup {
+  /** The label entry's own key — stable across renames, unlike the text.
+   *  Null for the leading block above the first label (Overview), which has
+   *  no header to click and so is never collapsible. */
+  key: string | null;
   label: string | null;
   items: AppNavItem[];
 }
 
 function groupNav(entries: AppNavEntry[]): RenderGroup[] {
-  const groups: RenderGroup[] = [{ label: null, items: [] }];
+  const groups: RenderGroup[] = [{ key: null, label: null, items: [] }];
   for (const entry of entries) {
-    if (isLabel(entry)) groups.push({ label: entry.label, items: [] });
+    if (isLabel(entry)) groups.push({ key: entry.key, label: entry.label, items: [] });
     else groups[groups.length - 1].items.push(entry);
   }
   return groups;
@@ -194,6 +217,20 @@ export function AppShell({
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navFilter, setNavFilter] = useState("");
+  // Tracks which sections are OPEN, not which are closed, so that everything
+  // starts folded and stays folded — including sections that appear later.
+  // That matters here: `nav` is empty until the signed-in admin's permissions
+  // resolve, so a "collapse everything I can see at first render" default
+  // would have seen nothing and left the whole menu open.
+  //
+  // ponytail: in-memory only. The shell lives in the route-group layout, so it
+  // stays mounted across every client-side navigation and what you opened
+  // stays open while you work; a hard reload folds it back down. Upgrade path
+  // if that proves annoying: persist this set to localStorage, read after
+  // mount so the server-rendered markup still matches.
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [cacheMessage, setCacheMessage] = useState<string | null>(null);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
@@ -233,6 +270,21 @@ export function AppShell({
   const groups = groupNav(nav)
     .map((g) => ({ ...g, items: filter ? g.items.filter((i) => i.label.toLowerCase().includes(filter)) : g.items }))
     .filter((g) => g.items.length > 0);
+
+  function toggleSection(key: string) {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  }
+
+  // A search hides nothing: folding is a browsing convenience, and a matching
+  // row sitting inside a closed section reads as "no results".
+  function isCollapsed(key: string | null): boolean {
+    if (key === null || filter) return false;
+    return !expandedSections.has(key);
+  }
 
   return (
     <div className="flex min-h-screen bg-bg">
@@ -278,26 +330,72 @@ export function AppShell({
         </label>
 
         <nav className="flex flex-col">
-          {groups.map((g, i) => (
-            <div key={g.label ?? `top-${i}`}>
-              {g.label && (
-                <div className="px-1.5 pt-4 pb-2 font-ui text-[0.76rem] font-bold tracking-wide text-brand-500">{g.label}</div>
-              )}
-              <div className="flex flex-col gap-0.5">
-                {g.items.map((item) => (
-                  <NavItem
-                    key={item.key}
-                    icon={item.icon}
-                    label={item.label}
-                    href={item.href}
-                    active={item.href === resolvedActiveHref}
-                    dot={item.dot}
-                    linkComponent={Link}
-                  />
-                ))}
+          {groups.map((g, i) => {
+            const collapsed = isCollapsed(g.key);
+            const panelId = g.key ? `nav-section-${g.key}` : undefined;
+            // A collapsed section still reports what is buried in it —
+            // folding a section away must never hide work. A summed count
+            // where the rows carry counts, otherwise the plain dot.
+            const hiddenCount = collapsed
+              ? g.items.reduce((sum, item) => sum + (item.badge ?? 0), 0)
+              : 0;
+            const hasHiddenDot =
+              collapsed && hiddenCount === 0 && g.items.some((item) => item.dot);
+
+            return (
+              <div key={g.key ?? `top-${i}`}>
+                {g.label && g.key && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(g.key as string)}
+                    aria-expanded={!collapsed}
+                    aria-controls={panelId}
+                    className="flex w-full items-center gap-1.5 rounded-inner px-1.5 pt-4 pb-2 text-left font-ui text-[0.76rem] font-bold tracking-wide text-brand-500 outline-none hover:text-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500/40"
+                  >
+                    <span
+                      className={cn(
+                        "flex-none transition-transform duration-150 motion-reduce:transition-none",
+                        collapsed && "-rotate-90",
+                      )}
+                    >
+                      {sectionChevron}
+                    </span>
+                    <span className="flex-1">{g.label}</span>
+                    {hiddenCount > 0 && (
+                      <span
+                        aria-label={`${hiddenCount} waiting in ${g.label}`}
+                        className="flex-none rounded-pill bg-red-500 px-1.5 py-0.5 text-[0.68rem] font-bold tabular-nums text-white"
+                      >
+                        {hiddenCount > 999 ? "999+" : hiddenCount}
+                      </span>
+                    )}
+                    {hasHiddenDot && (
+                      <span
+                        aria-hidden="true"
+                        className="h-1.5 w-1.5 flex-none rounded-full bg-danger"
+                      />
+                    )}
+                  </button>
+                )}
+                {!collapsed && (
+                  <div id={panelId} className="flex flex-col gap-0.5">
+                    {g.items.map((item) => (
+                      <NavItem
+                        key={item.key}
+                        icon={item.icon}
+                        label={item.label}
+                        href={item.href}
+                        active={item.href === resolvedActiveHref}
+                        dot={item.dot}
+                        badge={item.badge}
+                        linkComponent={Link}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
       </aside>
 

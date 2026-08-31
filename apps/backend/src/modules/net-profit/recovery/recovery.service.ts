@@ -455,6 +455,11 @@ export class RecoveryService {
   // relation filter, folded into the same OR as the phone/email match.
   private async buildWhere(filters: RecoveryListFilters): Promise<Prisma.IncompleteOrderWhereInput> {
     const where: Prisma.IncompleteOrderWhereInput = {
+      // Deleted carts are gone from every working view and every funnel
+      // figure the moment they are deleted — the trash tab is the only place
+      // they appear, and it queries for them explicitly rather than through
+      // this builder.
+      deletedAt: null,
       // An abandoned cart with no name, phone or email cannot be recovered by
       // anyone -- there is nobody to contact. Those rows are still CAPTURED
       // (a guest may identify themselves later at checkout, and the details
@@ -510,8 +515,97 @@ export class RecoveryService {
     return where;
   }
 
-  async delete(id: number): Promise<void> {
-    await this.prisma.client.incompleteOrder.delete({ where: { id } });
+  private static readonly TRASH_RETENTION_DAYS = 30;
+
+  /**
+   * Delete a cart — soft, and reversible for 30 days.
+   *
+   * This replaced the old "cancel" action rather than sitting beside it: both
+   * meant "staff are done with this cart", and having two was a distinction
+   * nobody using the page could act on. A reason is optional here, unlike
+   * cancelling, because it is editable in place from the trash tab afterwards
+   * — demanding one up front just meant people typed "x" to get past it.
+   */
+  async softDelete(id: number, reason?: string): Promise<IncompleteOrderDto> {
+    const existing = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    if (existing.deletedAt) throw new BadRequestException('That cart is already in the trash');
+
+    const row = await this.prisma.client.incompleteOrder.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        ...(reason?.trim() ? { cancelReason: reason.trim() } : {}),
+      },
+    });
+    // A deleted cart must stop receiving win-back messages immediately —
+    // the same reason cancelling did this.
+    await this.campaigns.skipRemaining(id);
+    return toIncompleteOrderDto(row);
+  }
+
+  /** Trash listing. `daysRemaining` is what the row has left before purge. */
+  async listDeleted(page = 1, pageSize = 20, q?: string): Promise<PaginatedResult<IncompleteOrderDto>> {
+    const trimmed = q?.trim();
+    const where: Prisma.IncompleteOrderWhereInput = {
+      deletedAt: { not: null },
+      ...(trimmed
+        ? {
+            OR: [
+              { name: { contains: trimmed, mode: 'insensitive' } },
+              { phone: { contains: trimmed, mode: 'insensitive' } },
+              { email: { contains: trimmed, mode: 'insensitive' } },
+              { cancelReason: { contains: trimmed, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.client.incompleteOrder.findMany({
+        where,
+        orderBy: { deletedAt: 'desc' },
+        ...paginationArgs(page, pageSize),
+      }),
+      this.prisma.client.incompleteOrder.count({ where }),
+    ]);
+    return toPaginatedResult(rows.map(toIncompleteOrderDto), total, page, pageSize);
+  }
+
+  /** Put a deleted cart back. Its reason is kept — it is the note on why it
+   *  was binned, and is still worth reading after a restore. */
+  async restore(id: number): Promise<IncompleteOrderDto> {
+    const existing = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    if (!existing.deletedAt) throw new BadRequestException('That cart is not in the trash');
+    const row = await this.prisma.client.incompleteOrder.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+    return toIncompleteOrderDto(row);
+  }
+
+  /** Edit the reason in place, from the trash tab's cell. */
+  async updateReason(id: number, reason: string): Promise<IncompleteOrderDto> {
+    await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    const row = await this.prisma.client.incompleteOrder.update({
+      where: { id },
+      // Cleared rather than stored blank when emptied, so "no reason given"
+      // is one state and not two.
+      data: { cancelReason: reason.trim() || null },
+    });
+    return toIncompleteOrderDto(row);
+  }
+
+  /** Permanently remove anything binned more than 30 days ago. Mirrors
+   *  BlogPostsService.purgeExpiredTrash, including the schedule. */
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async purgeExpiredTrash(): Promise<number> {
+    const cutoff = new Date(Date.now() - RecoveryService.TRASH_RETENTION_DAYS * 86_400_000);
+    const { count } = await this.prisma.client.incompleteOrder.deleteMany({
+      where: { deletedAt: { lt: cutoff } },
+    });
+    if (count > 0) {
+      this.logger.log(`Purged ${count} abandoned cart(s) from trash (past 30-day retention).`);
+    }
+    return count;
   }
 
   // Only clears unrecovered rows — a recovered row is a real conversion
@@ -746,9 +840,15 @@ export class RecoveryService {
   }
 
   async recoveryRate(): Promise<{ total: number; recovered: number; ratePercent: number; recoveredValue: string }> {
+    // Deleted carts leave the rate calculation as well. Leaving them in would
+    // mean deleting a pile of dead carts quietly moved the recovery rate,
+    // which is a reporting number people act on.
     const [total, recoveredRows] = await Promise.all([
-      this.prisma.client.incompleteOrder.count(),
-      this.prisma.client.incompleteOrder.findMany({ where: { recovered: true }, select: { subtotal: true } }),
+      this.prisma.client.incompleteOrder.count({ where: { deletedAt: null } }),
+      this.prisma.client.incompleteOrder.findMany({
+        where: { recovered: true, deletedAt: null },
+        select: { subtotal: true },
+      }),
     ]);
     const recoveredValue = recoveredRows.reduce((sum, r) => sum.plus(r.subtotal), new Prisma.Decimal(0));
     return {

@@ -1,4 +1,9 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 
 export interface CartSnapshotItem {
@@ -37,6 +42,10 @@ export interface IncompleteOrder {
   subtotal: string;
   stage: string;
   recovered: boolean;
+  /** Set once binned. Null for a live cart. */
+  deletedAt?: string | null;
+  /** Days left before the nightly purge removes it for good. */
+  daysRemaining?: number | null;
   recoveredOrderId: number | null;
   /** Staff gave up on this cart. Canceled iff this is non-null. */
   canceledAt: string | null;
@@ -114,7 +123,10 @@ function toQueryString(filters: RecoveryFilters): string {
 export function useIncompleteOrders(filters: RecoveryFilters = {}) {
   return useQuery({
     queryKey: [...LIST_KEY, filters],
-    queryFn: () => proxyFetch<Paginated<IncompleteOrder>>(`/admin/net-profit/recovery${toQueryString(filters)}`),
+    queryFn: () =>
+      proxyFetch<Paginated<IncompleteOrder>>(
+        `/admin/net-profit/recovery${toQueryString(filters)}`,
+      ),
     // Paging changes the key, and without this the table empties to a spinner
     // on every page change instead of swapping rows underneath.
     placeholderData: keepPreviousData,
@@ -122,24 +134,88 @@ export function useIncompleteOrders(filters: RecoveryFilters = {}) {
 }
 
 export function useRecoveryRate() {
-  return useQuery({ queryKey: RATE_KEY, queryFn: () => proxyFetch<RecoveryRate>("/admin/net-profit/recovery/rate") });
+  return useQuery({
+    queryKey: RATE_KEY,
+    queryFn: () => proxyFetch<RecoveryRate>("/admin/net-profit/recovery/rate"),
+  });
 }
 
 export function useSendRecovery() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch(`/admin/net-profit/recovery/${id}/send`, { method: "POST" }),
+    mutationFn: (id: number) =>
+      proxyFetch(`/admin/net-profit/recovery/${id}/send`, { method: "POST" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
   });
 }
 
+/**
+ * Bin a cart. Soft — it leaves every working list at once and is restorable
+ * for 30 days, after which the nightly purge removes it. This replaced the
+ * old cancel action; a reason is optional and editable afterwards from the
+ * trash tab.
+ */
 export function useDeleteIncompleteOrder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<void>(`/admin/net-profit/recovery/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      proxyFetch<IncompleteOrder>(
+        `/admin/net-profit/recovery/${id}${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`,
+        { method: "DELETE" },
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_KEY });
       qc.invalidateQueries({ queryKey: RATE_KEY });
+      qc.invalidateQueries({ queryKey: TRASH_KEY });
+    },
+  });
+}
+
+const TRASH_KEY = ["recovery-trash"];
+
+export function useDeletedCarts(page: number, pageSize: number, q: string) {
+  return useQuery({
+    queryKey: [...TRASH_KEY, page, pageSize, q],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (q.trim()) params.set("q", q.trim());
+      return proxyFetch<{ items: IncompleteOrder[]; total: number }>(
+        `/admin/net-profit/recovery/trash?${params}`,
+      );
+    },
+  });
+}
+
+export function useRestoreIncompleteOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch<IncompleteOrder>(`/admin/net-profit/recovery/${id}/restore`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: LIST_KEY });
+      qc.invalidateQueries({ queryKey: RATE_KEY });
+      qc.invalidateQueries({ queryKey: TRASH_KEY });
+    },
+  });
+}
+
+/** Inline edit of the reason cell. Blank clears it. */
+export function useUpdateCartReason() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      proxyFetch<IncompleteOrder>(`/admin/net-profit/recovery/${id}/reason`, {
+        method: "PATCH",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TRASH_KEY });
+      qc.invalidateQueries({ queryKey: LIST_KEY });
     },
   });
 }
@@ -148,9 +224,12 @@ export function useClearAllIncomplete() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (recovered?: boolean) =>
-      proxyFetch<{ count: number }>(`/admin/net-profit/recovery/clear${recovered !== undefined ? `?recovered=${recovered}` : ""}`, {
-        method: "POST",
-      }),
+      proxyFetch<{ count: number }>(
+        `/admin/net-profit/recovery/clear${recovered !== undefined ? `?recovered=${recovered}` : ""}`,
+        {
+          method: "POST",
+        },
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_KEY });
       qc.invalidateQueries({ queryKey: RATE_KEY });
@@ -176,10 +255,13 @@ export function useCreateOrderFromIncomplete() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...input }: CreateOrderInput & { id: number }) =>
-      proxyFetch<{ orderId: number; orderNumber: string }>(`/admin/net-profit/recovery/${id}/create-order`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+      proxyFetch<{ orderId: number; orderNumber: string }>(
+        `/admin/net-profit/recovery/${id}/create-order`,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_KEY });
       qc.invalidateQueries({ queryKey: RATE_KEY });
@@ -193,9 +275,13 @@ export function useImportRecoveryCsv() {
     mutationFn: async (file: File) => {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/backend/admin/net-profit/recovery/import", { method: "POST", body: form });
+      const res = await fetch("/api/backend/admin/net-profit/recovery/import", {
+        method: "POST",
+        body: form,
+      });
       const body = await res.json();
-      if (!body.success) throw new Error(body.error?.message ?? "Import failed");
+      if (!body.success)
+        throw new Error(body.error?.message ?? "Import failed");
       return body.data as { imported: number; skipped: number };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
@@ -207,14 +293,21 @@ export function recoveryExportUrl(filters: RecoveryFilters = {}): string {
 }
 
 export function useRecoverySettings() {
-  return useQuery({ queryKey: SETTINGS_KEY, queryFn: () => proxyFetch<RecoverySettings>("/admin/net-profit/recovery/settings") });
+  return useQuery({
+    queryKey: SETTINGS_KEY,
+    queryFn: () =>
+      proxyFetch<RecoverySettings>("/admin/net-profit/recovery/settings"),
+  });
 }
 
 export function useUpdateRecoverySettings() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Partial<RecoverySettings>) =>
-      proxyFetch<RecoverySettings>("/admin/net-profit/recovery/settings", { method: "PUT", body: JSON.stringify(input) }),
+      proxyFetch<RecoverySettings>("/admin/net-profit/recovery/settings", {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
   });
 }

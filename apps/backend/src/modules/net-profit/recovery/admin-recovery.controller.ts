@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Patch,
   Get,
   MaxFileSizeValidator,
   Param,
@@ -27,6 +28,7 @@ import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interce
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
 import { CancelIncompleteOrderDto } from './dto/cancel-incomplete-order.dto';
+import { UpdateCartReasonDto } from './dto/update-cart-reason.dto';
 import { RecoveryService, RecoveryListFilters } from './recovery.service';
 // `import type` is required: it appears in a decorated signature, and with
 // emitDecoratorMetadata a value import would be emitted as runtime metadata.
@@ -118,10 +120,40 @@ export class AdminRecoveryController {
     return { count };
   }
 
+  // Declared before `:id` routes so "trash" is never parsed as an id.
+  @Get('trash')
+  @RequirePermission('net_profit_recovery.manage')
+  listDeleted(
+    @Query() { page, pageSize }: PaginationQueryDto,
+    @Query('q') q?: string,
+  ) {
+    return this.recovery.listDeleted(page ?? 1, pageSize ?? 20, q);
+  }
+
+  // Soft delete: the cart leaves every working list now and is restorable for
+  // 30 days. This replaced the old cancel action — see RecoveryService.softDelete.
   @Delete(':id')
   @RequirePermission('net_profit_recovery.manage')
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    await this.recovery.delete(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('reason') reason?: string,
+  ) {
+    return this.recovery.softDelete(id, reason);
+  }
+
+  @Post(':id/restore')
+  @RequirePermission('net_profit_recovery.manage')
+  restore(@Param('id', ParseIntPipe) id: number) {
+    return this.recovery.restore(id);
+  }
+
+  @Patch(':id/reason')
+  @RequirePermission('net_profit_recovery.manage')
+  updateReason(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCartReasonDto,
+  ) {
+    return this.recovery.updateReason(id, dto.reason);
   }
 
   @Post(':id/send')

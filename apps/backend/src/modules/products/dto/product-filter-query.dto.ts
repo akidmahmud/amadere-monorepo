@@ -4,6 +4,9 @@ import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'c
 import { ProductFlagLabel } from '@amader/db';
 
 export enum ProductSort {
+  /** The shop's own order: Product.sortOrder ascending, newest first within
+   *  a rank. This is what a category page opens on. */
+  DEFAULT = 'DEFAULT',
   BEST_SELLING = 'BEST_SELLING',
   PRICE_ASC = 'PRICE_ASC',
   PRICE_DESC = 'PRICE_DESC',

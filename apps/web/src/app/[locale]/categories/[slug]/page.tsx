@@ -133,7 +133,10 @@ export default async function CategoryPage({
 
   return (
     <main className="flex-1">
-      <div className="mx-auto max-w-[1180px] px-5 pt-9">
+      {/* Tighter above the title on a phone. pt-9 was set for desktop, where
+          there is room for it; on a small screen it pushed the first row of
+          products most of the way down the fold for no gain. */}
+      <div className="mx-auto max-w-[1180px] px-5 pt-4 sm:pt-9">
         <SectionHeading as="h1">{category.name}</SectionHeading>
       </div>
 

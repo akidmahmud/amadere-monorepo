@@ -1,3 +1,17 @@
+/**
+ * Sidebar workload badges count nothing placed before this date.
+ *
+ * Not an arbitrary window: 373 of the 386 orders sitting in PENDING predate
+ * it, going back months, and nobody is going to work through them. Counting
+ * them made the Order Manager badge read 386 when the real queue was 13, which
+ * is worse than no badge — a number that large is wallpaper.
+ *
+ * Move this forward whenever the backlog is next written off. It is a
+ * business epoch, not a rolling window, so it is stated once here rather than
+ * computed.
+ */
+export const WORKLOAD_SINCE = "2026-08-27";
+
 // AppShell needs a single page title string, but title only really varies by
 // route — a small lookup here beats threading a title prop through every
 // page/layout in the tree.

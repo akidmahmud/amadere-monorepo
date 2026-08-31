@@ -1,4 +1,8 @@
 export const SORT_OPTIONS = [
+  // "Default" is the shop's own order — Product.sortOrder ascending, newest
+  // first within the same rank. It leads the list and is what every category
+  // opens on, so a visitor sees the merchandised order before any re-sort.
+  { value: "DEFAULT", label: "Default" },
   { value: "BEST_SELLING", label: "Best Selling" },
   { value: "PRICE_ASC", label: "Price: Low to High" },
   { value: "PRICE_DESC", label: "Price: High to Low" },
@@ -61,7 +65,7 @@ function parseFlagLabels(value: string | string[] | undefined): FlagLabelValue[]
 }
 
 export function parsePlpSearchParams(params: PlpSearchParams): PlpFilters {
-  const sort = params.sort && VALID_SORTS.has(params.sort as SortValue) ? (params.sort as SortValue) : "NEWEST";
+  const sort = params.sort && VALID_SORTS.has(params.sort as SortValue) ? (params.sort as SortValue) : "DEFAULT";
   const page = Math.max(1, Number(params.page) || 1);
   const parsedPageSize = params.pageSize ? Number(params.pageSize) : undefined;
   const pageSize = parsedPageSize && VALID_PAGE_SIZES.has(parsedPageSize) ? parsedPageSize : undefined;
@@ -91,7 +95,9 @@ export function buildPlpHref(base: string, filters: Partial<PlpFilters>): string
   for (const flag of filters.flagLabels ?? []) search.append("flagLabel", flag);
   if (filters.minPrice !== undefined) search.set("minPrice", String(filters.minPrice));
   if (filters.maxPrice !== undefined) search.set("maxPrice", String(filters.maxPrice));
-  if (filters.sort && filters.sort !== "NEWEST") search.set("sort", filters.sort);
+  // DEFAULT is the absence of a sort, so it never appears in the URL — a
+  // category's own address stays clean and canonical.
+  if (filters.sort && filters.sort !== "DEFAULT") search.set("sort", filters.sort);
   if (filters.pageSize) search.set("pageSize", String(filters.pageSize));
   if (filters.page && filters.page > 1) search.set("page", String(filters.page));
   const qs = search.toString();
@@ -108,7 +114,7 @@ export function isFilteredView(filters: PlpFilters): boolean {
     filters.flagLabels.length > 0 ||
     filters.minPrice !== undefined ||
     filters.maxPrice !== undefined ||
-    filters.sort !== "NEWEST" ||
+    filters.sort !== "DEFAULT" ||
     filters.pageSize !== undefined ||
     filters.page !== 1
   );

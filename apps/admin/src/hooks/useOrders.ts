@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 
-export type OrderStatus = "PENDING" | "CONFIRMED" | "PROCESSING" | "COMPLETED" | "CANCELED" | "PARTIALLY_RETURNED" | "RETURNED" | "HOLD";
+export type OrderStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "CANCELED"
+  | "PARTIALLY_RETURNED"
+  | "RETURNED"
+  | "HOLD";
 export const ORDER_STATUSES: OrderStatus[] = [
   "PENDING",
   "CONFIRMED",
@@ -15,11 +23,38 @@ export const ORDER_STATUSES: OrderStatus[] = [
 ];
 
 export type OrderChannel =
-  | "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP"
-  | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+  | "WEBSITE"
+  | "WHATSAPP"
+  | "PHONE"
+  | "MARKETPLACE"
+  | "POS"
+  | "APP"
+  | "FACEBOOK"
+  | "INSTAGRAM"
+  | "TIKTOK"
+  | "YOUTUBE"
+  | "X";
+/**
+ * Origins a STAFF member can pick when typing an order in.
+ *
+ * Website is deliberately absent: it is set by the storefront checkout itself
+ * (and inherited by a recovered cart), and the backend now rejects it on a
+ * manual order. Leaving it selectable made WEBSITE ambiguous, which in turn
+ * made "notify me about real customer orders" impossible to express.
+ * ORDER_CHANNEL_LABELS still carries Website, because existing orders have it
+ * and must render with a name.
+ */
 export const ORDER_CHANNELS: OrderChannel[] = [
-  "WEBSITE", "WHATSAPP", "PHONE", "FACEBOOK", "INSTAGRAM",
-  "TIKTOK", "YOUTUBE", "X", "MARKETPLACE", "POS", "APP",
+  "WHATSAPP",
+  "PHONE",
+  "FACEBOOK",
+  "INSTAGRAM",
+  "TIKTOK",
+  "YOUTUBE",
+  "X",
+  "MARKETPLACE",
+  "POS",
+  "APP",
 ];
 
 /** Display names — the raw enum leaks into the Origin dropdown otherwise. */
@@ -37,14 +72,32 @@ export const ORDER_CHANNEL_LABELS: Record<OrderChannel, string> = {
   APP: "App",
 };
 
-export type PaymentProviderType = "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
-export const PAYMENT_PROVIDER_TYPES: PaymentProviderType[] = ["COD", "BKASH", "NAGAD", "ROCKET", "UPAY", "SSLCOMMERZ", "BANK_TRANSFER"];
+export type PaymentProviderType =
+  | "COD"
+  | "BKASH"
+  | "NAGAD"
+  | "ROCKET"
+  | "UPAY"
+  | "SSLCOMMERZ"
+  | "BANK_TRANSFER";
+export const PAYMENT_PROVIDER_TYPES: PaymentProviderType[] = [
+  "COD",
+  "BKASH",
+  "NAGAD",
+  "ROCKET",
+  "UPAY",
+  "SSLCOMMERZ",
+  "BANK_TRANSFER",
+];
 
 // status/type/provider fields on nested DTOs are also erased by the same
 // swagger gap (only OrderDto.status/channel are overridden here — nested
 // statuses on items/payments/history/addresses are just displayed as-is,
 // never set by this app, so a full re-type isn't needed for those).
-export type AdminOrder = Omit<components["schemas"]["OrderDto"], "status" | "channel"> & {
+export type AdminOrder = Omit<
+  components["schemas"]["OrderDto"],
+  "status" | "channel"
+> & {
   status: OrderStatus;
   channel: OrderChannel;
 };
@@ -97,7 +150,10 @@ export function useUpdateOrderStatus(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { status: OrderStatus; note?: string }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/status`, { method: "PATCH", body: JSON.stringify(input) }),
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -106,7 +162,10 @@ export function useRefundOrder(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { amount: number; reason?: string }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/refund`, { method: "POST", body: JSON.stringify(input) }),
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/refund`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -130,16 +189,35 @@ export interface CreateManualOrderAddress {
   postCode?: string;
 }
 
-export type ManualOrderPaymentStatus = "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CANCELED";
+export type ManualOrderPaymentStatus =
+  | "PENDING"
+  | "AUTHORIZED"
+  | "CAPTURED"
+  | "FAILED"
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED"
+  | "CANCELED";
 
 export interface CreateManualOrderInput {
   customerId?: number;
   channel:
-    | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS"
-    | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+    | "WHATSAPP"
+    | "PHONE"
+    | "MARKETPLACE"
+    | "POS"
+    | "FACEBOOK"
+    | "INSTAGRAM"
+    | "TIKTOK"
+    | "YOUTUBE"
+    | "X";
   shippingAddress: CreateManualOrderAddress;
   billingAddress?: CreateManualOrderAddress;
-  items: { productId: number; variantId?: number; quantity: number; unitPrice?: number }[];
+  items: {
+    productId: number;
+    variantId?: number;
+    quantity: number;
+    unitPrice?: number;
+  }[];
   paymentProvider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY";
   taxAmount?: number;
   discountAmount?: number;
@@ -155,7 +233,10 @@ export function useCreateManualOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateManualOrderInput) =>
-      proxyFetch<AdminOrder>("/admin/orders", { method: "POST", body: JSON.stringify(input) }),
+      proxyFetch<AdminOrder>("/admin/orders", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -176,11 +257,20 @@ export function usePreviewCoupon(input: {
 }) {
   const enabled = input.couponCode.trim().length > 0 && input.items.length > 0;
   return useQuery({
-    queryKey: ["order-coupon-preview", input.couponCode, input.items, input.customerId],
+    queryKey: [
+      "order-coupon-preview",
+      input.couponCode,
+      input.items,
+      input.customerId,
+    ],
     queryFn: () =>
       proxyFetch<PreviewCouponResult>("/admin/orders/preview-coupon", {
         method: "POST",
-        body: JSON.stringify({ couponCode: input.couponCode, items: input.items, customerId: input.customerId }),
+        body: JSON.stringify({
+          couponCode: input.couponCode,
+          items: input.items,
+          customerId: input.customerId,
+        }),
       }),
     enabled,
     retry: false,
@@ -190,8 +280,16 @@ export function usePreviewCoupon(input: {
 export function useAddOrderItem(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { productId: number; variantId?: number; quantity: number; unitPrice?: number }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/items`, { method: "POST", body: JSON.stringify(input) }),
+    mutationFn: (input: {
+      productId: number;
+      variantId?: number;
+      quantity: number;
+      unitPrice?: number;
+    }) =>
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/items`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -200,7 +298,10 @@ export function useUpdateOrderItem(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ itemId, quantity }: { itemId: number; quantity: number }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/items/${itemId}`, { method: "PATCH", body: JSON.stringify({ quantity }) }),
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/items/${itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ quantity }),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -209,7 +310,9 @@ export function useRemoveOrderItem(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (itemId: number) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/items/${itemId}`, { method: "DELETE" }),
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/items/${itemId}`, {
+        method: "DELETE",
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -217,8 +320,17 @@ export function useRemoveOrderItem(id: number) {
 export function useUpdateOrderDetails(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { channel?: OrderChannel; phone?: string; addressLine?: string; division?: string; utmSource?: string }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/details`, { method: "PATCH", body: JSON.stringify(input) }),
+    mutationFn: (input: {
+      channel?: OrderChannel;
+      phone?: string;
+      addressLine?: string;
+      division?: string;
+      utmSource?: string;
+    }) =>
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/details`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -226,8 +338,14 @@ export function useUpdateOrderDetails(id: number) {
 export function useUpdateOrderPayment(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { provider?: PaymentProviderType; status?: ManualOrderPaymentStatus }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/payment`, { method: "PATCH", body: JSON.stringify(input) }),
+    mutationFn: (input: {
+      provider?: PaymentProviderType;
+      status?: ManualOrderPaymentStatus;
+    }) =>
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/payment`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -235,8 +353,15 @@ export function useUpdateOrderPayment(id: number) {
 export function useUpdateOrderAmounts(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { discountAmount?: number; shippingAmount?: number; couponCode?: string }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/amounts`, { method: "PATCH", body: JSON.stringify(input) }),
+    mutationFn: (input: {
+      discountAmount?: number;
+      shippingAmount?: number;
+      couponCode?: string;
+    }) =>
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/amounts`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -244,7 +369,11 @@ export function useUpdateOrderAmounts(id: number) {
 export function useResendOrderConfirmation(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => proxyFetch<{ sent: boolean; reason?: string }>(`/admin/orders/${id}/resend-confirmation`, { method: "POST" }),
+    mutationFn: () =>
+      proxyFetch<{ sent: boolean; reason?: string }>(
+        `/admin/orders/${id}/resend-confirmation`,
+        { method: "POST" },
+      ),
     onSuccess: () => invalidateOrder(qc),
   });
 }
@@ -252,7 +381,8 @@ export function useResendOrderConfirmation(id: number) {
 export function useReorderOrder(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => proxyFetch<AdminOrder>(`/admin/orders/${id}/reorder`, { method: "POST" }),
+    mutationFn: () =>
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/reorder`, { method: "POST" }),
     onSuccess: () => invalidateOrder(qc),
   });
 }
