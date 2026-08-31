@@ -57,15 +57,39 @@ export function Select({
   const [open, setOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // The filter box is offered only where a physical keyboard is.
+  //
+  // On a touch device, focusing a text input opens the virtual keyboard, which
+  // fires a window `resize` — and Radix Select dismisses an open Select on
+  // resize. So on a phone the district dropdown closed the instant it opened
+  // (the autofocus below did it unprompted), and tapping the box by hand did
+  // the same thing. Either way the list vanished before a district could be
+  // tapped: reported as "it jumps / won't let people select a district" on
+  // mobile checkout.
+  //
+  // Rather than autofocus-on-desktop-only and leave a box that breaks the
+  // dropdown when touched, the box is simply not rendered on coarse pointers.
+  // Touch users get the plain scrollable list, which works.
+  //
+  // Resolved after mount, not during render: `matchMedia` does not exist on
+  // the server, and assuming one answer at SSR time would mismatch the other
+  // kind of device on hydration. Content is portalled only while open, long
+  // after hydration, so this never flashes.
+  const [canType, setCanType] = useState(false);
+  useEffect(() => {
+    setCanType(window.matchMedia("(pointer: fine)").matches);
+  }, []);
+  const showSearch = searchable && canType;
+
   // Radix Select focuses the option list itself on open, and its Content has
   // no onOpenAutoFocus to intercept (that is Popover/Dropdown). Focusing on
   // the next frame lands after Radix is done, so typing works immediately
   // instead of needing a click into the box first.
   useEffect(() => {
-    if (!open || !searchable) return;
+    if (!open || !showSearch) return;
     const id = requestAnimationFrame(() => searchRef.current?.focus());
     return () => cancelAnimationFrame(id);
-  }, [open, searchable]);
+  }, [open, showSearch]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,7 +148,7 @@ export function Select({
           // normal-sized scrollable dropdown.
           style={{ maxHeight: "min(var(--radix-select-content-available-height), 300px)" }}
         >
-          {searchable && (
+          {showSearch && (
             <div className="border-b border-line p-2">
               <input
                 ref={searchRef}
@@ -150,10 +174,10 @@ export function Select({
             {chevronUp}
           </RadixSelect.ScrollUpButton>
           <RadixSelect.Viewport className="p-1">
-            {searchable && filtered.length === 0 && (
+            {showSearch && filtered.length === 0 && (
               <p className="px-3 py-4 text-center font-body text-sm text-muted">No matches</p>
             )}
-            {(searchable ? filtered : options).map((option) => (
+            {(showSearch ? filtered : options).map((option) => (
               <RadixSelect.Item
                 key={option.value}
                 value={option.value}
