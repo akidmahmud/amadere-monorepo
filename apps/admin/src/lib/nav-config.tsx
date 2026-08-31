@@ -50,6 +50,7 @@ const newsletterCampaignsIcon = <Icon name="campaign" />;
 const newsletterTemplatesIcon = <Icon name="dashboard_customize" />;
 const newsletterSegmentsIcon = <Icon name="groups" />;
 const customersIcon = <Icon name="people" />;
+const wholesaleIcon = <Icon name="local_mall" />;
 const customerTiersIcon = <Icon name="military_tech" />;
 const analyticsIcon = <Icon name="monitoring" />;
 const whatsappIcon = <Icon name="chat" />;
@@ -70,14 +71,50 @@ function label(key: string, text: string): AppNavEntry {
 // dropdown groups (the reference has none — its chevron accents are static
 // decoration on the mockup, not real toggle behavior).
 export const adminNav: AppNavEntry[] = [
-  { key: "overview", label: "Overview", href: "/", icon: overviewIcon, permission: "dashboard.view" },
+  {
+    key: "overview",
+    label: "Overview",
+    href: "/",
+    icon: overviewIcon,
+    permission: "dashboard.view",
+  },
 
   label("orders-label", "Orders & Fulfillment"),
-  { key: "new-order", label: "New Order", href: "/orders/new", icon: newOrderIcon, permission: "order.create" },
-  { key: "shipments", label: "Shipments", href: "/shipments", icon: shipmentsIcon, permission: "shipment.view" },
+  {
+    key: "new-order",
+    label: "New Order",
+    href: "/orders/new",
+    icon: newOrderIcon,
+    permission: "order.create",
+  },
+  {
+    key: "shipments",
+    label: "Shipments",
+    href: "/shipments",
+    icon: shipmentsIcon,
+    permission: "shipment.view",
+  },
+
+  // Its own section, not a row under Orders: wholesale is a separate book
+  // with its own customers, and burying it under retail orders would imply
+  // these show up in the Order Manager. They deliberately do not.
+  label("wholesale-label", "Wholesale"),
+  {
+    key: "wholesale",
+    label: "Wholesale",
+    href: "/wholesale",
+    icon: wholesaleIcon,
+    permission: "wholesale.view",
+  },
 
   label("catalog-label", "Product Management"),
-  { key: "products", label: "Products", href: "/products", icon: productsIcon, permission: "product.view" },
+  {
+    key: "products",
+    label: "Products",
+    href: "/products",
+    icon: productsIcon,
+    permission: "product.view",
+  },
   // Gated on product.view, not digital_product.view — the list/detail pages
   // read through GET /admin/products (product.view), and no endpoint this
   // section calls actually checks digital_product.view (only .update guards
@@ -86,74 +123,361 @@ export const adminNav: AppNavEntry[] = [
   // it, and gets an unexplained 403. digital_product.view stays in the
   // permission catalog (seeded, may become a real gate later) — just unused
   // here.
-  { key: "digital-products", label: "Digital Products", href: "/digital-products", icon: digitalProductsIcon, permission: "product.view" },
-  { key: "products-trash", label: "Deleted Products", href: "/products/trash", icon: trashIcon, permission: "product.view" },
-  { key: "collections", label: "Collections", href: "/collections", icon: collectionsIcon, permission: "collection.view" },
-  { key: "brands", label: "Brands", href: "/brands", icon: brandsIcon, permission: "brand.view" },
+  {
+    key: "digital-products",
+    label: "Digital Products",
+    href: "/digital-products",
+    icon: digitalProductsIcon,
+    permission: "product.view",
+  },
+  {
+    key: "products-trash",
+    label: "Deleted Products",
+    href: "/products/trash",
+    icon: trashIcon,
+    permission: "product.view",
+  },
+  {
+    key: "collections",
+    label: "Collections",
+    href: "/collections",
+    icon: collectionsIcon,
+    permission: "collection.view",
+  },
+  {
+    key: "brands",
+    label: "Brands",
+    href: "/brands",
+    icon: brandsIcon,
+    permission: "brand.view",
+  },
   // author.view is a REAL gate here, unlike the Digital Products row above:
   // every endpoint this section calls is /admin/authors/*, and each one
   // carries @RequirePermission('author.view'|'.create'|'.update'|'.delete').
   // So the nav promise and the API agree — a staff member who sees this row
   // can actually open it.
-  { key: "authors", label: "Authors", href: "/authors", icon: authorsIcon, permission: "author.view" },
-  { key: "categories", label: "Categories", href: "/categories", icon: categoriesIcon, permission: "category.view" },
-  { key: "tags", label: "Tags", href: "/tags", icon: tagsIcon, permission: "tag.view" },
-  { key: "attributes", label: "Attributes", href: "/attributes", icon: attributesIcon, permission: "attribute.view" },
+  {
+    key: "authors",
+    label: "Authors",
+    href: "/authors",
+    icon: authorsIcon,
+    permission: "author.view",
+  },
+  {
+    key: "categories",
+    label: "Categories",
+    href: "/categories",
+    icon: categoriesIcon,
+    permission: "category.view",
+  },
+  {
+    key: "tags",
+    label: "Tags",
+    href: "/tags",
+    icon: tagsIcon,
+    permission: "tag.view",
+  },
+  {
+    key: "attributes",
+    label: "Attributes",
+    href: "/attributes",
+    icon: attributesIcon,
+    permission: "attribute.view",
+  },
 
   label("marketing-label", "Marketing"),
-  { key: "newsletter-campaigns", label: "Newsletter Campaigns", href: "/newsletter-campaigns", icon: newsletterCampaignsIcon, permission: "newsletter_campaign.view" },
-  { key: "newsletter-templates", label: "Newsletter Templates", href: "/newsletter-templates", icon: newsletterTemplatesIcon, permission: "newsletter_template.view" },
-  { key: "newsletter-segments", label: "Newsletter Segments", href: "/newsletter-segments", icon: newsletterSegmentsIcon, permission: "newsletter_segment.view" },
-  { key: "homepage-sections", label: "Homepage Sections", href: "/homepage-sections", icon: homepageSectionsIcon, permission: "homepage_section.view" },
-  { key: "promo-videos", label: "Promo Videos", href: "/promo-videos", icon: promoVideosIcon, permission: "promo_video.view" },
-  { key: "discounts", label: "Discounts", href: "/discounts", icon: discountsIcon, permission: "discount.view" },
-  { key: "upsell-bar", label: "Upsell Bar", href: "/upsell-bar", icon: upsellBarIcon, permission: "upsell_bar.view" },
-  { key: "gift-vouchers", label: "Gift Vouchers", href: "/gift-vouchers", icon: giftVouchersIcon, permission: "gift_voucher.view" },
-  { key: "whatsapp", label: "WhatsApp", href: "/whatsapp", icon: whatsappIcon, permission: "whatsapp.view" },
-  { key: "reviews", label: "Reviews", href: "/reviews", icon: reviewsIcon, permission: "review.view" },
+  {
+    key: "newsletter-campaigns",
+    label: "Newsletter Campaigns",
+    href: "/newsletter-campaigns",
+    icon: newsletterCampaignsIcon,
+    permission: "newsletter_campaign.view",
+  },
+  {
+    key: "newsletter-templates",
+    label: "Newsletter Templates",
+    href: "/newsletter-templates",
+    icon: newsletterTemplatesIcon,
+    permission: "newsletter_template.view",
+  },
+  {
+    key: "newsletter-segments",
+    label: "Newsletter Segments",
+    href: "/newsletter-segments",
+    icon: newsletterSegmentsIcon,
+    permission: "newsletter_segment.view",
+  },
+  {
+    key: "homepage-sections",
+    label: "Homepage Sections",
+    href: "/homepage-sections",
+    icon: homepageSectionsIcon,
+    permission: "homepage_section.view",
+  },
+  {
+    key: "promo-videos",
+    label: "Promo Videos",
+    href: "/promo-videos",
+    icon: promoVideosIcon,
+    permission: "promo_video.view",
+  },
+  {
+    key: "discounts",
+    label: "Discounts",
+    href: "/discounts",
+    icon: discountsIcon,
+    permission: "discount.view",
+  },
+  {
+    key: "upsell-bar",
+    label: "Upsell Bar",
+    href: "/upsell-bar",
+    icon: upsellBarIcon,
+    permission: "upsell_bar.view",
+  },
+  {
+    key: "gift-vouchers",
+    label: "Gift Vouchers",
+    href: "/gift-vouchers",
+    icon: giftVouchersIcon,
+    permission: "gift_voucher.view",
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    href: "/whatsapp",
+    icon: whatsappIcon,
+    permission: "whatsapp.view",
+  },
+  {
+    key: "reviews",
+    label: "Reviews",
+    href: "/reviews",
+    icon: reviewsIcon,
+    permission: "review.view",
+  },
 
   label("net-profit-label", "Net Profit"),
-  { key: "net-profit-overview", label: "Overview", href: "/net-profit", icon: netProfitIcon, permission: "net_profit_overview.view" },
-  { key: "net-profit-fraud", label: "Courier Fraud Detection", href: "/net-profit/fraud", icon: fraudIcon, permission: "net_profit_fraud.view" },
-  { key: "net-profit-orders", label: "Order Manager", href: "/net-profit/orders", icon: orderManagerIcon, permission: "net_profit_orders.view" },
-  { key: "net-profit-blocker", label: "Order Blocker", href: "/net-profit/blocker", icon: blockerIcon, permission: "net_profit_blocker.manage" },
-  { key: "net-profit-sms", label: "SMS", href: "/net-profit/sms", icon: smsIcon, permission: "net_profit_sms.view" },
-  { key: "net-profit-payments", label: "Payments", href: "/net-profit/payments", icon: paymentsIcon, permission: "net_profit_advance.manage" },
-  { key: "net-profit-recovery", label: "Recovery", href: "/net-profit/recovery", icon: recoveryIcon, permission: "net_profit_recovery.manage" },
-  { key: "net-profit-reports", label: "Sales Report", href: "/net-profit/reports", icon: reportsIcon, permission: "net_profit_reports.view" },
-  { key: "net-profit-accounts", label: "Accounts", href: "/net-profit/accounts", icon: accountsIcon, permission: "net_profit_accounts.view" },
+  {
+    key: "net-profit-overview",
+    label: "Overview",
+    href: "/net-profit",
+    icon: netProfitIcon,
+    permission: "net_profit_overview.view",
+  },
+  {
+    key: "net-profit-fraud",
+    label: "Courier Fraud Detection",
+    href: "/net-profit/fraud",
+    icon: fraudIcon,
+    permission: "net_profit_fraud.view",
+  },
+  {
+    key: "net-profit-orders",
+    label: "Order Manager",
+    href: "/net-profit/orders",
+    icon: orderManagerIcon,
+    permission: "net_profit_orders.view",
+  },
+  {
+    key: "net-profit-blocker",
+    label: "Order Blocker",
+    href: "/net-profit/blocker",
+    icon: blockerIcon,
+    permission: "net_profit_blocker.manage",
+  },
+  {
+    key: "net-profit-sms",
+    label: "SMS",
+    href: "/net-profit/sms",
+    icon: smsIcon,
+    permission: "net_profit_sms.view",
+  },
+  {
+    key: "net-profit-payments",
+    label: "Payments",
+    href: "/net-profit/payments",
+    icon: paymentsIcon,
+    permission: "net_profit_advance.manage",
+  },
+  {
+    key: "net-profit-recovery",
+    label: "Recovery",
+    href: "/net-profit/recovery",
+    icon: recoveryIcon,
+    permission: "net_profit_recovery.manage",
+  },
+  {
+    key: "net-profit-reports",
+    label: "Sales Report",
+    href: "/net-profit/reports",
+    icon: reportsIcon,
+    permission: "net_profit_reports.view",
+  },
+  {
+    key: "net-profit-accounts",
+    label: "Accounts",
+    href: "/net-profit/accounts",
+    icon: accountsIcon,
+    permission: "net_profit_accounts.view",
+  },
 
   label("customers-label", "Customers"),
-  { key: "customers-list", label: "All Customers", href: "/customers", icon: customersIcon, permission: "customer.view" },
-  { key: "customers-tiers", label: "Tiers", href: "/customers/tiers", icon: customerTiersIcon, permission: "customer.view" },
+  {
+    key: "customers-list",
+    label: "All Customers",
+    href: "/customers",
+    icon: customersIcon,
+    permission: "customer.view",
+  },
+  {
+    key: "customers-tiers",
+    label: "Tiers",
+    href: "/customers/tiers",
+    icon: customerTiersIcon,
+    permission: "customer.view",
+  },
 
   label("content-label", "Content"),
-  { key: "blog-posts", label: "Blog Posts", href: "/blog-posts", icon: blogIcon, permission: "blog_post.view" },
-  { key: "blog-posts-trash", label: "Deleted Blog Posts", href: "/blog-posts/trash", icon: trashIcon, permission: "blog_post.view" },
-  { key: "blog-categories", label: "Blog Categories", href: "/blog-categories", icon: blogCategoriesIcon, permission: "blog_category.view" },
-  { key: "blog-tags", label: "Blog Tags", href: "/blog-tags", icon: blogTagsIcon, permission: "blog_tag.view" },
-  { key: "pages", label: "Pages", href: "/pages", icon: pagesIcon, permission: "page.view" },
-  { key: "menu-items", label: "Menu Items", href: "/menu-items", icon: menuItemsIcon, permission: "menu_item.view" },
-  { key: "footer", label: "Footer", href: "/footer", icon: footerIcon, permission: "footer.view" },
-  { key: "announcements", label: "Announcements", href: "/announcements", icon: announcementsIcon, permission: "announcement.view" },
+  {
+    key: "blog-posts",
+    label: "Blog Posts",
+    href: "/blog-posts",
+    icon: blogIcon,
+    permission: "blog_post.view",
+  },
+  {
+    key: "blog-posts-trash",
+    label: "Deleted Blog Posts",
+    href: "/blog-posts/trash",
+    icon: trashIcon,
+    permission: "blog_post.view",
+  },
+  {
+    key: "blog-categories",
+    label: "Blog Categories",
+    href: "/blog-categories",
+    icon: blogCategoriesIcon,
+    permission: "blog_category.view",
+  },
+  {
+    key: "blog-tags",
+    label: "Blog Tags",
+    href: "/blog-tags",
+    icon: blogTagsIcon,
+    permission: "blog_tag.view",
+  },
+  {
+    key: "pages",
+    label: "Pages",
+    href: "/pages",
+    icon: pagesIcon,
+    permission: "page.view",
+  },
+  {
+    key: "menu-items",
+    label: "Menu Items",
+    href: "/menu-items",
+    icon: menuItemsIcon,
+    permission: "menu_item.view",
+  },
+  {
+    key: "footer",
+    label: "Footer",
+    href: "/footer",
+    icon: footerIcon,
+    permission: "footer.view",
+  },
+  {
+    key: "announcements",
+    label: "Announcements",
+    href: "/announcements",
+    icon: announcementsIcon,
+    permission: "announcement.view",
+  },
 
   label("seo-label", "SEO"),
-  { key: "redirects", label: "Redirects", href: "/redirects", icon: redirectsIcon, permission: "redirect.view" },
-  { key: "seo-meta", label: "SEO Meta", href: "/seo-meta", icon: seoIcon, permission: "seo_meta.view" },
-  { key: "search-synonyms", label: "Search Synonyms", href: "/search-synonyms", icon: synonymsIcon, permission: "search_synonym.view" },
+  {
+    key: "redirects",
+    label: "Redirects",
+    href: "/redirects",
+    icon: redirectsIcon,
+    permission: "redirect.view",
+  },
+  {
+    key: "seo-meta",
+    label: "SEO Meta",
+    href: "/seo-meta",
+    icon: seoIcon,
+    permission: "seo_meta.view",
+  },
+  {
+    key: "search-synonyms",
+    label: "Search Synonyms",
+    href: "/search-synonyms",
+    icon: synonymsIcon,
+    permission: "search_synonym.view",
+  },
 
   label("insights-label", "Insights"),
-  { key: "analytics", label: "Analytics", href: "/analytics", icon: analyticsIcon, permission: "analytics.view" },
-  { key: "media", label: "Media Library", href: "/media", icon: mediaIcon, permission: "media.view" },
-  { key: "newsletter", label: "Newsletter", href: "/newsletter", icon: newsletterIcon, permission: "newsletter.view" },
+  {
+    key: "analytics",
+    label: "Analytics",
+    href: "/analytics",
+    icon: analyticsIcon,
+    permission: "analytics.view",
+  },
+  {
+    key: "media",
+    label: "Media Library",
+    href: "/media",
+    icon: mediaIcon,
+    permission: "media.view",
+  },
+  {
+    key: "newsletter",
+    label: "Newsletter",
+    href: "/newsletter",
+    icon: newsletterIcon,
+    permission: "newsletter.view",
+  },
 
   label("admin-label", "Admin"),
-  { key: "staff", label: "Staff", href: "/staff", icon: staffIcon, permission: "staff.view" },
-  { key: "roles", label: "Roles", href: "/roles", icon: rolesIcon, permission: "role.view" },
-  { key: "audit-log", label: "Audit Log", href: "/audit-log", icon: auditLogIcon, permission: "audit_log.view" },
-  { key: "settings", label: "Settings", href: "/settings", icon: settingsPageIcon, permission: "setting.view" },
+  {
+    key: "staff",
+    label: "Staff",
+    href: "/staff",
+    icon: staffIcon,
+    permission: "staff.view",
+  },
+  {
+    key: "roles",
+    label: "Roles",
+    href: "/roles",
+    icon: rolesIcon,
+    permission: "role.view",
+  },
+  {
+    key: "audit-log",
+    label: "Audit Log",
+    href: "/audit-log",
+    icon: auditLogIcon,
+    permission: "audit_log.view",
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    href: "/settings",
+    icon: settingsPageIcon,
+    permission: "setting.view",
+  },
   // No permission gate — a static docs page every admin can read regardless
   // of role; unlike every other row above, nothing backs it with a
   // permission-guarded API call.
-  { key: "documentation", label: "Documentation", href: "/documentation", icon: documentationIcon },
+  {
+    key: "documentation",
+    label: "Documentation",
+    href: "/documentation",
+    icon: documentationIcon,
+  },
 ];

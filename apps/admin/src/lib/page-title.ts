@@ -16,6 +16,7 @@ const SECTIONS: { base: string; label: string }[] = [
   { base: "/collections", label: "Collections" },
   { base: "/discounts", label: "Discounts" },
   { base: "/gift-vouchers", label: "Gift Vouchers" },
+  { base: "/wholesale", label: "Wholesale" },
   { base: "/reviews", label: "Reviews" },
   { base: "/blog-posts", label: "Blog Posts" },
   { base: "/blog-categories", label: "Blog Categories" },
@@ -47,9 +48,12 @@ export function pageTitleFor(pathname: string): string {
   if (pathname.startsWith("/orders/")) return "Order Details"; // viewed/actioned, not "edited"
   if (pathname === "/products/trash") return "Deleted Products";
 
-  const section = SECTIONS.find((s) => pathname === s.base || pathname.startsWith(`${s.base}/`));
+  const section = SECTIONS.find(
+    (s) => pathname === s.base || pathname.startsWith(`${s.base}/`),
+  );
   if (!section) return "Amader Admin";
   if (pathname === section.base) return section.label;
-  if (pathname === `${section.base}/new`) return `New ${section.label.replace(/s$/, "")}`;
+  if (pathname === `${section.base}/new`)
+    return `New ${section.label.replace(/s$/, "")}`;
   return `Edit ${section.label.replace(/s$/, "")}`;
 }

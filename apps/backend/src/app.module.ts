@@ -64,6 +64,7 @@ import { FooterModule } from './modules/footer/footer.module';
 import { ShippingZonesModule } from './modules/shipping-zones/shipping-zones.module';
 import { PromoVideosModule } from './modules/promo-videos/promo-videos.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
+import { WholesaleModule } from './modules/wholesale/wholesale.module';
 
 @Module({
   imports: [
@@ -173,6 +174,7 @@ import { NetProfitModule } from './modules/net-profit/net-profit.module';
     ShippingZonesModule,
     PromoVideosModule,
     NetProfitModule,
+    WholesaleModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ClientThrottlerGuard }],
 })

@@ -219,4 +219,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 
   perm('upsell_bar', 'view'),
   perm('upsell_bar', 'manage'),
+
+  // Wholesale is its own book, so it is its own permission set: a staff
+  // member who manages retail orders does not automatically get to see what
+  // the business sells at wholesale rates, or to whom.
+  perm('wholesale', 'view'),
+  perm('wholesale', 'create'),
+  perm('wholesale', 'update'),
+  perm('wholesale', 'delete'),
 ];

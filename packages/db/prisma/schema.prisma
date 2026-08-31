@@ -41,10 +41,10 @@ enum EmailTemplateGroup {
 }
 
 model EmailTemplate {
-  id      Int                @id @default(autoincrement())
-  key     String             @unique
-  group   EmailTemplateGroup
-  title   String
+  id          Int                @id @default(autoincrement())
+  key         String             @unique
+  group       EmailTemplateGroup
+  title       String
   description String
 
   subject  String @default("")
@@ -52,8 +52,8 @@ model EmailTemplate {
 
   // Immutable, set once at seed time — "Reset to default" copies these back
   // into subject/bodyHtml, so it never needs to re-read a seed script.
-  defaultSubject  String @map("default_subject") @default("")
-  defaultBodyHtml String @map("default_body_html") @db.Text @default("")
+  defaultSubject  String @default("") @map("default_subject")
+  defaultBodyHtml String @default("") @map("default_body_html") @db.Text
 
   // [{ key: "customer_name", description: "..." }, ...] — per-template,
   // since each event has different data available. Purely a UI hint for
@@ -62,7 +62,7 @@ model EmailTemplate {
 
   // A few templates (base header/footer, admin password reset) can't be
   // turned off — the toggle UI renders fixed-on for these.
-  canDisable Boolean @map("can_disable") @default(true)
+  canDisable Boolean @default(true) @map("can_disable")
   enabled    Boolean @default(true)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -217,15 +217,15 @@ model AdminUser {
   updatedAt        DateTime        @updatedAt @map("updated_at")
   deletedAt        DateTime?       @map("deleted_at")
 
-  roles            AdminUserRole[]
-  loginHistory     AdminLoginHistory[]
-  auditLogs        AuditLog[]
-  blogPosts        BlogPost[]
-  blogPostRevisions BlogPostRevision[]
-  customerNotes    CustomerNote[]
-  customerCallLogs CustomerCallLog[]
-  assignedCustomers Customer[] @relation("CustomerAssignedAdmin")
-  assignedOrders    Order[]    @relation("OrderAssignedAdmin")
+  roles              AdminUserRole[]
+  loginHistory       AdminLoginHistory[]
+  auditLogs          AuditLog[]
+  blogPosts          BlogPost[]
+  blogPostRevisions  BlogPostRevision[]
+  customerNotes      CustomerNote[]
+  customerCallLogs   CustomerCallLog[]
+  assignedCustomers  Customer[]           @relation("CustomerAssignedAdmin")
+  assignedOrders     Order[]              @relation("OrderAssignedAdmin")
   orderStatusHistory OrderStatusHistory[]
 
   @@map("admin_users")
@@ -338,38 +338,38 @@ model Customer {
   // "Start Date" in the CRM table reuses createdAt rather than duplicating
   // it — there's no distinct concept of "when tracking began" vs. "when the
   // customer record was created."
-  isFavorite           Boolean              @default(false) @map("is_favorite")
-  assignedAdminId      Int?                 @map("assigned_admin_id")
-  nextCallTarget       DateTime?            @db.Date @map("next_call_target")
-  followUpCadenceDays  Int?                 @map("follow_up_cadence_days") // 7 / 15 / 30 — null = no cadence set
-  hasNewOrder          Boolean              @default(false) @map("has_new_order")
-  newOrderAt           DateTime?            @db.Date @map("new_order_at")
-  priority             CustomerPriority?
-  crmStatus            CustomerCrmStatus?   @map("crm_status")
-  behaviour            CustomerBehaviour?
-  customerFeedback     String?              @map("customer_feedback")
-  amaderFeedback       String?              @map("amader_feedback")
-  familyDetails        String?              @map("family_details")
-  purchaseReason       String?              @map("purchase_reason")
-  facebookProfileUrl   String?              @map("facebook_profile_url")
+  isFavorite          Boolean            @default(false) @map("is_favorite")
+  assignedAdminId     Int?               @map("assigned_admin_id")
+  nextCallTarget      DateTime?          @map("next_call_target") @db.Date
+  followUpCadenceDays Int?               @map("follow_up_cadence_days") // 7 / 15 / 30 — null = no cadence set
+  hasNewOrder         Boolean            @default(false) @map("has_new_order")
+  newOrderAt          DateTime?          @map("new_order_at") @db.Date
+  priority            CustomerPriority?
+  crmStatus           CustomerCrmStatus? @map("crm_status")
+  behaviour           CustomerBehaviour?
+  customerFeedback    String?            @map("customer_feedback")
+  amaderFeedback      String?            @map("amader_feedback")
+  familyDetails       String?            @map("family_details")
+  purchaseReason      String?            @map("purchase_reason")
+  facebookProfileUrl  String?            @map("facebook_profile_url")
 
   // PHASE 2 HOOK: reward-point ledger and referral-code program attach here.
   // Loyalty/Referral are not implemented — this is the seam only.
 
-  addresses      CustomerAddress[]
-  socialAccounts SocialAccount[]
-  carts          Cart[]
-  orders         Order[]
-  reviews        Review[]
-  discountUses   DiscountCustomer[]
-  redemptions    DiscountRedemption[]
-  wishlistItems  WishlistItem[]
-  tier           CustomerTier?        @relation(fields: [tierId], references: [id])
-  notes          CustomerNote[]
-  callLogs       CustomerCallLog[]
-  parties        Party[]
+  addresses        CustomerAddress[]
+  socialAccounts   SocialAccount[]
+  carts            Cart[]
+  orders           Order[]
+  reviews          Review[]
+  discountUses     DiscountCustomer[]
+  redemptions      DiscountRedemption[]
+  wishlistItems    WishlistItem[]
+  tier             CustomerTier?        @relation(fields: [tierId], references: [id])
+  notes            CustomerNote[]
+  callLogs         CustomerCallLog[]
+  parties          Party[]
   digitalDownloads DigitalDownload[]
-  assignedAdmin  AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
+  assignedAdmin    AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
   @@map("customers")
 }
@@ -461,22 +461,22 @@ model CustomerCallLog {
 }
 
 model CustomerAddress {
-  id            Int      @id @default(autoincrement())
-  customerId    Int      @map("customer_id")
-  label         String? // e.g. "Home", "Office"
-  recipientName String   @map("recipient_name")
-  phone         String
-  division      String // Bangladesh division — kept as plain text (single-country now)
-  district      String
-  area          String? // thana/upazila
-  landmark      String?
-  addressLine   String   @map("address_line")
-  postCode      String?  @map("post_code")
+  id               Int      @id @default(autoincrement())
+  customerId       Int      @map("customer_id")
+  label            String? // e.g. "Home", "Office"
+  recipientName    String   @map("recipient_name")
+  phone            String
+  division         String // Bangladesh division — kept as plain text (single-country now)
+  district         String
+  area             String? // thana/upazila
+  landmark         String?
+  addressLine      String   @map("address_line")
+  postCode         String?  @map("post_code")
   // Steadfast's alternative_phone — mirrors OrderAddress.alternativePhone.
-  alternativePhone String? @map("alternative_phone")
-  isDefault     Boolean  @default(false) @map("is_default")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  alternativePhone String?  @map("alternative_phone")
+  isDefault        Boolean  @default(false) @map("is_default")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
@@ -580,9 +580,9 @@ model BrandTranslation {
 // BrandTranslation directly above: locale-invariant columns here, the
 // name/bio pair on a translation row.
 model Author {
-  id        Int           @id @default(autoincrement())
-  slug      String        @unique
-  photoUrl  String?       @map("photo_url")
+  id          Int           @id @default(autoincrement())
+  slug        String        @unique
+  photoUrl    String?       @map("photo_url")
   /// Social profile links shown as icons on the PDP's Author tab — there is
   /// deliberately no follow button, so these are the only outbound action.
   /// Shape: { icon: FooterSocialIcon, url: string, label?: string }[], reusing
@@ -590,12 +590,12 @@ model Author {
   /// rather than a second icon vocabulary. Json, not a child table, for the
   /// same reason footer_config is: it is a short ordered list only ever read
   /// and written whole.
-  socialLinks Json?       @map("social_links")
-  status    ContentStatus @default(PUBLISHED)
-  sortOrder Int           @default(0) @map("sort_order")
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
-  deletedAt DateTime?     @map("deleted_at")
+  socialLinks Json?         @map("social_links")
+  status      ContentStatus @default(PUBLISHED)
+  sortOrder   Int           @default(0) @map("sort_order")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
 
   translations AuthorTranslation[]
   products     Product[]
@@ -619,24 +619,24 @@ model AuthorTranslation {
 // Self-referencing tree, same shape as the old app's category models —
 // this part of Botble's design was fine, kept as-is.
 model Category {
-  id         Int           @id @default(autoincrement())
-  slug       String        @unique
-  legacySlug String?       @map("legacy_slug")
-  parentId   Int?          @map("parent_id")
-  imageUrl   String?       @map("image_url")
-  iconUrl    String?       @map("icon_url")
+  id             Int           @id @default(autoincrement())
+  slug           String        @unique
+  legacySlug     String?       @map("legacy_slug")
+  parentId       Int?          @map("parent_id")
+  imageUrl       String?       @map("image_url")
+  iconUrl        String?       @map("icon_url")
   // Wide banner shown at the top of this category's storefront page —
   // deliberately separate from `imageUrl` (used elsewhere as a small square
   // tile thumbnail, e.g. FeaturedCategoriesSection) since the two have very
   // different aspect ratios and purposes.
-  bannerImageUrl String? @map("banner_image_url")
-  isFeatured Boolean       @default(false) @map("is_featured")
-  sortOrder  Int           @default(0) @map("sort_order")
-  status     ContentStatus @default(DRAFT)
-  legacyId   Int?          @unique @map("legacy_id")
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
-  deletedAt  DateTime?     @map("deleted_at")
+  bannerImageUrl String?       @map("banner_image_url")
+  isFeatured     Boolean       @default(false) @map("is_featured")
+  sortOrder      Int           @default(0) @map("sort_order")
+  status         ContentStatus @default(DRAFT)
+  legacyId       Int?          @unique @map("legacy_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
 
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryTree")
@@ -789,36 +789,36 @@ model Product {
   sku        String? @unique
   brandId    Int?    @map("brand_id")
 
-  productType ProductType       @default(PHYSICAL) @map("product_type")
+  productType             ProductType       @default(PHYSICAL) @map("product_type")
   // --- Digital products (productType = DIGITAL) -----------------------
   // The R2 object KEY, never a public URL. The file is served only by the
   // entitlement-checked download endpoint; turning this into a public URL
   // would make every paid book freely downloadable by anyone with the link.
-  digitalFileKey      String? @map("digital_file_key")
-  digitalFileName     String? @map("digital_file_name")
-  digitalFileSize     Int?    @map("digital_file_size")
-  digitalPageCount    Int?    @map("digital_page_count")
+  digitalFileKey          String?           @map("digital_file_key")
+  digitalFileName         String?           @map("digital_file_name")
+  digitalFileSize         Int?              @map("digital_file_size")
+  digitalPageCount        Int?              @map("digital_page_count")
   /// The inclusive page RANGE shown as the free preview (e.g. 5..9), not a
   /// count from the front of the document — a book's first pages are usually
   /// a cover, a copyright notice and a blank leaf. Both null until a file is
   /// uploaded; the uploader then defaults them to
   /// DIGITAL_PREVIEW_START_DEFAULT..DIGITAL_PREVIEW_PAGES_DEFAULT.
-  digitalPreviewStartPage Int? @map("digital_preview_start_page")
-  digitalPreviewEndPage   Int? @map("digital_preview_end_page")
+  digitalPreviewStartPage Int?              @map("digital_preview_start_page")
+  digitalPreviewEndPage   Int?              @map("digital_preview_end_page")
   /// The book's author — a reusable Author record, so editing an author's
   /// photo/bio/socials updates every book by them at once. Drives the DIGITAL
   /// PDP's "Author" tab; null (and unrendered) for a PHYSICAL product.
-  authorId    Int?    @map("author_id")
+  authorId                Int?              @map("author_id")
   /// Book "Specification" table, locale-INVARIANT half. An ISBN is the same
   /// string in every locale, so it lives here; edition/language/publisher/
   /// country read differently in Bangla and English and live on
   /// ProductTranslation instead. "No of Page" reuses digitalPageCount above
   /// (the real page count of the file being sold) and "Weight" reuses
   /// shippableWeight below — neither gets a duplicate column here.
-  isbn        String?
-  status      ContentStatus     @default(DRAFT)
-  isFeatured  Boolean           @default(false) @map("is_featured")
-  flagLabel   ProductFlagLabel? @map("flag_label")
+  isbn                    String?
+  status                  ContentStatus     @default(DRAFT)
+  isFeatured              Boolean           @default(false) @map("is_featured")
+  flagLabel               ProductFlagLabel? @map("flag_label")
 
   // --- Catalog feed (Meta / Google Merchant / TikTok) -----------------
   // Everything else these feeds need already exists on this model or on the
@@ -826,19 +826,19 @@ model Product {
   // row is still valid without them, Google just categorises it less well.
   /// Google's numeric product taxonomy id, e.g. "2474". Google-specific but
   /// Meta and TikTok accept the same value under the same name.
-  googleProductCategory String? @map("google_product_category")
+  googleProductCategory String?  @map("google_product_category")
   /// custom_label_0..4 — free-text buckets used ONLY for ad-campaign
   /// segmentation inside the ad platforms (e.g. "high-margin", "clearance").
   /// Stored as an array rather than five columns: they are positional by
   /// definition and nothing ever queries an individual one.
-  customLabels String[] @default([]) @map("custom_labels")
+  customLabels          String[] @default([]) @map("custom_labels")
   /// Excluded from every catalog feed while still purchasable on the site --
   /// for products that must not be advertised (restricted categories, a
   /// wholesale-only line, anything a platform has already rejected).
-  excludeFromFeed Boolean @default(false) @map("exclude_from_feed")
-  sortOrder   Int               @default(0) @map("sort_order")
-  viewCount   Int           @default(0) @map("view_count")
-  videoUrl    String?       @map("video_url") // embedded video reference (product detail gallery)
+  excludeFromFeed       Boolean  @default(false) @map("exclude_from_feed")
+  sortOrder             Int      @default(0) @map("sort_order")
+  viewCount             Int      @default(0) @map("view_count")
+  videoUrl              String?  @map("video_url") // embedded video reference (product detail gallery)
 
   // Manual social-proof override for the storefront's "N people bought"
   // badge (WatchingNowBadge) — that number is normally SUM(order_items.qty)
@@ -858,20 +858,20 @@ model Product {
 
   // Simple (non-variant) products price/stock live directly here. Variant
   // products (hasVariants=true) keep price/stock on ProductVariant instead.
-  hasVariants    Boolean     @default(false) @map("has_variants")
-  trackInventory Boolean     @default(true) @map("track_inventory")
-  allowBackorder Boolean     @default(false) @map("allow_backorder")
-  stock          Int         @default(0)
+  hasVariants    Boolean        @default(false) @map("has_variants")
+  trackInventory Boolean        @default(true) @map("track_inventory")
+  allowBackorder Boolean        @default(false) @map("allow_backorder")
+  stock          Int            @default(0)
   // Held during checkout so concurrent buyers can't oversell (old app had
   // no reservation at all — a real gap we're deliberately closing, see
   // AGENTS.md §6 "reserved-stock accounting during checkout"). Populated by B6.
-  reservedStock  Int         @default(0) @map("reserved_stock")
-  stockStatus    StockStatus @default(IN_STOCK) @map("stock_status")
-  price          Decimal?    @db.Decimal(10, 2)
-  salePrice      Decimal?    @map("sale_price") @db.Decimal(10, 2)
-  saleStartsAt   DateTime?   @map("sale_starts_at")
-  saleEndsAt     DateTime?   @map("sale_ends_at")
-  costPerItem    Decimal?    @map("cost_per_item") @db.Decimal(10, 2)
+  reservedStock  Int            @default(0) @map("reserved_stock")
+  stockStatus    StockStatus    @default(IN_STOCK) @map("stock_status")
+  price          Decimal?       @db.Decimal(10, 2)
+  salePrice      Decimal?       @map("sale_price") @db.Decimal(10, 2)
+  saleStartsAt   DateTime?      @map("sale_starts_at")
+  saleEndsAt     DateTime?      @map("sale_ends_at")
+  costPerItem    Decimal?       @map("cost_per_item") @db.Decimal(10, 2)
   // When set, costPerItem above is a RATE per this unit of weight rather
   // than an absolute buying cost — each variant's actual profit cost becomes
   // costPerItem × (that variant's weightOverride converted to this unit),
@@ -901,28 +901,29 @@ model Product {
   // PHASE 2 HOOK: batch/expiry tracking, warehouse bins, per-warehouse
   // stock, and costing method attach here. Do not build now.
 
-  brand          Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  author         Author?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  translations   ProductTranslation[]
-  categories     ProductCategory[]
-  tags           ProductTag[]
-  attributes     ProductAttribute[]
-  variants       ProductVariant[]
-  media          ProductMedia[]
-  files          ProductFile[]
+  brand            Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  author           Author?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  translations     ProductTranslation[]
+  categories       ProductCategory[]
+  tags             ProductTag[]
+  attributes       ProductAttribute[]
+  variants         ProductVariant[]
+  media            ProductMedia[]
+  files            ProductFile[]
   previewPages     ProductPreviewPage[]
   digitalDownloads DigitalDownload[]
-  licenseCodes   ProductLicenseCode[]
-  bundleItems    ProductBundleItem[]
-  relationsFrom  ProductRelation[]    @relation("ProductRelationFrom")
-  relationsTo    ProductRelation[]    @relation("ProductRelationTo")
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  reviews        Review[]
-  discountScopes DiscountProduct[]
-  wishlistItems  WishlistItem[]
-  collections    CollectionProduct[]
-  promoVideos    PromoVideo[]
+  licenseCodes     ProductLicenseCode[]
+  bundleItems      ProductBundleItem[]
+  relationsFrom    ProductRelation[]    @relation("ProductRelationFrom")
+  relationsTo      ProductRelation[]    @relation("ProductRelationTo")
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  wholesaleItems   WholesaleOrderItem[]
+  reviews          Review[]
+  discountScopes   DiscountProduct[]
+  wishlistItems    WishlistItem[]
+  collections      CollectionProduct[]
+  promoVideos      PromoVideo[]
 
   @@index([status])
   // The admin list query always filters deletedAt (soft-delete) and always
@@ -968,7 +969,7 @@ model ProductTranslation {
   bookPublisher String? @map("book_publisher")
   bookCountry   String? @map("book_country")
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   faqs    ProductFaq[]
 
   @@unique([productId, locale])
@@ -1053,6 +1054,7 @@ model ProductVariant {
   attributeValues ProductVariantAttributeValue[]
   cartItems       CartItem[]
   orderItems      OrderItem[]
+  wholesaleItems  WholesaleOrderItem[]
   licenseCodes    ProductLicenseCode[]
   bundleItems     ProductBundleItem[]
   media           ProductMedia[]
@@ -1089,8 +1091,8 @@ model ProductMedia {
   // the product's image row down with it.
   variantId Int?    @map("variant_id")
 
-  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  media   Media          @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media   Media           @relation(fields: [mediaId], references: [id], onDelete: Cascade)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@id([productId, mediaId])
@@ -1420,23 +1422,23 @@ model Order {
   // does something else with it.
   deletedAt   DateTime? @map("deleted_at")
 
-  customer       Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  assignedAdmin  AdminUser?              @relation("OrderAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
-  items          OrderItem[]
-  addresses      OrderAddress[]
-  statusHistory  OrderStatusHistory[]
-  reviews        Review[]
-  discountUses   DiscountRedemption[]
-  voucherUses    GiftVoucherRedemption[]
-  payments       Payment[]
-  shipments      Shipment[]
-  fraudSavings   FraudSaving[]
-  advancePayment AdvancePayment?
-  manualPayments ManualPayment[]
-  profit         OrderProfit?
+  customer         Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedAdmin    AdminUser?              @relation("OrderAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  items            OrderItem[]
+  addresses        OrderAddress[]
+  statusHistory    OrderStatusHistory[]
+  reviews          Review[]
+  discountUses     DiscountRedemption[]
+  voucherUses      GiftVoucherRedemption[]
+  payments         Payment[]
+  shipments        Shipment[]
+  fraudSavings     FraudSaving[]
+  advancePayment   AdvancePayment?
+  manualPayments   ManualPayment[]
+  profit           OrderProfit?
   digitalDownloads DigitalDownload[]
-  dues           Due[]
-  ledgerEntries  LedgerEntry[]
+  dues             Due[]
+  ledgerEntries    LedgerEntry[]
 
   @@index([status])
   @@index([deletedAt])
@@ -1449,23 +1451,23 @@ model Order {
 // from the old app's design, this part was correct (order history must not
 // change retroactively if the product is later edited/deleted).
 model OrderItem {
-  id                  Int       @id @default(autoincrement())
-  orderId             Int       @map("order_id")
-  productId           Int?      @map("product_id")
-  variantId           Int?      @map("variant_id")
-  productNameSnapshot String    @map("product_name_snapshot")
-  skuSnapshot         String?   @map("sku_snapshot")
+  id                  Int         @id @default(autoincrement())
+  orderId             Int         @map("order_id")
+  productId           Int?        @map("product_id")
+  variantId           Int?        @map("variant_id")
+  productNameSnapshot String      @map("product_name_snapshot")
+  skuSnapshot         String?     @map("sku_snapshot")
   /// Snapshotted like productNameSnapshot/skuSnapshot beside it. Neither
   /// CartItem nor OrderItem carried product type before this feature, so
   /// every "is this order digital?" check would otherwise re-join to Product
   /// — and would answer wrongly if the product were later edited or deleted.
   productTypeSnapshot ProductType @default(PHYSICAL) @map("product_type_snapshot")
-  unitPrice           Decimal   @map("unit_price") @db.Decimal(10, 2)
+  unitPrice           Decimal     @map("unit_price") @db.Decimal(10, 2)
   quantity            Int
-  taxAmount           Decimal   @default(0) @map("tax_amount") @db.Decimal(10, 2)
-  optionsSnapshot     Json?     @map("options_snapshot")
-  restockedQuantity   Int       @default(0) @map("restocked_quantity")
-  downloadedAt        DateTime? @map("downloaded_at") // digital products
+  taxAmount           Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  optionsSnapshot     Json?       @map("options_snapshot")
+  restockedQuantity   Int         @default(0) @map("restocked_quantity")
+  downloadedAt        DateTime?   @map("downloaded_at") // digital products
 
   order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product     Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -1482,21 +1484,21 @@ enum OrderAddressType {
 }
 
 model OrderAddress {
-  id            Int              @id @default(autoincrement())
-  orderId       Int              @map("order_id")
-  type          OrderAddressType
-  recipientName String           @map("recipient_name")
-  phone         String
+  id               Int              @id @default(autoincrement())
+  orderId          Int              @map("order_id")
+  type             OrderAddressType
+  recipientName    String           @map("recipient_name")
+  phone            String
   // Steadfast's alternative_phone — a second contact number for the
   // recipient, distinct from `phone`. Optional everywhere phone is required.
-  alternativePhone String?       @map("alternative_phone")
-  email         String?
-  division      String
-  district      String
-  area          String? // thana/upazila
-  landmark      String?
-  addressLine   String           @map("address_line")
-  postCode      String?          @map("post_code")
+  alternativePhone String?          @map("alternative_phone")
+  email            String?
+  division         String
+  district         String
+  area             String? // thana/upazila
+  landmark         String?
+  addressLine      String           @map("address_line")
+  postCode         String?          @map("post_code")
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -1815,12 +1817,12 @@ model ReviewReply {
 // ---------------------------------------------------------------------
 
 model BlogPost {
-  id          Int           @id @default(autoincrement())
-  slug        String        @unique
-  legacySlug  String?       @map("legacy_slug")
-  adminUserId Int           @map("admin_user_id") // author; a Role like "Content Editor" governs who may post
-  status      ContentStatus @default(DRAFT)
-  isFeatured  Boolean       @default(false) @map("is_featured")
+  id            Int           @id @default(autoincrement())
+  slug          String        @unique
+  legacySlug    String?       @map("legacy_slug")
+  adminUserId   Int           @map("admin_user_id") // author; a Role like "Content Editor" governs who may post
+  status        ContentStatus @default(DRAFT)
+  isFeatured    Boolean       @default(false) @map("is_featured")
   // Manual priority override for public ordering — higher shows first.
   // Default 0 means "no manual override," so untouched posts keep the
   // original reverse-chronological order (ties broken by publishedAt) —
@@ -1830,21 +1832,21 @@ model BlogPost {
   // reorder (like PromoVideosService.reorder, which works because that
   // list is small/unpaginated) can't produce a stable absolute ordering
   // across pages.
-  sortOrder   Int           @default(0) @map("sort_order")
+  sortOrder     Int           @default(0) @map("sort_order")
   // Small square thumbnail — blog listing/related-posts cards, homepage
   // "Our Blog" grid (BlogCard/BlogCardGrid). Deliberately separate from
   // coverImageUrl below, same split as Category.imageUrl vs
   // Category.bannerImageUrl (different aspect ratios/purposes).
-  imageUrl    String?       @map("image_url")
+  imageUrl      String?       @map("image_url")
   // Wide 1600x500 banner shown at the top of the post's own detail page.
   // Falls back to imageUrl when unset — see toPublicBlogPostDetailDto.
-  coverImageUrl String?     @map("cover_image_url")
-  publishedAt DateTime?     @map("published_at")
-  viewCount   Int           @default(0) @map("view_count")
-  legacyId    Int?          @unique @map("legacy_id")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  deletedAt   DateTime?     @map("deleted_at")
+  coverImageUrl String?       @map("cover_image_url")
+  publishedAt   DateTime?     @map("published_at")
+  viewCount     Int           @default(0) @map("view_count")
+  legacyId      Int?          @unique @map("legacy_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
 
   author       AdminUser             @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
   translations BlogPostTranslation[]
@@ -2006,20 +2008,20 @@ enum PageKind {
 }
 
 model Page {
-  id         Int           @id @default(autoincrement())
-  slug       String        @unique
-  legacySlug String?       @map("legacy_slug")
-  status     ContentStatus @default(DRAFT)
-  legacyId   Int?          @unique @map("legacy_id")
-  kind       PageKind      @default(CONTENT)
+  id                Int           @id @default(autoincrement())
+  slug              String        @unique
+  legacySlug        String?       @map("legacy_slug")
+  status            ContentStatus @default(DRAFT)
+  legacyId          Int?          @unique @map("legacy_id")
+  kind              PageKind      @default(CONTENT)
   // Exactly one CHECKOUT page may be active at a time — enforced in the
   // service (cleared on every other page in the same transaction), and this
   // is the flag /checkout resolves by. Zero active pages is a legitimate
   // state: the route falls back to the hardcoded layout in code.
-  isDefaultCheckout Boolean  @default(false) @map("is_default_checkout")
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
-  deletedAt  DateTime?     @map("deleted_at")
+  isDefaultCheckout Boolean       @default(false) @map("is_default_checkout")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  deletedAt         DateTime?     @map("deleted_at")
 
   translations PageTranslation[]
   revisions    PageRevision[]
@@ -2028,19 +2030,19 @@ model Page {
 }
 
 model PageTranslation {
-  id      Int    @id @default(autoincrement())
-  pageId  Int    @map("page_id")
-  locale  Locale
-  title   String
+  id          Int    @id @default(autoincrement())
+  pageId      Int    @map("page_id")
+  locale      Locale
+  title       String
   // Legacy HTML. NEVER removed: it is what every pre-builder page still
   // renders from, and the fallback when `layout` is absent or invalid.
-  content String
+  content     String
   // Published Puck document for this locale. Null on every existing page.
-  layout  Json?
+  layout      Json?
   // Unpublished work in progress, autosaved by the editor. Kept separate
   // from `layout` so a half-finished draft can never reach the storefront —
   // publish is what copies draftLayout into layout.
-  draftLayout Json? @map("draft_layout")
+  draftLayout Json?  @map("draft_layout")
 
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
@@ -2075,16 +2077,16 @@ enum NewsletterStatus {
 }
 
 model NewsletterSubscriber {
-  id     Int              @id @default(autoincrement())
-  email  String           @unique
-  name   String?
-  status NewsletterStatus @default(SUBSCRIBED)
+  id               Int              @id @default(autoincrement())
+  email            String           @unique
+  name             String?
+  status           NewsletterStatus @default(SUBSCRIBED)
   // One-click unsubscribe from an email footer (AGENTS.md/newsletter spec §24
   // — never require login, never expose the raw numeric id). Stable per
   // subscriber (not per-send), generated once and never rotated.
-  unsubscribeToken String    @unique @default(uuid()) @map("unsubscribe_token")
-  subscribedAt     DateTime  @default(now()) @map("subscribed_at")
-  unsubscribedAt   DateTime? @map("unsubscribed_at")
+  unsubscribeToken String           @unique @default(uuid()) @map("unsubscribe_token")
+  subscribedAt     DateTime         @default(now()) @map("subscribed_at")
+  unsubscribedAt   DateTime?        @map("unsubscribed_at")
 
   campaignRecipients NewsletterCampaignRecipient[]
   tags               NewsletterSubscriberTag[]
@@ -2221,9 +2223,9 @@ model NewsletterCampaign {
 // plain SMTP doesn't have (a real, disclosed P0 limitation — see AGENTS.md
 // changelog when this lands).
 model NewsletterCampaignRecipient {
-  id           Int      @id @default(autoincrement())
-  campaignId   Int      @map("campaign_id")
-  subscriberId Int?     @map("subscriber_id")
+  id           Int    @id @default(autoincrement())
+  campaignId   Int    @map("campaign_id")
+  subscriberId Int?   @map("subscriber_id")
   email        String
 
   status            QueueStatus @default(PENDING)
@@ -2357,21 +2359,21 @@ enum PromoVideoSource {
 }
 
 model PromoVideo {
-  id     Int              @id @default(autoincrement())
-  title  String
-  source PromoVideoSource
-  url    String
+  id              Int              @id @default(autoincrement())
+  title           String
+  source          PromoVideoSource
+  url             String
   // Manually entered by the admin (shown as the "0:28" badge in the video
   // list) — no video source here has a reliable, free duration API (YouTube
   // does via oEmbed-adjacent endpoints, but TikTok/Instagram/Facebook Reels
   // and a raw Custom URL don't), so this isn't auto-detected.
-  durationSeconds Int?     @map("duration_seconds")
-  thumbnailUrl    String?  @map("thumbnail_url")
-  productId       Int?     @map("product_id")
-  sortOrder       Int      @default(0) @map("sort_order")
-  showInHomepage  Boolean  @default(true) @map("show_in_homepage")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  durationSeconds Int?             @map("duration_seconds")
+  thumbnailUrl    String?          @map("thumbnail_url")
+  productId       Int?             @map("product_id")
+  sortOrder       Int              @default(0) @map("sort_order")
+  showInHomepage  Boolean          @default(true) @map("show_in_homepage")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
@@ -2696,9 +2698,9 @@ model OrderStatusConfig {
 
 // --- Net Profit: Incomplete/Abandoned Order Recovery (§7.7, M5) --------
 model IncompleteOrder {
-  id               Int      @id @default(autoincrement())
-  cartId           Int?     @unique @map("cart_id") // lets the cart.updated listener upsert idempotently per cart
-  customerId       Int?     @map("customer_id")
+  id               Int       @id @default(autoincrement())
+  cartId           Int?      @unique @map("cart_id") // lets the cart.updated listener upsert idempotently per cart
+  customerId       Int?      @map("customer_id")
   /// Typed into the checkout form, so a guest who never signs in is still
   /// reachable by name. Null for a logged-in customer whose name is on their
   /// Customer row instead.
@@ -2711,7 +2713,7 @@ model IncompleteOrder {
   /// pre-fill the "create order from this cart" form; nothing filters on it.
   address          Json?
   cart             Json // snapshot of items
-  subtotal         Decimal  @db.Decimal(10, 2)
+  subtotal         Decimal   @db.Decimal(10, 2)
   /// "cart" | "checkout" | "otp" | "payment" — how far the shopper got.
   ///   cart     they filled a cart and left
   ///   checkout they reached checkout and entered contact details
@@ -2720,8 +2722,8 @@ model IncompleteOrder {
   /// Kept as a string, not an enum: it was already one, and the recovery
   /// importer accepts stages from external systems that no enum could cover.
   stage            String
-  recovered        Boolean  @default(false)
-  recoveredOrderId Int?     @map("recovered_order_id") // soft reference, no relation (order created independently)
+  recovered        Boolean   @default(false)
+  recoveredOrderId Int?      @map("recovered_order_id") // soft reference, no relation (order created independently)
   /// Staff gave up on this cart, and why. Nullable timestamp doubles as the
   /// flag — canceled iff `canceledAt` is not null — so there is no way to be
   /// canceled without a time, or to have a stale flag disagree with one.
@@ -2729,9 +2731,9 @@ model IncompleteOrder {
   /// reporting, and stops receiving win-back campaign messages.
   canceledAt       DateTime? @map("canceled_at")
   cancelReason     String?   @map("cancel_reason")
-  recoveryAttempts Int      @default(0) @map("recovery_attempts")
-  lastSeenAt       DateTime @default(now()) @map("last_seen_at")
-  createdAt        DateTime @default(now()) @map("created_at")
+  recoveryAttempts Int       @default(0) @map("recovery_attempts")
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
   campaignQueue CartCampaignQueue[]
 
@@ -2897,47 +2899,47 @@ model DailyProfitCache {
 // admin UI seeds a dropdown with common e-commerce categories as a starting
 // point, not a closed set.
 model Expense {
-  id                Int      @id @default(autoincrement())
-  voucherNo         String   @unique @map("voucher_no")
-  expenseDate       DateTime @map("expense_date") @db.Date
-  categoryId        Int      @map("category_id")
-  costCentreId      Int?     @map("cost_centre_id")
+  id           Int      @id @default(autoincrement())
+  voucherNo    String   @unique @map("voucher_no")
+  expenseDate  DateTime @map("expense_date") @db.Date
+  categoryId   Int      @map("category_id")
+  costCentreId Int?     @map("cost_centre_id")
   // The payee. Required: an expense with no counterparty cannot be aged,
   // cannot carry a supplier BIN, and cannot net against what that party owes
   // us. Free-text payee names were the old design core defect.
-  partyId           Int      @map("party_id")
+  partyId      Int      @map("party_id")
 
   // The VAT split is computed by computeExpenseAmounts() in @amader/shared --
   // the same function the admin form calc strip calls, so what is shown can
   // never differ from what is stored. Do not recompute these anywhere.
-  netAmount         Decimal  @map("net_amount") @db.Decimal(12, 2)
-  vatRate           Decimal  @default(0) @map("vat_rate") @db.Decimal(5, 2)
-  vatAmount         Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
-  grossAmount       Decimal  @map("gross_amount") @db.Decimal(12, 2)
+  netAmount         Decimal @map("net_amount") @db.Decimal(12, 2)
+  vatRate           Decimal @default(0) @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount         Decimal @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  grossAmount       Decimal @map("gross_amount") @db.Decimal(12, 2)
   // Bangladeshi supplier bills are normally quoted VAT-inclusive. Without
   // this flag the old code multiplied by the rate as if exclusive and
   // overstated claimable input VAT by ~13%.
-  amountIncludesVat Boolean  @default(false) @map("amount_includes_vat")
+  amountIncludesVat Boolean @default(false) @map("amount_includes_vat")
   // Mushak 6.3 challan number. No challan (or no supplier BIN) means the
   // input-VAT rebate is lost on audit -- surfaced by the "at risk" report.
-  mushakChallanNo   String?  @map("mushak_challan_no")
+  mushakChallanNo   String? @map("mushak_challan_no")
 
   // Withheld on the supplier behalf and owed to NBR. Not our money.
-  aitPercent        Decimal  @default(0) @map("ait_percent") @db.Decimal(5, 2)
-  aitAmount         Decimal  @default(0) @map("ait_amount") @db.Decimal(12, 2)
-  vdsPercent        Decimal  @default(0) @map("vds_percent") @db.Decimal(5, 2)
-  vdsAmount         Decimal  @default(0) @map("vds_amount") @db.Decimal(12, 2)
-  netPayable        Decimal  @map("net_payable") @db.Decimal(12, 2)
+  aitPercent Decimal @default(0) @map("ait_percent") @db.Decimal(5, 2)
+  aitAmount  Decimal @default(0) @map("ait_amount") @db.Decimal(12, 2)
+  vdsPercent Decimal @default(0) @map("vds_percent") @db.Decimal(5, 2)
+  vdsAmount  Decimal @default(0) @map("vds_amount") @db.Decimal(12, 2)
+  netPayable Decimal @map("net_payable") @db.Decimal(12, 2)
 
-  dueDate           DateTime? @map("due_date") @db.Date
-  attachmentUrl     String?   @map("attachment_url")
-  note              String?
+  dueDate       DateTime? @map("due_date") @db.Date
+  attachmentUrl String?   @map("attachment_url")
+  note          String?
   // Vouchers are voided, never deleted: a voucher whose ledger rows have
   // vanished cannot be reconciled against a bank statement.
-  voidedAt          DateTime? @map("voided_at")
-  createdBy         Int?      @map("created_by")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  voidedAt      DateTime? @map("voided_at")
+  createdBy     Int?      @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   category       ExpenseCategory @relation(fields: [categoryId], references: [id])
   costCentre     CostCentre?     @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
@@ -2975,32 +2977,38 @@ enum DueSource {
 // beside the movements is what made cash-flow reporting count a
 // three-instalment due three times.
 model Due {
-  id        Int       @id @default(autoincrement())
-  docNo     String    @unique @map("doc_no")
-  kind      DueKind
-  partyId   Int       @map("party_id")
-  source    DueSource
-  amount    Decimal   @db.Decimal(12, 2)
-  issueDate DateTime  @map("issue_date") @db.Date
-  dueDate   DateTime? @map("due_date") @db.Date
+  id               Int       @id @default(autoincrement())
+  docNo            String    @unique @map("doc_no")
+  kind             DueKind
+  partyId          Int       @map("party_id")
+  source           DueSource
+  amount           Decimal   @db.Decimal(12, 2)
+  issueDate        DateTime  @map("issue_date") @db.Date
+  dueDate          DateTime? @map("due_date") @db.Date
   // Set when this payable was generated from an unpaid expense voucher, or
   // this receivable from a COD order. Generated, never retyped.
-  expenseId Int?      @map("expense_id")
-  orderId   Int?      @map("order_id")
-  note      String?
-  voidedAt  DateTime? @map("voided_at")
-  createdBy Int?      @map("created_by")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  expenseId        Int?      @map("expense_id")
+  orderId          Int?      @map("order_id")
+  // Set when this receivable is the invoice for a wholesale order. Same role
+  // orderId plays for a retail COD order -- the due is generated, never
+  // retyped, and deleting the order must not silently delete the money.
+  wholesaleOrderId Int?      @map("wholesale_order_id")
+  note             String?
+  voidedAt         DateTime? @map("voided_at")
+  createdBy        Int?      @map("created_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  party         Party         @relation(fields: [partyId], references: [id])
-  expense       Expense?      @relation(fields: [expenseId], references: [id], onDelete: SetNull)
-  order         Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  ledgerEntries LedgerEntry[]
+  party          Party           @relation(fields: [partyId], references: [id])
+  expense        Expense?        @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  order          Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  wholesaleOrder WholesaleOrder? @relation(fields: [wholesaleOrderId], references: [id], onDelete: SetNull)
+  ledgerEntries  LedgerEntry[]
 
   @@index([kind])
   @@index([partyId])
   @@index([orderId])
+  @@index([wholesaleOrderId])
   @@map("dues")
 }
 
@@ -3016,6 +3024,10 @@ enum PartyRole {
   STAFF
   GOVERNMENT
   OTHER
+  // A shop we sell to in bulk. A role rather than a separate table because a
+  // wholesale buyer is a counterparty like any other -- and a real one can be
+  // both (a shop that also supplies us), which two tables could not express.
+  WHOLESALE
 }
 
 // One record per counterparty -- supplier, courier, landlord, wholesale
@@ -3024,38 +3036,39 @@ enum PartyRole {
 // for delivery, and only a single party record makes that net position
 // queryable.
 model Party {
-  id                Int         @id @default(autoincrement())
+  id                Int                  @id @default(autoincrement())
   name              String
-  type              PartyType   @default(COMPANY)
+  type              PartyType            @default(COMPANY)
   roles             PartyRole[]
   phone             String?
   email             String?
   address           String?
-  bin               String?     // VAT registration -- required to claim input VAT
+  bin               String? // VAT registration -- required to claim input VAT
   tin               String?
-  customerId        Int?        @map("customer_id")
-  openingReceivable Decimal     @default(0) @map("opening_receivable") @db.Decimal(12, 2)
-  openingPayable    Decimal     @default(0) @map("opening_payable") @db.Decimal(12, 2)
+  customerId        Int?                 @map("customer_id")
+  openingReceivable Decimal              @default(0) @map("opening_receivable") @db.Decimal(12, 2)
+  openingPayable    Decimal              @default(0) @map("opening_payable") @db.Decimal(12, 2)
   // PHASE 2 HOOK: wholesale credit terms live here so a wholesale invoice
   // module attaches without altering this table.
-  creditLimit       Decimal?    @map("credit_limit") @db.Decimal(12, 2)
-  creditDays        Int?        @map("credit_days")
+  creditLimit       Decimal?             @map("credit_limit") @db.Decimal(12, 2)
+  creditDays        Int?                 @map("credit_days")
   // Links this party to a courier provider. At most one party per provider;
   // this is how a shipment finds the party it settles against. Adding Pathao
   // later is one row here, not a code change -- nothing may hardcode a
   // courier name.
   courierProvider   CourierProviderName? @unique @map("courier_provider")
   note              String?
-  isActive          Boolean     @default(true) @map("is_active")
-  deletedAt         DateTime?   @map("deleted_at")
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
+  isActive          Boolean              @default(true) @map("is_active")
+  deletedAt         DateTime?            @map("deleted_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
 
-  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  expenses       Expense[]
-  dues           Due[]
-  ledgerEntries  LedgerEntry[]
-  codSettlements CodSettlement[]
+  customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  expenses        Expense[]
+  dues            Due[]
+  ledgerEntries   LedgerEntry[]
+  codSettlements  CodSettlement[]
+  wholesaleOrders WholesaleOrder[]
 
   @@index([name])
   @@map("parties")
@@ -3122,7 +3135,7 @@ model LedgerEntry {
   expenseId    Int?            @map("expense_id")
   dueId        Int?            @map("due_id")
   orderId      Int?            @map("order_id")
-  reference    String?         // bKash TrxID / cheque no / bank ref
+  reference    String? // bKash TrxID / cheque no / bank ref
   note         String?
   // Set when this entry reverses another. Reversal is how anything is undone;
   // there is no delete path.
@@ -3210,4 +3223,105 @@ model CodSettlement {
 
   @@index([provider, settlementDate])
   @@map("cod_settlements")
+}
+
+// ---------------------------------------------------------------------------
+// WHOLESALE
+//
+// Wholesale trade is a separate book from the retail storefront. These orders
+// are placed by hand in the admin for shops we sell to in bulk; they are not
+// website orders, so they deliberately do NOT live in `Order`/`Customer`.
+// That separation is the whole point -- the Order Manager and the Customers
+// pages query those two tables, so a wholesale sale can never leak into them,
+// and no filter has to be remembered to keep it out.
+//
+// Two things DO cross the boundary, because they are the same physical and
+// financial reality either way:
+//   * stock -- goods leaving for a wholesale buyer left the same warehouse
+//   * money -- every wholesale order raises a `Due` (RECEIVABLE, source
+//     WHOLESALE_INVOICE) against the buyer's `Party`, so the sale, what was
+//     paid and what is still owed appear in Accounts with no separate
+//     wholesale reporting path to keep in sync.
+//
+// The buyer itself is a `Party`, not a new table: Party already carries the
+// wholesale credit-terms hook (creditLimit/creditDays) and is what the ledger,
+// dues and statements are keyed on.
+// ---------------------------------------------------------------------------
+
+enum WholesaleOrderStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  CANCELLED
+}
+
+// Not the CourierProviderName enum: those are API-integrated retail couriers
+// (Pathao/RedX/Steadfast) that book their own consignments. Wholesale ships
+// by the couriers the business actually uses for bulk, and the consignment
+// number is whatever they hand over on the counterfoil -- typed in, not
+// fetched. A new courier here is one enum value plus a migration.
+enum WholesaleCourier {
+  SUNDARBAN
+  AJR
+}
+
+model WholesaleOrder {
+  id            Int                  @id @default(autoincrement())
+  orderNumber   String               @unique @map("order_number")
+  partyId       Int                  @map("party_id")
+  status        WholesaleOrderStatus @default(PENDING)
+  courier       WholesaleCourier
+  /// The ID the courier gives us for the parcel. Optional: a wholesale order
+  /// is often created before it is handed to the courier, and the number only
+  /// exists after that.
+  consignmentId String?              @map("consignment_id")
+
+  subtotal       Decimal @db.Decimal(12, 2)
+  deliveryCharge Decimal @default(0) @map("delivery_charge") @db.Decimal(12, 2)
+  discount       Decimal @default(0) @db.Decimal(12, 2)
+  total          Decimal @db.Decimal(12, 2)
+
+  note        String?
+  placedAt    DateTime  @map("placed_at") @db.Date
+  cancelledAt DateTime? @map("cancelled_at")
+  createdBy   Int?      @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  party Party                @relation(fields: [partyId], references: [id])
+  items WholesaleOrderItem[]
+  // Deliberately a list, not a single due: the invoice is one row today, but
+  // a part-shipped order raising a second one must not require a schema change.
+  dues  Due[]
+
+  @@index([partyId])
+  @@index([status])
+  @@index([placedAt])
+  @@map("wholesale_orders")
+}
+
+model WholesaleOrderItem {
+  id        Int  @id @default(autoincrement())
+  orderId   Int  @map("order_id")
+  // Nullable + SetNull, exactly like OrderItem: deleting a product must not
+  // delete the history of having sold it. The snapshots below are what the
+  // invoice keeps reading afterwards.
+  productId Int? @map("product_id")
+  variantId Int? @map("variant_id")
+
+  nameSnapshot String  @map("name_snapshot")
+  skuSnapshot  String? @map("sku_snapshot")
+  /// The wholesale rate, which is not the retail price -- that is the entire
+  /// reason it is captured per line rather than read back off the product.
+  unitPrice    Decimal @map("unit_price") @db.Decimal(12, 2)
+  quantity     Int
+  lineTotal    Decimal @map("line_total") @db.Decimal(12, 2)
+
+  order   WholesaleOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("wholesale_order_items")
 }
