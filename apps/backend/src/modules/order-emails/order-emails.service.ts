@@ -13,7 +13,13 @@ export interface OrderEmailResult {
 }
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
-  include: { addresses: true; items: true; payments: true; customer: true };
+  include: {
+    addresses: true;
+    items: true;
+    payments: true;
+    customer: true;
+    digitalDownloads: true;
+  };
 }>;
 
 // The single place that sends order/shipment/payment-lifecycle emails —
@@ -345,6 +351,13 @@ export class OrderEmailsService {
         // an optional nicety — without it, the order-placed email/variables
         // would silently have nothing to fall back to.
         customer: true,
+        // Powers `download_links` — the direct, token-gated file links the
+        // digital order email carries alongside the account link. Selected
+        // whole rather than by field because the caller needs both the token
+        // and the unlock state; Product is deliberately NOT joined (the R2
+        // bucket is public, so digitalFileKey must never leave
+        // streamByToken).
+        digitalDownloads: true,
       },
     });
   }
@@ -379,8 +392,35 @@ export class OrderEmailsService {
       // goes to the account page rather than to any single file — the
       // per-file links go out in digital_download instead.
       downloads_url: `${this.config.get<string>('STOREFRONT_BASE_URL') ?? ''}/account/downloads`,
+      // Direct, token-gated links — one per unlocked file — so a digital
+      // buyer can download straight from the email instead of being bounced
+      // to a login page they may not have an account session for. Empty
+      // string when nothing is unlocked yet, which renders as nothing.
+      download_links: this.buildDownloadLinksHtml(order),
       total: `${order.currency} ${order.totalAmount.toString()}`,
     };
+  }
+
+  // One button per unlocked digital file. Locked rows are skipped: their
+  // token exists from checkout, but the endpoint refuses it until payment is
+  // confirmed, so linking it would hand the buyer a button that fails.
+  private buildDownloadLinksHtml(order: OrderWithRelations): string {
+    // Defensive `?? []`: this service's contract is that no public method
+    // ever throws, and a missing relation must not be the one thing that
+    // breaks a paid customer's email.
+    const unlocked = (order.digitalDownloads ?? []).filter((d) => d.unlockedAt !== null);
+    if (unlocked.length === 0) return '';
+    const rows = unlocked
+      .map((d) => {
+        const item = order.items.find((i) => i.productId === d.productId);
+        const name = this.escapeHtml(item?.productNameSnapshot ?? 'Your file');
+        // download_url is built from a hex token by this class, never from
+        // customer input, so it is not escaped — same reasoning as
+        // sendDigitalDownload's own comment.
+        return `<p style="margin:0 0 12px;text-align:center;"><a href="${this.buildDownloadUrl(d.token)}" style="display:inline-block;background:#2e7d43;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Download ${name}</a></p>`;
+      })
+      .join('');
+    return rows;
   }
 
   private buildProductListHtml(items: OrderWithRelations['items']): string {

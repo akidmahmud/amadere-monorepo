@@ -30,6 +30,9 @@ describe('OrderEmailsService.sendDigitalDownload', () => {
       { productId: 11, productNameSnapshot: 'Ebook Two', quantity: 1 },
     ],
     payments: [],
+    // loadOrder now includes these — they drive `download_links`, the direct
+    // per-file buttons the digital order email carries.
+    digitalDownloads: [],
     customer: { email: 'buyer@example.com', firstName: 'Ada', lastName: 'L', phone: '8801700000000' },
   };
 
@@ -83,12 +86,57 @@ describe('OrderEmailsService.sendDigitalDownload', () => {
     expect(email.send.mock.calls[0][0]).toBe('buyer@example.com');
   });
 
-  it('builds the link on API_BASE_URL, not the storefront origin', async () => {
+  it('builds the download link on API_BASE_URL, not the storefront origin', async () => {
     await service.sendDigitalDownload(42, [{ token: 'aaa', productId: 10 }]);
     // The endpoint is GET /api/v1/downloads/:token on the backend; the
     // storefront has no route that serves it.
+    //
+    // Asserted on the URL itself rather than on "STOREFRONT_BASE_URL was
+    // never read", which this always did and which was never true of the
+    // whole render: buildOrderVariables legitimately reads that var for
+    // `downloads_url`, the My Account link every order email carries. A
+    // digital email now deliberately contains BOTH origins — the direct file
+    // link on the API, the account link on the storefront.
     expect(config.get).toHaveBeenCalledWith('API_BASE_URL');
-    expect(config.get).not.toHaveBeenCalledWith('STOREFRONT_BASE_URL');
+    const download = templates.render.mock.calls[0][1].download_url as string;
+    expect(download).toBe('https://api.amadere.com/api/v1/downloads/aaa');
+    expect(download).not.toContain('amadere.com/account');
+  });
+
+  // `download_links` is what puts the direct file buttons in the order email
+  // itself, instead of only a My Account link that bounces a signed-out buyer
+  // to the login page.
+  describe('download_links', () => {
+    it('renders one direct button per UNLOCKED file, and none for locked ones', async () => {
+      prisma.client.order.findUnique.mockResolvedValue({
+        ...ORDER,
+        digitalDownloads: [
+          { token: 'tok-a', productId: 10, unlockedAt: new Date() },
+          { token: 'tok-locked', productId: 11, unlockedAt: null },
+        ],
+      });
+
+      await service.sendOrderPlaced(42);
+
+      const vars = templates.render.mock.calls[0][1] as Record<string, string>;
+      expect(vars.download_links).toContain('https://api.amadere.com/api/v1/downloads/tok-a');
+      // A locked token's endpoint refuses it until payment is confirmed, so
+      // linking it would hand the buyer a button that fails.
+      expect(vars.download_links).not.toContain('tok-locked');
+      // Product name comes off the order line the buyer actually purchased.
+      expect(vars.download_links).toContain('Ebook &lt;One&gt;');
+    });
+
+    it('is empty when nothing is unlocked, so the template renders nothing', async () => {
+      prisma.client.order.findUnique.mockResolvedValue({
+        ...ORDER,
+        digitalDownloads: [{ token: 'tok-locked', productId: 11, unlockedAt: null }],
+      });
+
+      await service.sendOrderPlaced(42);
+
+      expect((templates.render.mock.calls[0][1] as Record<string, string>).download_links).toBe('');
+    });
   });
 
   it('tolerates a trailing slash on API_BASE_URL', async () => {

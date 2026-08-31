@@ -247,7 +247,12 @@ export class AdminOrderCreationService {
         }
       }
 
-      const authResult = await this.payments.resolve(dto.paymentProvider).authorize(created.id, totalAmount);
+      // resolve() is async now (BKASH's gateway-vs-manual answer lives in
+      // the database). Staff-created orders are always recorded as already
+      // arranged offline, so this never reaches a hosted gateway.
+      const authResult = await (
+        await this.payments.resolve(dto.paymentProvider)
+      ).authorize(created.id, totalAmount);
       await tx.payment.create({
         data: {
           orderId: created.id,

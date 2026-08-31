@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/social-login": {
         parameters: {
             query?: never;
@@ -606,6 +622,38 @@ export interface paths {
         get: operations["SiteInfoController_getSiteInfo"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog-feed/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCatalogFeedController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog-feed/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCatalogFeedController_refresh"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1444,6 +1492,22 @@ export interface paths {
         patch: operations["AdminProductsController_updateVariantPrice"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/{variantId}/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_setDefaultVariant"];
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/variants/{variantId}/sku": {
         parameters: {
             query?: never;
@@ -1940,6 +2004,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/bkash/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BkashCallbackController_publicConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payment-settings/bkash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBkashSettingsController_get"];
+        put: operations["AdminBkashSettingsController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payment-settings/bkash/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminBkashSettingsController_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/accounts/vat-settings": {
         parameters: {
             query?: never;
@@ -2404,6 +2516,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/accounts/vat/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminVatController_exceptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/vat/exceptions/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminVatController_setException"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/accounts/reports/overview": {
         parameters: {
             query?: never;
@@ -2468,6 +2612,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/checkout/abandonment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CheckoutController_recordAbandonment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/checkout": {
         parameters: {
             query?: never;
@@ -2478,6 +2638,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["CheckoutController_placeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/restore-cart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_restoreCart"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3374,6 +3550,278 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminCustomersController_dial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminRecoveryController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/rate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminRecoveryController_rate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminRecoveryController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_clearAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminRecoveryController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/create-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_createOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminRecoveryController_getSettings"];
+        put: operations["AdminRecoveryController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCartCampaignsController_listTemplates"];
+        put?: never;
+        post: operations["AdminCartCampaignsController_createTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminCartCampaignsController_updateTemplate"];
+        post?: never;
+        delete: operations["AdminCartCampaignsController_deleteTemplate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCartCampaignsController_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/queue/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCartCampaignsController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/queue/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCartCampaignsController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCartCampaignsController_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/cart-campaigns/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCartCampaignsController_getSettings"];
+        put: operations["AdminCartCampaignsController_updateSettings"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5604,262 +6052,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/net-profit/recovery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminRecoveryController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminRecoveryController_rate"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminRecoveryController_export"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminRecoveryController_import"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/clear": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminRecoveryController_clearAll"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["AdminRecoveryController_remove"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/{id}/send": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminRecoveryController_send"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/{id}/create-order": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminRecoveryController_createOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/recovery/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminRecoveryController_getSettings"];
-        put: operations["AdminRecoveryController_updateSettings"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminCartCampaignsController_listTemplates"];
-        put?: never;
-        post: operations["AdminCartCampaignsController_createTemplate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/templates/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["AdminCartCampaignsController_updateTemplate"];
-        post?: never;
-        delete: operations["AdminCartCampaignsController_deleteTemplate"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/queue": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminCartCampaignsController_queue"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/queue/{id}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminCartCampaignsController_retry"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/queue/{id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AdminCartCampaignsController_cancel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminCartCampaignsController_logs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/net-profit/cart-campaigns/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminCartCampaignsController_getSettings"];
-        put: operations["AdminCartCampaignsController_updateSettings"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/admin/net-profit/profit/report": {
         parameters: {
             query?: never;
@@ -6444,7 +6636,7 @@ export interface components {
             /** @description Phone number or email */
             identifier: string;
             /** @enum {string} */
-            purpose: "REGISTER" | "LOGIN";
+            purpose: "REGISTER" | "LOGIN" | "RESET_PASSWORD";
         };
         OtpVerifyDto: {
             /** @description Phone number or email */
@@ -6452,6 +6644,16 @@ export interface components {
             code: string;
             /** @enum {string} */
             purpose: "REGISTER" | "LOGIN";
+        };
+        ResetPasswordDto: {
+            /** @description Phone number or email */
+            identifier: string;
+            /** @description The 6-digit RESET_PASSWORD OTP */
+            code: string;
+            newPassword: string;
+        };
+        SuccessResponseDto: {
+            success: boolean;
         };
         SocialLoginDto: {
             /** @enum {string} */
@@ -6639,6 +6841,20 @@ export interface components {
             seoDescription: string | null;
             seoImageUrl: string | null;
         };
+        FeedIssueDto: {
+            reason: string;
+            count: number;
+            productIds?: number[];
+        };
+        CatalogFeedStatusDto: {
+            productCount: number;
+            generatedAt: string;
+            metaUrl: string;
+            googleUrl: string;
+            tiktokUrl: string;
+            skipped: components["schemas"]["FeedIssueDto"][];
+            warnings: components["schemas"]["FeedIssueDto"][];
+        };
         PermissionDto: {
             id: number;
             resource: string;
@@ -6738,11 +6954,14 @@ export interface components {
         MediaFolderDto: {
             id: number;
             name: string;
+            parentId: number | null;
             /** Format: date-time */
             createdAt: string;
         };
         CreateMediaFolderDto: {
             name: string;
+            /** @description Create this folder inside another one */
+            parentId?: number;
         };
         AdminDigitalPreviewPageDto: {
             pageNumber: number;
@@ -7298,6 +7517,7 @@ export interface components {
             name: string;
             price: string | null;
             salePrice: string | null;
+            stockStatus: Record<string, never>;
         };
         AdminDeletedProductDto: {
             id: number;
@@ -7364,6 +7584,9 @@ export interface components {
             productType: Record<string, never>;
             status: Record<string, never>;
             isFeatured: boolean;
+            googleProductCategory: string | null;
+            customLabels: string[];
+            excludeFromFeed: boolean;
             flagLabel: Record<string, never> | null;
             videoUrl: string | null;
             hasVariants: boolean;
@@ -7470,6 +7693,15 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
+            /** @description Google product taxonomy id, e.g. '2474' */
+            googleProductCategory?: string | null;
+            /** @description custom_label_0..4, in order */
+            customLabels?: string[];
+            /**
+             * @description Keep this product out of every catalog feed
+             * @default false
+             */
+            excludeFromFeed: boolean;
             videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
@@ -7540,6 +7772,15 @@ export interface components {
             isFeatured: boolean;
             /** @enum {string|null} */
             flagLabel?: "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED" | null;
+            /** @description Google product taxonomy id, e.g. '2474' */
+            googleProductCategory?: string | null;
+            /** @description custom_label_0..4, in order */
+            customLabels?: string[];
+            /**
+             * @description Keep this product out of every catalog feed
+             * @default false
+             */
+            excludeFromFeed: boolean;
             videoUrl?: string | null;
             /**
              * @description If true, price/stock live on variants instead of the product itself
@@ -7935,6 +8176,24 @@ export interface components {
             zones: components["schemas"]["ShippingZoneDto"][];
             fallback: components["schemas"]["ShippingFallbackDto"];
         };
+        UpdateBkashSettingsDto: {
+            isActive?: boolean;
+            /** @description Live mode off = bKash sandbox */
+            liveMode?: boolean;
+            methodNameEn?: string;
+            methodNameBn?: string;
+            descriptionEn?: string;
+            descriptionBn?: string;
+            logoUrl?: string;
+            /** @description Leave blank to keep the existing stored value */
+            username?: string;
+            /** @description Leave blank to keep the existing stored value */
+            password?: string;
+            /** @description Leave blank to keep the existing stored value */
+            appKey?: string;
+            /** @description Leave blank to keep the existing stored value */
+            appSecretKey?: string;
+        };
         CreatePartyDto: {
             name: string;
             /** @enum {string} */
@@ -8119,6 +8378,9 @@ export interface components {
             reference?: string;
             note?: string;
         };
+        SetVatExceptionDto: {
+            ratePercent?: number | null;
+        };
         RequestCodOtpDto: {
             /** @description Shipping phone number the order will be placed under */
             phone: string;
@@ -8129,6 +8391,20 @@ export interface components {
             channel: "PHONE" | "EMAIL";
             /** Format: email */
             email?: string;
+            /** @description Recipient name, for abandonment recovery only */
+            name?: string;
+        };
+        CheckoutAbandonmentDto: {
+            name?: string;
+            phone?: string;
+            /** Format: email */
+            email?: string;
+            addressLine?: string;
+            area?: string;
+            district?: string;
+            division?: string;
+            postCode?: string;
+            landmark?: string;
         };
         CheckoutAddressDto: {
             recipientName: string;
@@ -8288,6 +8564,10 @@ export interface components {
             payments: components["schemas"]["OrderPaymentDto"][];
             shipment: components["schemas"]["OrderShipmentDto"] | null;
         };
+        RestoreCartDto: {
+            /** @description bKash's paymentID, as returned on their redirect back */
+            paymentID: string;
+        };
         TrackOrderDto: {
             orderNumber: string;
             /** @description Phone number used on the shipping address */
@@ -8307,7 +8587,7 @@ export interface components {
              * @description How this order was taken — never WEBSITE for a staff-created order
              * @enum {string}
              */
-            channel: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
+            channel: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
             shippingAddress: components["schemas"]["CheckoutAddressDto"];
             /** @description Defaults to shippingAddress if omitted */
             billingAddress?: components["schemas"]["CheckoutAddressDto"];
@@ -8371,7 +8651,7 @@ export interface components {
              * @description Origin — how the order was placed
              * @enum {string}
              */
-            channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP";
+            channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
             /** @description Shipping address's phone */
             phone?: string;
             /** @description Shipping address's address line */
@@ -8416,12 +8696,14 @@ export interface components {
             allowNoHistory: boolean;
             /** @description Require advance payment when successRate% is below this */
             advanceEnabled: boolean;
-            /** @description successRate% below this (and above 0) triggers advance, not block (0-100, <= acceptPercent) */
+            /** @description Medium-risk floor: successRate% between this and acceptPercent asks for advance payment. BELOW this is high risk and is blocked. (0-100, <= acceptPercent) */
             advanceScoreThreshold: number;
             /** @description Percent of order total required upfront when advance triggers */
             advanceRequiredPercent: number;
-            /** @description Reject the checkout outright when successRate% is below acceptPercent (and not already caught by advance) */
+            /** @description Reject high-risk checkouts outright: successRate% below advanceScoreThreshold, or below acceptPercent when advance is disabled */
             blockEnabled: boolean;
+            /** @description Require an OTP at checkout ONLY for customers below acceptPercent. Trusted customers (at/above it) place the order without one. Independent of Settings > Checkout OTP, which demands an OTP from everyone. */
+            otpOnRiskEnabled: boolean;
             cacheTtlHours: number;
             blockMessageEn: string;
             blockMessageBn: string;
@@ -8436,6 +8718,7 @@ export interface components {
             advanceScoreThreshold?: number;
             advanceRequiredPercent?: number;
             blockEnabled?: boolean;
+            otpOnRiskEnabled?: boolean;
             cacheTtlHours?: number;
             blockMessageEn?: string;
             blockMessageBn?: string;
@@ -8511,9 +8794,6 @@ export interface components {
             avatarUrl?: string;
             /** @description YYYY-MM-DD */
             dob?: string;
-        };
-        SuccessResponseDto: {
-            success: boolean;
         };
         SetPasswordDto: {
             newPassword: string;
@@ -8777,6 +9057,80 @@ export interface components {
             outcome: "CONNECTED" | "NO_ANSWER" | "VOICEMAIL" | "WRONG_NUMBER" | "DECLINED";
             notes?: string;
         };
+        CancelIncompleteOrderDto: {
+            reason: string;
+        };
+        IncompleteOrderDto: {
+            id: number;
+            customerId: number | null;
+            name: string | null;
+            phone: string | null;
+            email: string | null;
+            address: Record<string, never>;
+            cart: Record<string, never>;
+            subtotal: string;
+            stage: string;
+            recovered: boolean;
+            recoveredOrderId: number | null;
+            /** Format: date-time */
+            canceledAt: string | null;
+            cancelReason: string | null;
+            recoveryAttempts: number;
+            /** Format: date-time */
+            lastSeenAt: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CartCampaignTemplateDto: {
+            id: number;
+            channel: string;
+            name: string;
+            subject: string | null;
+            bodyEn: string;
+            bodyBn: string;
+            delayValue: number;
+            delayUnit: string;
+            status: string;
+        };
+        UpsertCampaignTemplateDto: {
+            /** @enum {string} */
+            channel: "EMAIL" | "SMS";
+            name: string;
+            /** @description Email only */
+            subject?: string;
+            bodyEn: string;
+            bodyBn: string;
+            delayValue: number;
+            /** @enum {string} */
+            delayUnit: "MINUTE" | "HOUR" | "DAY";
+            /** @enum {string} */
+            status?: "ACTIVE" | "PAUSED";
+        };
+        CartCampaignQueueDto: {
+            id: number;
+            incompleteId: number;
+            templateId: number;
+            channel: string;
+            recipient: string | null;
+            status: string;
+            attempts: number;
+            /** Format: date-time */
+            scheduledAt: string;
+            /** Format: date-time */
+            processedAt: string | null;
+            lastError: string | null;
+        };
+        CartCampaignLogDto: {
+            id: number;
+            incompleteId: number;
+            channel: string;
+            recipient: string | null;
+            subject: string | null;
+            message: string;
+            status: string;
+            /** Format: date-time */
+            sentAt: string;
+        };
         ShipmentEventDto: {
             status: Record<string, never>;
             note: string | null;
@@ -8820,6 +9174,7 @@ export interface components {
             status: Record<string, never>;
             consignmentId: string | null;
             trackingCode: string | null;
+            courierStatus: string | null;
         };
         ShipmentQueueRowDto: {
             id: number;
@@ -10061,56 +10416,6 @@ export interface components {
             /** Format: uri */
             screenshotUrl?: string;
         };
-        CartCampaignTemplateDto: {
-            id: number;
-            channel: string;
-            name: string;
-            subject: string | null;
-            bodyEn: string;
-            bodyBn: string;
-            delayValue: number;
-            delayUnit: string;
-            status: string;
-        };
-        UpsertCampaignTemplateDto: {
-            /** @enum {string} */
-            channel: "EMAIL" | "SMS";
-            name: string;
-            /** @description Email only */
-            subject?: string;
-            bodyEn: string;
-            bodyBn: string;
-            delayValue: number;
-            /** @enum {string} */
-            delayUnit: "MINUTE" | "HOUR" | "DAY";
-            /** @enum {string} */
-            status?: "ACTIVE" | "PAUSED";
-        };
-        CartCampaignQueueDto: {
-            id: number;
-            incompleteId: number;
-            templateId: number;
-            channel: string;
-            recipient: string | null;
-            status: string;
-            attempts: number;
-            /** Format: date-time */
-            scheduledAt: string;
-            /** Format: date-time */
-            processedAt: string | null;
-            lastError: string | null;
-        };
-        CartCampaignLogDto: {
-            id: number;
-            incompleteId: number;
-            channel: string;
-            recipient: string | null;
-            subject: string | null;
-            message: string;
-            status: string;
-            /** Format: date-time */
-            sentAt: string;
-        };
         OrderProfitDto: {
             id: number;
             orderId: number;
@@ -10476,6 +10781,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenPair"];
+                };
+            };
+        };
+    };
+    AuthController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponseDto"];
                 };
             };
         };
@@ -11300,6 +11636,52 @@ export interface operations {
             };
         };
     };
+    AdminCatalogFeedController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFeedStatusDto"];
+                };
+            };
+        };
+    };
+    AdminCatalogFeedController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFeedStatusDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFeedStatusDto"];
+                };
+            };
+        };
+    };
     AdminRbacController_listPermissions: {
         parameters: {
             query?: never;
@@ -11830,7 +12212,9 @@ export interface operations {
     };
     DownloadsController_download: {
         parameters: {
-            query?: never;
+            query: {
+                inline: string;
+            };
             header?: never;
             path: {
                 token: string;
@@ -13358,6 +13742,26 @@ export interface operations {
             };
         };
     };
+    AdminProductsController_setDefaultVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminProductsController_updateVariantSku: {
         parameters: {
             query?: never;
@@ -14497,6 +14901,84 @@ export interface operations {
             };
         };
     };
+    BkashCallbackController_publicConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminBkashSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminBkashSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBkashSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminBkashSettingsController_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminAccountsSettingsController_getVatSettings: {
         parameters: {
             query?: never;
@@ -15422,6 +15904,50 @@ export interface operations {
             };
         };
     };
+    AdminVatController_exceptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
+    AdminVatController_setException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetVatExceptionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
     AdminReportsController_overview: {
         parameters: {
             query: {
@@ -15508,6 +16034,29 @@ export interface operations {
             };
         };
     };
+    CheckoutController_recordAbandonment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Guest-Token"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutAbandonmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     CheckoutController_placeOrder: {
         parameters: {
             query?: {
@@ -15540,6 +16089,29 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    OrdersController_restoreCart: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreCartDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -17264,6 +17836,431 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_list: {
+        parameters: {
+            query: {
+                page?: number;
+                pageSize?: number;
+                recovered: boolean;
+                q: string;
+                stage: string;
+                from: string;
+                to: string;
+                outcome: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_rate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_export: {
+        parameters: {
+            query: {
+                recovered: boolean;
+                q: string;
+                stage: string;
+                from: string;
+                to: string;
+                outcome: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_clearAll: {
+        parameters: {
+            query: {
+                recovered: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelIncompleteOrderDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncompleteOrderDto"];
+                };
+            };
+        };
+    };
+    AdminRecoveryController_createOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutAddressDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminRecoveryController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_listTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartCampaignTemplateDto"][];
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_createTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertCampaignTemplateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartCampaignTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_updateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartCampaignTemplateDto"];
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_deleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCartCampaignsController_queue: {
+        parameters: {
+            query: {
+                status: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartCampaignQueueDto"][];
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCartCampaignsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCartCampaignsController_logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartCampaignLogDto"][];
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminCartCampaignsController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -21589,6 +22586,8 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
+                assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
                 q?: string;
                 /** @description ISO date — orders created on/after this instant */
@@ -21621,6 +22620,8 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
+                assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
                 q?: string;
                 /** @description ISO date — orders created on/after this instant */
@@ -21655,6 +22656,8 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
+                assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
                 q?: string;
                 /** @description ISO date — orders created on/after this instant */
@@ -21844,402 +22847,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_list: {
-        parameters: {
-            query: {
-                page?: number;
-                pageSize?: number;
-                recovered: boolean;
-                q: string;
-                from: string;
-                to: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_rate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_export: {
-        parameters: {
-            query: {
-                recovered: boolean;
-                q: string;
-                from: string;
-                to: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_import: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_clearAll: {
-        parameters: {
-            query: {
-                recovered: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_send: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_createOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CheckoutAddressDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminRecoveryController_getSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AdminRecoveryController_updateSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_listTemplates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CartCampaignTemplateDto"][];
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_createTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpsertCampaignTemplateDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CartCampaignTemplateDto"];
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_updateTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CartCampaignTemplateDto"];
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_deleteTemplate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminCartCampaignsController_queue: {
-        parameters: {
-            query: {
-                status: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CartCampaignQueueDto"][];
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_retry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminCartCampaignsController_cancel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminCartCampaignsController_logs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CartCampaignLogDto"][];
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_getSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AdminCartCampaignsController_updateSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
             };
         };
     };

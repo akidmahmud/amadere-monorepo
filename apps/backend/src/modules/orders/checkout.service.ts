@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -51,10 +45,15 @@ const Decimal = Prisma.Decimal;
 export type CheckoutResultDto = OrderDto & {
   tokens?: TokenPair | null;
   existingAccount?: boolean;
+  // Hosted-gateway handoff (bKash tokenized checkout). Present only when the
+  // chosen provider needs the customer to finish paying somewhere else.
+  paymentRedirectUrl?: string;
 };
 
 @Injectable()
 export class CheckoutService {
+  private readonly logger = new Logger(CheckoutService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly pricing: PricingService,
@@ -211,6 +210,16 @@ export class CheckoutService {
     if (digitalOnly && !identity.customerId && !dto.createAccount) {
       throw new BadRequestException(
         'Name and an email or phone are required to receive a digital order',
+      );
+    }
+    // Nothing is delivered, so there is no doorstep for cash to be collected
+    // at — and a COD digital order would sit unpaid with its file locked
+    // until staff manually completed it. The checkout UI hides COD for a
+    // digital-only cart; this is the server-side half, since a client can
+    // post whatever provider it likes.
+    if (digitalOnly && dto.paymentProvider === 'COD') {
+      throw new BadRequestException(
+        'Cash on delivery is not available for digital products',
       );
     }
 
@@ -497,19 +506,11 @@ export class CheckoutService {
         });
       }
 
-      const authResult = await this.payments
-        .resolve(dto.paymentProvider)
-        .authorize(created.id, totalAmount);
-      await tx.payment.create({
-        data: {
-          orderId: created.id,
-          provider: dto.paymentProvider,
-          status: authResult.status,
-          amount: totalAmount,
-          transactionRef: authResult.transactionRef,
-          rawResponse: (authResult.rawResponse as object) ?? undefined,
-        },
-      });
+      // NOTE: authorizing deliberately does NOT happen in here. A real
+      // gateway (bKash) makes two HTTPS round trips to authorize, and holding
+      // this transaction open across them risks a transaction timeout and
+      // holds row locks for the duration. The Payment row is created just
+      // after this block commits instead — see below.
 
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
       await tx.cart.update({
@@ -519,6 +520,48 @@ export class CheckoutService {
 
       return created;
     });
+
+    // Authorize outside the transaction (see the note above). A gateway that
+    // fails here leaves a real, PENDING-payment order rather than silently
+    // rolling back stock and coupon redemptions the customer already
+    // committed to — the same end state as an abandoned manual payment,
+    // which admins already have a workflow for.
+    let redirectUrl: string | undefined;
+    try {
+      const provider = await this.payments.resolve(dto.paymentProvider);
+      const authResult = await provider.authorize(order.id, totalAmount);
+      redirectUrl = authResult.redirectUrl;
+      await this.prisma.client.payment.create({
+        data: {
+          orderId: order.id,
+          provider: dto.paymentProvider,
+          status: authResult.status,
+          amount: totalAmount,
+          transactionRef: authResult.transactionRef,
+          rawResponse: (authResult.rawResponse as object) ?? undefined,
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Payment authorize failed for order ${order.id} (${dto.paymentProvider}): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      await this.prisma.client.payment.create({
+        data: {
+          orderId: order.id,
+          provider: dto.paymentProvider,
+          status: 'FAILED',
+          amount: totalAmount,
+          // Payment has no errorMessage column; rawResponse is where every
+          // other provider outcome already lands, so the reason goes there
+          // rather than costing a migration.
+          rawResponse: {
+            error: err instanceof Error ? err.message : String(err),
+          },
+        },
+      });
+    }
 
     this.events.emit(ORDER_CREATED_EVENT, {
       orderId: order.id,
@@ -566,8 +609,15 @@ export class CheckoutService {
       }
     }
 
-    await this.orderEmails.sendOrderPlaced(order.id);
-    await this.orderEmails.sendNewOrderAdminNotice(order.id);
+    // Not for a hosted-gateway handoff. `redirectUrl` means the customer is
+    // being sent to bKash and has not paid yet — telling them "we've received
+    // your order" at this point is wrong, and it arrived even when they went
+    // on to cancel the payment. BkashCallbackService sends both of these once
+    // the payment actually captures.
+    if (!redirectUrl) {
+      await this.orderEmails.sendOrderPlaced(order.id);
+      await this.orderEmails.sendNewOrderAdminNotice(order.id);
+    }
 
     const orderDto = await this.getByIdInternal(order.id);
     // tokens/existingAccount are only ever set on the digital-only,
@@ -575,13 +625,18 @@ export class CheckoutService {
     // OrderDto, byte-for-byte the same response shape as before this
     // feature. The web app uses these to set the customer session cookies
     // and to choose "you're in" vs. "sign in to download" messaging.
+    // `paymentRedirectUrl` is set only when the chosen provider is a hosted
+    // gateway (today: bKash tokenized checkout). Every other provider leaves
+    // it undefined and the response shape is unchanged, so the storefront can
+    // treat "redirect if present, otherwise show the confirmation panel".
     return checkoutAccountResult
       ? {
           ...orderDto,
           tokens: checkoutAccountResult.tokens,
           existingAccount: checkoutAccountResult.existingAccount,
+          paymentRedirectUrl: redirectUrl,
         }
-      : orderDto;
+      : { ...orderDto, paymentRedirectUrl: redirectUrl };
   }
 
   private async getByIdInternal(id: number) {

@@ -17,6 +17,24 @@ export function usePaymentMethodConfigs() {
   });
 }
 
+export type BkashGatewayConfig = {
+  methodNameEn: string;
+  methodNameBn: string;
+  descriptionEn: string;
+  descriptionBn: string;
+  logoUrl: string;
+} | null;
+
+// Public — null whenever the bKash online gateway is off or half-configured,
+// which is exactly when checkout must fall back to the manual bKash method
+// (or hide bKash entirely, if no manual config exists either).
+export function useBkashGatewayConfig() {
+  return useQuery({
+    queryKey: ["bkash-gateway-config"],
+    queryFn: async () => proxyFetch<BkashGatewayConfig>("/payments/bkash/config"),
+  });
+}
+
 export interface SubmitManualPaymentInput {
   orderId: number;
   method: "bkash" | "nagad" | "rocket" | "upay";

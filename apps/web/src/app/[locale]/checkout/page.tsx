@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { isRenderableDocument } from "@amader/page-builder/validate";
+import { BkashReturnNotice } from "@/components/checkout/BkashReturnNotice";
 import { CheckoutProvider } from "@/components/checkout/CheckoutProvider";
 import { CheckoutLayoutRenderer } from "@/components/checkout/CheckoutLayoutRenderer";
 import { getLanguageAlternates } from "@/i18n/alternates";
@@ -49,6 +51,11 @@ export default async function CheckoutPage({
     // data-checkout drives the CSS in globals.css that hides the site footer
     // on phones for this route only — see the rule there for why.
     <main className="flex-1" data-checkout>
+      {/* Only renders anything when bKash has just bounced the customer
+          back here with ?bkash=success|failed. */}
+      <Suspense fallback={null}>
+        <BkashReturnNotice />
+      </Suspense>
       {/* The provider owns the form and the brain either way; only the
           arrangement differs. Passing no children makes it render
           DefaultCheckoutLayout, which is the fallback for: no published

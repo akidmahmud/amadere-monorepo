@@ -1,11 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { OrderAddressType, Prisma } from '@amader/db';
+import { Locale, OrderAddress, OrderAddressType, Prisma } from '@amader/db';
 import { PaginatedResult, phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -14,6 +15,7 @@ import {
 } from '../../common/pagination.util';
 import { PaymentsService } from '../payments/payments.service';
 import { PricingService } from '../cart/pricing.service';
+import { CartService, type CartIdentity } from '../cart/cart.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { DownloadsService } from '../digital-products/downloads.service';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
@@ -70,6 +72,7 @@ export class OrdersService {
     private readonly events: EventEmitter2,
     private readonly orderEmails: OrderEmailsService,
     private readonly downloads: DownloadsService,
+    private readonly cart: CartService,
   ) {}
 
   async adminList(
@@ -490,6 +493,76 @@ export class OrdersService {
   }
 
   // Guest tracking: orderNumber + shipping phone, no account required.
+  // Undo of an abandoned hosted-gateway payment (bKash "cancel" on their
+  // page). The order was created and the cart emptied BEFORE the customer
+  // ever reached bKash, so cancelling there used to strand them on an empty
+  // checkout with a PENDING order left behind. This puts the lines back in
+  // their cart and cancels that order, so they are exactly where they were
+  // and no orphan order accumulates.
+  //
+  // Keyed on bKash's own `paymentID`, not the order number: the paymentID is
+  // long, opaque and issued by bKash, so it cannot be guessed to cancel or
+  // read someone else's order — the order number, which appears on invoices,
+  // could be. It reaches the browser only via bKash's own redirect back.
+  async restoreCartFromPayment(
+    identity: CartIdentity,
+    paymentID: string,
+    locale: Locale,
+  ): Promise<{ restored: number; address: OrderAddress | null }> {
+    const payment = await this.prisma.client.payment.findFirst({
+      where: { provider: 'BKASH', transactionRef: paymentID },
+      orderBy: { createdAt: 'desc' },
+    });
+    // Never touch a payment that actually went through — a customer
+    // re-opening the return URL after a SUCCESSFUL payment must not have
+    // their paid order cancelled out from under them.
+    if (!payment || payment.status === 'CAPTURED') {
+      throw new NotFoundException('No cancellable payment found');
+    }
+
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: payment.orderId },
+      include: { items: true, addresses: { where: { type: 'SHIPPING' }, take: 1 } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== 'PENDING' && order.status !== 'HOLD') {
+      // Staff already moved it on; restoring the cart would invite a
+      // duplicate purchase of an order that is being fulfilled.
+      throw new ConflictException('This order can no longer be cancelled');
+    }
+
+    // Through the normal add path on purpose: it re-validates stock and
+    // re-reads the current price, so a restored cart can never resurrect an
+    // out-of-stock line or a stale price. A line that is no longer buyable is
+    // skipped rather than failing the whole restore.
+    let restored = 0;
+    for (const item of order.items) {
+      // OrderItem.productId is nullable — the product can have been deleted
+      // since the order was placed. Nothing to put back in that case.
+      if (item.productId === null) continue;
+      try {
+        await this.cart.addItem(
+          identity,
+          { productId: item.productId, variantId: item.variantId ?? undefined, quantity: item.quantity },
+          locale,
+        );
+        restored += 1;
+      } catch {
+        // Skipped — out of stock or unpublished since the order was placed.
+      }
+    }
+
+    // The real cancel path, so stock reservations are released and the
+    // status history/events are written exactly as an admin cancel would.
+    await this.updateStatus(
+      order.id,
+      { status: 'CANCELED', note: 'Customer cancelled the bKash payment' },
+      null,
+    );
+
+    return { restored, address: order.addresses[0] ?? null };
+  }
+
   async track(dto: TrackOrderDto): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { orderNumber: dto.orderNumber },

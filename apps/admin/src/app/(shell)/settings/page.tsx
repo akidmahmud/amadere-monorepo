@@ -13,6 +13,7 @@ const SETTINGS_LINKS = [
   { href: "/settings/invoices", icon: "receipt_long", label: "Invoice Settings", description: "Company info and layout used on every invoice." },
   { href: "/settings/invoice-template", icon: "description", label: "Invoice Template", description: "Custom raw-HTML layout for generated invoices." },
   { href: "/settings/shipping-label", icon: "sell", label: "Shipping Label Template", description: "Site-wide layout for printed shipping labels." },
+  { href: "/settings/payment-methods", icon: "account_balance_wallet", label: "Payment Methods", description: "Online payment gateways (bKash) - credentials, live mode, activation." },
   { href: "/settings/email", icon: "mail", label: "Email Settings", description: "SMTP configuration used to send emails." },
   { href: "/settings/email-templates", icon: "forward_to_inbox", label: "Email Templates", description: "Enable/disable and edit every transactional email template." },
 ];

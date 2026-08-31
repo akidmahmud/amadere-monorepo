@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
@@ -14,7 +15,13 @@ import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CustomerJwtGuard } from '../../common/auth/customer-jwt.guard';
 import { CurrentCustomer } from '../../common/auth/current-customer.decorator';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  CartIdentityGuard,
+  type RequestWithCartIdentity,
+} from '../cart/cart-identity.guard';
+import { LocaleQueryDto } from '../../common/dto/locale-query.dto';
 import { OrdersService } from './orders.service';
+import { RestoreCartDto } from './dto/restore-cart.dto';
 import { TrackOrderDto } from './dto/track-order.dto';
 import { OrderDto } from './orders.mapper';
 
@@ -22,6 +29,24 @@ import { OrderDto } from './orders.mapper';
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
+
+  // Customer cancelled on a hosted gateway's page and came back. Puts the
+  // order's lines back in their cart and cancels the order — see
+  // OrdersService.restoreCartFromPayment for why this is keyed on bKash's
+  // paymentID rather than the order number.
+  @Post('restore-cart')
+  @UseGuards(CartIdentityGuard)
+  restoreCart(
+    @Req() req: RequestWithCartIdentity,
+    @Body() dto: RestoreCartDto,
+    @Query() { locale }: LocaleQueryDto,
+  ) {
+    return this.orders.restoreCartFromPayment(
+      req.cartIdentity,
+      dto.paymentID,
+      locale ?? 'EN',
+    );
+  }
 
   @Post('track')
   @ApiOkResponse({ type: OrderDto })

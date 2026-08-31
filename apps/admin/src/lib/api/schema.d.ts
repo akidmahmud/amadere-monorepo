@@ -2004,6 +2004,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/bkash/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BkashCallbackController_publicConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payment-settings/bkash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBkashSettingsController_get"];
+        put: operations["AdminBkashSettingsController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payment-settings/bkash/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminBkashSettingsController_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/accounts/vat-settings": {
         parameters: {
             query?: never;
@@ -2468,6 +2516,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/accounts/vat/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminVatController_exceptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/accounts/vat/exceptions/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminVatController_setException"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/accounts/reports/overview": {
         parameters: {
             query?: never;
@@ -2558,6 +2638,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["CheckoutController_placeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/restore-cart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_restoreCart"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3566,6 +3662,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminRecoveryController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_cancel"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8064,6 +8176,24 @@ export interface components {
             zones: components["schemas"]["ShippingZoneDto"][];
             fallback: components["schemas"]["ShippingFallbackDto"];
         };
+        UpdateBkashSettingsDto: {
+            isActive?: boolean;
+            /** @description Live mode off = bKash sandbox */
+            liveMode?: boolean;
+            methodNameEn?: string;
+            methodNameBn?: string;
+            descriptionEn?: string;
+            descriptionBn?: string;
+            logoUrl?: string;
+            /** @description Leave blank to keep the existing stored value */
+            username?: string;
+            /** @description Leave blank to keep the existing stored value */
+            password?: string;
+            /** @description Leave blank to keep the existing stored value */
+            appKey?: string;
+            /** @description Leave blank to keep the existing stored value */
+            appSecretKey?: string;
+        };
         CreatePartyDto: {
             name: string;
             /** @enum {string} */
@@ -8248,6 +8378,9 @@ export interface components {
             reference?: string;
             note?: string;
         };
+        SetVatExceptionDto: {
+            ratePercent?: number | null;
+        };
         RequestCodOtpDto: {
             /** @description Shipping phone number the order will be placed under */
             phone: string;
@@ -8266,6 +8399,12 @@ export interface components {
             phone?: string;
             /** Format: email */
             email?: string;
+            addressLine?: string;
+            area?: string;
+            district?: string;
+            division?: string;
+            postCode?: string;
+            landmark?: string;
         };
         CheckoutAddressDto: {
             recipientName: string;
@@ -8424,6 +8563,10 @@ export interface components {
             statusHistory: components["schemas"]["OrderStatusHistoryEntryDto"][];
             payments: components["schemas"]["OrderPaymentDto"][];
             shipment: components["schemas"]["OrderShipmentDto"] | null;
+        };
+        RestoreCartDto: {
+            /** @description bKash's paymentID, as returned on their redirect back */
+            paymentID: string;
         };
         TrackOrderDto: {
             orderNumber: string;
@@ -8913,6 +9056,30 @@ export interface components {
             /** @enum {string} */
             outcome: "CONNECTED" | "NO_ANSWER" | "VOICEMAIL" | "WRONG_NUMBER" | "DECLINED";
             notes?: string;
+        };
+        CancelIncompleteOrderDto: {
+            reason: string;
+        };
+        IncompleteOrderDto: {
+            id: number;
+            customerId: number | null;
+            name: string | null;
+            phone: string | null;
+            email: string | null;
+            address: Record<string, never>;
+            cart: Record<string, never>;
+            subtotal: string;
+            stage: string;
+            recovered: boolean;
+            recoveredOrderId: number | null;
+            /** Format: date-time */
+            canceledAt: string | null;
+            cancelReason: string | null;
+            recoveryAttempts: number;
+            /** Format: date-time */
+            lastSeenAt: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         CartCampaignTemplateDto: {
             id: number;
@@ -12045,7 +12212,9 @@ export interface operations {
     };
     DownloadsController_download: {
         parameters: {
-            query?: never;
+            query: {
+                inline: string;
+            };
             header?: never;
             path: {
                 token: string;
@@ -14732,6 +14901,84 @@ export interface operations {
             };
         };
     };
+    BkashCallbackController_publicConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminBkashSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminBkashSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBkashSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminBkashSettingsController_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminAccountsSettingsController_getVatSettings: {
         parameters: {
             query?: never;
@@ -15657,6 +15904,50 @@ export interface operations {
             };
         };
     };
+    AdminVatController_exceptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
+    AdminVatController_setException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetVatExceptionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
     AdminReportsController_overview: {
         parameters: {
             query: {
@@ -15798,6 +16089,29 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    OrdersController_restoreCart: {
+        parameters: {
+            query?: {
+                locale?: "EN" | "BN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreCartDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -17535,6 +17849,7 @@ export interface operations {
                 stage: string;
                 from: string;
                 to: string;
+                outcome: string;
             };
             header?: never;
             path?: never;
@@ -17575,6 +17890,7 @@ export interface operations {
                 stage: string;
                 from: string;
                 to: string;
+                outcome: string;
             };
             header?: never;
             path?: never;
@@ -17661,6 +17977,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminRecoveryController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelIncompleteOrderDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncompleteOrderDto"];
+                };
             };
         };
     };

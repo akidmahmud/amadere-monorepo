@@ -6,6 +6,8 @@ import { PaymentProvider } from './payment-provider.interface';
 import { CodPaymentProvider } from './providers/cod-payment.provider';
 import { UnconfiguredPaymentProvider } from './providers/unconfigured-payment.provider';
 import { ManualPaymentProvider } from './providers/manual-payment.provider';
+import { BkashPaymentProvider } from './bkash/bkash-payment.provider';
+import { BkashSettingsService } from './bkash/bkash-settings.service';
 
 @Injectable()
 export class PaymentsService {
@@ -16,6 +18,8 @@ export class PaymentsService {
     private readonly salesPosting: SalesPostingService,
     cod: CodPaymentProvider,
     manual: ManualPaymentProvider,
+    private readonly bkash: BkashPaymentProvider,
+    private readonly bkashSettings: BkashSettingsService,
   ) {
     this.providers = {
       COD: cod,
@@ -33,7 +37,15 @@ export class PaymentsService {
     };
   }
 
-  resolve(provider: PaymentProviderEnum): PaymentProvider {
+  // Async because BKASH's answer lives in the database: the tokenized
+  // gateway when it is switched on AND all four credentials are stored,
+  // otherwise the manual pay-to-a-merchant-number flow. A half-configured
+  // gateway must never be chosen — a customer would hit a dead redirect
+  // mid-checkout instead of simply seeing the manual instructions.
+  async resolve(provider: PaymentProviderEnum): Promise<PaymentProvider> {
+    if (provider === 'BKASH' && (await this.bkashSettings.isGatewayLive())) {
+      return this.bkash;
+    }
     return this.providers[provider];
   }
 
@@ -45,7 +57,7 @@ export class PaymentsService {
     if (!payment)
       throw new NotFoundException('No payment found for this order');
 
-    const result = await this.providers[payment.provider].refund(
+    const result = await (await this.resolve(payment.provider)).refund(
       payment.transactionRef,
       amount,
     );

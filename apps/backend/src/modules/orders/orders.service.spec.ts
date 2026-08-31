@@ -6,6 +6,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { PricingService } from '../cart/pricing.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { DownloadsService } from '../digital-products/downloads.service';
+import { CartService } from '../cart/cart.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 // reload() pulls in the full ORDER_INCLUDE shape via orders.mapper — stubbed
@@ -57,6 +58,8 @@ describe('OrdersService.updateStatus — digital lines and stock reservation', (
           },
         },
         { provide: DownloadsService, useValue: downloads },
+        // Only used by restoreCartFromPayment, which these tests never reach.
+        { provide: CartService, useValue: { addItem: jest.fn() } },
       ],
     }).compile();
     service = module.get(OrdersService);

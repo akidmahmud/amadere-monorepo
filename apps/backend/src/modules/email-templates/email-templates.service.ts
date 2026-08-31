@@ -250,17 +250,40 @@ export class EmailTemplatesService {
         ? `<img src="${settings.logoUrl}" alt="" height="${settings.logoHeight}" style="height:${settings.logoHeight}px;" />`
         : '',
       copyright: settings.copyright || `Copyright © ${new Date().getFullYear()}`,
-      custom_css: settings.customCss || '',
+      // `custom_css` is injected raw into a <style> element, so a value
+      // containing `</style` terminates that element early and everything
+      // after it escapes into the visible email as markup. Production hit
+      // exactly this: a copy of the base header pasted into the Custom CSS
+      // box broke out and rendered a second header with an unresolved
+      // `{{ logo_html }}` in it. CSS has no legitimate use for the sequence,
+      // so it is stripped rather than escaped.
+      custom_css: (settings.customCss || '').replace(/<\/\s*style/gi, ''),
       contact_email: settings.contactEmail || (await this.emailSettings.getConfig()).senderEmail || '',
     };
 
-    let html = bodyHtml;
+    // Substitute the body FIRST, then splice in the already-substituted
+    // header/footer — and never substitute again afterwards.
+    //
+    // The previous order (splice, then one final pass over the whole
+    // document) re-substituted content that had just been injected. Any
+    // settings-derived value containing `{{ ... }}` therefore got expanded a
+    // second time: a `custom_css` holding a pasted copy of the base header
+    // rendered the header three times over and left a literal
+    // `{{ logo_html }}` visible in the email, because the tokens introduced
+    // by the last pass had no pass left to resolve them. Substituting exactly
+    // once per source string makes that structurally impossible, whatever an
+    // admin pastes into a settings field.
+    //
+    // `header`/`footer` are not in chromeVars, so this first pass leaves those
+    // two tokens intact for the splices below.
+    let html = this.substitute(bodyHtml, chromeVars);
+
+    // Function replacers (not plain strings) for `String.prototype.replace`
+    // here: a plain-string second argument interprets `$`-sequences ($$, $&,
+    // $`, $') as special patterns, which would corrupt a header/footer body
+    // (or a settings-derived value injected into it) containing one. A
+    // function replacer's return value is inserted verbatim.
     const header = await this.prisma.client.emailTemplate.findUnique({ where: { key: 'core_base_header' } });
-    // Function replacers (not plain strings) for `String.prototype.replace` here:
-    // a plain-string second argument interprets `$`-sequences ($$, $&, $`, $')
-    // as special patterns, which would corrupt a header/footer body (or a
-    // settings-derived value like custom CSS injected into it) that happens to
-    // contain one. A function replacer's return value is inserted verbatim.
     if (header) {
       const substituted = this.substitute(header.bodyHtml, chromeVars);
       html = html.replace(/\{\{\s*header\s*\}\}/g, () => substituted);
@@ -270,9 +293,6 @@ export class EmailTemplatesService {
       const substituted = this.substitute(footer.bodyHtml, chromeVars);
       html = html.replace(/\{\{\s*footer\s*\}\}/g, () => substituted);
     }
-    // chromeVars (not variables) so logo_html/copyright/custom_css/contact_email
-    // resolve everywhere, not just inside the two base-wrapper rows above.
-    html = this.substitute(html, chromeVars);
 
     return { subject: this.substitute(subject, variables), html };
   }

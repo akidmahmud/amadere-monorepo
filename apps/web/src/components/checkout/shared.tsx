@@ -57,11 +57,12 @@ export function isBlockDetails(details: unknown): details is BlockPopupDetails {
 }
 
 export const MANUAL_METHOD_LABELS: Record<string, string> = { BKASH: "bKash", NAGAD: "Nagad", ROCKET: "Rocket", UPAY: "Upay" };
-export const STATIC_PAYMENT_OPTIONS = [
-  { value: "COD", label: "Cash On Delivery" },
-  { value: "SSLCOMMERZ", label: "Card / Online Payment", disabledLabel: "Coming soon" },
-  { value: "BANK_TRANSFER", label: "Bank Transfer", disabledLabel: "Coming soon" },
-];
+// SSLCommerz and Bank Transfer used to sit here as permanently-disabled
+// "Coming soon" rows. Removed: neither has an implementation behind it, and a
+// checkout is the wrong place to advertise what a store cannot accept. They
+// are still valid PaymentProvider values server-side, so putting them back is
+// adding a row here once there is a real provider to route them to.
+export const STATIC_PAYMENT_OPTIONS = [{ value: "COD", label: "Cash On Delivery" }];
 
 export function cleanAddress(address: components["schemas"]["CheckoutAddressDto"]) {
   return {

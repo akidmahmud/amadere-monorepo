@@ -20,7 +20,12 @@ type OrderDto = components["schemas"]["OrderDto"];
 //   false     -> a new passwordless account was created AND the session cookies are now set
 //   true      -> the email/phone already belongs to someone, so NO session was
 //                issued (account-takeover guard, see CheckoutAccountService.ensureAccount)
-export type CheckoutResult = OrderDto & { existingAccount?: boolean };
+// `paymentRedirectUrl` is present only for a hosted gateway (bKash tokenized
+// checkout); every other provider settles without leaving the site.
+export type CheckoutResult = OrderDto & {
+  existingAccount?: boolean;
+  paymentRedirectUrl?: string;
+};
 
 function cartHeaders(): Record<string, string> {
   const token = getGuestToken();

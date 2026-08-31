@@ -35,7 +35,7 @@ import { makeCheckoutFormSchema, type CheckoutFormValues } from "@/lib/checkout-
 import { useAddToCart, useApplyCoupon, useCartQuery, useRemoveCartItem, useRemoveCoupon, useUpdateCartItem } from "@/hooks/useCart";
 import { useGiftVoucherCheck, usePlaceOrder, useRecordCheckoutAbandonment } from "@/hooks/useCheckout";
 import type { CheckoutResult } from "@/hooks/useCheckout";
-import { usePaymentMethodConfigs } from "@/hooks/useManualPayment";
+import { usePaymentMethodConfigs, useBkashGatewayConfig } from "@/hooks/useManualPayment";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { ShippingRatesNotice } from "@/components/ShippingRatesNotice";
 import { useMe } from "@/hooks/useAuth";
@@ -267,6 +267,7 @@ export function useCheckoutState() {
   const addToCart = useAddToCart(locale);
   const [isAddingId, setIsAddingId] = useState<number | null>(null);
   const { data: methodConfigs } = usePaymentMethodConfigs();
+  const { data: bkashGateway } = useBkashGatewayConfig();
   const [copied, setCopied] = useState(false);
 
   // begin_checkout — once per checkout page visit, as soon as real cart data
@@ -492,11 +493,59 @@ export function useCheckoutState() {
     }
   }
 
+  // When the bKash online gateway is live it OWNS the BKASH option: the label
+  // comes from its configured method name (there is no merchant number to
+  // "pay to"), and it must appear even with no manual PaymentMethodConfig row
+  // at all — a store using only the gateway has no reason to keep one. When
+  // the gateway is off, BKASH falls back to the manual row exactly as before,
+  // which is the same rule PaymentsService.resolve applies server-side.
+  const bkashGatewayLive = !!bkashGateway;
   const manualOptions = (methodConfigs ?? [])
-    .filter((c) => c.isActive)
-    .map((c) => ({ value: c.provider, label: `${MANUAL_METHOD_LABELS[c.provider] ?? c.provider} — pay to ${c.number}` }));
-  const paymentOptions = [STATIC_PAYMENT_OPTIONS[0], ...manualOptions, ...STATIC_PAYMENT_OPTIONS.slice(1)];
-  const selectedMethodConfig = methodConfigs?.find((c) => c.provider === paymentProvider);
+    .filter((c) => c.isActive && !(bkashGatewayLive && c.provider === "BKASH"))
+    .map((c) => ({
+      value: c.provider,
+      label: `${MANUAL_METHOD_LABELS[c.provider] ?? c.provider} — pay to ${c.number}`,
+      // PaymentMethodSelector has always supported iconUrl; nothing ever
+      // passed it, so the configured logo silently fell back to the built-in
+      // SVG for every manual method too.
+      iconUrl: c.showIcon ? (c.iconUrl ?? undefined) : undefined,
+    }));
+  const gatewayOptions = bkashGateway
+    ? [
+        {
+          value: "BKASH",
+          label: locale === "BN" ? bkashGateway.methodNameBn : bkashGateway.methodNameEn,
+          iconUrl: bkashGateway.logoUrl || undefined,
+        },
+      ]
+    : [];
+  // COD first, then whatever the store has actually switched on — except on a
+  // digital-only order, where there is no delivery for cash to be collected
+  // on. CheckoutService rejects that combination server-side too; this is the
+  // half that stops a customer picking it in the first place.
+  const paymentOptions = [
+    ...(digitalOnly ? [] : STATIC_PAYMENT_OPTIONS),
+    ...gatewayOptions,
+    ...manualOptions,
+  ];
+  // The form defaults to COD, and the cart (so `digitalOnly`) only resolves
+  // after mount — so a digital-only checkout can start out holding a value
+  // that is no longer on the list. Snap to the first real option instead of
+  // submitting a method the customer was never shown.
+  useEffect(() => {
+    if (paymentOptions.length === 0) return;
+    if (paymentOptions.some((o) => o.value === paymentProvider)) return;
+    form.setValue("paymentProvider", paymentOptions[0].value as CheckoutFormValues["paymentProvider"]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentOptions.map((o) => o.value).join(","), paymentProvider]);
+
+  // Drives the "send X to <number>" instructions block. Deliberately empty for
+  // BKASH while the gateway is live — that customer pays on bKash's own page,
+  // so showing them a merchant number to send money to would be wrong.
+  const selectedMethodConfig =
+    bkashGatewayLive && paymentProvider === "BKASH"
+      ? undefined
+      : methodConfigs?.find((c) => c.provider === paymentProvider);
 
 
   const hasItems = (cart?.items.length ?? 0) > 0;
@@ -554,6 +603,16 @@ export function useCheckoutState() {
 
       {
         onSuccess: (order) => {
+          // A hosted gateway (bKash tokenized checkout) hands back the URL
+          // the customer has to finish paying on. Nothing else can happen
+          // until they do, so this comes before every other branch — the
+          // order exists with a PENDING payment, and bKash's callback is
+          // what captures it and moves the order forward.
+          if (order.paymentRedirectUrl) {
+            window.location.href = order.paymentRedirectUrl;
+            return;
+          }
+
           // `existingAccount === false` is the ONLY signal that a session was
           // just issued: the backend returned a token pair and the
           // /api/backend proxy has already moved it into httpOnly cookies and

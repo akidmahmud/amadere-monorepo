@@ -11,6 +11,9 @@ import { CartIdentityGuard } from './cart-identity.guard';
   imports: [NetProfitSettingsModule, UpsellBarModule, ShippingZonesModule],
   controllers: [CartController, CartMergeController],
   providers: [CartService, PricingService, CartIdentityGuard],
-  exports: [PricingService, CartIdentityGuard],
+  // CartService is exported for OrdersService.restoreCartFromPayment, which
+  // puts a cancelled-gateway-payment order's lines back in the customer's
+  // cart through the same validated add path a normal add-to-cart uses.
+  exports: [CartService, PricingService, CartIdentityGuard],
 })
 export class CartModule {}
