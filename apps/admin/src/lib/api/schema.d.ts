@@ -9007,6 +9007,7 @@ export interface components {
             status: Record<string, never>;
             consignmentId: string | null;
             trackingCode: string | null;
+            courierStatus: string | null;
         };
         ShipmentQueueRowDto: {
             id: number;

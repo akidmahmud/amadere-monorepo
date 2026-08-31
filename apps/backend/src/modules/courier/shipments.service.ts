@@ -70,6 +70,20 @@ function mapRawStatus(raw: string): ShipmentStatus {
   return mapRawCourierStatus(raw);
 }
 
+// Pulls the courier's own status word back out of the stored response, which
+// has two shapes depending on which call wrote it last: `delivery_status` on
+// a track/status poll, `consignment.status` on the original create. Null for
+// anything else (a provider that doesn't report one, an error payload).
+export function rawCourierStatus(rawResponse: unknown): string | null {
+  if (!rawResponse || typeof rawResponse !== 'object') return null;
+  const r = rawResponse as {
+    delivery_status?: unknown;
+    consignment?: { status?: unknown };
+  };
+  const value = r.delivery_status ?? r.consignment?.status;
+  return typeof value === 'string' ? value : null;
+}
+
 @Injectable()
 export class ShipmentsService {
   private readonly providers: Record<CourierProviderName, CourierProvider>;
@@ -450,6 +464,7 @@ export class ShipmentsService {
               status: latestShipment.status,
               consignmentId: latestShipment.consignmentId,
               trackingCode: latestShipment.trackingCode,
+              courierStatus: rawCourierStatus(latestShipment.rawResponse),
             }
           : null,
       };

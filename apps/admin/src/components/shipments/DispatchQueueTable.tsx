@@ -167,6 +167,11 @@ function getDeliveryStatusKey(row: ShipmentQueueRow): string {
   return (row.shipment.status as unknown as string) || "UNSENT";
 }
 
+// Courier-side statuses that mean "the courier has NOT taken this parcel
+// into operations yet" — the parcel has an ID but isn't in their portal, so
+// staff need to chase it rather than wait. Everything else renders muted.
+const NEEDS_COURIER_ATTENTION = new Set(["in_review", "hold", "unknown"]);
+
 export function DispatchQueueTable() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
@@ -620,9 +625,27 @@ export function DispatchQueueTable() {
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
                   {row.shipment ? (
-                    <Pill className={SHIPMENT_STATUS_PILL[row.shipment.status as unknown as string] ?? "bg-surface-2 text-secondary"}>
-                      {SHIPMENT_STATUS_LABEL[row.shipment.status as unknown as string] ?? (row.shipment.status as unknown as string)}
-                    </Pill>
+                    <>
+                      <Pill className={SHIPMENT_STATUS_PILL[row.shipment.status as unknown as string] ?? "bg-surface-2 text-secondary"}>
+                        {SHIPMENT_STATUS_LABEL[row.shipment.status as unknown as string] ?? (row.shipment.status as unknown as string)}
+                      </Pill>
+                      {/* The courier's own word, because our ShipmentStatus
+                          collapses Steadfast's "in_review" (created, but not
+                          accepted into their system — won't show in their
+                          portal, and some sit like this for days) into the
+                          same PENDING as "pending" (accepted, awaiting
+                          pickup). Amber flags the ones worth chasing. */}
+                      {row.shipment.courierStatus && (
+                        <div
+                          className={`mt-1 text-[0.68rem] font-semibold ${
+                            NEEDS_COURIER_ATTENTION.has(row.shipment.courierStatus) ? "text-amber-600" : "text-muted"
+                          }`}
+                          title={`Courier reported: ${row.shipment.courierStatus}`}
+                        >
+                          {row.shipment.courierStatus.replace(/_/g, " ")}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <span className="text-muted">—</span>
                   )}

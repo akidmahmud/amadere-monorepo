@@ -76,6 +76,13 @@ export class ShipmentQueueShipmentDto {
   status!: ShipmentStatus;
   consignmentId!: string | null;
   trackingCode!: string | null;
+  // The courier's own raw status word, surfaced verbatim next to `status`.
+  // mapRawCourierStatus() collapses Steadfast's `in_review` (created but NOT
+  // yet accepted into their operations — invisible in their portal) into the
+  // same PENDING as `pending` (accepted, awaiting pickup), so the queue alone
+  // can't tell a parcel Steadfast is sitting on from one that's moving. Some
+  // stay `in_review` for days. Read-only label, no new enum.
+  courierStatus!: string | null;
 }
 
 export class ShipmentQueueRowDto {
