@@ -46,7 +46,11 @@ export function PriceTag({
       )}
     >
       <span className={cn("font-serif font-semibold text-ink", sizeClasses[size])}>
-        {formatMoney(price)}
+        {/* "Free", not "৳0" — a zero price is a giveaway, and a price tag
+            reading ৳0 looks like missing data rather than an offer. Done
+            here rather than in formatMoney(), which also renders discount
+            and fee lines where a literal 0 is the correct thing to show. */}
+        {Number(price) === 0 ? "Free" : formatMoney(price)}
       </span>
       {hasDiscount && (
         <span className="font-body text-xs text-muted line-through">

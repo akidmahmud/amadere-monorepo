@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { AppShell, type AppNavEntry } from "@amader/admin-ui";
+import { AppShell, type AppNavEntry, type AppNotification } from "@amader/admin-ui";
 import { adminNav } from "@/lib/nav-config";
 import { pageTitleFor } from "@/lib/page-title";
 import { useAdminLogout, useAdminMe } from "@/hooks/useAdminAuth";
-import { useAbandonmentAlert } from "@/hooks/useAbandonmentAlert";
+import { useAbandonedCartNotifications, useAbandonmentAlert } from "@/hooks/useAbandonmentAlert";
+import { useNewOrderAlert } from "@/hooks/useNewOrderAlert";
 
 // A super admin sees every row (matches the backend PermissionGuard's own
 // bypass). Anyone else only sees rows whose `permission` they've been
@@ -33,6 +34,59 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const canSeeRecovery =
     !!me && (me.isSuperAdmin || me.permissions.includes("net_profit_recovery.manage"));
   const abandonment = useAbandonmentAlert(canSeeRecovery);
+
+  // Gated the same way as the abandoned-cart poll: without order.view the
+  // request 403s every 30 seconds for anyone who cannot see orders anyway.
+  const canSeeOrders = !!me && (me.isSuperAdmin || me.permissions.includes("order.view"));
+  const orderAlert = useNewOrderAlert(canSeeOrders);
+
+  // The abandoned-cart ROWS are fetched only after the bell has been opened
+  // once — they carry cart snapshots, and the cheap count-only poll in
+  // useAbandonmentAlert exists precisely so every admin isn't pulling them
+  // every minute just to keep a closed dropdown warm.
+  const [bellOpened, setBellOpened] = useState(false);
+  const abandonedCarts = useAbandonedCartNotifications(canSeeRecovery && bellOpened);
+
+  // One bell, both kinds of notification: new orders first (time-sensitive),
+  // then a single roll-up row for abandoned carts rather than one row per
+  // cart — the Recovery page is the place to actually work through those.
+  const notifications: AppNotification[] = [
+    ...orderAlert.notifications.map((o) => ({
+      id: `order-${o.id}`,
+      title: `New order ${o.orderNumber}`,
+      subtitle: `${o.currency} ${o.totalAmount}`,
+      meta: new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      href: `/net-profit/orders?search=${encodeURIComponent(o.orderNumber)}`,
+      unread: o.unread,
+    })),
+    ...abandonedCarts.map((c) => {
+      // Total quantity, not `cart.length` — that counts LINES, so a cart
+      // holding 2 of one product read "1 item".
+      const itemCount = c.cart.reduce((sum, line) => sum + line.quantity, 0);
+      return {
+      id: `cart-${c.id}`,
+      title: `Abandoned cart — ${c.name?.trim() || "Anonymous shopper"}`,
+      subtitle: `${itemCount} item${itemCount === 1 ? "" : "s"} · BDT ${c.subtotal}${c.phone ? ` · ${c.phone}` : ""}`,
+      meta: new Date(c.lastSeenAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      href: "/net-profit/recovery",
+      unread: false,
+      };
+    }),
+    // Shown until the rows themselves arrive (they are only fetched once the
+    // panel has been opened), so the first open is never an empty panel when
+    // the badge said there was something.
+    ...(abandonment.unseen > 0 && abandonedCarts.length === 0
+      ? [
+          {
+            id: "abandoned-carts",
+            title: `${abandonment.unseen} new abandoned cart${abandonment.unseen === 1 ? "" : "s"}`,
+            subtitle: "Open Recovery to follow them up",
+            href: "/net-profit/recovery",
+            unread: true,
+          },
+        ]
+      : []),
+  ];
 
   // Opening Recovery any way at all counts as having seen it — via the bell,
   // the sidebar, a bookmark or a link from elsewhere. Without this the dot
@@ -70,10 +124,15 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       userName={me ? `${me.firstName} ${me.lastName}`.trim() || me.email : "…"}
       userSubtitle={me?.email}
       pageTitle={pageTitleFor(pathname)}
-      hasNotification={abandonment.unseen > 0}
-      onNotificationClick={() => {
+      hasNotification={abandonment.unseen > 0 || orderAlert.unseen > 0}
+      notificationCount={orderAlert.unseen + (abandonment.unseen > 0 ? 1 : 0)}
+      notifications={notifications}
+      onNotificationsOpen={() => {
+        setBellOpened(true);
+        // Opening the panel is seeing them — both sources at once, so the
+        // badge clears rather than leaving a stale half-count behind.
+        orderAlert.acknowledge();
         abandonment.acknowledge();
-        router.push("/net-profit/recovery");
       }}
       onLogout={async () => {
         await logout.mutateAsync();

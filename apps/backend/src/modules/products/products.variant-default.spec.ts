@@ -23,7 +23,10 @@ describe('withSingleDefault', () => {
   });
 
   it('treats a missing isDefault the same as false', () => {
-    const result = withSingleDefault([{ name: 'a' }, { name: 'b' }]);
+    // Explicitly typed: without isDefault on either element TypeScript infers
+    // `{ name: string }`, which does not satisfy the helper's constraint.
+    const input: { name: string; isDefault?: boolean }[] = [{ name: 'a' }, { name: 'b' }];
+    const result = withSingleDefault(input);
     expect(result.map((v) => v.isDefault)).toEqual([true, false]);
   });
 

@@ -160,7 +160,13 @@ export class OrderManagerService {
              o.utm_source, o.utm_campaign, o.deleted_at,
              o.assigned_admin_id,
              NULLIF(TRIM(CONCAT(au.first_name, ' ', au.last_name)), '') AS assigned_admin_name,
-             oa.recipient_name, oa.phone, oa.address_line, oa.district, oa.division, oa.post_code,
+             -- Fall back to the linked customer when there is no shipping
+             -- address. A digital-only order never gets one (nothing to
+             -- ship, so checkout skips creating it), which left the Order
+             -- Manager showing a blank name and phone for every ebook sale.
+             COALESCE(oa.recipient_name, NULLIF(TRIM(CONCAT(c.first_name, ' ', c.last_name)), '')) AS recipient_name,
+             COALESCE(oa.phone, c.phone) AS phone,
+             oa.address_line, oa.district, oa.division, oa.post_code,
              thumb.url AS thumbnail_url,
              p.provider AS payment_provider,
              p.status AS payment_status,
@@ -172,6 +178,7 @@ export class OrderManagerService {
              oi.items AS items
       FROM orders o
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
+      LEFT JOIN customers c ON c.id = o.customer_id
       LEFT JOIN admin_users au ON au.id = o.assigned_admin_id
       LEFT JOIN LATERAL (
         SELECT provider, status FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1

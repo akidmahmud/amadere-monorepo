@@ -527,6 +527,21 @@ export class CheckoutService {
     // committed to — the same end state as an abandoned manual payment,
     // which admins already have a workflow for.
     let redirectUrl: string | undefined;
+    // A free order has nothing to authorize. It used to be sent to the
+    // provider anyway, so a ৳0 digital order picked up with bKash called the
+    // gateway with amount 0, bKash rejected it, and the order was left
+    // COMPLETED-but-payment-FAILED — alarming, and completely meaningless.
+    // Recorded as CAPTURED instead: nothing is owed, so nothing is pending.
+    if (totalAmount.equals(0)) {
+      await this.prisma.client.payment.create({
+        data: {
+          orderId: order.id,
+          provider: dto.paymentProvider,
+          status: 'CAPTURED',
+          amount: totalAmount,
+        },
+      });
+    } else {
     try {
       const provider = await this.payments.resolve(dto.paymentProvider);
       const authResult = await provider.authorize(order.id, totalAmount);
@@ -561,6 +576,7 @@ export class CheckoutService {
           },
         },
       });
+    }
     }
 
     this.events.emit(ORDER_CREATED_EVENT, {

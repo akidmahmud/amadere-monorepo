@@ -29,6 +29,15 @@ export interface AppNavSectionLabel {
 
 export type AppNavEntry = AppNavItem | AppNavSectionLabel;
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  subtitle?: string;
+  meta?: string;
+  href: string;
+  unread?: boolean;
+}
+
 export interface AppShellProps {
   logo: ReactNode;
   /** Data-driven sidebar nav — never hardcode nav rows in a page. Flat list;
@@ -42,6 +51,16 @@ export interface AppShellProps {
   dateLabel?: string;
   hasNotification?: boolean;
   onNotificationClick?: () => void;
+  /**
+   * Entries for the bell's dropdown. When omitted the bell keeps its old
+   * behaviour — a dot plus a plain onNotificationClick — so any other caller
+   * is unaffected.
+   */
+  notifications?: AppNotification[];
+  /** Unread count for the badge. Falls back to the dot when not given. */
+  notificationCount?: number;
+  /** Fired when the panel opens, so the caller can mark entries seen. */
+  onNotificationsOpen?: () => void;
   linkComponent?: LinkComponent;
   children: ReactNode;
 }
@@ -167,6 +186,9 @@ export function AppShell({
   pageTitle,
   hasNotification,
   onNotificationClick,
+  notifications,
+  notificationCount,
+  onNotificationsOpen,
   linkComponent: Link = DefaultLink,
   children,
 }: AppShellProps) {
@@ -175,6 +197,8 @@ export function AppShell({
   const [cacheMessage, setCacheMessage] = useState<string | null>(null);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -188,6 +212,15 @@ export function AppShell({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [avatarMenuOpen]);
+
+  useEffect(() => {
+    if (!bellOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [bellOpen]);
 
   function handleClearCache() {
     setCacheMessage("Cache cleared");
@@ -311,19 +344,70 @@ export function AppShell({
               {visitIcon}
               <span className="max-[768px]:hidden">Visit website</span>
             </a>
-            <button
-              type="button"
-              onClick={onNotificationClick}
-              aria-label="Notifications"
-              className="relative grid h-9 w-9 place-items-center rounded-inner bg-brand-50 text-brand-500"
-            >
-              {bellIcon}
-              {hasNotification && (
-                <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white">
-                  •
-                </span>
+            <div ref={bellRef} className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  // Without a `notifications` list the bell keeps its old
+                  // behaviour (navigate somewhere) rather than opening an
+                  // empty panel.
+                  if (!notifications) {
+                    onNotificationClick?.();
+                    return;
+                  }
+                  const next = !bellOpen;
+                  setBellOpen(next);
+                  if (next) onNotificationsOpen?.();
+                }}
+                aria-label="Notifications"
+                aria-expanded={notifications ? bellOpen : undefined}
+                className="relative grid h-9 w-9 place-items-center rounded-inner bg-brand-50 text-brand-500"
+              >
+                {bellIcon}
+                {(notificationCount ?? 0) > 0 ? (
+                  <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white">
+                    {notificationCount! > 99 ? "99+" : notificationCount}
+                  </span>
+                ) : (
+                  hasNotification && (
+                    <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white">
+                      •
+                    </span>
+                  )
+                )}
+              </button>
+              {notifications && bellOpen && (
+                <div className="absolute top-full right-0 z-30 mt-2 w-80 overflow-hidden rounded-card border border-border bg-surface shadow-pop">
+                  <div className="border-b border-border px-3.5 py-2.5 font-ui text-[13px] font-bold text-text">
+                    Notifications
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="px-3.5 py-6 text-center text-xs text-muted">Nothing new right now.</p>
+                  ) : (
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.map((n) => (
+                        <a
+                          key={n.id}
+                          href={n.href}
+                          onClick={() => setBellOpen(false)}
+                          className="flex items-start gap-2.5 border-b border-border px-3.5 py-2.5 last:border-b-0 hover:bg-surface-2"
+                        >
+                          <span
+                            className="mt-1.5 h-1.5 w-1.5 flex-none rounded-pill"
+                            style={{ background: n.unread ? "var(--color-danger, #e5484d)" : "transparent" }}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-ui text-[13px] font-semibold text-text">{n.title}</span>
+                            {n.subtitle && <span className="block truncate text-xs text-muted">{n.subtitle}</span>}
+                          </span>
+                          {n.meta && <span className="flex-none text-[11px] text-muted">{n.meta}</span>}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
             <div ref={avatarRef} className="relative">
               <button
                 type="button"
