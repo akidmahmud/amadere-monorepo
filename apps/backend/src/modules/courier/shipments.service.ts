@@ -70,17 +70,18 @@ function mapRawStatus(raw: string): ShipmentStatus {
   return mapRawCourierStatus(raw);
 }
 
-// Pulls the courier's own status word back out of the stored response, which
-// has two shapes depending on which call wrote it last: `delivery_status` on
-// a track/status poll, `consignment.status` on the original create. Null for
-// anything else (a provider that doesn't report one, an error payload).
+// Pulls the courier's own *live* status word back out of the stored response.
+// Only `delivery_status` counts — that field is written by track()/webhook,
+// so it reflects reality at the time of the last poll. The create response's
+// `consignment.status` is deliberately NOT used as a fallback: it is a
+// snapshot from the instant the parcel was created, which for Steadfast is
+// always the literal string "in_review", and it is never rewritten. Reading
+// it made every row — delivered ones included — claim "in review". A row
+// that has never been polled reports null and renders nothing, which is the
+// honest answer: we do not know the courier's current word for it.
 export function rawCourierStatus(rawResponse: unknown): string | null {
   if (!rawResponse || typeof rawResponse !== 'object') return null;
-  const r = rawResponse as {
-    delivery_status?: unknown;
-    consignment?: { status?: unknown };
-  };
-  const value = r.delivery_status ?? r.consignment?.status;
+  const value = (rawResponse as { delivery_status?: unknown }).delivery_status;
   return typeof value === 'string' ? value : null;
 }
 
@@ -598,6 +599,12 @@ export class ShipmentsService {
       where: { id: shipment.id },
       data: {
         status,
+        // Keep `rawResponse` current, same as track() does. Without this a
+        // webhook-driven shipment kept its original create payload forever,
+        // so the queue's courier-status label had no live value to read and
+        // the row went permanently blank despite the courier having told us
+        // exactly where the parcel is.
+        rawResponse: { delivery_status: rawStatus, payload: rawPayload } as object,
         deliveredAt: status === 'DELIVERED' ? new Date() : shipment.deliveredAt,
         events: {
           create: {
