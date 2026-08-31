@@ -3,6 +3,7 @@
 import React from "react";
 import { Button, Icon } from "@amader/admin-ui";
 import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
+import { EditableReasonCell } from "./EditableReasonCell";
 
 const LINE = "#e5ebe6";
 const INK = "#1e2b22";
@@ -326,13 +327,10 @@ export function RecoveryTable({
                       // free text someone typed, so truncating it to one line
                       // would hide the only part of the row that explains it.
                       <td className={`${td} whitespace-normal`} style={tdStyle}>
-                        {row.cancelReason ? (
-                          <span title={row.cancelReason}>
-                            {row.cancelReason}
-                          </span>
-                        ) : (
-                          <span style={{ color: FAINT }}>—</span>
-                        )}
+                        <EditableReasonCell
+                          id={row.id}
+                          reason={row.cancelReason}
+                        />
                       </td>
                     )}
                     <td

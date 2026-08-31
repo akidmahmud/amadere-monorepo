@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@amader/admin-ui";
-import { CategoryFormFields, countWords, DESCRIPTION_MAX_WORDS } from "@/components/categories/CategoryFormFields";
+import {
+  CategoryFormFields,
+  countWords,
+  DESCRIPTION_MAX_WORDS,
+} from "@/components/categories/CategoryFormFields";
 import { SeoMetaCard } from "@/components/SeoMetaCard";
 import { useCreateCategory } from "@/hooks/useCategories";
 import { useUpsertSeoMeta } from "@/hooks/useSeoMeta";
@@ -31,8 +35,13 @@ export default function NewCategoryPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (countWords(descriptionEn) > DESCRIPTION_MAX_WORDS || countWords(descriptionBn) > DESCRIPTION_MAX_WORDS) {
-      setFormError(`Description can't be more than ${DESCRIPTION_MAX_WORDS} words.`);
+    if (
+      countWords(descriptionEn) > DESCRIPTION_MAX_WORDS ||
+      countWords(descriptionBn) > DESCRIPTION_MAX_WORDS
+    ) {
+      setFormError(
+        `Description can't be more than ${DESCRIPTION_MAX_WORDS} words.`,
+      );
       return;
     }
     setFormError(null);
@@ -71,13 +80,28 @@ export default function NewCategoryPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link href="/categories" aria-label="Back to categories" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <Link
+              href="/categories"
+              aria-label="Back to categories"
+              className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
             </Link>
-            <h1 className="font-ui text-lg font-extrabold text-text">New Category</h1>
+            <h1 className="font-ui text-lg font-extrabold text-text">
+              New Category
+            </h1>
           </div>
           <div className="flex gap-3">
             <Link href="/categories">
@@ -92,16 +116,29 @@ export default function NewCategoryPage() {
         </div>
 
         <div className="flex items-start gap-2.5 rounded-inner border border-[#d8e6fc] bg-brand-50 px-3.5 py-2.5 text-[0.75rem] font-semibold text-brand-600">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-none">
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mt-0.5 flex-none"
+          >
             <circle cx="12" cy="12" r="10" />
             <path d="M12 16v-4" />
             <path d="M12 8h.01" />
           </svg>
           <span>
-            A category is a place in your storefront&apos;s browsing tree — set both languages so it reads correctly for every
-            customer.
+            A category is a place in your storefront&apos;s browsing tree — set
+            both languages so it reads correctly for every customer.
             <br />
-            <span lang="bn">একটি ক্যাটেগরি আপনার স্টোরফ্রন্টের ব্রাউজিং তালিকার একটি জায়গা — উভয় ভাষা পূরণ করুন যাতে প্রতিটি গ্রাহক সঠিকভাবে দেখতে পারেন।</span>
+            <span lang="bn">
+              একটি ক্যাটেগরি আপনার স্টোরফ্রন্টের ব্রাউজিং তালিকার একটি জায়গা —
+              উভয় ভাষা পূরণ করুন যাতে প্রতিটি গ্রাহক সঠিকভাবে দেখতে পারেন।
+            </span>
           </span>
         </div>
 

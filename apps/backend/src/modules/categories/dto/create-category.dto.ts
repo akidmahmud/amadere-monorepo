@@ -59,4 +59,19 @@ export class CreateCategoryDto {
   @ValidateNested({ each: true })
   @Type(() => NameDescriptionTranslationDto)
   translations!: NameDescriptionTranslationDto[];
+
+  /**
+   * Which products belong to this category.
+   *
+   * The same link the product form writes from its own side — this is simply
+   * the other direction, so a category can be filled in one pass instead of
+   * opening every product. **Omit the field to leave the existing links
+   * untouched**; sending an array replaces them wholesale, and sending an
+   * empty array empties the category.
+   */
+  @ApiPropertyOptional({ type: [Number] })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  productIds?: number[];
 }

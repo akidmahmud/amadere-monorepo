@@ -9,6 +9,9 @@ import { ResolvedSeoDto } from '../seo/seo.mapper';
 type CategoryWithTranslations = Category & {
   translations: CategoryTranslation[];
   _count?: { products: number };
+  /** Present only on the admin detail read, which includes the join rows so
+   *  the edit form can pre-select the category's products. */
+  products?: { productId: number }[];
 };
 
 export class AdminCategoryTranslationDto {
@@ -30,6 +33,9 @@ export class AdminCategoryDto {
   translations!: AdminCategoryTranslationDto[];
   /** Only populated when the query requested it (see WITH_TRANSLATIONS_AND_ADMIN_PRODUCT_COUNT). */
   productCount?: number;
+  /** The category's current products, for the edit form to pre-select.
+   *  Only on the detail read — the list does not carry them. */
+  productIds?: number[];
 }
 
 export function toAdminCategoryDto(
@@ -51,6 +57,9 @@ export function toAdminCategoryDto(
       description: t.description,
     })),
     productCount: category._count?.products,
+    productIds: Array.isArray(category.products)
+      ? category.products.map((p) => p.productId)
+      : undefined,
   };
 }
 

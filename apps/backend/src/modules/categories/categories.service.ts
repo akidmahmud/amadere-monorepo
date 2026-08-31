@@ -24,6 +24,17 @@ import {
 
 const WITH_TRANSLATIONS = { translations: true } as const;
 
+// The admin edit form needs the category's current products to pre-select
+// them, so the detail read carries the join rows. The LIST deliberately does
+// not — it only needs a count, and pulling every membership for every row
+// would be a lot of ids nobody renders.
+const WITH_TRANSLATIONS_AND_PRODUCTS = {
+  translations: true,
+  // Ordered, so the edit form shows the same priority the storefront uses
+  // rather than whatever order the rows happen to come back in.
+  products: { select: { productId: true }, orderBy: { position: 'asc' as const } },
+} as const;
+
 // Public-only: the PLP filter sidebar shows a product count per category
 // (prototype's "(16)" badges) — a filtered relation count, not exposed to
 // admin (which has no use for it).
@@ -80,7 +91,7 @@ export class CategoriesService {
   async adminGet(id: number): Promise<AdminCategoryDto> {
     const category = await this.prisma.client.category.findFirst({
       where: { id, deletedAt: null },
-      include: WITH_TRANSLATIONS,
+      include: WITH_TRANSLATIONS_AND_PRODUCTS,
     });
     if (!category) throw new NotFoundException('Category not found');
     return toAdminCategoryDto(category);
@@ -101,6 +112,16 @@ export class CategoriesService {
         sortOrder: dto.sortOrder,
         status: dto.status,
         translations: { create: dto.translations },
+        // Array order IS the priority — index 0 leads the category. Keeping
+        // positions contiguous means the numbers the admin sees are the
+        // numbers stored, with no gaps to explain.
+        ...(dto.productIds
+          ? {
+              products: {
+                create: dto.productIds.map((productId, position) => ({ productId, position })),
+              },
+            }
+          : {}),
       },
       include: WITH_TRANSLATIONS,
     });
@@ -133,6 +154,17 @@ export class CategoriesService {
         translations: dto.translations
           ? { create: dto.translations }
           : undefined,
+        // Replace-on-supply, leave-alone-on-omit. Every other caller of this
+        // endpoint (the product form, bulk edits) sends no productIds and must
+        // not have a category's contents wiped as a side effect of renaming it.
+        ...(dto.productIds
+          ? {
+              products: {
+                deleteMany: {},
+                create: dto.productIds.map((productId, position) => ({ productId, position })),
+              },
+            }
+          : {}),
       },
       include: WITH_TRANSLATIONS,
     });

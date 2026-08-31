@@ -996,12 +996,21 @@ model ProductFaq {
 model ProductCategory {
   productId  Int @map("product_id")
   categoryId Int @map("category_id")
+  /// Where this product sits within THIS category, lowest first.
+  ///
+  /// On the join rather than on Product because priority is per-category: the
+  /// same jar of honey can lead "Honey" and sit tenth in "Gift Sets", which a
+  /// single column on Product cannot express. Drives the storefront's Default
+  /// sort when a listing is filtered to one category.
+  position   Int @default(0)
 
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([productId, categoryId])
   @@index([categoryId])
+  // The category page reads this table ordered by position.
+  @@index([categoryId, position])
   @@map("product_categories")
 }
 

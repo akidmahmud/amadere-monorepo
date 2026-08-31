@@ -11,11 +11,27 @@ export interface AdminCategoryTranslation {
   name: string;
   description: string | null;
 }
-export type AdminCategory = Omit<components["schemas"]["AdminCategoryDto"], "status" | "translations"> & {
+// productIds is declared here rather than coming from schema.d.ts: that file
+// is generated from a running backend and has not been regenerated since the
+// category form gained a product picker. Regenerating (`pnpm typegen`) will
+// make these two additions redundant, not wrong.
+export type AdminCategory = Omit<
+  components["schemas"]["AdminCategoryDto"],
+  "status" | "translations"
+> & {
   status: PublishStatus;
   translations: AdminCategoryTranslation[];
+  /** Present on the detail read only — the list does not carry it. */
+  productIds?: number[];
 };
-export type CategoryInput = Omit<components["schemas"]["CreateCategoryDto"], "status"> & { status: PublishStatus };
+export type CategoryInput = Omit<
+  components["schemas"]["CreateCategoryDto"],
+  "status"
+> & {
+  status: PublishStatus;
+  /** Omit to leave a category's products untouched; an array replaces them. */
+  productIds?: number[];
+};
 
 type Paginated<T> = { items?: T[]; total?: number };
 const KEY = ["admin-categories"];
@@ -24,7 +40,9 @@ export function useCategories() {
   return useQuery({
     queryKey: KEY,
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminCategory>>("/admin/categories?pageSize=100");
+      const res = await proxyFetch<Paginated<AdminCategory>>(
+        "/admin/categories?pageSize=100",
+      );
       return res.items ?? [];
     },
   });
@@ -42,7 +60,10 @@ export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CategoryInput) =>
-      proxyFetch<AdminCategory>("/admin/categories", { method: "POST", body: JSON.stringify(input) }),
+      proxyFetch<AdminCategory>("/admin/categories", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -51,7 +72,10 @@ export function useUpdateCategory(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Partial<CategoryInput>) =>
-      proxyFetch<AdminCategory>(`/admin/categories/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+      proxyFetch<AdminCategory>(`/admin/categories/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -59,7 +83,8 @@ export function useUpdateCategory(id: number) {
 export function useDeleteCategory() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<void>(`/admin/categories/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) =>
+      proxyFetch<void>(`/admin/categories/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

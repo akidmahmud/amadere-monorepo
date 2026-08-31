@@ -2,78 +2,16 @@
 
 import { useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
+import { EditableReasonCell } from "@/components/net-profit/EditableReasonCell";
 import {
   useDeletedCarts,
   useRestoreIncompleteOrder,
-  useUpdateCartReason,
-  type IncompleteOrder,
 } from "@/hooks/useRecovery";
 
 const PAGE_SIZE = 20;
 
 const money = (v: string | number) =>
   `৳${Number(v).toLocaleString("en-BD", { maximumFractionDigits: 2 })}`;
-
-/**
- * The reason cell, editable where it sits.
- *
- * A deleted cart is usually binned first and explained later — pulling up a
- * modal to type one line is what stopped anyone recording why. Click, type,
- * Enter (or blur) saves; Escape abandons the edit.
- */
-function ReasonCell({ row }: { row: IncompleteOrder }) {
-  const update = useUpdateCartReason();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(row.cancelReason ?? "");
-
-  function commit() {
-    setEditing(false);
-    const next = draft.trim();
-    if (next === (row.cancelReason ?? "")) return; // nothing changed, no request
-    update.mutate({ id: row.id, reason: next });
-  }
-
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") {
-            setDraft(row.cancelReason ?? "");
-            setEditing(false);
-          }
-        }}
-        placeholder="Why was this binned?"
-        className="h-8 w-full min-w-40 rounded-md border border-brand-500 bg-surface px-2 text-xs text-text outline-none focus:ring-2 focus:ring-brand-500/20"
-      />
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        setDraft(row.cancelReason ?? "");
-        setEditing(true);
-      }}
-      title="Click to edit"
-      className="group flex w-full min-w-40 items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs hover:bg-surface-2"
-    >
-      <span className={row.cancelReason ? "text-text" : "italic text-muted"}>
-        {update.isPending ? "Saving…" : (row.cancelReason ?? "Add a reason")}
-      </span>
-      <Icon
-        name="edit"
-        size={13}
-        className="flex-none text-muted opacity-0 transition-opacity group-hover:opacity-100"
-      />
-    </button>
-  );
-}
 
 export function TrashSection() {
   const [page, setPage] = useState(1);
@@ -170,7 +108,11 @@ export function TrashSection() {
                     {money(row.subtotal)}
                   </td>
                   <td className="px-4 py-3">
-                    <ReasonCell row={row} />
+                    <EditableReasonCell
+                      id={row.id}
+                      reason={row.cancelReason}
+                      placeholder="Why was this binned?"
+                    />
                   </td>
                   <td className="px-4 py-3 text-xs text-secondary">
                     {row.deletedAt

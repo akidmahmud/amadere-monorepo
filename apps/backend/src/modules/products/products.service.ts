@@ -1192,6 +1192,38 @@ export class ProductsService {
       return this.publicListByEffectivePrice(locale, page, pageSize, where, filters);
     }
 
+    // A category page on the Default sort reads through the join table, which
+    // is the only place the per-category priority lives. Prisma cannot order a
+    // product by a field on one particular join row, so the query is turned
+    // around: pick the memberships for this category in priority order, then
+    // take their products. Same filters, same pagination.
+    const singleCategoryId =
+      (filters.sort === undefined || filters.sort === ProductSort.DEFAULT) &&
+      filters.categoryIds?.length === 1
+        ? filters.categoryIds[0]
+        : null;
+
+    if (singleCategoryId !== null) {
+      const membershipWhere = { categoryId: singleCategoryId, product: where };
+      const [rows, total] = await Promise.all([
+        this.prisma.client.productCategory.findMany({
+          where: membershipWhere,
+          // Ties fall back to newest, which is what the page showed before any
+          // priority was set — so an untouched category looks unchanged.
+          orderBy: [{ position: 'asc' }, { productId: 'desc' }],
+          include: { product: { include: PRODUCT_INCLUDE } },
+          ...paginationArgs(page, pageSize),
+        }),
+        this.prisma.client.productCategory.count({ where: membershipWhere }),
+      ]);
+      return toPaginatedResult(
+        rows.map((r) => toPublicProductDto(r.product, locale)),
+        total,
+        page,
+        pageSize,
+      );
+    }
+
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
         where,
