@@ -39,6 +39,29 @@ const PENDING_ORDER = {
 };
 
 describe('OrdersService.restoreCartFromPayment', () => {
+  it('cancels BEFORE restoring, so the order stops reserving its own stock', async () => {
+    // CartService.addItem validates against `stock - reservedStock`. While
+    // the order is still open it reserves exactly the lines being restored,
+    // so restoring first made every add fail with "Insufficient stock" and
+    // handed the customer an empty cart.
+    const calls: string[] = [];
+    const { service, updateStatus, cart } = makeService({
+      payment: { orderId: 7, status: 'PENDING' },
+      order: PENDING_ORDER,
+    });
+    updateStatus.mockImplementation(async () => {
+      calls.push('cancel');
+      return {} as never;
+    });
+    cart.addItem.mockImplementation(async () => {
+      calls.push('add');
+    });
+
+    await service.restoreCartFromPayment({ guestToken: 'g' }, 'PAY-1', 'EN');
+
+    expect(calls).toEqual(['cancel', 'add', 'add']);
+  });
+
   it('restores every line and cancels the order', async () => {
     const { service, updateStatus, cart } = makeService({
       payment: { orderId: 7, status: 'PENDING' },

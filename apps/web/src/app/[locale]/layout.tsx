@@ -83,9 +83,13 @@ export async function generateMetadata({
       description,
       type: "website",
       locale: locale === "bn" ? "bn_BD" : "en_US",
-      images: ogImageUrl
-        ? [{ url: ogImageUrl, width: 1200, height: 630 }]
-        : undefined,
+      // No hardcoded width/height. These were fixed at 1200x630 regardless of
+      // the image actually uploaded — the current one is a 1600x500 banner —
+      // and declaring dimensions that do not match the file makes scrapers
+      // lay it out wrongly. Facebook and Twitter both fetch the image and
+      // read the real dimensions when none are declared, which is strictly
+      // better than being told the wrong ones.
+      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
     },
     twitter: {
       card: ogImageUrl ? "summary_large_image" : "summary",

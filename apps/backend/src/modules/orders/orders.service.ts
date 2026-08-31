@@ -531,10 +531,27 @@ export class OrdersService {
       throw new ConflictException('This order can no longer be cancelled');
     }
 
+    // Cancel FIRST, then restore — the order is still holding a stock
+    // reservation for exactly these lines, and CartService.addItem validates
+    // against `stock - reservedStock`. Restoring first meant an order that
+    // reserved the last units of its own products failed every add with
+    // "Insufficient stock", which is how this shipped returning restored: 0
+    // and leaving the customer on an empty cart. Cancelling releases the
+    // reservation, so the lines are available to add back a moment later.
+    //
+    // The real cancel path, so reservations release and the status history
+    // and events are written exactly as an admin cancel would.
+    await this.updateStatus(
+      order.id,
+      { status: 'CANCELED', note: 'Customer cancelled the bKash payment' },
+      null,
+    );
+
     // Through the normal add path on purpose: it re-validates stock and
     // re-reads the current price, so a restored cart can never resurrect an
     // out-of-stock line or a stale price. A line that is no longer buyable is
-    // skipped rather than failing the whole restore.
+    // skipped rather than failing the whole restore — the cancel above has
+    // already done the part that must not be lost.
     let restored = 0;
     for (const item of order.items) {
       // OrderItem.productId is nullable — the product can have been deleted
@@ -548,17 +565,10 @@ export class OrdersService {
         );
         restored += 1;
       } catch {
-        // Skipped — out of stock or unpublished since the order was placed.
+        // Skipped — genuinely out of stock or unpublished since the order
+        // was placed, now that its own reservation is out of the way.
       }
     }
-
-    // The real cancel path, so stock reservations are released and the
-    // status history/events are written exactly as an admin cancel would.
-    await this.updateStatus(
-      order.id,
-      { status: 'CANCELED', note: 'Customer cancelled the bKash payment' },
-      null,
-    );
 
     return { restored, address: order.addresses[0] ?? null };
   }

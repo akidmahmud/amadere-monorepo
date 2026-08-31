@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Button } from "@amader/admin-ui";
+import { Button, Icon } from "@amader/admin-ui";
 import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
 
 const LINE = "#e5ebe6";
@@ -11,6 +11,9 @@ const MUTED = "#64766b";
 const FAINT = "#94a69a";
 const GREEN = "#2e7d43";
 const GREEN_HEADER = "#2f7d33";
+// Same click-to-call blue the order/customer detail modals already use, so a
+// phone number looks and behaves the same wherever staff meet one.
+const BLUE = "#4299e1";
 
 export const RECOVERY_OPTIONAL_COLUMNS = ["cartDetails", "stage", "subtotal", "attempts", "lastSeen", "cancelReason"] as const;
 export type RecoveryOptionalColumn = (typeof RECOVERY_OPTIONAL_COLUMNS)[number];
@@ -136,9 +139,21 @@ export function RecoveryTable({
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-[#2e7d43]">{row.name || "Anonymous Shopper"}</span>
                         {row.phone && (
-                          <span className="text-[0.72rem] font-semibold" style={{ color: INK }}>
+                          // Click-to-call straight from the row: chasing an
+                          // abandoned cart IS a phone call, so making staff
+                          // open a record first was pure friction.
+                          // stopPropagation so tapping the number never also
+                          // triggers the row's own click handling.
+                          <a
+                            href={`tel:${row.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex w-fit items-center gap-1 text-[0.72rem] font-semibold hover:underline"
+                            style={{ color: BLUE }}
+                            title={`Call ${row.phone}`}
+                          >
+                            <Icon name="call" size={13} />
                             {row.phone}
-                          </span>
+                          </a>
                         )}
                         {row.email && <span className="text-[0.68rem] font-normal" style={{ color: MUTED }}>{row.email}</span>}
                       </div>

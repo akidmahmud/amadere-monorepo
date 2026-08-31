@@ -19,7 +19,23 @@ interface GrantTokenResponse {
   statusCode?: string;
   statusMessage?: string;
   id_token?: string;
+  // Seconds. bKash issues ~1h tokens; treated as a hint with a safety margin
+  // rather than trusted exactly (see CachedToken below).
+  expires_in?: number | string;
 }
+
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+  // Cache key: a credential rotation or a live/sandbox switch must not keep
+  // serving a token minted for the old ones.
+  fingerprint: string;
+}
+
+// Renew this long before bKash's own expiry, so an in-flight checkout can
+// never be the request that discovers the token just died.
+const TOKEN_SAFETY_MARGIN_MS = 5 * 60 * 1000;
+const TOKEN_FALLBACK_TTL_MS = 50 * 60 * 1000;
 
 interface CreatePaymentResponse {
   statusCode?: string;
@@ -49,6 +65,10 @@ export interface ExecutePaymentResponse {
 @Injectable()
 export class BkashPaymentProvider implements PaymentProvider {
   private readonly logger = new Logger(BkashPaymentProvider.name);
+  // In-process only, deliberately: a token is cheap to re-mint, and a shared
+  // cache would be a new piece of infrastructure to get wrong. Worst case
+  // after a restart or on a second instance is one extra grant call.
+  private cachedToken: CachedToken | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -66,13 +86,22 @@ export class BkashPaymentProvider implements PaymentProvider {
     return creds;
   }
 
-  // bKash tokens are short-lived; the reference grants a fresh one per
-  // payment rather than caching, which is one fewer thing to get wrong and
-  // costs one extra call on a flow that already redirects the customer.
+  // Cached between payments. The reference implementation grants a fresh
+  // token per payment, which puts TWO sequential round trips to bKash inside
+  // the checkout request the customer is waiting on — the reported "takes too
+  // long to reach the bKash page". Reusing a still-valid token removes one of
+  // them from almost every checkout.
   async grantToken(): Promise<string> {
     const { appKey, appSecretKey, username, password } =
       await this.credentials();
-    const res = await fetch(`${await this.baseUrl()}/tokenized/checkout/token/grant`, {
+    const baseUrl = await this.baseUrl();
+    const fingerprint = `${baseUrl}|${appKey}|${username}`;
+    const cached = this.cachedToken;
+    if (cached && cached.fingerprint === fingerprint && cached.expiresAt > Date.now()) {
+      return cached.token;
+    }
+
+    const res = await fetch(`${baseUrl}/tokenized/checkout/token/grant`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -84,10 +113,26 @@ export class BkashPaymentProvider implements PaymentProvider {
     });
     const body = (await res.json()) as GrantTokenResponse;
     if (body.statusCode !== SUCCESS || !body.id_token) {
+      // A rejected grant invalidates whatever is cached: the credentials may
+      // have just been rotated or revoked.
+      this.cachedToken = null;
       throw new ServiceUnavailableException(
         `bKash token grant failed: ${body.statusMessage ?? `HTTP ${res.status}`}`,
       );
     }
+
+    const ttlSeconds = Number(body.expires_in);
+    const ttlMs =
+      Number.isFinite(ttlSeconds) && ttlSeconds > 0
+        ? ttlSeconds * 1000
+        : TOKEN_FALLBACK_TTL_MS;
+    this.cachedToken = {
+      token: body.id_token,
+      // max(0, …) so an absurdly short expires_in yields "already stale"
+      // rather than a negative timestamp that caches forever.
+      expiresAt: Date.now() + Math.max(0, ttlMs - TOKEN_SAFETY_MARGIN_MS),
+      fingerprint,
+    };
     return body.id_token;
   }
 

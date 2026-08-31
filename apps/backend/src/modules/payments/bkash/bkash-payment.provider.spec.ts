@@ -119,6 +119,62 @@ describe('BkashPaymentProvider', () => {
     ).rejects.toThrow(/Invalid amount/);
   });
 
+  describe('token caching', () => {
+    it('reuses a still-valid token instead of granting one per payment', async () => {
+      const fetchMock = mockFetch(
+        { statusCode: '0000', id_token: 'tok-1', expires_in: 3600 },
+        { statusCode: '0000', paymentID: 'P1', bkashURL: 'https://bkash/1' },
+        { statusCode: '0000', paymentID: 'P2', bkashURL: 'https://bkash/2' },
+      );
+      const provider = makeProvider();
+
+      await provider.authorize(1, new Prisma.Decimal('100'));
+      await provider.authorize(2, new Prisma.Decimal('200'));
+
+      // grant, create, create — not grant, create, grant, create.
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(String(fetchMock.mock.calls[2][0])).toContain('/checkout/create');
+      expect(fetchMock.mock.calls[2][1].headers.Authorization).toBe('tok-1');
+    });
+
+    it('grants again once the cached token is inside its safety margin', async () => {
+      // 60s life is well inside the 5-minute margin, so it is never reused.
+      const fetchMock = mockFetch(
+        { statusCode: '0000', id_token: 'tok-1', expires_in: 60 },
+        { statusCode: '0000', paymentID: 'P1', bkashURL: 'https://bkash/1' },
+        { statusCode: '0000', id_token: 'tok-2', expires_in: 60 },
+        { statusCode: '0000', paymentID: 'P2', bkashURL: 'https://bkash/2' },
+      );
+      const provider = makeProvider();
+
+      await provider.authorize(1, new Prisma.Decimal('100'));
+      await provider.authorize(2, new Prisma.Decimal('200'));
+
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      expect(fetchMock.mock.calls[3][1].headers.Authorization).toBe('tok-2');
+    });
+
+    it('drops the cached token when bKash rejects a grant', async () => {
+      const fetchMock = mockFetch(
+        { statusCode: '0000', id_token: 'tok-1', expires_in: 3600 },
+        { statusCode: '0000', paymentID: 'P1', bkashURL: 'https://bkash/1' },
+      );
+      const provider = makeProvider();
+      await provider.authorize(1, new Prisma.Decimal('100'));
+
+      // Credentials rotated underneath us.
+      fetchMock.mockResolvedValueOnce({
+        status: 200,
+        json: async () => ({ statusCode: '9999', statusMessage: 'nope' }),
+      });
+      // Force a re-grant by ageing the cache out.
+      (provider as unknown as { cachedToken: { expiresAt: number } }).cachedToken.expiresAt = 0;
+
+      await expect(provider.authorize(2, new Prisma.Decimal('200'))).rejects.toThrow(/nope/);
+      expect((provider as unknown as { cachedToken: unknown }).cachedToken).toBeNull();
+    });
+  });
+
   it('executes a payment against the paymentID from the callback', async () => {
     const fetchMock = mockFetch(
       { statusCode: '0000', id_token: 't' },

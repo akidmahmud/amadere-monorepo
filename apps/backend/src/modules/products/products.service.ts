@@ -99,6 +99,19 @@ function variantIdForMedia(
   return match ? match.variantId : null;
 }
 
+// The client sends a whole variants array on product create, and duplicate()
+// copies whatever the source product already had — so neither can be trusted
+// to carry exactly one default. Keeps the first variant that claims it, and
+// falls back to the first variant when none does, because every read path
+// (`variants.find(v => v.isDefault) ?? variants[0]`) assumes a default
+// exists. Exported for the unit test.
+export function withSingleDefault<T extends { isDefault?: boolean }>(variants: T[]): T[] {
+  if (variants.length === 0) return variants;
+  const chosen = variants.findIndex((v) => v.isDefault);
+  const defaultIndex = chosen === -1 ? 0 : chosen;
+  return variants.map((v, i) => ({ ...v, isDefault: i === defaultIndex }));
+}
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -578,7 +591,7 @@ export class ProductsService {
           : undefined,
         variants: dto.hasVariants
           ? {
-              create: dto.variants!.map((v) => ({
+              create: withSingleDefault(dto.variants!).map((v) => ({
                 sku: v.sku,
                 barcode: v.barcode,
                 price: v.price,
@@ -829,23 +842,36 @@ export class ProductsService {
       [dto],
     );
 
-    await this.prisma.client.productVariant.create({
-      data: {
-        productId,
-        sku: dto.sku,
-        barcode: dto.barcode,
-        price: dto.price,
-        salePrice: dto.salePrice,
-        stock: dto.stock,
-        stockStatus: (dto.stock ?? 0) > 0 ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK',
-        weightOverride: dto.weightOverride,
-        isDefault: dto.isDefault,
-        attributeValues: {
-          create: dto.attributeValueIds.map((attributeValueId) => ({
-            attributeValueId,
-          })),
+    // "Exactly one default per product" is the same invariant
+    // setDefaultVariant() maintains — but adding a variant with Default
+    // ticked used to write `isDefault: true` without clearing the existing
+    // one, which is how a product ended up showing two "(default)" variants.
+    // Same clear-then-set, in one transaction so the two can't separate.
+    await this.prisma.client.$transaction(async (tx) => {
+      if (dto.isDefault) {
+        await tx.productVariant.updateMany({
+          where: { productId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+      await tx.productVariant.create({
+        data: {
+          productId,
+          sku: dto.sku,
+          barcode: dto.barcode,
+          price: dto.price,
+          salePrice: dto.salePrice,
+          stock: dto.stock,
+          stockStatus: (dto.stock ?? 0) > 0 ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK',
+          weightOverride: dto.weightOverride,
+          isDefault: dto.isDefault,
+          attributeValues: {
+            create: dto.attributeValueIds.map((attributeValueId) => ({
+              attributeValueId,
+            })),
+          },
         },
-      },
+      });
     });
     if (!product.hasVariants) {
       await this.prisma.client.product.update({
