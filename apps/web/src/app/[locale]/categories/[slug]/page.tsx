@@ -58,6 +58,11 @@ export async function generateMetadata({
     alternates: { canonical: path, languages: getLanguageAlternates(path) },
     robots: isFilteredView(filters) ? { index: false, follow: true } : undefined,
     openGraph: {
+      // Same `path` as the canonical above. Next only emits og:url when
+      // openGraph.url is set — metadataBase makes it absolute but does not
+      // create it — and Facebook's Sharing Debugger reports a missing og:url
+      // as an error. Product pages already did this; these did not.
+      url: path,
       title: category.seo.ogTitle,
       description: category.seo.ogDescription ?? undefined,
       images: category.seo.ogImageUrl ? [category.seo.ogImageUrl] : undefined,

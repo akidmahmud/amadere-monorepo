@@ -81,6 +81,13 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
+      // The site-wide fallback og:url, for the homepage and any page that
+      // does not override `openGraph` with its own. Next emits og:url ONLY
+      // when this is set — metadataBase makes it absolute, it does not create
+      // it — which is why Facebook's Sharing Debugger reported og:url
+      // missing. Locale-aware so the Bangla homepage does not claim to be the
+      // English one.
+      url: locale === "bn" ? "/bn" : "/",
       type: "website",
       locale: locale === "bn" ? "bn_BD" : "en_US",
       // No hardcoded width/height. These were fixed at 1200x630 regardless of
@@ -159,6 +166,15 @@ export default async function LocaleLayout({
       lang={locale}
       className={`h-full antialiased ${googleSans.variable} ${googleSansItalic.variable}`}
     >
+      {/* fb:app_id, rendered here rather than through Next's metadata
+          `other` map: that map emits <meta name="...">, and Facebook reads
+          fb:app_id from `property`, so the metadata route produced a tag its
+          own Sharing Debugger still would not count. Rendered only when the
+          id is configured — a blank or invented value is worse than none.
+          React hoists this into <head>, same as the favicon <link> below. */}
+      {process.env.NEXT_PUBLIC_FB_APP_ID && (
+        <meta property="fb:app_id" content={process.env.NEXT_PUBLIC_FB_APP_ID} />
+      )}
       {/* Admin-uploaded via Settings > Logo & Banners > Favicon — falls back
           to the static default in public/ when unset. Replaces the old
           app/icon.png file-convention favicon (which Next auto-injects its
