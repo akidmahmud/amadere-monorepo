@@ -6,6 +6,7 @@ import { useDeleteSeoMeta, useSeoMeta, useUpsertSeoMeta, type SeoEntityType } fr
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
 import { SeoCharCount } from "@/components/SeoCharCount";
+import { MediaPicker } from "@/components/MediaPicker";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -226,10 +227,21 @@ export function SeoMetaCard({
                 <input value={form.ogDescription} onChange={(e) => setForm((f) => ({ ...f, ogDescription: e.target.value }))} className={inputClass} />
                 <SeoCharCount value={form.ogDescription} limit="description" />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-secondary">OG image URL</span>
-                <input value={form.ogImageUrl} onChange={(e) => setForm((f) => ({ ...f, ogImageUrl: e.target.value }))} className={inputClass} />
-              </label>
+              {/* Upload or pick from the media library rather than pasting a
+                  URL. Existing rows that hold an external URL still render
+                  here (MediaPicker just shows `value` in an <img>), so nothing
+                  saved before this change is lost — it can be replaced or
+                  removed as normal.
+
+                  Left blank, the storefront falls back on its own: a category
+                  uses its banner image, then its image, then the site-wide OG
+                  image from Settings > Site SEO. See the categories route's
+                  generateMetadata. */}
+              <MediaPicker
+                value={form.ogImageUrl || undefined}
+                onChange={(url) => setForm((f) => ({ ...f, ogImageUrl: url }))}
+                label="OG image (falls back to the banner image)"
+              />
 
               <div className="flex items-center gap-3">
                 <Button type="submit" variant="primary" disabled={upsert.isPending}>

@@ -52,6 +52,35 @@ export async function generateMetadata({
   }
 
   const path = `/categories/${slug}`;
+
+  // og:image chain: the OG image set in the admin SEO panel, then the banner
+  // (landscape, so it crops closest to the 1.91:1 shape a share card wants),
+  // then the category image, then the site-wide default.
+  //
+  // The site default is NOT inherited for free. Next shallow-merges metadata,
+  // so the `openGraph` object below replaces the root layout's wholesale —
+  // leaving `images` undefined here meant categories without an ogImageUrl
+  // emitted no og:image at all, rather than falling back to the site one.
+  //
+  // toDisplayImageUrl earns its place twice over: it rewrites the legacy
+  // *.r2.dev rows onto the CDN host (r2.dev is rate-limited and the wrong
+  // thing for a scraper to hit), and it returns undefined for the `legacy://`
+  // pseudo-URLs the B12 migration left behind. IMG.banner matches the 1600px
+  // landscape shape the site's own OG image already uses.
+  const categoryOgImage =
+    toDisplayImageUrl(category.seo.ogImageUrl, IMG.banner) ??
+    toDisplayImageUrl(category.bannerImageUrl, IMG.banner) ??
+    toDisplayImageUrl(category.imageUrl, IMG.banner);
+
+  // `??` short-circuits, so this call only happens for a category that has
+  // no image of its own.
+  const ogImage =
+    categoryOgImage ??
+    toDisplayImageUrl(
+      (await safeGet("/api/v1/settings/site")).data?.seoImageUrl,
+      IMG.banner,
+    );
+
   return {
     title: category.seo.title,
     description: category.seo.description ?? undefined,
@@ -65,7 +94,7 @@ export async function generateMetadata({
       url: path,
       title: category.seo.ogTitle,
       description: category.seo.ogDescription ?? undefined,
-      images: category.seo.ogImageUrl ? [category.seo.ogImageUrl] : undefined,
+      images: ogImage ? [ogImage] : undefined,
     },
   };
 }

@@ -76,6 +76,10 @@ import { WholesaleModule } from './modules/wholesale/wholesale.module';
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().port().default(3000),
+        // Off in production unless explicitly set — the OpenAPI spec maps the
+        // entire admin API surface. See the comment in main.ts. Outside
+        // production Swagger is always on and this is ignored.
+        SWAGGER_ENABLED: Joi.string().valid('true', 'false').optional(),
         DATABASE_URL: Joi.string().uri().required(),
         ADMIN_JWT_ACCESS_SECRET: Joi.string().min(16).required(),
         ADMIN_JWT_REFRESH_SECRET: Joi.string().min(16).required(),
