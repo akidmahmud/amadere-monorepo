@@ -155,7 +155,10 @@ export function useCheckoutState() {
       codOtpCode: "",
       giftVoucherCode: "",
       customerNote: "",
-      agreedToTerms: false,
+      // ponytail: pre-checked at the owner's request to stop checkout stalling
+      // on an unticked box. Still a real control — the zod refine in
+      // checkout-schema.ts continues to block submit if someone unticks it.
+      agreedToTerms: true,
     },
   });
 
