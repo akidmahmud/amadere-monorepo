@@ -1,29 +1,64 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
-import type { PublishStatus } from "@/hooks/useBrands";
+import { PUBLISH_STATUSES, type PublishStatus } from "@/hooks/useBrands";
+
+/**
+ * Statuses a PRODUCT can hold.
+ *
+ * Deliberately its own list rather than an addition to PUBLISH_STATUSES:
+ * ADMIN_ONLY is implemented by the product read paths and nothing else, so
+ * offering it on a brand or a blog tag would be a setting that silently does
+ * nothing.
+ */
+export type ProductStatus = PublishStatus | "ADMIN_ONLY";
+export const PRODUCT_STATUSES: ProductStatus[] = [
+  ...PUBLISH_STATUSES,
+  "ADMIN_ONLY",
+];
+export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
+  PUBLISHED: "Published",
+  DRAFT: "Draft",
+  PENDING: "Pending",
+  ARCHIVED: "Archived",
+  ADMIN_ONLY: "Admin only",
+};
 
 export type ProductType = "PHYSICAL" | "DIGITAL";
 export type StockStatus = "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
 export type ProductFlagLabel = "BEST_SELLING" | "NEW_ARRIVAL" | "FEATURED";
-export type CostPriceUnit = "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML";
+export type CostPriceUnit =
+  "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML";
 
 // Same swagger enum-erasure fix as every other module — productType/status/
 // stockStatus/flagLabel/costPriceUnit on the response DTO come out as
 // Record<string, never>.
 export type AdminProduct = Omit<
   components["schemas"]["AdminProductDto"],
-  "productType" | "status" | "stockStatus" | "variants" | "flagLabel" | "costPriceUnit"
+  | "productType"
+  | "status"
+  | "stockStatus"
+  | "variants"
+  | "flagLabel"
+  | "costPriceUnit"
 > & {
   productType: ProductType;
-  status: PublishStatus;
+  status: ProductStatus;
   stockStatus: StockStatus;
   variants: AdminProductVariant[];
   flagLabel: ProductFlagLabel | null;
   costPriceUnit: CostPriceUnit | null;
 };
 
-export type AdminProductVariant = Omit<components["schemas"]["AdminProductVariantDto"], "stockStatus"> & {
+export type AdminProductVariant = Omit<
+  components["schemas"]["AdminProductVariantDto"],
+  "stockStatus"
+> & {
   stockStatus: StockStatus;
 };
 
@@ -37,11 +72,14 @@ export type AdminProductListItem = Omit<
   "stockStatus" | "status" | "variants"
 > & {
   stockStatus: StockStatus;
-  status: PublishStatus;
+  status: ProductStatus;
   variants: AdminProductListVariant[];
 };
 
-export type AdminProductListVariant = Omit<components["schemas"]["AdminProductListVariantDto"], "stockStatus"> & {
+export type AdminProductListVariant = Omit<
+  components["schemas"]["AdminProductListVariantDto"],
+  "stockStatus"
+> & {
   stockStatus: StockStatus;
 };
 
@@ -50,7 +88,7 @@ export type ProductInput = Omit<
   "productType" | "status" | "stockStatus" | "flagLabel"
 > & {
   productType: ProductType;
-  status: PublishStatus;
+  status: ProductStatus;
   stockStatus: StockStatus;
   flagLabel?: ProductFlagLabel | null;
 };
@@ -64,7 +102,7 @@ export interface AdminProductFilters {
   q?: string;
   categoryIds?: number[];
   brandId?: number;
-  status?: PublishStatus;
+  status?: ProductStatus;
   stockStatus?: StockStatus;
   minPrice?: number;
   maxPrice?: number;
@@ -91,7 +129,10 @@ function toQueryString(filters: AdminProductFilters): string {
 export function useProducts(filters: AdminProductFilters = {}) {
   return useQuery({
     queryKey: [...KEY, filters],
-    queryFn: () => proxyFetch<Required<Paginated<AdminProductListItem>>>(`/admin/products${toQueryString(filters)}`),
+    queryFn: () =>
+      proxyFetch<Required<Paginated<AdminProductListItem>>>(
+        `/admin/products${toQueryString(filters)}`,
+      ),
     placeholderData: keepPreviousData,
   });
 }
@@ -105,7 +146,8 @@ export interface ProductSalesStats {
 export function useProductSalesStats(productId: number) {
   return useQuery({
     queryKey: [...KEY, productId, "stats"],
-    queryFn: () => proxyFetch<ProductSalesStats>(`/admin/products/${productId}/stats`),
+    queryFn: () =>
+      proxyFetch<ProductSalesStats>(`/admin/products/${productId}/stats`),
     enabled: Number.isFinite(productId),
   });
 }
@@ -133,7 +175,9 @@ export function useProductSearch(q: string) {
   return useQuery({
     queryKey: [...KEY, "search", q],
     queryFn: async () => {
-      const res = await proxyFetch<Paginated<AdminProductListItem>>(`/admin/products?pageSize=20&q=${encodeURIComponent(q)}`);
+      const res = await proxyFetch<Paginated<AdminProductListItem>>(
+        `/admin/products?pageSize=20&q=${encodeURIComponent(q)}`,
+      );
       return res.items ?? [];
     },
     enabled: q.trim().length > 0,
@@ -152,7 +196,10 @@ export function useCreateProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ProductInput) =>
-      proxyFetch<AdminProduct>("/admin/products", { method: "POST", body: JSON.stringify(input) }),
+      proxyFetch<AdminProduct>("/admin/products", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -166,7 +213,10 @@ export function useUpdateProduct(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Partial<Omit<ProductInput, "variants">>) =>
-      proxyFetch<AdminProduct>(`/admin/products/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+      proxyFetch<AdminProduct>(`/admin/products/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -174,7 +224,8 @@ export function useUpdateProduct(id: number) {
 export function useDeleteProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<void>(`/admin/products/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) =>
+      proxyFetch<void>(`/admin/products/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -182,7 +233,10 @@ export function useDeleteProduct() {
 export function useDuplicateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<AdminProduct>(`/admin/products/${id}/duplicate`, { method: "POST" }),
+    mutationFn: (id: number) =>
+      proxyFetch<AdminProduct>(`/admin/products/${id}/duplicate`, {
+        method: "POST",
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -191,7 +245,10 @@ export function useAddVariant(productId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: VariantInput) =>
-      proxyFetch<AdminProduct>(`/admin/products/${productId}/variants`, { method: "POST", body: JSON.stringify(input) }),
+      proxyFetch<AdminProduct>(`/admin/products/${productId}/variants`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -200,7 +257,9 @@ export function useRemoveVariant(productId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (variantId: number) =>
-      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}`, { method: "DELETE" }),
+      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}`, {
+        method: "DELETE",
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -210,7 +269,10 @@ export function useSetDefaultVariant(productId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (variantId: number) =>
-      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/default`, { method: "PATCH" }),
+      proxyFetch<void>(
+        `/admin/products/${productId}/variants/${variantId}/default`,
+        { method: "PATCH" },
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -219,7 +281,10 @@ export function useUpdateVariantSku(productId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ variantId, sku }: { variantId: number; sku: string }) =>
-      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/sku`, { method: "PATCH", body: JSON.stringify({ sku }) }),
+      proxyFetch<void>(
+        `/admin/products/${productId}/variants/${variantId}/sku`,
+        { method: "PATCH", body: JSON.stringify({ sku }) },
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -227,22 +292,35 @@ export function useUpdateVariantSku(productId: number) {
 export function useUpdateVariantWeight(productId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ variantId, weightOverride }: { variantId: number; weightOverride: number | null }) =>
-      proxyFetch<void>(`/admin/products/${productId}/variants/${variantId}/weight`, {
-        method: "PATCH",
-        body: JSON.stringify({ weightOverride }),
-      }),
+    mutationFn: ({
+      variantId,
+      weightOverride,
+    }: {
+      variantId: number;
+      weightOverride: number | null;
+    }) =>
+      proxyFetch<void>(
+        `/admin/products/${productId}/variants/${variantId}/weight`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ weightOverride }),
+        },
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
 
 export function useGenerateProductPreviewToken() {
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<{ token: string }>(`/admin/products/${id}/preview-token`, { method: "POST" }),
+    mutationFn: (id: number) =>
+      proxyFetch<{ token: string }>(`/admin/products/${id}/preview-token`, {
+        method: "POST",
+      }),
   });
 }
 
-export type AdminDeletedProduct = components["schemas"]["AdminDeletedProductDto"];
+export type AdminDeletedProduct =
+  components["schemas"]["AdminDeletedProductDto"];
 
 const TRASH_KEY = ["admin-products-trash"];
 
@@ -259,7 +337,10 @@ export function useDeletedProducts(page = 1, pageSize = 20, q?: string) {
 export function useRestoreProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<AdminProduct>(`/admin/products/${id}/restore`, { method: "POST" }),
+    mutationFn: (id: number) =>
+      proxyFetch<AdminProduct>(`/admin/products/${id}/restore`, {
+        method: "POST",
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TRASH_KEY });
       qc.invalidateQueries({ queryKey: KEY });

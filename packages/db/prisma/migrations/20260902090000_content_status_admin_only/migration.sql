@@ -1,0 +1,18 @@
+-- A product that staff can sell but customers cannot see.
+--
+-- Needed for lines that are ordered over the phone or in person but must not
+-- appear in the shop: staff-only bundles, one-off or negotiated items,
+-- replacement parts. Previously the only way to hide a product was DRAFT or
+-- ARCHIVED, and neither is sellable.
+--
+-- Nothing else has to change to keep it hidden: every public read
+-- (listing, detail, search, sitemap, catalog feed, collections, cart add)
+-- filters `status = 'PUBLISHED'` by equality, so a new value is excluded by
+-- construction rather than by a new rule someone has to remember. Staff-side
+-- reads (admin list, product picker, manual order creation) do not filter on
+-- status at all, so such a product is orderable with normal stock deduction
+-- and normal sales reporting.
+--
+-- Its own migration: `ALTER TYPE ... ADD VALUE` cannot share a transaction
+-- with any use of the new value, and Prisma runs one migration per transaction.
+ALTER TYPE "ContentStatus" ADD VALUE 'ADMIN_ONLY';

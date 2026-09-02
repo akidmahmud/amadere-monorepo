@@ -2,8 +2,14 @@
 
 import type { ReactNode } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { Input, Select } from "@amader/ui";
-import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT } from "@amader/shared";
+import { Autocomplete, Input } from "@amader/ui";
+import {
+  BD_DISTRICTS_BY_DIVISION,
+  BD_DISTRICT_ALT_SPELLINGS,
+  BD_DISTRICT_BN,
+  BD_THANAS_BY_DISTRICT,
+  BD_THANA_BN,
+} from "@amader/shared";
 import type { CheckoutFormValues } from "@/lib/checkout-schema";
 import { CheckoutFraudBadge } from "@/components/CheckoutFraudBadge";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
@@ -14,7 +20,14 @@ import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
   .flat()
   .sort((a, b) => a.localeCompare(b))
-  .map((d) => ({ value: d, label: d }));
+  .map((d) => ({
+    value: d,
+    // Bengali is searchable AND shown, so a customer typing "ঢাকা" finds the
+    // row and can see it is the right one before picking. The stored value
+    // stays English — see bd-bengali.ts.
+    hint: BD_DISTRICT_BN[d],
+    aliases: [BD_DISTRICT_BN[d], ...(BD_DISTRICT_ALT_SPELLINGS[d] ?? [])].filter((x): x is string => Boolean(x)),
+  }));
 
 export function AddressFields({
   prefix,
@@ -33,6 +46,7 @@ export function AddressFields({
   const {
     register,
     control,
+    setValue,
     watch,
     formState: { errors },
   } = useFormContext<CheckoutFormValues>();
@@ -42,7 +56,9 @@ export function AddressFields({
   // bd-thanas.ts) get a real dropdown here — every other district still
   // falls back to free-text entry below until its list is added the same way.
   const selectedDistrict = watch(`${prefix}.district`);
-  const thanaOptions = selectedDistrict ? BD_THANAS_BY_DISTRICT[selectedDistrict] : undefined;
+  const thanaOptions = ((selectedDistrict && BD_THANAS_BY_DISTRICT[selectedDistrict]) || []).map(
+    (t) => ({ value: t, hint: BD_THANA_BN[t], aliases: BD_THANA_BN[t] ? [BD_THANA_BN[t]] : [] }),
+  );
 
   return (
     <div>
@@ -78,15 +94,22 @@ export function AddressFields({
             name={`${prefix}.district`}
             control={control}
             render={({ field }) => (
-              <Select
+              <Autocomplete
                 options={DISTRICT_OPTIONS}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select District"
-                // 64 districts in one alphabetical list — scrolling to find
-                // one was the slowest step in the form.
-                searchable
-                searchPlaceholder="Search district…"
+                value={field.value ?? ""}
+                onChange={(next) => {
+                  field.onChange(next);
+                  // The thana list belongs to the old district. Leaving it set
+                  // would ship a Dhaka thana to a Sylhet address.
+                  setValue(`${prefix}.area`, "", { shouldValidate: false });
+                }}
+                // The 65 districts are the complete, authoritative list and
+                // `division` is derived from this exact string server-side, so
+                // a typo here has to be impossible.
+                allowFreeText={false}
+                placeholder="District *"
+                aria-label="District"
+                emptyMessage="No district matches"
               />
             )}
           />
@@ -95,22 +118,23 @@ export function AddressFields({
           )}
         </div>
         <div>
-          {thanaOptions ? (
-            <Controller
-              name={`${prefix}.area`}
-              control={control}
-              render={({ field }) => (
-                <Select
-                  options={thanaOptions.map((t) => ({ value: t, label: t }))}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  placeholder="Select Thana / Area"
-                />
-              )}
-            />
-          ) : (
-            <Input placeholder="Thana / Area *" {...register(`${prefix}.area`)} />
-          )}
+          <Controller
+            name={`${prefix}.area`}
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                options={thanaOptions}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                // Free text on purpose: only two districts have a curated area
+                // list, so for the other 63 this is simply a text box that
+                // happens to have nothing to suggest.
+                placeholder="Thana / Area *"
+                aria-label="Thana or area"
+                emptyMessage="Type your thana / area"
+              />
+            )}
+          />
           {fieldErrors?.area && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.area.message}</p>}
         </div>
       </div>

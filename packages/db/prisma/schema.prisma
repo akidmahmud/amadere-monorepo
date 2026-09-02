@@ -539,6 +539,16 @@ enum ContentStatus {
   PENDING
   PUBLISHED
   ARCHIVED
+  /// Live for staff, invisible to customers. **Only Product implements this** —
+  /// the enum is shared by a dozen models, and on the others it behaves like
+  /// any non-PUBLISHED status (i.e. hidden) because every public read filters
+  /// `status = PUBLISHED` by equality.
+  ///
+  /// On a product it means: sellable through a staff-created order, with
+  /// normal stock movement and normal sales reporting, but absent from the
+  /// storefront — no listing, no detail page, no search, no sitemap, no
+  /// catalog feed, and not addable to a customer's own cart.
+  ADMIN_ONLY
 }
 
 model Brand {

@@ -4,7 +4,13 @@ import { useRef, useState } from "react";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useAttributes, type Attribute } from "@/hooks/useAttributes";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
-import type { StockStatus, AdminProductVariant, VariantInput } from "@/hooks/useProducts";
+import {
+  PRODUCT_STATUSES,
+  PRODUCT_STATUS_LABELS,
+  type StockStatus,
+  type AdminProductVariant,
+  type VariantInput,
+} from "@/hooks/useProducts";
 import type { ProductFormState } from "./useProductFormState";
 import { ProductMediaGallery } from "./ProductMediaGallery";
 import { ProductTabs, type ProductTab } from "./ProductTabs";
@@ -22,7 +28,8 @@ import { FrequentlyBoughtTogetherFields } from "./FrequentlyBoughtTogetherFields
 import { ExistingVariantsManager } from "./ExistingVariantsManager";
 import { NewVariantsBuilder } from "./NewVariantsBuilder";
 
-const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+const inputClass =
+  "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 const numInputClass = `num ${inputClass}`;
 
 function toggle(list: number[], id: number, set: (ids: number[]) => void) {
@@ -87,7 +94,16 @@ function slugify(str: string): string {
 }
 
 const wandIcon = (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="m15 4 1.5 3L20 8.5 16.5 10 15 13l-1.5-3L10 8.5 13.5 7Z" />
     <path d="m5 14 .9 1.8L8 16.7l-2.1.9L5 19.5l-.9-1.9-2.1-.9 2.1-.9Z" />
     <path d="M3 3v3M1.5 4.5h3" />
@@ -98,7 +114,14 @@ function SaveFirstNotice() {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/40 p-5 text-sm font-semibold text-emerald-900 shadow-sm">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-700 ring-1 ring-amber-400/40">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -120,10 +143,18 @@ export interface ProductFormFieldsProps {
   onNewVariantsChange?: (variants: VariantInput[]) => void;
 }
 
-export function ProductFormFields({ form, productId, variants, newVariants, onNewVariantsChange }: ProductFormFieldsProps) {
+export function ProductFormFields({
+  form,
+  productId,
+  variants,
+  newVariants,
+  onNewVariantsChange,
+}: ProductFormFieldsProps) {
   const [tab, setTab] = useState<ProductTab>("General");
   const { data: attributes } = useAttributes();
-  const selectedAttributes: Attribute[] = (attributes ?? []).filter((a) => form.attributeIds.includes(a.id));
+  const selectedAttributes: Attribute[] = (attributes ?? []).filter((a) =>
+    form.attributeIds.includes(a.id),
+  );
   // Auto-generates the slug from the name until the admin types into the
   // slug field directly — same pattern as BlogPostFormFields.tsx.
   const slugEdited = useRef(false);
@@ -131,7 +162,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
   // undefined (not 0) means "no cost entered" — same distinction
   // ProductPricingCard's own hasCost flag makes, so a variant with no cost
   // basis shows "—" instead of a misleading ৳0 profit.
-  const variantCostPerItem = form.costPerItem.trim() !== "" ? Number(form.costPerItem) : undefined;
+  const variantCostPerItem =
+    form.costPerItem.trim() !== "" ? Number(form.costPerItem) : undefined;
 
   function handleNameChange(v: string) {
     form.setName(v);
@@ -153,19 +185,27 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
             <div className="flex flex-col gap-4">
               <div className="rounded-card border border-border bg-surface p-[18px]">
-                <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Basic Information</h3>
+                <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">
+                  Basic Information
+                </h3>
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">
                     Product Name<span className="ml-0.5 text-danger">*</span>
                   </span>
-                  <input value={form.name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
+                  <input
+                    value={form.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className={inputClass}
+                  />
                 </label>
                 <label className="mb-3.5 flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-text">
                     Permalink<span className="ml-0.5 text-danger">*</span>
                   </span>
                   <div className="flex h-10 items-center overflow-hidden rounded-sm border border-border bg-surface focus-within:border-brand-500">
-                    <span className="select-none whitespace-nowrap pl-3 text-sm text-muted">{storefrontUrl}/products/</span>
+                    <span className="select-none whitespace-nowrap pl-3 text-sm text-muted">
+                      {storefrontUrl}/products/
+                    </span>
                     <input
                       value={form.slug}
                       onChange={(e) => {
@@ -193,7 +233,12 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                   {form.slug && (
                     <span className="text-xs text-muted">
                       Preview:{" "}
-                      <a href={`${storefrontUrl}/products/${form.slug}`} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">
+                      <a
+                        href={`${storefrontUrl}/products/${form.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-brand-500 hover:underline"
+                      >
                         {storefrontUrl}/products/{form.slug}
                       </a>
                     </span>
@@ -202,14 +247,31 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 <div className="mb-3.5 flex flex-col gap-1.5">
                   <span className="flex items-center justify-between text-xs font-bold text-text">
                     Short Description
-                    <span className={countWords(form.description) > SHORT_DESCRIPTION_MAX_WORDS ? "font-semibold text-danger" : "font-semibold text-muted"}>
-                      {countWords(form.description)}/{SHORT_DESCRIPTION_MAX_WORDS} words
+                    <span
+                      className={
+                        countWords(form.description) >
+                        SHORT_DESCRIPTION_MAX_WORDS
+                          ? "font-semibold text-danger"
+                          : "font-semibold text-muted"
+                      }
+                    >
+                      {countWords(form.description)}/
+                      {SHORT_DESCRIPTION_MAX_WORDS} words
                     </span>
                   </span>
-                  <RichTextEditor value={form.description} onChange={form.setDescription} compact />
-                  {countWords(form.description) > SHORT_DESCRIPTION_MAX_WORDS && (
+                  <RichTextEditor
+                    value={form.description}
+                    onChange={form.setDescription}
+                    compact
+                  />
+                  {countWords(form.description) >
+                    SHORT_DESCRIPTION_MAX_WORDS && (
                     <span className="text-xs font-semibold text-danger">
-                      Short description exceeds {SHORT_DESCRIPTION_MAX_WORDS} words by {countWords(form.description) - SHORT_DESCRIPTION_MAX_WORDS} word(s). Please trim to save.
+                      Short description exceeds {SHORT_DESCRIPTION_MAX_WORDS}{" "}
+                      words by{" "}
+                      {countWords(form.description) -
+                        SHORT_DESCRIPTION_MAX_WORDS}{" "}
+                      word(s). Please trim to save.
                     </span>
                   )}
                 </div>
@@ -220,8 +282,13 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                     Fullscreen button) whenever anything inside is clicked,
                     including the editor's own content area. */}
                 <div className="mb-3.5 flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">Full Description</span>
-                  <RichTextEditor value={form.content} onChange={form.setContent} />
+                  <span className="text-xs font-bold text-text">
+                    Full Description
+                  </span>
+                  <RichTextEditor
+                    value={form.content}
+                    onChange={form.setContent}
+                  />
                 </div>
                 {/* Plain div, not <label> — see the Full Description field's
                     own comment above for why (RichTextEditor's toolbar has
@@ -232,26 +299,59 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                     the benefit points and any usage-idea sub-lists), neither
                     of which the compact toolbar carries. */}
                 <div className="mb-3.5 flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">Key Benefits (optional)</span>
-                  <RichTextEditor value={form.benefitPoints} onChange={form.setBenefitPoints} />
+                  <span className="text-xs font-bold text-text">
+                    Key Benefits (optional)
+                  </span>
+                  <RichTextEditor
+                    value={form.benefitPoints}
+                    onChange={form.setBenefitPoints}
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">How to Use (optional)</span>
-                  <RichTextEditor value={form.howToUse} onChange={form.setHowToUse} />
+                  <span className="text-xs font-bold text-text">
+                    How to Use (optional)
+                  </span>
+                  <RichTextEditor
+                    value={form.howToUse}
+                    onChange={form.setHowToUse}
+                  />
                 </div>
               </div>
 
               <div className="rounded-card border border-border bg-surface p-[18px]">
-                <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Other Details</h3>
+                <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">
+                  Other Details
+                </h3>
                 <label className="mb-3.5 flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-text">Badges (optional, up to 5 — shown under the buy box, including on mobile)</span>
-                  <ProductBadgesField value={form.keyBenefits} onChange={form.setKeyBenefits} />
+                  <span className="text-xs font-bold text-text">
+                    Badges (optional, up to 5 — shown under the buy box,
+                    including on mobile)
+                  </span>
+                  <ProductBadgesField
+                    value={form.keyBenefits}
+                    onChange={form.setKeyBenefits}
+                  />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <StatusSelect value={form.status} onChange={form.setStatus} />
+                  <StatusSelect
+                    value={form.status}
+                    onChange={form.setStatus}
+                    statuses={PRODUCT_STATUSES}
+                    labels={PRODUCT_STATUS_LABELS}
+                  />
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-bold text-text">Product type</span>
-                    <select value={form.productType} onChange={(e) => form.setProductType(e.target.value as typeof form.productType)} className={inputClass}>
+                    <span className="text-xs font-bold text-text">
+                      Product type
+                    </span>
+                    <select
+                      value={form.productType}
+                      onChange={(e) =>
+                        form.setProductType(
+                          e.target.value as typeof form.productType,
+                        )
+                      }
+                      className={inputClass}
+                    >
                       <option value="PHYSICAL">Physical</option>
                       <option value="DIGITAL">Digital</option>
                     </select>
@@ -270,7 +370,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
 
           {productId && <RelatedProductsFields productId={productId} />}
           {productId && <CrossSellFields productId={productId} />}
-          {productId && <FrequentlyBoughtTogetherFields productId={productId} />}
+          {productId && (
+            <FrequentlyBoughtTogetherFields productId={productId} />
+          )}
         </div>
       )}
 
@@ -278,7 +380,16 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
         <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-xs">
           <h3 className="mb-5 flex items-center gap-2.5 text-base font-extrabold text-[#064e3b]">
             <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#ecfdf5] text-[#059669]">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <path d="m21 15-5-5L5 21" />
@@ -297,12 +408,17 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
             onChange={form.setImages}
             variants={
               productId && variants
-                ? variants.map((v) => ({ id: v.id, label: v.sku || `Variant #${v.id}` }))
+                ? variants.map((v) => ({
+                    id: v.id,
+                    label: v.sku || `Variant #${v.id}`,
+                  }))
                 : []
             }
           />
           <label className="mt-5 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-emerald-950">Video URL (optional)</span>
+            <span className="text-xs font-bold text-emerald-950">
+              Video URL (optional)
+            </span>
             <input
               value={form.videoUrl}
               onChange={(e) => form.setVideoUrl(e.target.value)}
@@ -311,14 +427,27 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
             />
           </label>
           <label className="mt-4 flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
-            <input type="checkbox" checked={form.isFeatured} onChange={(e) => form.setIsFeatured(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+            <input
+              type="checkbox"
+              checked={form.isFeatured}
+              onChange={(e) => form.setIsFeatured(e.target.checked)}
+              className="h-4 w-4 rounded accent-emerald-700"
+            />
             Featured Product
           </label>
           <label className="mt-4 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-emerald-950">Product Badge (optional)</span>
+            <span className="text-xs font-bold text-emerald-950">
+              Product Badge (optional)
+            </span>
             <select
               value={form.flagLabel ?? ""}
-              onChange={(e) => form.setFlagLabel(e.target.value === "" ? null : (e.target.value as typeof form.flagLabel))}
+              onChange={(e) =>
+                form.setFlagLabel(
+                  e.target.value === ""
+                    ? null
+                    : (e.target.value as typeof form.flagLabel),
+                )
+              }
               className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
             >
               <option value="">None</option>
@@ -327,8 +456,6 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               <option value="FEATURED">Featured</option>
             </select>
           </label>
-
-
         </div>
       )}
 
@@ -336,7 +463,14 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
         <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
           <h3 className="mb-4 text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
                 <path d="m3.3 7 8.7 5 8.7-5" />
                 <path d="M12 22V12" />
@@ -358,7 +492,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           </div>
           {form.hasVariants ? (
             <div className="mb-4 rounded-lg border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-amber-400/5 p-3.5 text-xs font-semibold text-amber-900">
-              This product has variants — stock is tracked per variant in the <strong>Variants</strong> tab.
+              This product has variants — stock is tracked per variant in the{" "}
+              <strong>Variants</strong> tab.
             </div>
           ) : (
             <div className="mb-4 grid grid-cols-2 gap-4">
@@ -374,10 +509,14 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-emerald-950">Stock status</span>
+                <span className="text-xs font-bold text-emerald-950">
+                  Stock status
+                </span>
                 <select
                   value={form.stockStatus}
-                  onChange={(e) => form.setStockStatus(e.target.value as StockStatus)}
+                  onChange={(e) =>
+                    form.setStockStatus(e.target.value as StockStatus)
+                  }
                   className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
                 >
                   <option value="IN_STOCK">In stock</option>
@@ -389,11 +528,21 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           )}
           <div className="flex flex-col gap-3 pt-1">
             <label className="flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
-              <input type="checkbox" checked={form.trackInventory} onChange={(e) => form.setTrackInventory(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+              <input
+                type="checkbox"
+                checked={form.trackInventory}
+                onChange={(e) => form.setTrackInventory(e.target.checked)}
+                className="h-4 w-4 rounded accent-emerald-700"
+              />
               Track inventory
             </label>
             <label className="flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
-              <input type="checkbox" checked={form.allowBackorder} onChange={(e) => form.setAllowBackorder(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+              <input
+                type="checkbox"
+                checked={form.allowBackorder}
+                onChange={(e) => form.setAllowBackorder(e.target.checked)}
+                className="h-4 w-4 rounded accent-emerald-700"
+              />
               Allow backorder
             </label>
           </div>
@@ -404,7 +553,14 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
         <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
           <h3 className="mb-4 text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <polygon points="12 2 2 7 12 12 22 7 12 2" />
                 <polyline points="2 17 12 22 22 17" />
                 <polyline points="2 12 12 17 22 12" />
@@ -413,14 +569,21 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
             Product Variants
           </h3>
           <label className="mb-5 flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none rounded-lg border border-emerald-800/15 bg-white p-3 shadow-xs">
-            <input type="checkbox" checked={form.hasVariants} onChange={(e) => form.setHasVariants(e.target.checked)} className="h-4 w-4 rounded accent-emerald-700" />
+            <input
+              type="checkbox"
+              checked={form.hasVariants}
+              onChange={(e) => form.setHasVariants(e.target.checked)}
+              className="h-4 w-4 rounded accent-emerald-700"
+            />
             This product has variants (price/stock live on each variant instead)
           </label>
 
           {form.hasVariants && (
             <>
               <div className="mb-5 rounded-lg border border-emerald-800/15 bg-emerald-50/40 p-4">
-                <span className="mb-2.5 block text-xs font-extrabold text-emerald-950">Variant attributes (which properties this product varies by)</span>
+                <span className="mb-2.5 block text-xs font-extrabold text-emerald-950">
+                  Variant attributes (which properties this product varies by)
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {attributes?.map((a) => {
                     const checked = form.attributeIds.includes(a.id);
@@ -433,7 +596,18 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                             : "border-emerald-800/20 bg-white text-emerald-950 hover:border-emerald-600/40"
                         }`}
                       >
-                        <input type="checkbox" checked={checked} onChange={() => toggle(form.attributeIds, a.id, form.setAttributeIds)} className="accent-amber-400" />
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            toggle(
+                              form.attributeIds,
+                              a.id,
+                              form.setAttributeIds,
+                            )
+                          }
+                          className="accent-amber-400"
+                        />
                         {a.translations[0]?.name}
                       </label>
                     );
@@ -467,7 +641,14 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
         <div className="rounded-xl border border-emerald-800/20 bg-gradient-to-b from-white via-white to-emerald-50/20 p-6 shadow-sm">
           <h3 className="mb-4 text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <rect x="1" y="3" width="15" height="13" />
                 <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
                 <circle cx="5.5" cy="18.5" r="2.5" />
@@ -478,26 +659,39 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           </h3>
           <div className="mb-4 flex flex-col gap-2 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/50 p-4 text-xs text-emerald-950 shadow-xs">
             <div className="flex items-center gap-2 font-bold text-emerald-900">
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-400 text-emerald-950 font-black text-[10px]">i</span>
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-400 text-emerald-950 font-black text-[10px]">
+                i
+              </span>
               <span>Courier Weight Calculation Rules</span>
             </div>
             <p className="leading-relaxed">
-              <strong>Same value as &quot;Weight (kg)&quot; on the General tab (Pricing)</strong> — editing either one
-              updates both. For products with variants: each variant can have its own shipping weight (set per
-              variant in the Variants tab); when a variant doesn&apos;t have one, this product-level weight is used
-              for it instead when the courier shipment is calculated.
+              <strong>
+                Same value as &quot;Weight (kg)&quot; on the General tab
+                (Pricing)
+              </strong>{" "}
+              — editing either one updates both. For products with variants:
+              each variant can have its own shipping weight (set per variant in
+              the Variants tab); when a variant doesn&apos;t have one, this
+              product-level weight is used for it instead when the courier
+              shipment is calculated.
             </p>
             <p lang="bn" className="leading-relaxed text-emerald-900/90">
-              <strong>জেনারেল ট্যাবের (প্রাইসিং) &quot;Weight (kg)&quot; ফিল্ডের সাথে এটি একই মান</strong> — যেকোনো
-              একটিতে পরিবর্তন করলে দুটোই আপডেট হয়। ভ্যারিয়েন্ট থাকা পণ্যের ক্ষেত্রে: প্রতিটি ভ্যারিয়েন্টের নিজস্ব
-              শিপিং ওজন থাকতে পারে (ভ্যারিয়েন্টস ট্যাবে সেট করা যায়); কোনো ভ্যারিয়েন্টের নিজস্ব ওজন সেট না থাকলে,
-              কুরিয়ার শিপমেন্ট হিসাব করার সময় এই প্রোডাক্ট-লেভেল ওজনটি সেই ভ্যারিয়েন্টের জন্য ব্যবহৃত হবে।
+              <strong>
+                জেনারেল ট্যাবের (প্রাইসিং) &quot;Weight (kg)&quot; ফিল্ডের সাথে
+                এটি একই মান
+              </strong>{" "}
+              — যেকোনো একটিতে পরিবর্তন করলে দুটোই আপডেট হয়। ভ্যারিয়েন্ট থাকা
+              পণ্যের ক্ষেত্রে: প্রতিটি ভ্যারিয়েন্টের নিজস্ব শিপিং ওজন থাকতে
+              পারে (ভ্যারিয়েন্টস ট্যাবে সেট করা যায়); কোনো ভ্যারিয়েন্টের
+              নিজস্ব ওজন সেট না থাকলে, কুরিয়ার শিপমেন্ট হিসাব করার সময় এই
+              প্রোডাক্ট-লেভেল ওজনটি সেই ভ্যারিয়েন্টের জন্য ব্যবহৃত হবে।
             </p>
           </div>
           <div className="mb-4 grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-emerald-950">
-                Shippable weight, kg<span className="ml-0.5 text-rose-500">*</span>
+                Shippable weight, kg
+                <span className="ml-0.5 text-rose-500">*</span>
               </span>
               <input
                 type="number"
@@ -510,7 +704,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-emerald-950">
-                Min order quantity<span className="ml-0.5 text-rose-500">*</span>
+                Min order quantity
+                <span className="ml-0.5 text-rose-500">*</span>
               </span>
               <input
                 type="number"
@@ -520,7 +715,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-emerald-950">Max order quantity (optional)</span>
+              <span className="text-xs font-bold text-emerald-950">
+                Max order quantity (optional)
+              </span>
               <input
                 type="number"
                 value={form.maxOrderQuantity}
@@ -550,7 +747,9 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
             </h4>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-emerald-950">Google product category</span>
+              <span className="text-xs font-bold text-emerald-950">
+                Google product category
+              </span>
               <input
                 value={form.googleProductCategory}
                 onChange={(e) => form.setGoogleProductCategory(e.target.value)}
@@ -558,12 +757,15 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30 placeholder:text-emerald-900/40"
               />
               <span className="text-[11px] text-emerald-900/60">
-                Google&apos;s numeric taxonomy id. Optional — improves how Google classifies the product.
+                Google&apos;s numeric taxonomy id. Optional — improves how
+                Google classifies the product.
               </span>
             </label>
 
             <label className="mt-4 flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-emerald-950">Custom labels</span>
+              <span className="text-xs font-bold text-emerald-950">
+                Custom labels
+              </span>
               <input
                 value={form.customLabels}
                 onChange={(e) => form.setCustomLabels(e.target.value)}
@@ -571,7 +773,8 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
                 className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30 placeholder:text-emerald-900/40"
               />
               <span className="text-[11px] text-emerald-900/60">
-                Comma-separated, up to 5. Used only to segment ad campaigns — never shown to customers.
+                Comma-separated, up to 5. Used only to segment ad campaigns —
+                never shown to customers.
               </span>
             </label>
 
@@ -585,15 +788,26 @@ export function ProductFormFields({ form, productId, variants, newVariants, onNe
               Keep out of ad catalogs
             </label>
             <p className="mt-1 text-[11px] text-emerald-900/60">
-              Still sold normally on the site — just never advertised on Facebook, Google or TikTok.
+              Still sold normally on the site — just never advertised on
+              Facebook, Google or TikTok.
             </p>
           </div>
         </>
       )}
 
-      {tab === "Analytics" && (productId ? <ProductAnalyticsTab productId={productId} /> : <SaveFirstNotice />)}
+      {tab === "Analytics" &&
+        (productId ? (
+          <ProductAnalyticsTab productId={productId} />
+        ) : (
+          <SaveFirstNotice />
+        ))}
 
-      {tab === "Activity Logs" && (productId ? <ProductActivityTab productId={productId} /> : <SaveFirstNotice />)}
+      {tab === "Activity Logs" &&
+        (productId ? (
+          <ProductActivityTab productId={productId} />
+        ) : (
+          <SaveFirstNotice />
+        ))}
     </div>
   );
 }

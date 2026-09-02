@@ -26,6 +26,7 @@ export * from './bd-geo';
 // (its detect-libc dependency needs Node's `child_process`). Server-only
 // consumers import `@amader/shared/image-derivatives` directly instead.
 export * from './bd-thanas';
+export * from './bd-bengali';
 export * from './phone';
 export * from './ckeditor-fonts';
 export * from './footer';

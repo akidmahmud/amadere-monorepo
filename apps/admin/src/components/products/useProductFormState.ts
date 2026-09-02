@@ -1,6 +1,14 @@
 import { useState } from "react";
-import type { CostPriceUnit, ProductFlagLabel, ProductType, StockStatus, AdminProduct } from "@/hooks/useProducts";
-import type { PublishStatus } from "@/hooks/useBrands";
+import type {
+  CostPriceUnit,
+  ProductFlagLabel,
+  ProductType,
+  StockStatus,
+  AdminProduct,
+} from "@/hooks/useProducts";
+// ProductStatus, not PublishStatus: a product can be ADMIN_ONLY, which the
+// other entities sharing that type cannot.
+import type { ProductStatus } from "@/hooks/useProducts";
 import type { GalleryImage } from "./ProductMediaGallery";
 
 // Flat snapshot of every editable field — the autosave draft shape. Distinct
@@ -15,7 +23,7 @@ export interface ProductFormSnapshot {
   authorId: number | undefined;
   isbn: string;
   productType: ProductType;
-  status: PublishStatus;
+  status: ProductStatus;
   isFeatured: boolean;
   excludeFromFeed: boolean;
   googleProductCategory: string;
@@ -83,18 +91,30 @@ function countWords(str: string): number {
 export function useProductFormState(initial?: AdminProduct) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
-  const [brandId, setBrandId] = useState<number | undefined>(initial?.brandId ?? undefined);
+  const [brandId, setBrandId] = useState<number | undefined>(
+    initial?.brandId ?? undefined,
+  );
   // Book fields. authorId/isbn are locale-invariant and live on the product;
   // the four bookXxx strings below are locale-varying and ride the
   // translation rows, same as name/description/content.
-  const [authorId, setAuthorId] = useState<number | undefined>(initial?.authorId ?? undefined);
+  const [authorId, setAuthorId] = useState<number | undefined>(
+    initial?.authorId ?? undefined,
+  );
   const [isbn, setIsbn] = useState(initial?.isbn ?? "");
-  const [productType, setProductType] = useState<ProductType>(initial?.productType ?? "PHYSICAL");
-  const [status, setStatus] = useState<PublishStatus>(initial?.status ?? "DRAFT");
+  const [productType, setProductType] = useState<ProductType>(
+    initial?.productType ?? "PHYSICAL",
+  );
+  const [status, setStatus] = useState<ProductStatus>(
+    initial?.status ?? "DRAFT",
+  );
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   // Catalog feed (Meta / Google Merchant / TikTok).
-  const [excludeFromFeed, setExcludeFromFeed] = useState(initial?.excludeFromFeed ?? false);
-  const [googleProductCategory, setGoogleProductCategory] = useState(initial?.googleProductCategory ?? "");
+  const [excludeFromFeed, setExcludeFromFeed] = useState(
+    initial?.excludeFromFeed ?? false,
+  );
+  const [googleProductCategory, setGoogleProductCategory] = useState(
+    initial?.googleProductCategory ?? "",
+  );
   // Held as one comma-separated string: custom_label_0..4 are positional and
   // an admin edits them as a list, not as five separate inputs.
   // Joined on the way in, split on the way out: the API stores an array,
@@ -102,45 +122,99 @@ export function useProductFormState(initial?: AdminProduct) {
   const [customLabels, setCustomLabels] = useState<string>(
     Array.isArray(initial?.customLabels) ? initial.customLabels.join(", ") : "",
   );
-  const [flagLabel, setFlagLabel] = useState<ProductFlagLabel | null>(initial?.flagLabel ?? null);
+  const [flagLabel, setFlagLabel] = useState<ProductFlagLabel | null>(
+    initial?.flagLabel ?? null,
+  );
   const [videoUrl, setVideoUrl] = useState(initial?.videoUrl ?? "");
   const [hasVariants, setHasVariants] = useState(initial?.hasVariants ?? false);
-  const [trackInventory, setTrackInventory] = useState(initial?.trackInventory ?? true);
-  const [allowBackorder, setAllowBackorder] = useState(initial?.allowBackorder ?? false);
+  const [trackInventory, setTrackInventory] = useState(
+    initial?.trackInventory ?? true,
+  );
+  const [allowBackorder, setAllowBackorder] = useState(
+    initial?.allowBackorder ?? false,
+  );
   const [stock, setStock] = useState(String(initial?.stock ?? 0));
-  const [stockStatus, setStockStatus] = useState<StockStatus>(initial?.stockStatus ?? "IN_STOCK");
+  const [stockStatus, setStockStatus] = useState<StockStatus>(
+    initial?.stockStatus ?? "IN_STOCK",
+  );
   const [price, setPrice] = useState(initial?.price ?? "");
   const [salePrice, setSalePrice] = useState(initial?.salePrice ?? "");
-  const [saleStartsAt, setSaleStartsAt] = useState(initial?.saleStartsAt?.slice(0, 10) ?? "");
-  const [saleEndsAt, setSaleEndsAt] = useState(initial?.saleEndsAt?.slice(0, 10) ?? "");
+  const [saleStartsAt, setSaleStartsAt] = useState(
+    initial?.saleStartsAt?.slice(0, 10) ?? "",
+  );
+  const [saleEndsAt, setSaleEndsAt] = useState(
+    initial?.saleEndsAt?.slice(0, 10) ?? "",
+  );
   const [costPerItem, setCostPerItem] = useState(initial?.costPerItem ?? "");
-  const [costPriceUnit, setCostPriceUnit] = useState<CostPriceUnit | null>(initial?.costPriceUnit ?? null);
-  const [shippableWeight, setShippableWeight] = useState(initial?.shippableWeight ?? "");
-  const [minOrderQuantity, setMinOrderQuantity] = useState(String(initial?.minOrderQuantity ?? 1));
+  const [costPriceUnit, setCostPriceUnit] = useState<CostPriceUnit | null>(
+    initial?.costPriceUnit ?? null,
+  );
+  const [shippableWeight, setShippableWeight] = useState(
+    initial?.shippableWeight ?? "",
+  );
+  const [minOrderQuantity, setMinOrderQuantity] = useState(
+    String(initial?.minOrderQuantity ?? 1),
+  );
   const [maxOrderQuantity, setMaxOrderQuantity] = useState(
     initial?.maxOrderQuantity != null ? String(initial.maxOrderQuantity) : "",
   );
   const [name, setName] = useState(initial?.translations[0]?.name ?? "");
-  const [description, setDescription] = useState(initial?.translations[0]?.description ?? "");
-  const [content, setContent] = useState(initial?.translations[0]?.content ?? "");
-  const [keyBenefits, setKeyBenefits] = useState(initial?.translations[0]?.keyBenefits ?? "");
-  const [benefitPoints, setBenefitPoints] = useState(initial?.translations[0]?.benefitPoints ?? "");
-  const [howToUse, setHowToUse] = useState(initial?.translations[0]?.howToUse ?? "");
-  const [bookEdition, setBookEdition] = useState(initial?.translations[0]?.bookEdition ?? "");
-  const [bookLanguage, setBookLanguage] = useState(initial?.translations[0]?.bookLanguage ?? "");
-  const [bookPublisher, setBookPublisher] = useState(initial?.translations[0]?.bookPublisher ?? "");
-  const [bookCountry, setBookCountry] = useState(initial?.translations[0]?.bookCountry ?? "");
-  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
-    initial?.translations[0]?.faqs?.map((f) => ({ question: f.question, answer: f.answer })) ?? [],
+  const [description, setDescription] = useState(
+    initial?.translations[0]?.description ?? "",
   );
-  const [categoryIds, setCategoryIds] = useState<number[]>(initial?.categoryIds ?? []);
+  const [content, setContent] = useState(
+    initial?.translations[0]?.content ?? "",
+  );
+  const [keyBenefits, setKeyBenefits] = useState(
+    initial?.translations[0]?.keyBenefits ?? "",
+  );
+  const [benefitPoints, setBenefitPoints] = useState(
+    initial?.translations[0]?.benefitPoints ?? "",
+  );
+  const [howToUse, setHowToUse] = useState(
+    initial?.translations[0]?.howToUse ?? "",
+  );
+  const [bookEdition, setBookEdition] = useState(
+    initial?.translations[0]?.bookEdition ?? "",
+  );
+  const [bookLanguage, setBookLanguage] = useState(
+    initial?.translations[0]?.bookLanguage ?? "",
+  );
+  const [bookPublisher, setBookPublisher] = useState(
+    initial?.translations[0]?.bookPublisher ?? "",
+  );
+  const [bookCountry, setBookCountry] = useState(
+    initial?.translations[0]?.bookCountry ?? "",
+  );
+  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
+    initial?.translations[0]?.faqs?.map((f) => ({
+      question: f.question,
+      answer: f.answer,
+    })) ?? [],
+  );
+  const [categoryIds, setCategoryIds] = useState<number[]>(
+    initial?.categoryIds ?? [],
+  );
   const [tagIds, setTagIds] = useState<number[]>(initial?.tagIds ?? []);
-  const [attributeIds, setAttributeIds] = useState<number[]>(initial?.attributeIds ?? []);
-  const [images, setImages] = useState<GalleryImage[]>(initial?.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText, variantId: m.variantId })) ?? []);
+  const [attributeIds, setAttributeIds] = useState<number[]>(
+    initial?.attributeIds ?? [],
+  );
+  const [images, setImages] = useState<GalleryImage[]>(
+    initial?.media.map((m) => ({
+      id: m.id,
+      url: m.url,
+      alt: m.altText,
+      variantId: m.variantId,
+    })) ?? [],
+  );
 
   function toBasePayload() {
     const cleanFaqs = faqs
-      .map((f, i) => ({ question: f.question.trim(), answer: f.answer.trim(), sortOrder: i }))
+      .map((f, i) => ({
+        question: f.question.trim(),
+        answer: f.answer.trim(),
+        sortOrder: i,
+      }))
       .filter((f) => f.question && f.answer);
     return {
       slug,
@@ -156,7 +230,11 @@ export function useProductFormState(initial?: AdminProduct) {
       isFeatured,
       excludeFromFeed,
       googleProductCategory: googleProductCategory.trim() || null,
-      customLabels: customLabels.split(",").map((v: string) => v.trim()).filter(Boolean).slice(0, 5),
+      customLabels: customLabels
+        .split(",")
+        .map((v: string) => v.trim())
+        .filter(Boolean)
+        .slice(0, 5),
       flagLabel,
       // Explicit null (not undefined) so removing the link clears it —
       // see the costPriceUnit note below.
@@ -167,7 +245,11 @@ export function useProductFormState(initial?: AdminProduct) {
       stock: Number(stock),
       stockStatus,
       price: hasVariants ? undefined : price ? Number(price) : undefined,
-      salePrice: hasVariants ? undefined : salePrice ? Number(salePrice) : undefined,
+      salePrice: hasVariants
+        ? undefined
+        : salePrice
+          ? Number(salePrice)
+          : undefined,
       saleStartsAt: saleStartsAt || undefined,
       saleEndsAt: saleEndsAt || undefined,
       costPerItem: costPerItem ? Number(costPerItem) : undefined,
@@ -256,7 +338,9 @@ export function useProductFormState(initial?: AdminProduct) {
     setCostPriceUnit(product.costPriceUnit);
     setShippableWeight(product.shippableWeight ?? "");
     setMinOrderQuantity(String(product.minOrderQuantity));
-    setMaxOrderQuantity(product.maxOrderQuantity != null ? String(product.maxOrderQuantity) : "");
+    setMaxOrderQuantity(
+      product.maxOrderQuantity != null ? String(product.maxOrderQuantity) : "",
+    );
     setName(product.translations[0]?.name ?? "");
     setDescription(product.translations[0]?.description ?? "");
     setContent(product.translations[0]?.content ?? "");
@@ -267,11 +351,23 @@ export function useProductFormState(initial?: AdminProduct) {
     setBookLanguage(product.translations[0]?.bookLanguage ?? "");
     setBookPublisher(product.translations[0]?.bookPublisher ?? "");
     setBookCountry(product.translations[0]?.bookCountry ?? "");
-    setFaqs(product.translations[0]?.faqs?.map((f) => ({ question: f.question, answer: f.answer })) ?? []);
+    setFaqs(
+      product.translations[0]?.faqs?.map((f) => ({
+        question: f.question,
+        answer: f.answer,
+      })) ?? [],
+    );
     setCategoryIds(product.categoryIds);
     setTagIds(product.tagIds);
     setAttributeIds(product.attributeIds);
-    setImages(product.media.map((m) => ({ id: m.id, url: m.url, alt: m.altText, variantId: m.variantId })));
+    setImages(
+      product.media.map((m) => ({
+        id: m.id,
+        url: m.url,
+        alt: m.altText,
+        variantId: m.variantId,
+      })),
+    );
   }
 
   // Pure client-side gate before a save request ever goes out — the backend
@@ -287,9 +383,12 @@ export function useProductFormState(initial?: AdminProduct) {
     if (images.length === 0) missing.push("Media");
     if (!sku.trim()) missing.push("SKU");
     if (!shippableWeight.trim()) missing.push("Shippable weight");
-    if (!minOrderQuantity.trim() || Number(minOrderQuantity) < 1) missing.push("Min order quantity");
+    if (!minOrderQuantity.trim() || Number(minOrderQuantity) < 1)
+      missing.push("Min order quantity");
     if (countWords(description) > SHORT_DESCRIPTION_MAX_WORDS) {
-      missing.push(`Short Description (exceeds limit by ${countWords(description) - SHORT_DESCRIPTION_MAX_WORDS} word(s))`);
+      missing.push(
+        `Short Description (exceeds limit by ${countWords(description) - SHORT_DESCRIPTION_MAX_WORDS} word(s))`,
+      );
     }
     if (hasVariants) {
       if (variantCount === 0) missing.push("Variants (add at least one)");
@@ -312,11 +411,48 @@ export function useProductFormState(initial?: AdminProduct) {
 
   function getSnapshot(): ProductFormSnapshot {
     return {
-      slug, sku, brandId, authorId, isbn, productType, status, isFeatured, excludeFromFeed, googleProductCategory, customLabels, flagLabel, videoUrl, hasVariants, trackInventory, allowBackorder,
-      stock, stockStatus, price, salePrice, saleStartsAt, saleEndsAt, costPerItem, costPriceUnit, shippableWeight,
-      minOrderQuantity, maxOrderQuantity, name, description, content, keyBenefits, benefitPoints, howToUse,
-      bookEdition, bookLanguage, bookPublisher, bookCountry, faqs,
-      categoryIds, tagIds, attributeIds, images,
+      slug,
+      sku,
+      brandId,
+      authorId,
+      isbn,
+      productType,
+      status,
+      isFeatured,
+      excludeFromFeed,
+      googleProductCategory,
+      customLabels,
+      flagLabel,
+      videoUrl,
+      hasVariants,
+      trackInventory,
+      allowBackorder,
+      stock,
+      stockStatus,
+      price,
+      salePrice,
+      saleStartsAt,
+      saleEndsAt,
+      costPerItem,
+      costPriceUnit,
+      shippableWeight,
+      minOrderQuantity,
+      maxOrderQuantity,
+      name,
+      description,
+      content,
+      keyBenefits,
+      benefitPoints,
+      howToUse,
+      bookEdition,
+      bookLanguage,
+      bookPublisher,
+      bookCountry,
+      faqs,
+      categoryIds,
+      tagIds,
+      attributeIds,
+      images,
     };
   }
 
@@ -366,48 +502,90 @@ export function useProductFormState(initial?: AdminProduct) {
   }
 
   return {
-    slug, setSlug,
-    sku, setSku,
-    brandId, setBrandId,
-    authorId, setAuthorId,
-    isbn, setIsbn,
-    productType, setProductType,
-    status, setStatus,
-    isFeatured, setIsFeatured,
-    excludeFromFeed, setExcludeFromFeed,
-    googleProductCategory, setGoogleProductCategory,
-    customLabels, setCustomLabels,
-    flagLabel, setFlagLabel,
-    videoUrl, setVideoUrl,
-    hasVariants, setHasVariants,
-    trackInventory, setTrackInventory,
-    allowBackorder, setAllowBackorder,
-    stock, setStock,
-    stockStatus, setStockStatus,
-    price, setPrice,
-    salePrice, setSalePrice,
-    saleStartsAt, setSaleStartsAt,
-    saleEndsAt, setSaleEndsAt,
-    costPerItem, setCostPerItem,
-    costPriceUnit, setCostPriceUnit,
-    shippableWeight, setShippableWeight,
-    minOrderQuantity, setMinOrderQuantity,
-    maxOrderQuantity, setMaxOrderQuantity,
-    name, setName,
-    description, setDescription,
-    content, setContent,
-    keyBenefits, setKeyBenefits,
-    benefitPoints, setBenefitPoints,
-    howToUse, setHowToUse,
-    bookEdition, setBookEdition,
-    bookLanguage, setBookLanguage,
-    bookPublisher, setBookPublisher,
-    bookCountry, setBookCountry,
-    faqs, setFaqs,
-    categoryIds, setCategoryIds,
-    tagIds, setTagIds,
-    attributeIds, setAttributeIds,
-    images, setImages,
+    slug,
+    setSlug,
+    sku,
+    setSku,
+    brandId,
+    setBrandId,
+    authorId,
+    setAuthorId,
+    isbn,
+    setIsbn,
+    productType,
+    setProductType,
+    status,
+    setStatus,
+    isFeatured,
+    setIsFeatured,
+    excludeFromFeed,
+    setExcludeFromFeed,
+    googleProductCategory,
+    setGoogleProductCategory,
+    customLabels,
+    setCustomLabels,
+    flagLabel,
+    setFlagLabel,
+    videoUrl,
+    setVideoUrl,
+    hasVariants,
+    setHasVariants,
+    trackInventory,
+    setTrackInventory,
+    allowBackorder,
+    setAllowBackorder,
+    stock,
+    setStock,
+    stockStatus,
+    setStockStatus,
+    price,
+    setPrice,
+    salePrice,
+    setSalePrice,
+    saleStartsAt,
+    setSaleStartsAt,
+    saleEndsAt,
+    setSaleEndsAt,
+    costPerItem,
+    setCostPerItem,
+    costPriceUnit,
+    setCostPriceUnit,
+    shippableWeight,
+    setShippableWeight,
+    minOrderQuantity,
+    setMinOrderQuantity,
+    maxOrderQuantity,
+    setMaxOrderQuantity,
+    name,
+    setName,
+    description,
+    setDescription,
+    content,
+    setContent,
+    keyBenefits,
+    setKeyBenefits,
+    benefitPoints,
+    setBenefitPoints,
+    howToUse,
+    setHowToUse,
+    bookEdition,
+    setBookEdition,
+    bookLanguage,
+    setBookLanguage,
+    bookPublisher,
+    setBookPublisher,
+    bookCountry,
+    setBookCountry,
+    faqs,
+    setFaqs,
+    categoryIds,
+    setCategoryIds,
+    tagIds,
+    setTagIds,
+    attributeIds,
+    setAttributeIds,
+    images,
+    setImages,
     toBasePayload,
     seedFrom,
     getSnapshot,
