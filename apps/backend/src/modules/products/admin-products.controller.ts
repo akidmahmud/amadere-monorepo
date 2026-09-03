@@ -36,6 +36,8 @@ import { AdminDeletedProductDto, AdminProductDto, AdminProductListItemDto, Admin
 import { UpdateVariantStockDto } from './dto/update-variant-stock.dto';
 import { UpdateVariantPriceDto } from './dto/update-variant-price.dto';
 import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
+import { UpdateVariantAdminOnlyDto } from './dto/update-variant-admin-only.dto';
+import { ReorderProductsDto } from './dto/reorder-products.dto';
 import { UpdateVariantWeightDto } from './dto/update-variant-weight.dto';
 import { UpdateCrossSellDto } from './dto/update-cross-sell.dto';
 import { UpdateRelatedProductsDto } from './dto/update-related-products.dto';
@@ -134,6 +136,15 @@ export class AdminProductsController {
     return this.products.create(dto);
   }
 
+  // Declared BEFORE @Patch(':id') deliberately: Nest matches routes in
+  // declaration order, so with the parameterised route first this would be
+  // read as id="reorder" and fail ParseIntPipe.
+  @Patch('reorder')
+  @RequirePermission('product.update')
+  reorder(@Body() dto: ReorderProductsDto): Promise<void> {
+    return this.products.reorder(dto.ids, dto.startPosition);
+  }
+
   @Patch(':id')
   @RequirePermission('product.update')
   @ApiOkResponse({ type: AdminProductDto })
@@ -223,6 +234,20 @@ export class AdminProductsController {
     @Body() dto: UpdateVariantSkuDto,
   ): Promise<void> {
     return this.products.updateVariantSku(id, variantId, dto.sku);
+  }
+
+  // Same per-field PATCH shape as sku/price/stock/default above, so the
+  // existing-variants editor can toggle this inline without a full product
+  // save. Staff-side only: `product.update` already gates it, and nothing
+  // public reads this route.
+  @Patch(':id/variants/:variantId/admin-only')
+  @RequirePermission('product.update')
+  updateVariantAdminOnly(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+    @Body() dto: UpdateVariantAdminOnlyDto,
+  ): Promise<void> {
+    return this.products.updateVariantAdminOnly(id, variantId, dto.isAdminOnly);
   }
 
   @Patch(':id/variants/:variantId/weight')

@@ -52,6 +52,9 @@ export const PRODUCT_LIST_INCLUDE = {
       price: true,
       salePrice: true,
       isDefault: true,
+      // Admin-only badge on the products table. Admin-side include, so it
+      // deliberately selects the flag rather than filtering on it.
+      isAdminOnly: true,
     },
     orderBy: { sortOrder: 'asc' as const },
   },

@@ -8,6 +8,12 @@ export interface WhatsappSettings {
   phoneNumber: string;
   productMessageTemplate: string;
   floatingMessageTemplate: string;
+  // Product-page "Call to order" button. Separate number from WhatsApp on
+  // purpose: the shop's landline or hotline is often not the WhatsApp line.
+  // No migration needed for these — the row is a JSON blob and getSettings
+  // spreads DEFAULTS underneath it, so existing rows pick them up.
+  callEnabled: boolean;
+  callNumber: string;
 }
 
 // {{productName}} is the only placeholder the product-order button
@@ -18,6 +24,11 @@ const DEFAULTS: WhatsappSettings = {
   phoneNumber: '',
   productMessageTemplate: "Hi, I'm interested in {{productName}}. Could you share more details?",
   floatingMessageTemplate: 'Hi, I have a question about your products.',
+  // Defaults ON, not off: CallNowButton already shows on every product page
+  // today whenever a number exists. Defaulting to false would silently remove
+  // a live button the moment this shipped.
+  callEnabled: true,
+  callNumber: '',
 };
 
 // One settings row in the generic `Setting` table (same reuse-over-fork
@@ -41,6 +52,8 @@ export class WhatsappSettingsService {
       phoneNumber: input.phoneNumber ?? current.phoneNumber,
       productMessageTemplate: input.productMessageTemplate ?? current.productMessageTemplate,
       floatingMessageTemplate: input.floatingMessageTemplate ?? current.floatingMessageTemplate,
+      callEnabled: input.callEnabled ?? current.callEnabled,
+      callNumber: input.callNumber ?? current.callNumber,
     };
     await this.prisma.client.setting.upsert({
       where: { key: KEY },

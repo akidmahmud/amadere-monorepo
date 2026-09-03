@@ -21,4 +21,17 @@ export class UpdateWhatsappSettingsDto {
   @IsOptional()
   @IsString()
   floatingMessageTemplate?: string;
+
+  @ApiPropertyOptional({ description: 'Show a "Call to order" button on the product page' })
+  @IsOptional()
+  @IsBoolean()
+  callEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Number the product-page call button dials. Dialled as-is via tel:, so local format (01XXXXXXXXX) is fine — unlike the WhatsApp number, which must be international without a +.',
+  })
+  @IsOptional()
+  @IsString()
+  callNumber?: string;
 }

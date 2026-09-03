@@ -11,8 +11,25 @@ import {
   type AdminProductListItem,
   type AdminProductFilters,
 } from "@/hooks/useProducts";
+import { Icon } from "@amader/admin-ui";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useReorderProducts } from "@/hooks/useProducts";
 import { ProductImportModal } from "@/components/products/ProductImportModal";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useToast } from "@/components/ToastProvider";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { friendlyErrorMessage } from "@/lib/friendly-error";
@@ -98,6 +115,37 @@ function SeoRing({ score }: { score?: number }) {
 
 const PAGE_SIZES = [10, 25, 50];
 
+// The product row, made draggable. Exists as its own component only because
+// `useSortable` is a hook and the row is rendered inside a .map() callback,
+// where hooks are not allowed. Cells are passed as a render prop so the
+// existing markup stays where it was.
+function SortableProductRow({
+  id,
+  children,
+}: {
+  id: number;
+  children: (handle: {
+    attributes: ReturnType<typeof useSortable>["attributes"];
+    listeners: ReturnType<typeof useSortable>["listeners"];
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <tr
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]"
+    >
+      {children({ attributes, listeners })}
+    </tr>
+  );
+}
+
 export function ProductsTable({
   products,
   total,
@@ -111,6 +159,41 @@ export function ProductsTable({
 }) {
   const router = useRouter();
   const qc = useQueryClient();
+  const reorder = useReorderProducts();
+  // Local echo of the new order so the row snaps into place immediately
+  // instead of waiting for the refetch.
+  const [dragOrder, setDragOrder] = useState<number[] | null>(null);
+  const sensors = useSensors(
+    // A small threshold so an ordinary click on a row still behaves as a click.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const orderedProducts = dragOrder
+    ? (dragOrder
+        .map((id) => products.find((p) => p.id === id))
+        .filter(Boolean) as AdminProductListItem[])
+    : products;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = orderedProducts.map((p) => p.id);
+    const next = arrayMove(
+      ids,
+      ids.indexOf(active.id as number),
+      ids.indexOf(over.id as number),
+    );
+    setDragOrder(next);
+    reorder.mutate(
+      {
+        ids: next,
+        // Absolute offset of this page within the catalogue.
+        startPosition:
+          ((filters.page ?? 1) - 1) * (filters.pageSize ?? next.length),
+      },
+      { onSettled: () => setDragOrder(null) },
+    );
+  }
   const toast = useToast();
   const { data: categories } = useCategories();
   const categoryName = new Map(
@@ -371,11 +454,22 @@ export function ProductsTable({
         <ProductImportModal onClose={() => setImportOpen(false)} />
       )}
 
+      {/* Drag-to-reorder writes Product.sortOrder, which the storefront's
+          DEFAULT sort already reads -- so this is the customer-facing order,
+          not just an admin view preference. */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th className="w-[34px] rounded-l-[8px] bg-[#f7f9fc] px-2.5 py-[11px]">
+              <th className="w-[26px] rounded-l-[8px] bg-[#f7f9fc] px-1 py-[11px]">
+                <span className="sr-only">Reorder</span>
+              </th>
+              <th className="w-[34px] bg-[#f7f9fc] px-2.5 py-[11px]">
                 <input
                   type="checkbox"
                   checked={
@@ -411,14 +505,18 @@ export function ProductsTable({
             {products.length === 0 && (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="px-2.5 py-8 text-center text-sm text-muted"
                 >
                   No products match these filters.
                 </td>
               </tr>
             )}
-            {products.map((p) => {
+            <SortableContext
+              items={orderedProducts.map((p) => p.id)}
+              strategy={verticalListSortingStrategy}
+            >
+            {orderedProducts.map((p) => {
               const name = p.name;
               const thumb = p.thumbnailUrl
                 ? { url: p.thumbnailUrl }
@@ -446,7 +544,21 @@ export function ProductsTable({
               const isExpanded = expanded.has(p.id);
               return (
                 <Fragment key={p.id}>
-                  <tr className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]">
+                  <SortableProductRow id={p.id}>
+                  {({ attributes, listeners }) => (
+                  <>
+                    <td className="px-1 py-3.5 align-middle">
+                      <button
+                        {...attributes}
+                        {...listeners}
+                        type="button"
+                        aria-label="Drag to reorder this product"
+                        title="Drag to reorder. This is the order customers see on the storefront."
+                        className="cursor-grab touch-none px-0.5 text-[#c3cbd8] transition-colors hover:text-brand-500"
+                      >
+                        <Icon name="drag_indicator" size={18} />
+                      </button>
+                    </td>
                     <td className="px-2.5 py-3.5 align-middle">
                       <input
                         type="checkbox"
@@ -614,14 +726,16 @@ export function ProductsTable({
                         </button>
                       </div>
                     </td>
-                  </tr>
+                  </>
+                  )}
+                  </SortableProductRow>
                   {isExpanded && p.hasVariants && (
                     <tr
                       key={`${p.id}-variants`}
                       className="border-b border-[#f1f5fa] bg-surface-2"
                     >
                       <td />
-                      <td colSpan={9} className="px-2.5 py-3">
+                      <td colSpan={10} className="px-2.5 py-3">
                         <table className="w-full border-collapse">
                           <thead>
                             <tr>
@@ -687,9 +801,11 @@ export function ProductsTable({
                 </Fragment>
               );
             })}
+            </SortableContext>
           </tbody>
         </table>
       </div>
+      </DndContext>
 
       <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3.5">
         <div className="text-[0.76rem] font-semibold text-secondary">

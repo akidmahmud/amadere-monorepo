@@ -242,7 +242,24 @@ export function useProductFormState(initial?: AdminProduct) {
       hasVariants,
       trackInventory,
       allowBackorder,
-      stock: Number(stock),
+      // Gated on hasVariants for the same reason `price` below is: for a
+      // variant product the parent row's `stock` is, in products.service.ts's
+      // own words, "a meaningless placeholder" — the service writes
+      // `dto.hasVariants ? 0 : dto.stock` and discards whatever is sent.
+      //
+      // Sending it anyway made saves fail on products whose placeholder had
+      // gone negative (jober-chatu sat at -1 with healthy variant stock of
+      // 184/191): CreateProductDto's @Min(0) rejected the field before the
+      // service could throw it away, and the error — "stock must not be less
+      // than 0" — named a field the form hides whenever variants are on, so
+      // there was nothing on screen to correct.
+      // Sent as 0 (not the form's own value) whenever hasVariants, mirroring
+      // exactly what products.service.ts stores: `dto.hasVariants ? 0 :
+      // dto.stock`. 0 rather than undefined because CreateProductDto declares
+      // this `@ApiPropertyOptional({ default: 0 })`, and a documented default
+      // makes the Swagger plugin emit `stock: number` as REQUIRED in
+      // schema.d.ts — unlike `price?`, which is genuinely optional there.
+      stock: hasVariants ? 0 : Number(stock),
       stockStatus,
       price: hasVariants ? undefined : price ? Number(price) : undefined,
       salePrice: hasVariants

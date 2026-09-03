@@ -75,6 +75,8 @@ export class AdminProductVariantDto {
   stockStatus!: StockStatus;
   weightOverride!: string | null;
   isDefault!: boolean;
+  /** Live for staff, hidden from the storefront. */
+  isAdminOnly!: boolean;
   attributeValueIds!: number[];
 }
 
@@ -174,6 +176,8 @@ export class AdminProductListVariantDto {
   reservedStock!: number;
   stockStatus!: StockStatus;
   isDefault!: boolean;
+  /** Live for staff, hidden from the storefront. */
+  isAdminOnly!: boolean;
 }
 
 export class AdminProductListItemDto {

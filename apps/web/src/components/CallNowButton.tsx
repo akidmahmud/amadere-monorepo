@@ -6,14 +6,25 @@ const phoneIcon = (
   </svg>
 );
 
-// Reuses the WhatsApp settings' phone number — no dedicated "call" number
-// config exists yet. One of the 4 CTA-grid cells in PdpPurchasePanel —
-// always present on every product page (alongside WhatsApp) regardless of
-// stock status.
+// One of the 4 CTA-grid cells in PdpPurchasePanel — present on every product
+// page (alongside WhatsApp) regardless of stock status.
+//
+// Prefers the dedicated call number from Contact Buttons settings, falling
+// back to the WhatsApp number, which is what this used before that setting
+// existed. The two are formatted differently on purpose: the WhatsApp number
+// is stored international-without-+ so it needs one prepending, while the
+// call number is dialled exactly as an admin typed it (local 01XXXXXXXXX is
+// normal here).
 export function CallNowButton({ config }: { config: WhatsappConfig | null }) {
-  if (!config?.phoneNumber) return null;
+  if (!config) return null;
+  if (config.callEnabled === false) return null;
 
-  const href = `tel:+${config.phoneNumber}`;
+  const href = config.callNumber
+    ? `tel:${config.callNumber}`
+    : config.phoneNumber
+      ? `tel:+${config.phoneNumber}`
+      : null;
+  if (!href) return null;
 
   return (
     <a

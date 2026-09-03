@@ -7,7 +7,7 @@ import { useUpdateWhatsappSettings, useWhatsappSettings } from "@/hooks/useWhats
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 const textareaClass = "rounded-sm border border-border bg-surface p-3 text-sm text-text outline-none focus:border-brand-500";
 
-export default function WhatsappPage() {
+export default function ContactButtonsPage() {
   const { data, isLoading } = useWhatsappSettings();
   const update = useUpdateWhatsappSettings();
 
@@ -15,6 +15,8 @@ export default function WhatsappPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [productMessageTemplate, setProductMessageTemplate] = useState("");
   const [floatingMessageTemplate, setFloatingMessageTemplate] = useState("");
+  const [callEnabled, setCallEnabled] = useState(false);
+  const [callNumber, setCallNumber] = useState("");
 
   useEffect(() => {
     if (!data) return;
@@ -22,11 +24,20 @@ export default function WhatsappPage() {
     setPhoneNumber(data.phoneNumber);
     setProductMessageTemplate(data.productMessageTemplate);
     setFloatingMessageTemplate(data.floatingMessageTemplate);
+    setCallEnabled(data.callEnabled);
+    setCallNumber(data.callNumber);
   }, [data]);
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    update.mutate({ enabled, phoneNumber, productMessageTemplate, floatingMessageTemplate });
+    update.mutate({
+      enabled,
+      phoneNumber,
+      productMessageTemplate,
+      floatingMessageTemplate,
+      callEnabled,
+      callNumber,
+    });
   }
 
   if (isLoading || !data) return <p className="text-sm text-muted">Loading…</p>;
@@ -34,9 +45,11 @@ export default function WhatsappPage() {
   return (
     <div className="flex flex-col gap-4">
       <Card className="max-w-2xl">
-        <h1 className="mb-1 font-ui text-lg font-bold text-text">WhatsApp</h1>
+        <h1 className="mb-1 font-ui text-lg font-bold text-text">Contact Buttons</h1>
         <p className="mb-5 text-sm text-muted">
-          Controls the product page&apos;s &quot;Order on WhatsApp&quot; button and the site-wide floating WhatsApp button.
+          The ways a customer can reach you directly from the storefront: the product page&apos;s
+          &quot;Order on WhatsApp&quot; and &quot;Call to order&quot; buttons, and the site-wide floating
+          WhatsApp button.
         </p>
         <form onSubmit={handleSave} className="flex flex-col gap-5">
           <ToggleSwitch checked={enabled} onChange={setEnabled} label="Show WhatsApp buttons on the storefront" />
@@ -71,6 +84,30 @@ export default function WhatsappPage() {
               rows={3}
               className={textareaClass}
             />
+          </label>
+
+          <hr className="border-border" />
+
+          {/* Call button. Its own number and toggle: the hotline or landline a
+              shop answers calls on is often not the WhatsApp line. */}
+          <ToggleSwitch
+            checked={callEnabled}
+            onChange={setCallEnabled}
+            label="Show a &quot;Call to order&quot; button on the product page"
+          />
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Call number</span>
+            <input
+              value={callNumber}
+              onChange={(e) => setCallNumber(e.target.value)}
+              placeholder="01XXXXXXXXX"
+              className={inputClass}
+            />
+            <span className="text-xs text-muted">
+              Dialled as-is, so local format is fine here — unlike the WhatsApp number above,
+              which must be international with no leading +.
+            </span>
           </label>
 
           <div className="flex items-center gap-3">

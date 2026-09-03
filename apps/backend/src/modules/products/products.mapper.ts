@@ -99,6 +99,9 @@ export function toAdminProductDto(
       stockStatus: v.stockStatus,
       weightOverride: decimalToString(v.weightOverride),
       isDefault: v.isDefault,
+      // Admin sees every variant, hidden ones included — that is the point of
+      // the flag. Only toPublicProductDto below filters them out.
+      isAdminOnly: v.isAdminOnly,
       attributeValueIds: v.attributeValues.map((av) => av.attributeValueId),
     })),
     digitalFileName: product.digitalFileName,
@@ -145,6 +148,8 @@ export function toAdminProductListItemDto(
       reservedStock: v.reservedStock,
       stockStatus: v.stockStatus,
       isDefault: v.isDefault,
+      // Drives the "Admin only" badge on the admin products table.
+      isAdminOnly: v.isAdminOnly,
     })),
   };
 }
@@ -235,7 +240,13 @@ export function toPublicProductDto(
       // (null = shared gallery image, shown for every variant).
       variantId: m.variantId,
     })),
-    variants: product.variants.map((v) => ({
+    // Public surface #1 (see the 20260903000000_variant_admin_only migration
+    // for the full list): admin-only variants are dropped entirely rather
+    // than flagged, so nothing downstream — PDP, collections, structured
+    // data, price ranges — can accidentally render or price one.
+    variants: product.variants
+      .filter((v) => !v.isAdminOnly)
+      .map((v) => ({
       id: v.id,
       sku: v.sku,
       price: decimalToString(v.price),

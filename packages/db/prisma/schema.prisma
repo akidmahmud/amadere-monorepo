@@ -1065,6 +1065,18 @@ model ProductVariant {
   stockStatus    StockStatus @default(IN_STOCK) @map("stock_status")
   weightOverride Decimal?    @map("weight_override") @db.Decimal(10, 3)
   isDefault      Boolean     @default(false) @map("is_default")
+  /// Live for staff, invisible to customers — the per-variant counterpart of
+  /// `ContentStatus.ADMIN_ONLY` on Product. Use it when the product itself
+  /// stays public but one variation must not be: a staff-only size, a
+  /// negotiated pack, an internal sample.
+  ///
+  /// Unlike the Product-level flag, this is NOT safe by construction. Public
+  /// product reads filter `status = 'PUBLISHED'` by equality, so a new status
+  /// value is excluded automatically; variants have no such filter, so every
+  /// public read that surfaces variants has to exclude these explicitly. The
+  /// sites that do are listed in the migration for this column — add to that
+  /// list, and to products.admin-only-variant.spec.ts, before adding another.
+  isAdminOnly    Boolean     @default(false) @map("is_admin_only")
   sortOrder      Int         @default(0) @map("sort_order")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")

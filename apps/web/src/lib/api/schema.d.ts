@@ -1524,6 +1524,22 @@ export interface paths {
         patch: operations["AdminProductsController_updateVariantSku"];
         trace?: never;
     };
+    "/api/v1/admin/products/{id}/variants/{variantId}/admin-only": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminProductsController_updateVariantAdminOnly"];
+        trace?: never;
+    };
     "/api/v1/admin/products/{id}/variants/{variantId}/weight": {
         parameters: {
             query?: never;
@@ -3636,6 +3652,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/recovery/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminRecoveryController_listDeleted"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/recovery/{id}": {
         parameters: {
             query?: never;
@@ -3650,6 +3682,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/reason": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminRecoveryController_updateReason"];
         trace?: never;
     };
     "/api/v1/admin/net-profit/recovery/{id}/send": {
@@ -6596,6 +6660,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/wholesale/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_productPicker"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_listCustomers"];
+        put?: never;
+        post: operations["AdminWholesaleController_createCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_findCustomer"];
+        put?: never;
+        post?: never;
+        delete: operations["AdminWholesaleController_deleteCustomer"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminWholesaleController_updateCustomer"];
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_listOrders"];
+        put?: never;
+        post: operations["AdminWholesaleController_createOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_findOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminWholesaleController_updateOrder"];
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/orders/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_recordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_cancelOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7043,7 +7219,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["NameDescriptionTranslationDto"][];
         };
         UpdateBrandDto: {
@@ -7058,7 +7234,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["NameDescriptionTranslationDto"][];
         };
         SeoMetaDto: {
@@ -7109,7 +7285,7 @@ export interface components {
             socialLinks: components["schemas"]["AuthorSocialLinkResponseDto"][];
             sortOrder: number;
             /** @enum {string} */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["AdminAuthorTranslationDto"][];
             productCount: number;
         };
@@ -7136,7 +7312,7 @@ export interface components {
              * @default PUBLISHED
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["AuthorTranslationDto"][];
         };
         UpdateAuthorDto: {
@@ -7149,7 +7325,7 @@ export interface components {
              * @default PUBLISHED
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["AuthorTranslationDto"][];
         };
         PublicCategoryDto: {
@@ -7205,6 +7381,7 @@ export interface components {
             status: Record<string, never>;
             translations: components["schemas"]["AdminCategoryTranslationDto"][];
             productCount?: number;
+            productIds?: number[];
         };
         CreateCategoryDto: {
             slug: string;
@@ -7220,8 +7397,9 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["NameDescriptionTranslationDto"][];
+            productIds?: number[];
         };
         UpdateCategoryDto: {
             slug?: string;
@@ -7237,8 +7415,9 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["NameDescriptionTranslationDto"][];
+            productIds?: number[];
         };
         PublicTagDto: {
             id: number;
@@ -7270,7 +7449,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["NameDescriptionTranslationDto"][];
         };
         UpdateTagDto: {
@@ -7279,7 +7458,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["NameDescriptionTranslationDto"][];
         };
         AttributeTranslationDto: {
@@ -7489,6 +7668,7 @@ export interface components {
             reservedStock: number;
             stockStatus: Record<string, never>;
             isDefault: boolean;
+            isAdminOnly: boolean;
         };
         AdminProductListItemDto: {
             id: number;
@@ -7568,6 +7748,7 @@ export interface components {
             stockStatus: Record<string, never>;
             weightOverride: string | null;
             isDefault: boolean;
+            isAdminOnly: boolean;
             attributeValueIds: number[];
         };
         AdminProductPreviewPageDto: {
@@ -7668,6 +7849,11 @@ export interface components {
             weightOverride?: number;
             /** @default false */
             isDefault: boolean;
+            /**
+             * @description Live for staff, invisible to customers. The product stays public; this variation is excluded from the PDP, search, wishlist, the catalog feed and the parent stock roll-up, and cannot be added to a customer cart. Staff can still sell it from the admin.
+             * @default false
+             */
+            isAdminOnly: boolean;
             /** @description AttributeValue ids that make up this variant, e.g. [Red, M] */
             attributeValueIds: number[];
         };
@@ -7688,7 +7874,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             /** @default false */
             isFeatured: boolean;
             /** @enum {string|null} */
@@ -7767,7 +7953,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             /** @default false */
             isFeatured: boolean;
             /** @enum {string|null} */
@@ -7838,6 +8024,10 @@ export interface components {
         };
         UpdateVariantSkuDto: {
             sku?: string;
+        };
+        UpdateVariantAdminOnlyDto: {
+            /** @description Live for staff, hidden from the storefront. Toggling this on removes the variant from the PDP, search, wishlist cards and the catalog feed, excludes its stock from the parent product's public "in stock" status, and blocks customers from adding it to a cart. Staff can still sell it from the admin. */
+            isAdminOnly: boolean;
         };
         UpdateVariantWeightDto: {
             /** @description Kilograms. Omit/null to clear and fall back to the product-level shippable weight. */
@@ -7972,7 +8162,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             /** @description Restrict to these products (empty = all) */
             productIds?: number[];
             /** @description Restrict to these categories (empty = all) */
@@ -7998,7 +8188,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             /** @description Restrict to these products (empty = all) */
             productIds?: number[];
             /** @description Restrict to these categories (empty = all) */
@@ -8198,7 +8388,7 @@ export interface components {
             name: string;
             /** @enum {string} */
             type: "PERSON" | "COMPANY";
-            roles: ("SUPPLIER" | "CUSTOMER" | "COURIER" | "STAFF" | "GOVERNMENT" | "OTHER")[];
+            roles: ("SUPPLIER" | "CUSTOMER" | "COURIER" | "STAFF" | "GOVERNMENT" | "OTHER" | "WHOLESALE")[];
             phone?: string;
             email?: string;
             address?: string;
@@ -8225,7 +8415,7 @@ export interface components {
             name?: string;
             /** @enum {string} */
             type?: "PERSON" | "COMPANY";
-            roles?: ("SUPPLIER" | "CUSTOMER" | "COURIER" | "STAFF" | "GOVERNMENT" | "OTHER")[];
+            roles?: ("SUPPLIER" | "CUSTOMER" | "COURIER" | "STAFF" | "GOVERNMENT" | "OTHER" | "WHOLESALE")[];
             phone?: string;
             email?: string;
             address?: string;
@@ -9057,9 +9247,6 @@ export interface components {
             outcome: "CONNECTED" | "NO_ANSWER" | "VOICEMAIL" | "WRONG_NUMBER" | "DECLINED";
             notes?: string;
         };
-        CancelIncompleteOrderDto: {
-            reason: string;
-        };
         IncompleteOrderDto: {
             id: number;
             customerId: number | null;
@@ -9075,11 +9262,21 @@ export interface components {
             /** Format: date-time */
             canceledAt: string | null;
             cancelReason: string | null;
+            /** Format: date-time */
+            deletedAt: string | null;
+            daysRemaining: number | null;
             recoveryAttempts: number;
             /** Format: date-time */
             lastSeenAt: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        UpdateCartReasonDto: {
+            /** @description Blank clears the reason */
+            reason: string;
+        };
+        CancelIncompleteOrderDto: {
+            reason: string;
         };
         CartCampaignTemplateDto: {
             id: number;
@@ -9547,7 +9744,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["NameDescriptionTranslationDto"][];
         };
         UpdateBlogCategoryDto: {
@@ -9559,7 +9756,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["NameDescriptionTranslationDto"][];
         };
         PublicBlogTagDto: {
@@ -9588,7 +9785,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["NameTranslationDto"][];
         };
         UpdateBlogTagDto: {
@@ -9597,7 +9794,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["NameTranslationDto"][];
         };
         PublicBlogPostAuthorDto: {
@@ -9804,7 +10001,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations: components["schemas"]["PageTranslationDto"][];
         };
         UpdatePageDto: {
@@ -9813,7 +10010,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             translations?: components["schemas"]["PageTranslationDto"][];
         };
         SaveLayoutDto: {
@@ -10101,7 +10298,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             /** @default 0 */
             sortOrder: number;
             /**
@@ -10118,7 +10315,7 @@ export interface components {
              * @default DRAFT
              * @enum {string}
              */
-            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+            status: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
             /** @default 0 */
             sortOrder: number;
             /**
@@ -10520,6 +10717,127 @@ export interface components {
         RecomputeDailyProfitDto: {
             from: string;
             to?: string;
+        };
+        WholesaleCustomerDto: {
+            id: number;
+            name: string;
+            phone: string | null;
+            address: string | null;
+            creditLimit: string | null;
+            creditDays: number | null;
+            note: string | null;
+            isActive: boolean;
+            orderCount: number;
+            purchaseTotal: string;
+            due: string;
+        };
+        CreateWholesaleCustomerDto: {
+            /** @description Shop or trader name */
+            name: string;
+            phone: string;
+            address?: string;
+            /** @description Credit ceiling, as a decimal string */
+            creditLimit?: string;
+            /** @description Payment terms in days */
+            creditDays?: number;
+            /** @description Balance already owed to us when this buyer was entered, as a decimal string */
+            openingReceivable?: string;
+            note?: string;
+            isActive?: boolean;
+        };
+        UpdateWholesaleCustomerDto: {
+            name?: string;
+            phone?: string;
+            address?: string;
+            creditLimit?: string;
+            creditDays?: number;
+            note?: string;
+            isActive?: boolean;
+        };
+        WholesaleOrderItemDto: {
+            id: number;
+            productId: number | null;
+            variantId: number | null;
+            name: string;
+            sku: string | null;
+            unitPrice: string;
+            quantity: number;
+            lineTotal: string;
+        };
+        WholesaleOrderDto: {
+            id: number;
+            orderNumber: string;
+            partyId: number;
+            customerName: string;
+            customerPhone: string | null;
+            status: Record<string, never>;
+            courier: Record<string, never>;
+            consignmentId: string | null;
+            subtotal: string;
+            deliveryCharge: string;
+            discount: string;
+            total: string;
+            paid: string;
+            due: string;
+            invoiceDocNo: string | null;
+            note: string | null;
+            /** Format: date-time */
+            placedAt: string;
+            items: components["schemas"]["WholesaleOrderItemDto"][];
+        };
+        WholesaleOrderItemInputDto: {
+            /** @description Omit when the line is for a variant */
+            productId?: number;
+            variantId?: number;
+            /** @description The wholesale rate for this line, as a decimal string. Not read off the product — wholesale is priced per deal. */
+            unitPrice: string;
+            quantity: number;
+        };
+        CreateWholesaleOrderDto: {
+            /** @description Wholesale customer (party) id */
+            partyId: number;
+            /** @enum {string} */
+            courier: "SUNDARBAN" | "AJR";
+            /** @description The number the courier gives us for the parcel */
+            consignmentId?: string;
+            items: components["schemas"]["WholesaleOrderItemInputDto"][];
+            /** @description Decimal string */
+            deliveryCharge?: string;
+            /** @description Decimal string */
+            discount?: string;
+            /** @description Paid at the time of the order, as a decimal string. Posts to the ledger; the rest stays outstanding on the receivable. */
+            paidAmount?: string;
+            /** @description Cash/bank account the payment lands in. Falls back to the configured default posting account. */
+            paymentAccountId?: number;
+            /** @enum {string} */
+            status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
+            /** @description ISO date; defaults to today */
+            placedAt?: string;
+            note?: string;
+        };
+        UpdateWholesaleOrderDto: {
+            /** @enum {string} */
+            status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
+            /** @enum {string} */
+            courier?: "SUNDARBAN" | "AJR";
+            consignmentId?: string;
+            note?: string;
+            /** @description Replaces the order lines wholesale. Stock moves by the difference, and the invoice is restated to the new total. */
+            items?: components["schemas"]["WholesaleOrderItemInputDto"][];
+            /** @description Decimal string */
+            deliveryCharge?: string;
+            /** @description Decimal string */
+            discount?: string;
+        };
+        RecordWholesalePaymentDto: {
+            /** @description Decimal string */
+            amount: string;
+            /** @description ISO date; defaults to today */
+            paymentDate?: string;
+            /** @description Falls back to the configured default posting account */
+            accountId?: number;
+            reference?: string;
+            note?: string;
         };
     };
     responses: never;
@@ -13224,7 +13542,7 @@ export interface operations {
                 minPrice?: number;
                 maxPrice?: number;
                 /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
-                sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                sort?: "DEFAULT" | "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
             };
@@ -13292,11 +13610,11 @@ export interface operations {
                 minPrice?: number;
                 maxPrice?: number;
                 /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
-                sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                sort?: "DEFAULT" | "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
                 productType?: "PHYSICAL" | "DIGITAL";
-                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
                 stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
                 /** @description ISO date — products created on/after this date */
                 createdFrom?: string;
@@ -13408,11 +13726,11 @@ export interface operations {
                 minPrice?: number;
                 maxPrice?: number;
                 /** @description BEST_SELLING orders by viewCount (a popularity proxy — no denormalized sales-count column exists yet). */
-                sort?: "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
+                sort?: "DEFAULT" | "BEST_SELLING" | "PRICE_ASC" | "PRICE_DESC" | "NEWEST";
                 /** @description Free-text search across product name, SKU, and slug. */
                 q?: string;
                 productType?: "PHYSICAL" | "DIGITAL";
-                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
                 stockStatus?: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
                 /** @description ISO date — products created on/after this date */
                 createdFrom?: string;
@@ -13775,6 +14093,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateVariantSkuDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminProductsController_updateVariantAdminOnly: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                variantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariantAdminOnlyDto"];
             };
         };
         responses: {
@@ -15100,7 +15442,7 @@ export interface operations {
                 pageSize?: number;
                 /** @description Case-insensitive substring match on name or phone */
                 q?: string;
-                role?: "SUPPLIER" | "CUSTOMER" | "COURIER" | "STAFF" | "GOVERNMENT" | "OTHER";
+                role?: "SUPPLIER" | "CUSTOMER" | "COURIER" | "STAFF" | "GOVERNMENT" | "OTHER" | "WHOLESALE";
                 isActive?: boolean;
             };
             header?: never;
@@ -16221,6 +16563,8 @@ export interface operations {
                 page?: number;
                 pageSize?: number;
                 status?: string;
+                /** @description Filter by order origin. WEBSITE = placed by the customer (checkout, or a recovered cart); anything else was typed in by staff. */
+                channel?: string;
             };
             header?: never;
             path?: never;
@@ -17942,9 +18286,32 @@ export interface operations {
             };
         };
     };
+    AdminRecoveryController_listDeleted: {
+        parameters: {
+            query: {
+                page?: number;
+                pageSize?: number;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminRecoveryController_remove: {
         parameters: {
-            query?: never;
+            query: {
+                reason: string;
+            };
             header?: never;
             path: {
                 id: number;
@@ -17957,7 +18324,55 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["IncompleteOrderDto"];
+                };
+            };
+        };
+    };
+    AdminRecoveryController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncompleteOrderDto"];
+                };
+            };
+        };
+    };
+    AdminRecoveryController_updateReason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCartReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncompleteOrderDto"];
+                };
             };
         };
     };
@@ -20257,7 +20672,7 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
-                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED";
+                status?: "DRAFT" | "PENDING" | "PUBLISHED" | "ARCHIVED" | "ADMIN_ONLY";
                 authorId?: number;
                 q?: string;
                 categoryId?: number;
@@ -23665,6 +24080,322 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminWholesaleController_productPicker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductPickerItemDto"][];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_listCustomers: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description Matches name, phone or address */
+                search?: string;
+                /** @description Omit for all */
+                isActive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["WholesaleCustomerDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminWholesaleController_createCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWholesaleCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_findCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_deleteCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminWholesaleController_updateCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWholesaleCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_listOrders: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                /** @description Matches order number, consignment id or buyer name */
+                search?: string;
+                status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
+                partyId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["WholesaleOrderDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminWholesaleController_createOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWholesaleOrderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_findOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_updateOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWholesaleOrderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_recordPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordWholesalePaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_cancelOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
                 };
             };
         };

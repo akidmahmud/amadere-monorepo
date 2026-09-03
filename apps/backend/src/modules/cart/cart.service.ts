@@ -314,7 +314,11 @@ export class CartService {
   private async validateLine(dto: AddCartItemDto) {
     const product = await this.prisma.client.product.findFirst({
       where: { id: dto.productId, deletedAt: null, status: 'PUBLISHED' },
-      include: { variants: true },
+      // Public surface #2 (see 20260903000000_variant_admin_only). This is the
+      // security boundary for the flag: this path reads variants straight from
+      // Prisma and never goes through toPublicProductDto, so without the
+      // `where` a customer could add a staff-only variant by POSTing its id.
+      include: { variants: { where: { isAdminOnly: false } } },
     });
     if (!product) throw new NotFoundException('Product not found');
 
@@ -323,6 +327,16 @@ export class CartService {
       const match = dto.variantId
         ? product.variants.find((v) => v.id === dto.variantId)
         : undefined;
+
+      // Filtering alone is not enough. An unresolved id used to fall through
+      // to the default variant, which for a staff-only id would silently put
+      // a DIFFERENT product in the customer's cart at a different price —
+      // worse than refusing. An explicitly requested variant that does not
+      // resolve is an error, not a cue to substitute.
+      if (dto.variantId && !match) {
+        throw new BadRequestException('Variant not available');
+      }
+
       const variant =
         match ??
         product.variants.find((v) => v.isDefault) ??

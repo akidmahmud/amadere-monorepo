@@ -93,6 +93,10 @@ export class CatalogFeedService {
         translations: { select: { locale: true, name: true, description: true } },
         brand: { select: { translations: { select: { locale: true, name: true } } } },
         variants: {
+          // Public surface #4 (see 20260903000000_variant_admin_only): this
+          // feed goes to Google Merchant, so a staff-only variant must never
+          // supply the advertised price or MPN.
+          where: { isAdminOnly: false },
           select: { id: true, sku: true, price: true, salePrice: true, isDefault: true },
           orderBy: { id: 'asc' },
         },

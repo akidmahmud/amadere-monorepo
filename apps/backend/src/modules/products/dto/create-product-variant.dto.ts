@@ -53,6 +53,15 @@ export class CreateProductVariantDto {
   @IsBoolean()
   isDefault?: boolean;
 
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      'Live for staff, invisible to customers. The product stays public; this variation is excluded from the PDP, search, wishlist, the catalog feed and the parent stock roll-up, and cannot be added to a customer cart. Staff can still sell it from the admin.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAdminOnly?: boolean;
+
   @ApiProperty({
     type: [Number],
     description: 'AttributeValue ids that make up this variant, e.g. [Red, M]',

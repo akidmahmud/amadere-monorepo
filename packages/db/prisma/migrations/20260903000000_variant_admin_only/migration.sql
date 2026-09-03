@@ -1,0 +1,32 @@
+-- A single variant that staff can sell but customers cannot see, while the
+-- product it belongs to stays public.
+--
+-- The per-variant counterpart of ContentStatus.ADMIN_ONLY (see
+-- 20260902090000_content_status_admin_only). That one covers "this whole
+-- product is staff-only"; this covers "this product is public, but the 5kg
+-- catering pack / the negotiated bundle / the internal sample is not".
+--
+-- IMPORTANT — this is NOT hidden by construction, and that is the difference
+-- from the Product-level flag. Every public product read filters
+-- `status = 'PUBLISHED'` by equality, so ADMIN_ONLY products fall out
+-- automatically. Variants have no equivalent filter anywhere, so each public
+-- read that surfaces variants must exclude these explicitly. The six that do:
+--
+--   1. products.mapper.ts       toPublicProductDto  (PDP, collections)
+--   2. cart.service.ts          add/update guard  - reads PRODUCT_INCLUDE raw,
+--                               bypassing the mapper, so this is the security
+--                               boundary: without it a customer could POST a
+--                               guessed variantId
+--   3. wishlist.mapper.ts       has its own `variants: true` for card pricing
+--   4. catalog-feed.service.ts  Google Merchant price/MPN pick
+--   5. postgres-search.provider.ts  variants[0] price fallback
+--   6. products.service.ts      syncParentStockStatus - hidden stock must not
+--                               make the storefront claim "in stock"
+--
+-- Admin-side reads (admin product list/detail, product picker, manual order
+-- creation, wholesale) deliberately do NOT filter, so these variants stay
+-- orderable by staff with normal stock deduction and normal sales reporting.
+--
+-- Adding a seventh public read? Add it to that list and to
+-- products.admin-only-variant.spec.ts, which asserts each surface excludes it.
+ALTER TABLE "product_variants" ADD COLUMN "is_admin_only" BOOLEAN NOT NULL DEFAULT false;

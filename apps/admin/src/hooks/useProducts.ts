@@ -289,6 +289,49 @@ export function useUpdateVariantSku(productId: number) {
   });
 }
 
+// Toggling a variant between staff-only and public. Its own PATCH, matching
+// sku/price/stock/default, so the inline editor can flip it without a full
+// product save. The backend recomputes the parent's public stock status,
+// which is why this invalidates the product list on success.
+// Drag-to-reorder on the products table. `startPosition` is the absolute
+// index of the first id in the catalogue ((page - 1) * pageSize) -- the list
+// is paginated, so a page of ids alone cannot say where it belongs globally.
+export function useReorderProducts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      ids,
+      startPosition,
+    }: {
+      ids: number[];
+      startPosition: number;
+    }) =>
+      proxyFetch<void>("/admin/products/reorder", {
+        method: "PATCH",
+        body: JSON.stringify({ ids, startPosition }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useUpdateVariantAdminOnly(productId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      variantId,
+      isAdminOnly,
+    }: {
+      variantId: number;
+      isAdminOnly: boolean;
+    }) =>
+      proxyFetch<void>(
+        `/admin/products/${productId}/variants/${variantId}/admin-only`,
+        { method: "PATCH", body: JSON.stringify({ isAdminOnly }) },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useUpdateVariantWeight(productId: number) {
   const qc = useQueryClient();
   return useMutation({

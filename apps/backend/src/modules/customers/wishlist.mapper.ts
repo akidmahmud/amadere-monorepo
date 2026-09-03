@@ -9,7 +9,9 @@ export const WISHLIST_PRODUCT_INCLUDE = {
       // same "no price on parent" rule as product-card-mapper.ts's
       // toProductCardData — need the default variant to price/add-to-cart
       // these correctly instead of falling back to null/0.
-      variants: true,
+      // Public surface #3 (see 20260903000000_variant_admin_only): a wishlist
+      // card must not price itself off a staff-only variant.
+      variants: { where: { isAdminOnly: false } },
     },
   },
 } as const;

@@ -261,9 +261,13 @@ export const adminNav: AppNavEntry[] = [
     permission: "gift_voucher.view",
   },
   {
-    key: "whatsapp",
-    label: "WhatsApp",
-    href: "/whatsapp",
+    // Renamed from "WhatsApp" / "/whatsapp": the page now configures both the
+    // WhatsApp buttons and the product-page call button, so the old name no
+    // longer described it. `permission` stays "whatsapp.view" — renaming that
+    // would mean an RBAC migration and revoking it from whoever holds it.
+    key: "contact-buttons",
+    label: "Contact Buttons",
+    href: "/contact-buttons",
     icon: whatsappIcon,
     permission: "whatsapp.view",
   },

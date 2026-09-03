@@ -11,6 +11,7 @@ import {
   type AdminProductVariant,
   type CostPriceUnit,
   useSetDefaultVariant,
+  useUpdateVariantAdminOnly,
 } from "@/hooks/useProducts";
 import { useUpdateVariantPrice } from "@/hooks/useProfit";
 import { useUpdateInventoryStock } from "@/hooks/useInventory";
@@ -77,6 +78,7 @@ function VariantEditRow({
   const updateSku = useUpdateVariantSku(productId);
   const updateWeight = useUpdateVariantWeight(productId);
   const setDefault = useSetDefaultVariant(productId);
+  const updateAdminOnly = useUpdateVariantAdminOnly(productId);
   const [price, setPrice] = useState(String(variant.price));
   const [salePrice, setSalePrice] = useState(variant.salePrice != null ? String(variant.salePrice) : "");
   const [stock, setStock] = useState(String(variant.stock));
@@ -93,7 +95,12 @@ function VariantEditRow({
     stock !== String(variant.stock) ||
     sku !== (variant.sku ?? "") ||
     weight !== (variant.weightOverride ?? "");
-  const pending = updatePrice.isPending || updateStock.isPending || updateSku.isPending || updateWeight.isPending;
+  const pending =
+    updatePrice.isPending ||
+    updateStock.isPending ||
+    updateSku.isPending ||
+    updateWeight.isPending ||
+    updateAdminOnly.isPending;
 
   function save() {
     const invalidate = () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY });
@@ -119,6 +126,14 @@ function VariantEditRow({
       <span className="mb-1.5 w-28 shrink-0 truncate text-xs font-bold text-emerald-950">
         {labelFor(attributes, variant.attributeValueIds) || `Variant #${variant.id}`}
         {variant.isDefault && <span className="ml-1 text-[10px] font-extrabold text-amber-600">(default)</span>}
+        {variant.isAdminOnly && (
+          <span
+            className="ml-1 rounded bg-slate-700 px-1 py-px text-[9px] font-extrabold uppercase tracking-wide text-white"
+            title="Live for staff only — hidden from the storefront, search, wishlist cards and the Google feed. Customers cannot add it to a cart."
+          >
+            Admin only
+          </span>
+        )}
       </span>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-bold text-emerald-900/80">SKU</span>

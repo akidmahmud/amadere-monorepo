@@ -29,6 +29,7 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
   const [weight, setWeight] = useState("");
   const [stock, setStock] = useState("0");
   const [isDefault, setIsDefault] = useState(false);
+  const [isAdminOnly, setIsAdminOnly] = useState(false);
 
   const effectiveCost = computeVariantCost(costPerItem, costPriceUnit, weight ? Number(weight) : undefined);
   const profit = effectiveCost !== undefined && price ? Number(price) - effectiveCost : null;
@@ -45,6 +46,7 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
       weightOverride: weight ? Number(weight) : undefined,
       stock: Number(stock),
       isDefault,
+      isAdminOnly,
       attributeValueIds: Object.values(valueByAttribute),
     });
     setValueByAttribute({});
@@ -54,6 +56,7 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
     setWeight("");
     setStock("0");
     setIsDefault(false);
+    setIsAdminOnly(false);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -162,6 +165,18 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
       <label className="flex items-center gap-1.5 pb-2 text-xs font-bold text-emerald-950 cursor-pointer select-none">
         <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="h-3.5 w-3.5 accent-emerald-700" />
         Default
+      </label>
+      <label
+        className="flex items-center gap-1.5 pb-2 text-xs font-bold text-slate-700 cursor-pointer select-none"
+        title="Create this variant hidden from the storefront. Staff can still sell it from the admin; customers will not see it on the product page, in search, on wishlist cards or in the Google feed, and its stock will not make the product look in stock."
+      >
+        <input
+          type="checkbox"
+          checked={isAdminOnly}
+          onChange={(e) => setIsAdminOnly(e.target.checked)}
+          className="h-3.5 w-3.5 accent-slate-700"
+        />
+        Admin only
       </label>
       <button
         type="button"

@@ -159,7 +159,12 @@ export class ProductsService {
       this.prisma.client.product.findMany({
         where,
         include: PRODUCT_LIST_INCLUDE,
-        orderBy: { createdAt: 'desc' },
+        // Same order the storefront's ProductSort.DEFAULT uses, so the admin
+        // table shows the sequence customers actually get and drag-to-reorder
+        // means something. Not a behaviour change on day one: every row starts
+        // at sortOrder 0, so the createdAt tiebreak keeps the previous
+        // newest-first order until someone drags something.
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
         ...paginationArgs(page, pageSize),
       }),
       this.prisma.client.product.count({ where }),
@@ -599,6 +604,7 @@ export class ProductsService {
                 stock: v.stock,
                 weightOverride: v.weightOverride,
                 isDefault: v.isDefault,
+                isAdminOnly: v.isAdminOnly ?? false,
                 attributeValues: {
                   create: v.attributeValueIds.map((attributeValueId) => ({
                     attributeValueId,
@@ -934,7 +940,11 @@ export class ProductsService {
   // never goes stale the way it silently did before this method existed.
   private async syncParentStockStatus(productId: number): Promise<void> {
     const [anyInStock, product] = await Promise.all([
-      this.prisma.client.productVariant.findFirst({ where: { productId, stock: { gt: 0 } } }),
+      // Public surface #6 (see 20260903000000_variant_admin_only): stock that
+      // only staff can buy must not make the storefront claim "in stock".
+      this.prisma.client.productVariant.findFirst({
+        where: { productId, stock: { gt: 0 }, isAdminOnly: false },
+      }),
       this.prisma.client.product.findUniqueOrThrow({ where: { id: productId }, select: { allowBackorder: true } }),
     ]);
     const stockStatus = anyInStock ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK';
@@ -981,6 +991,66 @@ export class ProductsService {
       select: { slug: true },
     });
     this.revalidateProduct([product?.slug]);
+  }
+
+  // Drag-to-reorder on the admin products table.
+  //
+  // Product.sortOrder already drives the storefront: ProductSort.DEFAULT
+  // orders by [sortOrder asc, createdAt desc], so this is what customers see.
+  //
+  // The list is paginated, which is why a page of ids is not enough on its
+  // own. Every product starts at sortOrder 0, so writing 0..n for page 1
+  // alone would leave page 2 still at 0 and sorting ABOVE the page-1 rows it
+  // was below. The whole catalogue is therefore renumbered on every reorder:
+  // read the current global order, splice the page's new order into its slice,
+  // then write sequential ranks. Ties still fall back to createdAt desc, so
+  // nothing moves until someone actually drags.
+  async reorder(ids: number[], startPosition: number): Promise<void> {
+    const all = await this.prisma.client.product.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    const order = all.map((p) => p.id);
+    const slice = new Set(ids);
+    // Drop the moved ids from their old positions, then reinsert them, in the
+    // order given, at the page's offset. Guards against a stale client sending
+    // an id that has since been deleted.
+    const known = ids.filter((id) => order.includes(id));
+    const remaining = order.filter((id) => !slice.has(id));
+    const at = Math.min(Math.max(startPosition, 0), remaining.length);
+    const next = [...remaining.slice(0, at), ...known, ...remaining.slice(at)];
+
+    // One statement rather than a transaction of N updates — the catalogue is
+    // ~1,900 rows and this runs on every drag.
+    await this.prisma.client.$executeRaw`
+      UPDATE products AS p
+      SET sort_order = v.pos
+      FROM (
+        SELECT * FROM unnest(${next}::int[], ${next.map((_, i) => i)}::int[]) AS t(id, pos)
+      ) AS v
+      WHERE p.id = v.id AND p.sort_order IS DISTINCT FROM v.pos
+    `;
+  }
+
+  async updateVariantAdminOnly(
+    productId: number,
+    variantId: number,
+    isAdminOnly: boolean,
+  ): Promise<void> {
+    const variant = await this.prisma.client.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+    if (!variant) throw new NotFoundException('Variant not found');
+    await this.prisma.client.productVariant.update({
+      where: { id: variantId },
+      data: { isAdminOnly },
+    });
+    // The parent's public stockStatus is "is any variant a customer can buy
+    // still in stock" — hiding or revealing a variant changes that answer, so
+    // it has to be recomputed here the same as a stock edit does.
+    await this.syncParentStockStatus(productId);
   }
 
   async updateVariantSku(

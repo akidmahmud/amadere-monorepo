@@ -78,6 +78,10 @@ export class PostgresSearchProvider implements SearchProvider {
           take: 1,
         },
         variants: {
+          // Public surface #5 (see 20260903000000_variant_admin_only): search
+          // results price off variants[0], so a cheap staff-only variant would
+          // otherwise advertise a price customers cannot buy at.
+          where: { isAdminOnly: false },
           // salePrice as well as price — a variant-only product carries
           // BOTH on the variant, never on the parent row, so selecting just
           // `price` meant those products could never show a sale price.
