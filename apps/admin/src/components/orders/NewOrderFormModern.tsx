@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
-import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT, toLocalBdPhone } from "@amader/shared";
+import { toLocalBdPhone } from "@amader/shared";
+import {
+  DistrictAutocomplete,
+  ThanaAutocomplete,
+} from "@/components/DistrictThanaFields";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useCreateManualOrder, usePreviewCoupon, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
@@ -20,10 +24,6 @@ const EMPTY_ADDRESS: CreateManualOrderAddress = {
   addressLine: "",
   postCode: "",
 };
-
-const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
-  .flat()
-  .sort((a, b) => a.localeCompare(b));
 
 type Line = { productId: number; variantId?: number; name: string; sku: string | null; quantity: number; unitPrice: number; imageUrl?: string };
 
@@ -118,8 +118,6 @@ function ModernAddressFields({
     onChange({ ...value, [key]: v });
   }
 
-  const thanaOptions = value.district ? BD_THANAS_BY_DISTRICT[value.district] : undefined;
-
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <ModernField label="Recipient Phone" required>
@@ -158,42 +156,22 @@ function ModernAddressFields({
       </div>
 
       <ModernField label="District" required>
-        <select
+        <DistrictAutocomplete
           value={value.district}
-          onChange={(e) => set("district", e.target.value)}
-          className={modernInputClass}
-        >
-          <option value="">Select district</option>
-          {DISTRICT_OPTIONS.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
+          onChange={(next) => {
+            // The area belongs to the old district — keeping it would ship a
+            // Dhaka thana to a Sylhet address.
+            onChange({ ...value, district: next, area: "" });
+          }}
+        />
       </ModernField>
 
       <ModernField label="Thana / Area" required>
-        {thanaOptions ? (
-          <select
-            value={value.area ?? ""}
-            onChange={(e) => set("area", e.target.value)}
-            className={modernInputClass}
-          >
-            <option value="">Select thana/area</option>
-            {thanaOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            value={value.area ?? ""}
-            onChange={(e) => set("area", e.target.value)}
-            placeholder="Thana / Area name"
-            className={modernInputClass}
-          />
-        )}
+        <ThanaAutocomplete
+          district={value.district}
+          value={value.area ?? ""}
+          onChange={(next) => set("area", next)}
+        />
       </ModernField>
 
       <ModernField label="Landmark (Optional)">

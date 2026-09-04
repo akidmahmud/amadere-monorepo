@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/useCategories";
 import {
+  ALL_PAGE_SIZE,
   useDeleteProduct,
   useDuplicateProduct,
   type AdminProductListItem,
@@ -113,7 +114,16 @@ function SeoRing({ score }: { score?: number }) {
   );
 }
 
-const PAGE_SIZES = [10, 25, 50];
+/**
+ * "All" is a page size, not a separate mode — the table, filters, sorting and
+ * bulk selection all keep working unchanged, and the pager simply collapses to
+ * one page.
+ *
+ * Bounded rather than literally unlimited, matching the backend's own ceiling
+ * for this endpoint (ADMIN_PRODUCTS_MAX_PAGE_SIZE). If the catalogue ever grows
+ * past it the footer says so out loud instead of silently truncating.
+ */
+const PAGE_SIZES = [10, 25, 50, ALL_PAGE_SIZE];
 
 // The product row, made draggable. Exists as its own component only because
 // `useSortable` is a hook and the row is rendered inside a .map() callback,
@@ -267,6 +277,7 @@ export function ProductsTable({
 
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 10;
+  const showingAll = pageSize >= ALL_PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   function toggleAll() {
@@ -811,9 +822,16 @@ export function ProductsTable({
         <div className="text-[0.76rem] font-semibold text-secondary">
           {total === 0
             ? "No products"
-            : `Showing ${start} to ${end} of ${total} products`}
+            : showingAll
+              ? total > ALL_PAGE_SIZE
+                // Only reachable once the catalogue outgrows the cap; said
+                // plainly rather than quietly showing the first 1000.
+                ? `Showing the first ${ALL_PAGE_SIZE} of ${total} products — pick a page size to see the rest`
+                : `Showing all ${total} products`
+              : `Showing ${start} to ${end} of ${total} products`}
         </div>
         <div className="flex items-center gap-1.5">
+          {!showingAll && (
           <button
             type="button"
             disabled={page <= 1}
@@ -833,7 +851,8 @@ export function ProductsTable({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
+          )}
+          {!showingAll && Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter(
               (n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1,
             )
@@ -865,6 +884,7 @@ export function ProductsTable({
                 </button>
               ),
             )}
+          {!showingAll && (
           <button
             type="button"
             disabled={page >= totalPages}
@@ -884,6 +904,7 @@ export function ProductsTable({
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
+          )}
           <select
             value={pageSize}
             onChange={(e) =>
@@ -897,7 +918,7 @@ export function ProductsTable({
           >
             {PAGE_SIZES.map((s) => (
               <option key={s} value={s}>
-                {s} / page
+                {s === ALL_PAGE_SIZE ? "All products" : `${s} / page`}
               </option>
             ))}
           </select>

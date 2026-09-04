@@ -112,8 +112,24 @@ export interface AdminProductFilters {
   pageSize?: number;
 }
 
+/** The products table's "All products" page size — see ProductsTable. */
+export const ALL_PAGE_SIZE = 1000;
+
 function toQueryString(filters: AdminProductFilters): string {
   const params = new URLSearchParams();
+  // "All" is a real flag on the endpoint, not a big pageSize: the shared
+  // pagination DTO caps pageSize at 100 for every route and class-validator
+  // merges inherited constraints, so a larger number is simply rejected.
+  if ((filters.pageSize ?? 0) >= ALL_PAGE_SIZE) {
+    const { pageSize: _pageSize, page: _page, ...rest } = filters;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value === undefined || value === "") continue;
+      if (Array.isArray(value)) for (const v of value) params.append(key, String(v));
+      else params.set(key, String(value));
+    }
+    params.set("all", "true");
+    return `?${params.toString()}`;
+  }
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined || value === "") continue;
     if (Array.isArray(value)) {

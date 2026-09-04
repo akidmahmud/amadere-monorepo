@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Icon } from "@amader/admin-ui";
-import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT, toLocalBdPhone } from "@amader/shared";
+import { toLocalBdPhone } from "@amader/shared";
+import {
+  DistrictAutocomplete,
+  ThanaAutocomplete,
+} from "@/components/DistrictThanaFields";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
 import {
@@ -26,10 +30,6 @@ const EMPTY_ADDRESS: CreateManualOrderAddress = {
   addressLine: "",
   postCode: "",
 };
-
-const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
-  .flat()
-  .sort((a, b) => a.localeCompare(b));
 
 type Line = {
   productId: number;
@@ -123,7 +123,6 @@ function AddressFields({
   function set(key: keyof CreateManualOrderAddress, v: string) {
     onChange({ ...value, [key]: v });
   }
-  const thanaOptions = value.district ? BD_THANAS_BY_DISTRICT[value.district] : undefined;
   return (
     <div className="grid grid-cols-1 gap-2 pt-2 text-xs">
       <Field label="Phone" required>
@@ -154,41 +153,19 @@ function AddressFields({
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="District" required>
-          <select
+          <DistrictAutocomplete
             value={value.district}
-            onChange={(e) => set("district", e.target.value)}
-            className={cardInputClass + " w-full"}
-          >
-            <option value="">Select district</option>
-            {DISTRICT_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+            // The area belongs to the old district — keeping it would ship a
+            // Dhaka thana to a Sylhet address.
+            onChange={(next) => onChange({ ...value, district: next, area: "" })}
+          />
         </Field>
         <Field label="Thana / Area" required>
-          {thanaOptions ? (
-            <select
-              value={value.area ?? ""}
-              onChange={(e) => set("area", e.target.value)}
-              className={cardInputClass + " w-full"}
-            >
-              <option value="">Select thana/area</option>
-              {thanaOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              value={value.area ?? ""}
-              onChange={(e) => set("area", e.target.value)}
-              placeholder="Thana / Area"
-              className={cardInputClass + " w-full"}
-            />
-          )}
+          <ThanaAutocomplete
+            district={value.district}
+            value={value.area ?? ""}
+            onChange={(next) => set("area", next)}
+          />
         </Field>
       </div>
     </div>

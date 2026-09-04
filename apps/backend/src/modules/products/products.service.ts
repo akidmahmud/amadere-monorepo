@@ -27,7 +27,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { ProductTranslationDto } from './dto/product-translation.dto';
 import { ProductFilterQueryDto, ProductSort } from './dto/product-filter-query.dto';
-import { AdminProductQueryDto } from './dto/admin-product-query.dto';
+import { ADMIN_PRODUCTS_MAX_PAGE_SIZE, AdminProductQueryDto } from './dto/admin-product-query.dto';
 import { computeSeoScore } from './seo-score.util';
 import {
   AdminDeletedProductDto,
@@ -155,6 +155,11 @@ export class ProductsService {
     filters: AdminProductQueryDto,
   ): Promise<PaginatedResult<AdminProductListItemDto>> {
     const where = this.buildAdminWhere(filters);
+    // `all` collapses the list to one page. Still bounded — an unbounded take
+    // is a request anyone with an admin token could use to pull the whole
+    // table with its nested includes in one query.
+    const effectivePage = filters.all ? 1 : page;
+    const effectivePageSize = filters.all ? ADMIN_PRODUCTS_MAX_PAGE_SIZE : pageSize;
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
         where,
@@ -165,7 +170,7 @@ export class ProductsService {
         // at sortOrder 0, so the createdAt tiebreak keeps the previous
         // newest-first order until someone drags something.
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-        ...paginationArgs(page, pageSize),
+        ...paginationArgs(effectivePage, effectivePageSize),
       }),
       this.prisma.client.product.count({ where }),
     ]);
@@ -183,8 +188,8 @@ export class ProductsService {
         }),
       })),
       total,
-      page,
-      pageSize,
+      effectivePage,
+      effectivePageSize,
     );
   }
 

@@ -194,3 +194,79 @@ Failure in the call tab surfaces as text instead of `alert()`.
 populated; tabs report Orders 10, Products 7, Activity 67 and all render; adding
 a note from the modal persisted and moved the Notes badge to 1; `/customers/4766`
 now 404s and nothing else links to it.
+
+## 2026-09-04 — Products list: "All products" page size
+
+**Request:** the 10/25/50 page sizes needed an "all products" option.
+
+`AdminProductQueryDto` gains an `all` boolean; `adminList` returns everything in
+one page when it is set, bounded by `ADMIN_PRODUCTS_MAX_PAGE_SIZE` (1000).
+
+**Why a flag and not just a bigger pageSize.** First attempt re-declared
+`pageSize` on the subclass with a larger `@Max`. It failed at runtime with
+"pageSize must not be greater than 100": class-validator MERGES a subclass's
+decorators with the parent's, so `PaginationQueryDto`'s `@Max(100)` still ran.
+Asking for the thing wanted beats trying to out-argue an inherited constraint.
+The 100 cap stays in place for every other endpoint, which is right for anything
+a customer can call.
+
+Frontend: the table's page-size select gains "All products"; `toQueryString`
+translates that selection into `all=true` and drops page/pageSize. The pager
+(prev, numbers, next) hides when everything is on screen, and the footer reads
+"Showing all N products" — or, if the catalogue ever outgrows the cap, "Showing
+the first 1000 of N products — pick a page size to see the rest" rather than
+silently truncating.
+
+**Verified:** selecting "All products" renders all 84 rows in one page with the
+numbered pager gone; `?all=true` returns 84 items.
+
+## 2026-09-04 — District/thana typeahead across the admin panel
+
+**Request:** the checkout's district/thana behaviour in New Order, then "same
+change should be in classic view too" and "Create new customer disctric and
+thana should do same too".
+
+New `apps/admin/src/components/DistrictThanaFields.tsx` exports
+`DistrictAutocomplete` / `ThanaAutocomplete`, wrapping the same `Autocomplete`
+the storefront checkout uses — so staff taking an order over the phone can search
+the way the caller speaks: English, Bengali (ঢাকা), or the older romanisation
+(Comilla, Jessore, CTG). District is `allowFreeText={false}` (the 65 are the
+complete list and `division` is derived from that exact string server-side);
+thana is free text, since only two districts have curated area lists. Changing
+district clears the area everywhere.
+
+`Autocomplete` gained `inputClassName` / `menuClassName` / `optionClassName` /
+`optionActiveClassName`, defaulted to the storefront's classes, so one component
+serves both apps without either inheriting the other's look.
+
+Swapped in four places, replacing `<select>` dropdowns: **New Order (modern)**,
+**New Order (classic)**, **Create Customer** (CustomerAddressFields — also the
+/customers/new page), and **Recovery → create order from abandoned cart**, which
+was the last remaining copy of the old pattern.
+
+**Verified:** `ঢাকা` ranks Dhaka above Dhaka Sub-Urban and `Comilla` finds
+Cumilla in New Order; the classic view shows the autocomplete with no old select;
+`যশোর` finds Jashore on Create Customer and commits as "Jashore".
+
+## 2026-09-04 — Correction: a reason must not remove the cart from the funnel
+
+Reported: "when i add cancel reason to them they are leaving from the funnel they
+shouldnt leave the funnel they should just stay there and only the pending number
+will change."
+
+The earlier fix (same day, above) set `canceledAt` when a reason was written,
+which dropped the row out of the default "open" view. Wrong: a row vanishing the
+moment someone types in a cell reads as data loss.
+
+`updateReason` no longer touches `canceledAt` or `recovered` at all — writing a
+reason changes nothing about the cart's outcome. The workload/list split moved
+into a filter instead: `hasReason` on the list endpoint. The sidebar badge and
+bell send `hasReason=false` (count only carts nobody has written on); the funnel
+table never sends it, so a cart with a reason stays exactly where it is.
+
+**Verified:** writing a reason left the list at 14 rows with the row still
+present, moved the pending count 11→10, and left `canceledAt`/`recovered`
+untouched; clearing the reason returned the count to 11. Test data cleaned up.
+
+**Note:** dev-DB artifact from the reverted behaviour — cart 43's `canceledAt` is
+now 2026-09-04 instead of its original date. Only that one row, only locally.

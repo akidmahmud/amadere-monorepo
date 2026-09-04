@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  BD_DISTRICTS_BY_DIVISION,
-  BD_THANAS_BY_DISTRICT,
-} from "@amader/shared";
+  DistrictAutocomplete,
+  ThanaAutocomplete,
+} from "@/components/DistrictThanaFields";
 import {
   OrderDetailModal,
   type OrderDetailModalRow,
@@ -123,10 +123,6 @@ function resolveDateRange(
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
-  .flat()
-  .sort((a, b) => a.localeCompare(b));
-
 function HeaderButton({
   children,
   onClick,
@@ -235,9 +231,6 @@ function CreateOrderModal({
     alternativePhone: captured.alternativePhone ?? "",
     email: row.email ?? "",
   });
-  const thanaOptions = form.district
-    ? BD_THANAS_BY_DISTRICT[form.district]
-    : undefined;
   const field =
     "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -318,44 +311,15 @@ function CreateOrderModal({
           onChange={(e) => setForm({ ...form, addressLine: e.target.value })}
           className={`col-span-2 ${field}`}
         />
-        <select
-          required
+        <DistrictAutocomplete
           value={form.district}
-          onChange={(e) =>
-            setForm({ ...form, district: e.target.value, area: "" })
-          }
-          className={field}
-        >
-          <option value="">Select District *</option>
-          {DISTRICT_OPTIONS.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-        {thanaOptions ? (
-          <select
-            required
-            value={form.area}
-            onChange={(e) => setForm({ ...form, area: e.target.value })}
-            className={field}
-          >
-            <option value="">Select Thana / Area *</option>
-            {thanaOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            placeholder="Thana / Area *"
-            required
-            value={form.area}
-            onChange={(e) => setForm({ ...form, area: e.target.value })}
-            className={field}
-          />
-        )}
+          onChange={(next) => setForm({ ...form, district: next, area: "" })}
+        />
+        <ThanaAutocomplete
+          district={form.district}
+          value={form.area}
+          onChange={(next) => setForm({ ...form, area: next })}
+        />
         <input
           placeholder="Landmark (optional)"
           value={form.landmark ?? ""}

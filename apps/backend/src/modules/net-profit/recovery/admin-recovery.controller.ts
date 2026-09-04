@@ -54,6 +54,10 @@ export class AdminRecoveryController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('outcome') outcome?: RecoveryOutcome,
+    // Only the sidebar's workload badge passes this (false), to count the
+    // carts nobody has written a reason on yet. The funnel table never sends
+    // it, so a cart with a reason still shows in the list.
+    @Query('hasReason', new ParseBoolPipe({ optional: true })) hasReason?: boolean,
   ) {
     // Defaults to the carts still worth chasing. A recovered or cancelled
     // cart is a closed one — listing them here by default put customers who
@@ -61,6 +65,7 @@ export class AdminRecoveryController {
     const filters: RecoveryListFilters = {
       outcome: outcome ?? 'open',
       recovered,
+      hasReason,
       q,
       stage,
       from,

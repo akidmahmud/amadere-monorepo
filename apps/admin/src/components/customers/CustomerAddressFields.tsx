@@ -1,12 +1,9 @@
 "use client";
 
-import { BD_DISTRICTS_BY_DIVISION, BD_THANAS_BY_DISTRICT } from "@amader/shared";
-
-// Flat, alphabetical — division isn't a separate field (every BD district
-// belongs to exactly one, same convention as CreateCustomerModal/NewOrderForm).
-const DISTRICT_OPTIONS = Object.values(BD_DISTRICTS_BY_DIVISION)
-  .flat()
-  .sort((a, b) => a.localeCompare(b));
+import {
+  DistrictAutocomplete,
+  ThanaAutocomplete,
+} from "@/components/DistrictThanaFields";
 
 export interface CustomerAddressValue {
   addressLine: string;
@@ -45,11 +42,6 @@ export function CustomerAddressFields({
    * this section doesn't visually clash with the rest of that page. */
   inputStyle?: React.CSSProperties;
 }) {
-  // Only districts Steadfast's own area list covers get a real dropdown
-  // (see bd-thanas.ts) — same fallback-to-free-text behavior as the
-  // storefront checkout's AddressFields.tsx, so admin and checkout agree.
-  const thanaOptions = value.district ? BD_THANAS_BY_DISTRICT[value.district] : undefined;
-
   function set<K extends keyof CustomerAddressValue>(key: K, v: CustomerAddressValue[K]) {
     onChange({ ...value, [key]: v });
   }
@@ -74,43 +66,23 @@ export function CustomerAddressFields({
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <span className="text-xs font-bold text-text">District</span>
-          <select
+          <DistrictAutocomplete
             value={value.district}
-            onChange={(e) => set("district", e.target.value)}
-            className={inputClassName}
-            style={inputStyle}
-          >
-            <option value="">Select district</option>
-            {DISTRICT_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5">
+            // The area belongs to the old district — keeping it would file a
+            // Dhaka thana under a Sylhet address.
+            onChange={(next) => onChange({ ...value, district: next, area: "" })}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
           <span className="text-xs font-bold text-text">Thana / Area</span>
-          {thanaOptions ? (
-            <select value={value.area} onChange={(e) => set("area", e.target.value)} className={inputClassName} style={inputStyle}>
-              <option value="">Select thana/area</option>
-              {thanaOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              value={value.area}
-              onChange={(e) => set("area", e.target.value)}
-              placeholder="Thana / area"
-              className={inputClassName}
-              style={inputStyle}
-            />
-          )}
-        </label>
+          <ThanaAutocomplete
+            district={value.district}
+            value={value.area}
+            onChange={(next) => set("area", next)}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

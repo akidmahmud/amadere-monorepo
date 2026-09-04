@@ -60,6 +60,12 @@ export function Autocomplete({
   emptyMessage = "No matches",
   maxResults = 12,
   className,
+  // Style hooks, because the admin app's tokens are not the storefront's.
+  // Defaults keep every storefront call site unchanged.
+  inputClassName = "w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 font-body text-sm text-ink outline-none placeholder:text-muted focus:border-green disabled:cursor-not-allowed disabled:bg-cream disabled:opacity-60",
+  menuClassName = "absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-[10px] border border-line bg-white shadow-brand",
+  optionClassName = "block w-full cursor-pointer border-b border-line px-3.5 py-2.5 text-left font-body text-sm text-ink last:border-b-0",
+  optionActiveClassName = "bg-cream",
   "aria-label": ariaLabel,
 }: {
   value: string;
@@ -72,6 +78,10 @@ export function Autocomplete({
   emptyMessage?: ReactNode;
   maxResults?: number;
   className?: string;
+  inputClassName?: string;
+  menuClassName?: string;
+  optionClassName?: string;
+  optionActiveClassName?: string;
   "aria-label"?: string;
 }) {
   const [query, setQuery] = useState<string | null>(null);
@@ -142,11 +152,11 @@ export function Autocomplete({
             setQuery(null);
           }
         }}
-        className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 font-body text-sm text-ink outline-none focus:border-green disabled:cursor-not-allowed disabled:bg-cream disabled:opacity-60"
+        className={inputClassName}
       />
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-[10px] border border-line bg-white shadow-brand">
+        <div className={menuClassName}>
           {matches.length === 0 && (
             <p className="px-3 py-3 text-center font-body text-sm text-muted">{emptyMessage}</p>
           )}
@@ -166,10 +176,7 @@ export function Autocomplete({
                 commit(option.value);
               }}
               onMouseEnter={() => setHighlighted(index)}
-              className={cn(
-                "block w-full cursor-pointer border-b border-line px-3.5 py-2.5 text-left font-body text-sm text-ink last:border-b-0",
-                index === highlighted && "bg-cream",
-              )}
+              className={cn(optionClassName, index === highlighted && optionActiveClassName)}
             >
               <span className="block">{option.value}</span>
               {option.hint && (

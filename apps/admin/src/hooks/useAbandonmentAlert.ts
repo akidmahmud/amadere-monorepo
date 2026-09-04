@@ -34,7 +34,7 @@ export function useAbandonedCartNotifications(enabled: boolean) {
     queryKey: ["abandonment-notifications"],
     queryFn: () =>
       proxyFetch<{ items: IncompleteOrder[] }>(
-        "/admin/net-profit/recovery?outcome=open&page=1&pageSize=5",
+        "/admin/net-profit/recovery?outcome=open&hasReason=false&page=1&pageSize=5",
       ),
     enabled,
     refetchInterval: POLL_MS,
@@ -58,7 +58,11 @@ export function useAbandonmentAlert(enabled: boolean) {
         // was equivalent until carts could be CANCELLED — after that it still
         // counted cancelled rows, so the bell would ring for a cart staff had
         // already closed and which the page it links to no longer lists.
-        `/admin/net-profit/recovery?outcome=open&from=${WORKLOAD_SINCE}&page=1&pageSize=1`,
+        //
+        // hasReason=false is the workload/list split: a cart someone has
+        // written a reason on has been dealt with, so it stops counting here —
+        // but it stays in the funnel table, which never sends this param.
+        `/admin/net-profit/recovery?outcome=open&hasReason=false&from=${WORKLOAD_SINCE}&page=1&pageSize=1`,
       ),
     enabled,
     refetchInterval: POLL_MS,

@@ -62,6 +62,15 @@ export interface RecoveryListFilters {
    * forces `recovered: false` itself regardless.
    */
   recovered?: boolean;
+  /**
+   * false = only carts with no reason written yet.
+   *
+   * This is the difference between the funnel LIST (everything still open,
+   * whether or not someone has written on it) and the sidebar's workload
+   * COUNT (what nobody has dealt with). Writing a reason is staff saying "I
+   * have handled this", so it leaves the count without leaving the list.
+   */
+  hasReason?: boolean;
   /** "cart" | "checkout" | "otp" | "payment" */
   stage?: string;
   q?: string;
@@ -490,6 +499,8 @@ export class RecoveryService {
     } else if (!filters.outcome && filters.recovered !== undefined) {
       where.recovered = filters.recovered;
     }
+    if (filters.hasReason === false) where.cancelReason = null;
+    else if (filters.hasReason === true) where.cancelReason = { not: null };
     if (filters.stage) where.stage = filters.stage;
     if (filters.from || filters.to) {
       where.lastSeenAt = {
@@ -585,28 +596,20 @@ export class RecoveryService {
   /**
    * Edit the reason in place, from the funnel table or the trash tab.
    *
-   * Writing a reason on a cart that is still open CLOSES it. Staff only type
-   * in this box once they have decided what happened to the cart, so leaving
-   * it in "open (still to chase)" afterwards meant the sidebar badge kept
-   * counting work that was already done. Clearing the reason reopens it, so
-   * the action is undone by undoing what caused it.
-   *
-   * A recovered cart is left alone: it has an order behind it, and "cancelled"
-   * would contradict that.
+   * Writing a reason does NOT change the cart's outcome. The row stays exactly
+   * where it is in the funnel — staff want to keep seeing it, and a cart that
+   * disappeared the moment someone typed in a cell read as data loss. What a
+   * reason changes is the WORKLOAD count: see `hasReason` in buildWhere, which
+   * is how the sidebar badge stops counting a cart someone has dealt with.
    */
   async updateReason(id: number, reason: string): Promise<IncompleteOrderDto> {
-    const existing = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
-    const trimmed = reason.trim();
+    await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
     const row = await this.prisma.client.incompleteOrder.update({
       where: { id },
-      data: {
-        // Cleared rather than stored blank when emptied, so "no reason given"
-        // is one state and not two.
-        cancelReason: trimmed || null,
-        ...(existing.recovered
-          ? {}
-          : { canceledAt: trimmed ? (existing.canceledAt ?? new Date()) : null }),
-      },
+      // Cleared rather than stored blank when emptied, so "no reason given"
+      // is one state and not two — and so clearing it puts the cart back into
+      // the pending count.
+      data: { cancelReason: reason.trim() || null },
     });
     return toIncompleteOrderDto(row);
   }
