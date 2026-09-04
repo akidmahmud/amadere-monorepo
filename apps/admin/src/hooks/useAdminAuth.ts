@@ -79,3 +79,17 @@ export function useDisableTwoFactor() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-me"] }),
   });
 }
+
+/**
+ * Whether the signed-in admin holds a permission.
+ *
+ * Mirrors the backend guard: a super admin bypasses every check, so their
+ * `permissions` array is empty by design. Returns false while /me is still
+ * loading — a control that flickers into existence is better than one that
+ * flickers out after the admin has already reached for it.
+ */
+export function useCan(permission: string): boolean {
+  const { data } = useAdminMe();
+  if (!data) return false;
+  return data.isSuperAdmin || data.permissions.includes(permission);
+}

@@ -25,6 +25,7 @@ import {
 } from "@/hooks/useOrders";
 import { useAssignOrder, useUpdateOrderNote } from "@/hooks/useOrderManager";
 import { useAssignableStaff } from "@/hooks/useCustomers";
+import { useCan } from "@/hooks/useAdminAuth";
 import { useAdvancePayment, useManualPaymentsForOrder } from "@/hooks/usePayments";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { useProductSearch } from "@/hooks/useProducts";
@@ -105,6 +106,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const { data: staff } = useAssignableStaff();
   const updateStatus = useUpdateOrderStatus(row.id);
   const assign = useAssignOrder(row.id);
+  const canAssign = useCan("assignment.manage");
   const refund = useRefundOrder(row.id);
   const track = useTrackShipment();
   const updateShipmentStatus = useUpdateShipmentStatus();
@@ -649,8 +651,11 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-base font-semibold text-text">Customer</h3>
                 {order.customerId && (
-                  <Link href={`/customers/${order.customerId}`} className="inline-flex" style={{ color: GREEN }} aria-label="View customer">
-                    <Icon name="edit" size={16} />
+                  // The customer profile page is gone — everything it held now
+                  // lives in the customers list's own modal, which this opens
+                  // directly rather than nesting a second modal inside this one.
+                  <Link href={`/customers?open=${order.customerId}`} className="inline-flex" style={{ color: GREEN }} aria-label="View customer">
+                    <Icon name="open_in_new" size={16} />
                   </Link>
                 )}
               </div>
@@ -759,7 +764,8 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     <span className="text-xs text-muted">Assigned to</span>
                     <select
                       value={order.assignedAdminId ?? ""}
-                      disabled={assign.isPending}
+                      disabled={assign.isPending || !canAssign}
+                      title={canAssign ? undefined : "You do not have permission to reassign orders"}
                       onChange={(e) => assign.mutate(e.target.value === "" ? null : Number(e.target.value))}
                       className="h-9 rounded-sm border border-border bg-surface px-2 text-sm text-text disabled:opacity-50"
                     >

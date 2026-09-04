@@ -53,7 +53,7 @@ export class AdminOrderManagerController {
   }
 
   @Patch(':id/assign')
-  @RequirePermission('net_profit_orders.manage')
+  @RequirePermission('net_profit_orders.manage', 'assignment.manage')
   assign(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignOrderDto) {
     return this.orderManager.assign(id, dto.assignedAdminId ?? null);
   }

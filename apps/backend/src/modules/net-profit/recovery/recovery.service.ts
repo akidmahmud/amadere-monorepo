@@ -582,14 +582,31 @@ export class RecoveryService {
     return toIncompleteOrderDto(row);
   }
 
-  /** Edit the reason in place, from the trash tab's cell. */
+  /**
+   * Edit the reason in place, from the funnel table or the trash tab.
+   *
+   * Writing a reason on a cart that is still open CLOSES it. Staff only type
+   * in this box once they have decided what happened to the cart, so leaving
+   * it in "open (still to chase)" afterwards meant the sidebar badge kept
+   * counting work that was already done. Clearing the reason reopens it, so
+   * the action is undone by undoing what caused it.
+   *
+   * A recovered cart is left alone: it has an order behind it, and "cancelled"
+   * would contradict that.
+   */
   async updateReason(id: number, reason: string): Promise<IncompleteOrderDto> {
-    await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    const existing = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    const trimmed = reason.trim();
     const row = await this.prisma.client.incompleteOrder.update({
       where: { id },
-      // Cleared rather than stored blank when emptied, so "no reason given"
-      // is one state and not two.
-      data: { cancelReason: reason.trim() || null },
+      data: {
+        // Cleared rather than stored blank when emptied, so "no reason given"
+        // is one state and not two.
+        cancelReason: trimmed || null,
+        ...(existing.recovered
+          ? {}
+          : { canceledAt: trimmed ? (existing.canceledAt ?? new Date()) : null }),
+      },
     });
     return toIncompleteOrderDto(row);
   }

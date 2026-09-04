@@ -82,7 +82,14 @@ export function TopCustomersTable({ data }: { data: GlobalDashboardOverview }) {
   return (
     <div className="rounded-card border border-border bg-surface p-[22px] shadow-card">
       <div className="mb-4 flex items-center justify-between">
-        <div className="font-ui text-sm font-semibold text-text">Top Customers</div>
+        <div>
+          <div className="font-ui text-sm font-semibold text-text">Top Customers</div>
+          {/* Said out loud, because "Total Spending" over an all-time,
+              any-status list used to mean money that was never collected. */}
+          <div className="text-[0.7rem] font-semibold text-muted">
+            Completed orders, last {data.topCustomersWindowDays ?? 90} days
+          </div>
+        </div>
         <Link href="/customers" className="text-[0.78rem] font-bold text-brand-500 hover:underline">
           All Customers
         </Link>
@@ -100,7 +107,7 @@ export function TopCustomersTable({ data }: { data: GlobalDashboardOverview }) {
             {data.topCustomers.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-2.5 py-6 text-center text-sm text-muted">
-                  No orders yet.
+                  No completed orders in this window.
                 </td>
               </tr>
             )}

@@ -19,6 +19,11 @@ export class DashboardService {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
+    // ponytail: fixed 90 days. Make it a query param if anyone wants to change
+    // the window from the UI.
+    const TOP_CUSTOMERS_DAYS = 90;
+    const topCustomersSince = new Date(Date.now() - TOP_CUSTOMERS_DAYS * 86_400_000);
+
     const [
       revenueAgg,
       totalOrders,
@@ -92,9 +97,25 @@ export class DashboardService {
           product: { select: { slug: true } },
         },
       }),
+      // COMPLETED only, and only recent ones.
+      //
+      // It used to rank by every status except CANCELED. Shop-wide that is
+      // ~2,850 PENDING/PROCESSING orders against ~470 COMPLETED, so the list
+      // ranked customers by money that had never been collected — the top
+      // entry was 98.7% a single PROCESSING order that had sat unfulfilled for
+      // six months. COMPLETED is also what the Customers module already means
+      // by completedOrderCount, so the two now agree.
+      //
+      // The window is why it looked frozen: all-time, a handful of huge legacy
+      // orders could never be displaced, so the same five names showed
+      // indefinitely.
       this.prisma.client.order.groupBy({
         by: ['customerId'],
-        where: { status: NON_CANCELED, customerId: { not: null } },
+        where: {
+          status: 'COMPLETED',
+          createdAt: { gte: topCustomersSince },
+          customerId: { not: null },
+        },
         _sum: { totalAmount: true },
         _count: { _all: true },
         orderBy: { _sum: { totalAmount: 'desc' } },
@@ -211,6 +232,7 @@ export class DashboardService {
         paymentMethod: o.payments[0]?.provider && o.payments[0].provider !== 'COD' ? 'PAID' : 'COD',
       })),
       topCustomers,
+      topCustomersWindowDays: TOP_CUSTOMERS_DAYS,
       monthlyRevenue,
       topProducts,
     };

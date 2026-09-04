@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards, MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards, MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -6,7 +6,7 @@ import type { Response } from 'express';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
-import { RequirePermission } from '../../common/auth/permission.decorator';
+import { Can, RequirePermission, type PermissionCheck } from '../../common/auth/permission.decorator';
 import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { CustomersService } from './customers.service';
@@ -74,7 +74,13 @@ export class AdminCustomersController {
 
   @Post('bulk')
   @RequirePermission('customer.manage')
-  bulk(@Body() dto: BulkCustomerActionDto) {
+  bulk(@Body() dto: BulkCustomerActionDto, @Can() can: PermissionCheck) {
+    // Reassignment is one action among several here, so it cannot be a
+    // decorator on the whole endpoint without also locking delete and restore
+    // behind a permission that has nothing to do with them.
+    if (dto.action === 'assign' && !can('assignment.manage')) {
+      throw new ForbiddenException('Missing permission: assignment.manage');
+    }
     return this.customers.adminBulkAction(dto);
   }
 
@@ -99,7 +105,17 @@ export class AdminCustomersController {
   @Patch(':id')
   @RequirePermission('customer.manage')
   @ApiOkResponse({ type: AdminCustomerDto })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCustomerDto): Promise<AdminCustomerDto> {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCustomerDto,
+    @Can() can: PermissionCheck,
+  ): Promise<AdminCustomerDto> {
+    // The assignee is one field on the general customer update, so the check
+    // has to be on the field rather than the route. Rejected rather than
+    // silently dropped: an admin who is told nothing would assume it saved.
+    if (dto.assignedAdminId !== undefined && !can('assignment.manage')) {
+      throw new ForbiddenException('Missing permission: assignment.manage');
+    }
     return this.customers.adminUpdate(id, dto);
   }
 

@@ -21,6 +21,7 @@ import {
   RECOVERY_OPTIONAL_COLUMNS,
   type RecoveryOptionalColumn,
 } from "@/components/net-profit/RecoveryTable";
+import { RecoveredSection } from "./_components/RecoveredSection";
 import { TrashSection } from "./_components/TrashSection";
 import {
   useClearAllIncomplete,
@@ -997,7 +998,7 @@ function QueueSection() {
 
 export default function RecoveryPage() {
   const [section, setSection] = useState<
-    "funnel" | "campaigns" | "queue" | "trash" | "settings"
+    "funnel" | "recovered" | "campaigns" | "queue" | "trash" | "settings"
   >("funnel");
   const [pageSize, setPageSizeState] = useState(20);
   const [columns, setColumns] = useState<Set<RecoveryOptionalColumn>>(
@@ -1060,6 +1061,14 @@ export default function RecoveryPage() {
           >
             Funnel
           </HeaderButton>
+          {/* Straight after Funnel on purpose: the two are the same list split
+              by outcome — what is still to chase, and what came back. */}
+          <HeaderButton
+            active={section === "recovered"}
+            onClick={() => setSection("recovered")}
+          >
+            Recovered
+          </HeaderButton>
           <HeaderButton
             active={section === "campaigns"}
             onClick={() => setSection("campaigns")}
@@ -1101,6 +1110,7 @@ export default function RecoveryPage() {
           setPageSize={setPageSize}
         />
       )}
+      {section === "recovered" && <RecoveredSection />}
       {section === "campaigns" && <CampaignsSection />}
       {section === "queue" && <QueueSection />}
       {section === "trash" && <TrashSection />}

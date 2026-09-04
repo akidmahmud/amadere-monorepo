@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { isValidBdPhone } from "@amader/shared";
+import { useCan } from "@/hooks/useAdminAuth";
 import {
   useUpdateCustomer,
   type AdminCustomerListItem,
@@ -329,6 +330,7 @@ function CustomerRow({
   restoringId?: number | null;
 }) {
   const update = useUpdateCustomer(c.id);
+  const canAssign = useCan("assignment.manage");
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
   const [address, setAddress] = useState(c.address ?? "");
@@ -519,6 +521,8 @@ function CustomerRow({
       <td className={td} style={tdStyle}>
         <select
           value={c.assignedAdminId ?? ""}
+          disabled={!canAssign}
+          title={canAssign ? undefined : "You do not have permission to reassign customers"}
           onChange={(e) => update.mutate({ assignedAdminId: e.target.value ? Number(e.target.value) : null })}
           className={cellSelectStyle}
           style={cellSelectStyleObj}

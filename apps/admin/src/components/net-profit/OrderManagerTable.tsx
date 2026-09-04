@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { Button } from "@amader/admin-ui";
 import { useAssignOrder, useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
+import { useCan } from "@/hooks/useAdminAuth";
 import type { AssignableStaff } from "@/hooks/useCustomers";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import {
@@ -244,10 +245,14 @@ function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
 
 function AssignCell({ order, staff }: { order: OrderManagerRow; staff: AssignableStaff[] | undefined }) {
   const assign = useAssignOrder(order.id);
+  // Disabled rather than hidden: who an order belongs to is worth seeing even
+  // when you may not change it, and the backend rejects the write anyway.
+  const canAssign = useCan("assignment.manage");
   return (
     <select
       value={order.assignedAdminId ?? ""}
-      disabled={assign.isPending}
+      disabled={assign.isPending || !canAssign}
+      title={canAssign ? undefined : "You do not have permission to reassign orders"}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => assign.mutate(e.target.value === "" ? null : Number(e.target.value))}
       className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"

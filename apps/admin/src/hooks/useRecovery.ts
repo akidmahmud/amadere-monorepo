@@ -204,7 +204,14 @@ export function useRestoreIncompleteOrder() {
   });
 }
 
-/** Inline edit of the reason cell. Blank clears it. */
+/**
+ * Inline edit of the reason cell. Blank clears it.
+ *
+ * Writing a reason closes an open cart server-side, so the sidebar badge and
+ * the bell are invalidated too — they poll their own counts, and without this
+ * the number would sit there for up to a minute still counting a cart the
+ * admin had just dealt with.
+ */
 export function useUpdateCartReason() {
   const qc = useQueryClient();
   return useMutation({
@@ -216,6 +223,9 @@ export function useUpdateCartReason() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TRASH_KEY });
       qc.invalidateQueries({ queryKey: LIST_KEY });
+      qc.invalidateQueries({ queryKey: RATE_KEY });
+      qc.invalidateQueries({ queryKey: ["abandonment-alert"] });
+      qc.invalidateQueries({ queryKey: ["abandonment-notifications"] });
     },
   });
 }

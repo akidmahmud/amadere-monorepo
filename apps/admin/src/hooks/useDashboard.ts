@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { components } from "@/lib/api/schema";
 
-export type DashboardOverview = components["schemas"]["DashboardOverviewDto"];
+// `topCustomersWindowDays` is declared here rather than read from the
+// generated schema, which has not been regenerated since it was added.
+export type DashboardOverview = components["schemas"]["DashboardOverviewDto"] & {
+  topCustomersWindowDays?: number;
+};
 
 // Every field below is genuinely present together once scope === "global" —
 // the backend only omits them as a group for scope === "staff" — but the

@@ -54,7 +54,28 @@ export interface AssignableStaffDto {
   name: string;
 }
 
-const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, lastOrderDate: null, topProduct: null, lifetimeSpend: 0 };
+// Excel opens a CSV with bare LF fine, but Windows tooling and a few
+// spreadsheet importers do not, and this file is downloaded and opened by
+// hand rather than parsed by anything of ours.
+const CSV_NEWLINE = '\r\n';
+
+function isoDate(value: Date | string | null | undefined): string {
+  return value ? new Date(value).toISOString().slice(0, 10) : '';
+}
+
+/**
+ * One CSV cell, always quoted.
+ *
+ * Every cell rather than only the ones that look risky: this export now
+ * carries free-text feedback columns, and a comma, quote or newline typed by
+ * an agent used to shift every later column of that row across by one.
+ */
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '""';
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, lifetimeSpend: 0 };
 
 @Injectable()
 export class CustomersService {
@@ -433,7 +454,15 @@ export class CustomersService {
       }),
       this.prisma.client.order.findMany({
         where: { customerId: { in: customerIds } },
-        select: { customerId: true, items: { select: { productNameSnapshot: true, quantity: true } } },
+        // createdAt/status ride along on the query that was already fetching
+        // every order for the top-product tally, so the latest order's status
+        // costs no extra round-trip.
+        select: {
+          customerId: true,
+          createdAt: true,
+          status: true,
+          items: { select: { productNameSnapshot: true, quantity: true } },
+        },
       }),
     ]);
 
@@ -442,9 +471,12 @@ export class CustomersService {
       if (!addressByCustomer.has(a.customerId)) addressByCustomer.set(a.customerId, a);
     }
 
+    const latestOrderByCustomer = new Map<number, (typeof orders)[number]>();
     const quantityByCustomerProduct = new Map<number, Map<string, number>>();
     for (const o of orders) {
       if (o.customerId === null) continue;
+      const latest = latestOrderByCustomer.get(o.customerId);
+      if (!latest || o.createdAt > latest.createdAt) latestOrderByCustomer.set(o.customerId, o);
       let perProduct = quantityByCustomerProduct.get(o.customerId);
       if (!perProduct) {
         perProduct = new Map();
@@ -474,6 +506,7 @@ export class CustomersService {
       extras.set(id, {
         address: address ? (address.area ? `${address.area}, ${address.district}` : address.addressLine) : null,
         lastOrderDate: agg?._max.createdAt ?? null,
+        lastOrderStatus: latestOrderByCustomer.get(id)?.status ?? null,
         lifetimeSpend: agg?._sum.totalAmount ? Number(agg._sum.totalAmount) : 0,
         topProduct,
       });
@@ -520,7 +553,14 @@ export class CustomersService {
   }
 
   async adminExportCsv(query: AdminCustomerQueryDto): Promise<string> {
-    const where = await this.buildAdminWhere(query);
+    // An explicit selection wins outright over the filter bar. The admin has
+    // already picked the rows; re-applying filters on top could only remove
+    // rows they asked for, which is the bug that made "export selected" look
+    // like it exported everything.
+    const where =
+      query.ids && query.ids.length > 0
+        ? { id: { in: query.ids } }
+        : await this.buildAdminWhere(query);
     const items = await this.prisma.client.customer.findMany({
       where,
       include: ADMIN_CUSTOMER_LIST_INCLUDE,
@@ -529,12 +569,31 @@ export class CustomersService {
     });
     const extras = await this.loadListExtras(items.map((c) => c.id));
     const rows = items.map((c) => toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS));
-    const header = 'Name,Phone,Email,Group,Completed Orders,Priority,Status,Assigned To,Joined';
-    const lines = rows.map(
-      (r) =>
-        `"${r.name}",${r.phone ?? ''},${r.email ?? ''},${r.tier ?? ''},${r.completedOrderCount},${r.priority ?? ''},${r.crmStatus ?? ''},"${r.assignedAdminName ?? ''}",${new Date(r.createdAt).toISOString().slice(0, 10)}`,
-    );
-    return [header, ...lines].join('\n');
+
+    // One list, so the header and the cells can never drift apart.
+    const columns: [string, (r: AdminCustomerListItemDto) => unknown][] = [
+      ['Birth Date', (r) => isoDate(r.dob)],
+      ['Name', (r) => r.name],
+      ['Address', (r) => r.address],
+      ['Number', (r) => r.phone],
+      ['Email', (r) => r.email],
+      ['Group', (r) => r.tier],
+      ['Order Count', (r) => r.completedOrderCount],
+      ['Order Status', (r) => r.lastOrderStatus],
+      ['Product Details', (r) => r.topProduct],
+      ['Assign To', (r) => r.assignedAdminName],
+      ['Start Date', (r) => isoDate(r.createdAt)],
+      ['Last Order Date', (r) => isoDate(r.lastOrderDate)],
+      ['Priority', (r) => r.priority],
+      ['Status', (r) => r.crmStatus],
+      ['Customer Feedback', (r) => r.customerFeedback],
+      ['Agent Feedback', (r) => r.amaderFeedback],
+    ];
+
+    return [
+      columns.map(([label]) => csvCell(label)).join(','),
+      ...rows.map((r) => columns.map(([, read]) => csvCell(read(r))).join(',')),
+    ].join(CSV_NEWLINE);
   }
 
   async listAssignableStaff(): Promise<AssignableStaffDto[]> {

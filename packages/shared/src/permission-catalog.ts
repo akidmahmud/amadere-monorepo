@@ -217,6 +217,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('customer', 'view'),
   perm('customer', 'manage'),
 
+  // Who may hand work to someone else — the assignee on an order and on a
+  // customer. One key for both on purpose: it is the same decision ("can this
+  // person reassign?"), and splitting it would make the superadmin tick two
+  // boxes to express one thing. Required IN ADDITION to the manage permission
+  // for the area, never instead of it.
+  perm('assignment', 'manage'),
+
   perm('upsell_bar', 'view'),
   perm('upsell_bar', 'manage'),
 

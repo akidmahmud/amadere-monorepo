@@ -18,6 +18,7 @@ import { CustomerImportModal } from "@/components/customers/CustomerImportModal"
 import { CreateCustomerModal } from "@/components/orders/CreateCustomerModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DeletedCustomersTab } from "./DeletedCustomersTab";
+import { useCan } from "@/hooks/useAdminAuth";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -46,7 +47,15 @@ export default function CustomersPage() {
   const [uiFilters, setUiFilters] = useState<CustomerFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(6);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // ?open=<id> deep-links straight into a customer — the Order Manager's
+  // "view customer" used to point at /customers/[id], which no longer exists.
+  // Read once on mount rather than tracked: the modal owns its own open state
+  // after that, and re-syncing would reopen it every time it was closed.
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const open = Number(new URLSearchParams(window.location.search).get("open"));
+    return Number.isInteger(open) && open > 0 ? open : null;
+  });
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -60,6 +69,7 @@ export default function CustomersPage() {
   const { data: tiers } = useCustomerTiers();
   const { data: staff } = useAssignableStaff();
   const bulk = useBulkCustomerAction();
+  const canAssign = useCan("assignment.manage");
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -100,6 +110,12 @@ export default function CustomersPage() {
 
   function exportHref() {
     const params = new URLSearchParams();
+    // A selection is the whole request: the backend ignores every other
+    // filter when ids are present, so sending them would only be noise.
+    if (selected.size > 0) {
+      params.set("ids", [...selected].join(","));
+      return `/api/backend/admin/customers/export?${params}`;
+    }
     for (const [k, v] of Object.entries(uiFilters)) {
       if (v !== undefined && v !== "") params.set(k, String(v));
     }
@@ -142,7 +158,7 @@ export default function CustomersPage() {
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Export
+            {selected.size > 0 ? `Export ${selected.size} selected` : "Export"}
           </a>
           <button
             type="button"
@@ -209,7 +225,8 @@ export default function CustomersPage() {
             </button>
             <select
               aria-label="Bulk assign to staff"
-              disabled={selected.size === 0 || bulk.isPending}
+              disabled={selected.size === 0 || bulk.isPending || !canAssign}
+              title={canAssign ? undefined : "You do not have permission to reassign customers"}
               value=""
               onChange={(e) => {
                 const v = e.target.value;

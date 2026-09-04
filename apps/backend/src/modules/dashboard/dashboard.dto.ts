@@ -64,6 +64,10 @@ export class DashboardOverviewDto {
   @ApiPropertyOptional({ type: [OrderStatusCountDto] }) statusBreakdown?: OrderStatusCountDto[];
   @ApiPropertyOptional({ type: [OrderChannelCountDto] }) ordersByChannel?: OrderChannelCountDto[];
   @ApiPropertyOptional({ type: [TopCustomerDto] }) topCustomers?: TopCustomerDto[];
+  /** How far back topCustomers looks. Sent so the panel can say so out loud —
+   *  the previous all-time, any-status list was silently measuring something
+   *  other than what its heading promised. */
+  @ApiPropertyOptional() topCustomersWindowDays?: number;
   @ApiPropertyOptional({ type: [MonthlyRevenuePointDto] }) monthlyRevenue?: MonthlyRevenuePointDto[];
   @ApiPropertyOptional({ type: [TopProductDto] }) topProducts?: TopProductDto[];
 

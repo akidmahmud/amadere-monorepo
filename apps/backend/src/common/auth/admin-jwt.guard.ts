@@ -10,6 +10,8 @@ import { extractBearerToken } from './extract-bearer-token.util';
 
 export interface RequestWithAdmin extends Request {
   adminUser: { id: number };
+  /** Set by PermissionGuard on guarded handlers, for the @Can() decorator. */
+  adminPermissions?: { isSuperAdmin: boolean; granted: Set<string> };
 }
 
 @Injectable()

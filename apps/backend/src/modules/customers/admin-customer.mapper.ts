@@ -51,6 +51,9 @@ export type CustomerWithDetail = Prisma.CustomerGetPayload<{
 export interface AdminCustomerListExtras {
   address: string | null;
   lastOrderDate: Date | null;
+  /** Status of the most recent order — "where is their order right now",
+   *  which is a different question from crmStatus ("where is the customer"). */
+  lastOrderStatus: string | null;
   topProduct: string | null;
   lifetimeSpend: number;
 }
@@ -72,6 +75,7 @@ export class AdminCustomerListItemDto {
   assignedAdminId!: number | null;
   assignedAdminName!: string | null;
   lastOrderDate!: Date | null;
+  lastOrderStatus!: string | null;
   nextCallTarget!: Date | null;
   followUpCadenceDays!: number | null;
   hasNewOrder!: boolean;
@@ -116,6 +120,7 @@ export function toAdminCustomerListItemDto(c: CustomerWithTier, extras: AdminCus
     assignedAdminId: c.assignedAdminId,
     assignedAdminName: c.assignedAdmin ? `${c.assignedAdmin.firstName} ${c.assignedAdmin.lastName}`.trim() : null,
     lastOrderDate: extras.lastOrderDate,
+    lastOrderStatus: extras.lastOrderStatus,
     nextCallTarget: c.nextCallTarget,
     followUpCadenceDays: c.followUpCadenceDays,
     hasNewOrder: c.hasNewOrder,

@@ -40,20 +40,27 @@ export class PermissionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.get<string | undefined>(
+    // Tolerates the old single-string metadata as well as the array
+    // RequirePermission now sets, so a stale compiled handler cannot silently
+    // become unguarded.
+    const meta = this.reflector.get<string | string[] | undefined>(
       PERMISSION_KEY,
       context.getHandler(),
     );
-    if (!required) return true;
+    const required = meta === undefined ? [] : Array.isArray(meta) ? meta : [meta];
+    if (required.length === 0) return true;
 
     const request = context.switchToHttp().getRequest<RequestWithAdmin>();
-    const { isSuperAdmin, granted } = await this.getPermissions(
-      request.adminUser.id,
-    );
+    const resolved = await this.getPermissions(request.adminUser.id);
+    const { isSuperAdmin, granted } = resolved;
+    // Published for @Can(), which handles the checks a decorator cannot express
+    // (one field on a shared update endpoint, one action inside a bulk call).
+    request.adminPermissions = { isSuperAdmin, granted };
 
     if (isSuperAdmin) return true;
-    if (!granted.has(required)) {
-      throw new ForbiddenException(`Missing permission: ${required}`);
+    const missing = required.filter((key) => !granted.has(key));
+    if (missing.length > 0) {
+      throw new ForbiddenException(`Missing permission: ${missing.join(', ')}`);
     }
     return true;
   }
