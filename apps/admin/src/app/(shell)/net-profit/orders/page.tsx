@@ -10,7 +10,7 @@ import { OrderDetailModal } from "@/components/OrderDetailModal";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { OrderManagerStatsStrip } from "@/components/net-profit/OrderManagerStatsStrip";
 import { OrderManagerFilterBar, type OrderFilterState } from "@/components/net-profit/OrderManagerFilterBar";
-import { OrderManagerTable, OPTIONAL_COLUMNS, type OptionalColumn } from "@/components/net-profit/OrderManagerTable";
+import { OrderManagerTable, OPTIONAL_COLUMNS, DEFAULT_COLUMN_ORDER, reconcileColumnOrder, type OptionalColumn, type ColumnKey } from "@/components/net-profit/OrderManagerTable";
 import { ORDER_MANAGER_KEY, useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { useAssignableStaff } from "@/hooks/useCustomers";
@@ -28,6 +28,9 @@ const TEXT = "#374840";
 const COURIER_PROVIDERS = ["STEADFAST", "PATHAO", "REDX", "ECOURIER"];
 const PAGE_SIZE_KEY = "wpfok-order-manager-page-size";
 const COLUMNS_KEY = "wpfok-order-manager-columns";
+// Separate key from COLUMNS_KEY: visibility and order are independent, and
+// keeping them apart means an old build reading only one of them still works.
+const COLUMN_ORDER_KEY = "wpfok-order-manager-column-order";
 const COLUMN_LABELS: Record<OptionalColumn, string> = {
   payment: "Payment",
   paymentStatus: "Payment Status",
@@ -219,6 +222,7 @@ export default function OrderManagerPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(20);
   const [columns, setColumns] = useState<Set<OptionalColumn>>(new Set(OPTIONAL_COLUMNS));
+  const [columnOrder, setColumnOrder] = useState<ColumnKey[]>(DEFAULT_COLUMN_ORDER);
   const [showScreenOptions, setShowScreenOptions] = useState(false);
   const [showSymbology, setShowSymbology] = useState(false);
   const [newOrderModalOpen, setNewOrderModalOpen] = useState(false);
@@ -227,6 +231,15 @@ export default function OrderManagerPage() {
   useEffect(() => {
     const savedSize = Number(localStorage.getItem(PAGE_SIZE_KEY));
     if (savedSize) setPageSizeState(savedSize);
+    // reconcileColumnOrder drops keys that no longer exist and appends ones
+    // added since this was saved — otherwise a stale arrangement would hide a
+    // newly-shipped column forever.
+    try {
+      const savedOrder = localStorage.getItem(COLUMN_ORDER_KEY);
+      if (savedOrder) setColumnOrder(reconcileColumnOrder(JSON.parse(savedOrder) as string[]));
+    } catch {
+      // Corrupt/hand-edited value — fall back to the default order.
+    }
     const savedCols = localStorage.getItem(COLUMNS_KEY);
     if (savedCols) {
       try {
@@ -512,6 +525,11 @@ export default function OrderManagerPage() {
           </div>
 
           <OrderManagerTable
+            columnOrder={columnOrder}
+            onColumnOrderChange={(next) => {
+              setColumnOrder(next);
+              localStorage.setItem(COLUMN_ORDER_KEY, JSON.stringify(next));
+            }}
             orders={data?.items ?? []}
             total={data?.total ?? 0}
             filters={{ page, pageSize }}

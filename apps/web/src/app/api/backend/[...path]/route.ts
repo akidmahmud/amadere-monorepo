@@ -37,6 +37,27 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
   // device id exists to avoid (see useSearch.ts).
   const deviceId = req.headers.get("x-device-id");
 
+  // The real visitor's IP, forwarded so the backend does not record this
+  // server's address for every proxied request.
+  //
+  // This hop is a plain server-to-server fetch(), so without an explicit
+  // X-Forwarded-For the backend's `req.ip` resolves to the Next server's
+  // outbound address. Observed live: orders were being stored with
+  // ipAddress = 200.141.0.91 (the VPS itself). Order.ipAddress feeds Blocker
+  // Manager's ip_tracker rules, so those were matching the server on every
+  // web order — the same root cause the throttler works around with the
+  // device id above.
+  //
+  // cf-connecting-ip first: Cloudflare sets it and overwrites any
+  // client-supplied copy, so it is the one value here that cannot be spoofed.
+  // x-forwarded-for's FIRST entry is the original client (later entries are
+  // proxies appended en route).
+  const clientIp =
+    req.headers.get("cf-connecting-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    null;
+
   async function call(token: string | undefined) {
     return fetch(url, {
       method: req.method,
@@ -44,6 +65,11 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
         "Content-Type": "application/json",
         ...(guestToken ? { "X-Guest-Token": guestToken } : {}),
         ...(deviceId ? { "X-Device-Id": deviceId } : {}),
+        // Standard header rather than a bespoke one, so Express's own
+        // `trust proxy` handling resolves req.ip from it with no backend
+        // change. NOTE: this only lands correctly while `trust proxy` in
+        // main.ts matches the real hop count between here and Nest.
+        ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body,

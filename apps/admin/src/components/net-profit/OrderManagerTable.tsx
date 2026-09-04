@@ -1,6 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { Button } from "@amader/admin-ui";
 import { useAssignOrder, useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
@@ -42,6 +57,57 @@ const COURIER_STATUS_COLOR: Record<string, string> = {
 
 const OPTIONAL_COLUMNS = ["payment", "paymentStatus", "division", "internalNote", "source"] as const;
 export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number];
+
+// Single source of truth for the table's columns: the header and every row
+// both map over this, so a column can never drift between the two. Order here
+// is the DEFAULT order; the user's saved arrangement overrides it.
+//
+// `pinned` columns are the two sticky lead cells. They anchor the horizontal
+// scroll (position: sticky, left: 0 / 42) so they are excluded from dragging —
+// moving them out of the first two slots breaks the sticky offsets.
+export const ORDER_COLUMNS = [
+  { key: "select", label: "", pinned: true },
+  { key: "order", label: "Order", pinned: true, minWidth: 220 },
+  { key: "date", label: "Date" },
+  { key: "actions", label: "Actions" },
+  { key: "orderStatus", label: "Order Status" },
+  { key: "paymentStatus", label: "Payment Status", optional: true },
+  { key: "assign", label: "Assign" },
+  { key: "products", label: "Products", minWidth: 230 },
+  { key: "total", label: "Total" },
+  { key: "phone", label: "Phone" },
+  { key: "address", label: "Address", minWidth: 220 },
+  { key: "origin", label: "Origin" },
+  { key: "payment", label: "Payment", optional: true },
+  { key: "division", label: "Division", optional: true },
+  { key: "internalNote", label: "Internal Note", optional: true },
+  { key: "source", label: "Source", optional: true },
+  { key: "invoice", label: "Invoice" },
+  { key: "risk", label: "Risk" },
+  { key: "courierSend", label: "Courier Send" },
+  { key: "courierStatus", label: "Courier Status" },
+] as const satisfies readonly { key: string; label: string; pinned?: boolean; optional?: boolean; minWidth?: number }[];
+
+export type ColumnKey = (typeof ORDER_COLUMNS)[number]["key"];
+
+export const DEFAULT_COLUMN_ORDER: ColumnKey[] = ORDER_COLUMNS.map((c) => c.key);
+
+// Reconciles a saved order against the current registry. Unknown keys (a
+// column removed since the arrangement was saved) are dropped, and columns
+// the user has never seen are appended — without this, a saved order would
+// permanently hide any column added in a later release, which would surface
+// months later looking like a bug.
+export function reconcileColumnOrder(saved: string[] | null | undefined): ColumnKey[] {
+  const known = new Set<string>(DEFAULT_COLUMN_ORDER);
+  const kept = (saved ?? []).filter((k): k is ColumnKey => known.has(k));
+  const missing = DEFAULT_COLUMN_ORDER.filter((k) => !kept.includes(k));
+  const merged = [...kept, ...missing];
+  // Pinned columns are always the first two, whatever was saved.
+  const pinned = DEFAULT_COLUMN_ORDER.filter((k) =>
+    ORDER_COLUMNS.find((c) => c.key === k && "pinned" in c && c.pinned),
+  );
+  return [...pinned, ...merged.filter((k) => !pinned.includes(k))];
+}
 
 const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELED"];
 // "CAPTURED" is the Prisma enum's own gateway-jargon name for "money is
@@ -86,6 +152,32 @@ const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1
     {children}
   </th>
 );
+
+// A draggable header cell. The whole <th> is the drag handle — a header has
+// no other click behaviour, so a separate grip would be noise.
+const SortableTH = ({ id, label, style }: { id: string; label: string; style?: React.CSSProperties }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <th
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className="sticky top-0 z-[5] cursor-grab touch-none px-3 py-3 text-left text-[0.72rem] font-bold whitespace-nowrap text-white select-none"
+      title={`${label} — drag to move this column`}
+      style={{
+        background: GREEN_HEADER,
+        borderRight: "1px solid rgba(255,255,255,.13)",
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        ...style,
+      }}
+    >
+      {label}
+    </th>
+  );
+};
 
 function CourierBadge({ letter, color }: { letter: string; color: string }) {
   return (
@@ -412,6 +504,8 @@ export function OrderManagerTable({
   filters,
   onFiltersChange,
   columns,
+  columnOrder,
+  onColumnOrderChange,
   selected,
   onToggle,
   onToggleAll,
@@ -429,6 +523,10 @@ export function OrderManagerTable({
   filters: OrderManagerFiltersLike;
   onFiltersChange: (next: OrderManagerFiltersLike) => void;
   columns: Set<OptionalColumn>;
+  /** Column keys in display order — header and cells both map over this. */
+  columnOrder: ColumnKey[];
+  /** Fired when a header is dragged. Omit to make columns non-draggable. */
+  onColumnOrderChange?: (next: ColumnKey[]) => void;
   selected: Set<number>;
   onToggle: (id: number) => void;
   onToggleAll: () => void;
@@ -453,6 +551,25 @@ export function OrderManagerTable({
   const end = Math.min(page * pageSize, total);
 
   const colCount = 16 + columns.size;
+  const sensors = useSensors(
+    // Small threshold so a header can still be clicked/selected normally.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+  // The two pinned lead columns are excluded from the sortable set — dragging
+  // them out of slots 0/1 would break the sticky left offsets.
+  const draggableKeys = columnOrder.filter(
+    (k) => !ORDER_COLUMNS.find((c) => c.key === k && "pinned" in c && c.pinned),
+  );
+
+  function handleColumnDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onColumnOrderChange) return;
+    const from = draggableKeys.indexOf(active.id as ColumnKey);
+    const to = draggableKeys.indexOf(over.id as ColumnKey);
+    if (from < 0 || to < 0) return;
+    const pinned = columnOrder.filter((k) => !draggableKeys.includes(k));
+    onColumnOrderChange([...pinned, ...arrayMove(draggableKeys, from, to)]);
+  }
   const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
   const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
 
@@ -464,34 +581,53 @@ export function OrderManagerTable({
           had to scroll the whole page down before they could even reach it.
           Capping the height here keeps both scrollbars inside one
           always-visible box, sticky header included. */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleColumnDragEnd}
+      >
       <div className="overflow-auto" style={{ maxHeight: "62vh" }}>
         <table className="border-separate border-spacing-0" style={{ minWidth: 1600, width: "100%" }}>
           <thead>
             <tr>
-              <TH sticky={1}>
-                <input type="checkbox" checked={orders.length > 0 && selected.size === orders.length} onChange={onToggleAll} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
-              </TH>
-              <TH sticky={2} style={{ minWidth: 220 }}>
-                Order
-              </TH>
-              <TH>Date</TH>
-              <TH>Actions</TH>
-              <TH>Order Status</TH>
-              {columns.has("paymentStatus") && <TH>Payment Status</TH>}
-              <TH>Assign</TH>
-              <TH style={{ minWidth: 230 }}>Products</TH>
-              <TH>Total</TH>
-              <TH>Phone</TH>
-              <TH style={{ minWidth: 220 }}>Address</TH>
-              <TH>Origin</TH>
-              {columns.has("payment") && <TH>Payment</TH>}
-              {columns.has("division") && <TH>Division</TH>}
-              {columns.has("internalNote") && <TH>Internal Note</TH>}
-              {columns.has("source") && <TH>Source</TH>}
-              <TH>Invoice</TH>
-              <TH>Risk</TH>
-              <TH>Courier Send</TH>
-              <TH>Courier Status</TH>
+              <SortableContext items={draggableKeys} strategy={horizontalListSortingStrategy}>
+              {columnOrder.map((key) => {
+                const col = ORDER_COLUMNS.find((c) => c.key === key)!;
+                const optional = "optional" in col && col.optional;
+                if (optional && !columns.has(key as OptionalColumn)) return null;
+                const pinned = "pinned" in col && col.pinned;
+                const minWidth = "minWidth" in col ? col.minWidth : undefined;
+                if (pinned) {
+                  return (
+                    <TH
+                      key={key}
+                      sticky={key === "select" ? 1 : 2}
+                      style={minWidth ? { minWidth } : undefined}
+                    >
+                      {key === "select" ? (
+                        <input
+                          type="checkbox"
+                          checked={orders.length > 0 && selected.size === orders.length}
+                          onChange={onToggleAll}
+                          className="h-[15px] w-[15px]"
+                          style={{ accentColor: GREEN }}
+                        />
+                      ) : (
+                        col.label
+                      )}
+                    </TH>
+                  );
+                }
+                return (
+                  <SortableTH
+                    key={key}
+                    id={key}
+                    label={col.label}
+                    style={minWidth ? { minWidth } : undefined}
+                  />
+                );
+              })}
+              </SortableContext>
             </tr>
           </thead>
           <tbody>
@@ -511,6 +647,7 @@ export function OrderManagerTable({
             )}
             {orders.map((o) => (
               <OrderRow
+                columnOrder={columnOrder}
                 key={o.id}
                 order={o}
                 statusByKey={statusByKey}
@@ -531,6 +668,7 @@ export function OrderManagerTable({
           </tbody>
         </table>
       </div>
+      </DndContext>
 
       <div className="flex flex-wrap items-center justify-between gap-3.5 border-t p-[13px_18px]" style={{ borderColor: LINE }}>
         <div className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
@@ -605,6 +743,7 @@ function OrderRow({
   order: o,
   statusByKey,
   columns,
+  columnOrder,
   selected,
   onToggle,
   onView,
@@ -620,6 +759,8 @@ function OrderRow({
   order: OrderManagerRow;
   statusByKey: Map<string, { labelEn: string; color: string }>;
   columns: Set<OptionalColumn>;
+  /** Column keys in display order — header and cells both map over this. */
+  columnOrder: ColumnKey[];
   selected: boolean;
   onToggle: () => void;
   onView: (order: OrderManagerRow) => void;
@@ -635,11 +776,13 @@ function OrderRow({
   const [editing, setEditing] = useState(false);
   const { date, time } = formatDate(o.createdAt);
 
-  return (
-    <tr className="[&:hover>td]:bg-[#f7fbf8]">
+  const cells: Partial<Record<ColumnKey, React.ReactNode>> = {
+    select: (
       <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={selected} onChange={onToggle} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
       </td>
+    ),
+    order: (
       <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
         <button type="button" className="group block text-left" onClick={() => onView(o)}>
           <span className="block font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
@@ -650,12 +793,16 @@ function OrderRow({
           </span>
         </button>
       </td>
+    ),
+    date: (
       <td className={td} style={tdStyle}>
         <div>{date}</div>
         <div className="text-[0.66rem]" style={{ color: FAINT }}>
           {time}
         </div>
       </td>
+    ),
+    actions: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1.5">
           <button
@@ -694,22 +841,27 @@ function OrderRow({
           )}
         </div>
       </td>
+    ),
+    orderStatus: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <StatusCell order={o} statusByKey={statusByKey} />
       </td>
-      {columns.has("paymentStatus") && (
+    ),
+    paymentStatus: columns.has("paymentStatus") ? (
         <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
           <PaymentStatusCell order={o} />
         </td>
-      )}
+    ) : null,
+    assign: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <AssignCell order={o} staff={staff} />
       </td>
-      {/* What was actually bought. An order can hold several lines, so each
-          gets its own row inside the cell with an explicit qty — collapsing
-          them to "3 items" would hide the one fact staff pick orders by.
-          Capped at 3 with a "+N more" tail so a 12-line wholesale order
-          cannot stretch the table row to a full screen. */}
+    ),
+    // What was actually bought. An order can hold several lines, so each gets
+    // its own row inside the cell with an explicit qty — collapsing them to
+    // "3 items" would hide the one fact staff pick orders by. Capped at 3 with
+    // a "+N more" tail so a 12-line wholesale order cannot stretch the row.
+    products: (
       <td className={td} style={tdStyle}>
         {o.items.length === 0 ? (
           <span style={{ color: FAINT }}>—</span>
@@ -720,8 +872,22 @@ function OrderRow({
                 <span className="shrink-0 font-bold" style={{ color: GREEN }}>
                   {it.quantity}&times;
                 </span>
-                <span className="truncate" title={it.sku ? `${it.name} (${it.sku})` : it.name}>
-                  {it.name}
+                {/* SKU rather than the product name: at a glance an operator
+                    packing an order needs to know WHICH variation to pull, and
+                    two variants of one product share a name but never a SKU.
+                    `sku` is OrderItem.skuSnapshot, written at order time as
+                    `variant?.sku ?? product.sku`, so it is already the variant
+                    SKU whenever the line has a variant.
+
+                    Falls back to the name when the snapshot is null — a
+                    product with no SKU and no variant SKU would otherwise
+                    render an empty cell. Full name moves into the tooltip so
+                    nothing is lost. */}
+                <span
+                  className={`truncate${it.sku ? " font-mono text-[0.72rem]" : ""}`}
+                  title={it.sku ? `${it.name} (${it.sku})` : it.name}
+                >
+                  {it.sku ?? it.name}
                 </span>
               </div>
             ))}
@@ -733,38 +899,48 @@ function OrderRow({
           </div>
         )}
       </td>
+    ),
+    total: (
       <td className={td} style={{ ...tdStyle, fontWeight: 700, color: INK }}>
         ৳{Number(o.totalAmount).toLocaleString()}
       </td>
+    ),
+    phone: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <PhoneCell order={o} editing={editing} />
       </td>
+    ),
+    address: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <AddressCell order={o} editing={editing} />
       </td>
+    ),
+    origin: (
       <td className={td} style={{ ...tdStyle, color: FAINT, fontWeight: 500 }}>
         {o.origin}
       </td>
-      {columns.has("payment") && (
+    ),
+    payment: columns.has("payment") ? (
         <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
           <PaymentCell order={o} />
         </td>
-      )}
-      {columns.has("division") && (
+    ) : null,
+    division: columns.has("division") ? (
         <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
           <DivisionCell order={o} />
         </td>
-      )}
-      {columns.has("internalNote") && (
+    ) : null,
+    internalNote: columns.has("internalNote") ? (
         <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
           <InternalNoteCell order={o} editing={editing} />
         </td>
-      )}
-      {columns.has("source") && (
+    ) : null,
+    source: columns.has("source") ? (
         <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
           <SourceCell order={o} />
         </td>
-      )}
+    ) : null,
+    invoice: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <a
           href={`/print/orders/${o.id}/invoice`}
@@ -781,6 +957,8 @@ function OrderRow({
           Invoice
         </a>
       </td>
+    ),
+    risk: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2">
           {/* The row already carried riskLevel and nothing ever showed it, so
@@ -801,14 +979,27 @@ function OrderRow({
           </Button>
         </div>
       </td>
+    ),
+    courierSend: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <CourierSendCell order={o} onConsign={(provider) => onConsign(o, provider)} />
       </td>
+    ),
+    courierStatus: (
       <td className={td} style={tdStyle}>
         <CourierStatusCell order={o} />
       </td>
+    ),
+  };
+
+  return (
+    <tr className="[&:hover>td]:bg-[#f7fbf8]">
+      {columnOrder.map((k) => (
+        <Fragment key={k}>{cells[k]}</Fragment>
+      ))}
     </tr>
   );
+
 }
 
 export { OPTIONAL_COLUMNS };

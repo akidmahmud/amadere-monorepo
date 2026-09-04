@@ -2,12 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { TableSkeleton } from "@amader/admin-ui";
+import { Icon, TableSkeleton } from "@amader/admin-ui";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PUBLISH_STATUSES } from "@/hooks/useBrands";
 import {
   useCategories,
   useDeleteCategory,
+  useReorderCategories,
   useUpdateCategory,
   type AdminCategory,
 } from "@/hooks/useCategories";
@@ -86,16 +102,49 @@ function CategoryRow({
   category: c,
   parentName,
   onDelete,
+  canReorder,
 }: {
   category: AdminCategory;
   parentName: string | undefined;
   onDelete: (c: AdminCategory) => void;
+  canReorder: boolean;
 }) {
   const update = useUpdateCategory(c.id);
   const name = c.translations[0]?.name ?? c.slug;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: c.id, disabled: !canReorder });
 
   return (
-    <tr className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]">
+    <tr
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]"
+    >
+      <td className="px-1 py-3 align-middle">
+        {canReorder ? (
+          <button
+            {...attributes}
+            {...listeners}
+            type="button"
+            aria-label="Drag to reorder this category"
+            title="Drag to reorder. Order applies within each parent — this never moves a category to a different parent."
+            className="cursor-grab touch-none px-0.5 text-[#c3cbd8] transition-colors hover:text-brand-500"
+          >
+            <Icon name="drag_indicator" size={18} />
+          </button>
+        ) : (
+          <span
+            title="Clear the filters to reorder — dragging a filtered list would renumber only the rows you can see."
+            className="block px-0.5 text-[#e2e8f0]"
+          >
+            <Icon name="drag_indicator" size={18} />
+          </span>
+        )}
+      </td>
       <td className="px-2.5 py-3 align-middle">
         {c.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -165,6 +214,7 @@ function CategoryRow({
 export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories();
   const deleteCategory = useDeleteCategory();
+  const reorder = useReorderCategories();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminCategory | null>(null);
@@ -184,6 +234,37 @@ export default function CategoriesPage() {
     const matchesStatus = !status || c.status === status;
     return matchesQuery && matchesStatus;
   });
+
+  // Dragging is only offered on the full, unfiltered list. Reordering a
+  // filtered view would send only the visible ids, and the server ranks each
+  // parent group 0..n from what it receives — so hidden siblings would keep
+  // stale ranks and collide with the new ones.
+  const canReorder = !query && !status;
+
+  // Local echo so the row lands where it was dropped instead of waiting for
+  // the refetch.
+  const [dragOrder, setDragOrder] = useState<number[] | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+  const ordered = dragOrder
+    ? (dragOrder
+        .map((id) => filtered.find((c) => c.id === id))
+        .filter(Boolean) as AdminCategory[])
+    : filtered;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = ordered.map((c) => c.id);
+    const next = arrayMove(
+      ids,
+      ids.indexOf(active.id as number),
+      ids.indexOf(over.id as number),
+    );
+    setDragOrder(next);
+    reorder.mutate(next, { onSettled: () => setDragOrder(null) });
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -250,9 +331,17 @@ export default function CategoriesPage() {
           </div>
         ) : (
           <div className="mt-3 overflow-x-auto">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
             <table className="w-full border-collapse">
               <thead>
                 <tr>
+                  <th className="w-[26px] rounded-l-[8px] bg-[#f7f9fc] px-1 py-[11px]">
+                    <span className="sr-only">Reorder</span>
+                  </th>
                   {[
                     "Image",
                     "Category",
@@ -264,7 +353,7 @@ export default function CategoriesPage() {
                   ].map((h, i) => (
                     <th
                       key={h}
-                      className={`whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary ${i === 0 ? "rounded-l-[8px]" : ""} ${i === 6 ? "rounded-r-[8px]" : ""}`}
+                      className={`whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary ${i === 6 ? "rounded-r-[8px]" : ""}`}
                     >
                       {h}
                     </th>
@@ -275,7 +364,7 @@ export default function CategoriesPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-2.5 py-8 text-center text-sm text-muted"
                     >
                       {categories?.length === 0
@@ -284,16 +373,23 @@ export default function CategoriesPage() {
                     </td>
                   </tr>
                 )}
-                {filtered.map((c) => (
-                  <CategoryRow
-                    key={c.id}
-                    category={c}
-                    parentName={nameFor(c.parentId)}
-                    onDelete={setDeleteTarget}
-                  />
-                ))}
+                <SortableContext
+                  items={ordered.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {ordered.map((c) => (
+                    <CategoryRow
+                      key={c.id}
+                      category={c}
+                      parentName={nameFor(c.parentId)}
+                      onDelete={setDeleteTarget}
+                      canReorder={canReorder}
+                    />
+                  ))}
+                </SortableContext>
               </tbody>
             </table>
+            </DndContext>
           </div>
         )}
       </div>

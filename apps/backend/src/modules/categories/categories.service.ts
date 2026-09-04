@@ -128,6 +128,49 @@ export class CategoriesService {
     return toAdminCategoryDto(category);
   }
 
+
+  // Drag-to-reorder on the admin categories table.
+  //
+  // Ranks are assigned PER PARENT GROUP, not globally. The admin list is flat
+  // (parent shown as a column), so a drag can land a child next to another
+  // parent's child; renumbering per group means that is harmless — each set of
+  // siblings just gets 0..n in the order they now appear. `parentId` is never
+  // written here, so a drag can never reparent a category and change its URL.
+  // Reparenting stays on the edit form's parent picker.
+  //
+  // Category.sortOrder is read by the public category list, the nav tree and
+  // the category detail children (categories.service.ts orderBy clauses), so
+  // this is customer-facing ordering, not an admin-only view preference.
+  async reorder(ids: number[]): Promise<void> {
+    const rows = await this.prisma.client.category.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, parentId: true, sortOrder: true },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+
+    const rankInGroup = new Map<string, number>();
+    const updates: { id: number; sortOrder: number }[] = [];
+    for (const id of ids) {
+      const row = byId.get(id);
+      // Ignore ids the client sent that no longer exist (stale table).
+      if (!row) continue;
+      const key = String(row.parentId);
+      const next = rankInGroup.get(key) ?? 0;
+      rankInGroup.set(key, next + 1);
+      if (row.sortOrder !== next) updates.push({ id, sortOrder: next });
+    }
+    if (updates.length === 0) return;
+
+    await this.prisma.client.$transaction(
+      updates.map((u) =>
+        this.prisma.client.category.update({
+          where: { id: u.id },
+          data: { sortOrder: u.sortOrder },
+        }),
+      ),
+    );
+  }
+
   async update(id: number, dto: UpdateCategoryDto): Promise<AdminCategoryDto> {
     await this.adminGet(id);
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);

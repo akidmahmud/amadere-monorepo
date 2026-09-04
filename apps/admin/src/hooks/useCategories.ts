@@ -80,6 +80,20 @@ export function useUpdateCategory(id: number) {
   });
 }
 
+// Drag-to-reorder on the categories table. Ranks are assigned per parent
+// group server-side, so this never reparents anything.
+export function useReorderCategories() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) =>
+      proxyFetch<void>("/admin/categories/reorder", {
+        method: "PATCH",
+        body: JSON.stringify({ ids }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useDeleteCategory() {
   const qc = useQueryClient();
   return useMutation({

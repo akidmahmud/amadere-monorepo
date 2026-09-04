@@ -22,6 +22,7 @@ import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { ReorderCategoriesDto } from './dto/reorder-categories.dto';
 import { AdminCategoryDto } from './categories.mapper';
 
 @ApiTags('admin/categories')
@@ -59,6 +60,14 @@ export class AdminCategoriesController {
   @ApiOkResponse({ type: AdminCategoryDto })
   create(@Body() dto: CreateCategoryDto): Promise<AdminCategoryDto> {
     return this.categories.create(dto);
+  }
+
+  // Before @Patch(':id') on purpose — Nest matches in declaration order, so
+  // the parameterised route would otherwise read this as id="reorder".
+  @Patch('reorder')
+  @RequirePermission('category.update')
+  reorder(@Body() dto: ReorderCategoriesDto): Promise<void> {
+    return this.categories.reorder(dto.ids);
   }
 
   @Patch(':id')

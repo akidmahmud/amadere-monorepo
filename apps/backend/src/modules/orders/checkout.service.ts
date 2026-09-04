@@ -34,6 +34,7 @@ import { OrdersService } from './orders.service';
 import { CheckoutAccountService } from './checkout-account.service';
 import type { EnsureAccountResult } from './checkout-account.service';
 import type { TokenPair } from '../../common/auth/token.types';
+import { deriveAttribution } from './attribution.util';
 
 const Decimal = Prisma.Decimal;
 
@@ -393,10 +394,21 @@ export class CheckoutService {
       }
 
       const orderNumber = generateOrderNumber();
+      // Channel and Source are derived rather than assumed. `channel` was
+      // hardcoded to WEBSITE here, so a customer arriving from an
+      // unparameterised Facebook link was recorded as generic web traffic with
+      // a blank Source — while referrerDomain on the same row said
+      // "m.facebook.com". Order.channel drives the Overview breakdown that ad
+      // spend is decided from (see its schema comment), so that default was
+      // not neutral, it was wrong.
+      const attribution = deriveAttribution(
+        { utmSource: dto.utmSource, referrerDomain: dto.referrerDomain },
+        dto.landingDomain,
+      );
       const created = await tx.order.create({
         data: {
           orderNumber,
-          channel: 'WEBSITE',
+          channel: attribution.channel,
           customerId: resolvedCustomerId ?? null,
           subTotal: pricing.subTotal,
           discountAmount: pricing.totalDiscount,
@@ -409,7 +421,10 @@ export class CheckoutService {
           codVerifiedAt: codOtpVerified ? new Date() : undefined,
           ipAddress: ip,
           deviceId: dto.deviceId,
-          utmSource: dto.utmSource,
+          // Falls back to the referring domain when the link carried no
+          // utm_source, so the admin Source column shows "m.facebook.com"
+          // instead of nothing.
+          utmSource: attribution.utmSource,
           utmMedium: dto.utmMedium,
           utmCampaign: dto.utmCampaign,
           utmTerm: dto.utmTerm,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { OrderManagerTable, type OptionalColumn } from "@/components/net-profit/OrderManagerTable";
+import { OrderManagerTable, DEFAULT_COLUMN_ORDER, type OptionalColumn } from "@/components/net-profit/OrderManagerTable";
 import { useBulkOrderAction, useDeletedOrdersList, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
 import { FraudDetailModal } from "@/components/FraudDetailModal";
@@ -81,6 +81,9 @@ export function DeletedOrdersTab() {
       </div>
 
       <OrderManagerTable
+      // Read-only archive: default order, and no onColumnOrderChange so the
+      // headers are not draggable here.
+      columnOrder={DEFAULT_COLUMN_ORDER}
         orders={data?.items ?? []}
         total={data?.total ?? 0}
         filters={{ page, pageSize }}
