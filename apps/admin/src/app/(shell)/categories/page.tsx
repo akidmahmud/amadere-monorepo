@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon, TableSkeleton } from "@amader/admin-ui";
 import {
@@ -103,26 +103,44 @@ function CategoryRow({
   parentName,
   onDelete,
   canReorder,
+  highlighted,
 }: {
   category: AdminCategory;
   parentName: string | undefined;
   onDelete: (c: AdminCategory) => void;
   canReorder: boolean;
+  /** Just came back from editing this one — mark it and scroll it into view. */
+  highlighted: boolean;
 }) {
   const update = useUpdateCategory(c.id);
   const name = c.translations[0]?.name ?? c.slug;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: c.id, disabled: !canReorder });
+  const rowRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    if (!highlighted) return;
+    // `block: "center"` rather than the default: the list sits under a sticky
+    // header, and scrolling a row to the very top would park it underneath.
+    rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlighted]);
 
   return (
     <tr
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        rowRef.current = node;
+      }}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
       }}
-      className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]"
+      className={`border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe] ${
+        highlighted
+          ? "bg-brand-50 ring-2 ring-inset ring-brand-500/40"
+          : ""
+      }`}
     >
       <td className="px-1 py-3 align-middle">
         {canReorder ? (
@@ -218,6 +236,25 @@ export default function CategoriesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminCategory | null>(null);
+
+  // ?highlight=<id> — set by the editor's "Save & Exit" so you land back on the
+  // row you just edited instead of hunting for it in the list.
+  //
+  // Read in an effect, not a lazy useState initializer: this is a client
+  // component, so the first render happens on the server where there is no
+  // `window`, and React does not re-run an initializer during hydration.
+  //
+  // No auto-clear timer, and the param is left in the URL. Both were tried and
+  // both went wrong: history.replaceState made the App Router re-render this
+  // segment, and a timeout raced the row into and out of existence. The mark is
+  // cheap to leave — it is gone the next time you navigate here without the
+  // param, which is every other route into this page.
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("highlight"));
+    if (Number.isInteger(id) && id > 0) setHighlightedId(id);
+  }, []);
 
   function nameFor(id: number | null) {
     if (!id) return undefined;
@@ -384,6 +421,7 @@ export default function CategoriesPage() {
                       parentName={nameFor(c.parentId)}
                       onDelete={setDeleteTarget}
                       canReorder={canReorder}
+                      highlighted={c.id === highlightedId}
                     />
                   ))}
                 </SortableContext>

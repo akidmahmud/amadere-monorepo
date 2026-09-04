@@ -112,6 +112,24 @@ export const adminNav: AppNavEntry[] = [
     icon: recoveryIcon,
     permission: "net_profit_recovery.manage",
   },
+  // Fraud detection and SMS moved here from Net Profit for the same reason as
+  // Order Manager and Recovery above: both are things you do TO an order as it
+  // comes in, not profit reporting. Hrefs unchanged, so permissions and deep
+  // links are unaffected.
+  {
+    key: "net-profit-fraud",
+    label: "Courier Fraud Detection",
+    href: "/net-profit/fraud",
+    icon: fraudIcon,
+    permission: "net_profit_fraud.view",
+  },
+  {
+    key: "net-profit-sms",
+    label: "SMS",
+    href: "/net-profit/sms",
+    icon: smsIcon,
+    permission: "net_profit_sms.view",
+  },
 
   // Its own section, not a row under Orders: wholesale is a separate book
   // with its own customers, and burying it under retail orders would imply
@@ -288,25 +306,11 @@ export const adminNav: AppNavEntry[] = [
     permission: "net_profit_overview.view",
   },
   {
-    key: "net-profit-fraud",
-    label: "Courier Fraud Detection",
-    href: "/net-profit/fraud",
-    icon: fraudIcon,
-    permission: "net_profit_fraud.view",
-  },
-  {
     key: "net-profit-blocker",
     label: "Order Blocker",
     href: "/net-profit/blocker",
     icon: blockerIcon,
     permission: "net_profit_blocker.manage",
-  },
-  {
-    key: "net-profit-sms",
-    label: "SMS",
-    href: "/net-profit/sms",
-    icon: smsIcon,
-    permission: "net_profit_sms.view",
   },
   {
     key: "net-profit-payments",

@@ -791,6 +791,16 @@ export class RecoveryService {
       data: {
         orderNumber: `REC-${Date.now().toString(36).toUpperCase()}`,
         customerId: incomplete.customerId,
+        // The cart was filled on the storefront — staff only pressed the button
+        // that turned it back into an order, so both the channel and the source
+        // are the website. Stated rather than left to the schema default, so a
+        // change to that default can never silently reclassify recovered sales.
+        //
+        // Nothing is lost by writing utmSource: IncompleteOrder carries no UTM
+        // columns, so a recovered order has no original attribution to keep.
+        // Staff can still edit Source on the order afterwards.
+        channel: 'WEBSITE',
+        utmSource: 'website',
         subTotal,
         totalAmount: subTotal,
         customerNote: 'Recreated from an abandoned cart by staff.',

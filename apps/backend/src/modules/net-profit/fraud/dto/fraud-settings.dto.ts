@@ -47,6 +47,14 @@ export class FraudSettingsDto {
 
   @ApiProperty({ description: 'Assumed delivery charge (৳) added on top of order total when estimating "amount saved" for a blocked order — blocked orders never reach a real courier quote, so this fills the gap.' })
   deliveryFallback!: number;
+
+  @ApiProperty({
+    description:
+      'Whether a bdcourier API key is stored. The key itself is never returned — ' +
+      'it lives encrypted in the credentials store, and this flag is all the UI ' +
+      'needs to show "configured" versus "not set".',
+  })
+  bdCourierApiKeySet!: boolean;
 }
 
 export class UpdateFraudSettingsDto {
@@ -117,4 +125,13 @@ export class UpdateFraudSettingsDto {
   @IsNumber()
   @Min(0)
   deliveryFallback?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'bdcourier API key. Write-only: send it to set or rotate, omit to leave ' +
+      'the stored one alone. Never returned by GET.',
+  })
+  @IsOptional()
+  @IsString()
+  bdCourierApiKey?: string;
 }

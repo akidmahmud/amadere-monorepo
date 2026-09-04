@@ -13,16 +13,42 @@ const KEY_PREFIX = 'credential.';
 // secrets so rotating one doesn't affect the other. Ciphertext is stored as
 // a plain string value in the existing generic `Setting` table — no new
 // table, matching the same reuse-over-fork pattern as NetProfitSettingsService.
+/**
+ * How long a decrypted credential is reused before going back to the database.
+ *
+ * Same 60s reasoning as PermissionGuard's cache: vendor keys change when an
+ * admin edits them, not on a customer's request, and a save invalidates this
+ * process's entry immediately. The TTL only bounds how long ANOTHER instance's
+ * write takes to be picked up.
+ */
+const VALUE_CACHE_TTL_MS = 60_000;
+
 @Injectable()
 export class CredentialsService {
+  /** Derived once — see getKey(). */
+  private cachedKey: Buffer | null = null;
+  private readonly valueCache = new Map<string, { value: string | null; expiresAt: number }>();
+
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
 
+  /**
+   * scrypt is a deliberately expensive KDF — measured at ~57ms per call on this
+   * machine, and `scryptSync` blocks the event loop, so it stalled every other
+   * in-flight request too. It was being paid on EVERY encrypt and decrypt, which
+   * meant every fraud check, courier dispatch and SMS send.
+   *
+   * The inputs are a single env var and a fixed salt, so the result cannot
+   * change while the process lives. Derive it once.
+   */
   private getKey(): Buffer {
-    const secret = this.config.getOrThrow<string>('CREDENTIALS_ENCRYPTION_KEY');
-    return scryptSync(secret, 'amader-credentials-v1', 32);
+    if (!this.cachedKey) {
+      const secret = this.config.getOrThrow<string>('CREDENTIALS_ENCRYPTION_KEY');
+      this.cachedKey = scryptSync(secret, 'amader-credentials-v1', 32);
+    }
+    return this.cachedKey;
   }
 
   encrypt(plain: string): string {
@@ -53,9 +79,21 @@ export class CredentialsService {
       create: { key: KEY_PREFIX + key, value: ciphertext },
       update: { value: ciphertext },
     });
+    // The admin who just saved must see the new key take effect immediately,
+    // not in up to a minute.
+    this.valueCache.delete(key);
   }
 
   async getCredential(key: string): Promise<string | null> {
+    const cached = this.valueCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    const value = await this.readCredential(key);
+    this.valueCache.set(key, { value, expiresAt: Date.now() + VALUE_CACHE_TTL_MS });
+    return value;
+  }
+
+  private async readCredential(key: string): Promise<string | null> {
     const row = await this.prisma.client.setting.findUnique({ where: { key: KEY_PREFIX + key } });
     if (!row || typeof row.value !== 'string') return null;
     try {
@@ -72,5 +110,6 @@ export class CredentialsService {
 
   async deleteCredential(key: string): Promise<void> {
     await this.prisma.client.setting.deleteMany({ where: { key: KEY_PREFIX + key } });
+    this.valueCache.delete(key);
   }
 }

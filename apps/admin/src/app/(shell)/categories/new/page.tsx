@@ -14,9 +14,11 @@ import { useCreateCategory } from "@/hooks/useCategories";
 import { useUpsertSeoMeta } from "@/hooks/useSeoMeta";
 import type { PublishStatus } from "@/hooks/useBrands";
 import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
+import { useToast } from "@/components/ToastProvider";
 
 export default function NewCategoryPage() {
   const router = useRouter();
+  const toast = useToast();
   const [nameEn, setNameEn] = useState("");
   const [nameBn, setNameBn] = useState("");
   const [slug, setSlug] = useState("");
@@ -34,8 +36,7 @@ export default function NewCategoryPage() {
   const create = useCreateCategory();
   const upsertSeo = useUpsertSeoMeta();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave(exit: boolean) {
     if (
       countWords(descriptionEn) > DESCRIPTION_MAX_WORDS ||
       countWords(descriptionBn) > DESCRIPTION_MAX_WORDS
@@ -73,7 +74,18 @@ export default function NewCategoryPage() {
         robots: "index,follow",
       });
     }
-    router.push("/categories");
+    if (exit) {
+      // Same highlight as the edit page — a category you just created is
+      // exactly the row you want to find in the list.
+      router.push(`/categories?highlight=${created.id}`);
+      return;
+    }
+    // A new category has no edit URL until it exists, so "Save" hands over to
+    // its own page rather than staying on a create form that would make a
+    // second category on the next submit. `replace`, so Back goes to the list
+    // and not to a create form that has already been used.
+    toast.push("Category created");
+    router.replace(`/categories/${created.id}`);
   }
 
   return (
@@ -116,12 +128,27 @@ export default function NewCategoryPage() {
                 Cancel
               </Button>
             </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={create.isPending}
+              onClick={() => handleSave(true)}
+            >
+              {create.isPending ? "Saving…" : "Save & Exit"}
+            </Button>
             <Button type="submit" form="category-form" variant="primary" disabled={create.isPending}>
               {create.isPending ? "Saving…" : "Create category"}
             </Button>
           </div>
         </div>
-      <form id="category-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form
+        id="category-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave(false);
+        }}
+        className="flex flex-col gap-4"
+      >
 
         <div className="flex items-start gap-2.5 rounded-inner border border-[#d8e6fc] bg-brand-50 px-3.5 py-2.5 text-[0.75rem] font-semibold text-brand-600">
           <svg

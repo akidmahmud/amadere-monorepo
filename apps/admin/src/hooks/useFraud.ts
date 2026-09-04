@@ -40,6 +40,8 @@ export interface FraudSettings {
   blockMessageEn: string;
   blockMessageBn: string;
   deliveryFallback: number;
+  /** Whether a bdcourier key is stored. The key itself is never sent back. */
+  bdCourierApiKeySet: boolean;
 }
 
 interface Paginated<T> {
@@ -99,7 +101,9 @@ export function useFraudSettings() {
 export function useUpdateFraudSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<FraudSettings>) =>
+    // `bdCourierApiKey` is write-only and not part of FraudSettings, so the
+    // input type widens by exactly that one field.
+    mutationFn: (input: Partial<FraudSettings> & { bdCourierApiKey?: string }) =>
       proxyFetch<FraudSettings>("/admin/net-profit/fraud/settings", {
         method: "PUT",
         body: JSON.stringify(input),

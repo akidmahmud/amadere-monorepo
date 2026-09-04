@@ -325,8 +325,25 @@ function SettingsTab() {
   const update = useUpdateFraudSettings();
   const [form, setForm] = useState<typeof data | null>(null);
   const current = form ?? data;
+  // Separate from `form`: the key is write-only, so it is never part of the
+  // settings object the server sends back, and leaving it blank must mean
+  // "don't touch the stored one" rather than "clear it".
+  const [apiKey, setApiKey] = useState("");
 
   if (isLoading || !current) return <p className="text-sm text-muted">Loading fraud settings…</p>;
+
+  function save() {
+    const trimmed = apiKey.trim();
+    update.mutate(
+      { ...current!, ...(trimmed ? { bdCourierApiKey: trimmed } : {}) },
+      {
+        onSuccess: () => {
+          setForm(null);
+          setApiKey("");
+        },
+      },
+    );
+  }
 
   return (
     <div className="flex flex-col gap-[18px]">
@@ -445,12 +462,88 @@ function SettingsTab() {
           <button
             type="button"
             disabled={update.isPending}
-            onClick={() => update.mutate(current, { onSuccess: () => setForm(null) })}
+            onClick={save}
             className="self-start h-9 rounded-[9px] px-5 text-[0.76rem] font-bold text-white shadow-sm disabled:opacity-40"
             style={{ background: GREEN }}
           >
             {update.isPending ? "Saving…" : "Save Settings"}
           </button>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard icon={<Icon name="key" />} title="bdcourier API Credential">
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-secondary">
+            Fraud checks call{" "}
+            <span className="font-semibold">api.bdcourier.com</span>, which returns
+            this phone&apos;s delivery history across Pathao, SteadFast, RedX,
+            PaperFly, ParcelDex, CourierFast and CarryBee in one request. Without a
+            key every check reports &quot;no history&quot; and the gate falls back
+            to your <span className="font-semibold">No-history</span> setting.
+          </p>
+
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: current.bdCourierApiKeySet ? GREEN : "#d0555f" }}
+            />
+            <span style={{ color: current.bdCourierApiKeySet ? GREEN : "#d0555f" }}>
+              {current.bdCourierApiKeySet ? "API key configured" : "No API key set"}
+            </span>
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">
+              {current.bdCourierApiKeySet ? "Replace API key" : "API key"}
+            </span>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              autoComplete="off"
+              placeholder={
+                current.bdCourierApiKeySet
+                  ? "Leave blank to keep the current key"
+                  : "Paste your bdcourier API key"
+              }
+              className="h-10 w-full max-w-md rounded-[9px] border bg-white px-3 text-xs outline-none focus:border-[#2e7d43]"
+              style={{ borderColor: LINE, color: TEXT }}
+            />
+            {/* Stored encrypted and never sent back, so there is nothing to
+                pre-fill and no way to read it here once saved. */}
+            <span className="text-[0.68rem] text-muted">
+              Stored encrypted. It is never shown again — to rotate it, paste the
+              new key and save.
+            </span>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              disabled={update.isPending}
+              onClick={save}
+              className="h-9 rounded-[9px] px-5 text-[0.76rem] font-bold text-white shadow-sm disabled:opacity-40"
+              style={{ background: GREEN }}
+            >
+              {update.isPending ? "Saving…" : "Save API Key"}
+            </button>
+            {current.bdCourierApiKeySet && (
+              <button
+                type="button"
+                disabled={update.isPending}
+                onClick={() =>
+                  update.mutate(
+                    { ...current, bdCourierApiKey: "" },
+                    { onSuccess: () => { setForm(null); setApiKey(""); } },
+                  )
+                }
+                className="h-9 rounded-[9px] border px-5 text-[0.76rem] font-bold disabled:opacity-40"
+                style={{ borderColor: "#f8ccd3", background: "#feeaec", color: "#e5484d" }}
+              >
+                Remove key
+              </button>
+            )}
+          </div>
         </div>
       </SettingsCard>
     </div>

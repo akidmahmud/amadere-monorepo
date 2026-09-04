@@ -14,6 +14,7 @@ import { CategoryProductsCard } from "@/components/categories/CategoryProductsCa
 import { useCategory, useUpdateCategory } from "@/hooks/useCategories";
 import type { PublishStatus } from "@/hooks/useBrands";
 import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
+import { useToast } from "@/components/ToastProvider";
 
 export default function EditCategoryPage({
   params,
@@ -23,6 +24,7 @@ export default function EditCategoryPage({
   const { id } = use(params);
   const categoryId = Number(id);
   const router = useRouter();
+  const toast = useToast();
   const { data: category, isLoading } = useCategory(categoryId);
   const update = useUpdateCategory(categoryId);
 
@@ -58,8 +60,11 @@ export default function EditCategoryPage({
     setProductIds(category.productIds ?? []);
   }, [category]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // "Save" stays on this page, so editing a category — rename, then reorder
+  // its products, then adjust the banner — no longer means navigating back in
+  // after every single change. "Save & Exit" keeps the old always-redirect
+  // behaviour as its own explicit action, matching the product editor.
+  async function handleSave(exit: boolean) {
     if (
       countWords(descriptionEn) > DESCRIPTION_MAX_WORDS ||
       countWords(descriptionBn) > DESCRIPTION_MAX_WORDS
@@ -84,7 +89,15 @@ export default function EditCategoryPage({
         { locale: "BN", name: nameBn, description: descriptionBn || undefined },
       ],
     });
-    router.push("/categories");
+    if (exit) {
+      // ?highlight lands you back on the row you just edited, marked, rather
+      // than at the top of a list you then have to search.
+      router.push(`/categories?highlight=${categoryId}`);
+      return;
+    }
+    // Staying put needs to SAY something happened, or a save that changes
+    // nothing on screen is indistinguishable from a click that did nothing.
+    toast.push("Category saved");
   }
 
   if (isLoading || !category) return <FormSkeleton />;
@@ -134,12 +147,27 @@ export default function EditCategoryPage({
                 Cancel
               </Button>
             </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={update.isPending}
+              onClick={() => handleSave(true)}
+            >
+              {update.isPending ? "Saving…" : "Save & Exit"}
+            </Button>
             <Button type="submit" form="category-form" variant="primary" disabled={update.isPending}>
-              {update.isPending ? "Saving…" : "Save changes"}
+              {update.isPending ? "Saving…" : "Save"}
             </Button>
           </div>
         </div>
-      <form id="category-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form
+        id="category-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave(false);
+        }}
+        className="flex flex-col gap-4"
+      >
 
         <div className="flex items-start gap-2.5 rounded-inner border border-[#d8e6fc] bg-brand-50 px-3.5 py-2.5 text-[0.75rem] font-semibold text-brand-600">
           <svg

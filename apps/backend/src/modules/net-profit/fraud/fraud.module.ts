@@ -6,6 +6,7 @@ import { AdminFraudController } from './admin-fraud.controller';
 import { FraudPublicController } from './fraud.public.controller';
 import { FraudService } from './fraud.service';
 import { SteadfastFraudSource } from './providers/steadfast-fraud-source';
+import { BdCourierFraudSource } from './providers/bdcourier-fraud-source';
 
 // Provides its own SteadfastCourierProvider instance (stateless — just
 // wraps ConfigService/CourierSettingsService per call) rather than
@@ -17,7 +18,7 @@ import { SteadfastFraudSource } from './providers/steadfast-fraud-source';
 @Module({
   imports: [NetProfitSettingsModule],
   controllers: [AdminFraudController, FraudPublicController],
-  providers: [FraudService, SteadfastCourierProvider, CourierSettingsService, SteadfastFraudSource],
+  providers: [FraudService, SteadfastCourierProvider, CourierSettingsService, SteadfastFraudSource, BdCourierFraudSource],
   exports: [FraudService],
 })
 export class FraudModule {}

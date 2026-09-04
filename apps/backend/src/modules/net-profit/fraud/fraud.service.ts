@@ -6,10 +6,15 @@ import { paginationArgs, toPaginatedResult } from '../../../common/pagination.ut
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
 import { FraudSource } from './fraud-source.interface';
 import { SteadfastFraudSource } from './providers/steadfast-fraud-source';
+import { BdCourierFraudSource } from './providers/bdcourier-fraud-source';
+import { CredentialsService } from '../../../common/credentials/credentials.service';
 import { FraudSettingsDto, UpdateFraudSettingsDto } from './dto/fraud-settings.dto';
 import { FraudCheckDto, FraudSavingDto, toFraudCheckDto, toFraudSavingDto } from './fraud.mapper';
 
 const SETTINGS_NAMESPACE = 'fraud';
+/** Must match BdCourierFraudSource's own key — the settings screen writes it,
+ *  the source reads it. */
+const BDCOURIER_CREDENTIAL_KEY = 'fraud.bdcourier.apiKey';
 
 const FRAUD_SETTINGS_DEFAULTS: FraudSettingsDto = {
   enabled: false,
@@ -28,6 +33,9 @@ const FRAUD_SETTINGS_DEFAULTS: FraudSettingsDto = {
   blockMessageBn:
     'দুঃখিত, আমরা এই অর্ডারটি স্বয়ংক্রিয়ভাবে নিশ্চিত করতে পারিনি। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন অথবা ভিন্ন পেমেন্ট পদ্ধতি বেছে নিন।',
   deliveryFallback: 0,
+  // Overwritten by getSettings() from the credentials store; the default only
+  // exists to satisfy the namespace shape.
+  bdCourierApiKeySet: false,
 };
 
 export type FraudVerdict = 'pass' | 'needs_advance' | 'block';
@@ -56,19 +64,48 @@ export class FraudService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: NetProfitSettingsService,
-    steadfast: SteadfastFraudSource,
+    private readonly credentials: CredentialsService,
+    bdCourier: BdCourierFraudSource,
+    // Injected but not used: the standby to put back in `sources` if bdcourier
+    // is ever dropped. Swapping the two is the whole change.
+    _steadfast: SteadfastFraudSource,
   ) {
-    // Only sources with a real, working check() go here (ADDENDUM §A) — a
-    // future third-party BD aggregator would be a second entry.
-    this.sources = [steadfast];
+    // bdcourier is the aggregator ADDENDUM §A anticipated: one call covers
+    // Pathao, SteadFast, RedX, PaperFly, ParcelDex, CourierFast and CarryBee.
+    //
+    // It REPLACES the SteadFast-only source rather than joining it. The loop
+    // below sums every source's totals, and bdcourier's response already
+    // contains SteadFast's numbers — running both would count every SteadFast
+    // parcel twice and inflate the success ratio this gate is scored on.
+    this.sources = [bdCourier];
   }
 
   async getSettings(): Promise<FraudSettingsDto> {
-    return this.settings.getNamespace(SETTINGS_NAMESPACE, FRAUD_SETTINGS_DEFAULTS);
+    const stored = await this.settings.getNamespace(SETTINGS_NAMESPACE, FRAUD_SETTINGS_DEFAULTS);
+    // The key itself is never returned — only whether one is stored. It lives
+    // in the encrypted credentials store, not in this settings namespace, so it
+    // is never in a settings payload that ends up in a log or a browser cache.
+    //
+    // getCredential, not hasCredential: this runs on every checkout gate, and
+    // getCredential is the one that is cached in-process. hasCredential would
+    // add an uncached database round-trip to every order placed.
+    const key = await this.credentials.getCredential(BDCOURIER_CREDENTIAL_KEY);
+    return { ...stored, bdCourierApiKeySet: key !== null };
   }
 
   async updateSettings(dto: UpdateFraudSettingsDto): Promise<FraudSettingsDto> {
-    await this.settings.setNamespace(SETTINGS_NAMESPACE, dto);
+    // Split out before the namespace write: the key is a credential, and
+    // letting it through would store it in plain text alongside the toggles.
+    const { bdCourierApiKey, ...rest } = dto;
+    if (bdCourierApiKey !== undefined) {
+      const trimmed = bdCourierApiKey.trim();
+      // Blank clears it, which is how you disable the source without touching
+      // any other setting. saveCredential ignores empty values, so the delete
+      // is explicit.
+      if (trimmed) await this.credentials.saveCredential(BDCOURIER_CREDENTIAL_KEY, trimmed);
+      else await this.credentials.deleteCredential(BDCOURIER_CREDENTIAL_KEY);
+    }
+    await this.settings.setNamespace(SETTINGS_NAMESPACE, rest);
     return this.getSettings();
   }
 

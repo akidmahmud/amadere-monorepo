@@ -356,3 +356,291 @@ centred on white. Comfortably past Facebook's floor.
 **Still worth doing (data, not code):** 150x150 upscaled ~4x is soft. Re-uploading
 the category images at 1200x630 or larger would make the cards sharp; the code
 change just guarantees a valid card whatever is uploaded.
+
+## 2026-09-04 — Category editor: Save stays on the page
+
+**Request:** saving a category kicked you out of the edit panel; stay there
+instead.
+
+`handleSubmit` always ended in `router.push("/categories")`. Now it takes an
+`exit` flag, matching the product editor's long-standing split:
+
+- **Save** (primary, submit) stays put, so editing a category — rename, then
+  reorder its products, then adjust the banner — no longer means navigating back
+  in after every change.
+- **Save & Exit** (ghost) keeps the old always-redirect behaviour as its own
+  explicit action.
+
+A save that stays has to *say* something happened, or it is indistinguishable
+from a click that did nothing, so it raises a "Category saved" toast.
+
+On `/categories/new` the same split applies, with one difference: a new category
+has no edit URL until it exists, so **Create category** hands over to
+`/categories/<id>` via `router.replace` — staying on the create form would make a
+second category on the next submit, and `replace` means Back goes to the list
+rather than to a spent create form.
+
+**Verified:** on `/categories/2`, Save leaves the URL at `/categories/2` and
+shows "Category saved"; Save & Exit still redirects to `/categories`.
+
+## 2026-09-04 — Save & Exit lands on the category you just edited
+
+**Request:** after Save & Exit, be on that category, highlighted.
+
+The editor's Save & Exit now pushes `/categories?highlight=<id>`. The list reads
+the param, marks that row (`bg-brand-50` + an inset brand ring) and scrolls it
+into view with `block: "center"` — the default `start` would park it under the
+sticky header. The same applies after creating a category.
+
+**Two implementations were wrong before this one, both worth recording:**
+
+1. **Lazy `useState` initializer reading `window.location.search`.** This is a
+   client component, so its first render happens on the server where there is no
+   `window` — and React does NOT re-run an initializer during hydration. It
+   silently produced `null` every time. Moved into a `useEffect`.
+
+2. **Clearing the param with `history.replaceState`, plus a timeout to fade the
+   mark.** Console-instrumented render logs showed the state going
+   `null → 6 → 6 → null` within a second: the App Router re-renders the segment
+   on the history change, and the timer then raced the row into and out of
+   existence. Both removed. The param stays in the URL and the highlight stays
+   until you next navigate here without it — which is every other route into this
+   page.
+
+**Verified:** `/categories?highlight=6` marks "Amader Achar" with a real computed
+background (`rgb(232, 240, 254)`), in the viewport. End to end: editing category
+9, pressing Save & Exit, lands on `/categories?highlight=9` with "Amader Rice"
+highlighted and scrolled into view.
+
+## 2026-09-04 — Order Manager assignment mirrors onto the customer
+
+**Request:** "order manager assign will store in customer manager and can be
+changed".
+
+`OrderManagerService.assign` now writes the same staff member onto the order's
+customer, so Customer Manager's "Assign To" reflects who is actually handling
+them — the CRM no longer disagrees with the order queue. Both the per-row select
+and the bulk assign action route through this one method, so both are covered.
+
+- **One transaction**, so the two rows cannot end up disagreeing because the
+  second write failed.
+- **Guest orders** (`customerId` null) skip the mirror.
+- **Unassigning mirrors too.** It is the same statement in reverse; mirroring one
+  direction only would leave a customer pointing at someone who is no longer on
+  any of their orders.
+- **Customer Manager stays the override.** The mirror is not a second source of
+  truth: editing the assignee there wins until the next order assignment.
+- Permission-wise nothing new is needed — the assign route already requires
+  `assignment.manage`, so the customer write inherits that gate.
+
+Admin cache: `useAssignOrder` and the bulk-action hook now invalidate
+`CUSTOMERS_LIST_KEY` (exported from useCustomers) on assign, or the Customers
+table and the customer modal would keep showing the previous assignee.
+
+**Verified against the live API** on customer 4766 / order 6751: assigning the
+order set the customer to "Super Admin"; a Customer Manager PATCH cleared it back
+to null; re-assigning the order set it again; unassigning the order cleared it.
+Original value restored.
+
+## 2026-09-04 — REVERTED: Order Manager assignment mirroring
+
+The change logged immediately above ("Order Manager assignment mirrors onto the
+customer") was reverted at the user's request. Order assignment writes only
+`Order.assignedAdminId` again; Customer Manager's "Assign To" is once more an
+independent field, set only from the Customers screen.
+
+Reverted in three places:
+- `OrderManagerService.assign` — back to a single `order.update`, no transaction
+  and no customer write.
+- `useAssignOrder` and the bulk-action hook — no longer invalidate the customers
+  cache on assign.
+- `useCustomers` — `CUSTOMERS_LIST_KEY` un-exported, back to a private
+  `const LIST_KEY`.
+
+**Verified:** assigning order 6751 (customer 4766) leaves the customer's
+`assignedAdminId` at null, unchanged. No `CUSTOMERS_LIST_KEY` references remain
+anywhere in the admin app. Both apps typecheck. Test data restored.
+
+## 2026-09-04 — Fraud detection now uses bdcourier sitewide
+
+**Request:** use bdcourier instead of Steadfast for sitewide fraud detection,
+plus a place in the admin to set/rotate the API key.
+
+`BdCourierFraudSource` (`providers/bdcourier-fraud-source.ts`) implements the
+existing `FraudSource` interface — the swap point CLAUDE.net-profit.ADDENDUM.md §A
+put there for exactly this ("a future BD courier-fraud aggregator plugs in behind
+this same interface without FraudService's scoring logic changing"). Nothing in
+the scoring, caching, checkout gate or admin board changed.
+
+One `POST /courier-check` returns the phone's history across Pathao, SteadFast,
+RedX, PaperFly, ParcelDex, CourierFast and CarryBee. `data.summary` feeds the
+totals; each non-zero courier row feeds the stored breakdown (all-zero rows are
+dropped — they say nothing about the phone).
+
+**It REPLACES the Steadfast source rather than joining it.** `FraudService` sums
+the totals of every source in `this.sources`, and bdcourier's response already
+contains SteadFast's numbers — running both would count every SteadFast parcel
+twice and inflate the success ratio the whole gate is scored on.
+`SteadfastFraudSource` stays wired as the standby; swapping the two back is a
+one-line change.
+
+Every failure path returns `unavailable` (no key, non-200, malformed body, quota
+exhausted, 8s timeout). FraudService already treats that as "no data" and defers
+to `allowNoHistory` — a third party being down must never block a real sale.
+
+**Admin credential UI** — new "bdcourier API Credential" card on
+`/net-profit/fraud` → Settings. Shows configured/not-set, takes a new key to set
+or rotate, and has a Remove key button. The key is write-only: it is stored via
+`CredentialsService` (aes-256-gcm, encrypted at rest) under
+`fraud.bdcourier.apiKey`, and `GET settings` returns only a `bdCourierApiKeySet`
+boolean, never the key. Blank input means "keep the current key", not "clear it".
+`BDCOURIER_API_KEY` in env is the bootstrap path for a fresh environment.
+
+**Verified live.** `GET /check-connection` authenticated (user_id 2500). Saving
+the key through the new card flipped the status to "API key configured" with the
+key absent from the settings response. `POST /fraud/checks/01840193060/recheck`
+returned totalOrders 24, delivered 24, successRate 1, riskLevel LOW, breakdown
+REDX 8 / PATHAO 9 / STEADFAST 7 — matching the raw API response exactly.
+
+**Quota warning.** The account is on **Free Basic: 50 calls total**, 47 remaining
+after testing. Fraud checks run per unique phone at checkout, cached 72h
+(`cacheTtlHours`), but 50 lifetime calls will not cover live traffic — a paid
+plan is needed before this is relied on sitewide. When the quota runs out the
+source returns `unavailable` and the gate falls back to `allowNoHistory`, so
+checkout keeps working rather than breaking.
+
+## 2026-09-04 — Nav: SMS + Fraud Detection moved, and fraud checks made faster
+
+**Nav.** Courier Fraud Detection and SMS moved from Net Profit into **Orders &
+Fulfillment**, right after Recovery — same reasoning as Order Manager and
+Recovery before them: both are things you do TO an order as it arrives, not
+profit reporting. Hrefs unchanged (`/net-profit/fraud`, `/net-profit/sms`), so
+permissions and deep links are unaffected. Verified: the section now reads New
+Order → Shipments → Order Manager → Recovery → Courier Fraud Detection → SMS,
+and neither appears under Net Profit any more.
+
+**Speed — the real cause was not the API.** Profiling found `CredentialsService`
+re-deriving its AES key with `scryptSync` on **every** encrypt and decrypt.
+scrypt is a deliberately expensive KDF: **measured at 57ms per call on this
+machine**, and `scryptSync` blocks the event loop, so it stalled every other
+in-flight request too. Every fraud check, courier dispatch and SMS send paid it.
+
+Its inputs are one env var and a fixed salt, so the result cannot change while
+the process lives — now derived once. Decrypted values also get a 60s in-process
+cache (same reasoning as PermissionGuard's, and a save/delete invalidates its
+entry immediately so an admin sees a rotated key take effect at once).
+
+This is an app-wide win, not just a fraud one — every credential reader benefits.
+
+Also fixed a regression from earlier today: `getSettings()` (called on every
+checkout gate) used `hasCredential`, an uncached database round-trip. Switched to
+the now-cached `getCredential`.
+
+**Measured after:** `/fraud/settings` (reads a credential) median **47ms** against
+a **39ms** baseline for `/fraud/savings` on the same auth+proxy path — so the
+credential read costs ~8ms, down from ~57ms of blocking scrypt plus a query.
+Cached fraud checks land in ~45ms.
+
+**What is left is the third party.** A live check is **~860ms end to end**, of
+which ~750ms is bdcourier itself (~485ms of that its TLS handshake). Nothing in
+our code to reclaim there. The upstream timeout was cut from 8s to **3.5s** —
+about 4x the observed worst case, so a slow-but-working response still lands
+while an outage costs the shopper a moment instead of an abandoned checkout; the
+gate then falls through to the configured no-history behaviour.
+
+Not changed: the checkout badge's 800ms debounce. It looks like latency but is
+protective — without it every keystroke of an 11-digit phone would spend an API
+call, and the plan allows 50 in total.
+
+**Quota: 13 of 50 used, 37 remaining.**
+
+## 2026-09-04 — Order Manager "Origin" was a hardcoded constant
+
+**Request:** an order created from Recovery should have Origin = Website.
+
+Recovery orders **already** stored `channel: WEBSITE` (the schema default), so
+the data was right. The problem was the display: `OrderManagerService` set
+`origin: 'Web'` as a literal for every row and never read `Order.channel` at all.
+Its own comment explained why — "every order today comes through the storefront
+checkout, no admin manual-order-creation flow exists yet" — which stopped being
+true once manual orders (`/orders/new`), wholesale and recovery were built.
+
+So a manual order deliberately marked WhatsApp, Phone or Facebook still showed as
+"Web". Of the first 100 orders, **16 were mislabelled**: 6 WhatsApp, 9 Phone,
+1 Marketplace.
+
+- The list query now selects `o.channel` and maps it through an `ORIGIN_LABELS`
+  table (WEBSITE → "Website", TIKTOK → "TikTok", …). Anything unlisted falls
+  through to the raw enum value, so a newly added channel is never blank.
+- `createOrderFromIncomplete` now states `channel: 'WEBSITE'` explicitly instead
+  of relying on the schema default — the cart was filled on the storefront and
+  staff only pressed the button, and a change to that default must never
+  silently reclassify recovered sales.
+
+**Verified:** the Origin column now reads Website 84 / WhatsApp 6 / Phone 9 /
+Marketplace 1 across the same 100 orders that previously all said "Web";
+recovery orders show "Website"; flipping one order to FACEBOOK made the column
+read "Facebook" and flipping it back restored "Website".
+
+## 2026-09-04 — Recovery orders: Source = website, and one Origin label table
+
+**Recovery Source.** `createOrderFromIncomplete` now sets `utmSource: 'website'`
+alongside `channel: 'WEBSITE'`. Nothing is lost by writing it: `IncompleteOrder`
+carries no UTM columns, so a recovered order has no original attribution to
+preserve, and staff can still edit Source on the order afterwards.
+
+**Verified end to end** by actually recovering cart 43: the created order
+REC-MTMPWTT6 came back with `channel: WEBSITE`, `utmSource: "website"` and an
+Origin column reading "Website". Cleanup: the test order was binned and cart 43
+reset (`recovered = false`, `recovered_order_id = NULL`) with its original
+cancel reason intact.
+
+**Origin labels — my own duplication, caught by the user ("Origin should be
+instore pos").** The label table I added to `OrderManagerService` in the previous
+change immediately disagreed with the one the admin already owns
+(`ORDER_CHANNEL_LABELS` in useOrders.ts): the backend said "POS" and "Phone"
+where the detail modal says "In-store POS" and "Telemarketing", and it was
+missing YOUTUBE and X entirely.
+
+Fixed by deleting the duplicate rather than correcting it twice. The list
+endpoint now returns the raw `OrderChannel` and `OrderManagerTable` renders it
+through `ORDER_CHANNEL_LABELS`, so the column and the dropdown can never drift
+apart again.
+
+**Verified:** with an order set to POS the column renders "In-store POS"; the API
+returns raw enums (WEBSITE / WHATSAPP / PHONE / MARKETPLACE) and the table shows
+"Website" for them. Test order 6757 restored to WEBSITE.
+
+## 2026-09-04 — Order Manager Source column: fbads kept, Facebook variants folded
+
+**Origin** already comes from the detail modal's field — the previous change made
+the list read `Order.channel`, and a WHATSAPP order shows WHATSAPP in both. No
+further change needed; verified on ORD-20260816-8AEE35.
+
+**Source.** The column is a `<select>` over a fixed `ORDER_SOURCES` list. A stored
+`utm_source` outside that list selected nothing, so the cell rendered **blank and
+the real UTM was invisible** — and one careless click overwrote it. Live data
+already had one: `facebook-qa-test`.
+
+- `fbads` added as its own option. Paid Facebook traffic stays separate from
+  organic, because "how much came from the ads" is the question this column
+  exists to answer.
+- `canonicalFacebookSource()` folds messy real-world UTMs to the canonical
+  option: `fb`, `FB`, `facebook.com`, `m.facebook.com`, `facebook-qa-test` all
+  display as **facebook**, while `fbads`/`fb-ads`/`fb_ads`/`facebook-ads`/
+  `facebookads` display as **fbads**.
+- Anything not Facebook-related is shown **verbatim** as its own option rather
+  than guessed at, so no source is ever hidden or silently lost.
+- When the displayed label differs from what is stored, the cell carries a
+  `title` — "Recorded as \"m.facebook.com\"" — so the raw value stays inspectable.
+
+**Verified** by seeding four orders and reading the rendered cells: `fbads` → shows
+"fbads"; `m.facebook.com` → "facebook" (tooltip: Recorded as "m.facebook.com");
+`FB` → "facebook" (tooltip: Recorded as "FB"); `some-affiliate` → "some-affiliate"
+verbatim. All four restored afterwards.
+
+**Assumption flagged:** "else make it facebook" was read as *within Facebook
+traffic* — anything Facebook-ish that is not the paid marker shows as facebook.
+It does NOT rewrite unrelated sources (instagram, whatsapp, an affiliate tag) to
+facebook, which would destroy attribution. Nothing is written to the database by
+the display rule; it only changes what the cell shows until someone picks a value.

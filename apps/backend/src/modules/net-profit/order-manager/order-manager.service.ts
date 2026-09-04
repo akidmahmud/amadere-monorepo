@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CourierProviderName,
+  OrderChannel,
   OrderStatus,
   PaymentProvider,
   PaymentStatus,
@@ -22,6 +23,7 @@ interface RawOrderManagerRow {
   id: number;
   order_number: string;
   status: OrderStatus;
+  channel: OrderChannel;
   total_amount: Prisma.Decimal;
   created_at: Date;
   recipient_name: string | null;
@@ -157,7 +159,7 @@ export class OrderManagerService {
 
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
       SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
-             o.utm_source, o.utm_campaign, o.deleted_at,
+             o.utm_source, o.utm_campaign, o.deleted_at, o.channel,
              o.assigned_admin_id,
              NULLIF(TRIM(CONCAT(au.first_name, ' ', au.last_name)), '') AS assigned_admin_name,
              -- Fall back to the linked customer when there is no shipping
@@ -252,10 +254,15 @@ export class OrderManagerService {
       division: r.division,
       postCode: r.post_code,
       thumbnailUrl: r.thumbnail_url,
-      // ponytail: every order today comes through the storefront checkout —
-      // no admin manual-order-creation flow exists yet, so this is a
-      // constant rather than a real column. Revisit if that flow gets built.
-      origin: 'Web',
+      // The raw OrderChannel, NOT a display name. The admin already owns the
+      // one label table (ORDER_CHANNEL_LABELS in useOrders.ts — "In-store POS",
+      // "Telemarketing"), and a second copy here immediately disagreed with it.
+      //
+      // It used to be the constant 'Web', on the reasoning that every order came
+      // through the storefront checkout — no longer true once manual orders,
+      // wholesale and recovery could create them, so a manual order marked
+      // FACEBOOK still displayed as "Web".
+      origin: r.channel,
       paymentProvider: r.payment_provider,
       paymentStatus: r.payment_status,
       courierProvider: r.courier_provider,
