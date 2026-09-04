@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
+import { ORDER_SOURCES, canonicalFacebookSource } from "@amader/shared";
 import { Button } from "@amader/admin-ui";
 import { useAssignOrder, useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useCan } from "@/hooks/useAdminAuth";
@@ -366,43 +367,6 @@ function AddressCell({ order, editing }: { order: OrderManagerRow; editing: bool
   );
 }
 
-const ORDER_SOURCES = [
-  "facebook",
-  // Paid Facebook traffic kept separate from organic: "how much came from the
-  // ads" is the question this column exists to answer, and folding fbads into
-  // facebook makes it unanswerable.
-  "fbads",
-  "instagram",
-  "whatsapp",
-  "website",
-  "Telisell",
-  "localsell",
-  "wholesell",
-  "tiktok",
-  "youtube",
-];
-
-/**
- * What to SHOW for a stored utm_source.
- *
- * Real UTMs are messy — `fb`, `FB`, `facebook.com`, `m.facebook.com`,
- * `facebook-qa-test` all mean Facebook. Anything Facebook-ish collapses to the
- * canonical `facebook` option, EXCEPT an explicit paid marker, which stays
- * `fbads`.
- *
- * Returns null when the value is not Facebook-related at all — the caller then
- * shows it verbatim rather than guessing.
- */
-function canonicalFacebookSource(raw: string): string | null {
-  const v = raw.trim().toLowerCase();
-  if (!v) return null;
-  if (v === "fbads" || v === "fb-ads" || v === "fb_ads" || v === "facebook-ads" || v === "facebookads") {
-    return "fbads";
-  }
-  if (v === "fb" || v.includes("facebook")) return "facebook";
-  return null;
-}
-
 function SourceCell({ order }: { order: OrderManagerRow }) {
   const updateDetails = useUpdateOrderDetails(order.id);
   const stored = order.utmSource ?? "";
@@ -410,7 +374,8 @@ function SourceCell({ order }: { order: OrderManagerRow }) {
   // A stored value the list does not contain used to select nothing, so the
   // cell rendered blank and the real UTM was invisible — and one careless click
   // overwrote it. Carry it as its own option instead.
-  const extra = shown && !ORDER_SOURCES.includes(shown) ? shown : null;
+  const extra =
+    shown && !(ORDER_SOURCES as readonly string[]).includes(shown) ? shown : null;
 
   return (
     <select

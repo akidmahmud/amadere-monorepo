@@ -64,6 +64,10 @@ export interface OrderManagerFilters {
   /** Admin id as a string, or "none" for unassigned. */
   assignedAdminId?: string;
   division?: string;
+  /** OrderChannel — the Origin column. */
+  channel?: string;
+  /** utm_source, or "none" for orders with none recorded. */
+  utmSource?: string;
   q?: string;
   from?: string;
   to?: string;

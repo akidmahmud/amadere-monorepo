@@ -9,7 +9,7 @@ import {
   RiskLevel,
   ShipmentStatus,
 } from '@amader/db';
-import { PaginatedResult, phoneLookupCandidates } from '@amader/shared';
+import { FB_PAID_SOURCES, PaginatedResult, phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { OrdersService } from '../../orders/orders.service';
@@ -18,6 +18,27 @@ import { BlockerService } from '../blocker/blocker.service';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
 import { OrderManagerLineDto, OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
+
+/**
+ * Filter on utm_source the way the Source COLUMN reads it, not the raw string.
+ *
+ * The column folds fb / FB / facebook.com / m.facebook.com / facebook-anything
+ * into "facebook", so a filter that only matched the literal string would show
+ * fewer rows than the column it sits above — the filter and the display have to
+ * agree or neither can be trusted.
+ */
+function utmSourceCondition(value: string): Prisma.Sql {
+  const v = value.trim().toLowerCase();
+  if (v === 'none') return Prisma.sql`(o.utm_source IS NULL OR o.utm_source = '')`;
+  if (v === 'fbads') return Prisma.sql`LOWER(TRIM(o.utm_source)) IN (${Prisma.join(FB_PAID_SOURCES)})`;
+  if (v === 'facebook') {
+    return Prisma.sql`(
+      (LOWER(TRIM(o.utm_source)) = 'fb' OR LOWER(o.utm_source) LIKE '%facebook%')
+      AND LOWER(TRIM(o.utm_source)) NOT IN (${Prisma.join(FB_PAID_SOURCES)})
+    )`;
+  }
+  return Prisma.sql`LOWER(TRIM(o.utm_source)) = ${v}`;
+}
 
 interface RawOrderManagerRow {
   id: number;
@@ -85,6 +106,8 @@ export class OrderManagerService {
     if (query.paymentProvider) conditions.push(Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`);
     if (query.courierProvider) conditions.push(Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`);
     if (query.division) conditions.push(Prisma.sql`oa.division = ${query.division}`);
+    if (query.channel) conditions.push(Prisma.sql`o.channel = ${query.channel}::"OrderChannel"`);
+    if (query.utmSource) conditions.push(utmSourceCondition(query.utmSource));
     if (query.risk) conditions.push(Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`);
     // "none" rather than an empty/absent value for unassigned: absent already
     // means "don't filter at all", so there would otherwise be no way to ask

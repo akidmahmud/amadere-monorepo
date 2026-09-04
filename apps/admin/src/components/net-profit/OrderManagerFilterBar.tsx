@@ -1,5 +1,7 @@
 "use client";
 
+import { ORDER_SOURCES } from "@amader/shared";
+import { ORDER_CHANNELS, ORDER_CHANNEL_LABELS } from "@/hooks/useOrders";
 import type { AssignableStaff } from "@/hooks/useCustomers";
 import type { RiskLevel } from "@/hooks/useFraud";
 import type { OrderManagerFilters } from "@/hooks/useOrderManager";
@@ -51,6 +53,8 @@ export interface OrderFilterState {
   /** An admin id as a string, or "none" for orders nobody has picked up. */
   assignedAdminId?: string;
   division?: string;
+  channel?: string;
+  utmSource?: string;
   dateRange?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -140,6 +144,43 @@ export function OrderManagerFilterBar({
         {staff.map((s) => (
           <option key={s.id} value={String(s.id)}>
             {s.name}
+          </option>
+        ))}
+      </select>
+
+      {/* Origin reads Order.channel, the same field the detail modal edits, so
+          this filter and the Origin column can never disagree. WEBSITE is
+          included even though staff cannot SET it manually — most orders have
+          it, so it is the one people most want to filter by. */}
+      <select
+        value={filters.channel ?? ""}
+        onChange={(e) => set("channel", e.target.value || undefined)}
+        className={selectClass}
+        style={selectStyle}
+      >
+        <option value="">All Origins</option>
+        <option value="WEBSITE">{ORDER_CHANNEL_LABELS.WEBSITE}</option>
+        {ORDER_CHANNELS.map((c) => (
+          <option key={c} value={c}>
+            {ORDER_CHANNEL_LABELS[c]}
+          </option>
+        ))}
+      </select>
+
+      {/* Matches the Source COLUMN's reading, not the raw string: picking
+          facebook also finds fb / m.facebook.com, and never the paid markers.
+          "No source" is its own option for the same reason "Unassigned" is. */}
+      <select
+        value={filters.utmSource ?? ""}
+        onChange={(e) => set("utmSource", e.target.value || undefined)}
+        className={selectClass}
+        style={selectStyle}
+      >
+        <option value="">All Sources</option>
+        <option value="none">No source</option>
+        {ORDER_SOURCES.map((s) => (
+          <option key={s} value={s}>
+            {s}
           </option>
         ))}
       </select>

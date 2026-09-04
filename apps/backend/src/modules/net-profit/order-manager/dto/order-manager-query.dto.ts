@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { CourierProviderName, OrderStatus, PaymentProvider, RiskLevel } from '@amader/db';
+import { CourierProviderName, OrderChannel, OrderStatus, PaymentProvider, RiskLevel } from '@amader/db';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 
@@ -28,6 +28,23 @@ export class OrderManagerQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   division?: string;
+
+  @ApiPropertyOptional({ enum: OrderChannel, description: 'Order.channel — the Origin column' })
+  @IsOptional()
+  @IsEnum(OrderChannel)
+  channel?: OrderChannel;
+
+  @ApiPropertyOptional({
+    description:
+      'utm_source. Matches the way the Source column DISPLAYS the value, not ' +
+      'the raw string: "facebook" also finds fb / FB / facebook.com / ' +
+      'm.facebook.com but never the paid markers, and "fbads" finds fbads / ' +
+      'fb-ads / fb_ads / facebook-ads / facebookads. "none" finds orders with ' +
+      'no source recorded. Anything else is an exact, case-insensitive match.',
+  })
+  @IsOptional()
+  @IsString()
+  utmSource?: string;
 
   @ApiPropertyOptional({
     description:

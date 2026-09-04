@@ -27,6 +27,7 @@ export * from './bd-geo';
 // consumers import `@amader/shared/image-derivatives` directly instead.
 export * from './bd-thanas';
 export * from './bd-bengali';
+export * from './order-source';
 export * from './phone';
 export * from './ckeditor-fonts';
 export * from './footer';

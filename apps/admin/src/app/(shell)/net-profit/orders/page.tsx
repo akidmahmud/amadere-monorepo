@@ -296,6 +296,8 @@ export default function OrderManagerPage() {
     risk: uiFilters.risk,
     assignedAdminId: uiFilters.assignedAdminId,
     division: uiFilters.division,
+    channel: uiFilters.channel,
+    utmSource: uiFilters.utmSource,
     ...dateRange,
     page,
     pageSize,

@@ -644,3 +644,39 @@ traffic* — anything Facebook-ish that is not the paid marker shows as facebook
 It does NOT rewrite unrelated sources (instagram, whatsapp, an affiliate tag) to
 facebook, which would destroy attribution. Nothing is written to the database by
 the display rule; it only changes what the cell shows until someone picks a value.
+
+## 2026-09-04 — Order Manager: Origin and Source filters
+
+Two new selects in the Order Manager filter bar.
+
+**Origin** filters `Order.channel` — the same field the detail modal edits and
+the Origin column reads, so filter, column and modal cannot disagree. Options use
+the admin's own `ORDER_CHANNEL_LABELS` (Telemarketing, In-store POS…). WEBSITE is
+listed even though staff cannot *set* it manually, because most orders have it
+and it is the one people most want to filter by.
+
+**Source** filters `utm_source` **the way the Source column displays it**, not the
+raw string. Picking `facebook` also finds `fb`, `FB`, `facebook.com`,
+`m.facebook.com`, `facebook-qa-test` but never the paid markers; `fbads` finds
+`fbads`/`fb-ads`/`fb_ads`/`facebook-ads`/`facebookads`. A filter that only matched
+the literal string would return fewer rows than the column above it shows, which
+would make both untrustworthy. `No source` is its own option for the same reason
+"Unassigned" is — absent already means "don't filter".
+
+**The folding rule now lives in `@amader/shared`** (`order-source.ts`:
+`ORDER_SOURCES`, `FB_PAID_SOURCES`, `canonicalFacebookSource`). Both ends need the
+same answer — the admin renders the column with it, the backend builds SQL with
+it — and this is exactly the mistake made earlier today with the Origin label
+table, where a second copy in the backend immediately disagreed with the admin's.
+
+**Verified against live data, counts reconciling exactly:**
+- Origin: WEBSITE 3380 + WHATSAPP 6 + PHONE 9 + MARKETPLACE 1 = 3396 unfiltered.
+- Source: none 3388 + facebook 5 + fbads 1 + instagram 1 + some-affiliate 1 = 3396.
+- `utmSource=facebook` returned rows stored as m.facebook.com, FB,
+  facebook-qa-test, facebook, facebook — and excluded fbads.
+- `utmSource=fbads` returned only fbads.
+- Combined `channel=WEBSITE&utmSource=facebook` = 3.
+- Through the UI: choosing WhatsApp narrowed the table from 20 rows to 6, every
+  one showing Origin "WhatsApp".
+
+Seeded test values on orders 6754-6757 were cleared afterwards.
