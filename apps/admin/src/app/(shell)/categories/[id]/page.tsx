@@ -13,6 +13,7 @@ import { SeoMetaCard } from "@/components/SeoMetaCard";
 import { CategoryProductsCard } from "@/components/categories/CategoryProductsCard";
 import { useCategory, useUpdateCategory } from "@/hooks/useCategories";
 import type { PublishStatus } from "@/hooks/useBrands";
+import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
 
 export default function EditCategoryPage({
   params,
@@ -95,8 +96,14 @@ export default function EditCategoryPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Outside the <form> on purpose. A sticky element only stays
+          pinned while its PARENT is on screen, and this page puts
+          SeoMetaCard (which has a form of its own, so it cannot be
+          nested inside this one) after the form — so a bar parented to
+          the form scrolled away as soon as the form ended. Parented to
+          the outer div it spans the whole page; the submit button keeps
+          its form via the `form` attribute. */}
+        <div className={STICKY_FORM_HEADER}>
           <div className="flex items-center gap-3">
             <Link
               href="/categories"
@@ -127,11 +134,12 @@ export default function EditCategoryPage({
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" variant="primary" disabled={update.isPending}>
+            <Button type="submit" form="category-form" variant="primary" disabled={update.isPending}>
               {update.isPending ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </div>
+      <form id="category-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
 
         <div className="flex items-start gap-2.5 rounded-inner border border-[#d8e6fc] bg-brand-50 px-3.5 py-2.5 text-[0.75rem] font-semibold text-brand-600">
           <svg

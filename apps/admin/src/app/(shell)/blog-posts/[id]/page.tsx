@@ -21,6 +21,7 @@ import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { friendlyErrorMessage } from "@/lib/friendly-error";
 import { useToast } from "@/components/ToastProvider";
+import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
 
 interface BlogPostDraft {
   title: string;
@@ -143,14 +144,12 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           nesting it inside this page's <form> is invalid HTML (and React
           warns/hydration-errors on it), so only the Detail tab's own fields
           go inside this <form>; SeoMetaCard stays a sibling underneath it. */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSave(false);
-        }}
-        className="flex flex-col gap-4 min-w-0 max-w-full"
-      >
-      <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+      {/* The action bar sits OUTSIDE the form for the same reason SeoMetaCard
+          does: a sticky element only stays pinned while its PARENT is on
+          screen, so a bar parented to this form would scroll away the moment
+          the form ended and the SEO card began. Parented to the page wrapper it
+          spans the whole scroll; Save keeps its form via the `form` attribute. */}
+      <div className={`${STICKY_FORM_HEADER} min-w-0`}>
         <div className="flex flex-wrap items-center gap-3 min-w-0">
           <Link href="/blog-posts" aria-label="Back to blog posts" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -188,11 +187,20 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           <Button type="button" variant="ghost" disabled={update.isPending} onClick={() => handleSave(true)}>
             {update.isPending ? "Saving…" : "Save & Exit"}
           </Button>
-          <Button type="submit" variant="primary" disabled={update.isPending}>
+          <Button type="submit" form="blog-post-form" variant="primary" disabled={update.isPending}>
             {update.isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
+
+      <form
+        id="blog-post-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave(false);
+        }}
+        className="flex flex-col gap-4 min-w-0 max-w-full"
+      >
 
       {pendingDraft && (
         <DraftRestoreBanner

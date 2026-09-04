@@ -23,7 +23,7 @@ import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
 import { googleSans, googleSansItalic } from "@/fonts";
 import "../globals.css";
-import { IMG, toDisplayImageUrl } from "@/lib/media";
+import { IMG, toDisplayImageUrl, toOgImageUrl } from "@/lib/media";
 
 const DEFAULT_TITLE = "আমাদের";
 const DEFAULT_DESCRIPTION = "আমাদের — organic & natural products";
@@ -68,7 +68,9 @@ export async function generateMetadata({
   const { data: siteInfo } = await safeGet("/api/v1/settings/site");
   const title: string = siteInfo?.seoTitle || DEFAULT_TITLE;
   const description: string = siteInfo?.seoDescription || DEFAULT_DESCRIPTION;
-  const ogImageUrl: string | undefined = siteInfo?.seoImageUrl ?? undefined;
+  // Through toOgImageUrl like every other share card: whatever was uploaded
+  // in Settings, the tag points at a 1200x630 render of it.
+  const ogImageUrl: string | undefined = toOgImageUrl(siteInfo?.seoImageUrl);
 
   return {
     // Makes every relative `alternates.canonical` and `openGraph.url` in the

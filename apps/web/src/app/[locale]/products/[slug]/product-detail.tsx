@@ -28,12 +28,10 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
-import { toDisplayImageUrl, toEmbeddableVideoUrl, IMG } from "@/lib/media";
-import { cdnImageUrl } from "@/lib/image-url";
+import { toDisplayImageUrl, toEmbeddableVideoUrl, toOgImageUrl, IMG } from "@/lib/media";
 
 // Facebook/X's recommended og:image width. Not in the IMG scale, which names
 // on-page render sizes — this one is fixed by the platforms, not by layout.
-const OG_IMAGE_WIDTH = 1200;
 import { defaultVariantId } from "@/lib/pdp";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
@@ -85,9 +83,7 @@ export async function generateProductMetadata(
   // production traffic (see lib/image-url.ts). Also pins a width: crawlers
   // fetch this image on every share, and the untransformed original can be
   // multiple megabytes.
-  const ogImage = product.seo.ogImageUrl
-    ? cdnImageUrl(product.seo.ogImageUrl, OG_IMAGE_WIDTH)
-    : undefined;
+  const ogImage = toOgImageUrl(product.seo.ogImageUrl);
 
   return {
     title: product.seo.title,

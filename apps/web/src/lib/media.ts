@@ -1,4 +1,4 @@
-import { IMG, cdnImageUrl } from "./image-url";
+import { IMG, cdnImageUrl, cdnOgImageUrl } from "./image-url";
 
 /**
  * The B12 migration stored every media reference as a `legacy://` pseudo-URL
@@ -25,7 +25,17 @@ export function toDisplayImageUrl(
   return cdnImageUrl(url, width);
 }
 
-export { IMG } from "./image-url";
+/**
+ * Same `legacy://` guard as toDisplayImageUrl, but produces a social share
+ * card — a fixed 1200x630 that never comes back too small for a scraper to
+ * accept. Every og:image/twitter:image goes through this.
+ */
+export function toOgImageUrl(url: string | null | undefined): string | undefined {
+  if (!url || /^https?:\/\//.test(url) === false) return undefined;
+  return cdnOgImageUrl(url);
+}
+
+export { IMG, OG_IMAGE } from "./image-url";
 
 // Every YouTube URL shape an admin might paste — the share/watch link, the
 // youtu.be shortener, Shorts, live, or an already-correct /embed/ one.

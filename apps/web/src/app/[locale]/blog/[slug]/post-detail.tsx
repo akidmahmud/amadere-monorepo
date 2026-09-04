@@ -8,7 +8,7 @@ import { BlogViewTracker } from "@/components/BlogViewTracker";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl, IMG } from "@/lib/media";
+import { toDisplayImageUrl, toOgImageUrl, IMG } from "@/lib/media";
 import { formatBlogDate, toBlogCardData } from "@/lib/blog-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
@@ -63,7 +63,7 @@ export async function generatePostMetadata(
       url: path,
       title: post.seo.ogTitle,
       description: post.seo.ogDescription ?? undefined,
-      images: post.seo.ogImageUrl ? [post.seo.ogImageUrl] : undefined,
+      images: toOgImageUrl(post.seo.ogImageUrl) ? [toOgImageUrl(post.seo.ogImageUrl)!] : undefined,
     },
   };
 }

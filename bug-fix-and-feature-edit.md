@@ -270,3 +270,89 @@ untouched; clearing the reason returned the count to 11. Test data cleaned up.
 
 **Note:** dev-DB artifact from the reverted behaviour — cart 43's `canceledAt` is
 now 2026-09-04 instead of its original date. Only that one row, only locally.
+
+## 2026-09-04 — Product edit: sticky action bar
+
+**Request:** on `/products/[id]`, Cancel / Delete / Preview / Save & Exit / Save
+should be sticky.
+
+The product form is long enough that Save is off-screen for most of the editing,
+so every small change cost a scroll back to the top. The header row that carries
+those five controls is now `sticky top-16`.
+
+- `top-16` parks it directly under AppShell's own sticky `h-16` header.
+- `z-[5]`, below that header's `z-10`, so the two can never fight.
+- `-mx-6 -mt-6 px-6 py-4` cancels `<main>`'s `px-6 py-6` so the bar spans the
+  full width and sits flush — without it, page content would scroll through the
+  24px gutters either side.
+- `bg-surface` + `border-b`, so content scrolls behind it rather than through it.
+
+**Verified:** after scrolling to y=2000 the bar's top is still 64px (exactly the
+header's bottom edge), with all five controls — Cancel, Delete product, Preview,
+Save & Exit, Save — visible in it.
+
+## 2026-09-04 — Sticky action bar on the remaining editor forms
+
+**Request:** the same sticky header for digital products, blog posts and
+categories.
+
+The class string moved into `apps/admin/src/lib/sticky-form-header.ts` as
+`STICKY_FORM_HEADER` — one constant rather than eight copies, because
+`top-16` / `z-[5]` / `-mx-6` are only correct in relation to AppShell and would
+silently drift apart if each page kept its own. Applied to all eight editor
+forms: products (new + edit), digital products (new + edit), blog posts
+(new + edit), categories (new + edit).
+
+**A sticky element only stays pinned while its PARENT is on screen.** Two pages
+put a `SeoMetaCard` *after* the `</form>` (it renders its own `<form>`, so it
+cannot be nested inside), which meant a bar parented to the form scrolled away
+the moment the form ended. Caught in the browser on `/categories/2`: the bar
+sat correctly at 64px, then read `top: -609` at scrollY 2627.
+
+Fixed on `categories/[id]`, `categories/new` and `blog-posts/[id]` by hoisting
+the bar out of the form to the page wrapper, with the submit button keeping its
+form via the HTML `form="…"` attribute. The other five pages have nothing after
+their form, so their bars stayed where they were.
+
+**Verified in the browser:** `/categories/2` holds top=64 at scrollY 0 / 1500 /
+2627 (page 3,516px) and its detached Save still fires the form's submit handler;
+`/blog-posts/204` holds top=64 across a 6,425px page with Save wired to
+`blog-post-form`; `/digital-products/new` holds top=64 at the bottom of a
+2,290px page; `/products/92` was verified earlier.
+
+## 2026-09-04 — Facebook: "og:image did not meet the minimum size constraint"
+
+Reported from the Sharing Debugger on `/categories/amader-chatu`.
+
+**Cause.** `cdnImageUrl` uses `fit=scale-down`, which never upscales — correct
+for page images, wrong for a share card. The category's source image is
+**150x150**, so asking for width 1600 returned 150x150 and Facebook rejected it
+(its floor is 200x200). Measured every category: **all ten are 150x150**, so
+every category page had a rejected og:image, not just this one.
+
+**Fix.** New `cdnOgImageUrl` / `toOgImageUrl`, and all six og:image call sites go
+through it — category, product, blog post, brand, collection and the site-wide
+default in the root layout. Three of those (blog, brand, collection) were passing
+the raw stored URL straight into the tag, so they never even reached the CDN.
+
+The share card is now always exactly **1200x630**:
+- `fit=pad`, not `cover` — it scales the whole image to fit and fills the rest
+  with white, so a square product shot is centred on a card rather than having
+  its top and bottom cropped away to make 1.91:1.
+- `format=jpeg`, not `auto` — `auto` keys off the requester's Accept header and
+  scrapers commonly send `*/*`. JPEG is the one format every scraper renders, and
+  og:image is not a bandwidth-sensitive path.
+
+**Also fixed: literal spaces in CDN paths.** Some uploads have a raw space in
+their key ("…-ChatGPT Image Jul 23, 2026, 11_21_08 AM.png"). Measured: the raw
+form fails to resolve at all, the `%20` form returns 200. `withCdnParams` now
+encodes literal spaces only — a raw space is never valid in a URL, so this cannot
+damage the already-percent-encoded paths the surrounding comment warns about.
+
+**Verified against the live CDN:** the new URL for the chatu category returns a
+200, `image/jpeg`, 42,329 bytes, and decodes to **1200 x 630** — the product shot
+centred on white. Comfortably past Facebook's floor.
+
+**Still worth doing (data, not code):** 150x150 upscaled ~4x is soft. Re-uploading
+the category images at 1200x630 or larger would make the cards sharp; the code
+change just guarantees a valid card whatever is uploaded.

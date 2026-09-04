@@ -14,6 +14,7 @@ import { ProductPreviewButton } from "@/components/products/ProductPreviewButton
 import { useProductFormState, type ProductFormSnapshot } from "@/components/products/useProductFormState";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
+import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
 
 const deleteIcon = (
   <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -100,7 +101,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       }}
       className="flex flex-col gap-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={STICKY_FORM_HEADER}>
         <div className="flex items-center gap-3">
           <Link href="/products" aria-label="Back to products" className="grid h-[34px] w-[34px] place-items-center rounded-inner text-text hover:bg-surface-2">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">

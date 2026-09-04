@@ -8,6 +8,7 @@ import { toProductCardData } from "@/lib/product-card-mapper";
 import { parsePlpSearchParams, type FlagLabelValue, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { toOgImageUrl } from "@/lib/media";
 import { ProductListing } from "@/components/ProductListing";
 import { CollectionDescription } from "@/components/CollectionDescription";
 import type { components } from "@/lib/api/schema";
@@ -68,7 +69,7 @@ export async function generateMetadata({
       url: path,
       title: collection.seo.ogTitle,
       description: collection.seo.ogDescription ?? undefined,
-      images: collection.seo.ogImageUrl ? [collection.seo.ogImageUrl] : undefined,
+      images: toOgImageUrl(collection.seo.ogImageUrl) ? [toOgImageUrl(collection.seo.ogImageUrl)!] : undefined,
     },
   };
 }

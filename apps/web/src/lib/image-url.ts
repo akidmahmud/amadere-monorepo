@@ -38,12 +38,42 @@ const R2_DEV_HOST = /^https:\/\/[a-z0-9-]+\.r2\.dev/i;
  * worse. That makes a generous default width safe.
  */
 export function cdnImageUrl(src: string, width: number, quality = 75): string {
+  return withCdnParams(src, `width=${width},quality=${quality},format=auto,fit=scale-down`);
+}
+
+/** The size every social scraper is happiest with, and the one Facebook's
+ *  sharing debugger measures against (it rejects anything under 200x200). */
+export const OG_IMAGE = { width: 1200, height: 630 } as const;
+
+/**
+ * A share-card image: always exactly 1200x630, whatever was uploaded.
+ *
+ * Not `cdnImageUrl`. That uses `fit=scale-down`, which never upscales — right
+ * for page images, wrong here. A 150x150 category thumbnail came back as
+ * 150x150 and Facebook refused it outright ("did not meet the minimum size
+ * constraint of 200px by 200px"), which means no share card at all rather than
+ * a slightly soft one.
+ *
+ * `fit=pad` is deliberate over `cover`: it scales the whole image to fit and
+ * fills the rest with white, so a square logo is centred on a card instead of
+ * having its top and bottom cropped away to make 1.91:1.
+ *
+ * `format=jpeg` rather than `auto`, because `auto` keys off the requester's
+ * Accept header and scrapers commonly send `*​/*`. JPEG is the one format every
+ * scraper renders; og:image is not a bandwidth-sensitive path.
+ */
+export function cdnOgImageUrl(src: string): string {
+  return withCdnParams(
+    src,
+    `width=${OG_IMAGE.width},height=${OG_IMAGE.height},quality=85,format=jpeg,fit=pad,background=%23ffffff`,
+  );
+}
+
+function withCdnParams(src: string, params: string): string {
   if (!src) return src;
 
   const normalised = src.replace(R2_DEV_HOST, `https://${CDN_HOST}`);
   if (!normalised.startsWith(`https://${CDN_HOST}/`)) return src;
-
-  const params = `width=${width},quality=${quality},format=auto,fit=scale-down`;
 
   // Already transformed. This happens legitimately: a mapper wraps the URL
   // for the raw-<img> case, and then a component renders it through
@@ -59,10 +89,16 @@ export function cdnImageUrl(src: string, width: number, quality = 75): string {
     return `https://${CDN_HOST}${marker}${params}${rest.slice(slash)}`;
   }
 
-  // The path is kept exactly as-is: several existing keys contain
+  // The path is otherwise kept exactly as-is: several existing keys contain
   // percent-encoded spaces and commas from their original filenames, and
   // re-encoding them would 404.
-  const path = normalised.slice(`https://${CDN_HOST}`.length);
+  //
+  // The one exception is a LITERAL space, which some uploads have in their key
+  // ("…-ChatGPT Image Jul 23, 2026, 11_21_08 AM.png"). A raw space is never
+  // valid in a URL, so encoding it cannot damage an already-encoded path — and
+  // leaving it in produces a URL that curl and social scrapers refuse outright
+  // (measured: the raw form fails to resolve, the encoded form returns 200).
+  const path = normalised.slice(`https://${CDN_HOST}`.length).replace(/ /g, "%20");
   return `https://${CDN_HOST}/cdn-cgi/image/${params}${path}`;
 }
 

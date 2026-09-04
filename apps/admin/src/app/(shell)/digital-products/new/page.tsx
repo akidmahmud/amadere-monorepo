@@ -12,6 +12,7 @@ import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { friendlyErrorMessage } from "@/lib/friendly-error";
 import { useToast } from "@/components/ToastProvider";
+import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
 
 // Fixed key, not per-product (there's no id yet) — same rationale as
 // products/new/page.tsx's own DRAFT_KEY, kept separate so it never collides
@@ -72,7 +73,7 @@ export default function NewDigitalProductPage() {
       }}
       className="flex flex-col gap-4"
     >
-      <div className="flex items-center justify-between">
+      <div className={STICKY_FORM_HEADER}>
         <h1 className="font-ui text-lg font-extrabold text-text">Add Digital Product</h1>
         <div className="flex gap-3">
           <Link href="/digital-products">

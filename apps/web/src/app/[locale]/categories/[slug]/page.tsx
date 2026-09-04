@@ -10,7 +10,7 @@ import { toProductCardData } from "@/lib/product-card-mapper";
 import { isFilteredView, parsePlpSearchParams, type PlpSearchParams } from "@/lib/plp";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
-import { toDisplayImageUrl, IMG } from "@/lib/media";
+import { toDisplayImageUrl, toOgImageUrl, IMG } from "@/lib/media";
 import { ProductListing } from "@/components/ProductListing";
 import { CollectionDescription } from "@/components/CollectionDescription";
 
@@ -68,18 +68,15 @@ export async function generateMetadata({
   // pseudo-URLs the B12 migration left behind. IMG.banner matches the 1600px
   // landscape shape the site's own OG image already uses.
   const categoryOgImage =
-    toDisplayImageUrl(category.seo.ogImageUrl, IMG.banner) ??
-    toDisplayImageUrl(category.bannerImageUrl, IMG.banner) ??
-    toDisplayImageUrl(category.imageUrl, IMG.banner);
+    toOgImageUrl(category.seo.ogImageUrl) ??
+    toOgImageUrl(category.bannerImageUrl) ??
+    toOgImageUrl(category.imageUrl);
 
   // `??` short-circuits, so this call only happens for a category that has
   // no image of its own.
   const ogImage =
     categoryOgImage ??
-    toDisplayImageUrl(
-      (await safeGet("/api/v1/settings/site")).data?.seoImageUrl,
-      IMG.banner,
-    );
+    toOgImageUrl((await safeGet("/api/v1/settings/site")).data?.seoImageUrl);
 
   return {
     title: category.seo.title,

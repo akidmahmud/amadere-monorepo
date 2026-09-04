@@ -13,6 +13,7 @@ import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { friendlyErrorMessage } from "@/lib/friendly-error";
 import { useToast } from "@/components/ToastProvider";
+import { STICKY_FORM_HEADER } from "@/lib/sticky-form-header";
 
 // Fixed key, not per-product (there's no id yet) — only one "add product"
 // tab is realistically open at a time, so this is an acceptable tradeoff
@@ -78,7 +79,7 @@ export default function NewProductPage() {
       }}
       className="flex flex-col gap-4"
     >
-      <div className="flex items-center justify-between">
+      <div className={STICKY_FORM_HEADER}>
         <h1 className="font-ui text-lg font-extrabold text-text">Add Product</h1>
         <div className="flex gap-3">
           <Link href="/products">

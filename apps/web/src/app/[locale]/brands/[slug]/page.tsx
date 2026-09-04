@@ -5,7 +5,7 @@ import { SectionHeading } from "@amader/ui";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
-import { toDisplayImageUrl, IMG } from "@/lib/media";
+import { toDisplayImageUrl, toOgImageUrl, IMG } from "@/lib/media";
 import { redirectIfMapped } from "@/lib/redirects";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { components } from "@/lib/api/schema";
@@ -62,7 +62,7 @@ export async function generateMetadata({
       url: path,
       title: brand.seo.ogTitle,
       description: brand.seo.ogDescription ?? undefined,
-      images: brand.seo.ogImageUrl ? [brand.seo.ogImageUrl] : undefined,
+      images: toOgImageUrl(brand.seo.ogImageUrl) ? [toOgImageUrl(brand.seo.ogImageUrl)!] : undefined,
     },
   };
 }
