@@ -6,6 +6,7 @@ import { AdminShipmentsController } from './admin-shipments.controller';
 import { AdminCourierSettingsController } from './admin-courier-settings.controller';
 import { CourierWebhooksController } from './courier-webhooks.controller';
 import { ShipmentsService } from './shipments.service';
+import { SettlementSyncService } from './settlement-sync.service';
 import { ShippingChargeCalculator } from './shipping-charge.calculator';
 import { CourierSettingsService } from './courier-settings.service';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
@@ -19,6 +20,7 @@ import { RedxCourierProvider } from './providers/redx-courier.provider';
   imports: [OrdersModule, OrderEmailsModule, AccountsModule],
   controllers: [AdminShipmentsController, AdminCourierSettingsController, CourierWebhooksController],
   providers: [
+    SettlementSyncService,
     ShipmentsService,
     ShippingChargeCalculator,
     CourierSettingsService,

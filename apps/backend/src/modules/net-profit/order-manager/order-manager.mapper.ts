@@ -30,7 +30,18 @@ export class OrderManagerRowDto {
   origin!: string;
   /** COD the courier collects, minus goods (sub-total less discount). Null
    *  until the order is consigned and a COD figure exists. */
-  courierCharge!: string | null;
+  /** Delivery the CUSTOMER paid: collected minus goods. Uses the courier's
+   *  settled figure once their payout confirms it.
+   *
+   *  Renamed from `courierCharge`, which was actively misleading: it never
+   *  measured what the courier charges us. */
+  deliveryCollected!: string | null;
+  /** True when the figure above came from the courier's payout rather than
+   *  from what we asked them to collect. */
+  deliverySettled!: boolean;
+  /** What the COURIER charges US, priced off the Shipping Rules card. */
+  courierCost!: string | null;
+  settledCodAmount!: string | null;
   /** The raw COD figure the courier is collecting, for context in the cell. */
   codAmount!: string | null;
   paymentProvider!: PaymentProvider | null;

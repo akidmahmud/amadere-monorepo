@@ -37,6 +37,7 @@ import {
 import { useFraudSettings, useUpdateFraudSettings } from "@/hooks/useFraud";
 import { useHourlySlot, useNetProfitOverviewRange, useSetHourlySlot } from "@/hooks/useNetProfitOverview";
 import { useTopProducts } from "@/hooks/useSalesReport";
+import { ProductPnlTab } from "@/components/net-profit/ProductPnlTab";
 
 const GREEN = "#2e7d43";
 const GREEN_HEADER = "#2f7d33";
@@ -867,7 +868,7 @@ function SettingsTab() {
 }
 
 export default function SalesReportPage() {
-  const [section, setSection] = useState<"dashboard" | "products" | "settings">("dashboard");
+  const [section, setSection] = useState<"dashboard" | "products" | "pnl" | "settings">("dashboard");
 
   return (
     <div className="flex flex-col gap-[18px]">
@@ -889,6 +890,9 @@ export default function SalesReportPage() {
           <HeaderButton active={section === "products"} onClick={() => setSection("products")}>
             Products
           </HeaderButton>
+          <HeaderButton active={section === "pnl"} onClick={() => setSection("pnl")}>
+            P&amp;L
+          </HeaderButton>
           <HeaderButton active={section === "settings"} onClick={() => setSection("settings")}>
             Settings
           </HeaderButton>
@@ -897,6 +901,7 @@ export default function SalesReportPage() {
 
       {section === "dashboard" && <DashboardTab />}
       {section === "products" && <ProductsTab />}
+      {section === "pnl" && <ProductPnlTab />}
       {section === "settings" && <SettingsTab />}
     </div>
   );

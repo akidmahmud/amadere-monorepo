@@ -32,7 +32,13 @@ export interface OrderManagerRow {
   thumbnailUrl: string | null;
   origin: string;
   /** COD the courier collects minus goods paid — null until consigned. */
-  courierCharge: string | null;
+  /** Delivery the CUSTOMER paid (collected minus goods), from the courier's
+   *  settled figure once their payout confirms it. */
+  deliveryCollected: string | null;
+  deliverySettled: boolean;
+  /** What the COURIER bills us, priced off the Shipping Rules card. */
+  courierCost: string | null;
+  settledCodAmount: string | null;
   codAmount: string | null;
   paymentProvider: string | null;
   paymentStatus: string | null;

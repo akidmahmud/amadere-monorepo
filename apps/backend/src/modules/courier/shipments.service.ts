@@ -15,7 +15,7 @@ import {
 } from '../../common/pagination.util';
 import { OrdersService } from '../orders/orders.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
-import { BalanceOutcome, CourierProvider } from './courier-provider.interface';
+import { BalanceOutcome, CourierProvider, PaymentsOutcome } from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
 import { PathaoCourierProvider } from './providers/pathao-courier.provider';
 import { RedxCourierProvider } from './providers/redx-courier.provider';
@@ -478,6 +478,19 @@ export class ShipmentsService {
     const impl = this.providers[provider];
     if (!impl.getBalance) return { unavailable: true };
     return impl.getBalance();
+  }
+
+  // Settlement history, straight through as the courier returned it. Used to
+  // reconcile what a delivery actually cost us against the cod_amount we
+  // asked the courier to collect — those are known to disagree.
+  async getPayments(
+    provider: CourierProviderName,
+    query?: { page?: number; id?: string },
+  ): Promise<PaymentsOutcome> {
+    const impl = this.providers[provider];
+    if (!impl.getPayments)
+      return { unavailable: true, reason: `${provider} has no settlement API` };
+    return impl.getPayments(query);
   }
 
   // Same succeeded/failed error-collecting shape as Order Manager's bulk

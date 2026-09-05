@@ -90,7 +90,8 @@ export const ORDER_COLUMNS = [
   // Courier Send and Courier Status, and naming the party says whose fee this
   // is. Sits right before Invoice — it is the number you check against the
   // courier's own statement before printing anything.
-  { key: "courierCharge", label: "Courier Charge" },
+  { key: "deliveryCollected", label: "Delivery Collected" },
+  { key: "courierCost", label: "Courier Cost" },
   { key: "invoice", label: "Invoice" },
   { key: "risk", label: "Risk" },
   { key: "courierSend", label: "Courier Send" },
@@ -961,19 +962,46 @@ function OrderRow({
           <SourceCell order={o} />
         </td>
     ) : null,
-    courierCharge: (
+    // What the CUSTOMER paid for delivery. Not what the courier costs us —
+    // that is the next column, and the two are routinely far apart because a
+    // free-delivery order still gets billed by the courier.
+    deliveryCollected: (
       <td className={td} style={tdStyle}>
-        {o.courierCharge === null ? (
+        {o.deliveryCollected === null ? (
           // Not consigned yet, so the courier has named no COD figure. A dash
           // rather than 0 — "not known" and "free delivery" are different.
           <span style={{ color: FAINT }}>—</span>
         ) : (
           <span
             className="num font-bold"
-            title={`Courier collects ৳${o.codAmount} COD, of which this is the delivery portion — the rest is goods`}
-            style={{ color: Number(o.courierCharge) < 0 ? "#d0555f" : TEXT }}
+            title={
+              o.deliverySettled
+                ? `Courier settled ৳${o.settledCodAmount} COD${
+                    o.codAmount !== o.settledCodAmount ? ` (we asked for ৳${o.codAmount})` : ""
+                  } — this is the delivery portion, the rest is goods`
+                : `Courier is collecting ৳${o.codAmount} COD, of which this is the delivery portion. Not yet confirmed by a payout.`
+            }
+            style={{ color: Number(o.deliveryCollected) < 0 ? "#d0555f" : TEXT }}
           >
-            ৳{Number(o.courierCharge).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
+            ৳{Number(o.deliveryCollected).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
+            {/* A settled figure is a fact; an unsettled one is still a
+                request that the courier may not honour in full. */}
+            {!o.deliverySettled && <span style={{ color: FAINT }} title="Not yet settled"> ~</span>}
+          </span>
+        )}
+      </td>
+    ),
+    courierCost: (
+      <td className={td} style={tdStyle}>
+        {o.courierCost === null ? (
+          <span style={{ color: FAINT }}>—</span>
+        ) : (
+          <span
+            className="num"
+            title="What the courier bills us for this parcel, from Shipping Rules (district + weight)"
+            style={{ color: TEXT }}
+          >
+            ৳{Number(o.courierCost).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
           </span>
         )}
       </td>

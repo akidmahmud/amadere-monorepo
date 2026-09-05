@@ -21,12 +21,13 @@ import { AuditLogInterceptor } from '../../common/audit-log/audit-log.intercepto
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { ShipmentsService } from './shipments.service';
+import { SettlementSyncService, SettlementSyncResult } from './settlement-sync.service';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
 import { DispatchBulkShipmentDto } from './dto/dispatch-bulk-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { ShipmentDto, ShipmentPerformanceDto, ShipmentQueueRowDto } from './shipments.mapper';
-import { BalanceOutcome } from './courier-provider.interface';
+import { BalanceOutcome, PaymentsOutcome } from './courier-provider.interface';
 
 @ApiTags('admin/shipments')
 @ApiBearerAuth()
@@ -34,7 +35,10 @@ import { BalanceOutcome } from './courier-provider.interface';
 @UseInterceptors(AuditLogInterceptor)
 @Controller('admin/shipments')
 export class AdminShipmentsController {
-  constructor(private readonly shipments: ShipmentsService) {}
+  constructor(
+    private readonly shipments: ShipmentsService,
+    private readonly settlements: SettlementSyncService,
+  ) {}
 
   @Get()
   @RequirePermission('shipment.view')
@@ -77,6 +81,47 @@ export class AdminShipmentsController {
   @ApiQuery({ name: 'provider', enum: CourierProviderName })
   balance(@Query('provider') provider: CourierProviderName): Promise<BalanceOutcome> {
     return this.shipments.getBalance(provider);
+  }
+
+  // Raw settlement payload from the courier. Read-only and deliberately
+  // untyped: this exists first to LEARN the payload shape (Steadfast's
+  // /payments is undocumented), and only then to reconcile courier charges
+  // against it. Declared before ':id' so 'payments' is not swallowed by the
+  // numeric-id route below.
+  @Get('payments')
+  @RequirePermission('shipment.view')
+  @ApiQuery({ name: 'provider', enum: CourierProviderName })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'paymentId', required: false })
+  payments(
+    @Query('provider') provider: CourierProviderName,
+    @Query('page') page?: string,
+    @Query('paymentId') paymentId?: string,
+  ): Promise<PaymentsOutcome> {
+    return this.shipments.getPayments(provider, {
+      page: page ? Number(page) : undefined,
+      id: paymentId,
+    });
+  }
+
+  // Pull what the courier actually collected onto our shipment rows. POST
+  // because it writes, and manual because there is no reason to hammer a
+  // third party's API on a timer for numbers that only change when a payout
+  // lands (roughly daily).
+  @Post('settlements/sync')
+  @RequirePermission('shipment.update')
+  @ApiQuery({ name: 'provider', enum: CourierProviderName })
+  @ApiQuery({ name: 'maxPages', required: false })
+  @ApiQuery({ name: 'full', required: false })
+  syncSettlements(
+    @Query('provider') provider: CourierProviderName,
+    @Query('maxPages') maxPages?: string,
+    @Query('full') full?: string,
+  ): Promise<SettlementSyncResult> {
+    return this.settlements.sync(provider ?? 'STEADFAST', {
+      maxPages: maxPages ? Number(maxPages) : undefined,
+      full: full === 'true',
+    });
   }
 
   @Get(':id')

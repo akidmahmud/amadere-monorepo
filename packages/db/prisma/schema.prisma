@@ -1654,12 +1654,25 @@ model Shipment {
 
   codSettlementId Int? @map("cod_settlement_id")
 
+  // What the courier actually collected and when they paid it out, synced
+  // read-only from their settlement API. `codAmount` above is only what we
+  // ASKED them to collect — the two disagree in practice.
+  //
+  // Not the same thing as codSettlementId: that points at a CodSettlement,
+  // an accounting record staff create deliberately. These are the courier's
+  // raw reported facts.
+  settledCodAmount    Decimal?  @map("settled_cod_amount") @db.Decimal(10, 2)
+  settlementReference String?   @map("settlement_reference")
+  settlementStatus    String?   @map("settlement_status")
+  settledAt           DateTime? @map("settled_at")
+
   order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   events        ShipmentEvent[]
   codSettlement CodSettlement?  @relation(fields: [codSettlementId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([orderId, createdAt])
+  @@index([consignmentId])
   @@map("shipments")
 }
 

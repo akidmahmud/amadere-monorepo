@@ -13,6 +13,8 @@ import { FB_PAID_SOURCES, PaginatedResult, phoneLookupCandidates } from '@amader
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { OrdersService } from '../../orders/orders.service';
+import { quoteShippingRule } from '@amader/shared';
+import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
 import { ShipmentsService } from '../../courier/shipments.service';
 import { BlockerService } from '../blocker/blocker.service';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
@@ -46,8 +48,10 @@ interface RawOrderManagerRow {
   status: OrderStatus;
   channel: OrderChannel;
   cod_amount: Prisma.Decimal | null;
+  settled_cod_amount: Prisma.Decimal | null;
   sub_total: Prisma.Decimal;
   discount_amount: Prisma.Decimal;
+  parcel_weight_kg: Prisma.Decimal | null;
   total_amount: Prisma.Decimal;
   created_at: Date;
   recipient_name: string | null;
@@ -96,6 +100,7 @@ export class OrderManagerService {
     private readonly orders: OrdersService,
     private readonly shipments: ShipmentsService,
     private readonly blocker: BlockerService,
+    private readonly shippingRules: ShippingRulesService,
   ) {}
 
   // Shared by list() and statusCounts() — every filter except `status`
@@ -201,11 +206,20 @@ export class OrderManagerService {
              s.provider AS courier_provider,
              s.id AS shipment_id,
              s.status AS courier_status,
-             -- What the courier is collecting from the customer, and what of
-             -- that is goods. The Delivery Charge column is the difference.
+             -- Two different numbers, deliberately both carried:
+             --   cod_amount         what we ASKED the courier to collect
+             --   settled_cod_amount what they ACTUALLY collected, once their
+             --                      payout lands (SettlementSyncService)
+             -- Delivery Collected is the settled figure where we have it,
+             -- minus what the customer paid for goods.
              s.cod_amount AS cod_amount,
+             s.settled_cod_amount AS settled_cod_amount,
              o.sub_total AS sub_total,
              o.discount_amount AS discount_amount,
+             -- Billable parcel weight, for pricing the courier's own charge
+             -- off the Shipping Rules card. Same weightOverride ->
+             -- shippableWeight precedence dispatch uses.
+             wt.kg AS parcel_weight_kg,
              ca.attempts AS courier_attempts,
              COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level,
              oi.items AS items
@@ -217,8 +231,16 @@ export class OrderManagerService {
         SELECT provider, status FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) p ON true
       LEFT JOIN LATERAL (
-        SELECT id, provider, status, cod_amount FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
+        SELECT id, provider, status, cod_amount, settled_cod_amount
+        FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) s ON true
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(COALESCE(pv.weight_override, pr.shippable_weight) * oi2.quantity), 0) AS kg
+        FROM order_items oi2
+        LEFT JOIN product_variants pv ON pv.id = oi2.variant_id
+        LEFT JOIN products pr ON pr.id = COALESCE(pv.product_id, oi2.product_id)
+        WHERE oi2.order_id = o.id
+      ) wt ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(json_build_object('provider', provider, 'status', status, 'shipmentId', id)) AS attempts
         FROM (
@@ -272,6 +294,10 @@ export class OrderManagerService {
       ${where}
     `;
 
+    // One config read for the whole page — the rate card is the same for
+    // every row, and quoting is a pure function once it is in hand.
+    const rulesConfig = await this.shippingRules.getConfig();
+
     const items: OrderManagerRowDto[] = rows.map((r) => ({
       id: r.id,
       orderNumber: r.order_number,
@@ -304,11 +330,34 @@ export class OrderManagerService {
       // null when the order has no shipment yet (nothing has been consigned,
       // so there is no COD figure), which the column renders as a dash rather
       // than a misleading 0.
-      courierCharge:
-        r.cod_amount === null
+      //
+      // Prefers what the courier ACTUALLY collected over what we asked for.
+      // Those differ in practice, and the settled figure is the only one that
+      // reflects money that really moved.
+      deliveryCollected: (() => {
+        const collected = r.settled_cod_amount ?? r.cod_amount;
+        return collected === null
           ? null
-          : r.cod_amount.minus(r.sub_total).plus(r.discount_amount).toString(),
+          : collected.minus(r.sub_total).plus(r.discount_amount).toString();
+      })(),
+      // True once the courier's payout has confirmed the figure above, so the
+      // column can distinguish "this is what they collected" from "this is
+      // what we asked for and nobody has confirmed yet".
+      deliverySettled: r.settled_cod_amount !== null,
+      // What the COURIER charges US for this parcel, priced off the Shipping
+      // Rules rate card. Deliberately not derived from the COD math above:
+      // that only ever recovers what the CUSTOMER was charged for delivery,
+      // which is 0 on every free-delivery order while the courier still bills
+      // us — measured at ৳20/parcel against a real ৳157.
+      courierCost: (() => {
+        const quote = quoteShippingRule(rulesConfig, {
+          district: r.district,
+          weightKg: r.parcel_weight_kg ? r.parcel_weight_kg.toNumber() : 0,
+        });
+        return quote ? quote.amount.toString() : null;
+      })(),
       codAmount: r.cod_amount?.toString() ?? null,
+      settledCodAmount: r.settled_cod_amount?.toString() ?? null,
       paymentProvider: r.payment_provider,
       paymentStatus: r.payment_status,
       courierProvider: r.courier_provider,

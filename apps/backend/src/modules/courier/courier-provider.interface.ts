@@ -83,4 +83,18 @@ export interface CourierProvider {
   // Current COD-collections account balance held by the courier — same
   // "optional, presence-checked" pattern as fraudCheck above.
   getBalance?(): Promise<BalanceOutcome>;
+  // Settlement history: what the courier actually collected and paid out,
+  // per payout, with the consignments each payout covers. This is the only
+  // source for what a delivery REALLY cost us — the cod_amount on our own
+  // shipment row is just what we asked them to collect, and the two are
+  // known to disagree (see bug-fix-and-feature-edit.md, Courier Charge).
+  //
+  // Returns the provider's raw payload: every courier shapes settlements
+  // differently, and pinning a common type before we have seen real data
+  // from more than one of them would be inventing an abstraction.
+  getPayments?(query?: { page?: number; id?: string }): Promise<PaymentsOutcome>;
 }
+
+export type PaymentsOutcome =
+  | { unavailable?: false; raw: unknown }
+  | { unavailable: true; reason: string };

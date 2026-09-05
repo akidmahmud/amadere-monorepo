@@ -1150,3 +1150,209 @@ minimal diffs (`5 +`, `8 +`), not whole-file rewrites. No pollution.
   a new commit deploys, an immediate re-run is silent, a held lock skips, a
   freed lock deploys, and hand-edits on the server are discarded by
   `reset --hard`.
+
+---
+
+## Courier Charge from Steadfast's actual settlement (in progress)
+
+Requested: derive the courier charge from what Steadfast **actually collected**
+after delivery, not from the COD figure we asked them to collect.
+
+### The discount math was already right
+
+Worth recording, because it looked like a change was needed and it is not.
+
+Requested: "total collected 1060, product cost 1000 → charge 60; and with a ৳10
+discount, still subtract the **main** ৳1000, not the discounted price."
+
+Delivery = collected − what the customer was actually charged for goods
+= `cod − (subtotal − discount)`, which is algebraically identical to the shipped
+`cod − subtotal + discount`. A ৳1000 order with a ৳10 discount collects ৳1050,
+and `1050 − 1000 + 10 = 60`. The discount is added back, so the full undiscounted
+subtotal is what gets subtracted — exactly as asked. No change made.
+
+### The real gap: our COD figure is not the settled figure
+
+`courierCharge` currently reads `shipments.cod_amount` — what we **asked**
+Steadfast to collect. Three of eight consigned orders already disagree with
+their own shipping amount (logged above). The authoritative number is what
+Steadfast actually collected and paid out.
+
+### Finding the endpoint
+
+Steadfast's public docs list no settlement API. Found it by probing: made-up
+paths (`/payment/list`, `/get_payment_list`, `/settlement/list`, `/invoice/list`)
+all return a 404 HTML page, while **`/payments` and `/payments/list` return a
+JSON 401** — the route exists, only auth failed.
+
+**Warning recorded in the code for whoever probes this next:** a failed auth
+returns `{"status":401,...,"attempts_left":N}` and **that counter decrements**.
+Three attempts were burned (9 → 7) before this was spotted. Never retry-loop
+against it and never probe with credentials you are unsure of — locking this out
+would stop live dispatch.
+
+The `.env` `STEADFAST_API_KEY`/`SECRET_KEY` are stale and return 401. The live
+credentials live in the encrypted credential store, which is what the code
+prefers (`.env` is only a fallback). Confirmed working without reading them, via
+production's own balance endpoint: `{"balance":812}`.
+
+### Built so far
+
+- `CourierProvider.getPayments?()` — optional, presence-checked, same pattern as
+  `fraudCheck`/`getBalance`. Returns the provider's **raw** payload: couriers
+  shape settlements differently, and fixing a common type before seeing real
+  data from more than one would be inventing an abstraction.
+- `SteadfastCourierProvider.getPayments()` against `/payments` and
+  `/payments/{id}`. Never throws — same contract as the other optional calls.
+- `GET /admin/shipments/payments?provider=STEADFAST[&page=&paymentId=]`,
+  read-only, `shipment.view`. Declared **before** the `:id` route so `payments`
+  is not swallowed by the numeric-id matcher.
+
+Deliberately stops here. The next step is to map the settled amount onto
+shipments and switch `courierCharge` to prefer it — and writing that parsing
+before seeing one real response would be guessing at field names.
+
+Backend typechecks clean; courier specs pass (3/3).
+
+---
+
+## Courier Charge, part 2: settled COD + a real cost column
+
+### What Steadfast's settlement API actually gives
+
+Found by probing (`/payments` and `/payments/list` return JSON 401 while every
+invented path returns a 404 HTML page). Live shape, verified:
+
+- **Per payout**: `payment_id`, `amount` (total COD collected), `due_bills`
+  (the delivery charges), `charges` (a small payout/bank fee), `total` (net
+  paid). `amount − due_bills − charges = total`, exactly.
+- **Per consignment**: `consignment_id`, `cod_amount` — **what they actually
+  collected** — plus `status`. There is **no per-consignment delivery charge**.
+
+Both checked against a real payout: `sum(consignment.cod_amount) == amount`
+(43425), and `50250 − 8025 − 423 = 41802`.
+
+### The formula was right; what it measures was not
+
+The requested math (`collected − undiscounted subtotal`) is algebraically
+identical to what already shipped, and the settled data confirms it: 20 of 21
+orders had Steadfast collecting exactly what we asked.
+
+But it measures **the delivery fee the customer paid**, not what the courier
+charges us — ৳20/parcel against a real ৳157/parcel, because nine of those 21
+orders charged the customer ৳0 shipping while Steadfast still billed ~৳130. And
+`due_bills` cannot be divided down: that payout mixed 21 of our orders with 27
+shipped outside this system on the same courier account.
+
+So the column was split in two, as agreed:
+
+- **Delivery Collected** — renamed from the misleading "Courier Charge". Same
+  math, but preferring `settled_cod_amount` over `cod_amount`. A `~` marks a
+  figure not yet confirmed by a payout.
+- **Courier Cost** — priced off the Shipping Rules card (district + weight).
+
+### Correction: the product weights were NOT broken
+
+Earlier this log said weights were bad enough to block the rate card. Wrong, and
+worth recording why: this is a **grocery business selling by the kilo** (the
+company's own P&L sheet has rows like 35 kg of atta and 0.25 kg of jira gura),
+so 10–11 kg parcels are normal, not corrupt.
+
+Exactly **one** product is wrong: **Moringa Powder (id 20)** —
+`shippableWeight = 1000` (should be 1) and variant *"Moringa Powder 250 gram"*
+`weightOverride = 1000` (should be 0.25). Its 1kg and 500gm siblings are
+correct.
+
+With that one row excluded the rate card lands at **৳170.5/parcel against
+Steadfast's actual ৳156.7** — within ~9%, and good enough to be the Courier Cost
+column. Not fixed here: it is production data and was not asked for.
+
+### Built
+
+- Migration `20260905140000_shipment_settlement`: `settled_cod_amount`,
+  `settlement_reference`, `settlement_status`, `settled_at` on `shipments`, plus
+  a `consignment_id` index the sync needs. Deliberately separate from
+  `cod_settlement_id` — that points at a `CodSettlement`, an accounting record
+  with a party and cash account that staff create on purpose. **Nothing here
+  posts to the ledger.**
+- `SettlementSyncService` — walks payouts newest-first (doubling probe + binary
+  search for the last page, since the API exposes no page count), stops once a
+  whole page changes nothing, and reports under-collection rather than absorbing
+  it. `POST /admin/shipments/settlements/sync`.
+- Order Manager carries `settled_cod_amount` and a parcel-weight subquery; the
+  rate card is read once per page and applied as a pure function per row.
+
+### Verified
+
+`settlement-sync.service.spec.ts` 4/4 against the real payout shape: writes the
+collected figure, reports the ৳100 shortfall, skips rows already correct,
+degrades cleanly for a courier with no settlement API.
+
+Live: sync ran clean (11 payouts, 228 parcels, 5.9s) but matched 0 — the **local
+dev DB is stale** (consignments 277–285xxxxxx vs current 288–292xxxxxx). On
+production 21 of 48 matched by hand.
+
+Both columns confirmed against real orders, and the gap is the point:
+
+| order | Delivery Collected | Courier Cost |
+|---|---|---|
+| ORD-20260731-FDD4F4 | ৳0 | ৳105 |
+| ORD-20260731-30DBB8 | ৳60 | ৳105 |
+| AEL-4241 | ৳0 | ৳295 |
+
+---
+
+## Sales Report: per-source product P&L (the spreadsheet, in the app)
+
+Reproduces the P&L the business keeps by hand ("Amader eBuy Limited — Aug 3,
+2026"): product rows grouped by source, a Total per source, one Grand total.
+
+**Quantities are in kilograms, not units** — the sheet has 5.5 and 0.25 — so a
+line's quantity is multiplied by its variant weight, and cost is a rate per kg,
+which is exactly what `Product.costPriceUnit` already means. `PER_G`/`PER_100G`
+are normalised to a per-kg rate.
+
+Arithmetic verified against the supplied sheet before writing any code:
+`70 × 35 = 2450` product cost; `4205 − 2450 = 1755` profit;
+`(11325 + 17826 + 3322) − 5780 delivery = 26693`; `26693 − 21000 = 5693` net.
+
+### Decisions
+
+- **Source mapping**: FACEBOOK + WHATSAPP + PHONE → "FB, WA & Call"; the
+  wholesale module → "wholesale"; WEBSITE + APP → "website"; everything else
+  falls into "other" rather than being silently dropped from the grand total.
+- **Delivery** is what the courier bills us (Shipping Rules), not what the
+  customer paid — a free-delivery order still costs us a delivery. Deducted once
+  at the grand total, the same place the sheet deducts it.
+- **`avg value`**: the sheet's own subtotal for this column SUMS the per-row
+  averages, which is a pivot artefact and means nothing. The weighted average is
+  used instead (30180 ÷ 128.6 = 234.7, not 11314.08).
+- **On screen and in CSV, identical columns in identical order** — an export
+  that differs from what is on screen is a second, unverifiable report.
+
+### Fixed while building
+
+- `order_items` has no `line_total`; revenue is `unit_price × quantity`.
+- Date labels used `toISOString()`, which in +06 reports the **previous day** —
+  a September report labelled `2026-08-31`. Now formatted from local parts, and
+  the `to` label names the last day actually included.
+- A bare `to` date parses to midnight, which would drop that whole day's orders.
+  The window is half-open `[from, to+1day)`.
+- CSV gets a UTF-8 BOM — without it Excel renders Bangla product names as
+  mojibake.
+
+### Verified
+
+`product-pnl.csv.spec.ts` 10/10 — Saturday week start (the Bangladeshi working
+week), whole-`to`-day inclusion, backwards ranges rejected, the spreadsheet
+header and column order, source labelled on its block's first row only, and a
+product name containing a comma staying quoted so columns do not shift.
+
+Live: `GET /admin/net-profit/reports/sales/pnl` returns all four source blocks;
+CSV downloads with the sheet's header and correct totals
+(`1350 + 14556 − 380 = 15526`). New **P&L** tab under Reports & Profit
+Analytics with Today / This week / This month / Custom, screenshotted and
+confirmed rendering.
+
+Backend and admin both typecheck; 22/22 specs pass across sales-report, courier
+and shipping-rules.

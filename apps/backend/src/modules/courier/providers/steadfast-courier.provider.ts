@@ -8,6 +8,7 @@ import {
   CreateConsignmentInput,
   CreateConsignmentResult,
   FraudCheckOutcome,
+  PaymentsOutcome,
   TrackResult,
 } from '../courier-provider.interface';
 import { CourierSettingsService } from '../courier-settings.service';
@@ -192,6 +193,37 @@ export class SteadfastCourierProvider implements CourierProvider {
     } catch (err) {
       this.logger.warn(`Steadfast get_balance failed: ${err instanceof Error ? err.message : String(err)}`);
       return { unavailable: true };
+    }
+  }
+
+  // Settlement/payout history — what Steadfast actually collected and paid
+  // out, and the consignments each payout covers.
+  //
+  // `/payments` is not in Steadfast's public docs. It was found by probing:
+  // every made-up path (/payment/list, /get_payment_list, /settlement/list)
+  // returns a 404 HTML page, while /payments and /payments/list return a
+  // JSON 401 — i.e. the route exists and only auth failed.
+  //
+  // NOTE for anyone probing this API again: a failed auth returns
+  // {"status":401,...,"attempts_left":N} and that counter DECREMENTS. Do not
+  // sit in a retry loop against it, and do not probe with credentials you
+  // are not sure about — locking this out would stop live dispatch.
+  async getPayments(query?: { page?: number; id?: string }): Promise<PaymentsOutcome> {
+    const path = query?.id
+      ? `/payments/${encodeURIComponent(query.id)}`
+      : `/payments${query?.page ? `?page=${query.page}` : ''}`;
+    try {
+      const response = await this.request<unknown>(path, 'GET');
+      if (response.httpStatus !== 200) {
+        const reason = `HTTP ${response.httpStatus}`;
+        this.logger.warn(`Steadfast ${path} non-200: ${reason}`);
+        return { unavailable: true, reason };
+      }
+      return { raw: response.body };
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Steadfast ${path} failed: ${reason}`);
+      return { unavailable: true, reason };
     }
   }
 
