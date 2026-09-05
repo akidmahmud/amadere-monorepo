@@ -1,9 +1,26 @@
-name: Deploy to VPS
+name: Deploy to VPS (manual fallback)
 
+# Deploys no longer run from here. Hostinger's network-level abuse filtering
+# blackholes inbound SSH from datacenter/cloud ASNs — which is what
+# GitHub-hosted runners are. Port 22 went first, we moved to 2222, and on
+# 2026-09-05 that was blackholed too ("dial tcp ***:2222: i/o timeout", a
+# silent drop rather than a refusal — sshd was healthy and both ports were
+# reachable from an ordinary connection throughout). A third port would only
+# buy time until the next sweep.
+#
+# The VPS now PULLS instead: amadere-deploy.timer checks origin/master every
+# minute and runs deploy/poll-deploy.sh when it moves. No inbound connection,
+# so no port and no source-ASN filter can break it. See
+# deploy/install-poll-deploy.sh.
+#
+#   watch a deploy : journalctl -u amadere-deploy -f
+#   deploy now     : sudo systemctl start amadere-deploy
+#
+# This workflow is kept, but manual-only: on `push` it would fail on every
+# single commit, and a permanently red master hides real failures. Run it by
+# hand if the network path to 2222 ever comes back.
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
 
 jobs:
   deploy:

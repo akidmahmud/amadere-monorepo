@@ -1,0 +1,5 @@
+# Shell scripts are executed directly by bash on the Linux VPS, where a CRLF
+# line ending is a hard syntax error ("$'': command not found"). Pin them so
+# a checkout on a machine with core.autocrlf=true can never produce a deploy
+# script the server refuses to run.
+*.sh text eol=lf

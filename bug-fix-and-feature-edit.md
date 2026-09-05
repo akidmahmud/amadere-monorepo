@@ -1043,3 +1043,103 @@ Live against the running backend:
 
 Nine `vat.service.spec.ts` failures are pre-existing and unrelated — identical
 with these changes stashed.
+
+---
+
+## Deploy pipeline: CI can no longer reach the VPS — switched to a VPS-side pull
+
+The `shipping rules` deploy failed. It was **not a code failure** — the job died
+before it ran a single line:
+
+```
+2026/09/05 07:30:27 dial tcp ***:2222: i/o timeout
+Error: Process completed with exit code 1.
+```
+
+That is the SSH connect in `appleboy/ssh-action`, before `git fetch`, before
+`pnpm build`. Confirmed by prod still answering **404** on
+`/api/v1/admin/shipping-rules` (localhost answers 401) — production never moved
+off `97336d4`.
+
+### The diagnosis
+
+The decisive detail is `i/o timeout`, **not** `connection refused`:
+
+- *refused* = the port is reachable and nothing is listening → sshd problem.
+- *timeout* = packets are silently dropped → firewall/network blackhole.
+
+And from an ordinary connection, ports 22, 2222, 443 and 80 on the VPS are all
+open, with the site serving normally on all three hostnames. So sshd is healthy
+and the box is fine — the drop is specific to the runner's source network.
+
+This is the exact failure the workflow's own comment documents for port 22,
+recurring one port later: **Hostinger's abuse filtering blackholes inbound SSH
+from datacenter/cloud ASNs, which is what GitHub-hosted runners are.** Port 22
+went first, CI moved to 2222, and now 2222 is caught too. A third port only buys
+time until the next sweep.
+
+### The fix: the VPS pulls, CI stops pushing
+
+`deploy/poll-deploy.sh` + `deploy/install-poll-deploy.sh`. A systemd timer
+checks `origin/master` once a minute and runs the same deploy steps when it
+moves. **No inbound connection at all**, so no port and no source-ASN filter can
+break it again.
+
+`.github/workflows/deploy.yml` is kept but changed to `workflow_dispatch` only.
+Left on `push` it would fail on every commit, and a permanently red master hides
+real failures.
+
+Install once, from a normal login user (not root):
+
+```
+cd /var/www/amadere-monorepo && sudo -E bash deploy/install-poll-deploy.sh
+```
+
+    watch a deploy : journalctl -u amadere-deploy -f
+    deploy now     : sudo systemctl start amadere-deploy
+    pause deploys  : sudo systemctl disable --now amadere-deploy.timer
+
+Trade-off accepted: up to ~60s delay, and deploy logs move from the Actions tab
+to `journalctl`.
+
+### Things that had to be got right
+
+- **`flock`, and a guard around it.** The timer fires every minute; a build
+  takes several. Overlap is the normal case. Ticks that find the lock held exit
+  immediately rather than queueing. The guard exists because `if ! flock` cannot
+  distinguish "lock held" (exit 1) from "flock not installed" (exit 127) — the
+  latter would report a phantom running deploy forever and silently ship
+  nothing. Found while testing.
+- **Silent when there is nothing to do**, so `journalctl -u amadere-deploy` is a
+  log of real deploys and not 1,440 "up to date" lines a day.
+- **PATH.** The single most common way a working script dies once it is moved
+  into a systemd unit: systemd starts services with a near-empty PATH, so
+  pnpm/pm2/node under nvm/corepack/fnm are invisible. The installer resolves all
+  three against the real user's login shell and bakes them into
+  `/etc/amadere-deploy.env`.
+- **Not root.** The installer refuses to run as root directly. A root deploy
+  leaves root-owned files in `node_modules`/`.next` that the next non-root build
+  cannot overwrite, and `pm2 restart` would talk to the wrong daemon.
+- **The `.next` retry is preserved verbatim** — never delete `.next` before the
+  build, only after a build failure, for the reasons the old workflow spells out.
+
+### CRLF — a real bug, caught before it shipped
+
+The scripts were written on Windows with CRLF endings, which on Linux is a hard
+syntax error (`$'\r': command not found`). Added `.gitattributes` with
+`*.sh text eol=lf` so it cannot regress on any machine regardless of that
+machine's `core.autocrlf`.
+
+Worth recording: the same Windows text-mode writes touched several `.ts` files
+earlier, but `core.autocrlf=true` normalised them on commit — `c245024` records
+minimal diffs (`5 +`, `8 +`), not whole-file rewrites. No pollution.
+
+### Verified
+
+- Local full production build: `pnpm build` → **6/6 tasks successful, exit 0**.
+  The shipping-rules code was never the problem.
+- `deploy/poll-deploy.test.sh` runs the real script against a scratch git repo
+  with pnpm/pm2 stubbed — **6/6 scenarios pass on Linux**: up-to-date is silent,
+  a new commit deploys, an immediate re-run is silent, a held lock skips, a
+  freed lock deploys, and hand-edits on the server are discarded by
+  `reset --hard`.
