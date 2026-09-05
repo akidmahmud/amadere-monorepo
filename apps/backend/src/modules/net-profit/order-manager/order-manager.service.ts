@@ -13,7 +13,7 @@ import { FB_PAID_SOURCES, PaginatedResult, phoneLookupCandidates } from '@amader
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { OrdersService } from '../../orders/orders.service';
-import { quoteShippingRule } from '@amader/shared';
+import { chargeableWeightKg, quoteShippingRule } from '@amader/shared';
 import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
 import { ShipmentsService } from '../../courier/shipments.service';
 import { BlockerService } from '../blocker/blocker.service';
@@ -349,10 +349,12 @@ export class OrderManagerService {
       // that only ever recovers what the CUSTOMER was charged for delivery,
       // which is 0 on every free-delivery order while the courier still bills
       // us — measured at ৳20/parcel against a real ৳157.
-      courierCost: (() => {
+      courierCharge: (() => {
         const quote = quoteShippingRule(rulesConfig, {
           district: r.district,
-          weightKg: r.parcel_weight_kg ? r.parcel_weight_kg.toNumber() : 0,
+          weightKg: chargeableWeightKg(
+            r.parcel_weight_kg ? r.parcel_weight_kg.toNumber() : 0,
+          ),
         });
         return quote ? quote.amount.toString() : null;
       })(),

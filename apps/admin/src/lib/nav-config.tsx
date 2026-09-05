@@ -223,6 +223,16 @@ export const adminNav: AppNavEntry[] = [
 
   label("marketing-label", "Marketing"),
   {
+    // Automatic per-customer welcome sequence (email/SMS), as opposed to the
+    // one-off blasts to newsletter subscribers below it. Sits behind the same
+    // permission as the cart-recovery engine it shares machinery with.
+    key: "customer-campaigns",
+    label: "Customer Campaigns",
+    href: "/customer-campaigns",
+    icon: newsletterCampaignsIcon,
+    permission: "net_profit_recovery.manage",
+  },
+  {
     key: "newsletter-campaigns",
     label: "Newsletter Campaigns",
     href: "/newsletter-campaigns",

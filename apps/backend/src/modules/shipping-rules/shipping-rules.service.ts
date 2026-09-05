@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import {
+  chargeableWeightKg,
   quoteShippingRule,
   ShippingRulesConfig,
   ShippingDeliveryType,
@@ -94,9 +95,11 @@ export class ShippingRulesService {
         ? input.weightKg
         : (await this.computeWeight(items)).toNumber();
 
+    // Priced on the BILLED weight, not the raw one — this endpoint answers
+    // "what will the courier charge us", which is what staff act on.
     const result = quoteShippingRule(config, {
       district,
-      weightKg,
+      weightKg: chargeableWeightKg(weightKg),
       deliveryType: input.deliveryType,
     });
 

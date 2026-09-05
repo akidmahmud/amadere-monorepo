@@ -5,6 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CUSTOMER_CREATED_EVENT, CustomerCreatedEvent } from './customers.events';
 import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hashPassword, verifyPassword } from '../../common/auth/password.util';
@@ -82,6 +84,7 @@ export class CustomersService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(CALL_PROVIDER) private readonly callProvider: CallProvider,
+    private readonly events: EventEmitter2,
   ) {}
 
   async getProfile(customerId: number): Promise<CustomerProfileDto> {
@@ -660,6 +663,13 @@ export class CustomersService {
         },
       });
     }
+
+    // Fire-and-forget: a welcome campaign must never be able to fail the
+    // customer creation that triggered it.
+    this.events.emit(CUSTOMER_CREATED_EVENT, {
+      customerId: customer.id,
+      source: 'ADMIN',
+    } satisfies CustomerCreatedEvent);
 
     return this.adminGet(customer.id);
   }

@@ -65,7 +65,8 @@ type HomepageSectionType =
   | "TOP_SELLING_PRODUCTS"
   | "JUST_FOR_YOU"
   | "FEATURED_DEALS"
-  | "HOME_BANNER_TWO";
+  | "HOME_BANNER_TWO"
+  | "NEWSLETTER";
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
@@ -466,6 +467,28 @@ function renderSection(
       );
     }
 
+    case "NEWSLETTER": {
+      // Both banners go through the CDN like every other image here — the
+      // desktop upload is a full 1600x500 and must not be served raw.
+      const imageUrl = toDisplayImageUrl(config.imageUrl as string | undefined, IMG.banner);
+      const mobileImageUrl = toDisplayImageUrl(
+        config.mobileImageUrl as string | undefined,
+        IMG.banner,
+      );
+      return (
+        <div className={`${WRAPPER} py-9`} key={section.id}>
+          <NewsletterBanner
+            imageUrl={imageUrl}
+            mobileImageUrl={mobileImageUrl}
+            heading={config.heading as string | undefined}
+            subheading={config.subheading as string | undefined}
+            darkOverlay={config.darkOverlay === true}
+            textColor={config.textColor === "LIGHT" || config.textColor === "DARK" ? config.textColor : undefined}
+          />
+        </div>
+      );
+    }
+
     // No longer tabbed — a single-collection product strip matching
     // amader-home-top.html's "Amader Modhu — Natural Honey" design (dropped
     // the pill-tab switcher + promo tile; resolves via the same
@@ -633,9 +656,15 @@ export default async function Home({
         </div>
       )}
 
-      <div className={`${WRAPPER} py-9`}>
-        <NewsletterBanner />
-      </div>
+      {/* Fallback only. The newsletter strip predates being a managed
+          section, and it is live on the homepage today — so it keeps
+          rendering until an admin adds a NEWSLETTER section, at which point
+          that one takes over and this would otherwise be a duplicate. */}
+      {!sections.some((s) => s.type === "NEWSLETTER") && (
+        <div className={`${WRAPPER} py-9`}>
+          <NewsletterBanner />
+        </div>
+      )}
     </main>
   );
 }

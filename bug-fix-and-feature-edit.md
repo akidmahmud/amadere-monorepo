@@ -1356,3 +1356,416 @@ confirmed rendering.
 
 Backend and admin both typecheck; 22/22 specs pass across sales-report, courier
 and shipping-rules.
+
+---
+
+## Homepage newsletter section: uploadable banner with the form on top
+
+There was no way to upload an image because **the newsletter strip was not a
+managed section at all** — hardcoded at the foot of the homepage, and built
+deliberately without artwork ("no matching asset in this codebase").
+
+Now a real `NEWSLETTER` homepage section, managed like every other block:
+sort order, active toggle, the standard `MediaPicker`.
+
+- **Two images, not one.** Desktop **1600×500**, mobile **800×800**. At 3.2:1
+  the desktop banner is ~120px tall on a phone — physically too short to put an
+  email field and a button on top of and still read them. Same desktop/mobile
+  split `HOME_BANNER_TWO` already uses. Mobile falls back to the desktop image
+  if left empty.
+- Optional heading/subheading, plus a **darken toggle** for artwork that
+  already carries its own text.
+- Both images go through the CDN (`toDisplayImageUrl`, 1600px) rather than
+  being served raw.
+- The enum value needed **its own migration** — Postgres refuses to use a new
+  enum value in the transaction that adds it.
+
+**The old hardcoded strip is kept as a fallback**, rendering only while no
+NEWSLETTER section exists. It is live on the homepage today, so removing it
+outright would have left a gap until someone configured the replacement.
+
+### Verified in a real browser
+
+Desktop 1392×435 = **exactly 3.20:1**, desktop `<img>` shown and mobile hidden,
+form inside the image bounds. At 390px wide it flips to **1.00:1**, exactly one
+image visible, form still overlaid. Image confirmed loading through the CDN at
+1600px.
+
+Also regenerated the OpenAPI types for both apps (they were stale — the cause of
+the earlier `settledCodAmount` cast). Zero source type errors in web or admin.
+
+---
+
+## Customer Campaigns: automatic email/SMS when a customer is added
+
+Asked for: a campaign that messages a customer when they are added, by email or
+SMS or both. **Not** the newsletter.
+
+What already existed: an email campaign engine (newsletter subscribers only), an
+SMS sender (order events only), and an abandoned-cart engine that already does
+EMAIL/SMS/WEB_PUSH on a delay. What was missing was the join — campaigns target
+`NewsletterSubscriber`, so a customer who ordered without ticking the newsletter
+box was invisible to them, and the campaign queue is email-only.
+
+### Built
+
+`apps/backend/src/modules/net-profit/customer-campaigns/` — templates (channel,
+subject, EN/BN body, delay, active/paused), a queue table, a 5-minute cron
+worker. Two tables, no new enum values, so one plain migration.
+
+- **A parallel pair of tables, not a generalisation of `cart_campaign_*`.** That
+  engine is live abandoned-cart recovery; widening its schema to carry two
+  subject types would put every existing recovery send at risk to save two
+  tables.
+- **Triggered by an event**, `customer.created`, with an `@OnEvent` listener —
+  so `CustomersService` carries no dependency on the campaign engine and a
+  failing campaign can never fail the customer creation that triggered it.
+- **CSV bulk import deliberately does NOT emit it.** Importing an existing
+  customer list would otherwise fire a welcome SMS at every one of them at once:
+  a real bill and a spam complaint waiting to happen. Enrolling a batch on
+  purpose is what the admin `enqueue` endpoint is for.
+- **Recipient snapshotted at enqueue**, so editing a profile cannot silently
+  redirect an already-queued message.
+- **Unique on (customer, template, channel)** — the thing that stops a repeated
+  enqueue from double-messaging somebody.
+- **No WEB_PUSH channel**, unlike the cart engine: a push subscription belongs
+  to a browser, and a customer an admin just typed in has no browser attached.
+- **Off by default.** Turning it on starts messaging real people, so it is an
+  explicit decision and never a side effect of deploying.
+
+Admin page at **Marketing → Customer Campaigns** (chosen over Net Profit, where
+its sibling engine lives, because staff already go to Marketing to write
+outbound messages). Master switch, template editor, and a queue tab with
+Send now / Cancel.
+
+### Verified
+
+Live against the running server:
+
+| check | result |
+|---|---|
+| Engine **off** → add a customer | 0 queued |
+| Engine **on** → add a customer | EMAIL today + SMS tomorrow, correct recipients |
+| Re-enqueue the same customer 3× | still 2 rows |
+| Customer with no email address | SMS step only |
+
+`customer-campaigns.service.spec.ts` 5/5 — disabled sends nothing, **quiet hours
+across midnight** (22:00–08:00 wraps, which is exactly where a naive
+`hour >= start && hour < end` silently sends at 3am), a template paused after
+queueing is SKIPPED rather than sent, and `{{first_name}}` is substituted before
+sending.
+
+Both admin tabs screenshotted and confirmed rendering. Test templates and queue
+rows were deleted and the engine switched back off afterwards.
+
+---
+
+## Customer campaigns: HTML email + recurring sends
+
+Follow-up to the campaign engine above, after two questions: "do I have to send
+manually?" and "can we use a GPT-generated HTML template?"
+
+**Sending was already automatic** — a 5-minute cron worker drains the queue on
+each template's delay. "Send now" is only a test button, so a template can be
+proven to deliver before the engine is switched on. The confusion was worth
+recording: nothing in the UI said so.
+
+### HTML email
+
+`bodyHtmlEn` / `bodyHtmlBn` on the template, an editor field with a **sandboxed**
+`srcDoc` preview (pasted HTML is not trusted to run scripts inside the admin),
+and `{ html }` passed to the mailer.
+
+The plain-text body is still sent alongside it, deliberately: some clients block
+HTML outright, and a mail with no text/plain part scores worse with spam
+filters. Merge tags are substituted into both.
+
+### Recurring
+
+A template is now either `CUSTOMER_ADDED` (fires once on signup) or `RECURRING`
+(fires for everyone matching an audience). Audience is `ALL` or
+`NO_ORDER_IN_DAYS`; `repeatEveryDays` is the cool-off.
+
+- **A daily 2am scan**, not the 5-minute worker: "no order in 30 days" cannot
+  meaningfully change between breakfast and lunch, and re-scanning the customer
+  table every 5 minutes to find that out is pure waste.
+- **`cycleKey` on the queue.** The dedupe index was
+  `(customer, template, channel)` — which would have made a recurring campaign
+  fire exactly once, ever. The cycle key ('once', or the enqueue date) lets
+  legitimate repeats through while a second scan on the same day is still a
+  no-op.
+- **`recurringBatchSize`, default 200.** A first scan against a large customer
+  table would otherwise queue tens of thousands of messages in one go — a real
+  bill and a deliverability problem. The rest are picked up the next day.
+- **Missing `repeatEveryDays` is treated as "never repeat", not "repeat
+  constantly"** — the failure mode of the other reading is messaging the same
+  person daily.
+- Recurring templates are excluded from the signup enqueue, or a brand-new
+  customer would get a "we miss you" the moment they join.
+
+Spec 5/5, including quiet hours across midnight and merge tags reaching the HTML
+body.
+
+---
+
+## Newsletter custom HTML was being silently mangled
+
+Reported as "fix the newsletter campaign custom html field". Both the campaign
+and template editors already HAD an HTML tab — the bug was on save.
+
+Measured against a typical generated email template, `sanitizeCampaignHtml`
+destroyed:
+
+| | before | after |
+|---|---|---|
+| `target="_blank"` | stripped | kept |
+| `<!--[if mso]>` conditionals | **stripped** | kept |
+| `<!DOCTYPE>` | stripped | kept |
+
+The Outlook conditionals are the one that matters: practically every generated
+template uses them, and without them the layout breaks in Outlook. That is why
+pasted templates "looked wrong".
+
+**Fixed without weakening XSS protection.** Conditional comments are parked
+before sanitizing and restored after, with their CONTENTS sanitized separately —
+so the old IE conditional-comment script vector stays closed. Verified: a
+`<script>` hidden inside a conditional is still stripped, while `<b>ok</b>`
+beside it survives.
+
+Two implementation notes worth keeping:
+
+- **The placeholder must be plain text, not a comment.** DOMPurify deletes
+  comments outright, so a comment-shaped placeholder vanished and took the
+  conditional with it — the first attempt scored 12/14 for exactly this reason.
+- **The check is a node script, not a `.spec.ts`.** `isomorphic-dompurify` pulls
+  jsdom, which pulls ESM-only packages this app's ts-jest cannot transform. A
+  `transformIgnorePatterns` fix opened a deeper ESM problem and was reverted;
+  `sanitize-campaign-html.check.cjs` runs the same 14 assertions under plain
+  node.
+
+Also caught: one edit wrote literal NUL bytes into the util. File rewritten and
+confirmed clean.
+
+---
+
+## Product preview opens in a new tab
+
+Was a modal iframe; now a real tab.
+
+The trap: the preview URL only exists after an async token call, and
+`window.open` outside a user gesture is blocked as a popup. So the tab is opened
+**synchronously inside the click** showing "Preparing preview…", and its location
+is replaced once the token arrives. If the browser blocked it anyway, an
+"open preview" link is shown rather than the click silently doing nothing; a
+failed token closes the tab instead of stranding a blank one.
+
+---
+
+## Newsletter banner: overlay removed, and a real blur bug behind it
+
+### The overlay is now opt-in
+
+It shipped defaulting to ON, which darkened designed artwork nobody asked to
+darken. Now off unless ticked.
+
+Removing it exposed what it had been hiding: white heading text is unreadable on
+a pale banner. So the heading gained a **Light/Dark colour choice** (defaulting
+to Dark, matching bare artwork) and, when light text is used without the
+overlay, a text-shadow — which lifts it off busy artwork without dimming the
+whole image.
+
+### The blurriness was a site-wide bug, not this section
+
+Measured on the live banner: served **1200x375** into a **1392x435** box — a 16%
+upscale.
+
+Cause: `FULL_MAX_WIDTH = 1200` in the upload pipeline. **Every** uploaded image
+is downsized to 1200px, so the CDN has nothing sharper to resize from
+(`fit=scale-down` never upscales). This was not specific to the newsletter — the
+hero banner is documented at 1882px and the ad banner at 1690px, and both have
+been upscaled from a 1200px source all along.
+
+Raised to **1920**. Safe on bandwidth: every placement fetches through
+`cdn-cgi/image/width=...`, so the stored file is only the SOURCE the CDN resizes
+from and shoppers still download a per-placement size. Only storage grows.
+
+Verified: a 2245x700 source now yields a 1920x599 derivative (was 1200x375).
+
+**Existing images are still 1200px** — the cap applies at upload, so banners
+already in the library must be re-uploaded to benefit.
+
+Known remaining limit: at DPR 2 a 1392px box wants ~2784px, so it would still be
+slightly soft. Fixing that means `srcset`, which nothing else on the site uses.
+
+---
+
+## `tsc --noEmit` was silently passing everything in apps/admin
+
+A runtime `ReferenceError: inputStyle is not defined` reached the browser from a
+line I had "typechecked". Worth recording, because the verification method was
+at fault, not just the typo.
+
+`apps/admin/tsconfig.json` includes `.next/dev/types/**/*.ts`. That directory
+held a **truncated** generated file (left half-written when a dev server was
+killed mid-run), which tsc reported as a syntax error — and a parse error in any
+included file makes tsc stop doing semantic analysis for the whole program. So
+it emitted exactly one TS1128 and no type errors at all.
+
+Proven both ways: with the corrupt file present, an injected
+`definitelyNotDefinedAnywhere` produced no error; after deleting
+`.next/dev/types`, the same injection correctly produced
+`TS2304: Cannot find name`.
+
+**So any "admin typechecks clean" in this log from before this point is
+unreliable.** Deleting `.next/dev/types` (dev regenerates it) restores real
+checking. Worth watching for after any killed dev server — the same truncation
+broke a production build earlier in this session.
+
+---
+
+## Click-to-call in Recovery
+
+The main funnel table already had `tel:` links. Three places did not:
+
+- **Recovered** and **Trash** tabs — phone shown as plain text. Now linked,
+  matching the funnel table.
+- **Create order from abandoned cart** modal — the phone here is an editable
+  `<input>`, not display text, which is why there was no link to click.
+
+For the modal the call button sits **inside** the field, not beside it: the form
+is a two-column grid, and giving the phone its own button cell would knock every
+field after it out of alignment. It appears only once the field holds a number,
+and the same treatment is on Alternative Phone.
+
+Verified in the browser: `tel:8801840193060` present on the filled field, absent
+on the empty optional one.
+
+---
+
+## Email templates (docs/EMAIL-TEMPLATES.md)
+
+Three pasteable HTML templates — welcome, promotion, and a plain text-forward
+one — for the HTML tab in Newsletter Campaigns, Newsletter Templates and
+Customer Campaigns.
+
+Table-based, inline styles, 600px, `<!--[if mso]>` conditionals. Dated-looking on
+purpose: Outlook ignores `max-width`, Gmail strips much of `<style>`, and
+flexbox is unsupported in several major clients.
+
+**Checked against the real sanitizer, not assumed**: all three come through with
+doctype, both MSO conditionals, `target="_blank"`, `bgcolor`, inline styles,
+merge tags and table layout intact. Template 1 also rendered in a browser.
+
+### Merge tags were inconsistent, and silently so
+
+Writing the doc surfaced it: the customer-campaign engine used
+`{{first_name}}`/`{{name}}` while recovery and cart campaigns use
+`{{firstName}}`/`{{customerName}}`.
+
+An unresolved tag renders as **empty, not literal text** — so a template moved
+between those screens would quietly mail people "Hi ," and nothing would look
+broken. The customer engine now accepts both spellings.
+
+The doc carries a table of which tags actually resolve where. Newsletter
+Campaigns currently resolves **none**, which is worth knowing before writing one
+that expects `{{firstName}}`.
+
+---
+
+## Recovery: Send Email with a real preview
+
+An **Email** action on each funnel row, shown only where the cart actually
+carries an email address. Clicking it opens a preview of the exact message, and
+Send delivers it.
+
+### The email
+
+Logo from Settings, a Bangla message, every product the shopper chose with its
+image and price, the subtotal, an "অর্ডার সম্পূর্ণ করুন" button back to the
+cart, and a WhatsApp button through to sales.
+
+### Decisions worth keeping
+
+- **Preview and send share ONE renderer** (`recovery-email.renderer.ts`). A
+  preview that renders separately from what actually goes out is worse than no
+  preview: staff would approve one email and mail another.
+- **Missing pieces are dropped, not faked.** No logo configured → no logo block
+  rather than a broken image at the top of the mail. No WhatsApp number → no
+  WhatsApp button rather than a dead chat link. A product with no image → the
+  image cell is omitted entirely, because an empty cell collapses and knocks the
+  row out of alignment.
+- **The button only renders where there is an email.** A disabled button on
+  every phone-only cart would be three dead controls in a row.
+- **The preview iframe is sandboxed** — this is real email markup and the admin
+  is not the place to let it run anything.
+- **A plain-text alternative is sent alongside the HTML**, same reasoning as the
+  campaign engine: some clients block HTML, and a mail with no text part scores
+  worse with spam filters.
+- Sending increments `recoveryAttempts`, so the funnel's attempt column counts
+  every channel rather than SMS only.
+
+### Fixed while building
+
+`WhatsappModule` did not export `WhatsappSettingsService`, so Nest failed to
+resolve `RecoveryService` and the whole backend refused to boot
+(`UnknownDependenciesException ... argument WhatsappSettingsService at index
+[7]`). Exported it.
+
+### Verified
+
+Rendered a real row end to end: logo, Bangla copy, 4 products (one with no image
+— degraded cleanly), subtotal ৳1,267, cart link, and the live WhatsApp number
+from Settings. Screenshotted the rendered mail and the modal.
+
+In the funnel, exactly **one** Send Email button appears across two rows — on
+the one with an address, titled `Email rahim.test@example.com` — and none on the
+row without. Test row created through the real
+`POST /checkout/abandonment` capture path rather than by hand-editing the DB.
+
+---
+
+## Recovery email: editable wording
+
+The copy was hardcoded in the renderer. Now editable in two places, on purpose:
+
+- **Recovery → Settings** — the saved default everyone uses: subject, heading,
+  message, and both button labels.
+- **The Send Email modal** — "Edit text" opens the same five fields, seeded from
+  the saved default, and the preview re-renders as you type.
+
+**Modal edits apply to that one send and are never written back.** Personalising
+a single chase must not silently rewrite the template the rest of the team
+relies on.
+
+### What is NOT editable, deliberately
+
+The logo, the product cards, the totals and the WhatsApp button are generated
+from real data on every send. There is nothing there for staff to get out of
+sync with the actual cart.
+
+### Details worth keeping
+
+- `{{name}}` and `{{total}}` are the only tokens. An unrecognised token is left
+  **as written** rather than blanked, so a typo shows up in the preview instead
+  of silently deleting a word — the opposite of the merge-tag behaviour
+  elsewhere, and the right call for copy someone is editing live.
+- Preview moved from GET to POST so the body can carry the in-progress edits.
+  It still writes nothing, so it stays on the `view` permission.
+- The preview query keeps the previous render on screen while the next one is in
+  flight, so the email does not blank out on every keystroke.
+- Send re-renders through the same call the preview used, with the same
+  override — what was approved on screen is what goes out.
+
+### Verified
+
+Default render fills the tokens (`Rahim Uddin, ... — ৳798`). A per-send override
+replaces subject, heading, message and both button labels, confirmed present in
+the HTML. Changing the saved default changes the default render, and reverting
+restores it. In the browser, "Edit text" shows all five fields pre-filled with
+the real Bangla copy beside the live preview.
+
+**Self-inflicted, worth recording:** restoring the Bangla default over `curl -d`
+in Git Bash silently corrupted it to literal `?????` — the shell mangled the
+UTF-8 payload. Caught by checking the rendered HTML rather than trusting the
+200. Rewritten via a UTF-8 file with `--data-binary`. Any Bangla sent to this
+API from a shell needs the same treatment.

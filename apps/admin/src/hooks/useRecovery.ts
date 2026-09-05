@@ -68,6 +68,13 @@ export interface RecoverySettings {
   maxAttempts: number;
   quietHoursStart: number;
   quietHoursEnd: number;
+  /** Editable wording for the recovery email. The rest of that mail is
+   *  generated from real data. */
+  emailSubject: string;
+  emailHeading: string;
+  emailMessage: string;
+  emailCtaLabel: string;
+  emailWhatsappLabel: string;
 }
 
 export type RecoveryOutcome = "open" | "recovered" | "cancelled" | "all";
@@ -319,5 +326,57 @@ export function useUpdateRecoverySettings() {
         body: JSON.stringify(input),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }),
+  });
+}
+
+export interface RecoveryEmailCopy {
+  subject: string;
+  heading: string;
+  message: string;
+  ctaLabel: string;
+  whatsappLabel: string;
+}
+
+export interface RecoveryEmailPreview {
+  subject: string;
+  html: string;
+  text: string;
+  to: string | null;
+  name: string | null;
+  /** What was actually used — saved defaults merged with any override. Seeds
+   *  the editor so staff start from the real copy, not a blank box. */
+  copy: RecoveryEmailCopy;
+}
+
+/** The exact email that will be sent. Preview and send share one renderer on
+ *  the server, so what staff approve here is what the customer receives. */
+export function useRecoveryEmailPreview(
+  id: number | null,
+  override?: Partial<RecoveryEmailCopy>,
+) {
+  return useQuery({
+    queryKey: ["recovery-email-preview", id, override],
+    enabled: id !== null,
+    // Keeps the last render on screen while a re-render is in flight, so the
+    // preview does not blank out on every keystroke.
+    placeholderData: (prev) => prev,
+    queryFn: () =>
+      proxyFetch<RecoveryEmailPreview>(`/admin/net-profit/recovery/${id}/email-preview`, {
+        method: "POST",
+        body: JSON.stringify(override ?? {}),
+      }),
+  });
+}
+
+export function useSendRecoveryEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...override }: { id: number } & Partial<RecoveryEmailCopy>) =>
+      proxyFetch<{ sent: boolean; error?: string }>(
+        `/admin/net-profit/recovery/${id}/send-email`,
+        { method: "POST", body: JSON.stringify(override) },
+      ),
+    // The attempt counter on the row moves, so the funnel has to refetch.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recovery"] }),
   });
 }

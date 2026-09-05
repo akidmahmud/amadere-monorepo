@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { quoteShippingRule } from '@amader/shared';
+import { chargeableWeightKg, quoteShippingRule } from '@amader/shared';
 import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
 
 const Decimal = Prisma.Decimal;
@@ -313,7 +313,7 @@ export class ProductPnlService {
       const source = CHANNEL_TO_SOURCE[r.source] ?? 'other';
       const quote = quoteShippingRule(config, {
         district: r.district,
-        weightKg: r.kg ? r.kg.toNumber() : 0,
+        weightKg: chargeableWeightKg(r.kg ? r.kg.toNumber() : 0),
       });
       if (!quote) continue;
       out.set(source, (out.get(source) ?? new Decimal(0)).plus(quote.amount));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Modal } from "@amader/admin-ui";
+import { Button } from "@amader/admin-ui";
 import { useGenerateProductPreviewToken } from "@/hooks/useProducts";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
@@ -20,7 +20,9 @@ const eyeIcon = (
 export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonProps) {
   const previewToken = useGenerateProductPreviewToken();
   const storefrontUrl = useStorefrontUrl();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Only set when the browser blocked the popup — then we show a link the
+  // admin can click themselves rather than silently doing nothing.
+  const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
 
   if (!productId) {
     return (
@@ -31,36 +33,57 @@ export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonPr
     );
   }
 
+  function openPreview() {
+    setBlockedUrl(null);
+
+    // Opened SYNCHRONOUSLY, inside the click, before the async token call.
+    // Browsers only allow window.open during a user gesture, so opening it
+    // from the mutation callback instead would be blocked as a popup — which
+    // is why this holds a blank tab and fills in the URL once the token
+    // arrives.
+    const tab = window.open("", "_blank");
+    if (tab) tab.document.write("Preparing preview…");
+
+    previewToken.mutate(productId!, {
+      onSuccess: ({ token }) => {
+        // Uses the saved product's slug, not a possibly-unsaved form
+        // field — preview shows what's actually persisted. Path-based
+        // token (not `?previewToken=`) so the real product route never
+        // has to read searchParams and can stay statically cached —
+        // see PERF-BRIEF.md §3 / product-detail.tsx.
+        const url = `${storefrontUrl}/en/products/${slug}/preview/${token}`;
+        if (tab && !tab.closed) {
+          tab.location.replace(url);
+        } else {
+          setBlockedUrl(url);
+        }
+      },
+      onError: () => tab?.close(),
+    });
+  }
+
   return (
     <>
       <Button
         type="button"
         variant="ghost"
         disabled={previewToken.isPending || !slug}
-        onClick={() => {
-          previewToken.mutate(productId, {
-            onSuccess: ({ token }) => {
-              // Uses the saved product's slug, not a possibly-unsaved form
-              // field — preview shows what's actually persisted. Path-based
-              // token (not `?previewToken=`) so the real product route never
-              // has to read searchParams and can stay statically cached —
-              // see PERF-BRIEF.md §3 / product-detail.tsx.
-              setPreviewUrl(`${storefrontUrl}/en/products/${slug}/preview/${token}`);
-            },
-          });
-        }}
+        onClick={openPreview}
       >
         {eyeIcon}
         {previewToken.isPending ? "Preparing…" : "Preview"}
       </Button>
-      <Modal
-        open={previewUrl !== null}
-        onClose={() => setPreviewUrl(null)}
-        title="Product Preview"
-        className="h-[88vh] max-w-6xl"
-      >
-        {previewUrl && <iframe src={previewUrl} title="Product preview" className="h-full w-full rounded-sm border border-border" />}
-      </Modal>
+      {blockedUrl && (
+        <a
+          href={blockedUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-semibold underline"
+          onClick={() => setBlockedUrl(null)}
+        >
+          Popup blocked — open preview
+        </a>
+      )}
     </>
   );
 }

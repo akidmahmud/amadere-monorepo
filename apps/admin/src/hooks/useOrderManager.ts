@@ -36,8 +36,9 @@ export interface OrderManagerRow {
    *  settled figure once their payout confirms it. */
   deliveryCollected: string | null;
   deliverySettled: boolean;
-  /** What the COURIER bills us, priced off the Shipping Rules card. */
-  courierCost: string | null;
+  /** What the COURIER bills us, priced off the Shipping Rules card at the
+   *  billed weight (raw weight + 1kg above a kilo). */
+  courierCharge: string | null;
   settledCodAmount: string | null;
   codAmount: string | null;
   paymentProvider: string | null;

@@ -39,6 +39,40 @@ export interface AppNotification {
   meta?: string;
   href: string;
   unread?: boolean;
+  type?: "order" | "cart" | "alert" | "system";
+  onClick?: () => void;
+}
+
+function getNotificationIcon(n: AppNotification) {
+  if (n.type === "order" || n.id.startsWith("order-")) {
+    return (
+      <div className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/80">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+          <path d="M3 6h18" />
+          <path d="M16 10a4 4 0 0 1-8 0" />
+        </svg>
+      </div>
+    );
+  }
+  if (n.type === "cart" || n.id.startsWith("cart-") || n.id.includes("abandoned")) {
+    return (
+      <div className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100/80">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="21" r="1" />
+          <circle cx="19" cy="21" r="1" />
+          <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+        </svg>
+      </div>
+    );
+  }
+  return (
+    <div className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-brand-50 text-brand-600 border border-brand-100/80">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+      </svg>
+    </div>
+  );
 }
 
 export interface AppShellProps {
@@ -446,9 +480,6 @@ export function AppShell({
               <button
                 type="button"
                 onClick={() => {
-                  // Without a `notifications` list the bell keeps its old
-                  // behaviour (navigate somewhere) rather than opening an
-                  // empty panel.
                   if (!notifications) {
                     onNotificationClick?.();
                     return;
@@ -459,47 +490,116 @@ export function AppShell({
                 }}
                 aria-label="Notifications"
                 aria-expanded={notifications ? bellOpen : undefined}
-                className="relative grid h-9 w-9 place-items-center rounded-inner bg-brand-50 text-brand-500"
+                className={cn(
+                  "relative grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-surface text-secondary transition-all duration-150 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-600 active:scale-95",
+                  bellOpen && "border-brand-500 bg-brand-50/80 text-brand-600 ring-2 ring-brand-500/20"
+                )}
               >
-                {bellIcon}
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  className={cn(
+                    "h-5 w-5 transition-transform duration-200",
+                    (notificationCount ?? 0) > 0 && "animate-[bounce_2s_infinite]"
+                  )}
+                >
+                  <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+                </svg>
                 {(notificationCount ?? 0) > 0 ? (
-                  <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white">
-                    {notificationCount! > 99 ? "99+" : notificationCount}
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-rose-600 px-1 text-[10px] font-extrabold text-white shadow-sm ring-2 ring-surface">
+                    <span className="absolute -inset-0.5 rounded-full bg-red-500/50 animate-ping" />
+                    <span className="relative">{notificationCount! > 99 ? "99+" : notificationCount}</span>
                   </span>
                 ) : (
                   hasNotification && (
-                    <span className="absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill border-2 border-surface bg-danger px-1 text-[10px] font-bold text-white">
-                      •
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 ring-2 ring-surface">
+                      <span className="absolute -inset-0.5 rounded-full bg-red-500/50 animate-ping" />
                     </span>
                   )
                 )}
               </button>
               {notifications && bellOpen && (
-                <div className="absolute top-full right-0 z-30 mt-2 w-80 overflow-hidden rounded-card border border-border bg-surface shadow-pop">
-                  <div className="border-b border-border px-3.5 py-2.5 font-ui text-[13px] font-bold text-text">
-                    Notifications
+                <div className="absolute top-full right-0 z-40 mt-2 w-96 overflow-hidden rounded-2xl border border-border/80 bg-surface/95 shadow-2xl backdrop-blur-md transition-all animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-border/70 px-4 py-3 bg-surface-2/40">
+                    <div className="flex items-center gap-2 font-ui text-[13px] font-bold text-text">
+                      <span>Notifications</span>
+                      {(notificationCount ?? 0) > 0 && (
+                        <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-extrabold text-brand-700">
+                          {notificationCount} new
+                        </span>
+                      )}
+                    </div>
+                    {notifications.some((n) => n.unread) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNotificationsOpen?.();
+                        }}
+                        className="font-ui text-[11px] font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
                   </div>
                   {notifications.length === 0 ? (
-                    <p className="px-3.5 py-6 text-center text-xs text-muted">Nothing new right now.</p>
+                    <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-brand-50 text-brand-400 mb-2">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+                          <path d="m9 12 2 2 4-4" />
+                        </svg>
+                      </div>
+                      <p className="font-ui text-sm font-bold text-text">All caught up!</p>
+                      <p className="mt-1 text-xs text-muted">No new notifications right now.</p>
+                    </div>
                   ) : (
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-[380px] overflow-y-auto divide-y divide-border/50 [scrollbar-width:thin]">
                       {notifications.map((n) => (
-                        <a
+                        <Link
                           key={n.id}
                           href={n.href}
-                          onClick={() => setBellOpen(false)}
-                          className="flex items-start gap-2.5 border-b border-border px-3.5 py-2.5 last:border-b-0 hover:bg-surface-2"
+                          onClick={() => {
+                            n.onClick?.();
+                            setBellOpen(false);
+                          }}
+                          className={cn(
+                            "group relative flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface-2/80",
+                            n.unread && "bg-brand-50/20 border-l-2 border-l-brand-500"
+                          )}
                         >
-                          <span
-                            className="mt-1.5 h-1.5 w-1.5 flex-none rounded-pill"
-                            style={{ background: n.unread ? "var(--color-danger, #e5484d)" : "transparent" }}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-ui text-[13px] font-semibold text-text">{n.title}</span>
-                            {n.subtitle && <span className="block truncate text-xs text-muted">{n.subtitle}</span>}
+                          {getNotificationIcon(n)}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className={cn("truncate font-ui text-[13px]", n.unread ? "font-bold text-text" : "font-semibold text-text/90")}>
+                                {n.title}
+                              </span>
+                              {n.unread && (
+                                <span className="h-2 w-2 flex-none rounded-full bg-danger animate-pulse" />
+                              )}
+                            </div>
+                            {n.subtitle && (
+                              <span className="mt-0.5 block truncate text-xs text-muted leading-relaxed">
+                                {n.subtitle}
+                              </span>
+                            )}
+                            {n.meta && (
+                              <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2}>
+                                  <circle cx="12" cy="12" r="10" />
+                                  <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                <span>{n.meta}</span>
+                              </div>
+                            )}
+                          </div>
+                          <span className="mt-1 text-muted opacity-0 group-hover:opacity-100 transition-opacity group-hover:translate-x-0.5">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="m9 18 6-6-6-6" />
+                            </svg>
                           </span>
-                          {n.meta && <span className="flex-none text-[11px] text-muted">{n.meta}</span>}
-                        </a>
+                        </Link>
                       ))}
                     </div>
                   )}

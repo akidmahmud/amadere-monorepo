@@ -64,6 +64,7 @@ export function SectionConfigFields({
   }
   if (type === "AD_BANNER") return <AdBannerFields config={config} onConfigChange={onConfigChange} />;
   if (type === "HOME_BANNER_TWO") return <HomeBannerTwoFields config={config} onConfigChange={onConfigChange} />;
+  if (type === "NEWSLETTER") return <NewsletterFields config={config} onConfigChange={onConfigChange} />;
   return <JsonConfigFields config={config} onConfigChange={onConfigChange} />;
 }
 
@@ -826,5 +827,76 @@ function JsonConfigFields({
       />
       {error && <span className="text-xs text-danger">{error}</span>}
     </label>
+  );
+}
+
+// Email-capture strip with the signup form laid over the artwork.
+//
+// Two images, not one: the desktop banner is 3.2:1, which on a phone is only
+// ~120px tall — far too short to put an email field and a button on top of
+// and still be readable. Same desktop/mobile split HOME_BANNER_TWO uses.
+function NewsletterFields({
+  config,
+  onConfigChange,
+}: {
+  config: Record<string, unknown>;
+  onConfigChange: (config: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <MediaPicker
+        value={config.imageUrl as string | undefined}
+        onChange={(url) => onConfigChange({ ...config, imageUrl: url })}
+        label="Desktop banner — recommended size: 1600 × 500px"
+      />
+      <MediaPicker
+        value={config.mobileImageUrl as string | undefined}
+        onChange={(url) => onConfigChange({ ...config, mobileImageUrl: url })}
+        label="Mobile banner — recommended size: 800 × 800px (falls back to the desktop image if left empty)"
+      />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Heading (optional — shown above the email field)</span>
+        <input
+          value={(config.heading as string | undefined) ?? ""}
+          onChange={(e) => onConfigChange({ ...config, heading: e.target.value })}
+          placeholder="Subscribe to our newsletter"
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Subheading (optional)</span>
+        <input
+          value={(config.subheading as string | undefined) ?? ""}
+          onChange={(e) => onConfigChange({ ...config, subheading: e.target.value })}
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-semibold text-secondary">
+          Heading colour — pick Light for dark artwork, Dark for pale artwork
+        </span>
+        <select
+          className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          value={(config.textColor as string | undefined) ?? "DARK"}
+          onChange={(e) => onConfigChange({ ...config, textColor: e.target.value })}
+        >
+          <option value="DARK">Dark text</option>
+          <option value="LIGHT">Light text</option>
+        </select>
+      </label>
+      {/* Off by default. Only worth turning on when the heading has to sit
+          over a busy area of the image. */}
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          className="h-4 w-4 accent-brand-500"
+          checked={config.darkOverlay === true}
+          onChange={(e) => onConfigChange({ ...config, darkOverlay: e.target.checked })}
+        />
+        <span className="text-xs font-semibold text-secondary">
+          Darken the image behind the form (only if the heading is hard to read)
+        </span>
+      </label>
+    </div>
   );
 }

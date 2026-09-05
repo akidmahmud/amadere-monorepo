@@ -372,6 +372,8 @@ model Customer {
   pushSubscriptions PushSubscription[]
   assignedAdmin    AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
+  campaignQueue CustomerCampaignQueue[]
+
   @@map("customers")
 }
 
@@ -2353,6 +2355,10 @@ enum HomepageSectionType {
   // full-width rounded banner with dot pagination below and per-slide
   // desktop/mobile image swap. No side banner slot.
   HOME_BANNER_TWO
+  // Email capture strip. Was hardcoded on the homepage with no image and no
+  // admin control; now a managed section so the banner artwork can be
+  // uploaded and the form sits over it.
+  NEWSLETTER
 }
 
 model HomepageSection {
@@ -2829,6 +2835,86 @@ enum QueueStatus {
   SENT
   FAILED
   SKIPPED
+}
+
+enum CustomerCampaignTrigger {
+  /// Fires once, when the customer record is created.
+  CUSTOMER_ADDED
+  /// Fires on a schedule for everyone matching `audience`, no more often
+  /// than `repeatEveryDays`.
+  RECURRING
+}
+
+enum CustomerCampaignAudience {
+  ALL
+  /// Customers with no order in the last `audienceDays` days.
+  NO_ORDER_IN_DAYS
+}
+
+/// Welcome/onboarding messages sent to a CUSTOMER after they are added.
+/// Parallel to CartCampaignTemplate rather than a generalisation of it —
+/// that engine is live abandoned-cart recovery and not worth destabilising.
+model CustomerCampaignTemplate {
+  id         Int             @id @default(autoincrement())
+  channel    CampaignChannel
+  name       String
+  subject    String? // email only
+  bodyEn     String          @map("body_en")
+  bodyBn     String          @map("body_bn")
+  /// Optional rich body for email. The plain bodies above are still sent as
+  /// the text/plain alternative — some clients block HTML, and a mail with no
+  /// text part scores worse with spam filters.
+  bodyHtmlEn String?         @map("body_html_en")
+  bodyHtmlBn String?         @map("body_html_bn")
+
+  trigger         CustomerCampaignTrigger  @default(CUSTOMER_ADDED)
+  audience        CustomerCampaignAudience @default(ALL)
+  /// For NO_ORDER_IN_DAYS.
+  audienceDays    Int?                     @map("audience_days")
+  /// Cool-off for RECURRING: never reach the same customer again inside this.
+  repeatEveryDays Int?                     @map("repeat_every_days")
+
+  /// Fires this long after the customer was added. 0 = immediately.
+  delayValue Int             @default(0) @map("delay_value")
+  delayUnit  DelayUnit       @default(MINUTE) @map("delay_unit")
+  status     CampaignStatus  @default(ACTIVE)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  queue CustomerCampaignQueue[]
+
+  @@map("customer_campaign_templates")
+}
+
+model CustomerCampaignQueue {
+  id          Int             @id @default(autoincrement())
+  customerId  Int             @map("customer_id")
+  templateId  Int             @map("template_id")
+  channel     CampaignChannel
+  /// Snapshotted at enqueue time, so a later profile edit cannot silently
+  /// redirect an already-queued message.
+  recipient   String?
+  status      QueueStatus     @default(PENDING)
+  attempts    Int             @default(0)
+  scheduledAt DateTime        @map("scheduled_at")
+  lockedAt    DateTime?       @map("locked_at")
+  processedAt DateTime?       @map("processed_at")
+  lastError   String?         @map("last_error")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  /// Which send cycle this row belongs to: 'once' for the welcome sequence,
+  /// the enqueue date for a recurring send. Without it the dedupe index would
+  /// make a recurring campaign fire exactly once, ever.
+  cycleKey String @default("once") @map("cycle_key")
+
+  customer Customer                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  template CustomerCampaignTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, templateId, channel, cycleKey])
+  @@index([status, scheduledAt])
+  @@index([customerId, templateId, createdAt])
+  @@map("customer_campaign_queue")
 }
 
 model CartCampaignTemplate {

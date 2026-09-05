@@ -1,4 +1,5 @@
 import {
+  chargeableWeightKg,
   quoteShippingRule,
   STEADFAST_SHIPPING_RULES,
 } from '@amader/shared';
@@ -44,5 +45,32 @@ describe('quoteShippingRule (Steadfast card)', () => {
 
   it('returns null when no rule can apply, so the caller falls back to zones', () => {
     expect(quoteShippingRule({ applyOnCheckout: true, rules: [] }, { weightKg: 1 })).toBeNull();
+  });
+});
+
+// The courier weighs heavier than we do, so anything over a kilo is billed
+// with 1kg added. Sub-1kg parcels are left alone.
+describe('chargeableWeightKg', () => {
+  it('adds a kilo to anything above 1kg', () => {
+    expect(chargeableWeightKg(8)).toBe(9);
+    expect(chargeableWeightKg(1.5)).toBe(2.5);
+    expect(chargeableWeightKg(2)).toBe(3);
+  });
+
+  it('leaves sub-1kg parcels untouched', () => {
+    expect(chargeableWeightKg(0.25)).toBe(0.25);
+    expect(chargeableWeightKg(0.5)).toBe(0.5);
+    expect(chargeableWeightKg(1)).toBe(1);
+    expect(chargeableWeightKg(0)).toBe(0);
+  });
+
+  it('feeds the rate card, so an 8kg order is priced as 9kg', () => {
+    const at = (kg: number) =>
+      quoteShippingRule(STEADFAST_SHIPPING_RULES, { district: 'Dhaka', weightKg: kg })?.amount;
+    // Dhaka: 105 up to 1kg, +20 per additional kg.
+    expect(at(chargeableWeightKg(8))).toBe(at(9));
+    expect(at(9)).toBe(105 + 8 * 20);
+    // A small parcel is unaffected by the buffer.
+    expect(at(chargeableWeightKg(0.4))).toBe(at(0.4));
   });
 });

@@ -103,8 +103,21 @@ export function RecoveredSection() {
                 <tr key={row.id} className="border-t border-border">
                   <td className="px-4 py-3">
                     <div className="font-semibold text-text">{row.name ?? "Guest"}</div>
+                    {/* Click-to-call, same as the main recovery table: chasing
+                        one of these IS a phone call, and staff were having to
+                        copy the number out by hand here. */}
                     <div className="text-xs text-secondary">
-                      {row.phone ?? row.email ?? "No contact details"}
+                      {row.phone ? (
+                        <a
+                          href={`tel:${row.phone}`}
+                          className="font-semibold text-brand-600 hover:underline"
+                          title={`Call ${row.phone}`}
+                        >
+                          {row.phone}
+                        </a>
+                      ) : (
+                        (row.email ?? "No contact details")
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs uppercase text-secondary">{row.stage}</td>

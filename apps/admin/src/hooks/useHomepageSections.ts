@@ -23,7 +23,8 @@ export type HomepageSectionType =
   | "TOP_SELLING_PRODUCTS"
   | "JUST_FOR_YOU"
   | "FEATURED_DEALS"
-  | "HOME_BANNER_TWO";
+  | "HOME_BANNER_TWO"
+  | "NEWSLETTER";
 
 export const HOMEPAGE_SECTION_TYPES: HomepageSectionType[] = [
   "HERO_BANNER",
@@ -41,6 +42,7 @@ export const HOMEPAGE_SECTION_TYPES: HomepageSectionType[] = [
   "JUST_FOR_YOU",
   "FEATURED_DEALS",
   "HOME_BANNER_TWO",
+  "NEWSLETTER",
 ];
 
 export type AdminHomepageSection = Omit<components["schemas"]["AdminHomepageSectionDto"], "type" | "config"> & {

@@ -6,5 +6,8 @@ import { WhatsappController } from './whatsapp.controller';
 @Module({
   controllers: [AdminWhatsappController, WhatsappController],
   providers: [WhatsappSettingsService],
+  // RecoveryService reads the sales number for the WhatsApp button in the
+  // abandoned-cart email.
+  exports: [WhatsappSettingsService],
 })
 export class WhatsappModule {}

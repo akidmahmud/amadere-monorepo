@@ -92,6 +92,7 @@ export default function ShellLayout({
       }),
       href: `/net-profit/orders?search=${encodeURIComponent(o.orderNumber)}`,
       unread: o.unread,
+      type: "order" as const,
     })),
     ...abandonedCarts.map((c) => {
       // Total quantity, not `cart.length` — that counts LINES, so a cart
@@ -107,6 +108,7 @@ export default function ShellLayout({
         }),
         href: "/net-profit/recovery",
         unread: false,
+        type: "cart" as const,
       };
     }),
     // Shown until the rows themselves arrive (they are only fetched once the
@@ -120,6 +122,7 @@ export default function ShellLayout({
             subtitle: "Open Recovery to follow them up",
             href: "/net-profit/recovery",
             unread: true,
+            type: "cart" as const,
           },
         ]
       : []),

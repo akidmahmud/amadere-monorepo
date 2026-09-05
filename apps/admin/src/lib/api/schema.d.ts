@@ -1076,6 +1076,22 @@ export interface paths {
         patch: operations["AdminCategoriesController_update"];
         trace?: never;
     };
+    "/api/v1/admin/categories/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminCategoriesController_reorder"];
+        trace?: never;
+    };
     "/api/v1/tags": {
         parameters: {
             query?: never;
@@ -2030,6 +2046,38 @@ export interface paths {
         get: operations["AdminShippingZonesController_get"];
         put: operations["AdminShippingZonesController_update"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipping-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminShippingRulesController_get"];
+        put: operations["AdminShippingRulesController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipping-rules/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminShippingRulesController_quote"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3966,6 +4014,38 @@ export interface paths {
         get: operations["AdminShipmentsController_balance"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipments/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminShipmentsController_payments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/shipments/settlements/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminShipmentsController_syncSettlements"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5956,6 +6036,134 @@ export interface paths {
         patch: operations["AdminPromoVideosController_reorder"];
         trace?: never;
     };
+    "/api/v1/push/public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PushPublicController_publicKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PushPublicController_subscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PushPublicController_unsubscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/stock-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PushPublicController_registerStockAlert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/push/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPushController_settings"];
+        put: operations["AdminPushController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/push/generate-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPushController_generateKeys"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/push/stock-alerts/sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPushController_sweepStockAlerts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/push/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPushController_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/orders": {
         parameters: {
             query?: never;
@@ -6301,6 +6509,38 @@ export interface paths {
         };
         get?: never;
         put: operations["AdminProfitController_setVariantCost"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/reports/sales/pnl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportController_productPnl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/reports/sales/pnl/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportController_productPnlCsv"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -7417,6 +7657,10 @@ export interface components {
             translations: components["schemas"]["NameDescriptionTranslationDto"][];
             productIds?: number[];
         };
+        ReorderCategoriesDto: {
+            /** @description Category ids in their new display order. Ranks are assigned per parent group, so dragging reorders siblings and never reparents a category — use the parent picker on the edit form for that. */
+            ids: number[];
+        };
         UpdateCategoryDto: {
             slug?: string;
             parentId?: number;
@@ -8388,6 +8632,50 @@ export interface components {
             zones: components["schemas"]["ShippingZoneDto"][];
             fallback: components["schemas"]["ShippingFallbackDto"];
         };
+        ShippingRuleTierDto: {
+            /** @description Inclusive upper bound of this weight band, in kg */
+            upToKg: number;
+            /** @description Courier charge for a parcel in this band, in BDT */
+            fee: number;
+        };
+        ShippingRuleDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            deliveryType: "HOME" | "POINT";
+            /** @description Empty = catch-all */
+            districts: string[];
+            tiers: components["schemas"]["ShippingRuleTierDto"][];
+            /** @description Per additional whole kg past the last tier */
+            perKgFee: number;
+        };
+        UpdateShippingRulesDto: {
+            /** @description ON: checkout quotes the rule amount. OFF: checkout keeps quoting the assigned shipping zones. */
+            applyOnCheckout: boolean;
+            rules: components["schemas"]["ShippingRuleDto"][];
+        };
+        QuoteItemDto: {
+            productId?: number | null;
+            variantId?: number | null;
+            quantity: number;
+        };
+        QuoteShippingRuleDto: {
+            orderId?: number | null;
+            district?: string | null;
+            items?: components["schemas"]["QuoteItemDto"][];
+            /** @description Overrides the weight derived from orderId/items */
+            weightKg?: number | null;
+            /** @enum {string} */
+            deliveryType?: "HOME" | "POINT";
+        };
+        ShippingRuleQuoteDto: {
+            /** @description null when no rule matched */
+            amount: number | null;
+            ruleId: string | null;
+            ruleName: string | null;
+            weightKg: number;
+            district: string | null;
+        };
         UpdateBkashSettingsDto: {
             isActive?: boolean;
             /** @description Live mode off = bKash sandbox */
@@ -8722,6 +9010,7 @@ export interface components {
             cost: string | null;
             weight: string | null;
             codAmount: string | null;
+            settledCodAmount: string | null;
             /** Format: date-time */
             dispatchedAt: string | null;
             /** Format: date-time */
@@ -8921,6 +9210,8 @@ export interface components {
             blockMessageBn: string;
             /** @description Assumed delivery charge (৳) added on top of order total when estimating "amount saved" for a blocked order — blocked orders never reach a real courier quote, so this fills the gap. */
             deliveryFallback: number;
+            /** @description Whether a bdcourier API key is stored. The key itself is never returned — it lives encrypted in the credentials store, and this flag is all the UI needs to show "configured" versus "not set". */
+            bdCourierApiKeySet: boolean;
         };
         UpdateFraudSettingsDto: {
             enabled?: boolean;
@@ -8935,6 +9226,8 @@ export interface components {
             blockMessageEn?: string;
             blockMessageBn?: string;
             deliveryFallback?: number;
+            /** @description bdcourier API key. Write-only: send it to set or rotate, omit to leave the stored one alone. Never returned by GET. */
+            bdCourierApiKey?: string;
         };
         EvaluateFraudDto: {
             phone: string;
@@ -9194,6 +9487,7 @@ export interface components {
             assignedAdminName: string | null;
             /** Format: date-time */
             lastOrderDate: string | null;
+            lastOrderStatus: string | null;
             /** Format: date-time */
             nextCallTarget: string | null;
             followUpCadenceDays: number | null;
@@ -9313,7 +9607,7 @@ export interface components {
         };
         UpsertCampaignTemplateDto: {
             /** @enum {string} */
-            channel: "EMAIL" | "SMS";
+            channel: "EMAIL" | "SMS" | "WEB_PUSH";
             name: string;
             /** @description Email only */
             subject?: string;
@@ -9721,6 +10015,7 @@ export interface components {
             statusBreakdown?: components["schemas"]["OrderStatusCountDto"][];
             ordersByChannel?: components["schemas"]["OrderChannelCountDto"][];
             topCustomers?: components["schemas"]["TopCustomerDto"][];
+            topCustomersWindowDays?: number;
             monthlyRevenue?: components["schemas"]["MonthlyRevenuePointDto"][];
             topProducts?: components["schemas"]["TopProductDto"][];
             recentOrders: components["schemas"]["RecentOrderDto"][];
@@ -10393,7 +10688,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO" | "NEWSLETTER";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -10409,7 +10704,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO" | "NEWSLETTER";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -10598,6 +10893,45 @@ export interface components {
             productId?: number;
             /** @default true */
             showInHomepage: boolean;
+        };
+        SubscribePushDto: {
+            endpoint: string;
+            /** @description subscription.keys.p256dh */
+            p256dh: string;
+            /** @description subscription.keys.auth */
+            auth: string;
+            /** @description Links the browser to a known customer when there is one */
+            customerId?: number;
+            /** @description The visitor's cart guest token. This is what makes abandoned-cart push reachable for a shopper who has not signed in. */
+            guestToken?: string;
+            /** @enum {string} */
+            locale?: "EN" | "BN";
+        };
+        UnsubscribePushDto: {
+            endpoint: string;
+        };
+        RegisterStockAlertDto: {
+            productId: number;
+            /** @description Omit for a simple (non-variant) product */
+            variantId?: number;
+            /** @description The browser's push endpoint — this is the address the alert is sent to */
+            endpoint: string;
+            /** @enum {string} */
+            locale?: "EN" | "BN";
+        };
+        UpdatePushKeysDto: {
+            /** @description VAPID public key. Blank leaves the stored one alone. */
+            publicKey?: string;
+            /** @description VAPID private key. Write-only, never returned. */
+            privateKey?: string;
+            /** @description mailto: or https: URL push services can contact */
+            subject?: string;
+        };
+        SendTestPushDto: {
+            /** @description Endpoint to send the test to */
+            endpoint: string;
+            title?: string;
+            body?: string;
         };
         BulkOrderActionDto: {
             orderIds: number[];
@@ -13155,6 +13489,27 @@ export interface operations {
             };
         };
     };
+    AdminCategoriesController_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderCategoriesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     TagsController_list: {
         parameters: {
             query?: {
@@ -13646,6 +14001,8 @@ export interface operations {
                 createdFrom?: string;
                 /** @description ISO date — products created on/before this date */
                 createdTo?: string;
+                /** @description Return every product in one page, up to 1000, ignoring pageSize. */
+                all?: boolean;
             };
             header?: never;
             path?: never;
@@ -13762,6 +14119,8 @@ export interface operations {
                 createdFrom?: string;
                 /** @description ISO date — products created on/before this date */
                 createdTo?: string;
+                /** @description Return every product in one page, up to 1000, ignoring pageSize. */
+                all?: boolean;
             };
             header?: never;
             path?: never;
@@ -15286,6 +15645,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateShippingZonesDto"];
+                };
+            };
+        };
+    };
+    AdminShippingRulesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateShippingRulesDto"];
+                };
+            };
+        };
+    };
+    AdminShippingRulesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShippingRulesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateShippingRulesDto"];
+                };
+            };
+        };
+    };
+    AdminShippingRulesController_quote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteShippingRuleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingRuleQuoteDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
         };
@@ -17869,6 +18301,8 @@ export interface operations {
                 createdFrom?: string;
                 /** @description Only customers created on or before this date (YYYY-MM-DD) */
                 createdTo?: string;
+                /** @description Export only these customer ids. When present every other filter is ignored — the admin has already picked the rows, and re-applying the filter bar on top of an explicit selection could only ever remove rows they asked for. */
+                ids?: number[];
                 page?: number;
                 pageSize?: number;
             };
@@ -17959,6 +18393,8 @@ export interface operations {
                 createdFrom?: string;
                 /** @description Only customers created on or before this date (YYYY-MM-DD) */
                 createdTo?: string;
+                /** @description Export only these customer ids. When present every other filter is ignored — the admin has already picked the rows, and re-applying the filter bar on top of an explicit selection could only ever remove rows they asked for. */
+                ids?: number[];
                 page?: number;
                 pageSize?: number;
             };
@@ -18011,6 +18447,8 @@ export interface operations {
                 createdFrom?: string;
                 /** @description Only customers created on or before this date (YYYY-MM-DD) */
                 createdTo?: string;
+                /** @description Export only these customer ids. When present every other filter is ignored — the admin has already picked the rows, and re-applying the filter bar on top of an explicit selection could only ever remove rows they asked for. */
+                ids?: number[];
                 page?: number;
                 pageSize?: number;
             };
@@ -18241,6 +18679,7 @@ export interface operations {
                 from: string;
                 to: string;
                 outcome: string;
+                hasReason: boolean;
             };
             header?: never;
             path?: never;
@@ -18815,6 +19254,52 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminShipmentsController_payments: {
+        parameters: {
+            query: {
+                provider: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+                page?: string;
+                paymentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminShipmentsController_syncSettlements: {
+        parameters: {
+            query: {
+                provider: "STEADFAST" | "PATHAO" | "REDX" | "ECOURIER";
+                maxPages?: string;
+                full?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23037,6 +23522,183 @@ export interface operations {
             };
         };
     };
+    PushPublicController_publicKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PushPublicController_subscribe: {
+        parameters: {
+            query?: never;
+            header: {
+                "user-agent": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscribePushDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PushPublicController_unsubscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnsubscribePushDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PushPublicController_registerStockAlert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterStockAlertDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPushController_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPushController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePushKeysDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPushController_generateKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPushController_sweepStockAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPushController_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendTestPushDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminOrderManagerController_list: {
         parameters: {
             query?: {
@@ -23048,6 +23710,10 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Order.channel — the Origin column */
+                channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+                /** @description utm_source. Matches the way the Source column DISPLAYS the value, not the raw string: "facebook" also finds fb / FB / facebook.com / m.facebook.com but never the paid markers, and "fbads" finds fbads / fb-ads / fb_ads / facebook-ads / facebookads. "none" finds orders with no source recorded. Anything else is an exact, case-insensitive match. */
+                utmSource?: string;
                 /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
                 assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
@@ -23082,6 +23748,10 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Order.channel — the Origin column */
+                channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+                /** @description utm_source. Matches the way the Source column DISPLAYS the value, not the raw string: "facebook" also finds fb / FB / facebook.com / m.facebook.com but never the paid markers, and "fbads" finds fbads / fb-ads / fb_ads / facebook-ads / facebookads. "none" finds orders with no source recorded. Anything else is an exact, case-insensitive match. */
+                utmSource?: string;
                 /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
                 assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
@@ -23118,6 +23788,10 @@ export interface operations {
                 risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
                 /** @description Shipping address division, e.g. "Dhaka" */
                 division?: string;
+                /** @description Order.channel — the Origin column */
+                channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+                /** @description utm_source. Matches the way the Source column DISPLAYS the value, not the raw string: "facebook" also finds fb / FB / facebook.com / m.facebook.com but never the paid markers, and "fbads" finds fbads / fb-ads / fb_ads / facebook-ads / facebookads. "none" finds orders with no source recorded. Anything else is an exact, case-insensitive match. */
+                utmSource?: string;
                 /** @description Filter by the staff member an order is assigned to. Pass an admin id, or the literal "none" for orders nobody has picked up yet. */
                 assignedAdminId?: string;
                 /** @description Free-text search — order number, recipient name, or phone */
@@ -23569,6 +24243,50 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    AdminSalesReportController_productPnl: {
+        parameters: {
+            query: {
+                period: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSalesReportController_productPnlCsv: {
+        parameters: {
+            query: {
+                period: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

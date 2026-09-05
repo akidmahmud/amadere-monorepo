@@ -91,7 +91,7 @@ export const ORDER_COLUMNS = [
   // is. Sits right before Invoice — it is the number you check against the
   // courier's own statement before printing anything.
   { key: "deliveryCollected", label: "Delivery Collected" },
-  { key: "courierCost", label: "Courier Cost" },
+  { key: "courierCharge", label: "Courier Charge" },
   { key: "invoice", label: "Invoice" },
   { key: "risk", label: "Risk" },
   { key: "courierSend", label: "Courier Send" },
@@ -539,6 +539,7 @@ export function OrderManagerTable({
   onRestore,
   restoringId,
   staff,
+  highlightQuery,
 }: {
   orders: OrderManagerRow[];
   total: number;
@@ -562,6 +563,7 @@ export function OrderManagerTable({
   onRestore?: (order: OrderManagerRow) => void;
   restoringId?: number | null;
   staff?: AssignableStaff[];
+  highlightQuery?: string;
 }) {
   const { data: statusConfigs } = useOrderStatusConfigs();
   const statusByKey = new Map((statusConfigs ?? []).map((s) => [s.status, s]));
@@ -685,6 +687,7 @@ export function OrderManagerTable({
                 td={td}
                 tdStyle={tdStyle}
                 staff={staff}
+                highlightQuery={highlightQuery}
               />
             ))}
           </tbody>
@@ -775,8 +778,9 @@ function OrderRow({
   onRestore,
   restoringId,
   td,
-  tdStyle,
+  tdStyle: baseTdStyle,
   staff,
+  highlightQuery,
 }: {
   order: OrderManagerRow;
   statusByKey: Map<string, { labelEn: string; color: string }>;
@@ -794,21 +798,40 @@ function OrderRow({
   td: string;
   tdStyle: { color: string; borderColor: string; background: string };
   staff?: AssignableStaff[];
+  highlightQuery?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const { date, time } = formatDate(o.createdAt);
 
+  const cleanQuery = highlightQuery?.trim().toLowerCase();
+  const isHighlighted = Boolean(
+    cleanQuery &&
+      cleanQuery.length > 0 &&
+      (o.orderNumber.toLowerCase().includes(cleanQuery) ||
+        String(o.id) === cleanQuery)
+  );
+
+  const rowBg = isHighlighted ? "#eaf6ec" : "#fff";
+  const rowBorder = isHighlighted ? "#b6e3c1" : "#eef3ef";
+  const tdStyle = { ...baseTdStyle, background: rowBg, borderColor: rowBorder };
+
   const cells: Partial<Record<ColumnKey, React.ReactNode>> = {
     select: (
-      <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }} onClick={(e) => e.stopPropagation()}>
+      <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6, background: rowBg }} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={selected} onChange={onToggle} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
       </td>
     ),
     order: (
-      <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
+      <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, background: rowBg, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
         <button type="button" className="group block text-left" onClick={() => onView(o)}>
-          <span className="block font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
+          <span className="flex items-center gap-1.5 font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
             #{o.id} · {o.orderNumber}
+            {isHighlighted && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#2e7d43] px-2 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                Target Order
+              </span>
+            )}
           </span>
           <span className="mt-[3px] block text-[0.68rem] font-medium text-[#94a69a] transition-colors duration-150 group-hover:text-[#1d5230]">
             {o.recipientName ?? "—"}
@@ -991,17 +1014,17 @@ function OrderRow({
         )}
       </td>
     ),
-    courierCost: (
+    courierCharge: (
       <td className={td} style={tdStyle}>
-        {o.courierCost === null ? (
+        {o.courierCharge === null ? (
           <span style={{ color: FAINT }}>—</span>
         ) : (
           <span
             className="num"
-            title="What the courier bills us for this parcel, from Shipping Rules (district + weight)"
+            title="What the courier bills us for this parcel, from Shipping Rules (district + weight, plus the 1kg they add above a kilo)"
             style={{ color: TEXT }}
           >
-            ৳{Number(o.courierCost).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
+            ৳{Number(o.courierCharge).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
           </span>
         )}
       </td>

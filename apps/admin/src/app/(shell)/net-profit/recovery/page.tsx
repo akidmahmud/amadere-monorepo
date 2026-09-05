@@ -10,7 +10,7 @@ import {
   OrderDetailModal,
   type OrderDetailModalRow,
 } from "@/components/OrderDetailModal";
-import { Button, Card, Modal } from "@amader/admin-ui";
+import { Button, Card, Icon, Modal } from "@amader/admin-ui";
 import { RecoveryStatsStrip } from "@/components/net-profit/RecoveryStatsStrip";
 import {
   RecoveryFilterBar,
@@ -297,13 +297,28 @@ function CreateOrderModal({
           onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
           className={field}
         />
-        <input
-          placeholder="017********* *"
-          required
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          className={field}
-        />
+        {/* Click-to-call sits INSIDE the field rather than beside it: this
+            form is two columns, and giving the phone its own button cell
+            would knock every field after it out of alignment. Appears only
+            once there is a number worth dialling. */}
+        <div className="relative">
+          <input
+            placeholder="017********* *"
+            required
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            className={`w-full ${field} ${form.phone.trim() ? "pr-11" : ""}`}
+          />
+          {form.phone.trim() && (
+            <a
+              href={`tel:${form.phone.trim()}`}
+              title={`Call ${form.phone.trim()}`}
+              className="absolute right-1 top-1 inline-flex h-8 w-8 items-center justify-center rounded-sm text-brand-600 hover:bg-surface-2"
+            >
+              <Icon name="call" size={17} />
+            </a>
+          )}
+        </div>
         <input
           placeholder="House no. / building / street / area *"
           required
@@ -326,14 +341,25 @@ function CreateOrderModal({
           onChange={(e) => setForm({ ...form, landmark: e.target.value })}
           className={`col-span-2 ${field}`}
         />
-        <input
-          placeholder="Alternative Phone (optional)"
-          value={form.alternativePhone ?? ""}
-          onChange={(e) =>
-            setForm({ ...form, alternativePhone: e.target.value })
-          }
-          className={field}
-        />
+        <div className="relative">
+          <input
+            placeholder="Alternative Phone (optional)"
+            value={form.alternativePhone ?? ""}
+            onChange={(e) =>
+              setForm({ ...form, alternativePhone: e.target.value })
+            }
+            className={`w-full ${field} ${(form.alternativePhone ?? "").trim() ? "pr-11" : ""}`}
+          />
+          {(form.alternativePhone ?? "").trim() && (
+            <a
+              href={`tel:${(form.alternativePhone ?? "").trim()}`}
+              title={`Call ${(form.alternativePhone ?? "").trim()}`}
+              className="absolute right-1 top-1 inline-flex h-8 w-8 items-center justify-center rounded-sm text-brand-600 hover:bg-surface-2"
+            >
+              <Icon name="call" size={17} />
+            </a>
+          )}
+        </div>
         <input
           placeholder="Recipient Email (optional)"
           value={form.email ?? ""}
@@ -691,6 +717,63 @@ function SettingsSection() {
             className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
           />
         </label>
+      </div>
+
+      {/* Only the WORDING lives here. The logo, the product cards, the totals
+          and the WhatsApp button are generated from real data on every send,
+          so there is nothing there for staff to get out of sync. */}
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        <div>
+          <p className="text-sm font-bold text-text">Recovery email wording</p>
+          <p className="text-xs text-secondary">
+            The default for every recovery email. {"{{name}}"} and {"{{total}}"} are filled in
+            automatically. Staff can still tweak the text for one send from the Send Email
+            preview.
+          </p>
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Subject</span>
+          <input
+            defaultValue={data.emailSubject}
+            onBlur={(e) => update.mutate({ emailSubject: e.target.value })}
+            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Heading</span>
+          <input
+            defaultValue={data.emailHeading}
+            onBlur={(e) => update.mutate({ emailHeading: e.target.value })}
+            className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-secondary">Message</span>
+          <textarea
+            rows={4}
+            defaultValue={data.emailMessage}
+            onBlur={(e) => update.mutate({ emailMessage: e.target.value })}
+            className="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">Order button label</span>
+            <input
+              defaultValue={data.emailCtaLabel}
+              onBlur={(e) => update.mutate({ emailCtaLabel: e.target.value })}
+              className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">WhatsApp button label</span>
+            <input
+              defaultValue={data.emailWhatsappLabel}
+              onBlur={(e) => update.mutate({ emailWhatsappLabel: e.target.value })}
+              className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+            />
+          </label>
+        </div>
       </div>
     </Card>
   );

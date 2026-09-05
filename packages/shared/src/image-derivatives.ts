@@ -8,7 +8,16 @@ import sharp from 'sharp';
 // means a source image smaller than the target width is left at its own
 // size rather than upscaled and blurred.
 const CARD_WIDTH = 400;
-const FULL_MAX_WIDTH = 1200;
+// 1200 was under-serving every full-bleed placement on the site: the hero is
+// documented at 1882px, the ad banner 1690px and the newsletter banner
+// 1600px, so a stored 1200px file was being UPSCALED into all three and
+// looked soft. Measured on the newsletter banner: served 1200x375 into a
+// 1392x435 box.
+//
+// Raising it costs storage, not user bandwidth — every placement fetches
+// through `cdn-cgi/image/width=...`, so this file is only the SOURCE the CDN
+// resizes from, and a shopper still downloads a per-placement size.
+const FULL_MAX_WIDTH = 1920;
 const WEBP_QUALITY = 80;
 
 export interface ImageDerivative {

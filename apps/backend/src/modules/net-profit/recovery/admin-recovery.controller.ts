@@ -29,6 +29,7 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
 import { CancelIncompleteOrderDto } from './dto/cancel-incomplete-order.dto';
 import { UpdateCartReasonDto } from './dto/update-cart-reason.dto';
+import { RecoveryEmailOverrideDto } from './dto/recovery-email-override.dto';
 import { RecoveryService, RecoveryListFilters } from './recovery.service';
 // `import type` is required: it appears in a decorated signature, and with
 // emitDecoratorMetadata a value import would be emitted as runtime metadata.
@@ -166,6 +167,29 @@ export class AdminRecoveryController {
   async send(@Param('id', ParseIntPipe) id: number) {
     await this.recovery.sendRecovery(id);
     return { success: true };
+  }
+
+  // Preview and send are two endpoints over ONE renderer, so what staff
+  // approve in the modal is byte-for-byte what the customer receives.
+  // POST, not GET: the body carries the sender's edits so the preview can
+  // re-render as they type. Nothing is written, so it stays a `view`
+  // permission.
+  @Post(':id/email-preview')
+  @RequirePermission('net_profit_recovery.view')
+  emailPreview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RecoveryEmailOverrideDto,
+  ) {
+    return this.recovery.buildRecoveryEmail(id, dto);
+  }
+
+  @Post(':id/send-email')
+  @RequirePermission('net_profit_recovery.manage')
+  sendEmail(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RecoveryEmailOverrideDto,
+  ) {
+    return this.recovery.sendRecoveryEmail(id, dto);
   }
 
   @Post(':id/cancel')

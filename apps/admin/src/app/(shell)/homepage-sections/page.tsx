@@ -20,6 +20,7 @@ const headerStyle = { background: "linear-gradient(135deg, #0F172A 0%, #1E293B 1
 const SECTION_TYPE_ICONS: Record<HomepageSectionType, string> = {
   HERO_BANNER: "view_carousel",
   HOME_BANNER_TWO: "slideshow",
+  NEWSLETTER: "mark_email_unread",
   BANNER_STRIP: "image",
   AD_BANNER: "campaign",
   PRODUCT_COLLECTION: "grid_view",

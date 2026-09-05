@@ -4,6 +4,7 @@ import React from "react";
 import { Button, Icon } from "@amader/admin-ui";
 import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
 import { EditableReasonCell } from "./EditableReasonCell";
+import { RecoveryEmailModal } from "./RecoveryEmailModal";
 
 const LINE = "#e5ebe6";
 const INK = "#1e2b22";
@@ -99,6 +100,8 @@ export function RecoveryTable({
   deletingId?: number | null;
   isLoading: boolean;
 }) {
+  // Which row's email preview is open. Null = closed.
+  const [emailingId, setEmailingId] = React.useState<number | null>(null);
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 20;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -115,6 +118,7 @@ export function RecoveryTable({
   } as const;
 
   return (
+    <>
     <div
       className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]"
       style={{ background: "#fff", borderColor: LINE }}
@@ -363,6 +367,20 @@ export function RecoveryTable({
                           >
                             {sendingId === row.id ? "Sending…" : "Send SMS"}
                           </Button>
+                          {/* Email only where there IS one. Rendering a
+                              disabled button for every phone-only cart would
+                              be three dead controls in a row. */}
+                          {row.email && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setEmailingId(row.id)}
+                              className="h-8 text-[0.72rem] font-bold"
+                              title={`Email ${row.email}`}
+                            >
+                              Send Email
+                            </Button>
+                          )}
                           <button
                             type="button"
                             onClick={() => onCreateOrder(row)}
@@ -517,5 +535,9 @@ export function RecoveryTable({
         </div>
       </div>
     </div>
+    {emailingId !== null && (
+      <RecoveryEmailModal incompleteId={emailingId} onClose={() => setEmailingId(null)} />
+    )}
+    </>
   );
 }

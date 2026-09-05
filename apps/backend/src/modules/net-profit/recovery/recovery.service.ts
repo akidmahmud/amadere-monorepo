@@ -16,10 +16,24 @@ import { ORDER_CREATED_EVENT } from '../../orders/orders.events';
 import type { OrderCreatedEvent } from '../../orders/orders.events';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
 import { toOrderAddressCreate } from '../../orders/order-address.util';
+import { ConfigService } from '@nestjs/config';
+import { SettingsService } from '../../settings/settings.service';
+import { WhatsappSettingsService } from '../../whatsapp/whatsapp-settings.service';
+import { SmtpEmailProvider } from '../cart-campaigns/providers/smtp-email.provider';
+import { renderRecoveryEmail, RenderedRecoveryEmail } from './recovery-email.renderer';
 import { DownloadsService } from '../../digital-products/downloads.service';
 import { IncompleteOrderDto, toIncompleteOrderDto } from './recovery.mapper';
 
 const SETTINGS_NAMESPACE = 'recovery';
+
+/** The editable half of the recovery email. */
+export interface RecoveryEmailCopy {
+  subject: string;
+  heading: string;
+  message: string;
+  ctaLabel: string;
+  whatsappLabel: string;
+}
 
 export interface RecoverySettings {
   enabled: boolean;
@@ -27,6 +41,14 @@ export interface RecoverySettings {
   maxAttempts: number;
   quietHoursStart: number; // 0-23, server-local
   quietHoursEnd: number;
+  /** Editable copy for the recovery email. Everything else in that mail —
+   *  logo, the product cards, totals, the WhatsApp button — is generated from
+   *  real data and deliberately not text staff can get wrong. */
+  emailSubject: string;
+  emailHeading: string;
+  emailMessage: string;
+  emailCtaLabel: string;
+  emailWhatsappLabel: string;
 }
 
 const RECOVERY_SETTINGS_DEFAULTS: RecoverySettings = {
@@ -35,6 +57,14 @@ const RECOVERY_SETTINGS_DEFAULTS: RecoverySettings = {
   maxAttempts: 3,
   quietHoursStart: 22,
   quietHoursEnd: 8,
+  // {{name}} is the shopper's name. Left as a token rather than baked in so
+  // the greeting still reads correctly for a cart captured without one.
+  emailSubject: '{{name}}, আপনার কার্টে পণ্য রয়ে গেছে — {{total}}',
+  emailHeading: '{{name}}, আপনার কার্ট এখনও অপেক্ষা করছে',
+  emailMessage:
+    'আপনি যে পণ্যগুলো পছন্দ করেছিলেন সেগুলো আমরা সরিয়ে ফেলিনি — এখনও আপনার জন্য রাখা আছে। অর্ডারটি সম্পূর্ণ করতে চাইলে নিচের বাটনে ক্লিক করুন। কোনো প্রশ্ন থাকলে আমাদের হোয়াটসঅ্যাপে জানান, আমরা সাহায্য করতে প্রস্তুত।',
+  emailCtaLabel: 'অর্ডার সম্পূর্ণ করুন',
+  emailWhatsappLabel: 'হোয়াটসঅ্যাপে কথা বলুন',
 };
 
 /**
@@ -166,7 +196,75 @@ export class RecoveryService {
     private readonly campaigns: CartCampaignsService,
     private readonly mergeTags: MergeTagsService,
     private readonly downloads: DownloadsService,
+    private readonly siteSettings: SettingsService,
+    private readonly whatsapp: WhatsappSettingsService,
+    private readonly email: SmtpEmailProvider,
+    private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Build the abandoned-cart email for one row.
+   *
+   * Preview and send both go through here on purpose — a preview rendered
+   * separately from what actually goes out is worse than none, because staff
+   * would approve one email and mail another.
+   */
+  async buildRecoveryEmail(
+    id: number,
+    override?: Partial<RecoveryEmailCopy>,
+  ): Promise<RenderedRecoveryEmail & { to: string | null; name: string | null; copy: RecoveryEmailCopy }> {
+    const row = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
+    const [site, wa, settings] = await Promise.all([
+      this.siteSettings.getSiteInfo(),
+      this.whatsapp.getSettings(),
+      this.getSettings(),
+    ]);
+
+    // Saved defaults, then whatever the sender edited in the modal. An
+    // override is for THIS send only and is deliberately never written back —
+    // personalising one chase must not silently change everyone else's.
+    const copy: RecoveryEmailCopy = {
+      subject: override?.subject?.trim() || settings.emailSubject,
+      heading: override?.heading?.trim() || settings.emailHeading,
+      message: override?.message?.trim() || settings.emailMessage,
+      ctaLabel: override?.ctaLabel?.trim() || settings.emailCtaLabel,
+      whatsappLabel: override?.whatsappLabel?.trim() || settings.emailWhatsappLabel,
+    };
+
+    const rendered = renderRecoveryEmail({
+      copy,
+      recipientName: row.name,
+      cart: (row.cart as unknown as CartSnapshotItem[]) ?? [],
+      subtotal: row.subtotal.toString(),
+      logoUrl: site.logoUrl,
+      siteUrl: this.config.get<string>('STOREFRONT_BASE_URL') ?? 'https://amadere.com',
+      whatsappNumber: wa.phoneNumber || null,
+      siteName: site.siteName || 'Amader™',
+    });
+
+    return { ...rendered, to: row.email, name: row.name, copy };
+  }
+
+  /** Sends the email built above, and counts it as a recovery attempt so the
+   *  funnel's attempt column reflects every channel, not just SMS. */
+  async sendRecoveryEmail(
+    id: number,
+    override?: Partial<RecoveryEmailCopy>,
+  ): Promise<{ sent: boolean; error?: string }> {
+    // Rendered from the SAME call the preview used, with the same override —
+    // so what was approved on screen is what goes out.
+    const built = await this.buildRecoveryEmail(id, override);
+    if (!built.to) return { sent: false, error: 'This cart has no email address' };
+
+    const result = await this.email.send(built.to, built.subject, built.text, { html: built.html });
+    if (result.failed) return { sent: false, error: result.error ?? 'Email send failed' };
+
+    await this.prisma.client.incompleteOrder.update({
+      where: { id },
+      data: { recoveryAttempts: { increment: 1 } },
+    });
+    return { sent: true };
+  }
 
   async getSettings(): Promise<RecoverySettings> {
     return this.settings.getNamespace(SETTINGS_NAMESPACE, RECOVERY_SETTINGS_DEFAULTS);

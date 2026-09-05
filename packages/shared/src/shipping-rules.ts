@@ -44,6 +44,27 @@ export interface ShippingRulesConfig {
 export const SHIPPING_RULE_MAX = 40;
 export const SHIPPING_RULE_TIER_MAX = 30;
 
+/**
+ * The weight a parcel is actually BILLED at.
+ *
+ * Steadfast weighs at their hub, and their figure is reliably heavier than
+ * ours — packaging, and their own rounding. Per the merchant: add 1kg to
+ * anything over a kilo, and leave sub-1kg parcels alone (those go out as
+ * small packets and are not marked up the same way).
+ *
+ * So an 8kg order is charged as 9kg, and a 0.25kg order stays 0.25kg.
+ *
+ * Deliberately NOT folded into quoteShippingRule: the rate card is the
+ * courier's published truth and stays testable against their sheet, while
+ * this is our own padding on top. Callers pricing "what the courier will
+ * bill us" apply it; the checkout path does not, so a customer is never
+ * silently charged for a kilo that does not exist.
+ */
+export function chargeableWeightKg(weightKg: number): number {
+  if (!Number.isFinite(weightKg) || weightKg <= 1) return weightKg;
+  return weightKg + 1;
+}
+
 export interface ShippingRuleQuote {
   amount: number;
   ruleId: string;

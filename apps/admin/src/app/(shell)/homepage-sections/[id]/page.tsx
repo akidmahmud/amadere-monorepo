@@ -13,6 +13,7 @@ const headerStyle = { background: "linear-gradient(135deg, #0F172A 0%, #1E293B 1
 const TYPE_DESCRIPTIONS: Record<string, string> = {
   HERO_BANNER: "Desktop hero slider with optional side banner (1882 × 500px).",
   HOME_BANNER_TWO: "Full-bleed promo slider with desktop (1690 × 575px) & mobile crops.",
+  NEWSLETTER: "Email signup over a banner image — desktop (1600 × 500px) & mobile (800 × 800px).",
   BANNER_STRIP: "Wide full-width promotional banner strip (1690 × 195px).",
   AD_BANNER: "Auto-advancing promotion slider banner (1686 × 759px).",
   PRODUCT_COLLECTION: "Grid or carousel showing products from a selected collection.",

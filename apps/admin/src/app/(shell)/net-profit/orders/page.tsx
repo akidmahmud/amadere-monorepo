@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Modal } from "@amader/admin-ui";
 import { ConsignModal } from "@/components/ConsignModal";
@@ -216,7 +217,10 @@ function HeaderButton({ children, onClick, href }: { children: React.ReactNode; 
   );
 }
 
-export default function OrderManagerPage() {
+function OrderManagerPageInner() {
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get("search") || searchParams.get("q");
+
   const [section, setSection] = useState<"orders" | "statuses" | "deleted">("orders");
   const [uiFilters, setUiFilters] = useState<OrderFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
@@ -227,6 +231,12 @@ export default function OrderManagerPage() {
   const [showSymbology, setShowSymbology] = useState(false);
   const [newOrderModalOpen, setNewOrderModalOpen] = useState(false);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (urlSearch) {
+      setUiFilters((prev) => (prev.q === urlSearch ? prev : { ...prev, q: urlSearch }));
+    }
+  }, [urlSearch]);
 
   useEffect(() => {
     const savedSize = Number(localStorage.getItem(PAGE_SIZE_KEY));
@@ -317,6 +327,22 @@ export default function OrderManagerPage() {
   // Single-row target xor "bulk" (current `selected` set) — one ConfirmDialog
   // covers both the per-row trash icon and the bulk-action-bar Delete button.
   const [deleteTarget, setDeleteTarget] = useState<OrderManagerRow | "bulk" | null>(null);
+  const [autoOpened, setAutoOpened] = useState(false);
+
+  useEffect(() => {
+    if (urlSearch && data?.items && data.items.length > 0 && !autoOpened) {
+      const clean = urlSearch.trim().toLowerCase();
+      const match = data.items.find(
+        (o) =>
+          o.orderNumber.toLowerCase() === clean ||
+          String(o.id) === clean
+      );
+      if (match) {
+        setDetailOrder(match);
+        setAutoOpened(true);
+      }
+    }
+  }, [urlSearch, data?.items, autoOpened]);
 
   const totalCount = Object.values(statusCounts ?? {}).reduce((a, b) => a + b, 0);
   const countFor = (statuses: string[]) => statuses.reduce((sum, s) => sum + (statusCounts?.[s] ?? 0), 0);
@@ -549,6 +575,7 @@ export default function OrderManagerPage() {
             isLoading={isLoading}
             onDelete={setDeleteTarget}
             staff={staff}
+            highlightQuery={uiFilters.q || urlSearch || undefined}
           />
         </>
       )}
@@ -574,5 +601,13 @@ export default function OrderManagerPage() {
         description="This moves the order to Deleted Orders, not a permanent delete — it can be restored from there at any time."
       />
     </div>
+  );
+}
+
+export default function OrderManagerPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted">Loading Orders...</div>}>
+      <OrderManagerPageInner />
+    </Suspense>
   );
 }
