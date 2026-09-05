@@ -11,16 +11,39 @@
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-/var/www/amadere-monorepo}"
-# sudo keeps the invoking user in SUDO_USER; that is who PM2 and the checkout
-# belong to, and running the deploy as root would create root-owned files in
-# node_modules and .next that the next non-root build cannot overwrite.
-RUN_USER="${SUDO_USER:-$(id -un)}"
 
-if [ "$RUN_USER" = "root" ]; then
-  echo "Refusing to install: run this with sudo from your normal login user," >&2
-  echo "not as root directly, or the deploy will run as root and break file" >&2
-  echo "ownership in node_modules/.next and lose the PM2 daemon." >&2
+[ -d "$REPO_DIR/.git" ] || {
+  echo "$REPO_DIR is not a git checkout. Set REPO_DIR=... and re-run." >&2
   exit 1
+}
+
+# Run the deploy as whoever already OWNS the checkout, rather than as whoever
+# happens to be running this installer.
+#
+# Getting this wrong is silently destructive in both directions: deploying as
+# root onto a non-root checkout leaves root-owned files in node_modules/.next
+# that the next build cannot overwrite, and deploying as a normal user onto a
+# root-owned checkout fails outright. It also has to match the user whose PM2
+# daemon owns the backend/admin/web processes, or `pm2 restart` cheerfully
+# talks to an empty daemon and restarts nothing.
+#
+# On this box the checkout is root-owned and PM2 runs as root, which is a
+# perfectly consistent setup — so root is accepted here rather than refused.
+RUN_USER="${RUN_USER:-$(stat -c '%U' "$REPO_DIR")}"
+
+id "$RUN_USER" >/dev/null 2>&1 || {
+  echo "Cannot resolve the owner of $REPO_DIR ('$RUN_USER')." >&2
+  echo "Set RUN_USER=<user> explicitly and re-run." >&2
+  exit 1
+}
+
+# Whoever it is must be the one PM2 is running under, or the restart is a no-op.
+if command -v pm2 >/dev/null 2>&1; then
+  if ! sudo -u "$RUN_USER" -i pm2 pid backend >/dev/null 2>&1; then
+    echo "WARNING: '$RUN_USER' has no PM2 process named 'backend'." >&2
+    echo "         Deploys will build but restart nothing. Check 'pm2 ls'" >&2
+    echo "         as the user that owns the running apps." >&2
+  fi
 fi
 
 # systemd starts services with a near-empty PATH, so pnpm/pm2/node installed

@@ -1117,9 +1117,16 @@ to `journalctl`.
   pnpm/pm2/node under nvm/corepack/fnm are invisible. The installer resolves all
   three against the real user's login shell and bakes them into
   `/etc/amadere-deploy.env`.
-- **Not root.** The installer refuses to run as root directly. A root deploy
-  leaves root-owned files in `node_modules`/`.next` that the next non-root build
-  cannot overwrite, and `pm2 restart` would talk to the wrong daemon.
+- **The deploy user is derived, not assumed.** First version of the installer
+  refused to run as root — wrong for this box, which is logged into as root with
+  a root-owned checkout and PM2 running as root. That is a perfectly consistent
+  setup, and the refusal just blocked a correct install. It now takes the user
+  from `stat -c %U` on the checkout itself, so the deploy runs as whoever
+  already owns the files. Getting this wrong is silently destructive both ways:
+  root onto a non-root checkout leaves root-owned `node_modules`/`.next` the
+  next build cannot overwrite, and a normal user onto a root-owned checkout
+  fails outright. It also warns if that user has no PM2 process named
+  `backend`, since otherwise deploys would build and restart nothing.
 - **The `.next` retry is preserved verbatim** — never delete `.next` before the
   build, only after a build failure, for the reasons the old workflow spells out.
 
