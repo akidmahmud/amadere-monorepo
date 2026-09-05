@@ -423,6 +423,55 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   )}
                 </div>
 
+                {/* The courier collects whatever COD we sent them at
+                    dispatch. Steadfast's v1 API has no way to change it
+                    afterwards, so editing an order that is already consigned
+                    silently leaves the wrong amount to be collected at the
+                    door — under-collecting was already costing real money
+                    before this warning existed. Not blocked: staff often
+                    have a good reason. Just never invisible again. */}
+                {(() => {
+                  const sh = order.shipment;
+                  // consignmentId, not status: it is the true "the courier
+                  // has this parcel" signal, and real rows sit at PENDING
+                  // with a consignment id already issued.
+                  if (!sh?.consignmentId || sh.codAmount === null) return null;
+                  const asked = Number(sh.codAmount);
+                  const owed = Number(order.totalAmount);
+                  if (!Number.isFinite(asked) || !Number.isFinite(owed)) return null;
+                  if (Math.abs(asked - owed) < 0.01) return null;
+                  // Read off-schema: settledCodAmount is new on the API and
+                  // the generated OpenAPI types are regenerated separately.
+                  // Optional either way — absent just means "no payout yet".
+                  const settledRaw = (sh as { settledCodAmount?: string | null }).settledCodAmount;
+                  const settled =
+                    settledRaw === null || settledRaw === undefined ? null : Number(settledRaw);
+                  const gap = owed - asked;
+                  return (
+                    <div className="rounded-sm border border-amber-300 bg-amber-50 p-2.5 text-xs">
+                      <p className="font-bold text-amber-900">
+                        Courier is collecting ৳{asked}, but this order is ৳{owed}
+                      </p>
+                      <p className="mt-1 text-amber-800">
+                        {gap > 0
+                          ? `৳${gap.toFixed(2)} will NOT be collected on delivery.`
+                          : `৳${Math.abs(gap).toFixed(2)} too much will be collected from the customer.`}{" "}
+                        The order changed after it was consigned, and the courier
+                        cannot be told the new amount.
+                      </p>
+                      <p className="mt-1 text-amber-800">
+                        Cancel and re-consign it, or settle the difference
+                        separately.
+                      </p>
+                      {settled !== null && (
+                        <p className="mt-1 font-semibold text-amber-900">
+                          Courier has since settled ৳{settled}.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div className="flex items-center justify-between border-t border-border pt-2">
                   <span className="font-bold text-text">Total amount</span>
                   <span className="num font-bold" style={{ color: "#f97316" }}>৳{order.totalAmount}</span>

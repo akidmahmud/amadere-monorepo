@@ -114,6 +114,9 @@ export class OrderShipmentDto {
   cost!: string | null;
   weight!: string | null;
   codAmount!: string | null;
+  /** What the courier actually collected, once their payout confirms it.
+   *  Null until then — and null is not zero. */
+  settledCodAmount!: string | null;
   dispatchedAt!: Date | null;
   deliveredAt!: Date | null;
   updatedAt!: Date;
@@ -265,6 +268,9 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
           cost: decimalToString(shipment.cost),
           weight: decimalToString(shipment.weight),
           codAmount: decimalToString(shipment.codAmount),
+          // What the courier actually collected, once their payout confirms
+          // it. Null until then — and null is NOT zero.
+          settledCodAmount: decimalToString(shipment.settledCodAmount),
           dispatchedAt: shipment.dispatchedAt,
           deliveredAt: shipment.deliveredAt,
           updatedAt: shipment.updatedAt,

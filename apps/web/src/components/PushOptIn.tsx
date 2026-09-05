@@ -143,13 +143,29 @@ export function PushOptIn() {
 
   if (!visible) return null;
 
+  // Sits ABOVE MobileStickyFooter, which is fixed bottom-0 at z-[1000] and is
+  // 62px tall on mobile. At the old bottom-4/z-50 the footer painted over this
+  // card's buttons, so a shopper on a phone could not dismiss it at all.
   return (
     <div
       role="dialog"
       aria-live="polite"
       aria-label="Order updates"
-      className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-[14px] border border-line bg-white p-4 shadow-brand sm:left-auto sm:right-6 sm:bottom-6"
+      className="fixed bottom-[78px] left-4 right-4 z-[1001] mx-auto max-w-sm rounded-[14px] border border-line bg-white p-4 shadow-brand md:bottom-6 md:left-auto md:right-6"
     >
+      {/* An explicit dismiss. "Not now" alone was not enough: it is easy to
+          miss, and on a phone it was the part hidden behind the footer. */}
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => {
+          remember();
+          setVisible(false);
+        }}
+        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-muted transition-colors hover:bg-line/60 hover:text-ink"
+      >
+        &times;
+      </button>
       {done === "granted" ? (
         <div className="flex items-start gap-3">
           <p className="flex-1 font-body text-sm text-ink">
@@ -178,7 +194,7 @@ export function PushOptIn() {
         </div>
       ) : (
         <>
-          <p className="font-body text-sm font-semibold text-ink">
+          <p className="pr-8 font-body text-sm font-semibold text-ink">
             Get order updates from Amader™
           </p>
           <p className="mt-1 font-body text-sm text-muted">
