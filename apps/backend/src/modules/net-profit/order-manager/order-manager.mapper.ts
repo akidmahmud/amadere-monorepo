@@ -28,6 +28,11 @@ export class OrderManagerRowDto {
   postCode!: string | null;
   thumbnailUrl!: string | null;
   origin!: string;
+  /** COD the courier collects, minus goods (sub-total less discount). Null
+   *  until the order is consigned and a COD figure exists. */
+  courierCharge!: string | null;
+  /** The raw COD figure the courier is collecting, for context in the cell. */
+  codAmount!: string | null;
   paymentProvider!: PaymentProvider | null;
   paymentStatus!: PaymentStatus | null;
   courierProvider!: CourierProviderName | null;

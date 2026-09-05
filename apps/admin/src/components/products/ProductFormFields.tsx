@@ -72,6 +72,21 @@ function countWords(str: string): number {
 // and pipe-separated segments, then keeps ASCII letters/numbers only. Falls
 // back to a Unicode-aware slug (keeps non-Latin letters) if that leaves
 // nothing, so a Bangla-only name still gets *some* slug instead of "".
+/**
+ * A readable SKU from the product name: AMD-FERMENTED-GARLIC-HONEY.
+ *
+ * Derived rather than random on purpose — staff read these off packing slips
+ * and courier labels, so a guessable code beats a unique meaningless one.
+ */
+function skuFromName(str: string): string {
+  const core = slugify(str)
+    .toUpperCase()
+    .replace(/-+/g, "-")
+    .slice(0, 28)
+    .replace(/-$/, "");
+  return core ? `AMD-${core}` : "";
+}
+
 function slugify(str: string): string {
   const ascii = str
     .replace(/\([^)]*\)/g, " ")
@@ -158,6 +173,13 @@ export function ProductFormFields({
   // Auto-generates the slug from the name until the admin types into the
   // slug field directly — same pattern as BlogPostFormFields.tsx.
   const slugEdited = useRef(false);
+  // SKU follows the name ONLY while creating. On an existing product the SKU is
+  // already printed on packing slips, referenced in stock counts and possibly
+  // in a courier's records — renaming the product must never silently rewrite
+  // it. `productId` is undefined on the new-product page and set on edit, which
+  // is the whole distinction.
+  const isNewProduct = productId === undefined;
+  const skuEdited = useRef(false);
   const storefrontUrl = useStorefrontUrl();
   // undefined (not 0) means "no cost entered" — same distinction
   // ProductPricingCard's own hasCost flag makes, so a variant with no cost
@@ -167,7 +189,17 @@ export function ProductFormFields({
 
   function handleNameChange(v: string) {
     form.setName(v);
-    if (!slugEdited.current) form.setSlug(slugify(v));
+    // Slug follows the name only while creating, for the same reason the SKU
+    // does — but the stakes are higher. On an existing product the permalink is
+    // a live URL that customers, Google and any shared link already point at.
+    // Renaming silently rewrote it: product 24 went from
+    // `sundarban-kholisha-flower-honey` to `renamed`, because slugify drops
+    // Bengali characters and parentheticals, leaving almost nothing.
+    //
+    // The "Regenerate from product name" button beside the field is untouched —
+    // rewriting the URL stays available, it just has to be asked for.
+    if (isNewProduct && !slugEdited.current) form.setSlug(slugify(v));
+    if (isNewProduct && !skuEdited.current) form.setSku(skuFromName(v));
   }
 
   return (
@@ -482,10 +514,20 @@ export function ProductFormFields({
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold text-emerald-950">
                 SKU<span className="ml-0.5 text-rose-500">*</span>
+                {isNewProduct && (
+                  <span className="ml-1.5 font-semibold text-emerald-900/45">
+                    filled from the name — edit to override
+                  </span>
+                )}
               </span>
               <input
                 value={form.sku}
-                onChange={(e) => form.setSku(e.target.value)}
+                onChange={(e) => {
+                  // Any manual edit stops the name from driving it, for the
+                  // rest of this session — same rule the slug field uses.
+                  skuEdited.current = true;
+                  form.setSku(e.target.value);
+                }}
                 className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
               />
             </label>

@@ -9,6 +9,7 @@ import { Cart, Locale, PaymentProvider, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { computeCheckoutFees } from '../net-profit/accounts/accounts.constants';
 import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
+import { ShippingRulesService } from '../shipping-rules/shipping-rules.service';
 import { PricingService } from './pricing.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { BuyNowDto } from './dto/buy-now.dto';
@@ -64,6 +65,7 @@ export class CartService {
     private readonly pricing: PricingService,
     private readonly events: EventEmitter2,
     private readonly shippingZones: ShippingZonesService,
+    private readonly shippingRules: ShippingRulesService,
   ) {}
 
   async getView(
@@ -504,6 +506,9 @@ export class CartService {
       pricing.discounts.some((d) => d.freeShipping) || isDigitalOnly(lines),
       district,
       zones,
+      // Same override checkout.service.ts applies, from the same priced
+      // lines — the preview and the real charge must never disagree.
+      await this.shippingRules.checkoutFee(district, pricing.lines),
     );
     return {
       subTotal: pricing.subTotal.toString(),

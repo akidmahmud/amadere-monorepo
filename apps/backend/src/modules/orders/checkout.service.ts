@@ -12,6 +12,7 @@ import { OtpSecurityService } from '../net-profit/otp-security/otp-security.serv
 import { SmsService } from '../net-profit/sms/sms.service';
 import { computeCheckoutFees } from '../net-profit/accounts/accounts.constants';
 import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
+import { ShippingRulesService } from '../shipping-rules/shipping-rules.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { CheckoutAddressDto } from './dto/checkout-address.dto';
 import { RequestCodOtpDto } from './dto/request-cod-otp.dto';
@@ -73,6 +74,7 @@ export class CheckoutService {
     private readonly settings: SettingsService,
     private readonly config: ConfigService,
     private readonly shippingZones: ShippingZonesService,
+    private readonly shippingRules: ShippingRulesService,
     private readonly downloads: DownloadsService,
     private readonly orders: OrdersService,
     private readonly checkoutAccount: CheckoutAccountService,
@@ -360,6 +362,16 @@ export class CheckoutService {
       pricing.discounts.some((d) => d.freeShipping) || digitalOnly,
       dto.shippingAddress?.district,
       await this.shippingZones.getConfig(),
+      // Only charged when the Shipping Rules toggle is on; returns null
+      // otherwise, which leaves the zone rate exactly as it was.
+      await this.shippingRules.checkoutFee(
+        dto.shippingAddress?.district,
+        cart.items.map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId,
+          quantity: i.quantity,
+        })),
+      ),
     );
     const taxAmount = new Decimal(0);
     const codFee = new Decimal(0);

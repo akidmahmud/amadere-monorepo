@@ -10,6 +10,7 @@ import {
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useCreateManualOrder, usePreviewCoupon, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
+import { useShippingRuleQuote } from "@/hooks/useShippingRules";
 import { CreateCustomerModal, type CreateCustomerModalAddress } from "@/components/orders/CreateCustomerModal";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 
@@ -271,6 +272,20 @@ export function NewOrderFormModern({
   const [couponCode, setCouponCode] = useState("");
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]>("WHATSAPP");
   const [customerNote, setCustomerNote] = useState("");
+
+  // The courier's price for this draft basket. Held back until there is a
+  // district, since a quote without one silently prices as the catch-all.
+  const ruleQuote = useShippingRuleQuote(
+    {
+      district: address.district || null,
+      items: lines.map((l) => ({
+        productId: l.productId,
+        variantId: l.variantId,
+        quantity: l.quantity,
+      })),
+    },
+    Boolean(address.district) && lines.length > 0,
+  );
 
   const create = useCreateManualOrder();
 
@@ -918,6 +933,17 @@ export function NewOrderFormModern({
                   { label: "Free (৳0)", amount: "0" },
                   { label: "Inside Dhaka (৳60)", amount: "60" },
                   { label: "Outside Dhaka (৳120)", amount: "120" },
+                  // The Shipping Rules card's own answer for this basket,
+                  // offered alongside the fixed presets rather than instead
+                  // of them — it is a suggestion, and staff still overrule it.
+                  ...(ruleQuote.data?.amount != null
+                    ? [
+                        {
+                          label: `Rule: ${ruleQuote.data.ruleName ?? "courier"} (৳${ruleQuote.data.amount})`,
+                          amount: String(ruleQuote.data.amount),
+                        },
+                      ]
+                    : []),
                 ].map((preset) => (
                   <button
                     key={preset.label}

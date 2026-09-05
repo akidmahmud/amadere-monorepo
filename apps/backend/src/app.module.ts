@@ -62,6 +62,7 @@ import { CollectionsModule } from './modules/collections/collections.module';
 import { HomepageSectionsModule } from './modules/homepage-sections/homepage-sections.module';
 import { FooterModule } from './modules/footer/footer.module';
 import { ShippingZonesModule } from './modules/shipping-zones/shipping-zones.module';
+import { ShippingRulesModule } from './modules/shipping-rules/shipping-rules.module';
 import { PromoVideosModule } from './modules/promo-videos/promo-videos.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
 import { WholesaleModule } from './modules/wholesale/wholesale.module';
@@ -177,6 +178,7 @@ import { PushModule } from './modules/push/push.module';
     HomepageSectionsModule,
     FooterModule,
     ShippingZonesModule,
+    ShippingRulesModule,
     PromoVideosModule,
     PushModule,
     NetProfitModule,

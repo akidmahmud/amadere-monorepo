@@ -42,3 +42,4 @@ export interface PaginatedResult<T> {
   page: number;
   pageSize: number;
 }
+export * from './shipping-rules';

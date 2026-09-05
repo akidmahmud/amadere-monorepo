@@ -9,6 +9,7 @@ import {
 } from "@/components/DistrictThanaFields";
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
+import { useShippingRuleQuote } from "@/hooks/useShippingRules";
 import {
   useCreateManualOrder,
   usePreviewCoupon,
@@ -222,6 +223,19 @@ export function NewOrderFormLegacy({ initialCustomerId, onCreated, onCancel }: N
   const [editingDiscount, setEditingDiscount] = useState(false);
   const [shippingAmount, setShippingAmount] = useState("0");
   const [editingShipping, setEditingShipping] = useState(false);
+  // Same courier-rate suggestion the modern form offers, so switching views
+  // does not change what staff are told a parcel costs.
+  const ruleQuote = useShippingRuleQuote(
+    {
+      district: address.district || null,
+      items: lines.map((l) => ({
+        productId: l.productId,
+        variantId: l.variantId,
+        quantity: l.quantity,
+      })),
+    },
+    Boolean(address.district) && lines.length > 0,
+  );
   const [editingTax, setEditingTax] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -799,6 +813,14 @@ export function NewOrderFormLegacy({ initialCustomerId, onCreated, onCancel }: N
                   { label: "Free", amount: "0" },
                   { label: "Inside Dhaka ৳60", amount: "60" },
                   { label: "Outside Dhaka ৳120", amount: "120" },
+                  ...(ruleQuote.data?.amount != null
+                    ? [
+                        {
+                          label: `Rule ৳${ruleQuote.data.amount}`,
+                          amount: String(ruleQuote.data.amount),
+                        },
+                      ]
+                    : []),
                 ].map((preset) => (
                   <button
                     key={preset.label}

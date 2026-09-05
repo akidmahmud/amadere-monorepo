@@ -45,6 +45,9 @@ interface RawOrderManagerRow {
   order_number: string;
   status: OrderStatus;
   channel: OrderChannel;
+  cod_amount: Prisma.Decimal | null;
+  sub_total: Prisma.Decimal;
+  discount_amount: Prisma.Decimal;
   total_amount: Prisma.Decimal;
   created_at: Date;
   recipient_name: string | null;
@@ -198,6 +201,11 @@ export class OrderManagerService {
              s.provider AS courier_provider,
              s.id AS shipment_id,
              s.status AS courier_status,
+             -- What the courier is collecting from the customer, and what of
+             -- that is goods. The Delivery Charge column is the difference.
+             s.cod_amount AS cod_amount,
+             o.sub_total AS sub_total,
+             o.discount_amount AS discount_amount,
              ca.attempts AS courier_attempts,
              COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") AS risk_level,
              oi.items AS items
@@ -209,7 +217,7 @@ export class OrderManagerService {
         SELECT provider, status FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) p ON true
       LEFT JOIN LATERAL (
-        SELECT id, provider, status FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
+        SELECT id, provider, status, cod_amount FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) s ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(json_build_object('provider', provider, 'status', status, 'shipmentId', id)) AS attempts
@@ -286,6 +294,21 @@ export class OrderManagerService {
       // wholesale and recovery could create them, so a manual order marked
       // FACEBOOK still displayed as "Web".
       origin: r.channel,
+      // The courier's charge on this order: what Steadfast is collecting as
+      // COD, less what the customer is paying for goods.
+      //
+      // Goods are sub_total MINUS discount, not sub_total — a discount comes
+      // off the products, so ignoring it would report the discount as extra
+      // delivery charge.
+      //
+      // null when the order has no shipment yet (nothing has been consigned,
+      // so there is no COD figure), which the column renders as a dash rather
+      // than a misleading 0.
+      courierCharge:
+        r.cod_amount === null
+          ? null
+          : r.cod_amount.minus(r.sub_total).plus(r.discount_amount).toString(),
+      codAmount: r.cod_amount?.toString() ?? null,
       paymentProvider: r.payment_provider,
       paymentStatus: r.payment_status,
       courierProvider: r.courier_provider,

@@ -65,11 +65,19 @@ export const POSTING_DEFAULTS: PostingSettings = { defaultCashAccountId: null };
 // Lives in this constants file rather than in a service because it is pure
 // and is imported by cart and checkout; the accounts services around it are
 // Nest providers those modules have no reason to depend on.
+//
+// `ruleOverride` is the courier rate card (Shipments > Shipping Rules) when
+// its "charge this at checkout" toggle is ON. It is resolved by the caller
+// because it needs the parcel weight, which means DB reads this pure
+// function must not do. Null — the toggle is off, or no rule matched the
+// district — means keep quoting the zones, never means free.
 export function computeCheckoutFees(
   freeShipping: boolean,
   district: string | undefined,
   zones: ShippingZonesConfig,
+  ruleOverride?: Prisma.Decimal | null,
 ): { shippingFee: Prisma.Decimal } {
   if (freeShipping) return { shippingFee: new Decimal(0) };
+  if (ruleOverride) return { shippingFee: ruleOverride };
   return { shippingFee: new Decimal(resolveZoneFee(zones, district).fee) };
 }

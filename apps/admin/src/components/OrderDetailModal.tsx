@@ -30,6 +30,7 @@ import { useAdvancePayment, useManualPaymentsForOrder } from "@/hooks/usePayment
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useTrackShipment, useUpdateShipmentStatus, SHIPMENT_STATUSES, type ShipmentStatus } from "@/hooks/useShipments";
+import { useShippingRuleQuote } from "@/hooks/useShippingRules";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { ConsignModal } from "./ConsignModal";
 import { FraudDetailModal } from "./FraudDetailModal";
@@ -133,6 +134,9 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const [editingDiscount, setEditingDiscount] = useState(false);
   const [discountDraft, setDiscountDraft] = useState("");
   const [editingShipping, setEditingShipping] = useState(false);
+  // Priced from the order's own items and shipping district, so it needs
+  // nothing from this component but the id.
+  const ruleQuote = useShippingRuleQuote({ orderId: row.id });
   const [shippingDraft, setShippingDraft] = useState("");
   const [customerNoteDraft, setCustomerNoteDraft] = useState<string | null>(null);
   const [privateNoteDraft, setPrivateNoteDraft] = useState<string | null>(null);
@@ -378,6 +382,25 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                         Courier est. ৳{order.shipment.cost}{" "}
                         <span className="italic">(not charged)</span>
                       </p>
+                    )}
+                    {/* The Shipping Rules card's price for this parcel.
+                        Click to accept it — never written automatically,
+                        because the courier's charge and what this customer
+                        was quoted are two different numbers and only staff
+                        can decide to reconcile them. */}
+                    {ruleQuote.data?.amount != null && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateAmounts.mutate({ shippingAmount: ruleQuote.data!.amount! });
+                          setEditingShipping(false);
+                        }}
+                        title={`${ruleQuote.data.ruleName ?? ""} · ${ruleQuote.data.weightKg} kg`}
+                        className="mt-0.5 text-xs font-semibold underline decoration-dotted underline-offset-2"
+                        style={{ color: GREEN }}
+                      >
+                        Suggested ৳{ruleQuote.data.amount} — apply
+                      </button>
                     )}
                   </div>
                   {editingShipping ? (

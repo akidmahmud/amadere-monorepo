@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { RecoveryModule } from '../net-profit/recovery/recovery.module';
 import { ShippingZonesModule } from '../shipping-zones/shipping-zones.module';
+import { ShippingRulesModule } from '../shipping-rules/shipping-rules.module';
 import { CartModule } from '../cart/cart.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { FraudModule } from '../net-profit/fraud/fraud.module';
@@ -25,7 +26,7 @@ import { OrdersService } from './orders.service';
 import { AdminOrderCreationService } from './admin-order-creation.service';
 
 @Module({
-  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, DigitalProductsModule, RecoveryModule, AuthModule],
+  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, ShippingRulesModule, DigitalProductsModule, RecoveryModule, AuthModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
   providers: [CheckoutService, CheckoutAccountService, OrdersService, AdminOrderCreationService],
   exports: [OrdersService],

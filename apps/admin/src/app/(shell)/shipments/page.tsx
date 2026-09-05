@@ -17,6 +17,7 @@ import {
   useUpdateSteadfastWebhookToken,
 } from "@/hooks/useCourierSettings";
 import { ShippingRatesTab } from "@/components/shipments/ShippingRatesTab";
+import { ShippingRulesTab } from "@/components/shipments/ShippingRulesTab";
 
 // Same charset convention as the rest of this app's generated-secret helpers
 // (e.g. RegisterForm's generatePassword) — a webhook token is pasted into
@@ -309,6 +310,7 @@ export default function ShipmentsPage() {
           { value: "deleted", label: "Deleted Orders" },
           { value: "settings", label: "Courier Settings" },
           { value: "rates", label: "Shipping Rates" },
+          { value: "rules", label: "Shipping Rules" },
         ]}
         value={tab}
         onChange={setTab}
@@ -323,6 +325,10 @@ export default function ShipmentsPage() {
       {/* What the CUSTOMER pays at checkout — distinct from Courier
           Settings above, which is what the courier charges US. */}
       {tab === "rates" && <ShippingRatesTab />}
+      {/* The mirror image of Shipping Rates: what the courier bills US per
+          parcel by district and weight. Advisory unless its checkout toggle
+          is switched on. */}
+      {tab === "rules" && <ShippingRulesTab />}
     </div>
   );
 }

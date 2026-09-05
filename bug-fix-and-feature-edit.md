@@ -832,3 +832,214 @@ default afterwards.
 **Still true and worth stating:** a WEB_PUSH template only reaches a cart whose
 browser has agreed to notifications. Template 3 ("AKid") is PAUSED, so only
 template 4 is live.
+
+## 2026-09-05 — Product form redesign: built, rejected, reverted
+
+A redesign of the product form was built and then reverted at the user's
+request — recorded so nobody rebuilds it assuming it was never tried.
+
+What was built (admin only, backend untouched): the Shipping tab deleted and its
+duplicate weight field removed, SKU derived from the product name, min order
+quantity no longer required, validation errors labelled with their tab, a
+collapsible section component, and cartesian variant generation from the
+selected attributes with a guard against saving variants left at 0.
+
+Reverted with `git checkout --` on six files plus deletion of two new ones. The
+form is back to 8 tabs and 10 required fields.
+
+The analysis behind it still stands and is unchanged by the revert: 42 fields
+across 8 tabs, 10 required fields spread over 4 of them, weight asked for twice.
+If it is revisited, ask first which specific part felt wrong — the revert was of
+the whole thing, so which parts were unwelcome is not yet known.
+
+## 2026-09-05 — SKU fills from the name on create only
+
+Requested: creating a product should derive the SKU from its name; editing one
+must never change the SKU when the name changes.
+
+`ProductFormFields` now derives the SKU (`AMD-FERMENTED-GARLIC-HONEY-400GM`)
+from the product name, gated on `productId === undefined` — undefined on the
+new-product page, set on edit, which is the whole distinction. Typing into the
+SKU field stops the name driving it for the rest of the session, the same rule
+the slug field already used. Derived rather than random because staff read these
+off packing slips and courier labels.
+
+Nothing else from the reverted redesign came back: 8 tabs, all 10 required
+fields, weight still asked on both Pricing and Shipping, variants still built by
+hand.
+
+**Verified:** on /products/new an empty SKU became AMD-FERMENTED-GARLIC-HONEY-400GM,
+then AMD-SUNDARBAN-KHOLISHA-HONEY on rename, and a manual "MY-OWN-CODE-1"
+survived a further rename. On /products/24 the SKU stayed "Kholisha Honey 1kg"
+across a rename.
+
+**Found while testing, NOT fixed — the slug has the bug the SKU just lost.**
+Renaming an existing product silently rewrites its permalink: product 24's slug
+went from `sundarban-kholisha-flower-honey` to `renamed` simply by editing the
+name, because `slugify` drops the Bengali characters and the parenthetical. That
+is a live product URL — saving would break the existing link and its SEO. The
+fix is the same one-line gate (`isNewProduct &&`) on the slug line, but it was
+left alone because it was not asked for.
+
+## 2026-09-05 — Order Manager: Courier Charge column
+
+Requested: from the COD the courier collects, subtract the goods the customer
+ordered, and show the remainder — the delivery charge — as a column just before
+Invoice.
+
+`courierCharge = Shipment.codAmount − (Order.subTotal − Order.discountAmount)`
+
+Goods are sub-total **minus discount**, not sub-total: a discount comes off the
+products, so ignoring it would report the discount as extra delivery charge.
+Null until an order is consigned — there is no COD figure before that — and the
+cell shows a dash rather than 0, because "not known" and "free delivery" are
+different things. Negative values render in red.
+
+Both figures were already stored; nothing new is fetched from Steadfast.
+`Shipment.codAmount` is written at dispatch. The `codAmount` is also returned so
+the cell carries a tooltip with the raw COD.
+
+One SQL trap: `s` in the list query is a LATERAL subquery selecting only
+`id, provider, status`, so `s.cod_amount` failed with
+`column s.cod_amount does not exist` (a 500 on the whole Order Manager) until
+`cod_amount` was added to that subquery's own SELECT.
+
+**Verified:** column sits at index 16, Invoice at 17 — immediately before it, as
+asked. Across the first 100 orders, 8 are consigned: ORD-20260731-30DBB8 shows
+COD 710 − goods 650 = **৳60**, matching its shipping_amount exactly.
+
+**What it exposes — worth looking at.** The COD figures we send are not
+consistent, and the column makes that visible for the first time:
+- ORD-20260731-30DBB8 → COD 710, delivery **60** ✓ correct
+- ORD-20260731-FDD4F4 → COD 650, delivery **0** — the delivery charge was never
+  added to the COD, so ৳60 went uncollected
+- ORD-20260816-8AEE35 → COD 0, delivery **−2700** — consigned with no COD at all
+- ORD-20260813-B3763E → COD 414, delivery 60, but its `shipping_amount` says 80
+
+Three of eight consigned orders have a COD that does not match their own
+shipping amount. That is a pre-existing data problem in what gets sent at
+dispatch, not something this column introduced — but it is now visible per row.
+
+### Renamed to "Courier Charge"
+
+"Delivery Charge" was too vague about whose fee it is. The column and its API
+field are now `courierCharge` / **Courier Charge** — it names the party, and the
+table already speaks of Courier Send and Courier Status, so the vocabulary
+matches. Verified still at index 16 with Invoice at 17.
+
+Unrelated `deliveryCharge*` fields elsewhere (the Net Profit "Delivery Earned"
+KPI, the wholesale order modal) were deliberately left alone.
+
+**Worth knowing about what this number actually is.** It is the delivery portion
+of the COD *we asked the courier to collect* — derived from our own records. It
+is not necessarily what Steadfast finally deducts from the settlement. Their
+`/payments/{payment_id}` endpoint returns the real per-consignment deduction; if
+the two need to agree, that endpoint is the source to reconcile against, and it
+is not wired up.
+
+---
+
+## Shipping Rules — the courier's own rate card, wired into checkout, New Order and Order Manager
+
+Steadfast publishes a weight-banded rate card, and until now nothing in the app
+knew it. Staff typed the delivery fee from memory, and the previous internal
+estimate (`ShippingChargeCalculator`: flat base + per-kg + outside-Dhaka
+surcharge) did not match Steadfast's published numbers for any parcel.
+
+### What was built
+
+**Shipments → Shipping Rules**, a fifth tab beside Shipping Rates. Pre-loaded
+with the full card from `Stead-Fast_Delivery_Rate_Report.xlsx`, and every rule
+is editable — bands, per-kg overflow, districts, delivery type — plus "Add rule"
+for rates the sheet doesn't cover and "Reset to Steadfast rates" to get back.
+
+The two tabs are deliberately separate, and it's worth being precise about why:
+
+- **Shipping Rates** = one flat fee the CUSTOMER pays for a district.
+- **Shipping Rules** = the COURIER's weight-banded price to US for that district.
+
+They answer different questions. Folding one into the other would produce a row
+that sometimes means a fee and sometimes means a rate card.
+
+### The rate card, as shipped
+
+Origin Gazipur. Home delivery: Dhaka ৳105/kg-1, Gazipur ৳60/kg-1, Dhaka
+Sub-Urban and everywhere else ৳115 to 0.5kg then ৳135 to 1kg — all +৳20 per
+additional kg. Point delivery (hub pickup): Gazipur ৳60 and elsewhere ৳120 to
+1kg, +৳20/kg to 7kg, then flat slabs (8–10kg, 11–15kg, 16–20kg).
+
+Steadfast rounds 100g–900g of *additional* weight up to a full kg, so overflow
+is always `ceil()`'d — but the sub-1kg bands are matched on the raw weight, or
+the ৳115 half-kilo band could never be reached.
+
+### The checkout toggle
+
+Off by default. **Off** — the storefront keeps quoting the assigned Shipping
+Rates zones, exactly as before. **On** — the storefront quotes the calculated
+rule amount instead.
+
+The rules show as a suggestion in New Order and Order Manager either way. That
+is the point of the toggle: what the courier bills us is not automatically what
+the customer should pay.
+
+Wired through `computeCheckoutFees`, which gained an optional `ruleOverride`.
+A null override means "keep using the zones" and never means free — the caller
+owns the DB read because the quote needs a parcel weight and that function is
+pure. Both the cart preview and real order placement pass it, from the same
+priced lines, so the previewed fee and the charged fee cannot drift.
+
+### Where the suggestion appears
+
+- **Order Manager modal** — next to the existing greyed "Courier est." line, a
+  clickable **"Suggested ৳X — apply"**. Priced from the order's own items and
+  shipping district; one click writes it to `shippingAmount`.
+- **New Order (modern and classic)** — a fourth chip in Quick Shipping Fee,
+  labelled with the matched rule. Held back until there is both a district and
+  at least one line, since a quote with no district silently prices as the
+  catch-all.
+
+Nothing is ever written automatically. The courier's charge and what the
+customer was quoted are two different numbers, and only staff can decide to
+reconcile them.
+
+### Notable decisions
+
+- **No new table, no migration.** One row in `Setting` (`shipping_rules`), same
+  reuse pattern as `ShippingZonesService`. One card, edited whole, read on every
+  quote — a table would buy nothing but joins.
+- **A rule is a dumb tier list**, not a formula. Steadfast's point-delivery
+  ladder ("+৳20/kg to 7kg, then slabs") is spelled out as explicit bands rather
+  than growing a second per-kg boundary field. Verbose seed, trivial model, and
+  the admin table stays one editable grid.
+- **One quote endpoint, three callers.** `POST /admin/shipping-rules/quote`
+  takes an `orderId` (Order Manager), a draft `items` list (New Order), or a
+  bare `weightKg` (the tab's calculator). Splitting that into three endpoints
+  would triple the surface for one shared calculation.
+- **Reuses `shipping_zone.view` / `shipping_zone.update`.** Both editors are on
+  the same page doing the same job; a role that could edit one but not the other
+  is a distinction nobody asked for.
+- **Weight comes from the same `weightOverride` → `shippableWeight` precedence
+  `ShipmentsService` uses** when it weighs a real parcel, so a quote and the
+  actual dispatch cannot disagree. Two queries regardless of basket size.
+- A malformed or missing Setting row degrades to the shipped Steadfast card
+  rather than to an empty list — this value prices real parcels.
+
+### Verified
+
+`shipping-rules.quote.spec.ts` (5 tests) checks the shipped card against the
+merchant's own rate sheet — base rates, ceil()'d overflow, the point slabs above
+7kg, unweighed parcels, and that no match returns null rather than zero.
+
+Live against the running backend:
+- Every published rate reproduced exactly (Dhaka 1kg ৳105, 1.5kg ৳125, Gazipur
+  ৳60, unlisted district 0.4kg ৳115, Gazipur point 9kg ৳200).
+- Real orders priced by id — order 6760 at 7.25kg to Dhaka → 105 + ceil(6.25)×20
+  = **৳245**.
+- An unknown district is rejected on save (`Unknown district(s): Atlantis`)
+  rather than silently never matching.
+- **The toggle actually moves money.** With a test rule at ৳99 for Dhaka and the
+  toggle ON, the cart quoted ৳99. Toggled OFF, the same cart quoted ৳80 — the
+  zone rate. Restored to the real Steadfast card, toggle off, cart back to ৳80.
+
+Nine `vat.service.spec.ts` failures are pre-existing and unrelated — identical
+with these changes stashed.

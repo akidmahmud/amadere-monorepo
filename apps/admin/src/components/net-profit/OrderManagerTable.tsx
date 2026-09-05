@@ -86,6 +86,11 @@ export const ORDER_COLUMNS = [
   { key: "division", label: "Division", optional: true },
   { key: "internalNote", label: "Internal Note", optional: true },
   { key: "source", label: "Source", optional: true },
+  // "Courier Charge", not "Delivery Charge": the table already speaks of
+  // Courier Send and Courier Status, and naming the party says whose fee this
+  // is. Sits right before Invoice — it is the number you check against the
+  // courier's own statement before printing anything.
+  { key: "courierCharge", label: "Courier Charge" },
   { key: "invoice", label: "Invoice" },
   { key: "risk", label: "Risk" },
   { key: "courierSend", label: "Courier Send" },
@@ -956,6 +961,23 @@ function OrderRow({
           <SourceCell order={o} />
         </td>
     ) : null,
+    courierCharge: (
+      <td className={td} style={tdStyle}>
+        {o.courierCharge === null ? (
+          // Not consigned yet, so the courier has named no COD figure. A dash
+          // rather than 0 — "not known" and "free delivery" are different.
+          <span style={{ color: FAINT }}>—</span>
+        ) : (
+          <span
+            className="num font-bold"
+            title={`Courier collects ৳${o.codAmount} COD, of which this is the delivery portion — the rest is goods`}
+            style={{ color: Number(o.courierCharge) < 0 ? "#d0555f" : TEXT }}
+          >
+            ৳{Number(o.courierCharge).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
+          </span>
+        )}
+      </td>
+    ),
     invoice: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
         <a

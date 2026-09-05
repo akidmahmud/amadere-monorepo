@@ -31,6 +31,9 @@ export interface OrderManagerRow {
   postCode: string | null;
   thumbnailUrl: string | null;
   origin: string;
+  /** COD the courier collects minus goods paid — null until consigned. */
+  courierCharge: string | null;
+  codAmount: string | null;
   paymentProvider: string | null;
   paymentStatus: string | null;
   courierProvider: string | null;
