@@ -1,6 +1,6 @@
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
-import { getGuestToken, setGuestToken, clearGuestToken } from "@/lib/guest-token";
+import { clearGuestToken, getGuestToken, setGuestToken } from "@/lib/guest-token";
 import { pushEcommerceEvent, cartLineToGa4Item } from "@/lib/analytics-events";
 import type { components } from "@/lib/api/schema";
 
@@ -23,7 +23,40 @@ function cartHeaders(): Record<string, string> {
 // same cart. A logged-in customer's cart has no guestToken (identified by
 // their bearer token instead), so there's nothing to persist in that case.
 function persistGuestToken(cart: CartViewDto): void {
-  if (cart.guestToken) setGuestToken(cart.guestToken);
+  if (!cart.guestToken) return;
+  const previous = getGuestToken();
+  setGuestToken(cart.guestToken);
+  // The server decides the token, not us: a cart request carrying an unknown
+  // token comes back with a freshly issued one. If this browser has already
+  // agreed to notifications, its subscription is now pointing at a cart that
+  // no longer exists, and abandoned-cart push would silently reach nobody —
+  // measured: subscription held b0a9fe86…, the cart was 3b04070e…, and the
+  // send matched zero rows. Re-point it whenever the token actually changes.
+  if (previous !== cart.guestToken) void relinkPushSubscription(cart.guestToken);
+}
+
+/** Best-effort. A browser with no subscription has nothing to re-point, and a
+ *  failure here must never disturb a cart update. */
+async function relinkPushSubscription(guestToken: string): Promise<void> {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const subscription = await registration?.pushManager.getSubscription();
+    if (!subscription) return;
+    const json = subscription.toJSON() as { keys?: { p256dh?: string; auth?: string } };
+    await fetch("/api/backend/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: subscription.endpoint,
+        p256dh: json.keys?.p256dh,
+        auth: json.keys?.auth,
+        guestToken,
+      }),
+    });
+  } catch {
+    /* nothing the shopper needs to know about */
+  }
 }
 
 function cartKey(locale: string, paymentProvider?: string, district?: string) {
@@ -113,6 +146,13 @@ export function useAddToCart(locale: string) {
         value: (item.price ?? 0) * quantity,
         items: [item],
       });
+
+      // The same choke point earns a second job: this is the moment a visitor
+      // has shown real intent, which is the only moment worth spending the
+      // browser's one-and-only notification permission prompt on. PushOptIn
+      // listens for this; asking on page load gets denied, and a denial is
+      // permanent.
+      window.dispatchEvent(new CustomEvent("amader:push-trigger"));
     },
     // Named so any component can ask "is an add in flight right now?" via
     // useIsAddingToCart below, without being the one that owns the mutation

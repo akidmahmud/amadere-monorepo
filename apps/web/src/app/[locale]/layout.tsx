@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { SiteCartDrawerLazy } from "@/components/SiteCartDrawerLazy";
 import { WhatsappFloatingButton } from "@/components/WhatsappFloatingButton";
 import { CartSummaryWidget } from "@/components/CartSummaryWidget";
+import { PushOptIn } from "@/components/PushOptIn";
 import { BackToTopButton } from "@/components/BackToTopButton";
 import { MobileStickyFooter } from "@/components/MobileStickyFooter";
 import { DesktopProductStickyBar } from "@/components/DesktopProductStickyBar";
@@ -312,6 +313,8 @@ export default async function LocaleLayout({
                 config={(whatsappConfig as WhatsappConfig | undefined) ?? null}
               />
               <CartSummaryWidget />
+              {/* Renders nothing until an add-to-cart fires — see PushOptIn. */}
+              <PushOptIn />
               <BackToTopButton />
               <MobileStickyFooter />
               <DesktopProductStickyBar />

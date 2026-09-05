@@ -23,6 +23,7 @@ import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
 import { CallNowButton } from "@/components/CallNowButton";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import type { components } from "@/lib/api/schema";
+import { BackInStockButton } from "@/components/BackInStockButton";
 
 type PublicProductDetailDto = components["schemas"]["PublicProductDetailDto"];
 
@@ -249,7 +250,15 @@ export function PdpPurchasePanel({
       </div>
 
       {outOfStock ? (
-        <p className="mb-4 font-ui text-sm font-semibold text-red-600">Out of Stock</p>
+        <>
+          <p className="mb-2.5 font-ui text-sm font-semibold text-red-600">Out of Stock</p>
+          {/* The one moment a shopper actually wants a notification: they came
+              for this product and cannot have it. */}
+          <BackInStockButton
+            productId={product.id}
+            variantId={selectedVariant ? Number(selectedVariant.id) : undefined}
+          />
+        </>
       ) : (
         (stockStatus as unknown as string) === "ON_BACKORDER" && (
           <p className="mb-4 font-ui text-sm text-gold-dark">Available on backorder</p>

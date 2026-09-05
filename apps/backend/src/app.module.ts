@@ -65,6 +65,7 @@ import { ShippingZonesModule } from './modules/shipping-zones/shipping-zones.mod
 import { PromoVideosModule } from './modules/promo-videos/promo-videos.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
 import { WholesaleModule } from './modules/wholesale/wholesale.module';
+import { PushModule } from './modules/push/push.module';
 
 @Module({
   imports: [
@@ -177,6 +178,7 @@ import { WholesaleModule } from './modules/wholesale/wholesale.module';
     FooterModule,
     ShippingZonesModule,
     PromoVideosModule,
+    PushModule,
     NetProfitModule,
     WholesaleModule,
   ],

@@ -761,8 +761,18 @@ function CampaignsSection() {
               className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
             >
               <option value="SMS">SMS</option>
-              <option value="EMAIL">EMAIL</option>
+              <option value="EMAIL">Email</option>
+              <option value="WEB_PUSH">Web Push</option>
             </select>
+            {channel === "WEB_PUSH" && (
+              // Worth saying here rather than in a doc: a push template only
+              // reaches carts belonging to a logged-in customer who granted
+              // permission, which is a much smaller set than SMS reaches.
+              <span className="text-[0.68rem] text-muted">
+                Reaches signed-in customers who allowed notifications. The
+                subject line becomes the notification title.
+              </span>
+            )}
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary">Delay</span>

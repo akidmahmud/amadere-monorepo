@@ -680,3 +680,155 @@ table, where a second copy in the backend immediately disagreed with the admin's
   one showing Origin "WhatsApp".
 
 Seeded test values on orders 6754-6757 were cleared afterwards.
+
+## 2026-09-05 — Web Push & Re-engagement (client request)
+
+Browser push built as a third channel on the existing cart-campaign engine,
+not as a parallel system.
+
+**Database** — two migrations, kept apart because Postgres refuses to use a new
+enum value in the transaction that adds it:
+- `20260904100000_campaign_channel_web_push` — `WEB_PUSH` on `CampaignChannel`.
+- `20260904100100_push_subscriptions` — `push_subscriptions`, keyed unique on
+  `endpoint` because that IS the identity the push service issues: one row per
+  BROWSER, so the same person on a phone and a laptop is two rows. `customerId`
+  is a soft link an anonymous opt-in gets claimed into later. Dead subscriptions
+  are marked `revokedAt`, never deleted, so the opt-in funnel stays measurable.
+
+**Backend** — `modules/push`:
+- `PushService` owns keys, encryption and the fate of a dead subscription, and
+  nothing else. A 404/410 from the push service is not a retryable error — it
+  means the browser is gone for good, so those endpoints are marked revoked
+  rather than counted as failures.
+- VAPID keys live in `CredentialsService` (encrypted at rest); env vars are the
+  bootstrap path only. The private key is never returned by any endpoint.
+- Public controller (`/push/public-key`, `/subscribe`, `/unsubscribe`) is
+  unauthenticated and rate-limited — an anonymous visitor may opt in. Nothing
+  there can send.
+- Admin controller: settings, funnel stats, key generation, test send.
+  `generate-keys` deliberately does NOT save: rotating invalidates every existing
+  subscription, so saving is a second, explicit act.
+
+**The campaign engine gained one branch.** `cart-campaigns.service.ts` dispatch
+was `if SMS … else email`; it is now a three-way. Delay rules, the 5-minute
+worker, quiet hours, retries, send-locking, per-step de-duplication, EN/BN merge
+tags and delivery logging are all reused untouched. For push, the queue row's
+`recipient` holds the customer id rather than a phone or an address, because one
+person may have opted in on several browsers and all of them should get it.
+Zero live subscriptions is recorded as a failure, not a silent success — the
+delivery report would otherwise lie.
+
+**Storefront** — `public/sw.js` does exactly two things: draw the notification
+and open the right page. No fetch interception, no caching: a caching service
+worker that gets a detail wrong serves stale prices. It also handles
+`pushsubscriptionchange`, or a browser rotating its subscription goes quiet
+without anyone noticing. `PushOptIn` renders nothing until an `add_to_cart`
+fires — the browser grants exactly one permission prompt and a denial is
+permanent, so it is spent at the moment of real intent, and our own card is
+shown first so "not now" costs nothing.
+
+**Admin** — Net Profit → SMS → Web Push Notifications: configured/not state, the
+opt-in funnel (subscribed / known customer / lapsed), key entry and generation.
+Web Push is selectable as a campaign template channel, with a note that it
+reaches signed-in customers who allowed notifications.
+
+**Verified end to end in a real browser.** Service worker registered at scope
+`http://localhost:3001/` and became active; `pushManager.subscribe()` produced a
+genuine `fcm.googleapis.com` endpoint; the storefront POSTed it and the row
+landed (`active: 1`); the admin test send returned **`sent: 1, failed: 0,
+revoked: 0`** — a real notification delivered through Google's FCM. The private
+key was absent from every settings response.
+
+**Note on the dev environment:** the backend on :3000 was serving a build from
+before this module compiled (process started 23:32, module built 23:37) — the
+stale-child trap this log has hit before. Killed and restarted; the routes 404'd
+until then.
+
+**Not built** (from the client's list, deliberately deferred): back-in-stock
+"notify me" is a feature in its own right with no existing hook; segmentation UI,
+click tracking and recommendations only make sense once the opt-in rate is known.
+
+## 2026-09-05 — Back-in-stock alerts
+
+The one item deliberately deferred from the push build, now added.
+
+**Found by a sweep, not a hook.** Stock rises through many paths — an admin
+editing the field, a cancelled order restocking its lines, a return, a CSV
+import, a wholesale reversal. Hooking each one means every future path has to
+remember to call us. `StockAlertsService.sweep()` asks the opposite question on a
+10-minute cron — "which waiting alerts now have stock?" — which catches all of
+them with one query and cannot be forgotten. A few minutes' delay on a restock
+alert costs nothing.
+
+**Model `StockAlert`** (migration `20260905090000_stock_alerts`), keyed on the
+browser's push `endpoint` rather than an account: the shopper looking at a
+sold-out product usually is not logged in, and requiring a login would lose most
+of the people the feature exists for. The unique index is
+`(endpoint, product_id, variant_id) NULLS NOT DISTINCT` — Postgres 15 (confirmed
+15.18), without which two rows with a NULL variant would both be allowed and one
+browser could be notified twice for the same simple product.
+
+Guards in the sweep: an unpublished, ADMIN_ONLY or deleted product is never
+announced as "back", because the customer still cannot buy it; a variant alert
+reads the variant's own stock, since the parent Product row of a variant product
+holds 0 by design; `take: 500` per tick, so one restock of a popular product
+cannot fire thousands of sends at once; and rows are marked notified regardless
+of delivery result, so a dead subscription is not retried forever.
+
+**Storefront** — `BackInStockButton` appears in the PDP's out-of-stock state
+(`PdpPurchasePanel`). One press subscribes the browser and registers the alert
+together; a refusal leaves nothing behind. It says plainly what happened in each
+outcome, including the iPhone case ("add Amader™ to your Home Screen first").
+
+**Admin** — `POST /admin/push/stock-alerts/sweep` runs it on demand, for the case
+that actually happens: stock is corrected by hand and whoever did it wants the
+waiting customers told now, not within ten minutes.
+
+**Verified end to end** on product 80: sold out → registered an alert (pressing
+twice produced **one** row, not two) → sweep while still sold out notified
+**0** → restocked to 12 → sweep notified **1** → immediate repeat sweep notified
+**0**. Product 80's stock restored to 23 and the test alert rows deleted.
+
+## 2026-09-05 — Why the WEB_PUSH campaign never fired (two real bugs + two by-design)
+
+Reported: a WEB_PUSH template "akkid" at +1 minute produced nothing. Four
+separate causes, found by reading the database rather than guessing.
+
+**Bug 1 — push was keyed on customerId, which is NULL on every cart here.**
+`enqueueForIncomplete` set the push recipient to `incomplete.customerId`, so the
+step was skipped whenever there was no signed-in customer. Every abandoned cart
+in this database has `customer_id: null` — shoppers fill a cart long before they
+sign in — so the channel was dead on arrival, not merely limited.
+
+Fixed by keying on the CART: `push_subscriptions` gained `guest_token`
+(migration `20260905020000_push_subscription_guest_token`), the queue recipient
+is now the cart id, and `PushService.sendToCart()` matches on guest token OR
+customer id, so an anonymous shopper is reachable and a signed-in one's other
+devices are too.
+
+**Bug 2 — the guest token drifted, so subscription and cart never matched.**
+The server issues the token, not the client: a cart request carrying an unknown
+token comes back with a freshly issued one. Measured on a real run — the
+subscription held `b0a9fe86…` while the cart the backend created was
+`3b04070e…`, and the send matched zero rows (`push sent:0 failed:0 revoked:0`).
+`persistGuestToken` now re-points an existing subscription whenever the token
+actually changes. Best-effort and silent: a browser with no subscription has
+nothing to re-point, and a failure must never disturb a cart update.
+
+**Not bugs, but why the test looked dead:**
+- *Quiet hours 22:00–08:00.* The worker returns immediately inside that window
+  and it was ~02:00 locally. Nothing would have sent regardless.
+- *Steps are enqueued once, at first capture.* Deliberate — `scheduledAt` is
+  relative to the real abandonment moment — but it means a template only applies
+  to carts abandoned AFTER it is created. The newest cart here predated the
+  template by five days, so the queue was empty.
+
+**Verified end to end**, with the tokens aligned and quiet hours temporarily
+moved: queue row 4 (WEB_PUSH, cart 169) went `PENDING → SENT`, attempts 1, no
+error — the campaign engine rendered the merge-tagged body ("hi Akiid buy") and
+delivered it as a browser notification. Quiet hours restored to the 22–08
+default afterwards.
+
+**Still true and worth stating:** a WEB_PUSH template only reaches a cart whose
+browser has agreed to notifications. Template 3 ("AKid") is PAUSED, so only
+template 4 is live.

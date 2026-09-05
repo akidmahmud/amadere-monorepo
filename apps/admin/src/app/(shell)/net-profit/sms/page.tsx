@@ -16,6 +16,7 @@ import {
   useUpdateSmsTemplate,
 } from "@/hooks/useSms";
 import { useOtpSecuritySettings, useUpdateOtpSecuritySettings, type VpnPolicy } from "@/hooks/useOtpSecurity";
+import { useGeneratePushKeys, usePushSettings, useUpdatePushSettings } from "@/hooks/usePush";
 
 const smsIcon = <Icon name="sms" />;
 
@@ -377,7 +378,179 @@ function SettingsTab() {
           </div>
         )}
       </SettingsCard>
+
+      <WebPushCard />
     </div>
+  );
+}
+
+/**
+ * Browser push configuration.
+ *
+ * Sits under SMS settings rather than in its own page because it is a sibling
+ * channel, not a separate product — the same abandoned-cart templates go out
+ * over SMS, email or push depending on which channel a template is set to.
+ */
+function WebPushCard() {
+  const { data, isLoading } = usePushSettings();
+  const generate = useGeneratePushKeys();
+  const update = useUpdatePushSettings();
+  const [publicKey, setPublicKey] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
+  const [subject, setSubject] = useState("");
+
+  const field =
+    "h-10 w-full rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+
+  return (
+    <SettingsCard icon={<Icon name="notifications_active" />} title="Web Push Notifications">
+      {isLoading || !data ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : (
+        <div className="flex flex-col gap-5">
+          <p className="text-xs text-secondary">
+            Sends a notification to a customer&apos;s browser even when
+            amadere.com is closed. Set a template&apos;s channel to Web Push and
+            the existing cart-campaign queue delivers it — same delays, quiet
+            hours and retries as SMS.
+          </p>
+
+          {/* The opt-in funnel is the number that decides whether any of the
+              rest of this is worth building on. */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-sm border border-border p-3">
+              <p className="text-[0.68rem] font-bold uppercase tracking-wide text-muted">
+                Subscribed
+              </p>
+              <p className="num mt-0.5 text-xl font-bold text-text">{data.active}</p>
+            </div>
+            <div className="rounded-sm border border-border p-3">
+              <p className="text-[0.68rem] font-bold uppercase tracking-wide text-muted">
+                Known customer
+              </p>
+              <p className="num mt-0.5 text-xl font-bold text-text">{data.linkedToCustomer}</p>
+            </div>
+            <div className="rounded-sm border border-border p-3">
+              <p className="text-[0.68rem] font-bold uppercase tracking-wide text-muted">
+                Lapsed
+              </p>
+              <p className="num mt-0.5 text-xl font-bold text-secondary">{data.revoked}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: data.configured ? "#2e7d43" : "#d0555f" }}
+            />
+            <span style={{ color: data.configured ? "#2e7d43" : "#d0555f" }}>
+              {data.configured ? "Keys configured — push is live" : "No keys yet — push is off"}
+            </span>
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">
+              VAPID public key {data.publicKey ? "(in use)" : ""}
+            </span>
+            <input
+              value={publicKey}
+              onChange={(e) => setPublicKey(e.target.value)}
+              placeholder={data.publicKey ?? "Paste or generate a key pair"}
+              className={field}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">VAPID private key</span>
+            <input
+              type="password"
+              autoComplete="off"
+              value={privateKey}
+              onChange={(e) => setPrivateKey(e.target.value)}
+              placeholder={data.configured ? "Leave blank to keep the current key" : "Private key"}
+              className={field}
+            />
+            {/* Stored encrypted and never returned, so there is nothing to
+                pre-fill and no way to read it back once saved. */}
+            <span className="text-[0.68rem] text-muted">
+              Stored encrypted. Never shown again.
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-secondary">
+              Contact address (push services require one)
+            </span>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="mailto:support@amadere.com"
+              className={field}
+            />
+          </label>
+
+          {generate.data && (
+            <div className="rounded-sm border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+              <p className="text-xs font-semibold text-text">
+                New pair generated — saving these replaces the old keys and
+                unsubscribes every browser currently signed up.
+              </p>
+              <p className="mt-1.5 break-all font-mono text-[0.68rem] text-secondary">
+                public: {generate.data.publicKey}
+              </p>
+              <p className="mt-1 break-all font-mono text-[0.68rem] text-secondary">
+                private: {generate.data.privateKey}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                className="mt-2"
+                onClick={() => {
+                  setPublicKey(generate.data!.publicKey);
+                  setPrivateKey(generate.data!.privateKey);
+                }}
+              >
+                Copy into the fields above
+              </Button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              type="button"
+              variant="primary"
+              disabled={update.isPending}
+              onClick={() =>
+                update.mutate(
+                  {
+                    publicKey: publicKey.trim() || undefined,
+                    privateKey: privateKey.trim() || undefined,
+                    subject: subject.trim() || undefined,
+                  },
+                  {
+                    onSuccess: () => {
+                      setPublicKey("");
+                      setPrivateKey("");
+                      setSubject("");
+                    },
+                  },
+                )
+              }
+            >
+              {update.isPending ? "Saving…" : "Save keys"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={generate.isPending}
+              onClick={() => generate.mutate()}
+            >
+              {generate.isPending ? "Generating…" : "Generate a new pair"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </SettingsCard>
   );
 }
 

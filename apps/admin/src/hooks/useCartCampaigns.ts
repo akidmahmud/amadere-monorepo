@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 
-export type CampaignChannel = "EMAIL" | "SMS";
+export type CampaignChannel = "EMAIL" | "SMS" | "WEB_PUSH";
+
+/** Display names — WEB_PUSH would otherwise leak into the channel dropdown. */
+export const CAMPAIGN_CHANNEL_LABELS: Record<CampaignChannel, string> = {
+  SMS: "SMS",
+  EMAIL: "Email",
+  WEB_PUSH: "Web Push",
+};
 export type DelayUnit = "MINUTE" | "HOUR" | "DAY";
 export type CampaignStatus = "ACTIVE" | "PAUSED";
 export type QueueStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";

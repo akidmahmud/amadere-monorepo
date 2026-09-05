@@ -369,6 +369,7 @@ model Customer {
   callLogs         CustomerCallLog[]
   parties          Party[]
   digitalDownloads DigitalDownload[]
+  pushSubscriptions PushSubscription[]
   assignedAdmin    AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
   @@map("customers")
@@ -935,6 +936,8 @@ model Product {
   collections      CollectionProduct[]
   promoVideos      PromoVideo[]
 
+  stockAlerts StockAlert[]
+
   @@index([status])
   // The admin list query always filters deletedAt (soft-delete) and always
   // sorts by createdAt desc (plus an optional createdAt range filter) — this
@@ -1089,6 +1092,7 @@ model ProductVariant {
   licenseCodes    ProductLicenseCode[]
   bundleItems     ProductBundleItem[]
   media           ProductMedia[]
+  stockAlerts     StockAlert[]
 
   // Missing before — every "load a product with its variants" query (admin
   // list/detail, storefront PDP, cart/order line lookups) joined this table
@@ -2790,6 +2794,10 @@ model IncompleteOrder {
 enum CampaignChannel {
   EMAIL
   SMS
+  // Browser push. Costs nothing to send and arrives with the site closed, but
+  // only reaches a device that granted permission — a supplement to SMS, never
+  // a replacement, because SMS reaches everyone who gave a number.
+  WEB_PUSH
 }
 
 enum DelayUnit {
@@ -2849,6 +2857,83 @@ model CartCampaignQueue {
   @@unique([incompleteId, templateId, channel]) // never enqueue the same step twice
   @@index([status, scheduledAt])
   @@map("cart_campaign_queue")
+}
+
+/// One browser (not one customer) that agreed to receive push.
+///
+/// Keyed on `endpoint` because that IS the identity the push service issues —
+/// the same person on a phone and a laptop is two rows, and reinstalling the
+/// browser makes a third. `customerId` is a soft link filled in when we know
+/// who it is; an anonymous visitor who opted in before logging in still gets
+/// a row, and gets claimed later.
+model PushSubscription {
+  id         Int      @id @default(autoincrement())
+  /// The push service URL that identifies this browser. Unique: re-subscribing
+  /// the same browser must update the row, never create a duplicate that would
+  /// deliver the same notification twice.
+  endpoint   String   @unique
+  /// Encryption material from the browser's own subscription object.
+  p256dh     String
+  auth       String
+  customerId Int?     @map("customer_id")
+  /// The anonymous cart identity (Cart.guestToken) this browser was carrying
+  /// when it subscribed.
+  ///
+  /// Without this, abandoned-cart push is unreachable in practice: every
+  /// abandoned cart on this shop has customerId NULL, because shoppers fill a
+  /// cart long before they ever sign in. The guest token is the only handle
+  /// that connects "this browser agreed to notifications" to "this cart was
+  /// left behind".
+  guestToken String?  @map("guest_token")
+  /// Best-effort, for segmenting later — never trusted for anything.
+  userAgent  String?  @map("user_agent")
+  locale     String   @default("EN")
+  /// Set when the push service tells us the subscription is dead (404/410).
+  /// Kept rather than deleted so the opt-in funnel stays measurable.
+  revokedAt  DateTime? @map("revoked_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, revokedAt])
+  @@index([guestToken, revokedAt])
+  @@index([revokedAt])
+  @@map("push_subscriptions")
+}
+
+/// "Tell me when this is back" — one row per browser, per product.
+///
+/// Delivered by push, so `endpoint` is the address: it is the only identity an
+/// out-of-stock visitor reliably has, and it works before they ever log in.
+/// `customerId` rides along when we know it, so a future email fallback has
+/// somewhere to aim.
+///
+/// Nothing here hooks a stock write. A sweep asks the opposite question every
+/// few minutes — "which waiting alerts now have stock?" — which catches every
+/// way stock can rise (admin edit, cancelled order, return, import) instead of
+/// needing a hook on each one.
+model StockAlert {
+  id         Int      @id @default(autoincrement())
+  productId  Int      @map("product_id")
+  /// Null for a simple product. The unique index below is NULLS NOT DISTINCT,
+  /// so one browser cannot register twice for the same simple product.
+  variantId  Int?     @map("variant_id")
+  endpoint   String
+  customerId Int?     @map("customer_id")
+  locale     String   @default("EN")
+  /// Set when the notification goes out. Kept rather than deleted so "how many
+  /// people were waiting" stays answerable.
+  notifiedAt DateTime? @map("notified_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([productId, notifiedAt])
+  @@index([notifiedAt])
+  @@map("stock_alerts")
 }
 
 model CartCampaignLog {

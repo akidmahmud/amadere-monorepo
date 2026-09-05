@@ -663,6 +663,16 @@ export class ProductsService {
     // productType: 'DIGITAL'.
     const effectiveProductType = dto.productType ?? existing.productType;
 
+    // Same "undefined means leave it alone" rule as productType above.
+    //
+    // hasVariants was missing from this update entirely: the DTO accepts it
+    // (PartialType of CreateProductDto), the admin form sends it, and it was
+    // silently dropped — so ticking "This product has variants" and pressing
+    // Save returned 200 while the flag never changed. On reload the toggle was
+    // off again and the variant editor it controls was hidden, which is what
+    // made variant edits look like they had not saved.
+    const effectiveHasVariants = dto.hasVariants ?? existing.hasVariants;
+
     const product = await this.prisma.client.product.update({
       where: { id },
       data: {
@@ -687,10 +697,19 @@ export class ProductsService {
         // validated-and-rejected.
         trackInventory: effectiveProductType === 'DIGITAL' ? false : dto.trackInventory,
         allowBackorder: dto.allowBackorder,
-        stock: dto.stock,
+        hasVariants: dto.hasVariants,
+        // Mirrors create(): on a variant product the parent row's own price and
+        // stock are meaningless, because each variant carries its own. They are
+        // CLEARED rather than left alone — the storefront falls back to the
+        // parent price when a variant has none, so a stale 1400 sitting on a
+        // product that now sells by variant would be shown as a real price.
+        // Every existing variant product in the database already has price NULL
+        // and stock 0, so this only ever brings a newly switched product in line
+        // with them.
+        stock: effectiveHasVariants ? 0 : dto.stock,
         stockStatus: dto.stockStatus,
-        price: dto.price,
-        salePrice: dto.salePrice,
+        price: effectiveHasVariants ? null : dto.price,
+        salePrice: effectiveHasVariants ? null : dto.salePrice,
         // dto values are bare "YYYY-MM-DD" from <input type="date">, not
         // full ISO-8601 datetimes — Prisma 7's DateTime scalar rejects a
         // date-only string outright ("premature end of input. Expected

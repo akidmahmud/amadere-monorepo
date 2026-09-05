@@ -7,6 +7,7 @@ import { SmsService } from '../sms/sms.service';
 import { MergeTagsService } from '../merge-tags/merge-tags.service';
 import { SmtpEmailProvider } from './providers/smtp-email.provider';
 import { UpsertCampaignTemplateDto } from './dto/upsert-campaign-template.dto';
+import { PushService } from '../../push/push.service';
 import {
   CartCampaignQueueDto,
   CartCampaignTemplateDto,
@@ -44,6 +45,7 @@ export class CartCampaignsService {
     private readonly sms: SmsService,
     private readonly email: SmtpEmailProvider,
     private readonly mergeTags: MergeTagsService,
+    private readonly push: PushService,
   ) {}
 
   async getSettings(): Promise<CampaignSettings> {
@@ -87,8 +89,21 @@ export class CartCampaignsService {
     if (!incomplete) return;
 
     for (const template of templates) {
-      const recipient = template.channel === 'SMS' ? incomplete.phone : incomplete.email;
-      if (!recipient) continue; // no contact info for this channel — nothing to enqueue
+      // `recipient` means "the address this channel delivers to". For push it
+      // is the CART, not a person: the browsers to notify are found from the
+      // cart's guest token (and its customer id, if it has one) at send time.
+      //
+      // It was keyed on customerId first, which made the channel dead on
+      // arrival — every abandoned cart in this database has customerId NULL,
+      // because shoppers fill a cart long before they ever sign in.
+      const recipient =
+        template.channel === 'SMS'
+          ? incomplete.phone
+          : template.channel === 'WEB_PUSH'
+            ? (incomplete.cartId?.toString() ?? incomplete.customerId?.toString() ?? null)
+            : incomplete.email;
+      // No contact info for this channel — nothing to enqueue.
+      if (!recipient) continue;
 
       const scheduledAt = new Date(incomplete.createdAt.getTime() + delayToMs(template.delayValue, template.delayUnit));
       await this.prisma.client.cartCampaignQueue.upsert({
@@ -199,6 +214,33 @@ export class CartCampaignsService {
       const smsResult = await this.sms.send(row.recipient, body, `cart_campaign_${row.templateId}`);
       failed = smsResult.status === 'FAILED';
       responseMsg = failed ? 'SMS send failed' : `sms_log_id:${smsResult.id}`;
+    } else if (row.channel === 'WEB_PUSH') {
+      // Every browser attached to this cart — by guest token for a shopper who
+      // never signed in, and by customer id for the same person's other
+      // devices once they have. The template subject doubles as the
+      // notification title; the rendered body is the same merge-tagged text the
+      // SMS would have carried, so one template serves both.
+      //
+      // Zero live subscriptions counts as a failure, not a silent success: the
+      // cart was queued for a message nobody received, and the log has to say
+      // so or the delivery report lies.
+      const cart = incomplete?.cartId
+        ? await this.prisma.client.cart.findUnique({
+            where: { id: incomplete.cartId },
+            select: { guestToken: true, customerId: true },
+          })
+        : null;
+      const result = await this.push.sendToCart(
+        { guestToken: cart?.guestToken, customerId: cart?.customerId ?? incomplete?.customerId },
+        {
+          title: row.template.subject?.trim() || 'Amader™',
+          body,
+          url: '/cart',
+          tag: `cart-${row.incompleteId}`,
+        },
+      );
+      failed = result.sent === 0;
+      responseMsg = `push sent:${result.sent} failed:${result.failed} revoked:${result.revoked}`;
     } else {
       const emailResult = await this.email.send(row.recipient, row.template.subject ?? 'Complete your order', body);
       failed = Boolean(emailResult.failed);
