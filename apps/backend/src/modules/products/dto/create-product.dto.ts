@@ -17,6 +17,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -152,6 +153,17 @@ export class CreateProductDto {
   @IsOptional()
   @IsEnum(StockStatus)
   stockStatus?: StockStatus;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 24,
+    description:
+      'Overrides the "N people bought" badge with this exact text ("1k", "1.5k", "2k+"). Empty or omitted falls back to the real order count.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  salesCountOverride?: string | null;
 
   @ApiPropertyOptional({ description: 'Required when hasVariants is false' })
   @IsOptional()

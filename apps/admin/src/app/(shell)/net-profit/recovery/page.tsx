@@ -66,6 +66,7 @@ const COLUMNS_KEY = "wpfok-recovery-columns";
 const COLUMN_LABELS: Record<RecoveryOptionalColumn, string> = {
   cartDetails: "Cart Items",
   stage: "Stage",
+  source: "Source",
   subtotal: "Subtotal",
   attempts: "Attempts",
   lastSeen: "Last Seen",

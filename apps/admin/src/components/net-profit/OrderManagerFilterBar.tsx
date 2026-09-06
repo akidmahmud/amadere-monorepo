@@ -149,9 +149,7 @@ export function OrderManagerFilterBar({
       </select>
 
       {/* Origin reads Order.channel, the same field the detail modal edits, so
-          this filter and the Origin column can never disagree. WEBSITE is
-          included even though staff cannot SET it manually — most orders have
-          it, so it is the one people most want to filter by. */}
+          this filter and the Origin column can never disagree. */}
       <select
         value={filters.channel ?? ""}
         onChange={(e) => set("channel", e.target.value || undefined)}
@@ -159,7 +157,6 @@ export function OrderManagerFilterBar({
         style={selectStyle}
       >
         <option value="">All Origins</option>
-        <option value="WEBSITE">{ORDER_CHANNEL_LABELS.WEBSITE}</option>
         {ORDER_CHANNELS.map((c) => (
           <option key={c} value={c}>
             {ORDER_CHANNEL_LABELS[c]}

@@ -48,6 +48,13 @@ export class AdminShippingRulesController {
 
   // POST because the New Order form quotes an unsaved basket, and a
   // line-item list does not belong in a query string.
+  @Post('checkout-quote')
+  @RequirePermission('shipping_zone.view')
+  @ApiOkResponse({ type: ShippingRuleQuoteDto })
+  checkoutQuote(@Body() dto: QuoteShippingRuleDto): Promise<ResolvedQuote> {
+    return this.rules.quote(dto, true);
+  }
+
   @Post('quote')
   @RequirePermission('shipping_zone.view')
   @ApiOkResponse({ type: ShippingRuleQuoteDto })

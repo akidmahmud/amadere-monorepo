@@ -14,6 +14,8 @@ export interface ShippingZone {
 }
 
 export interface ShippingZonesConfig {
+  /** Enable zone rate display and fee calculation. Defaults to true. */
+  showOnCheckout?: boolean;
   zones: ShippingZone[];
   /** Applied to any district not assigned to a zone, so the admin never has
    * to enumerate all 64 districts to cover the country. */

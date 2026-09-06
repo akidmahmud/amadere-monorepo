@@ -20,6 +20,17 @@ describe('UpdateShippingZonesDto', () => {
     expect(validate(SHIPPING_ZONES_DEFAULTS)).toHaveLength(0);
   });
 
+  it('accepts hiding the list and older payloads without a visibility flag', () => {
+    expect(validate({ ...clone(), showOnCheckout: false })).toHaveLength(0);
+    const legacy = clone();
+    delete legacy.showOnCheckout;
+    expect(validate(legacy)).toHaveLength(0);
+  });
+
+  it('rejects a string visibility flag', () => {
+    expect(validate({ ...clone(), showOnCheckout: 'false' }).length).toBeGreaterThan(0);
+  });
+
   it('rejects an unknown district name', () => {
     const p = clone();
     p.zones[0].districts = ['Dhaka', 'Nowhereville'];

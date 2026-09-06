@@ -100,7 +100,7 @@ export class ShippingRuleDto {
 export class UpdateShippingRulesDto {
   @ApiProperty({
     description:
-      'ON: checkout quotes the rule amount. OFF: checkout keeps quoting the assigned shipping zones.',
+      'ON: checkout displays rules and checkout/Quick Shipping Fee calculate from them. OFF: use enabled shipping zones, otherwise zero.',
   })
   @IsBoolean()
   applyOnCheckout!: boolean;

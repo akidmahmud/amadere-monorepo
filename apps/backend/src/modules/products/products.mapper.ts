@@ -55,6 +55,7 @@ export function toAdminProductDto(
     costPerItem: decimalToString(product.costPerItem),
     costPriceUnit: product.costPriceUnit,
     shippableWeight: decimalToString(product.shippableWeight),
+    salesCountOverride: product.salesCountOverride,
     minOrderQuantity: product.minOrderQuantity,
     maxOrderQuantity: product.maxOrderQuantity,
     translations: product.translations.map((t) => ({

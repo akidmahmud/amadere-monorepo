@@ -187,7 +187,7 @@ export function ShippingRulesTab() {
           />
           <div>
             <p className="text-sm font-bold text-text">
-              Charge these rules on the checkout page
+              Enable Shipping Rules for checkout
             </p>
             <p className="max-w-2xl text-xs text-muted">
               {d.applyOnCheckout

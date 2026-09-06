@@ -51,6 +51,9 @@ export interface IncompleteOrder {
   canceledAt: string | null;
   cancelReason: string | null;
   recoveryAttempts: number;
+  /** Where the cart came from — which ad brought this shopper in. */
+  utmSource: string | null;
+  utmCampaign: string | null;
   lastSeenAt: string;
   createdAt: string;
 }

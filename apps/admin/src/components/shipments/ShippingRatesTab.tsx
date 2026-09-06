@@ -133,6 +133,37 @@ export function ShippingRatesTab() {
         </div>
       </Card>
 
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <p id="shipping-rates-visibility-label" className="text-sm font-bold text-text">
+            Enable Shipping Rates
+          </p>
+          <p id="shipping-rates-visibility-description" className="text-xs text-muted">
+            Off disables these rates everywhere, including shipping calculations. Enabled Shipping Rules take priority. Click Save Rates to apply.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={draft.showOnCheckout !== false}
+          aria-labelledby="shipping-rates-visibility-label"
+          aria-describedby="shipping-rates-visibility-description"
+          disabled={update.isPending}
+          onClick={() => {
+            setDraft({ ...draft, showOnCheckout: draft.showOnCheckout === false });
+            setSaved(false);
+          }}
+          className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-50"
+        >
+          <Icon
+            name={draft.showOnCheckout !== false ? "toggle_on" : "toggle_off"}
+            className={draft.showOnCheckout !== false ? "text-brand-500" : "text-muted"}
+            size={36}
+          />
+          {draft.showOnCheckout !== false ? "On" : "Off"}
+        </button>
+      </Card>
+
       {draft.zones.map((zone, zi) => (
         <Card key={zi} className="flex flex-col gap-4 p-5">
           <div className="flex items-start justify-between gap-3 border-b border-border pb-3">

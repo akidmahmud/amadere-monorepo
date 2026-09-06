@@ -251,9 +251,7 @@ export function DefaultCheckoutLayout() {
                   </div>
                 }
               />
-              {/* Reads the same zone config the backend charges from, so the
-                  highlighted rate can never disagree with the Shipping fee
-                  line in the order summary. */}
+              {/* Show only the server-calculated delivery charge for this order. */}
               <ShippingRatesNotice district={shippingDistrict} />
             </div>
             )}

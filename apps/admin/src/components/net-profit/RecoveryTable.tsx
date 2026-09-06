@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button, Icon } from "@amader/admin-ui";
+import { canonicalFacebookSource } from "@amader/shared";
 import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
 import { EditableReasonCell } from "./EditableReasonCell";
 import { RecoveryEmailModal } from "./RecoveryEmailModal";
@@ -20,6 +21,7 @@ const BLUE = "#4299e1";
 export const RECOVERY_OPTIONAL_COLUMNS = [
   "cartDetails",
   "stage",
+  "source",
   "subtotal",
   "attempts",
   "lastSeen",
@@ -146,6 +148,7 @@ export function RecoveryTable({
                 <TH style={{ minWidth: 240 }}>Cart Items</TH>
               )}
               {columns.has("stage") && <TH>Stage</TH>}
+              {columns.has("source") && <TH>Source</TH>}
               {columns.has("subtotal") && <TH>Subtotal</TH>}
               {columns.has("lastSeen") && <TH>Last Seen</TH>}
               {columns.has("attempts") && <TH>Attempts</TH>}
@@ -298,6 +301,27 @@ export function RecoveryTable({
                         >
                           {STAGE_LABELS[row.stage] ?? row.stage}
                         </span>
+                      </td>
+                    )}
+                    {columns.has("source") && (
+                      <td className={td} style={tdStyle}>
+                        {/* Same normalisation Order Manager's Source column
+                            uses, so "fbads"/"fb"/"facebook" read as one
+                            channel in both places rather than three. */}
+                        {row.utmSource ? (
+                          <div className="flex flex-col leading-tight">
+                            <span className="font-bold" style={{ color: TEXT }}>
+                              {canonicalFacebookSource(row.utmSource) ?? row.utmSource}
+                            </span>
+                            {row.utmCampaign && (
+                              <span className="text-[0.68rem]" style={{ color: MUTED }}>
+                                {row.utmCampaign}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: MUTED }}>Direct</span>
+                        )}
                       </td>
                     )}
                     {columns.has("subtotal") && (

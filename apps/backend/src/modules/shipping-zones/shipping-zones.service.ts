@@ -46,6 +46,7 @@ export class ShippingZonesService {
   /** Flattened to one locale for the checkout page's rate list. */
   async getPublic(locale: Locale): Promise<PublicShippingZone[]> {
     const config = await this.getConfig();
+    if (config.showOnCheckout === false) return [];
     const key: keyof Translated = locale === 'BN' ? 'bn' : 'en';
     return [
       ...config.zones.map((zone) => ({
@@ -105,6 +106,7 @@ export class ShippingZonesService {
           : SHIPPING_ZONES_DEFAULTS.fallback.fee,
     };
 
-    return structuredClone({ zones, fallback });
+    const showOnCheckout = typeof s.showOnCheckout === 'boolean' ? s.showOnCheckout : true;
+    return structuredClone({ showOnCheckout, zones, fallback });
   }
 }

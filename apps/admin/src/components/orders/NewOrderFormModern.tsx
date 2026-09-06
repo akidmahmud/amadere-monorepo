@@ -10,7 +10,7 @@ import {
 import { useCustomer, useCustomers, type AdminCustomer } from "@/hooks/useCustomers";
 import { useProductSearch } from "@/hooks/useProducts";
 import { useCreateManualOrder, usePreviewCoupon, type AdminOrder, type CreateManualOrderAddress, type ManualOrderPaymentStatus } from "@/hooks/useOrders";
-import { useShippingRuleQuote } from "@/hooks/useShippingRules";
+import { useCheckoutShippingQuote } from "@/hooks/useShippingRules";
 import { CreateCustomerModal, type CreateCustomerModalAddress } from "@/components/orders/CreateCustomerModal";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 
@@ -273,9 +273,8 @@ export function NewOrderFormModern({
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]>("WHATSAPP");
   const [customerNote, setCustomerNote] = useState("");
 
-  // The courier's price for this draft basket. Held back until there is a
-  // district, since a quote without one silently prices as the catch-all.
-  const ruleQuote = useShippingRuleQuote(
+  // Quote the customer fee from active settings, using checkout parcel weight.
+  const ruleQuote = useCheckoutShippingQuote(
     {
       district: address.district || null,
       items: lines.map((l) => ({
@@ -286,6 +285,10 @@ export function NewOrderFormModern({
     },
     Boolean(address.district) && lines.length > 0,
   );
+
+  useEffect(() => {
+    setShippingAmount(String(ruleQuote.data?.amount ?? 0));
+  }, [ruleQuote.data]);
 
   const create = useCreateManualOrder();
 
@@ -394,7 +397,7 @@ export function NewOrderFormModern({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (lines.length === 0) return;
+    if (lines.length === 0 || ruleQuote.isFetching || ruleQuote.isError) return;
     if (transactionIdRequired && !transactionId.trim()) {
       setTransactionIdError(true);
       return;
@@ -928,18 +931,16 @@ export function NewOrderFormModern({
             {/* Shipping Presets & Calculator */}
             <div className="space-y-2 border-t border-border/60 pt-4">
               <span className="text-xs font-semibold tracking-wide text-secondary">Quick Shipping Fee</span>
+              {ruleQuote.isFetching && <p className="text-xs text-muted">Calculating shipping…</p>}
+              {ruleQuote.isError && <p className="text-xs text-red-600">Could not calculate shipping. Please retry before creating the order.</p>}
+              {!address.district && <p className="text-xs text-muted">Select a district to calculate shipping.</p>}
               <div className="flex flex-wrap gap-2">
                 {[
                   { label: "Free (৳0)", amount: "0" },
-                  { label: "Inside Dhaka (৳60)", amount: "60" },
-                  { label: "Outside Dhaka (৳120)", amount: "120" },
-                  // The Shipping Rules card's own answer for this basket,
-                  // offered alongside the fixed presets rather than instead
-                  // of them — it is a suggestion, and staff still overrule it.
                   ...(ruleQuote.data?.amount != null
                     ? [
                         {
-                          label: `Rule: ${ruleQuote.data.ruleName ?? "courier"} (৳${ruleQuote.data.amount})`,
+                          label: `${ruleQuote.data.ruleName ?? "Shipping disabled"} (৳${ruleQuote.data.amount})`,
                           amount: String(ruleQuote.data.amount),
                         },
                       ]
@@ -1077,7 +1078,7 @@ export function NewOrderFormModern({
               <Button
                 type="submit"
                 variant="primary"
-                disabled={create.isPending || lines.length === 0}
+                disabled={create.isPending || lines.length === 0 || ruleQuote.isFetching || ruleQuote.isError}
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-6 py-2.5 font-bold text-white shadow-md hover:bg-brand-600 disabled:opacity-50 transition-all"
               >
                 <Icon name="check_circle" size={18} />

@@ -35,16 +35,19 @@ export type OrderChannel =
   | "YOUTUBE"
   | "X";
 /**
- * Origins a STAFF member can pick when typing an order in.
+ * Origins offered when FILTERING the order list and when CORRECTING the origin
+ * on an order that already exists.
  *
- * Website is deliberately absent: it is set by the storefront checkout itself
- * (and inherited by a recovered cart), and the backend now rejects it on a
- * manual order. Leaving it selectable made WEBSITE ambiguous, which in turn
- * made "notify me about real customer orders" impossible to express.
- * ORDER_CHANNEL_LABELS still carries Website, because existing orders have it
- * and must render with a name.
+ * Website is included: real orders carry it (the storefront checkout sets it,
+ * and a recovered cart inherits it), so it has to be filterable and it has to
+ * be a legal correction when staff fix a mis-set origin.
+ *
+ * It is still absent from New Order, which keeps its own list — a manual order
+ * must record how it was actually taken, and CreateManualOrderDto rejects
+ * WEBSITE outright. That ban stays; this list is not that list.
  */
 export const ORDER_CHANNELS: OrderChannel[] = [
+  "WEBSITE",
   "WHATSAPP",
   "PHONE",
   "FACEBOOK",

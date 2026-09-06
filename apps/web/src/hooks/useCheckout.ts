@@ -84,6 +84,19 @@ export function useRecordCheckoutAbandonment() {
       division?: string;
       postCode?: string;
       landmark?: string;
+      // Where the shopper came from. Sent here as well as at checkout
+      // because this is the LAST chance to record it: once the cart is
+      // abandoned the cookie is out of reach, and a cart recovered by staff
+      // would otherwise have no ad to credit.
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      utmTerm?: string;
+      utmContent?: string;
+      landingDomain?: string;
+      landingPage?: string;
+      referrerUrl?: string;
+      referrerDomain?: string;
     }) => {
       try {
         await proxyFetch<unknown>("/checkout/abandonment", {

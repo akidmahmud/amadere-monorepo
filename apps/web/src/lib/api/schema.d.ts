@@ -2068,6 +2068,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/shipping-rules/checkout-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminShippingRulesController_checkoutQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/shipping-rules/quote": {
         parameters: {
             query?: never;
@@ -2078,6 +2094,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminShippingRulesController_quote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shipping-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ShippingRulesController_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8001,7 +8033,7 @@ export interface components {
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
             media: components["schemas"]["PublicProductMediaDto"][];
             variants: components["schemas"]["PublicProductVariantDto"][];
-            salesCount?: number;
+            salesCount?: string;
         };
         ProductFaqPublicDto: {
             question: string;
@@ -8050,7 +8082,7 @@ export interface components {
             tags: components["schemas"]["PublicProductTagSummaryDto"][];
             media: components["schemas"]["PublicProductMediaDto"][];
             variants: components["schemas"]["PublicProductVariantDto"][];
-            salesCount?: number;
+            salesCount?: string;
             seo: components["schemas"]["ResolvedSeoDto"];
             structuredData: Record<string, never>[];
             faqs: components["schemas"]["ProductFaqPublicDto"][];
@@ -8190,6 +8222,7 @@ export interface components {
             costPerItem: string | null;
             costPriceUnit: Record<string, never> | null;
             shippableWeight: string | null;
+            salesCountOverride: string | null;
             minOrderQuantity: number;
             maxOrderQuantity: number | null;
             translations: components["schemas"]["AdminProductTranslationDto"][];
@@ -8313,6 +8346,8 @@ export interface components {
              * @enum {string}
              */
             stockStatus: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+            /** @description Overrides the "N people bought" badge with this exact text ("1k", "1.5k", "2k+"). Empty or omitted falls back to the real order count. */
+            salesCountOverride?: string | null;
             /** @description Required when hasVariants is false */
             price?: number;
             salePrice?: number;
@@ -8398,6 +8433,8 @@ export interface components {
              * @enum {string}
              */
             stockStatus: "IN_STOCK" | "OUT_OF_STOCK" | "ON_BACKORDER";
+            /** @description Overrides the "N people bought" badge with this exact text ("1k", "1.5k", "2k+"). Empty or omitted falls back to the real order count. */
+            salesCountOverride?: string | null;
             /** @description Required when hasVariants is false */
             price?: number;
             salePrice?: number;
@@ -8774,6 +8811,11 @@ export interface components {
             fee: number;
         };
         UpdateShippingZonesDto: {
+            /**
+             * @description Enable shipping zone rates for display and fee calculation
+             * @default true
+             */
+            showOnCheckout: boolean;
             zones: components["schemas"]["ShippingZoneDto"][];
             fallback: components["schemas"]["ShippingFallbackDto"];
         };
@@ -8795,7 +8837,7 @@ export interface components {
             perKgFee: number;
         };
         UpdateShippingRulesDto: {
-            /** @description ON: checkout quotes the rule amount. OFF: checkout keeps quoting the assigned shipping zones. */
+            /** @description ON: checkout displays rules and checkout/Quick Shipping Fee calculate from them. OFF: use enabled shipping zones, otherwise zero. */
             applyOnCheckout: boolean;
             rules: components["schemas"]["ShippingRuleDto"][];
         };
@@ -9050,6 +9092,15 @@ export interface components {
             division?: string;
             postCode?: string;
             landmark?: string;
+            utmSource?: string;
+            utmMedium?: string;
+            utmCampaign?: string;
+            utmTerm?: string;
+            utmContent?: string;
+            landingDomain?: string;
+            landingPage?: string;
+            referrerUrl?: string;
+            referrerDomain?: string;
         };
         CheckoutAddressDto: {
             recipientName: string;
@@ -9727,6 +9778,8 @@ export interface components {
             deletedAt: string | null;
             daysRemaining: number | null;
             recoveryAttempts: number;
+            utmSource: string | null;
+            utmCampaign: string | null;
             /** Format: date-time */
             lastSeenAt: string;
             /** Format: date-time */
@@ -15887,6 +15940,37 @@ export interface operations {
             };
         };
     };
+    AdminShippingRulesController_checkoutQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteShippingRuleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingRuleQuoteDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminShippingRulesController_quote: {
         parameters: {
             query?: never;
@@ -15914,6 +15998,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    ShippingRulesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateShippingRulesDto"];
                 };
             };
         };

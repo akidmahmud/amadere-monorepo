@@ -12,6 +12,7 @@ import { ShippingZonesConfig } from './shipping-zones.types';
  * edits a zone.
  */
 export const SHIPPING_ZONES_DEFAULTS: ShippingZonesConfig = {
+  showOnCheckout: true,
   zones: [
     {
       name: { en: 'Inside Dhaka', bn: 'ঢাকার ভিতরে' },

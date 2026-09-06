@@ -114,6 +114,9 @@ export class AdminProductDto {
   costPerItem!: string | null;
   costPriceUnit!: CostPriceUnit | null;
   shippableWeight!: string | null;
+  /** Raw "N people bought" override as staff typed it; null = use the
+   * real order count. */
+  salesCountOverride!: string | null;
   minOrderQuantity!: number;
   maxOrderQuantity!: number | null;
   translations!: AdminProductTranslationDto[];
@@ -316,8 +319,10 @@ export class PublicProductDto {
   tags!: PublicProductTagSummaryDto[];
   media!: PublicProductMediaDto[];
   variants!: PublicProductVariantDto[];
-  /** Total units sold based on real non-canceled orders in DB. */
-  salesCount?: number;
+  /** Ready-to-render text for the "N people bought" badge: the product's
+   * salesCountOverride when set, else the real non-canceled order total
+   * compacted ("1.5k"). Display copy — never parse it. */
+  salesCount?: string;
 }
 
 export class ProductFaqPublicDto {

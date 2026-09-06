@@ -229,7 +229,7 @@ export function useCheckoutState() {
   // fee (Settings > Accounts) — the cart endpoint recomputes both per
   // computeCheckoutFees on the backend, so this always matches what
   // usePlaceOrder will actually charge.
-  const { data: cart } = useCartQuery(locale, paymentProvider, shippingDistrict);
+  const { data: cart, isFetching: shippingQuotePending, isError: shippingQuoteError } = useCartQuery(locale, paymentProvider, shippingDistrict);
 
   // Every line is a digital product — the same rule the backend applies
   // (isDigitalOnly, orders/digital-order.util.ts). There is nothing to ship,
@@ -334,7 +334,18 @@ export function useCheckoutState() {
     if (key === lastBeacon.current) return;
     const timer = setTimeout(() => {
       lastBeacon.current = key;
-      recordAbandonment.mutate({ name, phone, email, ...address });
+      // Read at send time, not when the effect was set up — the cookie is
+      // the same one the real checkout submits, so an abandoned cart and a
+      // completed order from the same visit agree on where it came from.
+      // Deliberately outside `key` above: attribution does not change during
+      // a visit, so it must not re-trigger the beacon.
+      recordAbandonment.mutate({
+        name,
+        phone,
+        email,
+        ...address,
+        ...getUtmParamsForCheckout(),
+      });
     }, 1500);
     return () => clearTimeout(timer);
     // recordAbandonment is a stable mutation object; including it would
@@ -716,6 +727,8 @@ export function useCheckoutState() {
     billingSameAsShipping,
     blockDetails,
     cart,
+    shippingQuotePending,
+    shippingQuoteError,
     control,
     copied,
     couponInput,

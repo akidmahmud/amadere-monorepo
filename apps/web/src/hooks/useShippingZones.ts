@@ -17,8 +17,8 @@ export function useShippingZones(locale: string) {
     queryKey: ["shipping-zones", locale],
     queryFn: () =>
       proxyFetch<PublicShippingZone[]>(`/shipping-zones?locale=${locale}`),
-    // Rates change when an admin edits them, which is rare — but they must
-    // not be stale enough to contradict the fee in the order total.
-    staleTime: 5 * 60 * 1000,
+    // Refetch on checkout mount/window focus so an admin visibility change
+    // is picked up when the customer returns to checkout.
+    staleTime: 0,
   });
 }

@@ -458,6 +458,23 @@ export function ProductFormFields({
               placeholder="https://youtube.com/..."
             />
           </label>
+          <label className="mt-4 flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-emerald-950">
+              &ldquo;People bought&rdquo; count (optional)
+            </span>
+            <input
+              value={form.salesCountOverride}
+              onChange={(e) => form.setSalesCountOverride(e.target.value)}
+              maxLength={24}
+              className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30 placeholder:text-emerald-900/40"
+              placeholder="1k"
+            />
+            <span className="text-[11px] font-medium text-emerald-900/60">
+              Shown verbatim on the product page badge — write it exactly as it
+              should read (1k, 1.5k, 2k+). Leave empty to show the real number
+              of units sold.
+            </span>
+          </label>
           <label className="mt-4 flex items-center gap-2.5 text-sm font-bold text-emerald-950 cursor-pointer select-none">
             <input
               type="checkbox"

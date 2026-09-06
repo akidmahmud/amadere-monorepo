@@ -176,13 +176,41 @@ export class CheckoutService {
     identity: CartIdentity,
     dto: CheckoutAbandonmentDto,
   ): Promise<void> {
-    const { name, phone, email, ...address } = dto;
+    // Attribution is pulled out explicitly: the rest-spread would otherwise
+    // sweep utm_*/referrer into `address` and bury them in the address JSON
+    // blob, where nothing can query them.
+    const {
+      name,
+      phone,
+      email,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmTerm,
+      utmContent,
+      landingDomain,
+      landingPage,
+      referrerUrl,
+      referrerDomain,
+      ...address
+    } = dto;
     await this.recovery.captureCheckoutStage(identity, {
       stage: 'checkout',
       name,
       phone,
       email,
       address,
+      attribution: {
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmTerm,
+        utmContent,
+        landingDomain,
+        landingPage,
+        referrerUrl,
+        referrerDomain,
+      },
     });
   }
 

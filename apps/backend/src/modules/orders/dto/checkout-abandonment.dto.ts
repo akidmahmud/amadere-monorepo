@@ -70,4 +70,52 @@ export class CheckoutAbandonmentDto {
   @IsOptional()
   @IsString()
   landmark?: string;
+
+  // Same attribution CheckoutDto already carries, from the same 30-day
+  // cookie. Without it an abandoned cart forgets which ad brought the
+  // shopper in, and a cart recovered by staff has no source to credit.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmSource?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmMedium?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmCampaign?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmTerm?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  utmContent?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landingDomain?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landingPage?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  referrerUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  referrerDomain?: string;
 }

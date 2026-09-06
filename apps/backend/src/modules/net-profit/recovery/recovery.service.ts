@@ -108,6 +108,20 @@ export interface RecoveryListFilters {
   to?: string;
 }
 
+/** The attribution columns IncompleteOrder and Order share, by the same
+ *  names, so recovery can copy them across untouched. */
+export interface RecoveryAttribution {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  landingDomain?: string;
+  landingPage?: string;
+  referrerUrl?: string;
+  referrerDomain?: string;
+}
+
 export interface CartSnapshotItem {
   productId: number;
   /**
@@ -387,6 +401,10 @@ export class RecoveryService {
       email?: string;
       /** Whatever of the shipping form is filled in so far. */
       address?: Record<string, string | undefined>;
+      /** Where the shopper came from, from the same 30-day cookie the
+       *  checkout sends. This is the only chance to record it — once the
+       *  cart is abandoned the cookie is out of reach. */
+      attribution?: RecoveryAttribution;
     },
   ): Promise<void> {
     try {
@@ -444,6 +462,16 @@ export class RecoveryService {
           .filter(([, v]) => v !== ''),
       );
 
+      // First touch wins: only fields with a value are written, and on an
+      // existing row they are only filled where it is still empty. A later
+      // beacon arriving with an empty cookie (a shopper who came back
+      // directly) must not erase the ad that originally brought them.
+      const attribution = Object.fromEntries(
+        Object.entries(input.attribution ?? {})
+          .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : ''])
+          .filter(([, v]) => v !== ''),
+      ) as RecoveryAttribution;
+
       const existing = await this.openRowForCart(cart.id);
 
       if (existing) {
@@ -464,6 +492,13 @@ export class RecoveryService {
             ...(Object.keys(mergedAddress).length > 0
               ? { address: mergedAddress as Prisma.InputJsonValue }
               : {}),
+            // Only where the row has nothing yet — see the first-touch note
+            // above.
+            ...Object.fromEntries(
+              Object.entries(attribution).filter(
+                ([k]) => !(existing as unknown as Record<string, unknown>)[k],
+              ),
+            ),
             stage,
             cart: snapshot as unknown as Prisma.InputJsonValue,
             subtotal,
@@ -481,6 +516,7 @@ export class RecoveryService {
           ...(Object.keys(typedAddress).length > 0
             ? { address: typedAddress as Prisma.InputJsonValue }
             : {}),
+          ...attribution,
           cart: snapshot as unknown as Prisma.InputJsonValue,
           subtotal,
           stage: input.stage,
@@ -889,16 +925,29 @@ export class RecoveryService {
       data: {
         orderNumber: `REC-${Date.now().toString(36).toUpperCase()}`,
         customerId: incomplete.customerId,
-        // The cart was filled on the storefront — staff only pressed the button
-        // that turned it back into an order, so both the channel and the source
-        // are the website. Stated rather than left to the schema default, so a
-        // change to that default can never silently reclassify recovered sales.
-        //
-        // Nothing is lost by writing utmSource: IncompleteOrder carries no UTM
-        // columns, so a recovered order has no original attribution to keep.
-        // Staff can still edit Source on the order afterwards.
+        // The cart was filled on the storefront — staff only pressed the
+        // button that turned it back into an order, so the CHANNEL is the
+        // website. Stated rather than left to the schema default, so a change
+        // to that default can never silently reclassify recovered sales.
         channel: 'WEBSITE',
-        utmSource: 'website',
+        // The SOURCE, though, is whatever originally brought the shopper in —
+        // the Facebook/TikTok/Instagram ad that filled the cart in the first
+        // place. It used to be hardcoded to 'website' because
+        // IncompleteOrder carried no UTM columns and there was nothing to
+        // inherit; now there is, and crediting the ad is the point: a cart
+        // that needed chasing is still revenue that campaign produced.
+        //
+        // Falls back to 'website' for carts captured before those columns
+        // existed, and for shoppers who arrived with no campaign at all.
+        utmSource: incomplete.utmSource ?? 'website',
+        utmMedium: incomplete.utmMedium,
+        utmCampaign: incomplete.utmCampaign,
+        utmTerm: incomplete.utmTerm,
+        utmContent: incomplete.utmContent,
+        landingDomain: incomplete.landingDomain,
+        landingPage: incomplete.landingPage,
+        referrerUrl: incomplete.referrerUrl,
+        referrerDomain: incomplete.referrerDomain,
         subTotal,
         totalAmount: subTotal,
         customerNote: 'Recreated from an abandoned cart by staff.',

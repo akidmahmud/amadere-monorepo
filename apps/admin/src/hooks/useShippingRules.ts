@@ -65,3 +65,16 @@ export function useShippingRuleQuote(
       }),
   });
 }
+
+/** Customer delivery fee using the same active rules/zones and weight as checkout. */
+export function useCheckoutShippingQuote(input: ShippingRuleQuoteInput, enabled = true) {
+  return useQuery({
+    queryKey: ["admin-checkout-shipping-quote", input],
+    enabled,
+    staleTime: 0,
+    queryFn: () => proxyFetch<ShippingRuleQuoteResult>("/admin/shipping-rules/checkout-quote", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  });
+}

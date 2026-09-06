@@ -857,9 +857,16 @@ model Product {
   // badge (WatchingNowBadge) — that number is normally SUM(order_items.qty)
   // over real non-canceled orders (see ProductsService.getBySlug), which
   // undercounts for products just launched or moved off a legacy site with
-  // real sales history not reflected in these orders. Null = use the real
-  // computed count; set = show this instead, unconditionally (not a floor).
-  salesCountOverride Int? @map("sales_count_override")
+  // real sales history not reflected in these orders. Null/blank = use the
+  // real computed count; set = show this instead, unconditionally (not a
+  // floor).
+  //
+  // Text, not Int, so staff can write the badge exactly as it should read —
+  // "1k", "1.5k", "2k+". An Int could only express what the compact formatter
+  // chose to render (1200 -> "1.2k", never "1k+"), which is the whole point
+  // of a manual override. Rendered verbatim, so it is display copy: nothing
+  // does arithmetic on it.
+  salesCountOverride String? @map("sales_count_override") @db.VarChar(24)
 
   /// Per-product VAT rate override, in percent (e.g. 0 or 2.5).
   ///
@@ -2794,9 +2801,25 @@ model IncompleteOrder {
   deletedAt        DateTime? @map("deleted_at")
   recoveryAttempts Int       @default(0) @map("recovery_attempts")
   lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
+
+  /// Where the shopper came from, captured at abandonment from the same
+  /// 30-day cookie the checkout uses. Same names/types as the columns on
+  /// Order, so recovery copies them straight across — without these a
+  /// recovered cart lost its ad attribution entirely.
+  utmSource      String? @map("utm_source")
+  utmMedium      String? @map("utm_medium")
+  utmCampaign    String? @map("utm_campaign")
+  utmTerm        String? @map("utm_term")
+  utmContent     String? @map("utm_content")
+  landingDomain  String? @map("landing_domain")
+  landingPage    String? @map("landing_page")
+  referrerUrl    String? @map("referrer_url")
+  referrerDomain String? @map("referrer_domain")
   createdAt        DateTime  @default(now()) @map("created_at")
 
   campaignQueue CartCampaignQueue[]
+
+  @@index([utmSource])
 
   @@index([recovered, lastSeenAt])
   // The admin list filters on stage and sorts by lastSeenAt.

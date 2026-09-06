@@ -1,9 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
+  IsOptional,
   IsDefined,
   IsNumber,
   IsString,
@@ -114,6 +116,11 @@ function HasNoDuplicateDistricts(options?: ValidationOptions) {
 }
 
 export class UpdateShippingZonesDto {
+  @ApiPropertyOptional({ default: true, description: 'Enable shipping zone rates for display and fee calculation' })
+  @IsOptional()
+  @IsBoolean()
+  showOnCheckout?: boolean;
+
   @ApiProperty({ type: ShippingZoneDto, isArray: true })
   @IsArray()
   @ArrayMinSize(1)

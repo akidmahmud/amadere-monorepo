@@ -30,6 +30,10 @@ export class IncompleteOrderDto {
    *  waiting for the 3am job. */
   daysRemaining!: number | null;
   recoveryAttempts!: number;
+  /** Where this cart came from, so staff can see which ad they are chasing
+   *  and prioritise accordingly. */
+  utmSource!: string | null;
+  utmCampaign!: string | null;
   lastSeenAt!: Date;
   createdAt!: Date;
 }
@@ -52,6 +56,8 @@ export function toIncompleteOrderDto(row: IncompleteOrder): IncompleteOrderDto {
     deletedAt: row.deletedAt,
     daysRemaining: row.deletedAt ? daysUntilPurge(row.deletedAt) : null,
     recoveryAttempts: row.recoveryAttempts,
+    utmSource: row.utmSource,
+    utmCampaign: row.utmCampaign,
     lastSeenAt: row.lastSeenAt,
     createdAt: row.createdAt,
   };

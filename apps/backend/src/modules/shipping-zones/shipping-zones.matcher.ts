@@ -24,6 +24,7 @@ export function resolveZoneFee(
   config: ShippingZonesConfig,
   district: string | undefined,
 ): ResolvedZone {
+  if (config.showOnCheckout === false) return { name: { en: '', bn: '' }, fee: 0 };
   if (!district?.trim()) {
     const first = config.zones[0];
     return first ? { name: first.name, fee: first.fee } : { ...config.fallback };

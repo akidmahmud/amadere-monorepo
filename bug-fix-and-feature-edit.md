@@ -1841,3 +1841,109 @@ Placed `ORD-20260906-55AC54` through the actual storefront checkout:
 `lib/placed-order` guard checked separately, 8/8: first call fires, refresh and
 back-button do not, a different order still fires, the list caps at 50 newest
 first, and a blocked-storage browser still fires.
+
+## Origin dropdown silently rewrote Website orders to WhatsApp
+
+Opening a Website order in the Order Manager modal showed its Origin as
+**WhatsApp**. The order was fine; the dropdown was lying.
+
+`ORDER_CHANNELS` in `apps/admin/src/hooks/useOrders.ts` deliberately omitted
+`WEBSITE`, on the reasoning that staff must not be able to *create* a manual
+order claiming to be a website order. But that list feeds two places that are
+not order creation:
+
+- the Order Manager **filter** bar, and
+- the detail modal's Origin **edit** dropdown.
+
+New Order never used it — it keeps its own local `CHANNELS` — so the omission
+bought nothing and cost correctness. A `<select>` whose `value` matches no
+`<option>` renders the *first* option, and the first option was WhatsApp. So
+every Website order displayed as WhatsApp, and saving anything else in that
+modal would have written WhatsApp to the database.
+
+### Fix
+
+- `WEBSITE` added to `ORDER_CHANNELS`, first in the list.
+- Removed the hardcoded `<option value="WEBSITE">` the filter bar had added to
+  work around the omission — it now rendered twice.
+- `CreateManualOrderDto`'s `@NotEquals(OrderChannel.WEBSITE)` is **unchanged**:
+  a staff-typed order still cannot claim to be a website order. Only filtering
+  and correcting an existing order accept it, and `UpdateOrderDetailsDto`
+  already allowed it.
+
+Verified in the running admin: modal Origin for `REC-MTQ5779T` now reads
+**Website** (was WhatsApp), filter bar lists Website once, `tsc --noEmit` clean
+after confirming `.next/dev/types/validator.ts` was intact.
+
+## Facebook ad attribution — `fbads` / Website
+
+No code change needed; verified the existing path end to end.
+
+- `apps/web/src/lib/utm.ts` stores `utm_source` **verbatim** — it does not fold
+  or normalise. Visiting the storefront with `?utm_source=fbads` writes
+  `{"utm_source":"fbads"}` to the `amader_utm` cookie, confirmed in the browser.
+- `packages/shared/src/order-source.ts` already treats `fbads` (and `fb-ads`,
+  `fb_ads`, `facebook-ads`, `facebookads`) as the paid marker, kept distinct
+  from organic `facebook`.
+- A recovered order inherits the cart's UTMs and carries `channel: WEBSITE`.
+  `REC-MTQ5779T` shows Origin **Website**, Source **facebook** — organic only
+  because the test URL said `utm_source=facebook`.
+
+**Action needed outside the code:** tag Meta ad destination URLs with
+`utm_source=fbads`. Paid vs organic Facebook is decided entirely by that tag.
+
+## Manual "N people bought" count in the product form
+
+The PDP social-proof badge showed `SUM(order_items.qty)` over non-canceled
+orders, which undercounts anything just launched or migrated from a legacy
+site. Staff can now write the number themselves.
+
+### The column already existed — and was dead
+
+`Product.salesCountOverride Int?` was already in the schema and already read in
+`ProductsService.getBySlug`, but **nothing could write it**: no admin field, no
+DTO property. It had been sitting unreachable.
+
+It is now `String? @db.VarChar(24)`. An Int could only ever print what the
+compact formatter chose (1200 -> "1.2k"); staff wanted to write the badge
+itself — `1k`, `1.5k`, `2k+`. Converted in place rather than adding a second
+column beside a dead one; `USING …::text` keeps any existing value.
+
+### Consequence: `salesCount` is display copy now
+
+`PublicProductDto.salesCount` changed from `number` to `string`. The compacting
+moved out of `WatchingNowBadge` and into the service, so one slot is formatted
+one way whether it holds a hand-written override or a computed count — the
+badge would otherwise format one case and not the other. The badge renders it
+verbatim; nothing parses it.
+
+Blank counts as unset at both ends (form sends `null`, service treats `""` as
+absent), so clearing the box returns the badge to the real number rather than
+printing an empty badge.
+
+### Files
+
+| file | change |
+|---|---|
+| `20260907100000_sales_count_override_text` | `ALTER COLUMN … TYPE VARCHAR(24) USING …::text` |
+| `schema.prisma` | `salesCountOverride String? @db.VarChar(24)` |
+| `create-product.dto.ts` | `salesCountOverride?: string \| null`, `@MaxLength(24)` |
+| `products.service.ts` | `formatSalesCount()` helper; wired through create/update/duplicate |
+| `products.mapper.ts` | exposed on `AdminProductDto` only — not on the public DTO |
+| `WatchingNowBadge.tsx` | takes a string, renders verbatim; local formatter deleted |
+| `useProductFormState.ts` / `ProductFormFields.tsx` | field in the Media tab, under Video URL |
+
+### Verified end to end in the running apps
+
+| step | result |
+|---|---|
+| Baseline `GET /products/gawa-ghee` | `salesCount: "169"` |
+| Typed `1.5k` in the admin form, saved | API returns `"1.5k"` |
+| Storefront PDP badge | **16 People watching • 1.5k People bought** |
+| Reopened the form | prefilled `1.5k` |
+| Cleared the box, saved | API back to `"169"` |
+
+`formatSalesCount` checked separately, 8/8: 0, 169, 999 pass through; 1000 ->
+`1k`, 1200 -> `1.2k`, 1500 -> `1.5k`, 12345 -> `12.3k`, 1000000 -> `1m`.
+Backend, admin, web and `packages/ui` all typecheck clean (OpenAPI types
+regenerated for both frontends after the `salesCount` type change).

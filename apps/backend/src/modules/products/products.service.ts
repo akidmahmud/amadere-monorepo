@@ -112,6 +112,18 @@ export function withSingleDefault<T extends { isDefault?: boolean }>(variants: T
   return variants.map((v, i) => ({ ...v, isDefault: i === defaultIndex }));
 }
 
+// "1500" -> "1.5k" for the "N people bought" badge. A raw 4-5 digit number
+// reads as less trustworthy than a rounded one on social proof, and it has to
+// match the shape of a hand-written salesCountOverride sitting in the same
+// slot.
+const compactCount = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+function formatSalesCount(n: number): string {
+  return n >= 1000 ? compactCount.format(n).toLowerCase() : String(n);
+}
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -476,6 +488,7 @@ export class ProductsService {
       costPerItem: existing.costPerItem ? Number(existing.costPerItem) : undefined,
       costPriceUnit: existing.costPriceUnit ?? undefined,
       shippableWeight: existing.shippableWeight ? Number(existing.shippableWeight) : undefined,
+      salesCountOverride: existing.salesCountOverride,
       minOrderQuantity: existing.minOrderQuantity,
       maxOrderQuantity: existing.maxOrderQuantity ?? undefined,
       translations: existing.translations.map((t) => ({
@@ -562,6 +575,7 @@ export class ProductsService {
         costPerItem: dto.costPerItem,
         costPriceUnit: dto.costPriceUnit,
         shippableWeight: dto.shippableWeight,
+        salesCountOverride: dto.salesCountOverride?.trim() || null,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
         translations: {
@@ -720,6 +734,7 @@ export class ProductsService {
         costPerItem: dto.costPerItem,
         costPriceUnit: dto.costPriceUnit,
         shippableWeight: dto.shippableWeight,
+        salesCountOverride: dto.salesCountOverride?.trim() || null,
         minOrderQuantity: dto.minOrderQuantity,
         maxOrderQuantity: dto.maxOrderQuantity,
         translations: dto.translations
@@ -1520,7 +1535,13 @@ export class ProductsService {
         _sum: { quantity: true },
       }),
     ]);
-    const salesCount = product.salesCountOverride ?? (salesSum._sum.quantity ?? 0);
+    // Display copy, not a number: the override is whatever staff typed
+    // ("1k", "2k+"), so the computed fallback is compacted here to match
+    // rather than leaving the badge to format one case and not the other.
+    // Blank counts as unset — clearing the field in the admin form should
+    // return the badge to the real count, not print an empty badge.
+    const salesCount =
+      product.salesCountOverride?.trim() || formatSalesCount(salesSum._sum.quantity ?? 0);
 
     const translation =
       product.translations.find((t) => t.locale === locale) ?? product.translations[0];

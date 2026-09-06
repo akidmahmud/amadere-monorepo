@@ -30,6 +30,7 @@ export interface ProductFormSnapshot {
   customLabels: string;
   flagLabel: ProductFlagLabel | null;
   videoUrl: string;
+  salesCountOverride: string;
   hasVariants: boolean;
   trackInventory: boolean;
   allowBackorder: boolean;
@@ -126,6 +127,9 @@ export function useProductFormState(initial?: AdminProduct) {
     initial?.flagLabel ?? null,
   );
   const [videoUrl, setVideoUrl] = useState(initial?.videoUrl ?? "");
+  const [salesCountOverride, setSalesCountOverride] = useState(
+    initial?.salesCountOverride ?? "",
+  );
   const [hasVariants, setHasVariants] = useState(initial?.hasVariants ?? false);
   const [trackInventory, setTrackInventory] = useState(
     initial?.trackInventory ?? true,
@@ -239,6 +243,9 @@ export function useProductFormState(initial?: AdminProduct) {
       // Explicit null (not undefined) so removing the link clears it —
       // see the costPriceUnit note below.
       videoUrl: videoUrl.trim() || null,
+      // Blank clears it, same null-vs-undefined convention as videoUrl:
+      // emptying the box must put the badge back on the real order count.
+      salesCountOverride: salesCountOverride.trim() || null,
       hasVariants,
       trackInventory,
       allowBackorder,
@@ -342,6 +349,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setCustomLabels((product.customLabels ?? []).join(", "));
     setFlagLabel(product.flagLabel);
     setVideoUrl(product.videoUrl ?? "");
+    setSalesCountOverride(product.salesCountOverride ?? "");
     setHasVariants(product.hasVariants);
     setTrackInventory(product.trackInventory);
     setAllowBackorder(product.allowBackorder);
@@ -441,6 +449,7 @@ export function useProductFormState(initial?: AdminProduct) {
       customLabels,
       flagLabel,
       videoUrl,
+      salesCountOverride,
       hasVariants,
       trackInventory,
       allowBackorder,
@@ -487,6 +496,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setCustomLabels(s.customLabels);
     setFlagLabel(s.flagLabel);
     setVideoUrl(s.videoUrl);
+    setSalesCountOverride(s.salesCountOverride);
     setHasVariants(s.hasVariants);
     setTrackInventory(s.trackInventory);
     setAllowBackorder(s.allowBackorder);
@@ -545,6 +555,8 @@ export function useProductFormState(initial?: AdminProduct) {
     setFlagLabel,
     videoUrl,
     setVideoUrl,
+    salesCountOverride,
+    setSalesCountOverride,
     hasVariants,
     setHasVariants,
     trackInventory,

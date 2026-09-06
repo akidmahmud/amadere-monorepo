@@ -8,6 +8,8 @@ import {
   STEADFAST_SHIPPING_RULES,
 } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
+import { resolveZoneFee } from '../shipping-zones/shipping-zones.matcher';
 
 export const SHIPPING_RULES_KEY = 'shipping_rules';
 
@@ -47,7 +49,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 @Injectable()
 export class ShippingRulesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly zones: ShippingZonesService) {}
 
   async getConfig(): Promise<ShippingRulesConfig> {
     const row = await this.prisma.client.setting.findUnique({
@@ -68,7 +70,7 @@ export class ShippingRulesService {
 
   /** Quote from whichever context the caller has — an order, a draft line
    *  list, or a bare weight. */
-  async quote(input: QuoteInput): Promise<ResolvedQuote> {
+  async quote(input: QuoteInput, checkout = false): Promise<ResolvedQuote> {
     const config = await this.getConfig();
 
     let district = input.district?.trim() || null;
@@ -95,13 +97,25 @@ export class ShippingRulesService {
         ? input.weightKg
         : (await this.computeWeight(items)).toNumber();
 
-    // Priced on the BILLED weight, not the raw one — this endpoint answers
-    // "what will the courier charge us", which is what staff act on.
-    const result = quoteShippingRule(config, {
+    // Courier cost estimates use billed weight. Customer fee quotes use
+    // actual parcel weight, matching checkoutFee below.
+    const result = (!checkout || config.applyOnCheckout) ? quoteShippingRule(config, {
       district,
-      weightKg: chargeableWeightKg(weightKg),
-      deliveryType: input.deliveryType,
-    });
+      weightKg: checkout ? weightKg : chargeableWeightKg(weightKg),
+      deliveryType: checkout ? 'HOME' : input.deliveryType,
+    }) : null;
+
+    if (checkout && !result) {
+      const zoneConfig = await this.zones.getConfig();
+      const zone = resolveZoneFee(zoneConfig, district ?? undefined);
+      return {
+        amount: zone.fee,
+        ruleId: null,
+        ruleName: zoneConfig.showOnCheckout === false ? null : zone.name.en,
+        weightKg,
+        district,
+      };
+    }
 
     return {
       amount: result?.amount ?? null,
@@ -114,8 +128,8 @@ export class ShippingRulesService {
 
   /**
    * The checkout fee, or null when the rules must not be charged — the
-   * toggle is off, or nothing matched. Null means "keep using the shipping
-   * zones", never "free".
+   * toggle is off, or nothing matched. Callers may then use enabled zones;
+   * disabled zones resolve to zero.
    */
   async checkoutFee(
     district: string | undefined,
