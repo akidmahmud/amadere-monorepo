@@ -3796,6 +3796,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/recovery/{id}/email-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_emailPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/recovery/{id}/send-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminRecoveryController_sendEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/recovery/{id}/cancel": {
         parameters: {
             query?: never;
@@ -3949,6 +3981,38 @@ export interface paths {
         };
         get: operations["AdminCartCampaignsController_getSettings"];
         put: operations["AdminCartCampaignsController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/whatsapp/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWhatsappController_get"];
+        put: operations["AdminWhatsappController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/whatsapp/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["WhatsappController_getConfig"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -5652,38 +5716,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/whatsapp/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminWhatsappController_get"];
-        put: operations["AdminWhatsappController_update"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/whatsapp/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["WhatsappController_getConfig"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/admin/menu-items": {
         parameters: {
             query?: never;
@@ -5966,6 +5998,118 @@ export interface paths {
         get: operations["AdminFooterController_get"];
         put: operations["AdminFooterController_update"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomerCampaignsController_getSettings"];
+        put: operations["AdminCustomerCampaignsController_updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomerCampaignsController_listTemplates"];
+        put?: never;
+        post: operations["AdminCustomerCampaignsController_createTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminCustomerCampaignsController_deleteTemplate"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminCustomerCampaignsController_updateTemplate"];
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomerCampaignsController_listQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/queue/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCustomerCampaignsController_cancelQueueItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/queue/{id}/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCustomerCampaignsController_sendNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/customer-campaigns/enqueue/{customerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCustomerCampaignsController_enqueue"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7262,6 +7406,7 @@ export interface components {
             siteName: string;
             logoUrl: string | null;
             productsPageBannerUrl: string | null;
+            productsPageBannerMobileUrl: string | null;
             faviconUrl: string | null;
             announcementSpeedSeconds: number;
             productCardStyle: Record<string, never>;
@@ -9591,6 +9736,14 @@ export interface components {
             /** @description Blank clears the reason */
             reason: string;
         };
+        RecoveryEmailOverrideDto: {
+            /** @description Supports {{name}} and {{total}} */
+            subject?: string;
+            heading?: string;
+            message?: string;
+            ctaLabel?: string;
+            whatsappLabel?: string;
+        };
         CancelIncompleteOrderDto: {
             reason: string;
         };
@@ -9643,6 +9796,19 @@ export interface components {
             status: string;
             /** Format: date-time */
             sentAt: string;
+        };
+        UpdateWhatsappSettingsDto: {
+            enabled?: boolean;
+            /** @description International format without a leading +, e.g. 8801XXXXXXXXX */
+            phoneNumber?: string;
+            /** @description Sent from the product page WhatsApp button — supports {{productName}} */
+            productMessageTemplate?: string;
+            /** @description Sent from the site-wide floating WhatsApp button */
+            floatingMessageTemplate?: string;
+            /** @description Show a "Call to order" button on the product page */
+            callEnabled?: boolean;
+            /** @description Number the product-page call button dials. Dialled as-is via tel:, so local format (01XXXXXXXXX) is fine — unlike the WhatsApp number, which must be international without a +. */
+            callNumber?: string;
         };
         ShipmentEventDto: {
             status: Record<string, never>;
@@ -10481,19 +10647,6 @@ export interface components {
             /** @description Raw markup injected near the top of <body> (e.g. a noscript fallback) */
             bodyScript?: string;
         };
-        UpdateWhatsappSettingsDto: {
-            enabled?: boolean;
-            /** @description International format without a leading +, e.g. 8801XXXXXXXXX */
-            phoneNumber?: string;
-            /** @description Sent from the product page WhatsApp button — supports {{productName}} */
-            productMessageTemplate?: string;
-            /** @description Sent from the site-wide floating WhatsApp button */
-            floatingMessageTemplate?: string;
-            /** @description Show a "Call to order" button on the product page */
-            callEnabled?: boolean;
-            /** @description Number the product-page call button dials. Dialled as-is via tel:, so local format (01XXXXXXXXX) is fine — unlike the WhatsApp number, which must be international without a +. */
-            callNumber?: string;
-        };
         AdminMenuItemTranslationDto: {
             locale: Record<string, never>;
             label: string;
@@ -10840,6 +10993,49 @@ export interface components {
             payment: components["schemas"]["FooterPaymentDto"];
             copyright: components["schemas"]["TranslatedDto"];
             logo: components["schemas"]["FooterLogoDto"];
+        };
+        UpdateCustomerCampaignSettingsDto: {
+            /** @description Master switch. Off means nothing is queued and nothing is sent. */
+            enabled?: boolean;
+            maxAttempts?: number;
+            /** @description Local hour, 0-23. Nothing sends between start and end. */
+            quietHoursStart?: number;
+            quietHoursEnd?: number;
+            /** @description Cap on how many customers one recurring scan may enrol, so a first run cannot blast the whole list. */
+            recurringBatchSize?: number;
+        };
+        UpsertCustomerCampaignTemplateDto: {
+            /** @enum {string} */
+            channel: "EMAIL" | "SMS";
+            name: string;
+            /** @description Email only; ignored for SMS */
+            subject?: string;
+            /** @description Supports {{name}} and {{first_name}} */
+            bodyEn: string;
+            bodyBn: string;
+            /** @description Rich HTML body for email. Plain body is still sent as the text alternative. */
+            bodyHtmlEn?: string;
+            bodyHtmlBn?: string;
+            /**
+             * @default CUSTOMER_ADDED
+             * @enum {string}
+             */
+            trigger: "CUSTOMER_ADDED" | "RECURRING";
+            /**
+             * @default ALL
+             * @enum {string}
+             */
+            audience: "ALL" | "NO_ORDER_IN_DAYS";
+            /** @description For NO_ORDER_IN_DAYS */
+            audienceDays?: number;
+            /** @description RECURRING only. Never message the same customer again inside this many days. */
+            repeatEveryDays?: number;
+            /** @description How long after the customer was added. 0 = immediately. */
+            delayValue: number;
+            /** @enum {string} */
+            delayUnit: "MINUTE" | "HOUR" | "DAY";
+            /** @enum {string} */
+            status?: "ACTIVE" | "PAUSED";
         };
         PublicPromoVideoDto: {
             id: number;
@@ -18881,6 +19077,54 @@ export interface operations {
             };
         };
     };
+    AdminRecoveryController_emailPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryEmailOverrideDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminRecoveryController_sendEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryEmailOverrideDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminRecoveryController_cancel: {
         parameters: {
             query?: never;
@@ -19147,6 +19391,67 @@ export interface operations {
         };
     };
     AdminCartCampaignsController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminWhatsappController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminWhatsappController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWhatsappSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    WhatsappController_getConfig: {
         parameters: {
             query?: never;
             header?: never;
@@ -22584,67 +22889,6 @@ export interface operations {
             };
         };
     };
-    AdminWhatsappController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    AdminWhatsappController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateWhatsappSettingsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
-    WhatsappController_getConfig: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-        };
-    };
     AdminMenuItemsController_list: {
         parameters: {
             query?: {
@@ -23360,6 +23604,202 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UpdateFooterDto"];
                 };
+            };
+        };
+    };
+    AdminCustomerCampaignsController_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminCustomerCampaignsController_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerCampaignSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminCustomerCampaignsController_listTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomerCampaignsController_createTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertCustomerCampaignTemplateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomerCampaignsController_deleteTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomerCampaignsController_updateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomerCampaignsController_listQueue: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "SENT" | "FAILED" | "SKIPPED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
+    AdminCustomerCampaignsController_cancelQueueItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomerCampaignsController_sendNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCustomerCampaignsController_enqueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

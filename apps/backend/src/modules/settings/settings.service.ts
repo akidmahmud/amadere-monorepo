@@ -14,6 +14,11 @@ const SITE_LOGO_STYLE_KEY = 'site_logo_style';
 const SITE_NAME_KEY = 'site_name';
 const DEFAULT_SITE_NAME = 'আমাদের';
 const PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY = 'products_page_banner_media_id';
+// Optional phone-shaped crop. The desktop banner is 16:5, which on a 390px
+// screen is about 105px tall — a sliver that shows almost nothing of the
+// artwork. Falls back to the desktop image when unset, so nothing changes for
+// anyone who does not set it.
+const PRODUCTS_PAGE_BANNER_MOBILE_MEDIA_ID_KEY = 'products_page_banner_mobile_media_id';
 const SITE_FAVICON_MEDIA_ID_KEY = 'site_favicon_media_id';
 export const ANNOUNCEMENT_BAR_SPEED_KEY = 'announcement_bar_speed';
 // Site-wide SEO/Open Graph fallback — shown for the homepage and any other
@@ -89,6 +94,7 @@ export class SettingsService {
             SITE_NAME_KEY,
             PRODUCT_CARD_STYLE_KEY,
             PRODUCTS_PAGE_BANNER_MEDIA_ID_KEY,
+            PRODUCTS_PAGE_BANNER_MOBILE_MEDIA_ID_KEY,
             SITE_FAVICON_MEDIA_ID_KEY,
             ANNOUNCEMENT_BAR_SPEED_KEY,
             SITE_SEO_TITLE_KEY,
@@ -116,6 +122,15 @@ export class SettingsService {
         where: { id: bannerMediaId },
       });
       productsPageBannerUrl = media?.url ?? null;
+    }
+
+    const bannerMobileMediaId = byKey.get(PRODUCTS_PAGE_BANNER_MOBILE_MEDIA_ID_KEY);
+    let productsPageBannerMobileUrl: string | null = null;
+    if (typeof bannerMobileMediaId === 'number') {
+      const media = await this.prisma.client.media.findUnique({
+        where: { id: bannerMobileMediaId },
+      });
+      productsPageBannerMobileUrl = media?.url ?? null;
     }
 
     const faviconMediaId = byKey.get(SITE_FAVICON_MEDIA_ID_KEY);
@@ -180,6 +195,7 @@ export class SettingsService {
       siteName: typeof siteName === 'string' ? siteName : DEFAULT_SITE_NAME,
       logoUrl,
       productsPageBannerUrl,
+      productsPageBannerMobileUrl,
       faviconUrl,
       announcementSpeedSeconds,
       productCardStyle,

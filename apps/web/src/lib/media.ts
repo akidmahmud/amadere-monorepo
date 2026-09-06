@@ -30,9 +30,12 @@ export function toDisplayImageUrl(
  * card — a fixed 1200x630 that never comes back too small for a scraper to
  * accept. Every og:image/twitter:image goes through this.
  */
-export function toOgImageUrl(url: string | null | undefined): string | undefined {
+export function toOgImageUrl(
+  url: string | null | undefined,
+  fit: 'pad' | 'cover' = 'pad',
+): string | undefined {
   if (!url || /^https?:\/\//.test(url) === false) return undefined;
-  return cdnOgImageUrl(url);
+  return cdnOgImageUrl(url, fit);
 }
 
 export { IMG, OG_IMAGE } from "./image-url";

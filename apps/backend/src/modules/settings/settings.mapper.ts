@@ -20,6 +20,8 @@ export class SiteInfoDto {
   siteName!: string;
   logoUrl!: string | null;
   productsPageBannerUrl!: string | null;
+  /** Phone-shaped crop of the products banner. Null = use the desktop one. */
+  productsPageBannerMobileUrl!: string | null;
   /** Browser-tab icon — see SettingsService.SITE_FAVICON_MEDIA_ID_KEY. Falls
    * back to the storefront's static default (apps/web/public/favicon-default.png)
    * when unset. */

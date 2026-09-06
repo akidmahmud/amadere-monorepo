@@ -62,10 +62,20 @@ export const OG_IMAGE = { width: 1200, height: 630 } as const;
  * Accept header and scrapers commonly send `*​/*`. JPEG is the one format every
  * scraper renders; og:image is not a bandwidth-sensitive path.
  */
-export function cdnOgImageUrl(src: string): string {
+export function cdnOgImageUrl(src: string, fit: 'pad' | 'cover' = 'pad'): string {
+  // `cover` fills the 1.91:1 card by cropping; `pad` letterboxes onto white.
+  //
+  // Which is right depends entirely on the source. Measured on two real
+  // product photos, both square, both padded identically: the one shot on a
+  // near-white background (rgb 221,220,214) hid the bars completely, while
+  // the one on a brown background (rgb 158,136,126) showed a hard white gap
+  // down each side. Padding is not "safe by default" — it is only invisible
+  // on white-background photography.
+  const fill =
+    fit === 'cover' ? 'fit=cover' : 'fit=pad,background=%23ffffff';
   return withCdnParams(
     src,
-    `width=${OG_IMAGE.width},height=${OG_IMAGE.height},quality=85,format=jpeg,fit=pad,background=%23ffffff`,
+    `width=${OG_IMAGE.width},height=${OG_IMAGE.height},quality=85,format=jpeg,${fill}`,
   );
 }
 

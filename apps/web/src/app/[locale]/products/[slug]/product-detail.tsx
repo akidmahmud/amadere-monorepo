@@ -83,7 +83,12 @@ export async function generateProductMetadata(
   // production traffic (see lib/image-url.ts). Also pins a width: crawlers
   // fetch this image on every share, and the untransformed original can be
   // multiple megabytes.
-  const ogImage = toOgImageUrl(product.seo.ogImageUrl);
+  // `cover`, not the default `pad`: product photos are square and centre
+  // framed, so cropping ~17% off the top and bottom is unnoticeable, while
+  // padding leaves white bars down both sides of any shot that was not taken
+  // on a white background. Categories/brands/blog stay on `pad`, where the
+  // source is often a small logo that must not be cropped.
+  const ogImage = toOgImageUrl(product.seo.ogImageUrl, 'cover');
 
   return {
     title: product.seo.title,

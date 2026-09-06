@@ -82,6 +82,10 @@ export default async function ProductsPage({
   // devices that can least afford it.
   const bannerSrc = siteInfoRes.data?.productsPageBannerUrl;
   const bannerUrl = toDisplayImageUrl(bannerSrc, IMG.banner);
+  const mobileBannerUrl = toDisplayImageUrl(
+    siteInfoRes.data?.productsPageBannerMobileUrl,
+    IMG.banner,
+  );
   const bannerSrcSet = bannerSrc
     ? [480, 768, 1140, 1600]
         .map((w) => `${toDisplayImageUrl(bannerSrc, w)} ${w}w`)
@@ -92,10 +96,26 @@ export default async function ProductsPage({
     <main className="flex-1">
       {bannerUrl && (
         <div className="mx-auto max-w-[1600px] px-5 pt-6">
+          {/* Phones get their own crop when one is uploaded. At 16:5 a
+              390px-wide screen shows a ~105px sliver — enough to make a
+              correct banner look like an empty strip, and to slice a
+              square-ish upload down to background. 4:3 gives the artwork
+              room; the desktop 16:5 is untouched. */}
           {/* 1600 wide, matching the 1600x500 the admin asks for and the
               other banners on the site. It was capped at 1180 (1140 after
               padding), so a correct upload was scaled down as well as
               cropped. */}
+          {mobileBannerUrl && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={mobileBannerUrl}
+              width={800}
+              height={600}
+              fetchPriority="high"
+              alt="All Products Banner"
+              className="aspect-[4/3] w-full rounded-brand object-cover md:hidden"
+            />
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bannerUrl}
@@ -109,7 +129,9 @@ export default async function ProductsPage({
             alt="All Products Banner"
             // 16:5, same as every other banner and the 1600x500 the admin
             // asks people to upload. 1180/300 (3.93:1) cropped it.
-            className="aspect-[16/5] w-full rounded-brand object-cover"
+            className={`aspect-[16/5] w-full rounded-brand object-cover ${
+              mobileBannerUrl ? "hidden md:block" : ""
+            }`}
           />
         </div>
       )}
