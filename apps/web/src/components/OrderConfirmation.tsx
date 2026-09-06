@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { formatMoney } from "@amader/ui";
 import { ManualPaymentSubmission } from "@/components/ManualPaymentSubmission";
 import { CustomerInvoiceDocument } from "@/components/CustomerInvoiceDocument";
+import { markPurchaseFired } from "@/lib/placed-order";
 import { useSiteInfo } from "@/hooks/useSiteInfo";
 import { pushEcommerceEvent, addressToUserData } from "@/lib/analytics-events";
 import { toDisplayImageUrl, IMG } from "@/lib/media";
@@ -75,10 +76,16 @@ export function OrderConfirmation({ order }: { order: OrderDto }) {
   const shipping = order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
   const latestPayment = order.payments[order.payments.length - 1];
 
-  // Fires once per mount (this component only mounts when a fresh order was
-  // just placed — a page refresh loses the parent's `placedOrder` state
-  // entirely rather than re-rendering this, so there's no double-fire risk).
+  // Fires once per ORDER, not once per mount.
+  //
+  // It used to rely on a refresh destroying the parent's `placedOrder` state
+  // to avoid double-firing. That accident disappeared the moment the
+  // confirmation got a real URL (/thank-you), where refresh and back-button
+  // both remount this. A duplicated purchase inflates conversions in
+  // GA4/Meta, distorting ROAS — so the guard is now explicit and survives
+  // reloads and new tabs.
   useEffect(() => {
+    if (!markPurchaseFired(order.orderNumber)) return;
     // The single client-side purchase signal — pushed to window.dataLayer
     // for any GTM container (PixelFly's included) to build its own
     // GA4/Ads/Meta tags from. A direct gtag/fbq/ttq call used to fire

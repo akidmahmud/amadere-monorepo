@@ -1769,3 +1769,75 @@ in Git Bash silently corrupted it to literal `?????` — the shell mangled the
 UTF-8 payload. Caught by checking the rendered HTML rather than trusting the
 200. Rewritten via a UTF-8 file with `--data-binary`. Any Bangla sent to this
 API from a shell needs the same treatment.
+
+---
+
+## Thank-you page: the confirmation gets its own URL
+
+After placing an order the buyer stayed on `/checkout` — `CheckoutProvider`
+swapped the form for `OrderPlacedPanel` in React state and the URL never
+changed. No landing page to point analytics at, nothing to return to.
+
+Now: checkout stores the placed order and `router.replace("/thank-you")`.
+
+### Why the order travels in the browser, not a fetch
+
+`GET /orders/:orderNumber` is behind `CustomerJwtGuard`, and most buyers here
+check out as guests — so a thank-you page has nothing it could ask the server
+for. The only public route is `POST /orders/track`, which needs orderNumber +
+phone, and demanding a phone number seconds after paying is friction at the
+happiest point of the funnel.
+
+The browser already holds the full order the checkout call returned, so it
+carries it across the redirect in `sessionStorage` (`lib/placed-order.ts`).
+
+Accepted trade-off: the URL is not shareable and not reachable from another
+device. Someone who loses it uses `/track`, exactly as before.
+
+### The purchase event could have started double-firing
+
+This is the part that mattered. `OrderConfirmation` fired `purchase` on mount,
+and its own comment explained why that was safe:
+
+> a page refresh loses the parent's `placedOrder` state entirely rather than
+> re-rendering this, so there's no double-fire risk
+
+That safety was an **accident of having no URL**. Giving the confirmation a real
+one removes it — refresh and back-button both remount the component. A
+duplicated purchase inflates conversions in GA4/Meta, distorts ROAS, and teaches
+the ad algorithms to bid on the wrong thing.
+
+So the guard is now explicit: `markPurchaseFired(orderNumber)` in
+**localStorage**, not sessionStorage, so a new tab or a browser restart cannot
+report the same order twice. The list is capped at 50 so a shared/kiosk browser
+does not grow it forever. If storage is blocked entirely it fires anyway — a
+missing conversion is worse than a rare duplicate.
+
+### Other decisions
+
+- **`router.replace`, not `push`** — Back from the thank-you page must not
+  return to a checkout form for an order that is already placed.
+- **Inline fallback kept.** The redirect only happens once the hand-off is
+  confirmed present in storage; if the browser refused it, `OrderPlacedPanel`
+  renders the confirmation in place exactly as before. A buyer must never be
+  left staring at a checkout form after paying.
+- **Direct visits degrade honestly** — "No recent order to show" plus links to
+  Products and Track, rather than a blank page.
+- Digital orders are untouched: they never reached the confirmation anyway, they
+  go straight to downloads.
+
+### Verified with a real order in a browser
+
+Placed `ORD-20260906-55AC54` through the actual storefront checkout:
+
+| check | result |
+|---|---|
+| URL after ordering | `/thank-you` |
+| Order shown | ORD-20260906-55AC54 |
+| `purchase` events | **1** — value 479, BDT, 1 item, `user_data` present |
+| sessionStorage hand-off | order number present |
+| **After refresh** | order still shown, **`purchase` fired 0 times** |
+
+`lib/placed-order` guard checked separately, 8/8: first call fires, refresh and
+back-button do not, a different order still fires, the list caps at 50 newest
+first, and a blocked-storage browser still fires.

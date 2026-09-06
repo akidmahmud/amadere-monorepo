@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@amader/ui";
 import { useRouter } from "@/i18n/navigation";
 import { OrderConfirmation } from "@/components/OrderConfirmation";
+import { storePlacedOrder } from "@/lib/placed-order";
 import type { CheckoutResult } from "@/hooks/useCheckout";
 
 /**
@@ -22,6 +24,42 @@ import type { CheckoutResult } from "@/hooks/useCheckout";
  */
 export function OrderPlacedPanel({ placedOrder }: { placedOrder: CheckoutResult }) {
   const router = useRouter();
+  // Only true when storage refused the hand-off. Then this renders the
+  // confirmation inline exactly as it always did — a buyer must never be
+  // left staring at a checkout form after paying because their browser
+  // blocks sessionStorage.
+  const [stayHere, setStayHere] = useState(false);
+
+  useEffect(() => {
+    storePlacedOrder(placedOrder);
+    // Confirm it actually landed before navigating away from the only copy
+    // of the order this browser has.
+    let stored = false;
+    try {
+      stored = sessionStorage.getItem("amader:placed-order") !== null;
+    } catch {
+      stored = false;
+    }
+    if (stored) {
+      // replace, not push: Back from the thank-you page must not return to a
+      // checkout form for an order that is already placed.
+      router.replace("/thank-you");
+    } else {
+      setStayHere(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placedOrder.orderNumber]);
+
+  // Mid-redirect. Rendering the confirmation here too would fire nothing
+  // extra (the purchase event is guarded per order), but it would flash the
+  // whole panel for a frame before navigating.
+  if (!stayHere) {
+    return (
+      <div className="mx-auto max-w-[1180px] px-5 py-16 text-center">
+        <p className="font-body text-muted">Order placed — taking you to your confirmation…</p>
+      </div>
+    );
+  }
 
   return (
       <div className="mx-auto max-w-[1180px] px-5 py-12">
