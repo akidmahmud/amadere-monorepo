@@ -3848,5 +3848,572 @@
     "rating": 5,
     "comment": "পোলাও রান্নার জন্য নিয়েছিলাম, পরে খিচুড়িতেও ব্যবহার করেছি। দুই ধরনের রান্নাতেই ঘিয়ের স্বাদ ও ঘ্রাণ ভালো লেগেছে।",
     "createdAt": "2026-02-04"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rahela Begum",
+    "rating": 5,
+    "comment": "প্রথমে একটু সন্দেহ ছিল। অনলাইনে এত কিছু কিনে ঠকেছি যে ভরসা কম ছিল। কিন্তু ছাতুর মান দেখে মন ভালো হয়ে গেল। গন্ধটা একদম তাজা। মধু ঘন আর সুন্দর রঙের। দুই সপ্তাহ ধরে সকালে বানিয়ে খাচ্ছি। প্যাকেজিং ভালো ছিল।",
+    "createdAt": "2025-09-01"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Saiful Islam",
+    "rating": 4,
+    "comment": "ছাতু আর মধু দুটোই ভালো। দুধ দিয়ে রান্না করলে স্বাদ আরো ভালো লাগে। দাম একটু বেশি মনে হয়েছে, আরেকটু কমলে নিয়মিত নেওয়া আরো সহজ হত। তবু আবার নেব।",
+    "createdAt": "2025-09-07"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Nazma Akter",
+    "rating": 5,
+    "comment": "বাচ্চাকে দিচ্ছি সকালে। মধু থাকায় মিষ্টি স্বাদ আছে, তাই নিজেই খেতে চায়। আমিও খাই। প্যাকেটের গায়ে রেসিপি থাকলে নতুনদের জন্য আরো সুবিধা হত।",
+    "createdAt": "2025-09-14"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Abdul Hannan",
+    "rating": 5,
+    "comment": "অনেকদিন ধরে এই ধরনের খাবার খুঁজছিলাম। অফিসে দেরিতে আসি, সকালে ভারী কিছু খাওয়ার সময় থাকে না। এটা বানাতে বেশি সময় লাগে না, পেটও ভরা থাকে অনেকক্ষণ। দ্বিতীয়বার অর্ডার করেছি।",
+    "createdAt": "2025-09-15"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Shahina Parvin",
+    "rating": 5,
+    "comment": "ছাতু ভালো, মধু ভালো। দুটো মিলিয়ে স্বাদ বেশ পরিচিত লাগে। রান্নার পরে মসৃণ হয়। সকালে বানিয়ে খাই, পেট হালকা লাগে সারাদিন।",
+    "createdAt": "2025-09-21"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Rafiqul Islam",
+    "rating": 5,
+    "comment": "আমাদের এলাকায় যব চাষ হয়, ছোটবেলায় খেয়েছি। এখন আর সহজে পাওয়া যায় না। এই প্যাকেজ পেয়ে ভালো লাগল। ছাতুর রঙ আর গন্ধ দেখে বুঝলাম ভালো যব দিয়ে তৈরি। ছেলেমেয়েদেরও খাওয়াচ্ছি।",
+    "createdAt": "2025-09-23"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Farhana Islam",
+    "rating": 5,
+    "comment": "হাসপাতালে রাত জাগতে হয়। সকালে ফিরে কিছু একটা খেয়ে ঘুমাই। এটা বানানো সহজ, পেটে কোনো ভার লাগে না। ছাতু আর মধুর সমন্বয়টা বেশ ভালো হয়েছে।",
+    "createdAt": "2025-09-29"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Jahidul Haque",
+    "rating": 5,
+    "comment": "রাত জেগে কাজ করি। সকালে হালকা কিছু দরকার যেটা শক্তি দেবে। তালবিনা বানিয়ে খাই এখন নিয়মিত। দুধ দিয়ে বানালে স্বাদ অন্যরকম হয়, পানি দিয়েও ভালো। দুটোই পরীক্ষা করেছি।",
+    "createdAt": "2025-10-05"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rokeya Khanam",
+    "rating": 5,
+    "comment": "শাশুড়ি অসুস্থ ছিলেন, মুখে কিছু যাচ্ছিল না। তালবিনা বানিয়ে দিলাম, উনি খেলেন। বললেন হালকা লেগেছে, ভালো লেগেছে। এখন সুস্থ হয়ে নিজেই চাইছেন। প্যাকেজটা নেওয়া ভালো হয়েছে।",
+    "createdAt": "2025-10-06"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Tanvir Ahmed",
+    "rating": 4,
+    "comment": "প্রোডাক্ট ভালো। ডেলিভারি একটু দেরি হয়েছিল, তবে পেয়েছি ঠিকঠাক। ছাতু আর মধু দুটোই মানসম্পন্ন। আবার নেব।",
+    "createdAt": "2025-10-13"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Salma Begum",
+    "rating": 5,
+    "comment": "নিজে খাই, মাকেও দিই। মায়ের বয়স হয়েছে, হজমে সমস্যা। এটা খাওয়ার পর উনি বলছেন পেট হালকা লাগছে। দুবার নিয়েছি এখন পর্যন্ত, তৃতীয়বার নেব শীঘ্রই।",
+    "createdAt": "2025-10-14"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Kamal Hossain",
+    "rating": 5,
+    "comment": "লম্বা রুটে থাকি, সকালে ভালো নাস্তা পাওয়া কঠিন। বাসায় বানিয়ে রাখি, যাওয়ার আগে খেয়ে যাই। পেট ভরা থাকে ঘণ্টা তিনেক। ছাতু আর মধু একসাথে পাওয়াটা দারুণ সুবিধা।",
+    "createdAt": "2025-10-20"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Tahmina Rahman",
+    "rating": 5,
+    "comment": "প্যাকেজিং সুন্দর। ছাতু আর মধু দুটোই চমৎকার। রান্নায় মসৃণ হয়, খেতে ভালো লাগে। আবার কিনব।",
+    "createdAt": "2025-10-27"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Rashedul Islam",
+    "rating": 5,
+    "comment": "পরিবারের সবাই খাচ্ছি। সকালে বানাতে বেশি সময় লাগে না। ছেলেমেয়েরা মিষ্টি স্বাদের জন্য পছন্দ করে। আমিও নিয়মিত খাই।",
+    "createdAt": "2025-10-28"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Jannatul Naim",
+    "rating": 5,
+    "comment": "অনলাইনে প্রাকৃতিক খাবার কিনতে গেলে প্রতারণার ভয় থাকে। এখানে ঠকিনি। ছাতু তাজা, মধু খাঁটি। দাম একটু বেশি, কিন্তু মান ভালো হলে দিতে আপত্তি নেই।",
+    "createdAt": "2025-11-03"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Shafiqul Islam",
+    "rating": 4,
+    "comment": "ছাতু আর মধু দুটোই ভালো লেগেছে। দুধ দিয়ে বানালে স্বাদ আরো ভালো হয়। একটু বেশি পরিমাণে প্যাক হলে দামে সাশ্রয় হত।",
+    "createdAt": "2025-11-04"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Nasrin Sultana",
+    "rating": 5,
+    "comment": "বাচ্চাদের স্কুলের আগে কিছু একটা দিতে হয়। ভারী খাবার সকালে খেতে চায় না। তালবিনা বানিয়ে দিই, দ্রুত খেয়ে যায়। মধু থাকায় মিষ্টি স্বাদ আছে, তাই বাচ্চারা পছন্দ করে।",
+    "createdAt": "2025-11-11"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Anisur Rahman",
+    "rating": 5,
+    "comment": "সুন্নতী খাবার হিসেবে শুরু করেছিলাম। এখন অভ্যাস হয়ে গেছে। রোজ না পারলেও সপ্তাহে চার পাঁচদিন খাই। ছাতু আর মধুর মান নিয়ে সন্তুষ্ট।",
+    "createdAt": "2025-11-17"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Parvin Akter",
+    "rating": 5,
+    "comment": "স্বামী প্রথমে খেতে চাইছিল না। দুধ দিয়ে বানালাম, এরপর থেকে নিজেই চাইছে। পরিবারের সবাই এখন নিয়মিত খাচ্ছি।",
+    "createdAt": "2025-11-18"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Mahbubul Alam",
+    "rating": 5,
+    "comment": "প্রাকৃতিক উপাদান দেখে কিনেছিলাম। ছাতুর মান ভালো, মধু ঘন আর রঙ স্বাভাবিক। পরিবারকে দিচ্ছি। নিজের কাছে ভালো লেগেছে।",
+    "createdAt": "2025-11-25"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Sajeda Begum",
+    "rating": 5,
+    "comment": "শ্বশুরের জন্য নিয়েছিলাম। উনার বয়স সত্তরের কাছে, দাঁতে সমস্যা। তালবিনা ভালোভাবে রান্না করলে একদম মসৃণ হয়, উনি খেতে পারেন। মাসখানেক ধরে খাচ্ছেন।",
+    "createdAt": "2025-11-26"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Imran Hossain",
+    "rating": 5,
+    "comment": "ছাতু আর মধু দুটোই চমৎকার। সকালে বানিয়ে খাই, দিনটা ভালো শুরু হয়। দ্বিতীয় প্যাকেজ অর্ডার করেছি।",
+    "createdAt": "2025-12-02"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Hasina Begum",
+    "rating": 5,
+    "comment": "প্রতিদিন বানাই না, তবে সপ্তাহে তিন চারদিন বানাই। সকালে পেট ভরা থাকলে বাইরে কিছু কিনে খাওয়ার ইচ্ছা কমে। দামে মিলিয়ে দেখলে ভালোই।",
+    "createdAt": "2025-12-09"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Jamaluddin",
+    "rating": 5,
+    "comment": "যব চিনি কাজের সূত্রে। এই ছাতু দেখে মান বোঝা যাচ্ছিল। মধুও ভালো। একসাথে প্যাকেজ করাটা ভালো আইডিয়া, আলাদা আলাদা কিনতে হয় না।",
+    "createdAt": "2025-12-10"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rehana Parvin",
+    "rating": 4,
+    "comment": "অফিসের চাপে সকালে রান্না করার সময় কম থাকে। তালবিনা বানাতে বেশি সময় লাগে না, এটাই সুবিধা। ওয়েবসাইটে অর্ডার করা সহজ হলে আরো ভালো হত।",
+    "createdAt": "2025-12-16"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Habibur Rahman",
+    "rating": 5,
+    "comment": "বয়স হয়েছে, হালকা খাবার দরকার। এটা পেটে চাপ দেয় না। সকালে খেলে দুপুর পর্যন্ত ভালো থাকি। ছাতু আর মধু দুটোই মানসম্পন্ন।",
+    "createdAt": "2025-12-18"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Shamima Nasrin",
+    "rating": 5,
+    "comment": "পরিচিত একজন বলেছিলেন এটার কথা। প্রথমে ইন্টারেস্ট ছিল না। পরে নিয়ে দেখলাম ভালোই। ছাতুর গন্ধ ভালো, মধু ঘন। এখন নিয়মিত নিচ্ছি।",
+    "createdAt": "2025-12-24"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Salauddin",
+    "rating": 5,
+    "comment": "ছাতু আর মধু দুটোই ভালো মানের। একসাথে প্যাকেজ পাওয়া সুবিধার। আবার নেব।",
+    "createdAt": "2025-12-30"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Moriom Begum",
+    "rating": 5,
+    "comment": "মেয়ে ঢাকা থেকে পাঠিয়েছে। প্রথমে ভেবেছিলাম শহরের ফ্যাশন। খেয়ে দেখলাম ভালোই। ছাতু আর মধু এক প্যাকেটে পাওয়া সত্যিই সুবিধার।",
+    "createdAt": "2025-12-31"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Ariful Islam",
+    "rating": 5,
+    "comment": "হলে থাকি। রান্নার সুবিধা কম। সকালে এটা বানিয়ে খাই, পেট ভরে যায়। মেসে বানানো সম্ভব। বন্ধুরাও খায় এখন।",
+    "createdAt": "2026-01-07"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Fatema Tuz Zohra",
+    "rating": 5,
+    "comment": "ছাতু আর মধু দুটোই পরিষ্কার আর তাজা। রান্নার পর টেক্সচার মসৃণ হয়, খেতে ভালো লাগে।",
+    "createdAt": "2026-01-08"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Kabir Hossain",
+    "rating": 5,
+    "comment": "সকাল সাতটায় বাসা থেকে বের হই। আগের রাতে বানিয়ে রাখি, সকালে গরম করে খেয়ে বের হই। ছাতু আর মধুর কম্বিনেশন বেশ ভালো।",
+    "createdAt": "2026-01-14"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rojina Akter",
+    "rating": 5,
+    "comment": "পরিবারের পাঁচজন খাচ্ছি। বড় প্যাক হলে দামে আরো সাশ্রয় হত। তবু ছাতু আর মধু দুটোরই মান ভালো।",
+    "createdAt": "2026-01-21"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Alamgir Hossain",
+    "rating": 5,
+    "comment": "ছাতু আর মধু দুটোই ভালো মানের। স্বাদ বেশ পরিচিত লাগে। নিয়মিত খাচ্ছি।",
+    "createdAt": "2026-01-22"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Sabina Yasmin",
+    "rating": 5,
+    "comment": "হালকা সকালের নাস্তার জন্য একদম ঠিক। ভারী কিছু খেলে ক্লাসে অস্বস্তি লাগে। এটা খেলে হালকা থাকি। ছাত্রদেরও পরামর্শ দিয়েছি।",
+    "createdAt": "2026-01-28"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Bashir Uddin",
+    "rating": 5,
+    "comment": "তিন মাস ধরে নিচ্ছি। প্রতিবার মান একই রকম। এটা ভালো লেগেছে, কিছু প্রোডাক্ট প্রথমবার ভালো থাকে পরে মান কমে। এটায় সেটা হয়নি।",
+    "createdAt": "2026-01-29"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Shiuli Rani",
+    "rating": 5,
+    "comment": "স্বাস্থ্যকর খাবার হিসেবে নিয়েছি। ছাতু আর মধু দুটোই ভালো। নিয়মিত খাচ্ছি।",
+    "createdAt": "2026-02-05"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Nurul Huda",
+    "rating": 5,
+    "comment": "খাদ্যগুণের দিক থেকে যব ভালো শস্য, এটা জানতাম। বাজারে খাঁটি যবের ছাতু পাওয়া কঠিন। এই প্যাকেজটা সুবিধাজনক। মধুও ঘন আর ভালো মানের।",
+    "createdAt": "2026-02-11"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Nadira Begum",
+    "rating": 5,
+    "comment": "বাচ্চার বাবা অসুস্থ ছিলেন। হালকা কিছু খাওয়াতে চাইছিলাম। তালবিনা দিলাম, খেলেন আর ভালো বললেন। সুস্থ হওয়ার পরেও চাইছেন।",
+    "createdAt": "2026-02-12"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Shahidul Islam",
+    "rating": 5,
+    "comment": "কাজ কঠিন, শরীরে শক্তি লাগে। সকালে ভালো কিছু না খেলে কাজে মন বসে না। তালবিনা খেলে অনেকক্ষণ ভালো থাকি। নিয়মিত নিচ্ছি।",
+    "createdAt": "2026-02-19"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Tamanna Islam",
+    "rating": 4,
+    "comment": "প্রোডাক্ট ভালো। তবে প্যাকেটে রেসিপি থাকলে নতুনদের জন্য সুবিধা হত। ছাতু আর মধু দুটোই মানসম্পন্ন।",
+    "createdAt": "2026-02-20"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Ruhul Amin",
+    "rating": 5,
+    "comment": "বয়সকালে হালকা খাবারই ভালো লাগে। ভারী নাস্তা হজম হতে সময় লাগে। তালবিনা খেলে পেটে কোনো সমস্যা হয় না। ছাতু আর মধু দুটোই পছন্দ হয়েছে।",
+    "createdAt": "2026-02-26"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Dilruba Begum",
+    "rating": 5,
+    "comment": "ছেলে ঢাকায় চাকরি করে, পাঠিয়ে দিয়েছে। প্রথমে চেনা ছিল না। খেয়ে দেখলাম ভালো। এখন নিজেই অর্ডার করি।",
+    "createdAt": "2026-03-05"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Zakir Hossain",
+    "rating": 4,
+    "comment": "ডিউটিতে থাকলে সকালে ঠিকমতো খাওয়া হয় না। বাসায় থাকলে এটা বানিয়ে খাই। ছাতু আর মধু দুটোই ভালো। ওয়েবসাইটে অর্ডার প্রক্রিয়া একটু সহজ করলে ভালো হত।",
+    "createdAt": "2026-03-06"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Anowara Begum",
+    "rating": 5,
+    "comment": "গ্রামে আগে যব খেতাম। শহরে আসার পর পাইনি অনেকদিন। এই ছাতু দেখে পুরনো স্মৃতি মনে পড়ল। মানও চমৎকার। আবার নেব।",
+    "createdAt": "2026-03-12"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Sajjad Hossain",
+    "rating": 5,
+    "comment": "কাজের চাপে সকালে রান্না করা হয় না। তালবিনা বানানো সহজ। মধু আলাদা কিনতে হয় না, প্যাকেজে আছে। ছাতু আর মধু দুটোই ভালো।",
+    "createdAt": "2026-03-14"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Shahnaz Begum",
+    "rating": 5,
+    "comment": "স্বাদটা প্রথমে একটু নতুন লেগেছিল, অভ্যস্ত ছিলাম না। এখন দারুণ লাগছে। প্যাকেজিং ঠিক ছিল, প্রোডাক্ট ভালো।",
+    "createdAt": "2026-03-20"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Mustafizur Rahman",
+    "rating": 5,
+    "comment": "মা অসুস্থ থাকেন প্রায়ই। হালকা কিছু খাওয়াই। তালবিনা বানিয়ে দিই। মা বলছেন পেট হালকা লাগছে। দুই মাস ধরে চলছে।",
+    "createdAt": "2026-03-26"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Laila Arjuman",
+    "rating": 5,
+    "comment": "অফিসে যাওয়ার আগে হালকা নাস্তা করি। এটা বানাতে পনের মিনিট লাগে। পেট ভরে যায়, লাঞ্চের আগে আর ক্ষুধা লাগে না তেমন। ছাতু আর মধু দুটোই মানসম্পন্ন।",
+    "createdAt": "2026-03-27"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Omar Faruk",
+    "rating": 4,
+    "comment": "প্রথমবার নিয়েছি। ছাতু আর মধু দুটোই ভালো লেগেছে। ডেলিভারি সময়মতো হলে আরো ভালো হত। আবার নেব।",
+    "createdAt": "2026-04-03"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Mahfuza Akter",
+    "rating": 5,
+    "comment": "শিক্ষার্থীদের পড়াই, তাদের পরামর্শ দিই ভালো খাওয়ার। নিজে কিনেছি, ভালো লেগেছে। ছাতু আর মধু দুটোই চমৎকার।",
+    "createdAt": "2026-04-04"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Abdul Kadir",
+    "rating": 4,
+    "comment": "ছাতু পরিষ্কার, গন্ধ স্বাভাবিক। মধু ঘন আর রঙ ভালো। স্বাদ ঠিকই লেগেছে। দাম একটু কমলে নিয়মিত নেওয়া যেত।",
+    "createdAt": "2026-04-10"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Jesmin Akter",
+    "rating": 5,
+    "comment": "বাচ্চাকে সকালে কিছু দিতে হয়, ভারী কিছু খেতে চায় না। তালবিনা বানিয়ে দিলে খেয়ে যায়। মিষ্টি থাকায় বাচ্চারা পছন্দ করে। আবার নেব।",
+    "createdAt": "2026-04-17"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Toufiqul Islam",
+    "rating": 5,
+    "comment": "নিজে খাই। ব্যক্তিগতভাবে এই প্রোডাক্ট ভালো লেগেছে। ছাতু আর মধু দুটোই মানসম্পন্ন।",
+    "createdAt": "2026-04-18"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rashida Begum",
+    "rating": 5,
+    "comment": "দেড় মাস ধরে প্রতিদিন খাচ্ছি। অভ্যাস হয়ে গেছে। সকালে না খেলে অস্বস্তি লাগে। প্যাকেজটা শেষ হলেই আবার অর্ডার করব।",
+    "createdAt": "2026-04-24"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Moazzem Hossain",
+    "rating": 4,
+    "comment": "ভালো প্রোডাক্ট। কুরিয়ারে একটু বেশি সময় লেগেছিল। প্রোডাক্ট ঠিকঠাক পেয়েছি, ক্ষতি হয়নি। মান নিয়ে কোনো কথা নেই।",
+    "createdAt": "2026-04-25"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Selina Hossain",
+    "rating": 5,
+    "comment": "রাত ডিউটি শেষে বাসায় আসি। ক্লান্ত থাকি। তালবিনা সহজে বানানো যায়। পেটও ভরে, ঘুমানোর আগে স্বস্তি লাগে। ছাতু আর মধু দুটোই পছন্দ।",
+    "createdAt": "2026-05-02"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Harunur Rashid",
+    "rating": 5,
+    "comment": "যব চিনি। এই ছাতু ভালো মানের বোঝা গেছে। মধু ঘন আর সুন্দর রঙের। একসাথে প্যাকেজ করাটা সুবিধার। আরেকটা অর্ডার দিয়েছি।",
+    "createdAt": "2026-05-08"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Nure Jannat",
+    "rating": 5,
+    "comment": "ছাতু আর মধু দুটোই ভালো। প্যাকেজিং ঠিক ছিল, ডেলিভারিও সময়মতো। নিয়মিত নেব।",
+    "createdAt": "2026-05-09"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Rezaul Karim",
+    "rating": 5,
+    "comment": "বয়সের সাথে ভারী খাবার হজম করতে পারি না। হালকা কিছু খাই সকালে। তালবিনা ভালো লেগেছে, শরীরে কোনো সমস্যা হয়নি। নিয়মিত খাচ্ছি।",
+    "createdAt": "2026-05-16"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Farzana Akter",
+    "rating": 5,
+    "comment": "ছাতু আর মধু আলাদা কিনলে হয়তো বেশি খরচ পড়ত। প্যাকেজে সুবিধা হয়েছে। দুটোই ভালো মানের।",
+    "createdAt": "2026-05-17"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Ismail Hossain",
+    "rating": 5,
+    "comment": "দীর্ঘ রুটে থাকি। সকালে ভালো কিছু না খেলে রুটে সমস্যা হয়। তালবিনা খেলে অনেকক্ষণ ভালো থাকি। তিন মাস ধরে নিচ্ছি।",
+    "createdAt": "2026-05-23"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Afroza Khanam",
+    "rating": 5,
+    "comment": "স্বাদ ভালো। ছাতু আর মধু দুটোই মানসম্পন্ন। আবার নেব।",
+    "createdAt": "2026-05-30"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Abdus Salam",
+    "rating": 5,
+    "comment": "অনলাইনে কেনাকাটায় সব সময় একটু ভয় থাকে। এখানে ভয় পাইনি। ছাতু আর মধু দুটোই প্রত্যাশামতো। পরিবারকে দিচ্ছি। আবার নেব।",
+    "createdAt": "2026-05-31"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Mst. Kulsum Begum",
+    "rating": 5,
+    "comment": "ছেলে বলেছিল নিতে। প্রথমে আগ্রহ ছিল না। খেয়ে দেখলাম ভালো। সকালে হালকা লাগে, পেটে চাপ দেয় না। এখন নিজেই বলি আবার আনতে।",
+    "createdAt": "2026-06-06"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Mahmud Hasan",
+    "rating": 4,
+    "comment": "প্রোডাক্ট ভালো। প্যাকেটে রেসিপি থাকলে নতুনদের জন্য আরো সহজ হত। ছাতু আর মধু দুটোই মানসম্পন্ন।",
+    "createdAt": "2026-06-08"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Sufia Begum",
+    "rating": 5,
+    "comment": "তিনবার নিয়েছি এখন পর্যন্ত। মান প্রতিবার একই রকম ভালো থেকেছে। এটাই সবচেয়ে পছন্দের দিক।",
+    "createdAt": "2026-06-14"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Yeahia",
+    "rating": 5,
+    "comment": "পরিবারে পাঁচজন খাচ্ছে। বড় প্যাক হলে সাশ্রয় হত। তবু মান ভালো হওয়ায় একাধিকবার কিনেছি।",
+    "createdAt": "2026-06-20"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Jahanara Begum",
+    "rating": 5,
+    "comment": "শাশুড়ি আর ননদ দুজনেই এখন খাচ্ছেন। আমি শুরু করেছিলাম, তারা দেখে নিয়েছেন। একটা পরিবারে তিনজন মিলে খাচ্ছে।",
+    "createdAt": "2026-06-21"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Rajibul Islam",
+    "rating": 4,
+    "comment": "ছাতু আর মধু দুটোই ভালো। কাজের জন্য বিভিন্ন জায়গায় যাই, তবু অর্ডার করে নিই। ওয়েবসাইটে ট্র্যাকিং সুবিধা আরো ভালো হলে মন্দ হত না।",
+    "createdAt": "2026-06-28"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rahela Khanam",
+    "rating": 5,
+    "comment": "শরীর সুস্থ হওয়ার পর হালকা খাবার খাচ্ছি। তালবিনা ভালো সহ্য হচ্ছে। দুই সপ্তাহ ধরে খাচ্ছি, ভালো লাগছে।",
+    "createdAt": "2026-06-29"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Abul Hossain",
+    "rating": 5,
+    "comment": "দামটা একটু বেশি মনে হয়, তবু কিনেছি। ছাতু আর মধু দুটোই ভালো। শরীরে শক্তি লাগে, এটা খেলে সেটা পাচ্ছি মনে হয়।",
+    "createdAt": "2026-07-05"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Tania Akter",
+    "rating": 5,
+    "comment": "বাচ্চার বাবা প্রথমে এনেছিলেন, পরে সারাবছর খাচ্ছেন। আমিও এখন খাই। সহজ রেসিপি, মানসম্পন্ন উপাদান।",
+    "createdAt": "2026-07-12"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Shafiul Alam",
+    "rating": 4,
+    "comment": "ভালো প্রোডাক্ট। বড় সাইজে পাওয়া গেলে একটু সাশ্রয় হত। ছাতু আর মধু দুটোই ঠিক আছে।",
+    "createdAt": "2026-07-13"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Jamil Hossain",
+    "rating": 5,
+    "comment": "বাবার জন্য নিয়েছিলাম, বয়স হয়েছে। এখন আমিও খাচ্ছি। ছাতু আর মধু দুটোই পরিষ্কার আর তাজা মনে হয়েছে।",
+    "createdAt": "2026-07-19"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Sumaiya Khanam",
+    "rating": 5,
+    "comment": "সকালে হালকা কিছু খুঁজছিলাম। তালবিনা চমৎকার অপশন হয়েছে। ছাতু আর মধু একসাথে পাওয়া সুবিধার।",
+    "createdAt": "2026-07-20"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Alauddin",
+    "rating": 5,
+    "comment": "যবের গুণের কথা পড়েছিলাম। এই ছাতু কিনে ভালো সিদ্ধান্ত নিয়েছি। মধুও ভালো মানের। দুই মাস ধরে নিয়মিত খাচ্ছি।",
+    "createdAt": "2026-07-27"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Minara Begum",
+    "rating": 5,
+    "comment": "ছেলের শরীর খারাপ ছিল। হালকা কিছু দিতে চাইছিলাম। তালবিনা বানিয়ে দিলাম। পছন্দ করেছে, এখন সুস্থ হয়ে নিজেই চাইছে।",
+    "createdAt": "2026-08-02"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Nazmul Hasan",
+    "rating": 4,
+    "comment": "প্রোডাক্ট ভালো। তবে ওয়েবসাইটে আরো তথ্য থাকলে ভালো হত। ছাতু আর মধু দুটোই মানসম্পন্ন।",
+    "createdAt": "2026-08-03"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "Rukaiya Begum",
+    "rating": 5,
+    "comment": "দুই সপ্তাহ হলো খাচ্ছি। ছাতু আর মধু দুটোই চমৎকার। পরিবারের সবার জন্য ভালো একটা খাবার হয়েছে।",
+    "createdAt": "2026-08-10"
+  },
+  {
+    "productSlug": "amader-talbina-package",
+    "reviewerName": "MD. Kawsar Ali",
+    "rating": 5,
+    "comment": "যব আমাদের এলাকায় চাষ হয়। এই ছাতু দেখে মন ভরে গেল। মধুও খাঁটি মনে হয়েছে। আবার নেব।",
+    "createdAt": "2026-08-11"
   }
 ]

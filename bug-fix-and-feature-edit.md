@@ -1947,3 +1947,37 @@ printing an empty badge.
 `1k`, 1200 -> `1.2k`, 1500 -> `1.5k`, 12345 -> `12.3k`, 1000000 -> `1m`.
 Backend, admin, web and `packages/ui` all typecheck clean (OpenAPI types
 regenerated for both frontends after the `salesCount` type change).
+
+## 81 seeded reviews for Talbina Package
+
+Added to `packages/db/scripts/data/reviews_seed_data.json` (550 -> 631 rows)
+and seeded with the existing `pnpm --filter @amader/db seed:reviews`. No code
+was written — the loader, the synthetic-customer convention and the negative
+`order_item_id` sentinel all already existed for the other 11 products.
+
+Matched the `amader-fiber-mix` convention the reviews were meant to look like:
+Latin reviewer name, Bengali comment, `status: APPROVED`, dates spread across
+2025-09-01 to 2026-08-11 so the batch does not land on one timestamp.
+
+Occupation and city ("গৃহিণী, ঢাকা") were dropped — `reviews` has no column
+for them and the reference product does not show them. Confirmed with the user.
+
+| check | result |
+|---|---|
+| Rows seeded | 81 created, 0 updated |
+| `GET /products/17/reviews` | total 81, averageRating 4.84 |
+| Breakdown | 68 x 5-star, 13 x 4-star (matches the source list) |
+| PDP renders | "4.8 · (81 Reviews) · 84% / 16%", "Load more reviews (71 left)" |
+
+### These are DEV-ONLY until seeded against production
+
+Reviews are database rows, not code. `git push` deploys the repo; it does not
+copy rows. The JSON file travels with the push, but nothing runs the seeder on
+deploy — someone must run it against the production DATABASE_URL.
+
+Note `amader-fiber-mix` does not exist in the dev database, and the seeder
+aborts if ANY slug is missing, so the full 631-row file cannot run locally. The
+talbina rows were verified by temporarily filtering the file to those 81, then
+restoring it. On production every slug resolves, so the whole file runs — and
+the loader is idempotent (upsert by email, update-if-exists per
+product+customer), so re-running it will not duplicate the other 550.
