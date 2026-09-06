@@ -30,6 +30,10 @@
  * Usage — dry run first, always:
  *   pnpm --filter @amader/db seed:reviews -- --dry-run
  *   pnpm --filter @amader/db seed:reviews
+ *
+ * One product at a time (repeatable) — use this when an unrelated slug in the
+ * file no longer exists and would abort the whole run:
+ *   pnpm --filter @amader/db seed:reviews -- --only=some-slug --dry-run
  */
 import { config } from 'dotenv';
 import path from 'node:path';
@@ -56,6 +60,20 @@ interface ReviewSeed {
 }
 
 const DRY_RUN = process.argv.includes('--dry-run');
+
+/**
+ * `--only=<slug>` (repeatable) seeds just those products.
+ *
+ * Every slug in the file must resolve or the run aborts — deliberate, so a
+ * typo cannot silently seed half a batch. But that also means one product
+ * whose slug drifted (renamed after its reviews were already seeded) blocks
+ * seeding an unrelated new product. Narrowing the run is the fix; the
+ * all-or-nothing check still applies, to whatever is left after filtering.
+ */
+const ONLY = process.argv
+  .filter((a) => a.startsWith('--only='))
+  .map((a) => a.slice('--only='.length))
+  .filter(Boolean);
 
 /** "Ratul Ahmed" -> review-ratul-ahmed@seed.invalid */
 function seedEmail(name: string) {
@@ -123,7 +141,18 @@ async function main() {
 
   const jsonPath = path.resolve(__dirname, 'data/reviews_seed_data.json');
   if (!fs.existsSync(jsonPath)) throw new Error(`Seed JSON not found at ${jsonPath}`);
-  const rows = validate(JSON.parse(fs.readFileSync(jsonPath, 'utf8')));
+  const all = validate(JSON.parse(fs.readFileSync(jsonPath, 'utf8')));
+  const rows = ONLY.length ? all.filter((r) => ONLY.includes(r.productSlug)) : all;
+
+  if (ONLY.length) {
+    const unknown = ONLY.filter((s) => !all.some((r) => r.productSlug === s));
+    if (unknown.length) {
+      throw new Error(
+        `--only named slug(s) with no reviews in the seed file:\n  ${unknown.join('\n  ')}`,
+      );
+    }
+    console.log(`--only: ${ONLY.join(', ')}  (${rows.length} of ${all.length} rows)`);
+  }
 
   console.log(
     `${DRY_RUN ? 'DRY RUN — nothing will be written' : 'Seeding'} ${rows.length} review(s)`,

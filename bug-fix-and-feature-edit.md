@@ -1981,3 +1981,35 @@ talbina rows were verified by temporarily filtering the file to those 81, then
 restoring it. On production every slug resolves, so the whole file runs — and
 the loader is idempotent (upsert by email, update-if-exists per
 product+customer), so re-running it will not duplicate the other 550.
+
+## `--only=<slug>` for the review seeder
+
+Production's dry run aborted on two slugs from the pre-existing 550 rows:
+
+    amader-multigrain-sattu-amader-mixed-chatu-1kg-pack
+    amader-desi-gmer-lal-ata-...-amader-lal-atta-220
+
+Neither is new. Both products were re-slugged on production after their
+reviews were seeded, so the file's slugs went stale. Verified read-only
+against live: `multigrain-chatu` (id 59) already carries 49 reviews and
+`deshi-gomer-lal-atta` (id 61) carries 50, and of the 20 live reviewers
+sampled on 59, **20/20 match the long-slug block and 0/20 match `mixed-chatu`**
+— so that block is already applied, not missing. Nothing is lost by skipping
+them. (The `lal-ata` block is additionally byte-identical to the long one:
+same 50 names AND comments.)
+
+The all-or-nothing slug check is right — a typo must not half-seed a batch —
+but it also let one stale slug block an unrelated new product. `--only=<slug>`
+(repeatable) narrows the run; the all-or-nothing check still applies to
+whatever survives the filter, and a slug with no rows in the file is its own
+error rather than a silent no-op.
+
+| check | result |
+|---|---|
+| `--only=amader-talbina-package --dry-run` | `81 of 631 rows`, "every product slug resolved" |
+| `--only=talbina-typo` | aborts: "named slug(s) with no reviews in the seed file" |
+| Re-run of the real seed | `0 created, 81 updated` — idempotent, no duplicates |
+
+Left alone deliberately: the two stale slugs are still in the JSON. Correcting
+them would re-target 100 pre-existing reviews at live products, which is a
+data decision for the owner, not a side effect of adding talbina reviews.
