@@ -46,17 +46,32 @@ export class AdminShippingRulesController {
     return this.rules.update(dto as unknown as ShippingRulesConfig);
   }
 
+  // The two quote endpoints below are gated on `order.view`, NOT on
+  // `shipping_zone.view` like the editor above.
+  //
+  // They are not settings — they are the price suggestion the New Order form
+  // and the Order Manager modal show while someone types an order in. Gating
+  // them on the Shipments-settings permission meant any staff role with
+  // `order.create` but without `shipping_zone.view` got a 403 and simply saw
+  // no shipping rule at all, with nothing on screen saying why. Reproduced
+  // with an order-only role: "Missing permission: shipping_zone.view".
+  //
+  // `order.view` rather than `order.create` because the Order Manager modal
+  // shows the same suggestion on an existing order, and viewing is the lower
+  // bar of the two. A quote reads no customer data — it is a rate-card
+  // lookup, weight and district in, price out.
+
   // POST because the New Order form quotes an unsaved basket, and a
   // line-item list does not belong in a query string.
   @Post('checkout-quote')
-  @RequirePermission('shipping_zone.view')
+  @RequirePermission('order.view')
   @ApiOkResponse({ type: ShippingRuleQuoteDto })
   checkoutQuote(@Body() dto: QuoteShippingRuleDto): Promise<ResolvedQuote> {
     return this.rules.quote(dto, true);
   }
 
   @Post('quote')
-  @RequirePermission('shipping_zone.view')
+  @RequirePermission('order.view')
   @ApiOkResponse({ type: ShippingRuleQuoteDto })
   quote(@Body() dto: QuoteShippingRuleDto): Promise<ResolvedQuote> {
     return this.rules.quote(dto);

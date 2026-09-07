@@ -188,6 +188,23 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('shipping_zone', 'view'),
   perm('shipping_zone', 'update'),
 
+  // Settings screens that were guarded on keys no one could ever hold: the
+  // controllers required these, but they were absent from this catalog, so
+  // seed.ts never created the Permission rows and no role could be granted
+  // them. Only a super admin (who bypasses every check) could open these
+  // pages at all — for everyone else the feature was invisible with no
+  // explanation, the same failure as the shipping-rule quote.
+  perm('email_settings', 'view'),
+  perm('email_settings', 'manage'),
+  perm('invoice_settings', 'view'),
+  perm('invoice_settings', 'manage'),
+  perm('invoice_template_settings', 'view'),
+  perm('invoice_template_settings', 'manage'),
+  perm('shipping_label_settings', 'view'),
+  perm('shipping_label_settings', 'manage'),
+  perm('sitemap', 'view'),
+  perm('sitemap', 'manage'),
+
   perm('promo_video', 'view'),
   perm('promo_video', 'create'),
   perm('promo_video', 'update'),
@@ -203,6 +220,7 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('net_profit_sms', 'manage'),
   perm('net_profit_advance', 'manage'),
   perm('net_profit_blocker', 'manage'),
+  perm('net_profit_recovery', 'view'),
   perm('net_profit_recovery', 'manage'),
   perm('net_profit_orders', 'view'),
   perm('net_profit_orders', 'manage'),

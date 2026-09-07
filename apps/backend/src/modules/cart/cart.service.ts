@@ -502,14 +502,29 @@ export class CartService {
     // A digital-only cart has nothing to ship, so the preview matches what
     // checkout.service.ts will actually charge — computeCheckoutFees already
     // early-returns 0 for freeShipping, so no change to the shared function.
-    const { shippingFee } = computeCheckoutFees(
-      pricing.discounts.some((d) => d.freeShipping) || isDigitalOnly(lines),
-      district,
-      zones,
-      // Same override checkout.service.ts applies, from the same priced
-      // lines — the preview and the real charge must never disagree.
-      await this.shippingRules.checkoutFee(district, pricing.lines),
-    );
+    // No district yet = nothing honest to quote, so quote nothing.
+    //
+    // Both halves of the calculation fall through to a catch-all when the
+    // district is missing (quoteShippingRule matches the rule with no
+    // district set; resolveZoneFee returns the default zone), so an
+    // address-less cart showed a confident delivery charge that then changed
+    // the moment a district was picked. A zero here makes the summary render
+    // its "charge applies" placeholder instead, and keeps the grand total
+    // from claiming a number it cannot know yet.
+    //
+    // Preview path only. checkout.service.ts is untouched: a real order
+    // always carries a shipping address, so it always has a district.
+    const hasDistrict = !!district?.trim();
+    const { shippingFee } = hasDistrict
+      ? computeCheckoutFees(
+          pricing.discounts.some((d) => d.freeShipping) || isDigitalOnly(lines),
+          district,
+          zones,
+          // Same override checkout.service.ts applies, from the same priced
+          // lines — the preview and the real charge must never disagree.
+          await this.shippingRules.checkoutFee(district, pricing.lines),
+        )
+      : { shippingFee: new Prisma.Decimal(0) };
     return {
       subTotal: pricing.subTotal.toString(),
       // Only entries that actually do something are shown. A coupon or

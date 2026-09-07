@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
 import { useBulkDeleteDiscounts, useDeleteDiscount, useDiscounts, type AdminDiscount } from "@/hooks/useDiscounts";
+import { PermissionButton } from "@/components/PermissionButton";
 
 const discountIcon = <Icon name="local_offer" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -112,7 +113,8 @@ export default function DiscountsPage() {
           </div>
           <div className="flex items-center gap-2">
             {selected.length > 0 && (
-              <Button
+              <PermissionButton
+                requires="discount.delete"
                 type="button"
                 variant="ghost"
                 disabled={bulkDelete.isPending}
@@ -120,12 +122,12 @@ export default function DiscountsPage() {
                 className="border-danger text-danger hover:bg-danger/10"
               >
                 Delete selected ({selected.length})
-              </Button>
+              </PermissionButton>
             )}
             <Link href="/discounts/new">
-              <Button type="button" variant="primary">
+              <PermissionButton requires="discount.create" type="button" variant="primary">
                 <Icon name="add" size={16} /> Create
-              </Button>
+              </PermissionButton>
             </Link>
           </div>
         </div>

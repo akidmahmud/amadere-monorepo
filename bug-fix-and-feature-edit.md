@@ -2149,3 +2149,153 @@ Not changed: `SeoMetaCard` (categories/brands/blog) still sends
 `|| undefined`, so clearing an image there has the same latent no-op. Left
 alone rather than changing other entities' behaviour as a side effect of a
 product-only request.
+
+## Staff could not see the shipping rule in New Order
+
+Not a UI bug — a 403. Both quote endpoints were gated on `shipping_zone.view`:
+
+    @Post('checkout-quote')  @RequirePermission('shipping_zone.view')
+    @Post('quote')           @RequirePermission('shipping_zone.view')
+
+That is the **Shipments settings** permission. The two endpoints it guards are
+not settings — they are the price suggestion New Order and the Order Manager
+modal show while someone types an order in. Any role with `order.create` but
+without the shipping-settings permission got a 403, and since nothing in the
+admin renders an error for it, the rule simply never appeared.
+
+### Reproduced before fixing
+
+Created a throwaway role with `order.view`/`order.create`/`order.update` and
+nothing else, logged in as it, and called both endpoints:
+
+    {"code":"FORBIDDEN","message":"Missing permission: shipping_zone.view"}
+
+### Fix
+
+Both quote endpoints now require `order.view`. `order.view` rather than
+`order.create` because the Order Manager modal shows the same suggestion on an
+existing order, and viewing is the lower bar. A quote reads no customer data —
+weight and district in, price out.
+
+`@RequirePermission` is AND, not OR, so "either permission" is not expressible;
+picking the right single key is the fix.
+
+| as the order-only role | before | after |
+|---|---|---|
+| `POST /admin/shipping-rules/checkout-quote` | 403 | **200** — ৳105, "Steadfast — Home, Dhaka" |
+| `POST /admin/shipping-rules/quote` | 403 | **200** — ৳105 |
+| `GET /admin/shipping-rules` (the editor) | 403 | **403**, unchanged |
+
+The settings editor stays locked: staff can now see a suggested rate but still
+cannot edit the rate card. Throwaway role/user deleted afterwards.
+
+## Checkout quoted a delivery charge before it knew the address
+
+With no district chosen, the checkout summary showed a confident delivery
+charge that changed as soon as one was picked.
+
+Both halves of the calculation fall through to a catch-all when the district
+is missing — `quoteShippingRule` matches the rule with no district set, and
+`resolveZoneFee` returns the default zone. Measured on a real cart, an
+address-less checkout showed **৳135** ("Steadfast — Home, other districts"),
+which is wrong in both directions: Dhaka is ৳125 and Rajshahi ৳155.
+
+`CartService.serializePricing` now skips the calculation entirely when the
+district is blank. Preview path only — `checkout.service.ts` is untouched,
+since a real order always carries a shipping address.
+
+| cart (same 1 item, ৳990) | shippingFee | grandTotal |
+|---|---|---|
+| no district | **0** | 990 |
+| Dhaka | 125 | 1115 |
+| Rajshahi | 155 | 1145 |
+
+The existing UI already handles a zero correctly: `CheckoutProductCard` renders
+"কুরিয়ার চার্জ প্রযোজ্য", the other two summaries gate their row on
+`shippingFee > 0`, and `ShippingRatesNotice` already returned null without a
+district. No frontend change needed.
+
+Backend typechecks clean; 42 cart/shipping tests pass.
+
+## Permission audit across every module
+
+Scanned all 124 backend controllers — 620 routes, 519 of them admin — for the
+same class of bug as the shipping-rule quote.
+
+### Real finding: 9 permission keys nothing could ever hold
+
+Controllers required these, but they were **absent from PERMISSION_CATALOG**,
+so `seed.ts` never created the Permission rows and the RBAC editor never
+offered them. No role could be granted them, so only a super admin (who
+bypasses every check) could reach these features. Everyone else saw the
+feature fail with no explanation — exactly the shipping-rule symptom.
+
+| resource | keys | affected |
+|---|---|---|
+| `email_settings` | view, manage | Email settings |
+| `invoice_settings` | manage | Invoice settings |
+| `invoice_template_settings` | manage | Invoice template settings |
+| `shipping_label_settings` | view, manage | Shipping label settings |
+| `sitemap` | view, manage | Sitemap tools |
+| `net_profit_recovery` | **view** (`.manage` existed) | every Recovery READ endpoint |
+
+All added. Verified in the built catalog (9/9 present) and seeded into the dev
+database: **177 -> 188 permission rows**, and they now appear to the role
+editor.
+
+### Corrected: there are NO unguarded admin routes
+
+A first pass of the scanner reported 15. On reading each one, every single one
+was a false positive — the scanner attached decorators to the preceding route.
+They are all guarded, by `@RequirePermission` or `@UseGuards(SuperAdminGuard)`
+(trash/restore are super-admin-only by design). Nothing to fix here; recording
+it so the claim is not repeated.
+
+### Noted, deliberately NOT changed
+
+Some modules guard on another feature's permission:
+
+    payments   /admin/payment-settings/bkash  -> net_profit_settings.manage
+    push       /admin/push/settings           -> net_profit_sms.*
+    catalog-feed                              -> analytics.*
+
+Unlike the shipping-rule case these do not block a common workflow, and
+re-keying them would **revoke access from every role that currently holds the
+old key** until roles are re-edited. That is an operational decision, not a
+side effect to slip into an audit.
+
+## Disabled controls instead of missing ones
+
+`useCan()` already existed but was used in only **4 places** in the whole
+admin, all for `assignment.manage` — so lacking a permission produced a
+missing control or a silent 403, never an explanation.
+
+New `apps/admin/src/components/PermissionButton.tsx`:
+
+- `<PermissionButton requires="brand.delete">` — a Button that disables itself
+  and explains why on hover (`Button` already styles `disabled` with
+  `cursor-not-allowed` + 50% opacity).
+- `<PermissionGate requires="...">` — the same for a panel or form; dims and
+  disables pointer events, or takes a `fallback`.
+
+Disabled rather than hidden on purpose: an absent control is
+indistinguishable from a broken page, which is precisely how the shipping-rule
+403 read to staff. A greyed-out button names the permission to ask for.
+
+Applied so far: brands (create/edit/delete), discounts (create/bulk delete).
+**The rest of the admin is not yet converted** — the mechanism is in place and
+adoption is a one-line change per button, but it is a large mechanical sweep
+and is deliberately not claimed as done.
+
+Shared, backend and admin all typecheck clean.
+
+### Production step
+
+`PERMISSION_CATALOG` additions only reach a database when the seed runs:
+
+    pnpm --filter @amader/db prisma:seed
+
+Idempotent and safe to re-run — every seeded row uses `update: {}` (it will
+not overwrite customised email templates) and it skips Super Admin creation if
+that user exists. It needs `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD` present
+or it throws before doing anything.

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { useBrands, useDeleteBrand } from "@/hooks/useBrands";
+import { PermissionButton } from "@/components/PermissionButton";
 
 export default function BrandsPage() {
   const { data: brands, isLoading } = useBrands();
@@ -13,7 +14,7 @@ export default function BrandsPage() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-secondary">{brands?.length ?? 0} brands</p>
         <Link href="/brands/new">
-          <Button variant="primary">Add brand</Button>
+          <PermissionButton requires="brand.create" variant="primary">Add brand</PermissionButton>
         </Link>
       </div>
 
@@ -36,11 +37,12 @@ export default function BrandsPage() {
               </div>
             </div>
             <Link href={`/brands/${brand.id}`}>
-              <Button type="button" variant="ghost">
+              <PermissionButton requires="brand.update" type="button" variant="ghost">
                 Edit
-              </Button>
+              </PermissionButton>
             </Link>
-            <Button
+            <PermissionButton
+              requires="brand.delete"
               type="button"
               variant="ghost"
               onClick={() => {
@@ -48,7 +50,7 @@ export default function BrandsPage() {
               }}
             >
               Delete
-            </Button>
+            </PermissionButton>
           </Card>
         ))}
       </div>
