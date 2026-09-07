@@ -46,6 +46,47 @@ export function cdnImageUrl(src: string, width: number, quality = 75): string {
 export const OG_IMAGE = { width: 1200, height: 630 } as const;
 
 /**
+ * The blurred backdrop layer of the generated product share card.
+ *
+ * Same `fit=cover` crop the card used to ship on its own, but blurred hard
+ * and used only as filler behind the real image. Blur is not decoration: the
+ * product artwork here is not a plain photo on a neutral sweep, it is a
+ * finished creative with Bengali headline text running the full width. Drawn
+ * sharp, the strips either side of the centred image showed enlarged
+ * fragments of that same text — a visible ghosted duplicate, worse than the
+ * white bars this replaces. Blurred, they read as a soft colour wash taken
+ * from the photo's own palette.
+ *
+ * Cloudflare blurs at the edge (`blur=1..250`), so this costs no extra
+ * compute here and the blurred result compresses far smaller than the sharp
+ * one it replaces.
+ */
+export function cdnOgBackdropUrl(src: string): string {
+  return withCdnParams(
+    src,
+    `width=${OG_IMAGE.width},height=${OG_IMAGE.height},quality=70,format=jpeg,fit=cover,blur=120`,
+  );
+}
+
+/**
+ * An exact NxN square of the source, whole — nothing cropped away.
+ *
+ * The foreground layer of the generated product share card (see the product
+ * route's opengraph-image.tsx). `fit=pad` and not `contain` on purpose:
+ * `contain` returns a box that is only as big as the image fits into, so a
+ * non-square source would come back smaller than N and then get stretched by
+ * whatever places it. Padding guarantees exactly NxN. The padding itself is
+ * never seen on a square source (all product photos are), and where a source
+ * is not square the card's own backdrop layer sits behind it anyway.
+ */
+export function cdnSquareImageUrl(src: string, size: number): string {
+  return withCdnParams(
+    src,
+    `width=${size},height=${size},quality=88,format=jpeg,fit=pad,background=%23ffffff`,
+  );
+}
+
+/**
  * A share-card image: always exactly 1200x630, whatever was uploaded.
  *
  * Not `cdnImageUrl`. That uses `fit=scale-down`, which never upscales — right

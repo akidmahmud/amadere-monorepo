@@ -2013,3 +2013,75 @@ error rather than a silent no-op.
 Left alone deliberately: the two stale slugs are still in the JSON. Correcting
 them would re-target 100 pre-existing reviews at live products, which is a
 data decision for the owner, not a side effect of adding talbina reviews.
+
+## Product share cards were cropping half the artwork away
+
+Shared to Facebook/WhatsApp, every product link showed a zoomed-in crop with
+the top and bottom of the jar — and the label — cut off.
+
+### Why
+
+Scrapers render link previews at 1.91:1 and crop whatever they are handed to
+that shape. **Every product image in the catalogue is square** (measured
+14/14 at 1:1, mostly 1080x1080). The route was passing `fit=cover`, so
+1080x1080 -> 1200x630 discarded **47% of the height**.
+
+Every single-setting alternative breaks one requirement:
+
+| setting | full image | side bars |
+|---|---|---|
+| `fit=cover` (was live) | no — crops 47% | none |
+| `fit=pad` / contain | yes | **white bars** |
+| stretch | yes | none, but squashes a square to 52% height |
+
+`fit=pad` is not safe by default. Sampling the live catalogue's own og
+sources: 9 of 14 have a near-white border (239-246, invisible when padded)
+but 5 are clearly coloured — green (154,192,161), olive (126,134,100), tan
+(190,173,137), (213,208,195), (204,193,170). Padding is seamless on two
+thirds and an obvious bar on the rest.
+
+### Fix — the card is generated, not cropped
+
+New `apps/web/src/app/[locale]/products/[slug]/opengraph-image.tsx` draws the
+photo twice on a 1200x630: a `fit=cover` copy blurred hard as backdrop, and
+the complete uncropped square centred on top. The strips either side are the
+photo's own colours, so there is nothing white to see and nothing cropped.
+
+The backdrop is blurred because these are not plain product photos — they are
+finished creatives with Bengali headline text running the full width. Drawn
+sharp (tried first), the sides showed enlarged fragments of that same text as
+a ghosted duplicate, worse than the bars it replaced. Cloudflare blurs at the
+edge (`blur=120`), so it costs nothing here and compresses smaller.
+
+Both layers are pre-sized by the CDN so satori only places them and never
+scales anything.
+
+`generateProductMetadata` no longer sets `openGraph.images`/`twitter.images`.
+Next only falls back to the file convention when metadata does not name an
+image itself — leaving it set would have silently kept shipping the crop.
+
+### Two bugs found while verifying
+
+- **`params` is a Promise** in Next 16 (page.tsx already awaits it).
+  Destructuring it directly gave `undefined` for slug, the product fetch
+  404'd, and the card rendered as the flat fallback colour — a silent, valid
+  200. Caught only by inspecting the returned pixels.
+- **`contentType` claimed `image/jpeg`** while ImageResponse always encodes
+  PNG, publishing a wrong `og:image:type`. Now `image/png`.
+
+### Verified on rendered pixels, not by reading code
+
+| check | talbina | chia-seed |
+|---|---|---|
+| card size | 1200x630 | 1200x630 |
+| centre vs FULL source at 630x630 | mean diff **(1,1,1)** — identical | **(1,1,1)** |
+| centre vs the old cover crop | (34,33,47) — clearly not the crop | (36,34,47) |
+| pure-white pixels in side strips | **0** / 359,100 | **0** / 359,100 |
+
+Both cards also inspected by eye: whole creative legible, sides a soft wash of
+the photo's own palette. `og:image` and `twitter:image` both point at the
+generated card; `twitter:card` stays `summary_large_image`. Web typechecks
+clean.
+
+Categories/brands/blog/collections still use `toOgImageUrl(..., 'pad')` —
+untouched, their sources are logos that must not be cropped.

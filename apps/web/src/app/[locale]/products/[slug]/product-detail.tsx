@@ -28,7 +28,7 @@ import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
-import { toDisplayImageUrl, toEmbeddableVideoUrl, toOgImageUrl, IMG } from "@/lib/media";
+import { toDisplayImageUrl, toEmbeddableVideoUrl, IMG } from "@/lib/media";
 
 // Facebook/X's recommended og:image width. Not in the IMG scale, which names
 // on-page render sizes — this one is fixed by the platforms, not by layout.
@@ -77,18 +77,17 @@ export async function generateProductMetadata(
   }
 
   const path = `/products/${slug}`;
-  // Same CDN rewrite every <img> on the site goes through. og:image skipped
-  // it, so it emitted whatever raw URL the API returned — including the
-  // legacy *.r2.dev host, which is rate-limited and explicitly unsuitable for
-  // production traffic (see lib/image-url.ts). Also pins a width: crawlers
-  // fetch this image on every share, and the untransformed original can be
-  // multiple megabytes.
-  // `cover`, not the default `pad`: product photos are square and centre
-  // framed, so cropping ~17% off the top and bottom is unnoticeable, while
-  // padding leaves white bars down both sides of any shot that was not taken
-  // on a white background. Categories/brands/blog stay on `pad`, where the
-  // source is often a small logo that must not be cropped.
-  const ogImage = toOgImageUrl(product.seo.ogImageUrl, 'cover');
+  // NO `images` key on openGraph/twitter below, deliberately.
+  //
+  // This route generates its card in ./opengraph-image.tsx, and Next only
+  // falls back to that file convention when the metadata object does not
+  // name an image itself. Setting one here silently wins and the generated
+  // card is never emitted — which is how this route ended up shipping a
+  // `fit=cover` crop that cut the top and bottom off every product photo.
+  //
+  // The card still needs to know whether to advertise itself as a large
+  // summary, so that is all that is computed here.
+  const hasOgImage = Boolean(product.seo.ogImageUrl);
 
   return {
     title: product.seo.title,
@@ -99,7 +98,6 @@ export async function generateProductMetadata(
       url: path,
       title: product.seo.ogTitle,
       description: product.seo.ogDescription ?? undefined,
-      images: ogImage ? [{ url: ogImage, alt: product.seo.ogTitle }] : undefined,
     },
     // Without this block the root layout's site-wide twitter tags survive
     // untouched, so X/Twitter (and anything else preferring twitter:* over
@@ -107,10 +105,9 @@ export async function generateProductMetadata(
     // product share. Next only merges per-key, so setting `openGraph` alone
     // does not displace them.
     twitter: {
-      card: ogImage ? "summary_large_image" : "summary",
+      card: hasOgImage ? "summary_large_image" : "summary",
       title: product.seo.ogTitle,
       description: product.seo.ogDescription ?? undefined,
-      images: ogImage ? [ogImage] : undefined,
     },
   };
 }
