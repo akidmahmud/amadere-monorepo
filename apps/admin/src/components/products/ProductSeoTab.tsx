@@ -7,6 +7,7 @@ import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { SeoScoreRing } from "@/components/SeoScoreRing";
 import { OgPreviewCard } from "@/components/OgPreviewCard";
 import { SeoCharCount } from "@/components/SeoCharCount";
+import { MediaPicker } from "@/components/MediaPicker";
 
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
@@ -44,17 +45,14 @@ export function ProductSeoTab({
   name: string;
   description: string;
   primaryImageAlt: string;
-  /** The product's primary gallery image. This IS the share image — the
-   * public API forces og:image to the primary photo for products
-   * (products.service.ts), so what is shown here is exactly what a shared
-   * link renders. */
+  /** The product's primary gallery image — the share image used only when
+   * no dedicated social image is set on this tab. */
   primaryImageUrl?: string;
 }) {
   const [title, setTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
-  // Still round-tripped on save so an existing stored value is preserved
-  // rather than silently cleared, but it no longer affects what a share
-  // renders — the primary image does.
+  // A dedicated share image. Empty falls back to the product's primary
+  // photo — that fallback lives in SeoService.resolve, not here.
   const [ogImageUrl, setOgImageUrl] = useState("");
   // Ephemeral, not derived from upsert.isSuccess — react-query doesn't reset
   // that flag on its own, so it would stay true forever after the first save
@@ -97,7 +95,10 @@ export function ProductSeoTab({
 
   const effectiveTitle = title || name;
   const effectiveDescription = stripHtml(metaDescription || description);
-  const effectiveImageUrl = primaryImageUrl;
+  // Same precedence the public API applies (SeoService.resolve:
+  // `meta?.ogImageUrl ?? fallback.imageUrl`), so this preview matches what
+  // a share actually renders.
+  const effectiveImageUrl = ogImageUrl || primaryImageUrl;
 
   async function handleSave() {
     await upsert.mutateAsync({
@@ -106,7 +107,9 @@ export function ProductSeoTab({
       locale: "EN",
       title: title || undefined,
       description: metaDescription || undefined,
-      ogImageUrl: ogImageUrl || undefined,
+      // null, not undefined — undefined would leave the previous image in
+      // place, so clearing the picker has to send an explicit null.
+      ogImageUrl: ogImageUrl || null,
       robots: "index,follow",
     });
     setJustSaved(true);
@@ -164,28 +167,46 @@ export function ProductSeoTab({
             />
             <SeoCharCount value={metaDescription} limit="description" />
           </label>
-          {/* The override picker that used to live here is gone: the share
-              image is now always the product's primary image, so a picker
-              here would have been a control that silently did nothing.
-              A stored override was a URL snapshot and went stale invisibly —
-              one product's pointed at a deleted file, so every share of it
-              showed no image while the product page looked fine. */}
-          <div className="mt-4 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-emerald-950">Social/share preview image</span>
-            {primaryImageUrl ? (
-              <>
+          {/* A picker, not a URL box. The override this replaces stored
+              whatever string was typed in, and one product's pointed at a
+              deleted `-full.webp` derivative — every share of it rendered
+              blank while the product page looked fine, with nothing on this
+              screen showing the problem. Picking from the library can only
+              yield a real Media row, and the chosen image is rendered right
+              here, so a broken one is visible immediately. */}
+          <div className="mt-4 flex flex-col gap-2">
+            <MediaPicker
+              label="Social/share image (optional)"
+              value={ogImageUrl}
+              // Fires on clear, and momentarily with the derivative URL on
+              // pick — onSelectMedia below then replaces it with the
+              // canonical one.
+              onChange={setOgImageUrl}
+              // MediaPicker's onChange hands back `fullUrl ?? url`, and
+              // `fullUrl` is a generated derivative: exactly the kind of URL
+              // that went stale and broke shares before. Store the canonical
+              // Media.url instead.
+              onSelectMedia={(media) => setOgImageUrl(media.url)}
+            />
+            {ogImageUrl ? (
+              <p className="text-xs text-emerald-950/60">
+                Shared links (WhatsApp, Facebook, X) will use this image instead of
+                the product photo. Remove it to go back to the primary image.
+              </p>
+            ) : primaryImageUrl ? (
+              <div className="flex items-start gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={primaryImageUrl} alt="" className="h-24 w-24 rounded-inner border border-dashed border-border object-cover" />
+                <img src={primaryImageUrl} alt="" className="h-16 w-16 shrink-0 rounded-inner border border-dashed border-border object-cover" />
                 <p className="text-xs text-emerald-950/60">
-                  Shared links (WhatsApp, Facebook, X) use this product&apos;s primary
-                  image. Change the primary image in the Media tab and the share
-                  preview follows automatically.
+                  Empty, so shared links use this product&apos;s <strong>primary
+                  image</strong>. Change it in the Media tab and the share preview
+                  follows automatically — or upload a dedicated one above.
                 </p>
-              </>
+              </div>
             ) : (
               <p className="text-xs text-emerald-950/60">
                 This product has no image yet, so shared links won&apos;t show a
-                preview image. Add one in the Media tab.
+                preview image. Add one above, or in the Media tab.
               </p>
             )}
           </div>

@@ -1505,15 +1505,21 @@ export class ProductsService {
     }
 
     const dto = toPublicProductDto(product, locale);
-    // The product's primary photo IS its social/share image. Change the
-    // primary image and every share preview follows, with nothing to keep in
-    // sync by hand.
+    // The primary photo is the share image by DEFAULT — change it and every
+    // share preview follows, with nothing to keep in sync by hand — but a
+    // dedicated SEO image set in the admin now wins. SeoService.resolve
+    // already expresses exactly that precedence (`meta?.ogImageUrl ??
+    // fallback.imageUrl`), so passing the primary photo in as the fallback is
+    // the whole implementation; there is deliberately no override after it.
     //
-    // This deliberately overrides a stored SeoMeta.ogImageUrl for PRODUCT.
-    // That override was a URL snapshot, and a snapshot goes stale silently:
-    // lal-ata's pointed at a `-full.webp` derivative that no longer exists in
-    // the bucket, so every Facebook/WhatsApp/X share of that product rendered
-    // with no image while the product page itself looked perfectly fine.
+    // An override used to be ignored here because it was a URL snapshot that
+    // went stale silently: lal-ata's pointed at a `-full.webp` derivative no
+    // longer in the bucket, so every share of it rendered blank while the
+    // product page looked fine. The admin field is a media-library picker
+    // now, not a free-text URL, so it can only hold a real Media.url — and it
+    // renders that image right next to the field, which is what made the
+    // stale one invisible before.
+    //
     // Skips VIDEO — an mp4 in og:image is not a preview.
     const imageUrls = dto.media.filter((m) => m.type !== 'VIDEO').map((m) => m.url);
     const primaryImageUrl =
@@ -1524,7 +1530,7 @@ export class ProductsService {
       canonicalPath: `/products/${dto.slug}`,
       imageUrl: primaryImageUrl,
     });
-    const seo = { ...resolvedSeo, ogImageUrl: primaryImageUrl ?? resolvedSeo.ogImageUrl };
+    const seo = resolvedSeo;
 
     const [crossSell, frequentlyBoughtTogether, relatedProducts, salesSum] = await Promise.all([
       this.getPublicRelation(product.id, 'CROSS_SELL', locale),

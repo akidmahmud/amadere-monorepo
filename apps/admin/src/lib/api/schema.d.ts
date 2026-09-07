@@ -7696,7 +7696,7 @@ export interface components {
             robots: string;
             ogTitle?: string;
             ogDescription?: string;
-            ogImageUrl?: string;
+            ogImageUrl?: string | null;
             structuredDataType?: string;
         };
         AuthorSocialLinkResponseDto: {

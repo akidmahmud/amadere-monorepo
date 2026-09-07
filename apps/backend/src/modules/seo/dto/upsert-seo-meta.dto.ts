@@ -45,10 +45,15 @@ export class UpsertSeoMetaDto {
   @IsString()
   ogDescription?: string;
 
-  @ApiPropertyOptional()
+  // Nullable on purpose: Prisma reads `undefined` in an update as "leave
+  // unchanged", so omitting this could never clear a stored share image —
+  // emptying the picker in the admin would silently keep the old one.
+  // `@IsOptional()` skips validation for null as well as undefined, so an
+  // explicit null passes through and clears the column.
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
-  ogImageUrl?: string;
+  ogImageUrl?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

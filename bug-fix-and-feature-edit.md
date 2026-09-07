@@ -2085,3 +2085,67 @@ clean.
 
 Categories/brands/blog/collections still use `toOgImageUrl(..., 'pad')` —
 untouched, their sources are logos that must not be cropped.
+
+## Dedicated SEO/share image per product
+
+The product SEO tab had no image control — shares always used the primary
+gallery photo, with no way to publish a different one.
+
+### The field already existed and was deliberately ignored
+
+`SeoMeta.ogImageUrl` has always been stored, and `SeoService.resolve` already
+returns exactly the wanted precedence:
+
+    ogImageUrl: meta?.ogImageUrl ?? fallback.imageUrl
+
+`ProductsService.getBySlug` then threw that away with an explicit override
+back to the primary photo. That override was added for a real reason: a
+stored value was a hand-entered URL snapshot and went stale silently —
+lal-ata's pointed at a `-full.webp` derivative no longer in the bucket, so
+every share of it rendered blank while the product page looked fine.
+
+So the fix is to delete the override (one line) and remove the reason it
+existed, rather than to add a parallel mechanism.
+
+### Why it is safe now
+
+- The admin control is a **media-library picker, not a URL box**, so the
+  value can only be a real `Media` row.
+- It stores `media.url`, **not** `media.fullUrl`. `MediaPicker`'s `onChange`
+  hands back `fullUrl ?? url`, and `fullUrl` is a generated derivative —
+  precisely the kind of URL that went stale before. `onSelectMedia` fires
+  after `onChange` and overwrites it with the canonical one.
+- The chosen image renders next to the field, so a broken one is visible
+  immediately. That is what made the stale value invisible last time.
+
+### Clearing it had to be fixed too
+
+`update: { ogImageUrl: dto.ogImageUrl }` — Prisma treats `undefined` as
+"leave unchanged", and the admin sent `|| undefined`. Emptying the picker
+would have silently kept the old image forever. `UpsertSeoMetaDto.ogImageUrl`
+is now `string | null` (`@IsOptional()` skips null as well as undefined) and
+the tab sends an explicit `null`.
+
+### Verified end to end against the running API
+
+| step | `seo.ogImageUrl` returned |
+|---|---|
+| baseline, nothing set | the primary photo |
+| dedicated image stored | **the dedicated image** |
+| cleared back to null | the primary photo again (matches primary: true) |
+
+### Also driven through the real admin UI
+
+Product 17, SEO tab: picked an image from the library, saved, and confirmed
+the public API returned it over the primary photo — and that the stored value
+was the canonical `...-ChatGPT-Image-....png`, **not** the `-card.webp`
+thumbnail that was clicked or the `-full.webp` derivative `onChange` hands
+back. Then Remove + Save, and the API fell back to the primary photo.
+
+Backend and admin both typecheck clean; admin OpenAPI types regenerated for
+the now-nullable field.
+
+Not changed: `SeoMetaCard` (categories/brands/blog) still sends
+`|| undefined`, so clearing an image there has the same latent no-op. Left
+alone rather than changing other entities' behaviour as a side effect of a
+product-only request.
