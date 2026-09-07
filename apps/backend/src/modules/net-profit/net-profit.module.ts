@@ -6,6 +6,7 @@ import { OrderManagerModule } from './order-manager/order-manager.module';
 import { SmsModule } from './sms/sms.module';
 import { AdvancePaymentModule } from './advance-payment/advance-payment.module';
 import { ManualPaymentModule } from './manual-payment/manual-payment.module';
+import { GatewayPaymentsModule } from './gateway-payments/gateway-payments.module';
 import { RecoveryModule } from './recovery/recovery.module';
 import { ProfitModule } from './profit/profit.module';
 import { SalesReportModule } from './sales-report/sales-report.module';
@@ -32,6 +33,7 @@ import { AccountsModule } from './accounts/accounts.module';
     SmsModule,
     AdvancePaymentModule,
     ManualPaymentModule,
+    GatewayPaymentsModule,
     RecoveryModule,
     ProfitModule,
     SalesReportModule,

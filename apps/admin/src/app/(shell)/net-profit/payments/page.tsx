@@ -5,6 +5,7 @@ import { Button, Card, Icon, PageHeader, RangeSlider, SettingsCard, Table, Table
 import {
   useAdvancePaymentSettings,
   useAdvancePayments,
+  useGatewayPayments,
   useManualPayments,
   useRejectManualPayment,
   useUpdateAdvancePaymentSettings,
@@ -230,6 +231,88 @@ function ManualQueueTab() {
   );
 }
 
+/**
+ * Gateway payments — the money bKash/Nagad captured themselves.
+ *
+ * Read-only by design: these are already CAPTURED by the provider, so there
+ * is nothing for an admin to approve. The screen exists because there was no
+ * screen — `payment.findMany` appeared nowhere in the codebase, so a
+ * gateway-paid order was marked paid and confirmed with nothing anywhere
+ * showing the amount or the transaction id to reconcile against a merchant
+ * statement.
+ */
+function GatewayTab() {
+  const [q, setQ] = useState("");
+  const { data, isLoading } = useGatewayPayments({ q: q.trim() || undefined });
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search transaction id or order number…"
+          className="h-9 w-72 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        {data && (
+          <span className="text-sm text-secondary">
+            Captured total{" "}
+            <strong className="text-text">৳{Number(data.capturedTotal ?? 0).toLocaleString("en-BD")}</strong>{" "}
+            · {data.total} payment{data.total === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+      {isLoading && <p className="text-sm text-muted">Loading…</p>}
+      <Card className="overflow-hidden p-0">
+        <Table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order</th>
+              <th>Provider</th>
+              <th>Status</th>
+              <th>Transaction ID</th>
+              <th className="text-right">Amount</th>
+              <th className="text-right">Refunded</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data && data.items.length === 0 && (
+              <TableEmptyRow colSpan={7}>No gateway payments yet.</TableEmptyRow>
+            )}
+            {data?.items.map((p) => (
+              <tr key={p.id}>
+                <td className="whitespace-nowrap">{new Date(p.createdAt).toLocaleString("en-GB")}</td>
+                <td className="font-semibold">{p.orderNumber}</td>
+                <td>{p.provider}</td>
+                <td>
+                  <span
+                    className={
+                      p.status === "CAPTURED"
+                        ? "text-success"
+                        : p.status === "PENDING"
+                          ? "text-secondary"
+                          : "text-danger"
+                    }
+                  >
+                    {p.status}
+                  </span>
+                </td>
+                {/* The one field a bKash merchant statement is matched on. */}
+                <td className="font-mono text-xs">{p.transactionRef ?? "—"}</td>
+                <td className="text-right tabular-nums">৳{Number(p.amount).toLocaleString("en-BD")}</td>
+                <td className="text-right tabular-nums text-secondary">
+                  {p.refundedAmount ? `৳${Number(p.refundedAmount).toLocaleString("en-BD")}` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
+
 function MethodConfigTab() {
   const { data, isLoading } = usePaymentMethodConfigs();
   const upsert = useUpsertPaymentMethodConfig();
@@ -381,11 +464,12 @@ export default function PaymentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader icon={paymentIcon} title="Payments" subtitle="Manual payment verification, advance payments, and method configuration." />
+      <PageHeader icon={paymentIcon} title="Payments" subtitle="Gateway payments, manual payment verification, advance payments, and method configuration." />
       <Tabs
         variant="pill"
         options={[
           { value: "manual", label: "Manual Payment Queue" },
+          { value: "gateway", label: "Gateway Payments" },
           { value: "advance", label: "Advance Payments" },
           { value: "advance-settings", label: "Advance Settings" },
           { value: "methods", label: "Payment Method Config" },
@@ -394,6 +478,7 @@ export default function PaymentsPage() {
         onChange={setTab}
       />
       {tab === "manual" && <ManualQueueTab />}
+      {tab === "gateway" && <GatewayTab />}
       {tab === "advance" && <AdvanceTab />}
       {tab === "advance-settings" && <AdvanceSettingsTab />}
       {tab === "methods" && <MethodConfigTab />}

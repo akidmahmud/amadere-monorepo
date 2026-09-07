@@ -2299,3 +2299,60 @@ Idempotent and safe to re-run — every seeded row uses `update: {}` (it will
 not overwrite customised email templates) and it skips Super Admin creation if
 that user exists. It needs `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_PASSWORD` present
 or it throws before doing anything.
+
+## bKash gateway payments were invisible in the admin
+
+Reported: a customer paid ৳430 by bKash (PGW, MerchantOrderID ORDER-11127,
+trxID DI709NWKN8) and nothing showed in Net Profit > Payments.
+
+Nothing was lost. The order was marked paid and confirmed correctly — there
+was simply **no screen anywhere that showed the payment**.
+
+### Cause
+
+Two different things, one name:
+
+- `ManualPayment` — a customer's CLAIM ("I sent money, here's my trx id"),
+  awaiting staff verification.
+- `Payment` — the real row, which the gateway captures itself.
+
+Net Profit > Payments listed only ManualPayment and advance payments.
+`BkashCallbackService` states the mismatch in its own comment — it is "built
+around a ManualPayment row this flow never creates". And `payment.findMany`
+appeared **nowhere in the entire codebase**, so gateway payments had no admin
+surface at all.
+
+Measured on the dev database once the view existed: **53 gateway payments,
+৳31,563.40 captured**, none of which had ever been visible.
+
+### Fix
+
+New read-only module `net-profit/gateway-payments`:
+
+    GET /admin/net-profit/payments/gateway?provider=&status=&q=
+
+with a **Gateway Payments** tab on the same page. Columns: date, order number,
+provider, status, transaction id, amount, refunded — plus a captured total for
+the current filter, and search across transaction id or order number.
+
+Deliberately no verify/reject: these are already CAPTURED by the provider, so
+an approve button would be theatre. The screen exists to be reconciled against
+a bKash/Nagad merchant statement, which is why `transactionRef` is the field
+that matters. COD is excluded from the default list — that money arrives via
+courier settlement, which has its own screen.
+
+`OrderPaymentDto.transactionRef` is now exposed too, so the same id is
+readable from the order itself. Reuses `net_profit_payments.verify` rather
+than minting a key, since it sits on the same screen and is the same job.
+
+### Verified
+
+Inserted a CAPTURED BKASH payment of ৳430 with trx `DI709NWKN8` and queried
+the endpoint as a super admin:
+
+    capturedTotal: 31563.4   total rows: 53
+      REC-MTQ5779T  BKASH CAPTURED  ৳430  trx DI709NWKN8
+      ORD-20260831-D3A388  BKASH CANCELED  ৳1380  trx TEST-RESV-1
+      ORD-20260831-D717ED  BKASH PENDING   ৳499   trx TR0011q7SOjiN...
+
+Backend and admin typecheck clean.

@@ -97,6 +97,11 @@ export class OrderPaymentDto {
   status!: PaymentStatus;
   amount!: string;
   refundedAmount!: string | null;
+  /** The provider's own transaction id (bKash trxID, e.g. DI709NWKN8). Null
+   *  for COD and for a payment that never captured. Exposed because without
+   *  it there is nothing on the order to match against a merchant
+   *  statement — the gateway captured the money silently. */
+  transactionRef!: string | null;
   createdAt!: Date;
 }
 
@@ -257,6 +262,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       status: p.status,
       amount: p.amount.toString(),
       refundedAmount: decimalToString(p.refundedAmount),
+      transactionRef: p.transactionRef,
       createdAt: p.createdAt,
     })),
     shipment: shipment

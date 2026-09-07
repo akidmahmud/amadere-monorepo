@@ -78,6 +78,45 @@ export function useUpdateAdvancePaymentSettings() {
   });
 }
 
+/**
+ * Gateway payments — money a provider captured on its own (bKash PGW and
+ * friends), with no admin in the loop.
+ *
+ * Separate from useManualPayments on purpose: a ManualPayment is a customer
+ * CLAIM awaiting verification, while these are already CAPTURED. Nothing in
+ * the admin listed them at all before, so a gateway-paid order was marked
+ * paid and confirmed with no screen anywhere showing the money or its
+ * transaction id.
+ */
+export interface GatewayPayment {
+  id: number;
+  orderId: number;
+  orderNumber: string;
+  provider: string;
+  status: string;
+  amount: string;
+  refundedAmount: string | null;
+  transactionRef: string | null;
+  createdAt: string;
+}
+
+const GATEWAY_KEY = ["net-profit", "payments", "gateway"];
+
+export function useGatewayPayments(params: { provider?: string; status?: string; q?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.provider) qs.set("provider", params.provider);
+  if (params.status) qs.set("status", params.status);
+  if (params.q) qs.set("q", params.q);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return useQuery({
+    queryKey: [...GATEWAY_KEY, params],
+    queryFn: () =>
+      proxyFetch<Paginated<GatewayPayment> & { capturedTotal: string }>(
+        `/admin/net-profit/payments/gateway${suffix}`,
+      ),
+  });
+}
+
 export function useManualPayments() {
   return useQuery({ queryKey: MANUAL_KEY, queryFn: () => proxyFetch<Paginated<ManualPayment>>("/admin/net-profit/payments/manual") });
 }
