@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Icon } from "@amader/admin-ui";
-import { useSettings, useUpsertSetting, type Setting } from "@/hooks/useSettings";
+import { useSettings, useUpsertSetting } from "@/hooks/useSettings";
+import { RawSettingsBrowser } from "@/components/settings/RawSettingsBrowser";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { ProductCardStyleSettings } from "@/components/ProductCardStyleSettings";
 
@@ -35,63 +36,6 @@ function SettingsLinksGrid() {
         </Link>
       ))}
     </div>
-  );
-}
-
-function SettingRow({ setting }: { setting: Setting }) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(() => JSON.stringify(setting.value, null, 2));
-  const [error, setError] = useState<string | null>(null);
-  const upsert = useUpsertSetting();
-
-  async function handleSave() {
-    try {
-      const value = JSON.parse(text);
-      await upsert.mutateAsync({ key: setting.key, value });
-      setError(null);
-      setEditing(false);
-    } catch {
-      setError("Invalid JSON.");
-    }
-  }
-
-  return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="num text-sm font-semibold text-text">{setting.key}</div>
-          <div className="text-xs text-muted">Updated {new Date(setting.updatedAt).toLocaleString()}</div>
-        </div>
-        {!editing && (
-          <Button type="button" variant="ghost" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
-        )}
-      </div>
-      {editing ? (
-        <div className="mt-3 flex flex-col gap-2">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={6}
-            className="num rounded-sm border border-border bg-surface p-3 font-mono text-xs text-text outline-none focus:border-brand-500"
-          />
-          {error && <span className="text-xs text-danger">{error}</span>}
-          <div className="flex gap-2">
-            <Button type="button" variant="primary" disabled={upsert.isPending} onClick={handleSave}>
-              {upsert.isPending ? "Saving…" : "Save"}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => { setEditing(false); setText(JSON.stringify(setting.value, null, 2)); }}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <pre className="num mt-2 overflow-x-auto rounded-inner bg-surface-2 p-2 font-mono text-xs text-text">
-          {JSON.stringify(setting.value, null, 2)}
-        </pre>
-      )}
-    </Card>
   );
 }
 
@@ -142,20 +86,31 @@ export default function SettingsPage() {
       <TwoFactorSettings />
       <ProductCardStyleSettings />
 
+      {/* The raw store, below the purpose-built screens above on purpose:
+          almost everything here has a proper editor, and this is the escape
+          hatch for the handful of keys that do not. Encrypted credentials are
+          not in this list at all — the backend refuses to read or write them
+          through the generic API. */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">{settings?.length ?? 0} settings</p>
-        {!creating && <Button variant="primary" onClick={() => setCreating(true)}>Add setting</Button>}
+        <div>
+          <h2 className="font-ui text-sm font-bold text-text">Advanced settings</h2>
+          <p className="text-xs text-muted">
+            {settings?.length ?? 0} stored values. Most have a dedicated screen above — change them
+            there where you can.
+          </p>
+        </div>
+        {!creating && (
+          <Button variant="ghost" onClick={() => setCreating(true)}>
+            Add setting
+          </Button>
+        )}
       </div>
 
       {creating && <NewSettingForm onDone={() => setCreating(false)} />}
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
       {settings && settings.length === 0 && !creating && <p className="text-sm text-muted">No settings yet.</p>}
 
-      <div className="flex flex-col gap-3">
-        {settings?.map((setting) => (
-          <SettingRow key={setting.key} setting={setting} />
-        ))}
-      </div>
+      {settings && settings.length > 0 && <RawSettingsBrowser settings={settings} />}
     </>
   );
 }

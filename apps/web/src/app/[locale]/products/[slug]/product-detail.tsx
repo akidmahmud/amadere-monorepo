@@ -30,8 +30,6 @@ import { toApiLocale } from "@/lib/api-locale";
 import type { components } from "@/lib/api/schema";
 import { toDisplayImageUrl, toEmbeddableVideoUrl, IMG } from "@/lib/media";
 
-// Facebook/X's recommended og:image width. Not in the IMG scale, which names
-// on-page render sizes — this one is fixed by the platforms, not by layout.
 import { defaultVariantId } from "@/lib/pdp";
 import { toProductCardData } from "@/lib/product-card-mapper";
 import { redirectIfMapped } from "@/lib/redirects";
@@ -77,17 +75,8 @@ export async function generateProductMetadata(
   }
 
   const path = `/products/${slug}`;
-  // NO `images` key on openGraph/twitter below, deliberately.
-  //
-  // This route generates its card in ./opengraph-image.tsx, and Next only
-  // falls back to that file convention when the metadata object does not
-  // name an image itself. Setting one here silently wins and the generated
-  // card is never emitted — which is how this route ended up shipping a
-  // `fit=cover` crop that cut the top and bottom off every product photo.
-  //
-  // The card still needs to know whether to advertise itself as a large
-  // summary, so that is all that is computed here.
-  const hasOgImage = Boolean(product.seo.ogImageUrl);
+  // Let the opengraph-image route supply the square image and its dimensions.
+  // Next also uses it as twitter:image when none is explicitly provided.
 
   return {
     title: product.seo.title,
@@ -105,7 +94,8 @@ export async function generateProductMetadata(
     // product share. Next only merges per-key, so setting `openGraph` alone
     // does not displace them.
     twitter: {
-      card: hasOgImage ? "summary_large_image" : "summary",
+      // X summary cards use square images; large-image cards use a wide crop.
+      card: "summary",
       title: product.seo.ogTitle,
       description: product.seo.ogDescription ?? undefined,
     },

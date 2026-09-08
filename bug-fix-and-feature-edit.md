@@ -2356,3 +2356,100 @@ the endpoint as a super admin:
       ORD-20260831-D717ED  BKASH PENDING   ৳499   trx TR0011q7SOjiN...
 
 Backend and admin typecheck clean.
+
+## Credentials were reachable through the generic settings API
+
+Settings showed 83 rows, 14 of them `credential.*`.
+
+### What was NOT wrong
+
+Those values are **not plaintext**. `CredentialsService` encrypts with
+AES-256-GCM, key derived by scrypt from `CREDENTIALS_ENCRYPTION_KEY` via
+`getOrThrow` (no insecure default). Confirmed by inspecting stored values:
+ciphertext, not readable secrets. The public `/settings/site` endpoint is also
+fine — it whitelists 11 named keys and cannot dump the table.
+
+### What was wrong
+
+**Reading.** `GET /admin/settings` returned every row, including all 14
+credential ciphertexts, to anyone holding `setting.view`. Ciphertext is not
+plaintext, but handing it to a low-privilege settings role is free material
+for an offline attack and buys nothing — each credential already has its own
+screen that reports only whether it is set.
+
+**Writing — the sharper bug.** `PUT /admin/settings/:key` writes the value
+RAW. Pointed at a credential key it replaces valid ciphertext with a plain
+string, so `CredentialsService.readCredential`'s decrypt throws and it returns
+**null**, while `hasCredential()` still returns **true** because the row
+exists. The screen would keep reporting bKash/SMTP/Steadfast as configured
+while the integration silently had no credential at all.
+
+### Fix
+
+`credential.*` is now excluded from `SettingsService` entirely — list, get and
+upsert. Enforced in the service, not the controller, so any future caller
+inherits it. `get()` returns the same "not found" as a missing key rather than
+confirming which credentials exist.
+
+| check | result |
+|---|---|
+| `GET /admin/settings` | **69** rows (was 83), **0** `credential.*` |
+| `GET /admin/settings/credential.payment.bkash.appSecretKey` | 404, same as a nonexistent key |
+| `PUT` a raw value over that key | **400** with an explanation |
+| `PUT site_name` (a normal setting) | still works |
+
+Credentials remain editable through their own screens, which encrypt properly.
+
+### Self-inflicted, then repaired
+
+Verifying step 4 I sent the Bangla site name through `curl -d`, which mangles
+UTF-8 — it stored `site_name` as `"??????"`. Caught it in the response and
+restored `"আমাদের"` via Prisma. Noted because this is the second time in this
+session that `curl -d` has corrupted Bangla; use `--data-binary @file`.
+
+## Settings page: raw JSON replaced with real controls
+
+The bottom of Settings printed all 69 rows as
+`JSON.stringify(value, null, 2)` inside a `<pre>` — a boolean read as `true`
+in a code block, and changing anything meant hand-editing JSON that rejected
+the save on a stray comma.
+
+### The shape of the data decided the design
+
+Profiled the real table (credentials already excluded): **47 of 69 values are
+plain scalars** — 20 numbers, 15 booleans, 12 strings. Only 22 objects and 1
+array are genuinely arbitrary JSON. So most of that screen never needed to be
+JSON at all.
+
+New `components/settings/RawSettingsBrowser.tsx`:
+
+- **Boolean** -> a toggle that saves on the spot (nothing to type, so a Save
+  button would only add a step).
+- **Number / string** -> a typed input with Save, enabled only when changed.
+- **Object / array** -> still a JSON editor, but folded behind an "Advanced"
+  button with a `3 fields` / `5 items` chip, instead of being the default
+  presentation for everything.
+- Keys are grouped and collapsed. `net_profit.*` is 46 of 69 on its own, so it
+  splits one level deeper (`net_profit.advance_payment`, ...) or it would
+  swallow the page.
+- Search across key and humanised label; a search force-opens every matching
+  group, otherwise a hit stays hidden behind a collapsed header and the search
+  looks broken.
+- Each row shows a human label ("Always On Enabled") with the raw key in
+  monospace beneath, so it stays greppable.
+
+The whole block is retitled **Advanced settings** and sits below the
+purpose-built screens, with a line saying most keys should be changed there.
+
+### One UI-kit gotcha worth recording
+
+`<Card className="p-0">` does not work: admin-ui's `cn` is plain clsx with no
+tailwind-merge, so Card's own `p-[22px]` survives alongside the override and
+wins. Every group header rendered ~100px tall for one line of text. Swapped
+for a plain div carrying the same tokens.
+
+### Verified in the browser
+
+Zero `<pre>` blocks remain. Groups collapse/expand, and clicking the
+`alwaysOnEnabled` toggle wrote `false -> true` to the database (confirmed by
+querying it, then restored to `false`).

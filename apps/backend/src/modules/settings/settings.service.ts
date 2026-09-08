@@ -1,9 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RevalidationService } from '../../common/revalidation/revalidation.service';
 import { NetProfitSettingsService } from '../net-profit/settings/net-profit-settings.service';
 import { SettingDto, SiteInfoDto, toSettingDto } from './settings.mapper';
+
+// Encrypted secrets live in this same table under `credential.*` (see
+// common/credentials/credentials.service.ts — AES-256-GCM, key from
+// CREDENTIALS_ENCRYPTION_KEY). They are deliberately NOT reachable through
+// this generic key/value API, for two separate reasons:
+//
+//  1. Reading. `list()` returned all 83 rows to anyone holding
+//     `setting.view`, 14 of them credential ciphertext. It is not plaintext,
+//     but handing out ciphertext to a low-privilege settings role is free
+//     material for an offline attack and has no upside — every credential
+//     already has its own screen that reports only whether it is set.
+//
+//  2. Writing, which was the sharper bug. `PUT /admin/settings/:key` writes
+//     the value RAW. Point it at a credential key and the stored value is no
+//     longer valid ciphertext, so CredentialsService.readCredential's decrypt
+//     throws and it returns null — while hasCredential() still returns true
+//     because the row exists. The UI would keep reporting the integration as
+//     configured while it silently had no credential at all.
+//
+// Both are closed here rather than in the controller so any future caller of
+// SettingsService inherits the same rule.
+const CREDENTIAL_KEY_PREFIX = 'credential.';
+
+function isCredentialKey(key: string): boolean {
+  return key.startsWith(CREDENTIAL_KEY_PREFIX);
+}
 
 const SITE_LOGO_MEDIA_ID_KEY = 'site_logo_media_id';
 // Value shape: { paddingPx: number, marginPx: number } — kept as its own key
@@ -45,12 +71,16 @@ export class SettingsService {
 
   async list(): Promise<SettingDto[]> {
     const settings = await this.prisma.client.setting.findMany({
+      where: { NOT: { key: { startsWith: CREDENTIAL_KEY_PREFIX } } },
       orderBy: { key: 'asc' },
     });
     return settings.map(toSettingDto);
   }
 
   async get(key: string): Promise<SettingDto> {
+    // Same answer as a key that does not exist — deliberately does not
+    // confirm which credentials are configured.
+    if (isCredentialKey(key)) throw new NotFoundException(`Setting "${key}" not found`);
     const setting = await this.prisma.client.setting.findUnique({
       where: { key },
     });
@@ -59,6 +89,11 @@ export class SettingsService {
   }
 
   async upsert(key: string, value: unknown): Promise<SettingDto> {
+    if (isCredentialKey(key)) {
+      throw new BadRequestException(
+        'Credentials cannot be written through the generic settings API — a raw value here would replace the encrypted one and silently break the integration. Use the dedicated settings screen for that provider.',
+      );
+    }
     const setting = await this.prisma.client.setting.upsert({
       where: { key },
       create: { key, value: value as Prisma.InputJsonValue },
