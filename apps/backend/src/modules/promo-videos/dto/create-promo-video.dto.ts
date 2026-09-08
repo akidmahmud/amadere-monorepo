@@ -23,10 +23,14 @@ export class CreatePromoVideoDto {
   @Min(0)
   durationSeconds?: number;
 
-  @ApiPropertyOptional()
+  // Nullable on purpose: Prisma reads `undefined` in an update as "leave
+  // unchanged", so omitting this could never clear a thumbnail — removing one
+  // in the admin would silently keep the old image. `@IsOptional()` skips
+  // validation for null as well as undefined, so an explicit null clears it.
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
-  thumbnailUrl?: string;
+  thumbnailUrl?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

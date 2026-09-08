@@ -52,6 +52,13 @@ const YOUTUBE_ID =
 // watch?v= link renders as "page can't be found" inside the iframe.
 // ponytail: YouTube only — the one platform the product form asks for. Add
 // a Vimeo/Facebook branch here if those ever get used.
+/** The bare YouTube id, or undefined for a non-YouTube URL. Lets a caller
+ *  build a poster image and its own player params without re-parsing. */
+export function youtubeVideoId(url: string | null | undefined): string | undefined {
+  if (!url || !/^https?:\/\//.test(url)) return undefined;
+  return url.match(YOUTUBE_ID)?.[1];
+}
+
 export function toEmbeddableVideoUrl(
   url: string | null | undefined,
 ): string | undefined {

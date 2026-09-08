@@ -2453,3 +2453,197 @@ for a plain div carrying the same tokens.
 Zero `<pre>` blocks remain. Groups collapse/expand, and clicking the
 `alwaysOnEnabled` toggle wrote `false -> true` to the database (confirmed by
 querying it, then restored to `false`).
+
+## Drag-and-drop reordering for product images
+
+The Media section could only promote an image to first ("Make primary").
+Every other position was unreachable — a 5-image gallery could not be put in
+a chosen order.
+
+`ProductMediaGallery` now supports dragging a thumbnail onto another to move
+it there. Order is the meaning: `mediaIds` is sent in gallery order and the
+first entry is the primary image, so this is the same operation "Make
+primary" performs, generalised to any position.
+
+### Native HTML5 drag, no dependency
+
+- `draggable` on the **image area only**, not the whole card, so the alt-text
+  input stays selectable — a draggable ancestor swallows text selection in
+  child inputs.
+- The **whole card** is the drop target, for a generous area to aim at.
+- `preventDefault()` in `onDragOver`, without which the browser never fires
+  `onDrop` at all.
+- `dataTransfer.setData()` in `onDragStart` — Firefox refuses to begin a drag
+  otherwise.
+- Drag state is tracked by **id, not index**, so a re-render mid-drag cannot
+  mis-target a card.
+- Feedback: the dragged card dims to 40%, the hovered target gets an amber
+  ring, a grip dot-grid appears on hover, and a hint line explains the
+  interaction and what "first" means.
+
+`moveToFront` is kept. It is the touch and keyboard path — HTML5 drag events
+do not fire on touch — and it stays the one-click way to do the common thing.
+
+### The first attempt was too subtle, and was called out
+
+A hover-only grip on a thumbnail tells nobody the grid is sortable. Replaced
+with an **always-visible handle bar** across the top of every card: a grip
+icon and the word "Drag" on the left, and the position on the right —
+`Primary`, `#2`, `#3`, `#4`. Order is now readable without counting, and the
+control announces itself before the pointer arrives.
+
+The image stays draggable too; both sources share one `dragSourceProps(id)`
+helper so they cannot drift apart. The old hover grip and the separate
+"Primary" star overlay were removed as redundant once the bar carries both.
+
+### Verified in the browser
+
+Firing every drag event in ONE evaluate call proves nothing: React has not
+flushed `dragId` from `dragstart` before the `drop` handler's closure reads
+it, so the list never moves. That is a artefact of the test, not the feature.
+Driven correctly — one event per call, as a real drag does across separate
+tasks — dragging the 4th image onto the 1st gave:
+
+    before:  family-combo, combo-thumbnails, ramadan-mubarak, free-air-tickets
+    after:   free-air-tickets (Primary), family-combo (#2), combo-thumbnails (#3), ramadan (#4)
+
+Badges renumbered correctly. The reorder algorithm was also checked in
+isolation, 6/6, including that dropping onto slot 1 produces exactly the same
+array as `moveToFront`.
+
+
+## Customer card claimed every shopper was new
+
+The order detail modal's Customer card showed **"0 order(s)"** for a phone
+with 10 prior orders.
+
+It was a hardcoded string literal — `<p>0 order(s)</p>` — never wired to
+anything, so it read 0 for every order ever opened.
+
+### Counted by phone, not customerId
+
+Most orders here are guest checkouts with no customer record, so a
+customerId-based count would read 0 for exactly the repeat shoppers staff most
+want to recognise.
+
+Matching the raw phone string would also under-count badly. Measured across
+all 3,074 shipping addresses: **2,980 stored as `01…`, 52 `+` prefixed, 35
+`880…`**, and the reported customer appears as BOTH `01840193060` and
+`8801840193060`. Every form ends with the same last 10 digits, so that is what
+is compared (`phone: { endsWith: last10 }`).
+
+Computed in `adminGet` only — the list endpoints do not pay for it per row.
+
+| check | result |
+|---|---|
+| `GET /admin/orders/6681` | `customerOrderCount: 11` |
+| Orders behind it | 11 rows, spanning both stored phone formats and 3 guest `REC-*` orders with `customerId: null` |
+| Modal now renders | **"11 orders"** (was "0 order(s)") |
+
+11 includes the order being viewed, so 10 are prior — matching the reported
+count exactly.
+
+## Promo video thumbnail could not be removed
+
+The Thumbnail section offered Upload and Choose from Library, with no way to
+clear one.
+
+Added a **Remove Thumbnail** button, shown only when there is one. Clearing
+falls back to the platform's own poster (YouTube and friends supply one), so
+it is a real choice rather than an undo.
+
+### The button alone would not have worked
+
+Same trap as the SEO image: `thumbnailUrl: dto.thumbnailUrl` in a Prisma
+update treats `undefined` as "leave unchanged", and the panel sent
+`thumbnailUrl || undefined`. Removing a thumbnail would have silently kept the
+old one. `CreatePromoVideoDto.thumbnailUrl` is now `string | null` and the
+panel sends an explicit `null`.
+
+Verified against the API: `PATCH {"thumbnailUrl": null}` on video 3 returned
+`thumbnailUrl: None`, and the original was restored afterwards.
+
+## Product Video: spacing and YouTube chrome
+
+### Spacing — it was `mt-10`
+
+The card carried `mt-10` = **2.5rem = 40px** top margin. With its own `p-6`
+(24px) padding and the heading's `mb-4` (16px), that is ~64px between the
+tabs card and the words "Product Video" — on a phone it read as the section
+having drifted loose. Now `mt-5` (20px) and `mb-3` (12px): **40px -> 20px**.
+
+### YouTube's buttons — what is actually removable
+
+Being straight about the limits: YouTube's embed used to accept `showinfo=0`
+and `modestbranding=1` to drop the title bar and the watermark. Both are
+retired — `showinfo` was removed outright and `modestbranding` is now a
+no-op. **No parameter hides the title, the channel avatar or the YouTube
+wordmark**, and stripping them by other means is against YouTube's terms.
+
+`controls=0` does still work, and it removes the entire bottom bar: progress,
+volume, captions, fullscreen. It also removes YouTube's play button — which is
+the opening this uses.
+
+New `ProductVideoPlayer` renders a **click-to-load facade**: the video's own
+poster with one custom play button and nothing else. Only on click does the
+iframe load, from `youtube-nocookie.com` with
+`controls=0&rel=0&iv_load_policy=3&playsinline=1`.
+
+- Before play: a clean poster, one play button. Exactly what was asked.
+- During play: no control bar. YouTube's title/watermark may still surface —
+  the only way to be fully rid of those is to host the file instead of
+  embedding YouTube.
+
+Two things that came free: no YouTube cookie until someone chooses to play,
+and the ~1MB of player JS that every product view used to download is now
+deferred until a viewer actually wants to watch.
+
+Non-YouTube URLs keep the previous plain-iframe behaviour — those params are
+YouTube's, and guessing at another host's would be worse than leaving it.
+
+### Product video, continued: real controls and no title
+
+The first pass used `controls=0` alone, which was too blunt — it removed
+pause, mute and the progress line along with the branding. Three further
+problems surfaced, each found by driving the real page:
+
+**1. No controls.** The player is now driven through YouTube's IFrame API and
+the useful controls are rebuilt: play/pause, mute, a seekable progress line
+and elapsed/total time. Captions, fullscreen, the channel avatar and the
+wordmark are simply never drawn.
+
+**2. The title was still visible.** `controls=0` hides YouTube's chrome WHILE
+PLAYING, but the instant the player is unstarted or paused it draws its own
+title card — title, channel, subscriber count, a big red button, related
+videos — INSIDE the iframe. A transparent overlay cannot help: YouTube paints
+it, so blocking clicks leaves it perfectly readable. Fixed by keeping an
+**opaque poster over the frame whenever `playing` is false**. The iframe is
+only ever visible while actually playing, which is precisely when YouTube
+shows nothing. Confirmed by hit-testing the top strip of the video: it returns
+our cover, not the iframe.
+
+While playing, a transparent sheet takes the tap instead of the iframe, so
+YouTube's overlay never appears mid-video — and the tap still toggles
+playback, so it behaves as expected.
+
+**3. The video played behind the poster.** Measured on the running page: the
+playhead advanced 0:03 -> 0:06 while `onStateChange` never delivered a
+"playing" event, so the cover stayed up over a video that was running, with no
+working pause. `getPlayerState()` is now polled in the same 250ms ticker
+rather than trusting events, which cannot be missed.
+
+Two smaller fixes found the same way:
+
+- `p.getDuration is not a function`, thrown several times a second: the ticker
+  started right after `new YT.Player(...)`, but a player's methods only exist
+  once the API has wired the iframe. It now starts inside `onReady`.
+- `origin` added to playerVars — without it the API posts to the nocookie
+  origin and the browser logs a mismatch on every message.
+
+Centre play button reduced 64px -> **44px** (still the accessible tap target);
+it read as a splash screen over a small card.
+
+**The honest limit is unchanged:** while the video is genuinely playing,
+YouTube may still show its wordmark. Everything else — title, channel,
+captions, fullscreen, related videos — is gone. Only self-hosting the file
+removes YouTube's branding entirely.

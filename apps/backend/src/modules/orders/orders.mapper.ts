@@ -141,6 +141,16 @@ export class OrderDto {
   id!: number;
   orderNumber!: string;
   customerId!: number | null;
+  /**
+   * How many orders this recipient's phone has placed in total, including
+   * this one. Populated by adminGet only — the list endpoints do not pay for
+   * it per row.
+   *
+   * Counted by PHONE, not customerId: most orders here are guest checkouts
+   * with no customer record at all, so a customerId-based count would read 0
+   * for exactly the shoppers staff most want to recognise.
+   */
+  customerOrderCount?: number;
   status!: OrderStatus;
   channel!: OrderChannel;
   assignedAdminId!: number | null;

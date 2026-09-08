@@ -24,6 +24,7 @@ import { WriteReviewForm } from "@/components/WriteReviewForm";
 import { RelatedProductsCarousel } from "@/components/RelatedProductsCarousel";
 import { CrossSellProductCarousel } from "@/components/CrossSellProductCarousel";
 import { FrequentlyBoughtTogether } from "@/components/FrequentlyBoughtTogether";
+import { ProductVideoPlayer } from "@/components/ProductVideoPlayer";
 import { getLanguageAlternates } from "@/i18n/alternates";
 import { api, ApiError, safeGet } from "@/lib/api/client";
 import { toApiLocale } from "@/lib/api-locale";
@@ -360,17 +361,12 @@ export async function ProductDetailBody({
             treatment as the tabs card above (mobile gutter + rounded
             corners), positioned directly under it. */}
         {product.videoUrl && (
-          <div className="mx-4 mt-10 rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0">
-            <h2 className="mb-4 text-xl font-bold text-[#222831]">Product Video</h2>
-            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-              <iframe
-                src={toEmbeddableVideoUrl(product.videoUrl) ?? undefined}
-                title="Product video"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                className="h-full w-full"
-              />
-            </div>
+          // mt-5 (20px), was mt-10 (40px). With the card's own p-6 that was
+          // 64px of dead space between the tabs card and the heading on a
+          // phone, which read as the section having drifted loose.
+          <div className="mx-4 mt-5 rounded-lg bg-white p-6 shadow-[0_2px_4px_rgba(0,0,0,0.11)] sm:mx-0">
+            <h2 className="mb-3 text-xl font-bold text-[#222831]">Product Video</h2>
+            <ProductVideoPlayer videoUrl={product.videoUrl} />
           </div>
         )}
       </div>

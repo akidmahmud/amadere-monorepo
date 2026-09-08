@@ -6516,6 +6516,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/payments/gateway": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminGatewayPaymentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/profit/report": {
         parameters: {
             query?: never;
@@ -9189,6 +9205,7 @@ export interface components {
             status: Record<string, never>;
             amount: string;
             refundedAmount: string | null;
+            transactionRef: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -9220,6 +9237,7 @@ export interface components {
             id: number;
             orderNumber: string;
             customerId: number | null;
+            customerOrderCount?: number;
             status: Record<string, never>;
             channel: Record<string, never>;
             assignedAdminId: number | null;
@@ -11122,7 +11140,7 @@ export interface components {
             url: string;
             /** @description Shown as the duration badge in the video list — no source here exposes a free/reliable duration API, so this is admin-entered. */
             durationSeconds?: number;
-            thumbnailUrl?: string;
+            thumbnailUrl?: string | null;
             productId?: number;
             /** @default true */
             showInHomepage: boolean;
@@ -11138,7 +11156,7 @@ export interface components {
             url?: string;
             /** @description Shown as the duration badge in the video list — no source here exposes a free/reliable duration API, so this is admin-entered. */
             durationSeconds?: number;
-            thumbnailUrl?: string;
+            thumbnailUrl?: string | null;
             productId?: number;
             /** @default true */
             showInHomepage: boolean;
@@ -11221,6 +11239,24 @@ export interface components {
             amount: number;
             /** Format: uri */
             screenshotUrl?: string;
+        };
+        GatewayPaymentDto: {
+            id: number;
+            orderId: number;
+            /** @description Human order number, e.g. ORDER-11127 */
+            orderNumber: string;
+            /** @enum {string} */
+            provider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+            /** @enum {string} */
+            status: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CANCELED";
+            /** @description Decimal string, in BDT */
+            amount: string;
+            /** @description Refunded so far, if any */
+            refundedAmount?: string | null;
+            /** @description The provider's own transaction id (bKash trxID, e.g. DI709NWKN8) — the field a merchant statement is reconciled against. */
+            transactionRef?: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         OrderProfitDto: {
             id: number;
@@ -24526,6 +24562,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminGatewayPaymentsController_list: {
+        parameters: {
+            query: {
+                page?: number;
+                pageSize?: number;
+                provider: string;
+                status: string;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatewayPaymentDto"][];
+                };
             };
         };
     };

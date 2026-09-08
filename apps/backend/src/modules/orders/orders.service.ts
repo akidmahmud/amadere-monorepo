@@ -108,7 +108,33 @@ export class OrdersService {
       include: ORDER_INCLUDE,
     });
     if (!order) throw new NotFoundException('Order not found');
-    return toOrderDto(order);
+    return {
+      ...toOrderDto(order),
+      customerOrderCount: await this.countOrdersForPhone(
+        order.addresses.find((a) => a.type === 'SHIPPING')?.phone,
+      ),
+    };
+  }
+
+  /**
+   * Orders placed by one phone number, however that number happens to be
+   * written.
+   *
+   * Matching on the raw string would badly under-count. Measured across the
+   * 3,074 shipping addresses in this database: 2,980 are stored as `01…`, 52
+   * are `+` prefixed, 35 as `880…`, and the SAME customer appears as both
+   * `01840193060` and `8801840193060`. Every one of those forms ends with the
+   * same last 10 digits, so that is what is compared.
+   *
+   * Counted by phone rather than customerId because most orders are guest
+   * checkouts with no customer record — see OrderDto.customerOrderCount.
+   */
+  private async countOrdersForPhone(phone: string | undefined): Promise<number> {
+    const last10 = phone?.replace(/\D/g, '').slice(-10);
+    if (!last10 || last10.length < 10) return 0;
+    return this.prisma.client.order.count({
+      where: { addresses: { some: { type: 'SHIPPING', phone: { endsWith: last10 } } } },
+    });
   }
 
   async updateStatus(

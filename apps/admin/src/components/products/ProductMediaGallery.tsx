@@ -35,8 +35,48 @@ export interface ProductMediaGalleryProps {
 export function ProductMediaGallery({ images, onChange, variants = [] }: ProductMediaGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLibrary, setShowLibrary] = useState(false);
+  // Which card is being dragged, and which one the pointer is currently over.
+  // Ids rather than indexes so a re-render mid-drag cannot mis-target.
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
   const upload = useUploadMedia();
   const updateAlt = useUpdateMediaAltText();
+
+  /**
+   * Move one image in front of another.
+   *
+   * Order IS the meaning here: mediaIds is sent in gallery order and the
+   * first entry is the primary image, so this is the same operation the
+   * "Make primary" button does, generalised to any position.
+   */
+  function reorder(fromId: number | null, toId: number) {
+    if (fromId === null || fromId === toId) return;
+    const from = images.findIndex((i) => i.id === fromId);
+    const to = images.findIndex((i) => i.id === toId);
+    if (from < 0 || to < 0) return;
+    const next = [...images];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+  }
+
+  /** Shared by the handle bar and the image, so both start a drag the same
+   *  way. Spread onto any element that should be a drag source. */
+  function dragSourceProps(id: number) {
+    return {
+      draggable: true,
+      onDragStart: (e: React.DragEvent) => {
+        setDragId(id);
+        e.dataTransfer.effectAllowed = "move";
+        // Firefox refuses to start a drag unless some data is set.
+        e.dataTransfer.setData("text/plain", String(id));
+      },
+      onDragEnd: () => {
+        setDragId(null);
+        setOverId(null);
+      },
+    };
+  }
 
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -83,10 +123,82 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
 
   return (
     <div>
+      {images.length > 1 && (
+        <p className="mb-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-900/60">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" className="text-emerald-900/40">
+            <circle cx="9" cy="6" r="1.7" />
+            <circle cx="15" cy="6" r="1.7" />
+            <circle cx="9" cy="12" r="1.7" />
+            <circle cx="15" cy="12" r="1.7" />
+            <circle cx="9" cy="18" r="1.7" />
+            <circle cx="15" cy="18" r="1.7" />
+          </svg>
+          Drag a card by its handle to reorder. <strong className="font-bold">#1 is the primary
+          image</strong>, used on product cards and shared links.
+        </p>
+      )}
       <div className="flex flex-wrap gap-3.5">
         {images.map((img, i) => (
-          <div key={img.id} className="group relative w-48 overflow-hidden rounded-xl border border-emerald-800/20 bg-white p-1.5 shadow-sm transition-all duration-200 hover:border-amber-400/50 hover:shadow-md">
-            <div className="relative overflow-hidden rounded-lg">
+          <div
+            key={img.id}
+            // Drop target is the whole card so there is a generous area to
+            // aim at; only the image area below starts a drag, which keeps
+            // the alt-text input selectable.
+            onDragOver={(e) => {
+              // Without preventDefault the browser never fires onDrop.
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (overId !== img.id) setOverId(img.id);
+            }}
+            onDragLeave={() => setOverId((cur) => (cur === img.id ? null : cur))}
+            onDrop={(e) => {
+              e.preventDefault();
+              reorder(dragId, img.id);
+              setDragId(null);
+              setOverId(null);
+            }}
+            className={`group relative w-48 overflow-hidden rounded-xl border bg-white p-1.5 shadow-sm transition-all duration-200 hover:shadow-md ${
+              dragId === img.id
+                ? "border-emerald-800/20 opacity-40"
+                : overId === img.id && dragId !== null
+                  ? "border-amber-400 ring-2 ring-amber-400/50"
+                  : "border-emerald-800/20 hover:border-amber-400/50"
+            }`}
+          >
+            {/* An always-visible handle bar. The image itself is draggable
+                too, but a hover-only hint on a thumbnail tells nobody the
+                grid is sortable — this states it outright and shows the
+                position, so the order is readable without counting. */}
+            <div
+              {...dragSourceProps(img.id)}
+              title="Drag to reorder"
+              className="mb-1.5 flex cursor-grab select-none items-center justify-between gap-2 rounded-lg bg-emerald-800/8 px-2 py-1 transition-colors hover:bg-emerald-800/15 active:cursor-grabbing"
+            >
+              <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-900/70">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                  <circle cx="9" cy="6" r="1.7" />
+                  <circle cx="15" cy="6" r="1.7" />
+                  <circle cx="9" cy="12" r="1.7" />
+                  <circle cx="15" cy="12" r="1.7" />
+                  <circle cx="9" cy="18" r="1.7" />
+                  <circle cx="15" cy="18" r="1.7" />
+                </svg>
+                Drag
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  i === 0
+                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-emerald-950"
+                    : "bg-white text-emerald-900/70 ring-1 ring-emerald-800/15"
+                }`}
+              >
+                {i === 0 ? "Primary" : `#${i + 1}`}
+              </span>
+            </div>
+            <div
+              {...dragSourceProps(img.id)}
+              className="relative cursor-grab overflow-hidden rounded-lg active:cursor-grabbing"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img.url}
@@ -95,14 +207,6 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
                   i === 0 ? "border-2 border-amber-400 shadow-sm" : "border border-emerald-800/10"
                 }`}
               />
-              {i === 0 && (
-                <span className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-950 shadow-md ring-1 ring-white/50">
-                  <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" className="text-emerald-950">
-                    <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 6.9L12 17.3 5.8 20.8l1.6-6.9L2 9.2l7.1-.6z" />
-                  </svg>
-                  Primary
-                </span>
-              )}
               <button
                 type="button"
                 aria-label="Remove image"

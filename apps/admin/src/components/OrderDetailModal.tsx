@@ -735,7 +735,15 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                 <div className="mb-1 grid h-10 w-10 place-items-center rounded-full text-base font-bold text-white" style={{ backgroundColor: GREEN }}>
                   {(shippingAddress?.recipientName ?? "?").trim().charAt(0).toUpperCase()}
                 </div>
-                <p className="text-muted">0 order(s)</p>
+                {/* Was the literal string "0 order(s)" — it had never been
+                    wired to anything, so every order claimed the shopper was
+                    brand new. Counted by phone server-side, so guest
+                    checkouts (most of them) are included. */}
+                <p className="text-muted">
+                  {order.customerOrderCount === undefined
+                    ? "…"
+                    : `${order.customerOrderCount} order${order.customerOrderCount === 1 ? "" : "s"}`}
+                </p>
                 <p className="font-semibold text-text">{shippingAddress?.recipientName}</p>
                 {shippingAddress?.email && (
                   <a href={`mailto:${shippingAddress.email}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>

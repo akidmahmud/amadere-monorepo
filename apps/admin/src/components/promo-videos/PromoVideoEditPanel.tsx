@@ -101,7 +101,9 @@ export function PromoVideoEditPanel({
       source,
       url,
       durationSeconds: durationSeconds ? Number(durationSeconds) : undefined,
-      thumbnailUrl: thumbnailUrl || undefined,
+      // null, not undefined — undefined would leave the previous thumbnail
+      // in place, so removing one has to send an explicit null.
+      thumbnailUrl: thumbnailUrl || null,
       productId,
       showInHomepage,
     };
@@ -232,6 +234,19 @@ export function PromoVideoEditPanel({
             <Button type="button" variant="ghost" onClick={() => setShowLibrary(true)}>
               <Icon name="perm_media" size={16} /> Choose from Library
             </Button>
+            {/* Only offered once there is something to remove. Clearing falls
+                back to the platform's own poster (YouTube et al. supply one),
+                which is why this is a real choice and not just an undo. */}
+            {thumbnailUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-danger"
+                onClick={() => setThumbnailUrl("")}
+              >
+                <Icon name="delete" size={16} /> Remove Thumbnail
+              </Button>
+            )}
             <p className="text-[0.68rem] text-muted">Recommended size: 1080×1920 (9:16) or 1080×1080 (1:1)</p>
           </div>
         </div>
