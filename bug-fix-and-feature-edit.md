@@ -2778,3 +2778,45 @@ row (`flex items-center gap-2.5`) holding four or five ~90px buttons with no
 
 At 1440px the Order Manager table is back at 3124px wide across 22 columns
 with the cards hidden — no desktop regression.
+
+## Customers list: editing the Address did nothing
+
+Typing a new address in the Customers table and blurring appeared to save
+nothing. It was saving fine — the list was displaying a different column.
+
+    read  (loadListExtras)  address.area ? `${area}, ${district}` : addressLine
+    write (updateAdmin)     CustomerAddress.addressLine
+
+So for any customer with `area` set, the cell showed "Adabor, Dhaka", the edit
+wrote to `addressLine`, and the list re-rendered the unchanged area/district.
+Proven on a real row: `addressLine` was already `'Test Road'` while the list
+rendered `'Mirpur, Dhaka'`.
+
+There was a second half. The editor seeds from the display string
+(`useState(c.address ?? "")`), so on those rows the input opened containing
+"Adabor, Dhaka" — tweak it and you would write the city summary INTO
+`addressLine`, quietly corrupting the real address.
+
+### Fix
+
+The list now reads `addressLine` — the field the editor writes — falling back
+to the area/district summary only if it is somehow empty. One change fixes
+both the invisible save and the poisoned seed value.
+
+Safe to switch, measured across all **2,192** customer addresses: every one
+has a non-empty `addressLine`, only 20 have `area` at all, and **zero** have
+an area without an address line. Nothing goes blank.
+
+### The rest of the row was audited, and is fine
+
+Every other inline-editable field was checked for the same read/write split.
+All 19 keys the UI sends (`phone`, `firstName`/`lastName`, `email`, `dob`,
+`isFavorite`, `assignedAdminId`, `nextCallTarget`, `followUpCadenceDays`,
+`hasNewOrder`, `newOrderAt`, `priority`, `crmStatus`, `behaviour`,
+`customerFeedback`, `amaderFeedback`, `familyDetails`, `purchaseReason`,
+`facebookProfileUrl`) are accepted by `UpdateCustomerDto`, and every one is
+read back straight off its own column in `toAdminCustomerListItemDto`.
+
+`name` deserved a second look because it is derived, but it is consistent:
+the mapper joins `firstName + lastName` and the editor splits on the first
+space and writes exactly those two. **`address` was the only mismatch.**

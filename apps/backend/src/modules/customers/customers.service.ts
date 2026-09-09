@@ -507,7 +507,22 @@ export class CustomersService {
       }
       const agg = aggByCustomer.get(id);
       extras.set(id, {
-        address: address ? (address.area ? `${address.area}, ${address.district}` : address.addressLine) : null,
+        // MUST be the same field the list's inline editor writes back
+        // (updateAdmin below sets CustomerAddress.addressLine). It used to
+        // prefer "area, district", which made the cell unfixable: the row
+        // displayed one field, the edit box was seeded from that display
+        // string, and the save went to a different column — so typing a new
+        // address appeared to do nothing, and a careless edit wrote
+        // "Adabor, Dhaka" into addressLine.
+        //
+        // Safe to switch: measured across all 2,192 customer addresses, every
+        // one has a non-empty addressLine and none has an area without one,
+        // so nothing goes blank. The area/district fallback stays for the
+        // impossible-but-cheap case.
+        address: address
+          ? address.addressLine?.trim() ||
+            (address.area ? `${address.area}, ${address.district}` : null)
+          : null,
         lastOrderDate: agg?._max.createdAt ?? null,
         lastOrderStatus: latestOrderByCustomer.get(id)?.status ?? null,
         lifetimeSpend: agg?._sum.totalAmount ? Number(agg._sum.totalAmount) : 0,
