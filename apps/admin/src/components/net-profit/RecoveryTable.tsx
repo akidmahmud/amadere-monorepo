@@ -4,6 +4,7 @@ import React from "react";
 import { Button, Icon } from "@amader/admin-ui";
 import { canonicalFacebookSource } from "@amader/shared";
 import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
+import { MobileRecordCard } from "@/components/MobileRecordCard";
 import { EditableReasonCell } from "./EditableReasonCell";
 import { RecoveryEmailModal } from "./RecoveryEmailModal";
 
@@ -125,7 +126,66 @@ export function RecoveryTable({
       className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]"
       style={{ background: "#fff", borderColor: LINE }}
     >
-      <div className="overflow-auto" style={{ maxHeight: "62vh" }}>
+      {/* Cards on phones — the table is minWidth 1200 with a sticky first
+          column, so on a phone the phone number and the cart value, the two
+          things this screen exists for, sit off the right edge. */}
+      <div className="flex flex-col gap-2.5 p-2.5 md:hidden">
+        {items.length === 0 && (
+          <p className="p-4 text-center text-sm text-muted">No abandoned carts match these filters.</p>
+        )}
+        {items.map((row) => {
+          const source = row.utmSource ? canonicalFacebookSource(row.utmSource) ?? row.utmSource : null;
+          return (
+            <MobileRecordCard
+              key={row.id}
+              title={row.name || "Unknown"}
+              subtitle={row.email ?? undefined}
+              badge={
+                <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-extrabold text-text">
+                  {row.recovered ? "Recovered" : (STAGE_LABELS[row.stage] ?? row.stage)}
+                </span>
+              }
+              fields={[
+                { label: "Cart value", value: `৳${Number(row.subtotal ?? 0).toLocaleString()}` },
+                { label: "Items", value: row.cart?.length ?? 0 },
+                {
+                  label: "Last seen",
+                  value: row.lastSeenAt
+                    ? new Date(row.lastSeenAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+                    : "",
+                },
+                { label: "Source", value: source ? (row.utmCampaign ? `${source} / ${row.utmCampaign}` : source) : "Direct" },
+                { label: "Attempts", value: row.recoveryAttempts ?? 0 },
+                { label: "Reason", value: row.cancelReason ?? "" },
+              ]}
+              actions={
+                <>
+                  {row.phone && (
+                    <a
+                      href={`tel:${row.phone}`}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border px-3 text-xs font-semibold text-text"
+                    >
+                      <Icon name="call" size={14} /> {row.phone}
+                    </a>
+                  )}
+                  {!row.recovered && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="h-8 text-xs"
+                      onClick={() => onCreateOrder(row)}
+                    >
+                      Create order
+                    </Button>
+                  )}
+                </>
+              }
+            />
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-auto md:block" style={{ maxHeight: "62vh" }}>
         <table
           className="border-separate border-spacing-0"
           style={{ minWidth: 1200, width: "100%" }}

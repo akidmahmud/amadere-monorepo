@@ -397,7 +397,9 @@ function OrderManagerPageInner() {
             Dashboard <span style={{ color: "#94a69a" }}>›</span> <span style={{ color: GREEN }}>Orders</span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        {/* flex-wrap: five buttons at ~90px each overflow a 375px screen and
+            were the only thing still scrolling the page sideways. */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <HeaderButton onClick={() => setSection(section === "statuses" ? "orders" : "statuses")}>
             {section === "statuses" ? "Back to Orders" : "Order Statuses"}
           </HeaderButton>

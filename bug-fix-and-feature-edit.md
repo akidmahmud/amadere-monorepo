@@ -2647,3 +2647,134 @@ it read as a splash screen over a small card.
 YouTube may still show its wordmark. Everything else — title, channel,
 captions, fullscreen, related videos — is gone. Only self-hosting the file
 removes YouTube's branding entirely.
+
+## Meta catalog feed as CSV (Commerce Manager's URL box rejects JSON)
+
+Asked for the catalog feed URL to paste into Commerce Manager > Data sources >
+Upload data file > "Use a URL or Google Sheets".
+
+**The existing feed could not be used there.** `/api/feed/meta` serves
+`application/json` (`{"data": [...]}`), and that screen accepts only **CSV,
+TSV, XML (RSS/ATOM) or XLSX**. The JSON feed is the right shape for Meta's
+API, not for a scheduled URL fetch.
+
+### Added
+
+`toMetaCsv` in catalog-feed.formatters.ts, `GET /feed/meta.csv` on the
+backend, and the matching storefront pass-through, so the public address is:
+
+    https://amadere.com/api/feed/meta.csv
+
+Same rows, same ids, same 30-minute cache as the JSON — only the container
+differs. `.csv` is in the path, not just the content type, because some
+fetchers sniff the extension.
+
+Details that matter:
+
+- **RFC 4180 escaping.** A description containing a comma, a quote or a
+  newline silently shifts every later column, which Meta reads as a malformed
+  record rather than an error worth naming. Fields with `,` or `"` are quoted
+  and inner quotes doubled; newlines are collapsed rather than quoted, since a
+  multi-line quoted field is legal but trips several importers.
+- **No UTF-8 BOM.** Meta reads plain UTF-8, and a BOM would turn the first
+  header into `\ufeffid` and lose every row's id. (Trade-off: opening the file
+  directly in Excel needs Data > From Text/CSV with UTF-8, or Bangla shows as
+  mojibake.)
+- CRLF line endings, per the spec.
+
+### Verified by parsing the generated file, not by eye
+
+    78 rows, 19 columns
+    all 9 required columns present (id, title, description, availability,
+      condition, price, link, image_link, brand)
+    0 rows missing a required value
+    availability: 73 in stock, 4 out of stock, 1 preorder
+    75 rows carry a sale_price, 0 rows lack an image
+
+### Feed images were on the wrong host AND in a format Meta rejects
+
+Every one of the 78 `image_link` values pointed at `pub-….r2.dev`. Not just
+legacy rows either — `R2_PUBLIC_BASE_URL` still points at that bucket, so
+every current upload is stored with it. The storefront rewrites that host to
+`cdn.amadere.com` on render (apps/web/src/lib/image-url.ts); the feed builder
+never did, and no CDN rewrite existed anywhere in the backend.
+
+The format was the worse half. Measured against the live bucket, the raw URL
+returns **`image/webp`** for every row, because the stored derivatives are
+`-full.webp`. **Meta's catalogue accepts JPEG and PNG.** So all 78 images
+would have failed, quietly, in a way that reads as "your products have no
+photos".
+
+`toFeedImageUrl` now rewrites the host and routes through Cloudflare:
+
+    width=1200,quality=85,fit=scale-down,format=jpeg
+
+- `format=jpeg` explicitly, not `auto` — `auto` keys off the requester's
+  Accept header, and a crawler sending `*​/*` is not something to bet a whole
+  catalogue on. (Caveat: a source PNG with transparency will be flattened.)
+- `fit=scale-down` never upscales, so a small original keeps its own size.
+- A host we do not control, or an already-transformed URL, is left untouched.
+- CDN host reads `MEDIA_CDN_BASE_URL`, defaulting to `cdn.amadere.com`.
+
+Applies to Google and TikTok too, since all three render from the same
+`FeedItem`.
+
+| after | |
+|---|---|
+| `image_link` on cdn.amadere.com | **78 / 78** |
+| `image_link` with `format=jpeg` | **78 / 78** |
+| additional images still on r2.dev | **0** (of 188) |
+| random sample of 6 fetched live | all `200 image/jpeg`, 24-94 KB |
+| dimensions | 600x600 from a 600px source — above Meta's 500x500 minimum |
+
+**Root cause left alone:** `R2_PUBLIC_BASE_URL` should point at
+`cdn.amadere.com` so new uploads stop being stored on the bucket host at all.
+Changing it affects every stored URL from that moment on, which is the
+owner's call, not a side effect of building a feed.
+
+## Order Manager, Customers and Recovery on mobile
+
+All three were unusable on a phone. Not "a bit cramped" — the tables are
+declared `minWidth: 1600`, `3400` and `1200`, each with a sticky first column
+that eats a third of a 375px screen, so every figure worth reading sat off the
+right edge. Horizontal scrolling is technically responsive and practically
+useless.
+
+### Cards below `md`, table untouched above it
+
+New `components/MobileRecordCard.tsx`: title, subtitle, a status badge, a
+two-column grid of label/value pairs, and an actions row. Empty values are
+dropped rather than rendered as blank rows, so short records stay short.
+
+It is a `div` with a click handler, not a `<button>` — these rows carry
+`<select>`s and `<a>`s, and a button may not legally contain either. The
+actions row stops propagation so a tap on "Create order" does not also open
+the card.
+
+| screen | card shows | tap |
+|---|---|---|
+| Order Manager | order no., customer, status pill, total, date, items, origin, payment, district, courier, assignee, tap-to-call | opens the same detail modal |
+| Customers | name, email, tier, orders, RFM, last order, CRM status, top product, assignee, tap-to-call | opens the customer modal |
+| Recovery | name, email, stage, cart value, items, last seen, source/campaign, attempts, reason, tap-to-call, Create order | — |
+
+The desktop table is wrapped in `hidden md:block` and otherwise unchanged:
+column drag-reorder, sticky headers and the 62vh scroll box all still work.
+
+### The tables were not the only thing overflowing
+
+With the cards in, all three pages STILL scrolled sideways — 133px on Order
+Manager, 90px on Customers. Measured by walking the DOM for any element wider
+than the viewport, the culprit was the same on every page: the header action
+row (`flex items-center gap-2.5`) holding four or five ~90px buttons with no
+`flex-wrap`. Added it.
+
+### Verified at 375px and back at 1440px
+
+| page | sideways scroll @375 | cards | elements wider than viewport |
+|---|---|---|---|
+| Order Manager | **0** | 20 | none |
+| Customers | **0** | 6 | none |
+| Recovery | **0** | 1 | none |
+
+At 1440px the Order Manager table is back at 3124px wide across 22 columns
+with the cards hidden — no desktop regression.

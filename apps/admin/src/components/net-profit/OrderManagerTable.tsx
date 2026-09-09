@@ -18,7 +18,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { ORDER_SOURCES, canonicalFacebookSource } from "@amader/shared";
-import { Button } from "@amader/admin-ui";
+import { Button, Icon } from "@amader/admin-ui";
+import { MobileRecordCard } from "@/components/MobileRecordCard";
 import { useAssignOrder, useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useCan } from "@/hooks/useAdminAuth";
 import type { AssignableStaff } from "@/hooks/useCustomers";
@@ -605,6 +606,63 @@ export function OrderManagerTable({
           had to scroll the whole page down before they could even reach it.
           Capping the height here keeps both scrollbars inside one
           always-visible box, sticky header included. */}
+      {/* Phones get cards instead. The table below is declared minWidth 1600 —
+          on a 390px screen that is not a table you scroll, it is one you
+          cannot read, since the pinned first column eats a third of the width
+          and every figure worth seeing is off to the right. */}
+      <div className="flex flex-col gap-2.5 p-2.5 md:hidden">
+        {isLoading && <p className="p-4 text-center text-sm text-muted">Loading…</p>}
+        {!isLoading && orders.length === 0 && (
+          <p className="p-4 text-center text-sm text-muted">No orders match these filters.</p>
+        )}
+        {orders.map((o) => {
+          const cfg = statusByKey.get(o.status);
+          return (
+            <MobileRecordCard
+              key={o.id}
+              onClick={() => onView(o)}
+              title={o.orderNumber}
+              subtitle={o.recipientName ?? "—"}
+              badge={
+                <span
+                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white"
+                  style={{ background: cfg?.color ?? "#9ca3af" }}
+                >
+                  {cfg?.labelEn ?? o.status}
+                </span>
+              }
+              fields={[
+                { label: "Total", value: `৳${Number(o.totalAmount).toLocaleString()}` },
+                {
+                  label: "Date",
+                  value: new Date(o.createdAt).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                  }),
+                },
+                { label: "Items", value: o.items.length },
+                { label: "Origin", value: ORDER_CHANNEL_LABELS[o.origin as OrderChannel] ?? o.origin },
+                { label: "Payment", value: o.paymentProvider ?? "—" },
+                { label: "District", value: o.district ?? "—" },
+                { label: "Courier", value: o.courierStatus ?? "" },
+                { label: "Assigned", value: o.assignedAdminName ?? "" },
+              ]}
+              actions={
+                o.shippingPhone ? (
+                  <a
+                    href={`tel:${o.shippingPhone}`}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border px-3 text-xs font-semibold text-text"
+                  >
+                    <Icon name="call" size={14} /> {o.shippingPhone}
+                  </a>
+                ) : null
+              }
+            />
+          );
+        })}
+      </div>
+
+      <div className="hidden md:block">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -694,6 +752,7 @@ export function OrderManagerTable({
         </table>
       </div>
       </DndContext>
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3.5 border-t p-[13px_18px]" style={{ borderColor: LINE }}>
         <div className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>

@@ -98,6 +98,10 @@ import { PushModule } from './modules/push/push.module';
         R2_SECRET_ACCESS_KEY: Joi.string().optional(),
         R2_BUCKET: Joi.string().optional(),
         R2_PUBLIC_BASE_URL: Joi.string().optional(),
+        // Host that serves /cdn-cgi/image/ — must be on our Cloudflare
+        // zone, unlike the R2 bucket's own domain. Optional: the catalog
+        // feeds fall back to cdn.amadere.com.
+        MEDIA_CDN_BASE_URL: Joi.string().optional(),
         // Optional: Steadfast credentials arrive later — app must boot
         // without them, only a dispatch attempt needs these.
         STEADFAST_API_KEY: Joi.string().optional(),

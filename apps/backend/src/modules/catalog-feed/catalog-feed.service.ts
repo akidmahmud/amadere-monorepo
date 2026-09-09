@@ -11,6 +11,48 @@ const MAX_TITLE = 150;
 /** Meta accepts up to 20 additional images; more is wasted payload. */
 const MAX_EXTRA_IMAGES = 10;
 
+/**
+ * Media URLs are STORED on the R2 dev host — `R2_PUBLIC_BASE_URL` still points
+ * at `pub-….r2.dev`, so this is true of current uploads, not just legacy
+ * rows. The storefront rewrites that host to the CDN on every render
+ * (apps/web/src/lib/image-url.ts); the feeds never did, so Meta, Google and
+ * TikTok were being handed the raw bucket URL.
+ *
+ * Two separate problems with that, both fatal for a catalogue:
+ *
+ *  1. FORMAT. The stored derivatives are `.webp`, and the bucket serves them
+ *     as `image/webp`. Meta's catalogue accepts JPEG and PNG — measured, the
+ *     raw URL returns `image/webp` for every one of the 78 rows. `format=jpeg`
+ *     is explicit rather than `auto` because `auto` keys off the requester's
+ *     Accept header, and a crawler that sends `*​/*` is not something to bet
+ *     the whole catalogue on.
+ *
+ *  2. HOST. Cloudflare documents r2.dev as rate-limited and unsuitable for
+ *     production traffic, and a platform crawling 78 products re-fetches
+ *     these constantly.
+ *
+ * `fit=scale-down` never upscales, so a small original stays its own size
+ * rather than being blown up; 1200 is comfortably past Meta's 500x500
+ * minimum for anything shot larger.
+ */
+const R2_DEV_HOST = /^https:\/\/[a-z0-9-]+\.r2\.dev/i;
+const FEED_IMAGE_PARAMS = 'width=1200,quality=85,fit=scale-down,format=jpeg';
+
+export function toFeedImageUrl(url: string, cdnBase: string): string {
+  const base = cdnBase.replace(/\/$/, '');
+  const onCdn = url.replace(R2_DEV_HOST, base);
+  // A host we do not control (or a relative path) is left exactly as it is —
+  // /cdn-cgi/image/ only exists on our own Cloudflare zone.
+  if (!onCdn.startsWith(`${base}/`)) return url;
+  // Already transformed; wrapping it again would 404.
+  if (onCdn.includes('/cdn-cgi/image/')) return onCdn;
+  // Several existing keys contain percent-encoded characters from their
+  // original filenames, so the path is passed through untouched except for a
+  // literal space, which is never valid in a URL.
+  const path = onCdn.slice(base.length).replace(/ /g, '%20');
+  return `${base}/cdn-cgi/image/${FEED_IMAGE_PARAMS}${path}`;
+}
+
 @Injectable()
 export class CatalogFeedService {
   private readonly logger = new Logger(CatalogFeedService.name);
@@ -60,6 +102,14 @@ export class CatalogFeedService {
   }
 
   /** Public storefront origin — also the Google feed's <link>. */
+  /** Where /cdn-cgi/image/ lives. Must be a host on our Cloudflare zone —
+   *  the R2 bucket's own domain is not one, which is the whole point. */
+  private get cdnBase(): string {
+    return (
+      this.config.get<string>('MEDIA_CDN_BASE_URL') ?? 'https://cdn.amadere.com'
+    ).replace(/\/$/, '');
+  }
+
   get shopUrl(): string {
     return this.baseUrl();
   }
@@ -144,7 +194,8 @@ export class CatalogFeedService {
 
       const images = p.media
         .map((m) => m.media.fullUrl ?? m.media.url)
-        .filter((u): u is string => !!u);
+        .filter((u): u is string => !!u)
+        .map((u) => toFeedImageUrl(u, this.cdnBase));
       if (images.length === 0) noImage.push(p.id);
 
       const description = (t?.description ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();

@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import { CatalogFeedService } from './catalog-feed.service';
 import {
   toGoogleXml,
+  toMetaCsv,
   toMetaJson,
   toTiktokTsv,
 } from './catalog-feed.formatters';
@@ -37,6 +38,25 @@ export class CatalogFeedPublicController {
       .type('application/json')
       .set('Cache-Control', CACHE_CONTROL)
       .send(toMetaJson(items));
+  }
+
+  /**
+   * The same catalogue as `meta` above, as CSV.
+   *
+   * Commerce Manager's scheduled "Use a URL or Google Sheets" feed accepts
+   * only CSV, TSV, XML (RSS/ATOM) and XLSX — the JSON one cannot be pasted
+   * into that box. `.csv` is in the path, not just the content type, because
+   * some fetchers sniff the extension.
+   */
+  @Get('meta.csv')
+  @ApiExcludeEndpoint()
+  async metaCsv(@Res() res: Response): Promise<void> {
+    const { items } = await this.feed.get();
+    res
+      .type('text/csv')
+      .set('Cache-Control', CACHE_CONTROL)
+      .set('Content-Disposition', 'inline; filename="amadere-meta-catalog.csv"')
+      .send(toMetaCsv(items));
   }
 
   @Get('google')

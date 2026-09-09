@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { isValidBdPhone } from "@amader/shared";
+import { Icon } from "@amader/admin-ui";
+import { MobileRecordCard } from "@/components/MobileRecordCard";
 import { useCan } from "@/hooks/useAdminAuth";
 import {
   useUpdateCustomer,
@@ -171,7 +173,55 @@ export function CustomersTable({
 
   return (
     <div className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
-      <div className="overflow-x-auto">
+      {/* Cards on phones. The table is minWidth 3400 — thirty-odd columns of
+          CRM detail that a desktop reads well and a phone cannot reach at
+          all. These carry the fields that decide the next action; the rest
+          are one tap away in the detail modal. */}
+      <div className="flex flex-col gap-2.5 p-2.5 md:hidden">
+        {customers.length === 0 && (
+          <p className="p-4 text-center text-sm text-muted">No customers match these filters.</p>
+        )}
+        {customers.map((c) => (
+          <MobileRecordCard
+            key={c.id}
+            onClick={() => onView(c.id)}
+            title={c.name || "Unnamed"}
+            subtitle={c.email ?? undefined}
+            badge={
+              c.tier ? (
+                <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-extrabold text-text">
+                  {c.tier}
+                </span>
+              ) : undefined
+            }
+            fields={[
+              { label: "Orders", value: c.completedOrderCount ?? 0 },
+              { label: "RFM", value: c.rfmScore ?? "" },
+              {
+                label: "Last order",
+                value: c.lastOrderDate
+                  ? new Date(c.lastOrderDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+                  : "Never",
+              },
+              { label: "Status", value: c.crmStatus ?? "" },
+              { label: "Top product", value: c.topProduct ?? "" },
+              { label: "Assigned", value: c.assignedAdminName ?? "" },
+            ]}
+            actions={
+              c.phone ? (
+                <a
+                  href={`tel:${c.phone}`}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border px-3 text-xs font-semibold text-text"
+                >
+                  <Icon name="call" size={14} /> {c.phone}
+                </a>
+              ) : null
+            }
+          />
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="border-separate border-spacing-0" style={{ minWidth: 3400, width: "100%" }}>
           <thead>
             <tr>

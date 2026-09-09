@@ -36,6 +36,83 @@ function tsv(s: string): string {
   return s.replace(/[\t\r\n]+/g, ' ').trim();
 }
 
+/**
+ * CSV cell escaping, per RFC 4180.
+ *
+ * A field containing a comma, a quote or a newline must be wrapped in quotes
+ * and its own quotes doubled. Product descriptions here contain all three,
+ * and an unquoted comma silently shifts every later column of that row —
+ * Meta reads that as a malformed record, not as an error worth naming.
+ * Newlines are collapsed rather than quoted: a multi-line quoted field is
+ * legal CSV but trips several spreadsheet importers, and nothing is lost.
+ */
+function csv(value: string | number | undefined): string {
+  const s = String(value ?? '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+  return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * Meta Commerce Manager — CSV.
+ *
+ * The JSON feed above is the right shape for Meta's API, but Commerce
+ * Manager's "Use a URL or Google Sheets" scheduled feed accepts only CSV,
+ * TSV, XML (RSS/ATOM) and XLSX. Pasting the JSON URL into that box fails.
+ * Same rows, same ids, different container.
+ *
+ * No UTF-8 BOM: Meta reads plain UTF-8, and a BOM would turn the first
+ * header into "﻿id" and lose every row's id.
+ */
+export function toMetaCsv(items: FeedItem[]): string {
+  const columns = [
+    'id',
+    'title',
+    'description',
+    'availability',
+    'condition',
+    'price',
+    'sale_price',
+    'link',
+    'image_link',
+    'additional_image_link',
+    'brand',
+    'google_product_category',
+    'product_type',
+    'item_group_id',
+    'custom_label_0',
+    'custom_label_1',
+    'custom_label_2',
+    'custom_label_3',
+    'custom_label_4',
+  ];
+  const rows = items.map((i) =>
+    [
+      csv(i.id),
+      csv(i.title),
+      csv(i.description),
+      csv(i.availability),
+      csv(i.condition),
+      csv(money(i.price)),
+      csv(i.salePrice ? money(i.salePrice) : ''),
+      csv(i.link),
+      csv(i.imageLink ?? ''),
+      csv(i.additionalImageLinks.join(',')),
+      csv(i.brand),
+      csv(i.googleProductCategory ?? ''),
+      csv(i.productType ?? ''),
+      csv(i.itemGroupId),
+      csv(i.customLabels[0]),
+      csv(i.customLabels[1]),
+      csv(i.customLabels[2]),
+      csv(i.customLabels[3]),
+      csv(i.customLabels[4]),
+    ].join(','),
+  );
+  // CRLF is what RFC 4180 specifies and what Excel expects.
+  return [columns.join(','), ...rows].join('\r\n');
+}
+
 /** Meta Commerce Manager — JSON. */
 export function toMetaJson(items: FeedItem[]): string {
   return JSON.stringify(

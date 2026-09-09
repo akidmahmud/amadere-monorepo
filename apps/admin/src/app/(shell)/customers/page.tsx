@@ -144,7 +144,9 @@ export default function CustomersPage() {
             Dashboard <span style={{ color: "#94a69a" }}>›</span> <span style={{ color: GREEN }}>Customers</span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        {/* flex-wrap: the header actions overflow a 375px screen and were
+            the only thing still scrolling the page sideways. */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <HeaderButton onClick={() => setSection(section === "deleted" ? "customers" : "deleted")}>
             {section === "deleted" ? "Back to Customers" : "Deleted Customers"}
           </HeaderButton>

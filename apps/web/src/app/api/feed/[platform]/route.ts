@@ -14,6 +14,9 @@ import { NextResponse } from "next/server";
 
 const UPSTREAM: Record<string, { path: string; contentType: string }> = {
   meta: { path: "meta", contentType: "application/json; charset=utf-8" },
+  // Commerce Manager's scheduled URL feed takes CSV/TSV/XML/XLSX, never
+  // JSON — so the CSV is what actually goes in that box.
+  "meta.csv": { path: "meta.csv", contentType: "text/csv; charset=utf-8" },
   google: { path: "google", contentType: "application/xml; charset=utf-8" },
   tiktok: { path: "tiktok", contentType: "text/tab-separated-values; charset=utf-8" },
 };
