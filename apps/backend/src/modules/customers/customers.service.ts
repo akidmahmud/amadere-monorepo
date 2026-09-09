@@ -77,7 +77,7 @@ function csvCell(value: unknown): string {
   return `"${String(value).replace(/"/g, '""')}"`;
 }
 
-const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, lifetimeSpend: 0 };
+const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, division: null, district: null, area: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, lifetimeSpend: 0 };
 
 @Injectable()
 export class CustomersService {
@@ -523,6 +523,9 @@ export class CustomersService {
           ? address.addressLine?.trim() ||
             (address.area ? `${address.area}, ${address.district}` : null)
           : null,
+        division: address?.division || null,
+        district: address?.district || null,
+        area: address?.area || null,
         lastOrderDate: agg?._max.createdAt ?? null,
         lastOrderStatus: latestOrderByCustomer.get(id)?.status ?? null,
         lifetimeSpend: agg?._sum.totalAmount ? Number(agg._sum.totalAmount) : 0,
@@ -740,7 +743,15 @@ export class CustomersService {
     // blank on first-creation from this quick-edit path since the table cell
     // only collects a single address line; the customer's own profile page
     // (or storefront account) can fill those in with the full picker.
-    if (dto.addressLine !== undefined) {
+    // Any part of the address, not just the street line — district and thana
+    // are edited from the same table and each must be able to change on its
+    // own, so this fires if ANY of the four was sent.
+    if (
+      dto.addressLine !== undefined ||
+      dto.division !== undefined ||
+      dto.district !== undefined ||
+      dto.area !== undefined
+    ) {
       const address = await this.prisma.client.customerAddress.findFirst({
         where: { customerId: id },
         orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
@@ -748,13 +759,33 @@ export class CustomersService {
       if (address) {
         await this.prisma.client.customerAddress.update({
           where: { id: address.id },
-          data: { addressLine: dto.addressLine },
+          // Each field is written only when it was actually sent. Spreading
+          // `dto` wholesale would blank the other three every time one of
+          // them was edited.
+          data: {
+            ...(dto.addressLine !== undefined ? { addressLine: dto.addressLine } : {}),
+            ...(dto.division !== undefined ? { division: dto.division } : {}),
+            ...(dto.district !== undefined ? { district: dto.district } : {}),
+            ...(dto.area !== undefined ? { area: dto.area || null } : {}),
+          },
         });
       } else {
         const recipientName = `${dto.firstName ?? existing.firstName ?? ''} ${dto.lastName ?? existing.lastName ?? ''}`.trim() || 'Customer';
         const phone = dto.phone ?? existing.phone ?? '';
         await this.prisma.client.customerAddress.create({
-          data: { customerId: id, recipientName, phone, division: '', district: '', addressLine: dto.addressLine, isDefault: true },
+          data: {
+            customerId: id,
+            recipientName,
+            phone,
+            // Still defaulted to '' when not supplied — both are NOT NULL —
+            // but a district typed in the table now actually lands here
+            // instead of being thrown away.
+            division: dto.division ?? '',
+            district: dto.district ?? '',
+            area: dto.area || null,
+            addressLine: dto.addressLine ?? '',
+            isDefault: true,
+          },
         });
       }
     }

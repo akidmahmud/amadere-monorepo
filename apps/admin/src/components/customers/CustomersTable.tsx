@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { isValidBdPhone } from "@amader/shared";
+import {
+  BD_ALL_DISTRICTS,
+  BD_DISTRICTS_BY_DIVISION,
+  BD_THANAS_BY_DISTRICT,
+  isValidBdPhone,
+} from "@amader/shared";
 import { Icon } from "@amader/admin-ui";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
 import { useCan } from "@/hooks/useAdminAuth";
@@ -136,6 +141,16 @@ const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1
   </th>
 );
 
+/** Which division a district belongs to. CustomerAddress.division is NOT
+ *  NULL and the table has no column for it, so it is derived from the chosen
+ *  district rather than left as the empty string the create path used to
+ *  write. */
+function divisionOfDistrict(district: string): string | undefined {
+  return Object.keys(BD_DISTRICTS_BY_DIVISION).find((div) =>
+    BD_DISTRICTS_BY_DIVISION[div].includes(district),
+  );
+}
+
 export function CustomersTable({
   customers,
   total,
@@ -241,6 +256,8 @@ export function CustomersTable({
               <TH>Actions</TH>
               <TH>B-Day</TH>
               <TH style={{ minWidth: 220 }}>Address</TH>
+              <TH style={{ minWidth: 150 }}>District</TH>
+              <TH style={{ minWidth: 150 }}>Thana</TH>
               <TH>Phone</TH>
               <TH style={{ minWidth: 190 }}>Email</TH>
               <TH>Order Count</TH>
@@ -384,6 +401,8 @@ function CustomerRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
   const [address, setAddress] = useState(c.address ?? "");
+  const [district, setDistrict] = useState(c.district ?? "");
+  const [area, setArea] = useState(c.area ?? "");
   const [phone, setPhone] = useState(c.phone ?? "");
   const [phoneError, setPhoneError] = useState(false);
   const [email, setEmail] = useState(c.email ?? "");
@@ -525,6 +544,62 @@ function CustomerRow({
           />
         ) : (
           <ReadOnlyText value={address} placeholder="Add address..." width={220} />
+        )}
+      </td>
+      {/* District drives the Thana list, so changing it clears a thana that
+          no longer belongs to the new district — otherwise a row could read
+          "Adabor, Chattogram", which is not a real place. Division is set
+          alongside so the stored address stays internally consistent even
+          though it has no column of its own here. */}
+      <td className={td} style={tdStyle}>
+        {editing ? (
+          <select
+            value={district}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDistrict(next);
+              setArea("");
+              update.mutate({
+                district: next,
+                area: "",
+                division: divisionOfDistrict(next) ?? "",
+              });
+            }}
+            className={cellSelectStyle}
+            style={{ ...cellSelectStyleObj, width: 150 }}
+          >
+            <option value="">Select district…</option>
+            {BD_ALL_DISTRICTS.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <ReadOnlyText value={district} placeholder="Add district..." width={150} />
+        )}
+      </td>
+      <td className={td} style={tdStyle}>
+        {editing ? (
+          <select
+            value={area}
+            disabled={!district}
+            onChange={(e) => {
+              setArea(e.target.value);
+              update.mutate({ area: e.target.value });
+            }}
+            className={cellSelectStyle}
+            style={{ ...cellSelectStyleObj, width: 150 }}
+          >
+            <option value="">{district ? "Select thana…" : "Pick a district first"}</option>
+            {(BD_THANAS_BY_DISTRICT[district] ?? []).map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <ReadOnlyText value={area} placeholder="Add thana..." width={150} />
         )}
       </td>
       <td className={td} style={tdStyle}>

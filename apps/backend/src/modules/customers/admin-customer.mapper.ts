@@ -50,6 +50,11 @@ export type CustomerWithDetail = Prisma.CustomerGetPayload<{
  * over the current page's customer IDs, not fetched per-row. */
 export interface AdminCustomerListExtras {
   address: string | null;
+  /** The other parts of the same default CustomerAddress row, so the list can
+   *  edit district/thana instead of only the street line. */
+  division: string | null;
+  district: string | null;
+  area: string | null;
   lastOrderDate: Date | null;
   /** Status of the most recent order — "where is their order right now",
    *  which is a different question from crmStatus ("where is the customer"). */
@@ -71,6 +76,12 @@ export class AdminCustomerListItemDto {
   isFavorite!: boolean;
   dob!: Date | null;
   address!: string | null;
+  /** Bangladesh division of the default address. */
+  division!: string | null;
+  /** District of the default address — editable from the Customers table. */
+  district!: string | null;
+  /** Thana / upazila of the default address. */
+  area!: string | null;
   topProduct!: string | null;
   assignedAdminId!: number | null;
   assignedAdminName!: string | null;
@@ -116,6 +127,9 @@ export function toAdminCustomerListItemDto(c: CustomerWithTier, extras: AdminCus
     isFavorite: c.isFavorite,
     dob: c.dob,
     address: extras.address,
+    division: extras.division,
+    district: extras.district,
+    area: extras.area,
     topProduct: extras.topProduct,
     assignedAdminId: c.assignedAdminId,
     assignedAdminName: c.assignedAdmin ? `${c.assignedAdmin.firstName} ${c.assignedAdmin.lastName}`.trim() : null,

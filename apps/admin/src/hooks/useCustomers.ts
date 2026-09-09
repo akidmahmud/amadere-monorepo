@@ -36,6 +36,12 @@ export interface UpdateCustomerInput {
   phone?: string;
   email?: string;
   addressLine?: string;
+  // The rest of the default CustomerAddress row. Hand-written rather than
+  // derived from schema.d.ts like the response types, so it has to be kept in
+  // step with UpdateCustomerDto by hand.
+  division?: string;
+  district?: string;
+  area?: string;
   dob?: string | null;
   isFavorite?: boolean;
   assignedAdminId?: number | null;

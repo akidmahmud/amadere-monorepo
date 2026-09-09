@@ -38,6 +38,26 @@ export class UpdateCustomerDto {
   @IsString()
   addressLine?: string;
 
+  // The rest of the same default CustomerAddress row. Previously only the
+  // street line could be edited from the admin, and the create branch below
+  // wrote division/district as empty strings — so a customer added from the
+  // Customers table had no usable location at all until someone opened the
+  // storefront account and filled it in.
+  @ApiPropertyOptional({ description: 'Bangladesh division, e.g. "Dhaka"' })
+  @IsOptional()
+  @IsString()
+  division?: string;
+
+  @ApiPropertyOptional({ description: 'District, e.g. "Dhaka"' })
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional({ description: 'Thana / upazila, e.g. "Adabor"' })
+  @IsOptional()
+  @IsString()
+  area?: string;
+
   @ApiPropertyOptional({ description: 'Birthday, ISO date, or null to clear' })
   @IsOptional()
   @IsDateString()

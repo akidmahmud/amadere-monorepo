@@ -2820,3 +2820,41 @@ read back straight off its own column in `toAdminCustomerListItemDto`.
 `name` deserved a second look because it is derived, but it is consistent:
 the mapper joins `firstName + lastName` and the editor splits on the first
 space and writes exactly those two. **`address` was the only mismatch.**
+
+## District and Thana are now editable on a customer
+
+The Customers table only let you edit the street line. `CustomerAddress` also
+has `division`, `district` and `area` (thana), and none were reachable from
+the admin — worse, the create branch of the quick-edit wrote
+`division: '', district: ''`, so a customer added from this table had no
+usable location at all until someone opened their storefront account.
+
+### Added
+
+- `UpdateCustomerDto` gains `division`, `district`, `area`.
+- `adminUpdate` fires the address upsert when **any** of the four address
+  fields is sent, not only `addressLine`, and writes each one only if it was
+  actually sent — spreading the dto wholesale would blank the other three
+  every time one of them changed.
+- The list DTO exposes `division`, `district`, `area` alongside `address`.
+- Two new columns, **District** and **Thana**, as cascading selects driven by
+  the `BD_DISTRICTS_BY_DIVISION` / `BD_THANAS_BY_DISTRICT` data already in
+  `@amader/shared`.
+
+Choosing a district clears the thana, because a thana from the old district
+is not a real place in the new one — a row could otherwise read "Adabor,
+Chattogram". `division` has no column of its own and is derived from the
+chosen district, so the stored row stays internally consistent instead of
+keeping the empty string the create path used to write.
+
+### Verified against the running API
+
+| step | result |
+|---|---|
+| PATCH `district: Chattogram, area: Pachlaish, division: Chattogram` | list returns all three |
+| PATCH `addressLine` **only** | district/area/division untouched — `Flat 3B` with `Pachlaish` intact |
+| restored | `Dhaka / Dhaka / Mirpur / Test Road` |
+
+`UpdateCustomerInput` in the admin is hand-written rather than generated, so
+it needed the three fields adding by hand — noted in a comment there, since
+the response types come from schema.d.ts and this one does not.

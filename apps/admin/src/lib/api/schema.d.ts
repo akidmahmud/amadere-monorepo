@@ -9696,6 +9696,9 @@ export interface components {
             /** Format: date-time */
             dob: string | null;
             address: string | null;
+            division: string | null;
+            district: string | null;
+            area: string | null;
             topProduct: string | null;
             assignedAdminId: number | null;
             assignedAdminName: string | null;
@@ -9742,6 +9745,12 @@ export interface components {
             /** Format: email */
             email?: string;
             addressLine?: string;
+            /** @description Bangladesh division, e.g. "Dhaka" */
+            division?: string;
+            /** @description District, e.g. "Dhaka" */
+            district?: string;
+            /** @description Thana / upazila, e.g. "Adabor" */
+            area?: string;
             /** @description Birthday, ISO date, or null to clear */
             dob?: string | null;
             isFavorite?: boolean;
