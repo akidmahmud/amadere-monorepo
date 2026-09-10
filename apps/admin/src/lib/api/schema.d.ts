@@ -9391,6 +9391,8 @@ export interface components {
              * @enum {string}
              */
             channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+            /** @description Shipping address's recipient name */
+            recipientName?: string;
             /** @description Shipping address's phone */
             phone?: string;
             /** @description Shipping address's address line */

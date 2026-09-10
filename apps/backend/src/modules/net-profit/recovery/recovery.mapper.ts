@@ -1,4 +1,5 @@
 import { IncompleteOrder } from '@amader/db';
+import { FraudCheckDto } from '../fraud/fraud.mapper';
 
 const TRASH_RETENTION_DAYS = 30;
 
@@ -36,9 +37,27 @@ export class IncompleteOrderDto {
   utmCampaign!: string | null;
   lastSeenAt!: Date;
   createdAt!: Date;
+
+  /**
+   * Courier-fraud risk for this cart's phone, read from the cache ONLY.
+   *
+   * Null means nobody has ever checked that number — not that it is safe.
+   * The list deliberately never triggers a lookup: the provider is a paid
+   * per-call API, and a page of 50 carts would be 50 calls on every render.
+   * Checking is an explicit act, from the row's own Check risk button.
+   */
+  riskLevel!: string | null;
+  /** 0..1, or null when the cached check found no courier history. */
+  riskSuccessRate!: number | null;
+  /** When that cached check was made — a badge from six months ago should
+   *  not be read with the same confidence as one from this morning. */
+  riskCheckedAt!: Date | null;
 }
 
-export function toIncompleteOrderDto(row: IncompleteOrder): IncompleteOrderDto {
+export function toIncompleteOrderDto(
+  row: IncompleteOrder,
+  risk?: FraudCheckDto,
+): IncompleteOrderDto {
   return {
     id: row.id,
     customerId: row.customerId,
@@ -58,6 +77,9 @@ export function toIncompleteOrderDto(row: IncompleteOrder): IncompleteOrderDto {
     recoveryAttempts: row.recoveryAttempts,
     utmSource: row.utmSource,
     utmCampaign: row.utmCampaign,
+    riskLevel: risk?.riskLevel ?? null,
+    riskSuccessRate: risk?.successRate ?? null,
+    riskCheckedAt: risk?.checkedAt ?? null,
     lastSeenAt: row.lastSeenAt,
     createdAt: row.createdAt,
   };

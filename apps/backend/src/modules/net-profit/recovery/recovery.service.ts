@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Prisma } from '@amader/db';
-import { PaginatedResult, phoneLookupCandidates } from '@amader/shared';
+import { IncompleteOrder, Prisma } from '@amader/db';
+import { PaginatedResult, normalizeBdPhone, phoneLookupCandidates } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
@@ -23,6 +23,7 @@ import { SmtpEmailProvider } from '../cart-campaigns/providers/smtp-email.provid
 import { renderRecoveryEmail, RenderedRecoveryEmail } from './recovery-email.renderer';
 import { DownloadsService } from '../../digital-products/downloads.service';
 import { IncompleteOrderDto, toIncompleteOrderDto } from './recovery.mapper';
+import { FraudService } from '../fraud/fraud.service';
 
 const SETTINGS_NAMESPACE = 'recovery';
 
@@ -214,7 +215,26 @@ export class RecoveryService {
     private readonly whatsapp: WhatsappSettingsService,
     private readonly email: SmtpEmailProvider,
     private readonly config: ConfigService,
+    private readonly fraud: FraudService,
   ) {}
+
+  /**
+   * Attach each row's cached courier-fraud verdict.
+   *
+   * One query for the whole page, cache-only — see IncompleteOrderDto.riskLevel
+   * for why this must never trigger a live lookup.
+   */
+  private async withRisk(rows: IncompleteOrder[]): Promise<IncompleteOrderDto[]> {
+    const phones = rows.map((r) => r.phone).filter((p): p is string => !!p);
+    const byPhone = await this.fraud.latestByPhones(phones);
+    return rows.map((row) => {
+      // latestByPhones keys on the normalized (+880…) form, and the DTO it
+      // returns carries the local 01… form, so the lookup goes through the
+      // same normalizer rather than the raw column.
+      const key = row.phone ? (normalizeBdPhone(row.phone) ?? row.phone) : null;
+      return toIncompleteOrderDto(row, key ? byPhone.get(key) : undefined);
+    });
+  }
 
   /**
    * Build the abandoned-cart email for one row.
@@ -589,7 +609,7 @@ export class RecoveryService {
       this.prisma.client.incompleteOrder.findMany({ where, orderBy: { lastSeenAt: 'desc' }, ...paginationArgs(page, pageSize) }),
       this.prisma.client.incompleteOrder.count({ where }),
     ]);
-    return toPaginatedResult(items.map(toIncompleteOrderDto), total, page, pageSize);
+    return toPaginatedResult(await this.withRisk(items), total, page, pageSize);
   }
 
   // IncompleteOrder.customerId has no Prisma relation to Customer (a raw
@@ -712,7 +732,7 @@ export class RecoveryService {
       }),
       this.prisma.client.incompleteOrder.count({ where }),
     ]);
-    return toPaginatedResult(rows.map(toIncompleteOrderDto), total, page, pageSize);
+    return toPaginatedResult(await this.withRisk(rows), total, page, pageSize);
   }
 
   /** Put a deleted cart back. Its reason is kept — it is the note on why it

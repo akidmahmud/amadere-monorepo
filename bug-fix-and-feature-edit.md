@@ -3188,3 +3188,115 @@ with a `+` on the right.
 The spec fixture needed `media: []` on its item's `product` to match
 `ORDER_INCLUDE` — without it the mapper threw on 20 tests. Real rows always
 have the relation.
+
+## Order Manager: edit the shipping address where it is shown
+
+Following the "why doesn't the district change here?" question. It was working
+as designed — that panel prints the order's own `OrderAddress` snapshot, not
+the customer record, so correcting a customer never rewrites orders already
+placed. But the fields that *would* fix the order lived in a different section
+of the same modal, which is why nobody found them.
+
+### What changed
+
+A pencil in the **Shipping information** heading turns the block into a form
+over the fields it already prints: recipient name, phone, address, district,
+thana and division. Save / Cancel.
+
+- **One PATCH, not one per field.** The details grid saved on every change;
+  district, thana and division are interdependent, so that briefly made a
+  half-changed address real. This posts all six together.
+- **Picking a district clears the thana** — a thana from the old district is
+  not a real place in the new one — and fills the division from the district.
+- **Division, District and Thana were REMOVED from the details grid.** They
+  were editable there and here; two editors for one field in one modal is how
+  a stale value gets saved over a fresh one. Origin and Source stay.
+- `recipientName` is newly editable at all (`UpdateOrderDetailsDto` +
+  `orders.service.updateDetails`). It is what the courier calls out on
+  delivery, and a name taken down wrong over the phone was uncorrectable.
+  The column is NOT NULL, so a blank is ignored rather than written as `""` —
+  a parcel with no name on it is not deliverable.
+
+There was a name collision worth noting: `editingShipping` already existed in
+this file for the delivery **charge**. The new state is `editingAddress`.
+
+### Verified
+
+| check | result |
+|---|---|
+| All six fields in one PATCH | name, phone, address, district, thana, division all saved |
+| Blank recipient name | ignored — previous name kept |
+| Save from the UI | `Kaliakair, Gazipur` persisted, block returned to read-only |
+| Duplicate editors | none — grid comment marks the removal |
+| Typecheck | backend and admin clean |
+
+Unchanged and still true: editing the customer does **not** touch a placed
+order, and editing here does not tell a courier that already has the parcel.
+
+## Recovery: courier fraud check on the customer column
+
+A **Check risk** control now sits under the phone number in Recovery's customer
+column (and in the mobile card), opening the same `FraudDetailModal` the Order
+Manager already uses: risk badge, total / delivered / cancelled-returned,
+per-courier breakdown, cache expiry and a re-check button.
+
+Nothing new was built. The courier-fraud system already existed —
+`/admin/net-profit/fraud/checks/:phone`, bdcourier-backed, cached server-side
+with a TTL — it just was not reachable from the one screen where it matters
+most. A recovery list is where abandoned carts get talked into COD orders, and
+COD is exactly what a serial refuser costs money on, so the check belongs
+before the call, not after the parcel.
+
+**On demand, not per row.** One modal for the whole table, fetching only when a
+number is clicked. Rendering a live badge in every row would fire one external
+API call per row on every page load, against a paid API.
+
+Also `stopPropagation` on the button, like the click-to-call link beside it, so
+checking a number never also triggers the row's own click.
+
+### Verified
+
+Clicked through on a real row: `Courier Intelligence: 8801900000099`, source
+**LIVE**, 0 / 0 / 0 with an `Unknown` badge — correct for a number with no
+courier history. Admin typecheck clean.
+
+## Recovery: cached courier-fraud badge in the customer column
+
+Follow-on from the Check risk button. A row that has already been checked now
+shows its verdict inline — `High risk 28%` / `Medium risk 67%` / `Low risk 96%`
+/ `Unknown` — instead of a button that fetches what is already known.
+
+### Cache-only, by design
+
+`IncompleteOrderDto` gains `riskLevel`, `riskSuccessRate` and `riskCheckedAt`,
+filled from `FraudService.latestByPhones()` — **one** query for the whole page,
+reading the cache and never calling the provider. bdcourier is billed per call;
+a live badge per row would be 50 paid calls on every page load and on every
+filter change.
+
+So `riskLevel: null` means **nobody has ever checked that number** — not that
+it is safe. The badge and the button are mutually exclusive: checked rows show
+the verdict, unchecked rows show the button that goes and gets it.
+
+`riskCheckedAt` rides along in the tooltip. A verdict from six months ago
+should not be read with the same confidence as one from this morning.
+
+Worth noting: `latestByPhones` already existed, written for "the orders board's
+risk badge" — and was **dead code**, called from nowhere. It is wired up now.
+
+Two small things: `RecoveryModule` imports `FraudModule` (no cycle — FraudModule
+imports only NetProfitSettingsModule), and the phone lookup goes through
+`normalizeBdPhone` because the cache keys on `+8801…` while the cart column
+holds whatever was typed.
+
+### Verified
+
+Seeded four dev-DB carts across all four states, confirmed the API returned
+`LOW/0.9583`, `MEDIUM/0.6667`, `HIGH/0.2778` and `null`, screenshotted the
+table, then **deleted the seed rows and their cached checks** — the dev DB is
+back to its single real row.
+
+**Pre-existing, not mine:** `vat.service.spec.ts` fails 9 tests on
+`Cannot read properties of undefined (reading 'findMany')` — its Prisma mock
+has no `orderItem`. Untouched by this work; every other net-profit suite passes
+(186/186).

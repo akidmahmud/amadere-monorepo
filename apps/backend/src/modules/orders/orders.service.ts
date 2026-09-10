@@ -429,7 +429,8 @@ export class OrdersService {
         dto.district !== undefined ||
         dto.area !== undefined ||
         dto.phone !== undefined ||
-        dto.addressLine !== undefined
+        dto.addressLine !== undefined ||
+        dto.recipientName !== undefined
       ) {
         await tx.orderAddress.updateMany({
           where: { orderId, type: OrderAddressType.SHIPPING },
@@ -437,6 +438,10 @@ export class OrdersService {
           // what Prisma wants for "leave unchanged", but `area` is nullable
           // so an empty string must clear it rather than store "".
           data: {
+            // recipientName is NOT NULL, so an emptied box is rejected
+            // rather than written as "" — a parcel with no name on it is not
+            // something the courier can deliver.
+            ...(dto.recipientName?.trim() ? { recipientName: dto.recipientName.trim() } : {}),
             ...(dto.division !== undefined ? { division: dto.division } : {}),
             ...(dto.district !== undefined ? { district: dto.district } : {}),
             ...(dto.area !== undefined ? { area: dto.area || null } : {}),

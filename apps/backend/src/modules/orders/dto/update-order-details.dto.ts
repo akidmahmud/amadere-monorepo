@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderChannel } from '@amader/db';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 // The list-view fields (Origin/Phone/Address/Division/Source) that have real
@@ -11,6 +11,15 @@ export class UpdateOrderDetailsDto {
   @IsOptional()
   @IsEnum(OrderChannel)
   channel?: OrderChannel;
+
+  // The name on the parcel. Editable for the same reason the address is:
+  // it is what the courier calls out on delivery, and a typo taken down over
+  // the phone was previously uncorrectable.
+  @ApiPropertyOptional({ description: "Shipping address's recipient name" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  recipientName?: string;
 
   @ApiPropertyOptional({ description: "Shipping address's phone" })
   @IsOptional()

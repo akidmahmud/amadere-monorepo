@@ -325,6 +325,7 @@ export function useUpdateOrderDetails(id: number) {
   return useMutation({
     mutationFn: (input: {
       channel?: OrderChannel;
+      recipientName?: string;
       phone?: string;
       addressLine?: string;
       division?: string;

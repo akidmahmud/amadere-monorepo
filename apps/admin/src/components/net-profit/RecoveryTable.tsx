@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import { Button, Icon } from "@amader/admin-ui";
+import { Button, Icon, RiskBadge } from "@amader/admin-ui";
 import { canonicalFacebookSource } from "@amader/shared";
 import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
+import { FraudDetailModal } from "@/components/FraudDetailModal";
 import { EditableReasonCell } from "./EditableReasonCell";
 import { RecoveryEmailModal } from "./RecoveryEmailModal";
 
@@ -105,6 +106,10 @@ export function RecoveryTable({
 }) {
   // Which row's email preview is open. Null = closed.
   const [emailingId, setEmailingId] = React.useState<number | null>(null);
+  // The number whose courier history is open. One modal for the whole table,
+  // not one per row: the check is an on-demand call to bdcourier, so nothing
+  // is fetched until a number is actually clicked.
+  const [riskPhone, setRiskPhone] = React.useState<string | null>(null);
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 20;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -167,6 +172,15 @@ export function RecoveryTable({
                     >
                       <Icon name="call" size={14} /> {row.phone}
                     </a>
+                  )}
+                  {row.phone && (
+                    <button
+                      type="button"
+                      onClick={() => setRiskPhone(row.phone as string)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border px-3 text-xs font-semibold text-text"
+                    >
+                      <Icon name="verified_user" size={14} /> Check risk
+                    </button>
                   )}
                   {!row.recovered && (
                     <Button
@@ -296,6 +310,54 @@ export function RecoveryTable({
                             <Icon name="call" size={13} />
                             {row.phone}
                           </a>
+                        )}
+                        {row.phone && (
+                          // Courier history for this number, before anyone
+                          // spends a call chasing the cart. A recovery list is
+                          // exactly where this belongs: these carts are being
+                          // talked into COD orders, and COD is what a serial
+                          // refuser costs money on.
+                          //
+                          // Already checked -> the cached verdict, which cost
+                          // nothing to render. Never checked -> the button,
+                          // because the badge is precisely what it fetches.
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRiskPhone(row.phone as string);
+                            }}
+                            className="inline-flex w-fit items-center gap-1 text-[0.68rem] font-semibold underline"
+                            style={{ color: MUTED }}
+                            title={
+                              row.riskLevel
+                                ? `Courier history checked ${new Date(row.riskCheckedAt as string).toLocaleDateString()}${
+                                    row.riskSuccessRate !== null
+                                      ? ` — ${Math.round(row.riskSuccessRate * 100)}% delivered`
+                                      : ""
+                                  }`
+                                : `Check courier fraud history for ${row.phone}`
+                            }
+                          >
+                            {row.riskLevel ? (
+                              <>
+                                <RiskBadge
+                                  level={row.riskLevel}
+                                  className="px-1.5 py-0 text-[0.6rem]"
+                                />
+                                {row.riskSuccessRate !== null && (
+                                  <span style={{ color: FAINT }}>
+                                    {Math.round(row.riskSuccessRate * 100)}%
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Icon name="verified_user" size={12} />
+                                Check risk
+                              </>
+                            )}
+                          </button>
                         )}
                         {row.email && (
                           <span
@@ -621,6 +683,9 @@ export function RecoveryTable({
     </div>
     {emailingId !== null && (
       <RecoveryEmailModal incompleteId={emailingId} onClose={() => setEmailingId(null)} />
+    )}
+    {riskPhone && (
+      <FraudDetailModal phone={riskPhone} onClose={() => setRiskPhone(null)} />
     )}
     </>
   );

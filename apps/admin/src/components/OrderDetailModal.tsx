@@ -103,6 +103,9 @@ export interface OrderDetailModalRow {
 /** CustomerAddress/OrderAddress both keep division as its own column, and
  *  the modal has no picker for it — derive it from the district so the two
  *  cannot drift apart. */
+const editInput =
+  "h-9 w-full rounded-sm border border-border bg-surface px-2 text-sm text-text outline-none focus:border-brand-500";
+
 function divisionOfDistrict(district: string): string | undefined {
   return Object.keys(BD_DISTRICTS_BY_DIVISION).find((div) =>
     BD_DISTRICTS_BY_DIVISION[div].includes(district),
@@ -150,6 +153,21 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const [shippingDraft, setShippingDraft] = useState("");
   const [customerNoteDraft, setCustomerNoteDraft] = useState<string | null>(null);
   const [privateNoteDraft, setPrivateNoteDraft] = useState<string | null>(null);
+
+  // The Shipping information block edits as ONE form rather than saving each
+  // field on change like the details grid did: district, thana and division
+  // are interdependent, and firing a PATCH per keystroke made a half-changed
+  // address briefly real. Named for the ADDRESS — `editingShipping` above is
+  // the delivery CHARGE.
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [shipDraft, setShipDraft] = useState({
+    recipientName: "",
+    phone: "",
+    addressLine: "",
+    district: "",
+    area: "",
+    division: "",
+  });
 
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
@@ -772,7 +790,137 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
 
               {/* Shipping information */}
               <div className="mb-4 border-t border-border pt-4">
-                <h3 className="mb-2 text-base font-semibold text-text">Shipping information</h3>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="text-base font-semibold text-text">Shipping information</h3>
+                  {!editingAddress && (
+                    <button
+                      type="button"
+                      aria-label="Edit shipping address"
+                      title="Edit shipping address"
+                      onClick={() => {
+                        setShipDraft({
+                          recipientName: shippingAddress?.recipientName ?? "",
+                          phone: shippingAddress?.phone ?? "",
+                          addressLine: shippingAddress?.addressLine ?? "",
+                          district: shippingAddress?.district ?? "",
+                          area: shippingAddress?.area ?? "",
+                          division: shippingAddress?.division ?? "",
+                        });
+                        setEditingAddress(true);
+                      }}
+                      className="text-muted hover:text-text"
+                    >
+                      <Icon name="edit" size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {editingAddress ? (
+                  <div className="flex flex-col gap-2 text-sm">
+                    {/* This edits THIS ORDER's address snapshot, not the
+                        customer's saved address — the snapshot is what the
+                        courier is handed, and rewriting the customer would
+                        change every other order they have placed. */}
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">Recipient name</span>
+                      <input
+                        value={shipDraft.recipientName}
+                        onChange={(e) => setShipDraft({ ...shipDraft, recipientName: e.target.value })}
+                        className={editInput}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">Phone</span>
+                      <input
+                        value={shipDraft.phone}
+                        onChange={(e) => setShipDraft({ ...shipDraft, phone: e.target.value })}
+                        className={editInput}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">Address</span>
+                      <textarea
+                        value={shipDraft.addressLine}
+                        onChange={(e) => setShipDraft({ ...shipDraft, addressLine: e.target.value })}
+                        className={`${editInput} min-h-[60px] py-1.5`}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">District</span>
+                      <DistrictAutocomplete
+                        value={shipDraft.district}
+                        onChange={(next) =>
+                          setShipDraft({
+                            ...shipDraft,
+                            district: next,
+                            // A thana from the old district is not a real
+                            // place in the new one.
+                            area: "",
+                            division: divisionOfDistrict(next) ?? shipDraft.division,
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">Thana / area</span>
+                      <ThanaAutocomplete
+                        district={shipDraft.district}
+                        value={shipDraft.area}
+                        onChange={(next) => setShipDraft({ ...shipDraft, area: next })}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">Division</span>
+                      <select
+                        value={shipDraft.division}
+                        onChange={(e) => setShipDraft({ ...shipDraft, division: e.target.value })}
+                        className={editInput}
+                      >
+                        <option value="">—</option>
+                        {BD_DIVISIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </label>
+
+                    {updateDetails.isError && (
+                      <p className="text-xs font-semibold text-danger">
+                        {updateDetails.error instanceof Error
+                          ? updateDetails.error.message
+                          : "Couldn't save the address"}
+                      </p>
+                    )}
+
+                    <div className="mt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={updateDetails.isPending}
+                        onClick={() =>
+                          updateDetails.mutate(
+                            {
+                              recipientName: shipDraft.recipientName.trim(),
+                              phone: shipDraft.phone.trim(),
+                              addressLine: shipDraft.addressLine.trim(),
+                              district: shipDraft.district.trim(),
+                              area: shipDraft.area.trim(),
+                              division: shipDraft.division.trim(),
+                            },
+                            { onSuccess: () => setEditingAddress(false) },
+                          )
+                        }
+                        className="h-8 rounded-sm px-3 text-xs font-semibold text-white disabled:opacity-50"
+                        style={{ backgroundColor: GREEN }}
+                      >
+                        {updateDetails.isPending ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingAddress(false)}
+                        className="h-8 rounded-sm border border-border px-3 text-xs font-semibold text-muted"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                 <div className="flex flex-col gap-1 text-sm text-text">
                   <p>{shippingAddress?.recipientName}</p>
                   <div className="flex items-center gap-2">
@@ -801,6 +949,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     </a>
                   )}
                 </div>
+                )}
                 {billingAddress && billingAddress.addressLine !== shippingAddress?.addressLine && (
                   <div className="mt-3 border-t border-border pt-3">
                     <p className="mb-1 text-xs font-semibold uppercase text-muted">Billing address</p>
@@ -872,43 +1021,11 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                       {ORDER_CHANNELS.map((c) => <option key={c} value={c}>{ORDER_CHANNEL_LABELS[c] ?? c}</option>)}
                     </select>
                   </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-muted">Division</span>
-                    <select value={shippingAddress?.division ?? ""} onChange={(e) => updateDetails.mutate({ division: e.target.value })}
-                      className="h-9 rounded-sm border border-border bg-surface px-2 text-sm text-text">
-                      <option value="">—</option>
-                      {BD_DIVISIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </label>
-                  {/* District and Thana on the ORDER, not the customer.
-                      Editing the customer's saved address does nothing to an
-                      order already placed — the order keeps its own
-                      OrderAddress snapshot of where it is actually going, and
-                      that snapshot is what Steadfast is handed at consignment.
-                      District was previously uneditable here entirely. */}
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-muted">District</span>
-                    <DistrictAutocomplete
-                      value={shippingAddress?.district ?? ""}
-                      onChange={(next) =>
-                        updateDetails.mutate({
-                          district: next,
-                          // A thana from the old district is not a real place
-                          // in the new one.
-                          area: "",
-                          division: divisionOfDistrict(next) ?? shippingAddress?.division ?? "",
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-muted">Thana / area</span>
-                    <ThanaAutocomplete
-                      district={shippingAddress?.district}
-                      value={shippingAddress?.area ?? ""}
-                      onChange={(next) => updateDetails.mutate({ area: next })}
-                    />
-                  </label>
+                  {/* Division, District and Thana used to be editable here
+                      too. They now live in the Shipping information block
+                      beside the address they belong to — two editors for one
+                      field in one modal is how a stale value gets saved over
+                      a fresh one. */}
                   <label className="flex flex-col gap-1">
                     <span className="text-xs text-muted">Source</span>
                     <input

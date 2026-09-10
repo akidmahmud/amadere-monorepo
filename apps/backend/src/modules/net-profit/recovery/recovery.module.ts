@@ -7,12 +7,15 @@ import { DigitalProductsModule } from '../../digital-products/digital-products.m
 import { SettingsModule } from '../../settings/settings.module';
 import { WhatsappModule } from '../../whatsapp/whatsapp.module';
 import { EmailSettingsModule } from '../../email-settings/email-settings.module';
+import { FraudModule } from '../fraud/fraud.module';
 import { SmtpEmailProvider } from '../cart-campaigns/providers/smtp-email.provider';
 import { AdminRecoveryController } from './admin-recovery.controller';
 import { RecoveryService } from './recovery.service';
 
 @Module({
-  imports: [NetProfitSettingsModule, SmsModule, CartCampaignsModule, MergeTagsModule, DigitalProductsModule, SettingsModule, WhatsappModule, EmailSettingsModule],
+  // FraudModule for the recovery list's cached risk badge. No cycle: it
+  // imports only NetProfitSettingsModule, never this one.
+  imports: [NetProfitSettingsModule, SmsModule, CartCampaignsModule, MergeTagsModule, DigitalProductsModule, SettingsModule, WhatsappModule, EmailSettingsModule, FraudModule],
   controllers: [AdminRecoveryController],
   providers: [RecoveryService, SmtpEmailProvider],
   // CheckoutService records the checkout/OTP abandonment stages through it.

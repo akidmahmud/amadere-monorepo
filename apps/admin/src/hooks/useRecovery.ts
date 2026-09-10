@@ -56,6 +56,13 @@ export interface IncompleteOrder {
   utmCampaign: string | null;
   lastSeenAt: string;
   createdAt: string;
+  /** Cached courier-fraud verdict for `phone`. Null means never checked —
+   *  NOT that the number is safe. The list never triggers a lookup; that is
+   *  what the row's Check risk button is for. */
+  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  /** 0..1, or null when the cached check found no courier history. */
+  riskSuccessRate: number | null;
+  riskCheckedAt: string | null;
 }
 
 export interface RecoveryRate {
