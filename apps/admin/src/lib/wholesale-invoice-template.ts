@@ -46,8 +46,11 @@ function totalsRow(label: string, amount: string, currency: string): string {
   return `<tr><td style="padding:4px 0;color:#111;">${escapeHtml(label)}</td><td style="padding:4px 0;text-align:right;color:#111;">${escapeHtml(currency)} ${escapeHtml(amount)}</td></tr>`;
 }
 
-const courierLabel = (value: string) =>
-  COURIERS.find((c) => c.value === value)?.label ?? value;
+// Null on a cash sale, which is handed over rather than couriered.
+const courierLabel = (value: string | null) =>
+  value
+    ? (COURIERS.find((c) => c.value === value)?.label ?? value)
+    : "Counter sale";
 
 export function buildWholesaleInvoiceMergeTags(
   order: WholesaleOrder,

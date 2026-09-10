@@ -123,6 +123,25 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
         </div>
       )}
 
+      {/* Outside the hasVariants split on purpose: the bulk rate is a
+          product-level price, so a product that sells in three pack sizes
+          still trades on one rate. */}
+      <label className="mb-3.5 flex flex-col gap-1.5">
+        <span className="text-xs font-bold text-text">Wholesale Price (৳)</span>
+        <input
+          type="number"
+          value={form.wholesalePrice}
+          onChange={(e) => form.setWholesalePrice(e.target.value)}
+          className={inputClass}
+        />
+        <span className="text-xs text-muted">
+          What a shop pays per unit. Only the price a wholesale order line
+          starts at — staff can still change it on the order, and the rate that
+          actually billed is kept on the invoice. Leave empty to start
+          wholesale lines at the retail price.
+        </span>
+      </label>
+
       {form.hasVariants && (
         <div className="mb-3.5 flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">

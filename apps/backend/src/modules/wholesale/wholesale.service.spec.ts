@@ -84,8 +84,12 @@ describe('WholesaleService', () => {
         skuSnapshot: 'AM-JS-001',
         unitPrice: D('450.00'),
         quantity: 2,
+        discount: D('0.00'),
         lineTotal: D('900.00'),
-        product: { productType: 'PHYSICAL' },
+        // Shaped like ORDER_INCLUDE: the mapper reads the line's thumbnail
+        // off the product, and updateOrder reads productType off the same
+        // relation.
+        product: { productType: 'PHYSICAL', media: [] },
       },
     ],
     dues: [{ id: 90, docNo: 'AR-2608-0004', voidedAt: null, kind: 'RECEIVABLE' as const }],
@@ -195,6 +199,69 @@ describe('WholesaleService', () => {
   it('moves no stock for a digital line, which never had any', async () => {
     await service.createOrder(order({ items: [{ productId: 2, unitPrice: '450', quantity: 2 }] }), 1);
     expect(tx.product.update).not.toHaveBeenCalled();
+  });
+
+  // The wholesale/cash-sale split. Each of these decides something real
+  // downstream -- whether a delivery snapshot means anything, whether a
+  // payment can ever be reconciled, whether a till can be counted -- so none
+  // of them is left to the form to remember.
+  describe('the wholesale / cash sale split', () => {
+    const cash = (over = {}) =>
+      order({ type: 'CASH_SALE' as const, courier: undefined, gpNumber: 'GP-1', ...over });
+
+    it('accepts a cash sale with a GP number and no courier', async () => {
+      await service.createOrder(cash(), 1);
+      const data = tx.wholesaleOrder.create.mock.calls[0][0].data;
+      expect(data.type).toBe('CASH_SALE');
+      expect(data.courier).toBeNull();
+      expect(data.gpNumber).toBe('GP-1');
+    });
+
+    it('refuses a wholesale order with no courier', async () => {
+      await expect(
+        service.createOrder(order({ courier: undefined }), 1),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('refuses a cash sale that names a courier', async () => {
+      await expect(
+        service.createOrder(cash({ courier: 'SUNDARBAN' as const }), 1),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('refuses a cash sale with no GP number', async () => {
+      await expect(service.createOrder(cash({ gpNumber: '  ' }), 1)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('refuses a non-cash payment with no transaction id', async () => {
+      await expect(
+        service.createOrder(order({ paymentMethod: 'BKASH' as const }), 1),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('refuses a line discount bigger than the line it is taken off', async () => {
+      await expect(
+        service.createOrder(
+          order({ items: [{ productId: 1, unitPrice: '450', quantity: 2, discount: '5000' }] }),
+          1,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('derives payment status from what was collected, not from the client', async () => {
+      await service.createOrder(order({ paidAmount: '860' }), 1);
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe('PAID');
+      tx.wholesaleOrder.create.mockClear();
+      await service.createOrder(order({ paidAmount: '0' }), 1);
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe('UNPAID');
+      tx.wholesaleOrder.create.mockClear();
+      await service.createOrder(order({ paidAmount: '100' }), 1);
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe(
+        'PARTIALLY_PAID',
+      );
+    });
   });
 
   it('refuses a payment larger than the bill', async () => {

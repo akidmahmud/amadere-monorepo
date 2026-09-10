@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BD_DIVISIONS } from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
   ORDER_CHANNELS,
@@ -26,6 +26,7 @@ import {
 import { useAssignOrder, useUpdateOrderNote } from "@/hooks/useOrderManager";
 import { useAssignableStaff } from "@/hooks/useCustomers";
 import { useCan } from "@/hooks/useAdminAuth";
+import { DistrictAutocomplete, ThanaAutocomplete } from "@/components/DistrictThanaFields";
 import { useAdvancePayment, useManualPaymentsForOrder } from "@/hooks/usePayments";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import { useProductSearch } from "@/hooks/useProducts";
@@ -97,6 +98,15 @@ export interface OrderDetailModalRow {
   orderNumber: string;
   shipmentId: number | null;
   shippingPhone: string | null;
+}
+
+/** CustomerAddress/OrderAddress both keep division as its own column, and
+ *  the modal has no picker for it — derive it from the district so the two
+ *  cannot drift apart. */
+function divisionOfDistrict(district: string): string | undefined {
+  return Object.keys(BD_DISTRICTS_BY_DIVISION).find((div) =>
+    BD_DISTRICTS_BY_DIVISION[div].includes(district),
+  );
 }
 
 export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; onClose: () => void }) {
@@ -869,6 +879,35 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                       <option value="">—</option>
                       {BD_DIVISIONS.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
+                  </label>
+                  {/* District and Thana on the ORDER, not the customer.
+                      Editing the customer's saved address does nothing to an
+                      order already placed — the order keeps its own
+                      OrderAddress snapshot of where it is actually going, and
+                      that snapshot is what Steadfast is handed at consignment.
+                      District was previously uneditable here entirely. */}
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">District</span>
+                    <DistrictAutocomplete
+                      value={shippingAddress?.district ?? ""}
+                      onChange={(next) =>
+                        updateDetails.mutate({
+                          district: next,
+                          // A thana from the old district is not a real place
+                          // in the new one.
+                          area: "",
+                          division: divisionOfDistrict(next) ?? shippingAddress?.division ?? "",
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">Thana / area</span>
+                    <ThanaAutocomplete
+                      district={shippingAddress?.district}
+                      value={shippingAddress?.area ?? ""}
+                      onChange={(next) => updateDetails.mutate({ area: next })}
+                    />
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs text-muted">Source</span>

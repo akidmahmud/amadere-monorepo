@@ -889,6 +889,11 @@ model Product {
   stockStatus    StockStatus    @default(IN_STOCK) @map("stock_status")
   price          Decimal?       @db.Decimal(10, 2)
   salePrice      Decimal?       @map("sale_price") @db.Decimal(10, 2)
+  /// What a shop pays per unit for a simple product, mirroring `price` above.
+  /// Only ever the default a wholesale order line starts at -- the rate that
+  /// actually billed is snapshotted on WholesaleOrderItem.unitPrice, so
+  /// changing this never rewrites a past invoice.
+  wholesalePrice Decimal?       @map("wholesale_price") @db.Decimal(10, 2)
   saleStartsAt   DateTime?      @map("sale_starts_at")
   saleEndsAt     DateTime?      @map("sale_ends_at")
   costPerItem    Decimal?       @map("cost_per_item") @db.Decimal(10, 2)
@@ -1071,6 +1076,12 @@ model ProductVariant {
   barcode        String?
   price          Decimal     @db.Decimal(10, 2)
   salePrice      Decimal?    @map("sale_price") @db.Decimal(10, 2)
+  /// What a shop pays per unit, not what a customer does. Only ever the
+  /// default a wholesale order line starts at -- the rate actually billed is
+  /// snapshotted on WholesaleOrderItem.unitPrice, so changing this never
+  /// rewrites a past invoice. Null means no bulk rate is set and the order
+  /// form falls back to the retail price.
+  wholesalePrice Decimal?    @map("wholesale_price") @db.Decimal(10, 2)
   costPerItem    Decimal?    @map("cost_per_item") @db.Decimal(10, 2) // per-variation buy price (Profit parity) — falls back to Product.costPerItem when unset
   stock          Int         @default(0)
   reservedStock  Int         @default(0) @map("reserved_stock")
@@ -3290,6 +3301,13 @@ model Party {
   phone             String?
   email             String?
   address           String?
+  // The rest of the address, so picking a wholesale buyer can fill the
+  // delivery card in one go. `address` above stays the street line.
+  alternativePhone  String?              @map("alternative_phone")
+  district          String?
+  thana             String?
+  landmark          String?
+  postCode          String?              @map("post_code")
   bin               String? // VAT registration -- required to claim input VAT
   tin               String?
   customerId        Int?                 @map("customer_id")
@@ -3502,6 +3520,49 @@ enum WholesaleOrderStatus {
   CANCELLED
 }
 
+/// Wholesale ships to a shop; a cash sale is handed over on the spot. They
+/// share one table because they share everything that matters downstream --
+/// the same items, the same receivable, the same accounts ledger posting --
+/// and differ only in which price list is used and whether there is a
+/// delivery leg at all.
+enum WholesaleOrderType {
+  WHOLESALE
+  CASH_SALE
+}
+
+/// Where the order came in from. Free-standing from OrderChannel (retail):
+/// that enum carries WEBSITE, which a counter sale can never be, and is
+/// validated against retail-only rules.
+enum WholesaleOrderChannel {
+  WHATSAPP
+  TELEMARKETING
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  MESSENGER
+  MARKETPLACE
+  PHONE
+  IN_STORE_POS
+  OTHER
+}
+
+enum WholesalePaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  ROCKET
+  UPAY
+  BANK
+}
+
+/// Derived from payments in the ledger, but stored so the dashboard can
+/// filter on it without summing dues for every row.
+enum WholesalePaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
 // Not the CourierProviderName enum: those are API-integrated retail couriers
 // (Pathao/RedX/Steadfast) that book their own consignments. Wholesale ships
 // by the couriers the business actually uses for bulk, and the consignment
@@ -3510,6 +3571,12 @@ enum WholesaleOrderStatus {
 enum WholesaleCourier {
   SUNDARBAN
   AJR
+  SA_PARIBAHAN
+  OWN_TRANSPORT
+  /// Our own van. Still a "courier" so the order has one delivery field, not
+  /// a second nullable "delivered how" column that means the same thing.
+  CUSTOMER_PICKUP
+  OTHER
 }
 
 model WholesaleOrder {
@@ -3517,7 +3584,36 @@ model WholesaleOrder {
   orderNumber   String               @unique @map("order_number")
   partyId       Int                  @map("party_id")
   status        WholesaleOrderStatus @default(PENDING)
-  courier       WholesaleCourier
+  /// WHOLESALE for everything that existed before this column did -- a cash
+  /// sale had no way to be recorded here at all until now.
+  type          WholesaleOrderType   @default(WHOLESALE)
+  channel       WholesaleOrderChannel?
+  paymentMethod WholesalePaymentMethod? @map("payment_method")
+  paymentStatus WholesalePaymentStatus  @default(UNPAID) @map("payment_status")
+  /// Required by the UI for every non-cash method; not enforced here because
+  /// historical rows predate the field.
+  transactionId String?              @map("transaction_id")
+  /// Counter-sale voucher number. Cash sales only.
+  gpNumber      String?              @map("gp_number")
+
+  /// Delivery snapshot, exactly like retail's OrderAddress: where THIS order
+  /// went, frozen at the time it was placed. Editing the Party's address
+  /// afterwards must not rewrite history. Kept for a cash sale too -- a
+  /// counter sale is still handed to a named person at an address, and the
+  /// shop needs that on the invoice. All nullable because historical rows
+  /// predate the columns.
+  recipientName    String? @map("recipient_name")
+  recipientPhone   String? @map("recipient_phone")
+  alternativePhone String? @map("alternative_phone")
+  recipientEmail   String? @map("recipient_email")
+  addressLine      String? @map("address_line")
+  district         String?
+  thana            String?
+  landmark         String?
+  postCode         String? @map("post_code")
+
+  /// Nullable now: a cash sale never touches a courier.
+  courier       WholesaleCourier?
   /// The ID the courier gives us for the parcel. Optional: a wholesale order
   /// is often created before it is handed to the courier, and the number only
   /// exists after that.
@@ -3562,6 +3658,10 @@ model WholesaleOrderItem {
   /// reason it is captured per line rather than read back off the product.
   unitPrice    Decimal @map("unit_price") @db.Decimal(12, 2)
   quantity     Int
+  /// Taka off THIS line, before the order-level discount. Separate because
+  /// the demo prices some lines down individually and the invoice has to be
+  /// able to show why a line total is not quantity x rate.
+  discount     Decimal @default(0) @db.Decimal(12, 2)
   lineTotal    Decimal @map("line_total") @db.Decimal(12, 2)
 
   order   WholesaleOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)

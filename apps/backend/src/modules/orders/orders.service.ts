@@ -424,10 +424,25 @@ export class OrdersService {
           data: { channel: dto.channel, utmSource: dto.utmSource },
         });
       }
-      if (dto.division !== undefined || dto.phone !== undefined || dto.addressLine !== undefined) {
+      if (
+        dto.division !== undefined ||
+        dto.district !== undefined ||
+        dto.area !== undefined ||
+        dto.phone !== undefined ||
+        dto.addressLine !== undefined
+      ) {
         await tx.orderAddress.updateMany({
           where: { orderId, type: OrderAddressType.SHIPPING },
-          data: { division: dto.division, phone: dto.phone, addressLine: dto.addressLine },
+          // Each written only when sent — passing the others as undefined is
+          // what Prisma wants for "leave unchanged", but `area` is nullable
+          // so an empty string must clear it rather than store "".
+          data: {
+            ...(dto.division !== undefined ? { division: dto.division } : {}),
+            ...(dto.district !== undefined ? { district: dto.district } : {}),
+            ...(dto.area !== undefined ? { area: dto.area || null } : {}),
+            ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+            ...(dto.addressLine !== undefined ? { addressLine: dto.addressLine } : {}),
+          },
         });
       }
     });

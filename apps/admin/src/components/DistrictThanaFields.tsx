@@ -72,9 +72,10 @@ export function DistrictAutocomplete({
 }
 
 /**
- * Thana / area picker. Free text on purpose — only two districts have curated
- * area lists, so for the other 63 this is a text box that happens to have
- * nothing to suggest.
+ * Thana / area picker. All 64 districts carry their thana list (English and
+ * Bengali), but it stays free text: a caller's "area" is often a
+ * neighbourhood rather than an official thana, and refusing to save that
+ * would lose the only address detail the courier actually needs.
  */
 export function ThanaAutocomplete({
   district,

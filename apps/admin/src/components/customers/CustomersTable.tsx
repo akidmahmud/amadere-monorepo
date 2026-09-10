@@ -1,14 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  BD_ALL_DISTRICTS,
-  BD_DISTRICTS_BY_DIVISION,
-  BD_THANAS_BY_DISTRICT,
-  isValidBdPhone,
-} from "@amader/shared";
+import { BD_DISTRICTS_BY_DIVISION, isValidBdPhone } from "@amader/shared";
 import { Icon } from "@amader/admin-ui";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
+import { DistrictAutocomplete, ThanaAutocomplete } from "@/components/DistrictThanaFields";
 import { useCan } from "@/hooks/useAdminAuth";
 import {
   useUpdateCustomer,
@@ -553,51 +549,36 @@ function CustomerRow({
           though it has no column of its own here. */}
       <td className={td} style={tdStyle}>
         {editing ? (
-          <select
-            value={district}
-            onChange={(e) => {
-              const next = e.target.value;
-              setDistrict(next);
-              setArea("");
-              update.mutate({
-                district: next,
-                area: "",
-                division: divisionOfDistrict(next) ?? "",
-              });
-            }}
-            className={cellSelectStyle}
-            style={{ ...cellSelectStyleObj, width: 150 }}
-          >
-            <option value="">Select district…</option>
-            {BD_ALL_DISTRICTS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+          <div style={{ width: 150 }}>
+            <DistrictAutocomplete
+              value={district}
+              onChange={(next) => {
+                setDistrict(next);
+                setArea("");
+                update.mutate({
+                  district: next,
+                  area: "",
+                  division: divisionOfDistrict(next) ?? "",
+                });
+              }}
+            />
+          </div>
         ) : (
           <ReadOnlyText value={district} placeholder="Add district..." width={150} />
         )}
       </td>
       <td className={td} style={tdStyle}>
         {editing ? (
-          <select
-            value={area}
-            disabled={!district}
-            onChange={(e) => {
-              setArea(e.target.value);
-              update.mutate({ area: e.target.value });
-            }}
-            className={cellSelectStyle}
-            style={{ ...cellSelectStyleObj, width: 150 }}
-          >
-            <option value="">{district ? "Select thana…" : "Pick a district first"}</option>
-            {(BD_THANAS_BY_DISTRICT[district] ?? []).map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          // A dropdown was wrong here: only 2 of the 65 districts
+          // (Dhaka and Dhaka Sub-Urban) have a thana list in
+          // BD_THANAS_BY_DISTRICT, so for the other 63 the select offered
+          // nothing and the field could not be filled at all. This is the
+          // same free-text-with-suggestions control the Add Customer form
+          // uses — it suggests where data exists and accepts anything typed
+          // where it does not.
+          <div style={{ width: 150 }} onBlur={() => area !== (c.area ?? "") && update.mutate({ area })}>
+            <ThanaAutocomplete district={district} value={area} onChange={setArea} />
+          </div>
         ) : (
           <ReadOnlyText value={area} placeholder="Add thana..." width={150} />
         )}

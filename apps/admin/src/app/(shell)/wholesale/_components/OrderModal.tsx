@@ -22,6 +22,10 @@ interface Line {
   name: string;
   unitPrice: string;
   quantity: number;
+  /** Taka off this line, negotiated when the order was placed. Carried, not
+   *  edited here: an edit that dropped it would silently re-bill the buyer at
+   *  the undiscounted rate. */
+  discount: string;
 }
 
 const money = (n: number) =>
@@ -84,6 +88,9 @@ export function OrderModal({
         ? String(presetCustomerId)
         : "",
   );
+  // Null while editing a cash sale, which has no courier and must not gain
+  // one — the server refuses it, so the field is hidden rather than sent.
+  const isCashSale = editing?.type === "CASH_SALE";
   const [courier, setCourier] = useState<WholesaleCourier>(
     editing?.courier ?? "SUNDARBAN",
   );
@@ -103,6 +110,7 @@ export function OrderModal({
           name: i.name,
           unitPrice: i.unitPrice,
           quantity: i.quantity,
+          discount: i.discount,
         }))
       : [],
   );
@@ -121,7 +129,12 @@ export function OrderModal({
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce(
-      (sum, l) => sum + Number(l.unitPrice || 0) * l.quantity,
+      (sum, l) =>
+        sum +
+        Math.max(
+          0,
+          Number(l.unitPrice || 0) * l.quantity - Number(l.discount || 0),
+        ),
       0,
     );
     const total = Math.max(
@@ -170,6 +183,7 @@ export function OrderModal({
           name: product.name,
           unitPrice: product.price ?? "0",
           quantity: quantity,
+          discount: "0",
         },
       ];
     });
@@ -184,6 +198,7 @@ export function OrderModal({
       productId: l.productId,
       unitPrice: l.unitPrice || "0",
       quantity: l.quantity,
+      discount: l.discount || "0",
     }));
     try {
       if (editing) {
@@ -192,7 +207,7 @@ export function OrderModal({
         // form field. Cancel and re-enter for that.
         await update.mutateAsync({
           id: editing.id,
-          courier,
+          courier: isCashSale ? undefined : courier,
           consignmentId: consignmentId.trim(),
           status,
           items,
@@ -313,19 +328,23 @@ export function OrderModal({
               </select>
             </ModalField>
 
-            <ModalField label="Courier Partner" required>
-              <select
-                className={inputClass}
-                value={courier}
-                onChange={(e) => setCourier(e.target.value as WholesaleCourier)}
-              >
-                {COURIERS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </ModalField>
+            {!isCashSale && (
+              <ModalField label="Courier Partner" required>
+                <select
+                  className={inputClass}
+                  value={courier}
+                  onChange={(e) =>
+                    setCourier(e.target.value as WholesaleCourier)
+                  }
+                >
+                  {COURIERS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </ModalField>
+            )}
 
             <div className="sm:col-span-4">
               <ModalField
@@ -581,7 +600,13 @@ export function OrderModal({
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-text">
-                        {money(Number(line.unitPrice || 0) * line.quantity)}
+                        {money(
+                          Math.max(
+                            0,
+                            Number(line.unitPrice || 0) * line.quantity -
+                              Number(line.discount || 0),
+                          ),
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button

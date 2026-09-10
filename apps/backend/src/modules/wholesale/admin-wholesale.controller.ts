@@ -24,7 +24,11 @@ import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { ProductsService } from '../products/products.service';
 import { AdminProductPickerItemDto } from '../products/dto/product-response.dto';
 import { WholesaleService } from './wholesale.service';
-import { WholesaleCustomerDto, WholesaleOrderDto } from './wholesale.mapper';
+import {
+  WholesaleCustomerDto,
+  WholesaleOrderDto,
+  WholesaleStatsDto,
+} from './wholesale.mapper';
 import {
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
@@ -55,6 +59,16 @@ export class AdminWholesaleController {
   @ApiOkResponse({ type: [AdminProductPickerItemDto] })
   productPicker(): Promise<AdminProductPickerItemDto[]> {
     return this.products.adminPickerList();
+  }
+
+  // Both dashboards' headline cards, in one call. Server-side on purpose:
+  // the tables are paged, so counting rows in the browser would report the
+  // page, not the business.
+  @Get('stats')
+  @RequirePermission('wholesale.view')
+  @ApiOkResponse({ type: WholesaleStatsDto })
+  stats(): Promise<WholesaleStatsDto> {
+    return this.wholesale.stats();
   }
 
   // --- customers ---

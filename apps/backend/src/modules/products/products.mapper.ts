@@ -50,6 +50,7 @@ export function toAdminProductDto(
     stockStatus: product.stockStatus,
     price: decimalToString(product.price),
     salePrice: decimalToString(product.salePrice),
+    wholesalePrice: decimalToString(product.wholesalePrice),
     saleStartsAt: product.saleStartsAt,
     saleEndsAt: product.saleEndsAt,
     costPerItem: decimalToString(product.costPerItem),

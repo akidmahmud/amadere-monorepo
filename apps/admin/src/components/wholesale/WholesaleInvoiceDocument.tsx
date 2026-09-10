@@ -1,6 +1,9 @@
 "use client";
 
-import { useInvoiceSettings } from "@/hooks/useInvoiceSettings";
+import {
+  useInvoiceSettings,
+  type InvoiceSettings,
+} from "@/hooks/useInvoiceSettings";
 import { useInvoiceTemplateSettings } from "@/hooks/useInvoiceTemplateSettings";
 import { renderInvoiceTemplate } from "@/lib/invoice-template";
 import { buildWholesaleInvoiceMergeTags } from "@/lib/wholesale-invoice-template";
@@ -12,8 +15,9 @@ const money = (v: string | number) =>
     maximumFractionDigits: 2,
   })}`;
 
-const courierLabel = (v: string) =>
-  COURIERS.find((c) => c.value === v)?.label ?? v;
+// Null on a cash sale, which is handed over rather than couriered.
+const courierLabel = (v: string | null) =>
+  v ? (COURIERS.find((c) => c.value === v)?.label ?? v) : "Counter sale";
 
 /**
  * A wholesale invoice, rendered through Settings > Invoice Template when one
@@ -26,8 +30,21 @@ const courierLabel = (v: string) =>
  * receivable position (billed / collected / outstanding) rather than the
  * consumer-facing thank-you styling.
  */
-export function WholesaleInvoiceDocument({ order }: { order: WholesaleOrder }) {
-  const { data: settings } = useInvoiceSettings();
+export function WholesaleInvoiceDocument({
+  order,
+  settingsOverride,
+}: {
+  order: WholesaleOrder;
+  /**
+   * Render against these settings instead of the saved ones. Only the
+   * Invoice Settings preview passes it, so an admin sees what an UNSAVED
+   * change will print — a preview of the saved settings would show the very
+   * thing they are trying to change.
+   */
+  settingsOverride?: InvoiceSettings;
+}) {
+  const { data: saved } = useInvoiceSettings();
+  const settings = settingsOverride ?? saved;
   const { data: templateSettings } = useInvoiceTemplateSettings();
 
   if (templateSettings?.enabled && templateSettings.template) {

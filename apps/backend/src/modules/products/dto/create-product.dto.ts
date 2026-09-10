@@ -179,6 +179,16 @@ export class CreateProductDto {
   @Min(0)
   salePrice?: number;
 
+  @ApiPropertyOptional({
+    description:
+      'What a shop pays per unit. Only the default a wholesale order line starts at — the rate actually billed is snapshotted on the order.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  wholesalePrice?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()

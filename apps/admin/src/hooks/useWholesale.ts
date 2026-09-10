@@ -1,17 +1,102 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
 
 // Typed here rather than off `components["schemas"]` because schema.d.ts is
 // regenerated from a running backend; these mirror the DTOs in
 // apps/backend/src/modules/wholesale/wholesale.mapper.ts.
-export type WholesaleCourier = "SUNDARBAN" | "AJR";
+export type WholesaleCourier =
+  | "SUNDARBAN"
+  | "AJR"
+  | "SA_PARIBAHAN"
+  | "OWN_TRANSPORT"
+  | "CUSTOMER_PICKUP"
+  | "OTHER";
 export type WholesaleOrderStatus =
   "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
+export type WholesaleOrderType = "WHOLESALE" | "CASH_SALE";
+export type WholesaleOrderChannel =
+  | "WHATSAPP"
+  | "TELEMARKETING"
+  | "FACEBOOK"
+  | "INSTAGRAM"
+  | "TIKTOK"
+  | "MESSENGER"
+  | "MARKETPLACE"
+  | "PHONE"
+  | "IN_STORE_POS"
+  | "OTHER";
+export type WholesalePaymentMethod =
+  | "CASH"
+  | "BKASH"
+  | "NAGAD"
+  | "ROCKET"
+  | "UPAY"
+  | "BANK";
+export type WholesalePaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID";
 
 export const COURIERS: { value: WholesaleCourier; label: string }[] = [
   { value: "SUNDARBAN", label: "সুন্দরবন Courier" },
   { value: "AJR", label: "AJR Courier" },
+  { value: "SA_PARIBAHAN", label: "S.A. Paribahan" },
+  { value: "OWN_TRANSPORT", label: "Own Transport" },
+  { value: "CUSTOMER_PICKUP", label: "Customer Pickup" },
+  { value: "OTHER", label: "Other" },
 ];
+
+export const ORDER_CHANNELS: { value: WholesaleOrderChannel; label: string }[] =
+  [
+    { value: "WHATSAPP", label: "WhatsApp" },
+    { value: "TELEMARKETING", label: "Telemarketing" },
+    { value: "FACEBOOK", label: "Facebook" },
+    { value: "INSTAGRAM", label: "Instagram" },
+    { value: "TIKTOK", label: "TikTok" },
+    { value: "MESSENGER", label: "Messenger" },
+    { value: "MARKETPLACE", label: "Marketplace" },
+    { value: "PHONE", label: "Phone" },
+    { value: "IN_STORE_POS", label: "In-store POS" },
+    { value: "OTHER", label: "Other" },
+  ];
+
+export const PAYMENT_METHODS: {
+  value: WholesalePaymentMethod;
+  label: string;
+}[] = [
+  { value: "CASH", label: "Cash" },
+  { value: "BKASH", label: "bKash" },
+  { value: "NAGAD", label: "Nagad" },
+  { value: "ROCKET", label: "Rocket" },
+  { value: "UPAY", label: "Upay" },
+  { value: "BANK", label: "Bank" },
+];
+
+export const PAYMENT_STATUSES: {
+  value: WholesalePaymentStatus;
+  label: string;
+}[] = [
+  { value: "UNPAID", label: "Unpaid" },
+  { value: "PARTIALLY_PAID", label: "Partially Paid" },
+  { value: "PAID", label: "Paid" },
+];
+
+export const ORDER_TYPES: { value: WholesaleOrderType; label: string }[] = [
+  { value: "WHOLESALE", label: "Wholesale" },
+  { value: "CASH_SALE", label: "Cash Sale" },
+];
+
+/** Enum -> the label the dashboards print. Falls back to the raw value so a
+ *  newly added enum member shows as itself rather than as blank. */
+export function labelOf<T extends string>(
+  table: { value: T; label: string }[],
+  value: T | null | undefined,
+): string {
+  if (!value) return "";
+  return table.find((x) => x.value === value)?.label ?? value;
+}
 
 export const ORDER_STATUSES: { value: WholesaleOrderStatus; label: string }[] =
   [
@@ -26,13 +111,49 @@ export interface WholesaleCustomer {
   name: string;
   phone: string | null;
   address: string | null;
+  email: string | null;
+  alternativePhone: string | null;
+  district: string | null;
+  thana: string | null;
+  landmark: string | null;
+  postCode: string | null;
   creditLimit: string | null;
   creditDays: number | null;
   note: string | null;
   isActive: boolean;
   orderCount: number;
+  wholesaleCount: number;
+  cashCount: number;
   purchaseTotal: string;
   due: string;
+  lastOrderAt: string | null;
+}
+
+/** Where an order shipped, frozen when it was placed. Null throughout on a
+ *  cash sale, which is carried out of the shop. */
+export interface WholesaleDelivery {
+  recipientName: string | null;
+  recipientPhone: string | null;
+  alternativePhone: string | null;
+  recipientEmail: string | null;
+  addressLine: string | null;
+  district: string | null;
+  thana: string | null;
+  landmark: string | null;
+  postCode: string | null;
+}
+
+/** Headline numbers for both dashboards. Counted server-side over every
+ *  order, not over the page the table happens to be showing. */
+export interface WholesaleStats {
+  orderCount: number;
+  wholesaleOrderCount: number;
+  cashSaleCount: number;
+  salesTotal: string;
+  dueTotal: string;
+  customerCount: number;
+  wholesaleCustomerCount: number;
+  cashCustomerCount: number;
 }
 
 export interface WholesaleOrderItem {
@@ -43,7 +164,11 @@ export interface WholesaleOrderItem {
   sku: string | null;
   unitPrice: string;
   quantity: number;
+  /** Taka off this line, before the order-level discount. */
+  discount: string;
   lineTotal: string;
+  /** Read off the product now, not snapshotted — null once it is deleted. */
+  imageUrl: string | null;
 }
 
 export interface WholesaleOrder {
@@ -53,8 +178,17 @@ export interface WholesaleOrder {
   customerName: string;
   customerPhone: string | null;
   status: WholesaleOrderStatus;
-  courier: WholesaleCourier;
+  type: WholesaleOrderType;
+  channel: WholesaleOrderChannel | null;
+  paymentMethod: WholesalePaymentMethod | null;
+  paymentStatus: WholesalePaymentStatus;
+  transactionId: string | null;
+  /** Counter-sale voucher number. Cash sales only. */
+  gpNumber: string | null;
+  /** Null on a cash sale — nothing is couriered. */
+  courier: WholesaleCourier | null;
   consignmentId: string | null;
+  delivery: WholesaleDelivery;
   subtotal: string;
   deliveryCharge: string;
   discount: string;
@@ -71,6 +205,12 @@ export interface CustomerInput {
   name: string;
   phone: string;
   address?: string;
+  email?: string;
+  alternativePhone?: string;
+  district?: string;
+  thana?: string;
+  landmark?: string;
+  postCode?: string;
   creditLimit?: string;
   creditDays?: number;
   openingReceivable?: string;
@@ -90,6 +230,7 @@ export interface OrderEditInput {
     variantId?: number;
     unitPrice: string;
     quantity: number;
+    discount?: string;
   }[];
   deliveryCharge?: string;
   discount?: string;
@@ -97,13 +238,32 @@ export interface OrderEditInput {
 
 export interface OrderInput {
   partyId: number;
-  courier: WholesaleCourier;
+  type?: WholesaleOrderType;
+  channel?: WholesaleOrderChannel;
+  paymentMethod?: WholesalePaymentMethod;
+  transactionId?: string;
+  gpNumber?: string;
+  /** Required for WHOLESALE; a cash sale never touches a courier. */
+  courier?: WholesaleCourier;
   consignmentId?: string;
+  /** Omitted entirely for a cash sale. */
+  delivery?: {
+    recipientName?: string;
+    recipientPhone?: string;
+    alternativePhone?: string;
+    recipientEmail?: string;
+    addressLine?: string;
+    district?: string;
+    thana?: string;
+    landmark?: string;
+    postCode?: string;
+  };
   items: {
     productId?: number;
     variantId?: number;
     unitPrice: string;
     quantity: number;
+    discount?: string;
   }[];
   deliveryCharge?: string;
   discount?: string;
@@ -128,33 +288,90 @@ function useInvalidateAll() {
   };
 }
 
-export function useWholesaleCustomers(search: string, activeOnly: boolean) {
+/** Rows plus the server's total, so a table can page without guessing. */
+export interface Page<T> {
+  items: T[];
+  total: number;
+}
+
+export const PAGE_SIZE = 25;
+
+/**
+ * One page of buyers.
+ *
+ * `pageSize: 0` asks for every buyer in one go — what the create-order screen
+ * needs, because it searches the list in the browser to keep picking a
+ * customer instant while an order is being typed. The dashboards pass a real
+ * page size and let the server do the work.
+ */
+export function useWholesaleCustomers(
+  search: string,
+  activeOnly: boolean,
+  page = 1,
+  pageSize: number = PAGE_SIZE,
+) {
   return useQuery({
-    queryKey: [...CUSTOMERS_KEY, search, activeOnly],
+    queryKey: [...CUSTOMERS_KEY, search, activeOnly, page, pageSize],
     queryFn: async () => {
-      const params = new URLSearchParams({ pageSize: "200" });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize || 500),
+      });
       if (search) params.set("search", search);
       if (activeOnly) params.set("isActive", "true");
       const res = await proxyFetch<Paginated<WholesaleCustomer>>(
         `/admin/wholesale/customers?${params}`,
       );
-      return res.items ?? [];
+      return { items: res.items ?? [], total: res.total ?? 0 };
     },
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useWholesaleOrders(search: string, status: string) {
+export function useWholesaleOrders(
+  search: string,
+  status: string,
+  type: string = "ALL",
+  partyId?: number,
+  page = 1,
+  pageSize: number = PAGE_SIZE,
+) {
   return useQuery({
-    queryKey: [...ORDERS_KEY, search, status],
+    queryKey: [
+      ...ORDERS_KEY,
+      search,
+      status,
+      type,
+      partyId ?? null,
+      page,
+      pageSize,
+    ],
     queryFn: async () => {
-      const params = new URLSearchParams({ pageSize: "200" });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
       if (search) params.set("search", search);
       if (status !== "ALL") params.set("status", status);
+      if (type !== "ALL") params.set("type", type);
+      if (partyId) params.set("partyId", String(partyId));
       const res = await proxyFetch<Paginated<WholesaleOrder>>(
         `/admin/wholesale/orders?${params}`,
       );
-      return res.items ?? [];
+      return { items: res.items ?? [], total: res.total ?? 0 };
     },
+    // Without this the table blanks out on every page step and every
+    // keystroke in the search box.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Both dashboards' headline cards. Server-counted, so the numbers describe
+ *  the business rather than whichever page the table is showing. */
+export function useWholesaleStats() {
+  return useQuery({
+    queryKey: [...ORDERS_KEY, "stats"],
+    queryFn: () => proxyFetch<WholesaleStats>("/admin/wholesale/stats"),
   });
 }
 
@@ -295,7 +512,30 @@ export interface PickableProduct {
   name: string;
   price: string | null;
   salePrice: string | null;
+  /** The bulk rate. Null when none is set, and the order form falls back to
+   *  the retail price. */
+  wholesalePrice: string | null;
+  sku: string | null;
+  /** Primary image, or null when the product has none. */
+  imageUrl: string | null;
   stockStatus: string;
+}
+
+/**
+ * What a line should start at for the mode being used.
+ *
+ * A cash sale is a retail transaction that happens to be recorded here, so it
+ * prices at the sale price; a wholesale order prices at the bulk rate. Either
+ * way this is only the starting point — the rate that actually bills is
+ * whatever is typed on the line, and that is what gets invoiced.
+ */
+export function defaultUnitPrice(
+  product: PickableProduct,
+  type: WholesaleOrderType,
+): string {
+  const retail = product.salePrice ?? product.price ?? "0";
+  if (type === "CASH_SALE") return retail;
+  return product.wholesalePrice ?? retail;
 }
 
 export function useWholesaleProducts() {

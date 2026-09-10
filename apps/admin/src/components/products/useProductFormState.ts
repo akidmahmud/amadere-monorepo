@@ -38,6 +38,7 @@ export interface ProductFormSnapshot {
   stockStatus: StockStatus;
   price: string;
   salePrice: string;
+  wholesalePrice: string;
   saleStartsAt: string;
   saleEndsAt: string;
   costPerItem: string;
@@ -143,6 +144,9 @@ export function useProductFormState(initial?: AdminProduct) {
   );
   const [price, setPrice] = useState(initial?.price ?? "");
   const [salePrice, setSalePrice] = useState(initial?.salePrice ?? "");
+  const [wholesalePrice, setWholesalePrice] = useState(
+    initial?.wholesalePrice ?? "",
+  );
   const [saleStartsAt, setSaleStartsAt] = useState(
     initial?.saleStartsAt?.slice(0, 10) ?? "",
   );
@@ -274,6 +278,9 @@ export function useProductFormState(initial?: AdminProduct) {
         : salePrice
           ? Number(salePrice)
           : undefined,
+      // Sent whether or not the product has variants: the bulk rate is
+      // product-level and applies to every variant of it.
+      wholesalePrice: wholesalePrice ? Number(wholesalePrice) : undefined,
       saleStartsAt: saleStartsAt || undefined,
       saleEndsAt: saleEndsAt || undefined,
       costPerItem: costPerItem ? Number(costPerItem) : undefined,
@@ -357,6 +364,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setStockStatus(product.stockStatus);
     setPrice(product.price ?? "");
     setSalePrice(product.salePrice ?? "");
+    setWholesalePrice(product.wholesalePrice ?? "");
     setSaleStartsAt(product.saleStartsAt?.slice(0, 10) ?? "");
     setSaleEndsAt(product.saleEndsAt?.slice(0, 10) ?? "");
     setCostPerItem(product.costPerItem ?? "");
@@ -457,6 +465,7 @@ export function useProductFormState(initial?: AdminProduct) {
       stockStatus,
       price,
       salePrice,
+      wholesalePrice,
       saleStartsAt,
       saleEndsAt,
       costPerItem,
@@ -504,6 +513,7 @@ export function useProductFormState(initial?: AdminProduct) {
     setStockStatus(s.stockStatus);
     setPrice(s.price);
     setSalePrice(s.salePrice);
+    setWholesalePrice(s.wholesalePrice);
     setSaleStartsAt(s.saleStartsAt);
     setSaleEndsAt(s.saleEndsAt);
     setCostPerItem(s.costPerItem);
@@ -571,6 +581,8 @@ export function useProductFormState(initial?: AdminProduct) {
     setPrice,
     salePrice,
     setSalePrice,
+    wholesalePrice,
+    setWholesalePrice,
     saleStartsAt,
     setSaleStartsAt,
     saleEndsAt,

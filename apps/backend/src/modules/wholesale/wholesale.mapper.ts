@@ -1,4 +1,12 @@
-import { Prisma, WholesaleCourier, WholesaleOrderStatus } from '@amader/db';
+import {
+  Prisma,
+  WholesaleCourier,
+  WholesaleOrderChannel,
+  WholesaleOrderStatus,
+  WholesaleOrderType,
+  WholesalePaymentMethod,
+  WholesalePaymentStatus,
+} from '@amader/db';
 
 const ZERO = new Prisma.Decimal(0);
 
@@ -7,16 +15,48 @@ export class WholesaleCustomerDto {
   name!: string;
   phone!: string | null;
   address!: string | null;
+  email!: string | null;
+  alternativePhone!: string | null;
+  district!: string | null;
+  thana!: string | null;
+  landmark!: string | null;
+  postCode!: string | null;
   creditLimit!: string | null;
   creditDays!: number | null;
   note!: string | null;
   isActive!: boolean;
   /** Orders placed, cancelled ones excluded. */
   orderCount!: number;
+  /** Of `orderCount`, how many were each kind. */
+  wholesaleCount!: number;
+  cashCount!: number;
   /** Lifetime wholesale sales to this buyer. */
   purchaseTotal!: string;
   /** Outstanding, derived from the ledger — never a stored balance. */
   due!: string;
+  /** When they last bought, or null if never. */
+  lastOrderAt!: Date | null;
+}
+
+/**
+ * The dashboard headline numbers.
+ *
+ * Counted over every order, not just the page on screen: the list is
+ * paginated, so totalling the rows the client happens to be holding would
+ * quietly under-report as soon as the business passed one page of orders.
+ */
+export class WholesaleStatsDto {
+  orderCount!: number;
+  wholesaleOrderCount!: number;
+  cashSaleCount!: number;
+  /** Grand total of every live order. */
+  salesTotal!: string;
+  /** Still outstanding across all buyers. */
+  dueTotal!: string;
+  customerCount!: number;
+  /** Buyers with at least one live order of that kind. */
+  wholesaleCustomerCount!: number;
+  cashCustomerCount!: number;
 }
 
 export class WholesaleOrderItemDto {
@@ -27,7 +67,25 @@ export class WholesaleOrderItemDto {
   sku!: string | null;
   unitPrice!: string;
   quantity!: number;
+  /** Taka off this line, before the order-level discount. */
+  discount!: string;
   lineTotal!: string;
+  /** Read off the product now, not snapshotted — null once it is deleted. */
+  imageUrl!: string | null;
+}
+
+/** Where an order went, frozen when it was placed. Null throughout only when
+ *  no address was entered. */
+export class WholesaleDeliveryDto {
+  recipientName!: string | null;
+  recipientPhone!: string | null;
+  alternativePhone!: string | null;
+  recipientEmail!: string | null;
+  addressLine!: string | null;
+  district!: string | null;
+  thana!: string | null;
+  landmark!: string | null;
+  postCode!: string | null;
 }
 
 export class WholesaleOrderDto {
@@ -37,8 +95,17 @@ export class WholesaleOrderDto {
   customerName!: string;
   customerPhone!: string | null;
   status!: WholesaleOrderStatus;
-  courier!: WholesaleCourier;
+  type!: WholesaleOrderType;
+  channel!: WholesaleOrderChannel | null;
+  paymentMethod!: WholesalePaymentMethod | null;
+  paymentStatus!: WholesalePaymentStatus;
+  transactionId!: string | null;
+  /** Counter-sale voucher number. Cash sales only. */
+  gpNumber!: string | null;
+  /** Null on a cash sale — nothing is couriered. */
+  courier!: WholesaleCourier | null;
   consignmentId!: string | null;
+  delivery!: WholesaleDeliveryDto;
   subtotal!: string;
   deliveryCharge!: string;
   discount!: string;
@@ -57,7 +124,13 @@ export class WholesaleOrderDto {
 type OrderRow = Prisma.WholesaleOrderGetPayload<{
   include: {
     party: { select: { id: true; name: true; phone: true } };
-    items: true;
+    items: {
+      include: {
+        product: {
+          select: { media: { select: { media: { select: { url: true } } } } };
+        };
+      };
+    };
     dues: { select: { id: true; docNo: true; voidedAt: true; kind: true } };
   };
 }>;
@@ -81,8 +154,25 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
     customerName: row.party.name,
     customerPhone: row.party.phone,
     status: row.status,
+    type: row.type,
+    channel: row.channel,
+    paymentMethod: row.paymentMethod,
+    paymentStatus: row.paymentStatus,
+    transactionId: row.transactionId,
+    gpNumber: row.gpNumber,
     courier: row.courier,
     consignmentId: row.consignmentId,
+    delivery: {
+      recipientName: row.recipientName,
+      recipientPhone: row.recipientPhone,
+      alternativePhone: row.alternativePhone,
+      recipientEmail: row.recipientEmail,
+      addressLine: row.addressLine,
+      district: row.district,
+      thana: row.thana,
+      landmark: row.landmark,
+      postCode: row.postCode,
+    },
     subtotal: row.subtotal.toFixed(2),
     deliveryCharge: row.deliveryCharge.toFixed(2),
     discount: row.discount.toFixed(2),
@@ -100,7 +190,9 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
       sku: item.skuSnapshot,
       unitPrice: item.unitPrice.toFixed(2),
       quantity: item.quantity,
+      discount: item.discount.toFixed(2),
       lineTotal: item.lineTotal.toFixed(2),
+      imageUrl: item.product?.media[0]?.media.url ?? null,
     })),
   };
 }

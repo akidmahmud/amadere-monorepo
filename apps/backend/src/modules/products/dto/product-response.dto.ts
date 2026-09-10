@@ -109,6 +109,9 @@ export class AdminProductDto {
   stockStatus!: StockStatus;
   price!: string | null;
   salePrice!: string | null;
+  /** The bulk rate a wholesale order line starts at. Null when none is set,
+   *  and the order form falls back to the retail price. */
+  wholesalePrice!: string | null;
   saleStartsAt!: Date | null;
   saleEndsAt!: Date | null;
   costPerItem!: string | null;
@@ -158,6 +161,15 @@ export class AdminProductPickerItemDto {
   price!: string | null;
   /** Set only when that variant is on sale. */
   salePrice!: string | null;
+  /** That variant's bulk rate. Null when none is set, and the wholesale order
+   *  form then falls back to the retail price. */
+  wholesalePrice!: string | null;
+  /** Default variant's SKU — the wholesale order form searches on it, and a
+   *  picker showing two same-named pack sizes is otherwise a coin toss. */
+  sku!: string | null;
+  /** Primary image (or the first one). Null when the product has no media —
+   *  the picker then shows a placeholder rather than a broken image. */
+  imageUrl!: string | null;
   /** Product-level stock status. Relation pickers (Related / Cross-sell /
    *  Frequently Bought Together) use it to leave sold-out products out of the
    *  list — recommending something nobody can buy is a dead end for the

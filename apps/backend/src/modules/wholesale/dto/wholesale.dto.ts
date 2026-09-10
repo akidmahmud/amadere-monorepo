@@ -15,7 +15,13 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { WholesaleCourier, WholesaleOrderStatus } from '@amader/db';
+import {
+  WholesaleCourier,
+  WholesaleOrderChannel,
+  WholesaleOrderStatus,
+  WholesaleOrderType,
+  WholesalePaymentMethod,
+} from '@amader/db';
 
 // ---------------------------------------------------------------------------
 // Customers
@@ -44,6 +50,13 @@ export class CreateWholesaleCustomerDto {
   @IsString()
   @MaxLength(500)
   address?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) district?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) thana?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) landmark?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) postCode?: string;
 
   @ApiPropertyOptional({ description: 'Credit ceiling, as a decimal string' })
   @IsOptional()
@@ -80,6 +93,12 @@ export class UpdateWholesaleCustomerDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(200) name?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(40) phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) address?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) district?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) thana?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) landmark?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) postCode?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumberString() creditLimit?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) creditDays?: number;
 
@@ -129,6 +148,27 @@ export class WholesaleOrderItemInputDto {
   @IsInt()
   @Min(1)
   quantity!: number;
+
+  @ApiPropertyOptional({
+    description: 'Taka off THIS line, before the order-level discount. Decimal string.',
+  })
+  @IsOptional()
+  @IsNumberString()
+  discount?: string;
+}
+
+/** Where the order goes. Recorded for a cash sale too — only the COURIER is
+ *  wholesale-only, not the address. */
+export class WholesaleDeliveryInputDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) recipientName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) recipientPhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) recipientEmail?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) addressLine?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) district?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) thana?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) landmark?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) postCode?: string;
 }
 
 export class CreateWholesaleOrderDto {
@@ -136,9 +176,49 @@ export class CreateWholesaleOrderDto {
   @IsInt()
   partyId!: number;
 
-  @ApiProperty({ enum: WholesaleCourier })
+  @ApiPropertyOptional({
+    enum: WholesaleOrderType,
+    description: 'Defaults to WHOLESALE. CASH_SALE skips the delivery leg and prices at retail.',
+  })
+  @IsOptional()
+  @IsEnum(WholesaleOrderType)
+  type?: WholesaleOrderType;
+
+  @ApiPropertyOptional({ enum: WholesaleOrderChannel })
+  @IsOptional()
+  @IsEnum(WholesaleOrderChannel)
+  channel?: WholesaleOrderChannel;
+
+  @ApiPropertyOptional({ enum: WholesalePaymentMethod })
+  @IsOptional()
+  @IsEnum(WholesalePaymentMethod)
+  paymentMethod?: WholesalePaymentMethod;
+
+  @ApiPropertyOptional({ description: 'Required by the UI for every non-cash method' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  transactionId?: string;
+
+  @ApiPropertyOptional({ description: 'Counter-sale voucher number. Cash sales only.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  gpNumber?: string;
+
+  @ApiPropertyOptional({
+    enum: WholesaleCourier,
+    description: 'Required for WHOLESALE; a cash sale never touches a courier.',
+  })
+  @IsOptional()
   @IsEnum(WholesaleCourier)
-  courier!: WholesaleCourier;
+  courier?: WholesaleCourier;
+
+  @ApiPropertyOptional({ type: WholesaleDeliveryInputDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WholesaleDeliveryInputDto)
+  delivery?: WholesaleDeliveryInputDto;
 
   @ApiPropertyOptional({ description: 'The number the courier gives us for the parcel' })
   @IsOptional()
@@ -266,7 +346,10 @@ export class WholesaleOrderQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) @Min(1) page?: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) @Min(1) pageSize?: number;
 
-  @ApiPropertyOptional({ description: 'Matches order number, consignment id or buyer name' })
+  @ApiPropertyOptional({
+    description:
+      'Matches order number, consignment id, buyer name or phone, recipient name or phone, GP number, transaction id, or any product on the order',
+  })
   @IsOptional()
   @IsString()
   search?: string;
@@ -275,6 +358,11 @@ export class WholesaleOrderQueryDto {
   @IsOptional()
   @IsEnum(WholesaleOrderStatus)
   status?: WholesaleOrderStatus;
+
+  @ApiPropertyOptional({ enum: WholesaleOrderType, description: 'Omit for both' })
+  @IsOptional()
+  @IsEnum(WholesaleOrderType)
+  type?: WholesaleOrderType;
 
   @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) partyId?: number;
 }

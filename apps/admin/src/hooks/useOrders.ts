@@ -328,6 +328,10 @@ export function useUpdateOrderDetails(id: number) {
       phone?: string;
       addressLine?: string;
       division?: string;
+      // Hand-written rather than generated from schema.d.ts, so it has to be
+      // kept in step with UpdateOrderDetailsDto by hand.
+      district?: string;
+      area?: string;
       utmSource?: string;
     }) =>
       proxyFetch<AdminOrder>(`/admin/orders/${id}/details`, {

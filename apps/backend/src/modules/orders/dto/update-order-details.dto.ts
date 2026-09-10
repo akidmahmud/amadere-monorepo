@@ -23,6 +23,21 @@ export class UpdateOrderDetailsDto {
   @IsString()
   addressLine?: string;
 
+  // district and area matter more than division does: Steadfast is given the
+  // district when a parcel is consigned, and until now neither could be
+  // corrected on an order at all — only the free-text line and the division.
+  // Editing the CUSTOMER's address does not help, because an order carries
+  // its own OrderAddress snapshot of where it is actually going.
+  @ApiPropertyOptional({ description: "Shipping address's district" })
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional({ description: "Shipping address's thana / area" })
+  @IsOptional()
+  @IsString()
+  area?: string;
+
   @ApiPropertyOptional({ description: "Shipping address's division" })
   @IsOptional()
   @IsString()

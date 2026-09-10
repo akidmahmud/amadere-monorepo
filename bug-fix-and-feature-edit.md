@@ -2858,3 +2858,333 @@ keeping the empty string the create path used to write.
 `UpdateCustomerInput` in the admin is hand-written rather than generated, so
 it needed the three fields adding by hand — noted in a comment there, since
 the response types come from schema.d.ts and this one does not.
+
+## Thana was uneditable for 63 of 65 districts, and order addresses were not the customer's
+
+Two separate reports, one screenshot each.
+
+### 1. "Only Dhaka and Dhaka Sub-Urban have a thana dropdown"
+
+Correct, and worse than it sounds: measured, **only 2 of 65 districts** have
+any entry in `BD_THANAS_BY_DISTRICT`. The `<select>` I had added therefore
+offered nothing at all for the other 63 — the field simply could not be
+filled.
+
+Replaced both cells with the components the Add Customer form already uses:
+`DistrictAutocomplete` (locked to the 65 real districts — `allowFreeText={false}`)
+and `ThanaAutocomplete`, which is free text by default and suggests only where
+data exists. Typed thanas are accepted everywhere; Dhaka still gets its 59
+suggestions.
+
+### 2. "I changed it but it still shows the previous address"
+
+Working as designed, and the design is right: an order carries its own
+`OrderAddress` snapshot of where it is actually going. Editing the customer's
+saved address does not — and must not — rewrite orders already placed.
+
+The real gap was next to it: `UpdateOrderDetailsDto` accepted `addressLine`,
+`division` and `phone` but **not `district` or `area`**, so the address that
+actually ships could not be corrected — and district is exactly what Steadfast
+is handed at consignment.
+
+- DTO gains `district` and `area`.
+- `updateDetails` fires on any of the five address fields and writes each only
+  when sent; `area` is nullable so an empty string clears it rather than
+  storing `""`.
+- The order modal gets District and Thana controls, the same autocompletes.
+  Changing district clears the thana and derives the division.
+
+### Verified against the running API
+
+| step | result |
+|---|---|
+| order 6761 before | Dhaka / Dhaka / Mohammadpur / "House 9, Road 3, Block C" |
+| PATCH district+area+division to Sylhet/Kadamtali | all three changed |
+| addressLine after that PATCH | **unchanged** — single-field writes do not clobber siblings |
+| restored | back to Dhaka / Dhaka / Mohammadpur |
+
+`useUpdateOrderDetails`'s input type is hand-written rather than generated, so
+the two fields were added there by hand with a comment saying so — the second
+place in this codebase where that has bitten.
+
+## Thana lists for all 65 districts
+
+`BD_THANAS_BY_DISTRICT` only ever covered **2 of 65 districts** — Dhaka and
+Dhaka Sub-Urban — because it was sourced from Steadfast's merchant-panel area
+picker, which is metropolitan-only. The other 63 districts had an empty
+dropdown, so a thana could not be picked at all.
+
+Added the official upazila list for those 63: **489 new entries**, 556 total.
+Dhaka and Dhaka Sub-Urban keep their Steadfast metropolitan lists untouched.
+
+### Why widening is safe
+
+`area` reaches Steadfast only inside the free-text `recipient_address` string
+`ShipmentsService` assembles (`addressLine, area, landmark, district,
+postCode`) — never as a zone id they validate. So an official upazila name
+Steadfast happens to spell differently costs nothing. Both pickers accept free
+text anyway, so a name missing here can still be typed.
+
+### Validated after building the package
+
+| check | result |
+|---|---|
+| districts in `BD_ALL_DISTRICTS` | 65 |
+| districts with a thana list | **65** |
+| districts still empty | **0** |
+| keys that are not a real district | **0** |
+| districts with duplicate thana names | **0** |
+| total thanas | 556 |
+
+The key check matters: a key that does not match `BD_DISTRICTS_BY_DIVISION`
+exactly makes the dropdown silently never appear, which is the failure mode
+the file's own header warns about. `Cox's Bazar` needed a double-quoted key.
+
+Accuracy caveat worth recording: these are the official upazila names from
+general knowledge, not scraped from a government dataset or from Steadfast.
+Spot-checking a few districts against Steadfast's own picker before relying on
+them for bulk consignment would be sensible.
+
+## Bengali names for every thana
+
+The 489 upazilas added in the previous change were English-only, while Dhaka's
+had Bengali. `BD_THANA_BN` held 67 entries against 541 distinct thanas.
+
+Added the missing **474**. Coverage is now **541 / 541**, and every value was
+checked to actually contain Bengali characters (0 entries slipped through as
+Latin text). `thanaOptionsFor` already feeds this in as each option's `hint`
+and as a search alias, so staff can type either script.
+
+Four needed a second pass: `Sherpur`, `Kishoreganj` and `Faridpur` are also
+DISTRICT names, so the de-duplication skipped them on the assumption they were
+already present in the file — they were, but in `BD_DISTRICT_BN`, which is a
+different lookup. `Kawkhali` (Pirojpur) is a near-duplicate of `Kaukhali`
+(Rangamati) and had been folded into it.
+
+## Wholesale: cash sales, delivery snapshot and payment detail (backend)
+
+Rebuilding wholesale to match the `WholeSale&Cash.html` prototype. Option B
+was chosen — match the demo — with one deliberate departure confirmed by the
+owner: **a cash sale still raises a `Due` and posts to the accounts ledger**,
+which the demo does not model at all.
+
+### Schema (migration `20260910090000_wholesale_cash_sale`)
+
+Four new enums (`WholesaleOrderType`, `WholesaleOrderChannel`,
+`WholesalePaymentMethod`, `WholesalePaymentStatus`) and, on
+`wholesale_orders`: `type`, `channel`, `payment_method`, `payment_status`,
+`transaction_id`, `gp_number`, plus a nine-column delivery snapshot
+(`recipient_name/phone`, `alternative_phone`, `recipient_email`,
+`address_line`, `district`, `thana`, `landmark`, `post_code`).
+`wholesale_order_items` gains a per-line `discount`.
+
+Two things worth noting:
+
+- **`courier` became nullable.** A cash sale is carried out of the shop.
+- **Everything else is additive with a default**, so the orders that already
+  exist stay valid — verified after applying: existing rows read back as
+  `type: WHOLESALE` with their courier intact.
+
+The delivery snapshot is on the ORDER, not read from the Party, for the same
+reason retail keeps `OrderAddress`: editing a customer's address later must
+not rewrite where past orders actually went.
+
+### Service
+
+- Rejects a WHOLESALE order with no courier, and a CASH_SALE with one.
+- Rejects any non-cash `paymentMethod` without a `transactionId` — without it
+  a payment cannot be reconciled against a statement.
+- Rejects a line discount larger than its own line, which would otherwise push
+  `lineTotal` negative and understate the subtotal with nothing on the invoice
+  explaining why.
+- `paymentStatus` is **derived** from what was actually collected, never taken
+  from the client.
+- A cash sale writes no delivery snapshot at all rather than blank strings.
+- The restate path carries an existing per-line discount through, instead of
+  silently resetting it to zero.
+
+### Verified against the running API
+
+| check | result |
+|---|---|
+| Cash sale created | `WS-2609-0001` — CASH_SALE / IN_STORE_POS / CASH / **PAID** |
+| GP number, courier | `GP-TEST-001`, courier `null` |
+| Per-line discount | 2 x 500 − 50 = **950.00** |
+| **Ledger receivable raised** | **`AR-2609-0001`** — as required |
+| wholesale with no courier | rejected |
+| cash sale with a courier | rejected |
+| bKash with no transaction id | rejected |
+| line discount > line | rejected, `৳900.00 is more than the ৳500.00 line` |
+| existing test suite | **25 / 25 pass** |
+
+The spec's line fixture needed `discount` adding; without it the mapper's
+`item.discount.toFixed(2)` threw on 18 tests. Real rows cannot hit that — the
+column is NOT NULL DEFAULT 0.
+
+**Still to do:** the three admin screens (full-page create flow, Orders
+dashboard with stat cards, Customer dashboard with detail view), and the
+dashboard stats endpoints they read.
+
+## Wholesale rebuilt to the `WholeSale&Cash.html` prototype (admin UI)
+
+The three screens from the prototype, replacing the old single Orders/Customers
+table page. Option B — match the demo — with the one agreed departure: **a cash
+sale still raises a `Due` and posts to the accounts ledger**, which the demo
+does not model.
+
+### Screens
+
+**Create Order** (`_components/CreateOrderPanel.tsx`) — customer type-ahead
+with "create new" inline, a delivery card that fills from the buyer, courier
+card, cart with per-line qty/price/discount, channel and payment pills, and a
+live summary. The Wholesale/Cash Sale toggle does everything the demo's does:
+retitles the screen, drops the delivery and courier cards, drops the delivery
+charge from the total, shows the GP number field, switches the channel to
+In-store POS, renames the button — **and re-prices every line**.
+
+**Orders Dashboard** — 4 stat cards, search, type and status filters, CSV
+export, and the demo's nine columns. **Customer Dashboard** — 4 stat cards,
+search, and a detail view with the profile grid and complete order history
+(including the demo's "Price Details" column, e.g. `৳380.00 × 10 − ৳200.00`).
+
+Both tables become cards below `md` rather than a horizontal scrollbar.
+
+### Things the demo doesn't have that were needed anyway
+
+- **Stats are server-side** (`GET /admin/wholesale/stats`). The tables page, so
+  totalling the rows in the browser would have reported the page rather than
+  the business, and the cards would have moved as staff typed in the search.
+- **The customer's order history is fetched by `partyId`**, not filtered out of
+  the list — "complete history" that silently stops at the last loaded page is
+  worse than no history.
+- **Cancelled orders now carry a badge.** Their goods went back on the shelf
+  and their invoice was voided; a cancelled row that looked identical to a live
+  one invited someone to chase a delivery or a payment that no longer existed.
+  The stat cards count live orders only, and say so.
+- **`wholesalePrice`**, so the mode toggle has something to re-price *to*.
+  Product-level, nullable, falling back to the retail price. It is only ever
+  the line's starting point — the rate actually billed is snapshotted on the
+  order, so editing it never rewrites a past invoice.
+- **Party address detail** (`alternativePhone`, `district`, `thana`,
+  `landmark`, `postCode`), which is what the delivery card fills from.
+- **Enum values the demo offers**: 4 more couriers, 4 more channels.
+
+### A real bug found on the way
+
+The product picker read price **only off the default variant**. A simple
+(non-variant) product keeps its price on the product row and has no variant at
+all, so **27 of 84 products returned a null price** — and would have started
+every wholesale line at ৳0.00. Now falls back to the product's own columns.
+Verified: 0 of 84 null.
+
+### Verified live, through the UI
+
+| check | result |
+|---|---|
+| Toggle re-prices the cart | 320 (bulk) → **399** (retail) on switch |
+| Cash sale created from the form | `WS-2609-0003` · Paid · GP-UI-0001 |
+| Delivery fills from the buyer | address, phone, outstanding balance |
+| Wholesale order via API | `WS-2609-0002` · SA_PARIBAHAN · TELEMARKETING |
+| Line discount | ৳380 × 10 − ৳200 = **৳3,600** |
+| Derived payment status | 1000 of 3650 → **PARTIALLY_PAID** |
+| **Ledger receivable** | **`AR-2609-0002`**, shown on the detail modal |
+| Search by product / phone / GP | 4 / 2 / 1 matches |
+| Cash sale with no GP number | rejected |
+| Picker prices | 27 null → **0 null** |
+| Wholesale tests | **32 / 32** (7 new: the type-split guards) |
+| Typecheck | backend and admin clean |
+
+**Not done:** `pnpm --filter @amader/admin lint` cannot run — `eslint-config-next`
+is in `package.json` and in the pnpm store but is not linked into
+`apps/admin/node_modules`. Pre-existing and unrelated to this work; it needs an
+install, which I have not run.
+
+**Also outstanding:** production still needs `prisma migrate deploy` for the two
+new migrations, and no product has a wholesale price set yet, so until someone
+fills them in every wholesale line starts at the retail price.
+
+## Wholesale follow-ups: invoice tab, pagination, cash-sale address, product images
+
+Six things off the back of using the rebuilt screens.
+
+### 1. Invoice settings, reachable from Wholesale
+
+There was already a full invoice configuration at Settings → Invoices, and the
+wholesale invoice already rendered from it — it was just buried. Rather than
+build a second one, the form moved to
+`components/settings/InvoiceSettingsForm.tsx` and is now rendered in **two**
+places: the settings page, and a new **Invoice Settings** tab on Wholesale.
+One config, one template, one company. The tab carries a banner saying so, so
+nobody edits it expecting wholesale-only changes.
+
+### 2. A preview
+
+`InvoicePreview` renders the **real** `WholesaleInvoiceDocument` against a
+made-up order, fed the **draft** settings rather than the saved ones — a
+preview of what is already saved would show the very thing you are trying to
+change. `WholesaleInvoiceDocument` gained an optional `settingsOverride` for
+this; nothing else passes it.
+
+Two deliberate choices: the sample order is invented, not a real one (this
+screen gets shown on shared displays, and a real invoice carries a real
+buyer's name, phone and address); and the shrink-to-fit uses `zoom`, not
+`scale` — a transform does not affect layout, so the first attempt reserved
+the invoice's full height and left a slab of empty box under it.
+
+### 3. Pagination
+
+Both dashboards were fetching `pageSize=200` and rendering everything. Now a
+25-row page with a `Pager` (prev / next / "3–4 of 6 orders"), `keepPreviousData`
+so the table does not blank on every keystroke, and a reset to page 1 whenever
+a filter changes — page 3 of the old result set is usually past the end of the
+new one, which showed an empty table with no hint why.
+
+The customer's own order history pages too. The create-order screen still
+loads every buyer in one request (`pageSize: 0`) because it searches that list
+in the browser to keep picking a customer instant.
+
+### 4. Cash sales now keep a delivery address
+
+**My mistake in the rebuild.** I hid the whole Delivery Address card for cash
+sales, reading the prototype's `deliveryCard` as "the address". It is not —
+that id is on the **Courier** card, and the demo shows the address in both
+modes and validates recipient name/phone/address in both. Only the courier is
+wholesale-only.
+
+Fixed in the form, the validation, the create path (the snapshot was gated on
+`type === 'WHOLESALE'`) and the order detail modal. A counter sale is still
+handed to a named person at an address, and the shop wants that on the invoice.
+
+### 5 & 6. Product images, and clicking the row to add
+
+`AdminProductPickerItemDto` gained `imageUrl` (primary image, falling back to
+the gallery's first). Shown in the product search results, the cart lines, and
+the order detail table.
+
+For the detail table the image is **resolved from the product, not
+snapshotted** beside the name and price. Those snapshots exist because they
+are financial facts that must never change under a past invoice; a thumbnail
+is not one, and a product whose photo was replaced should show the photo it
+has. Null once the product is deleted — the shared `Thumb` falls back to a
+lettered tile rather than a broken-image icon.
+
+The separate **Add** button is gone: the whole result row is the button now,
+with a `+` on the right.
+
+### Verified
+
+| check | result |
+|---|---|
+| Invoice tab renders the shared form | company info, footer, typography, layout, stamp |
+| Preview | real invoice, sample order, draft settings, no dead space |
+| Pagination | `3–4 of 6 orders` · `2 / 3` · prev+next both live |
+| Cash sale delivery card | shown, and required |
+| Picker images | **82 of 84** products have one |
+| Order item images | resolved on every line |
+| Row click adds to cart | Add button gone |
+| Wholesale tests | **32 / 32** |
+| Typecheck | backend and admin clean |
+
+The spec fixture needed `media: []` on its item's `product` to match
+`ORDER_INCLUDE` — without it the mapper threw on 20 tests. Real rows always
+have the relation.

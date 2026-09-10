@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
+  DistrictAutocomplete,
+  ThanaAutocomplete,
+} from "@/components/DistrictThanaFields";
+import {
   useSaveWholesaleCustomer,
   type WholesaleCustomer,
 } from "@/hooks/useWholesale";
@@ -43,10 +47,12 @@ export function CustomerModal({
   open,
   editing,
   onClose,
+  onSaved,
 }: {
   open: boolean;
   editing: WholesaleCustomer | null;
   onClose: () => void;
+  onSaved?: (customer: WholesaleCustomer) => void;
 }) {
   const save = useSaveWholesaleCustomer();
 
@@ -54,6 +60,12 @@ export function CustomerModal({
     name: editing?.name ?? "",
     phone: editing?.phone ?? "",
     address: editing?.address ?? "",
+    email: editing?.email ?? "",
+    alternativePhone: editing?.alternativePhone ?? "",
+    district: editing?.district ?? "",
+    thana: editing?.thana ?? "",
+    landmark: editing?.landmark ?? "",
+    postCode: editing?.postCode ?? "",
     creditLimit: editing?.creditLimit ?? "",
     creditDays: editing?.creditDays?.toString() ?? "",
     openingReceivable: "",
@@ -64,11 +76,20 @@ export function CustomerModal({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await save.mutateAsync({
+      const saved = await save.mutateAsync({
         id: editing?.id,
         name: form.name.trim(),
         phone: form.phone.trim(),
         address: form.address.trim() || undefined,
+        // Sent as "" rather than dropped when cleared: undefined tells the
+        // server to leave the field alone, so an emptied box would silently
+        // keep its old value.
+        email: form.email.trim(),
+        alternativePhone: form.alternativePhone.trim(),
+        district: form.district.trim(),
+        thana: form.thana.trim(),
+        landmark: form.landmark.trim(),
+        postCode: form.postCode.trim(),
         creditLimit: form.creditLimit.trim() || undefined,
         creditDays: form.creditDays.trim()
           ? Number(form.creditDays)
@@ -79,6 +100,7 @@ export function CustomerModal({
         note: form.note.trim() || undefined,
         isActive: form.isActive,
       });
+      onSaved?.(saved);
       onClose();
     } catch {
       // Retain open on error so staff can correct input
@@ -142,11 +164,31 @@ export function CustomerModal({
               />
             </ModalField>
 
+            <ModalField label="Alternative Phone">
+              <input
+                className={inputClass}
+                placeholder="01XXXXXXXXX"
+                value={form.alternativePhone}
+                onChange={(e) =>
+                  setForm({ ...form, alternativePhone: e.target.value })
+                }
+              />
+            </ModalField>
+
+            <ModalField label="Email">
+              <input
+                className={inputClass}
+                placeholder="shop@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </ModalField>
+
             <div className="sm:col-span-2">
               <ModalField label="Store / Delivery Address">
                 <input
                   className={inputClass}
-                  placeholder="Market name, Shop no., Road, Area, District"
+                  placeholder="Market name, Shop no., Road, Area"
                   value={form.address}
                   onChange={(e) =>
                     setForm({ ...form, address: e.target.value })
@@ -154,6 +196,45 @@ export function CustomerModal({
                 />
               </ModalField>
             </div>
+
+            {/* Kept on the buyer, not only on their orders: this is what the
+                create-order screen fills the delivery card from. */}
+            <ModalField label="District">
+              <DistrictAutocomplete
+                value={form.district}
+                onChange={(district) =>
+                  // A thana belongs to one district, so the old pick is
+                  // cleared rather than left pointing somewhere else.
+                  setForm({ ...form, district, thana: "" })
+                }
+              />
+            </ModalField>
+
+            <ModalField label="Thana / Area">
+              <ThanaAutocomplete
+                district={form.district}
+                value={form.thana}
+                onChange={(thana) => setForm({ ...form, thana })}
+              />
+            </ModalField>
+
+            <ModalField label="Landmark">
+              <input
+                className={inputClass}
+                placeholder="e.g. Near City Bank"
+                value={form.landmark}
+                onChange={(e) => setForm({ ...form, landmark: e.target.value })}
+              />
+            </ModalField>
+
+            <ModalField label="Post Code">
+              <input
+                className={inputClass}
+                placeholder="e.g. 1212"
+                value={form.postCode}
+                onChange={(e) => setForm({ ...form, postCode: e.target.value })}
+              />
+            </ModalField>
           </div>
         </div>
 

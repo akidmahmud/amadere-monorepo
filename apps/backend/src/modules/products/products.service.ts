@@ -222,12 +222,30 @@ export class ProductsService {
         // picker hide (or mark) sold-out products without aggregating every
         // variant client-side.
         stockStatus: true,
+        sku: true,
+        price: true,
+        salePrice: true,
+        wholesalePrice: true,
         translations: { select: { name: true }, take: 1 },
+        // Just enough to show a thumbnail beside each name. Ordered so the
+        // primary image wins and the gallery's first image is the fallback,
+        // the same rule the product list uses.
+        media: {
+          select: { isPrimary: true, media: { select: { url: true } } },
+          orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+          take: 1,
+        },
         // Price comes off the default variant (or the first one, for products
         // that never flagged a default) — cheap here because it is two decimal
         // columns, not the full variant include the list endpoint uses.
         variants: {
-          select: { price: true, salePrice: true, isDefault: true },
+          select: {
+            price: true,
+            salePrice: true,
+            wholesalePrice: true,
+            sku: true,
+            isDefault: true,
+          },
           orderBy: { id: 'asc' },
         },
       },
@@ -240,8 +258,18 @@ export class ProductsService {
         id: p.id,
         slug: p.slug,
         name: p.translations[0]?.name ?? p.slug,
-        price: variant?.price?.toString() ?? null,
-        salePrice: variant?.salePrice?.toString() ?? null,
+        // Variant first, then the product's own: a variant product prices
+        // per variant, a simple one prices on the product itself and has no
+        // variant row to read.
+        price: (variant?.price ?? p.price)?.toString() ?? null,
+        salePrice: (variant?.salePrice ?? p.salePrice)?.toString() ?? null,
+        // ponytail: no per-variant bulk-rate input yet, so in practice this
+        // resolves to the product's rate. Add the variant field when a
+        // product genuinely needs different rates per pack size.
+        wholesalePrice:
+          (variant?.wholesalePrice ?? p.wholesalePrice)?.toString() ?? null,
+        sku: variant?.sku ?? p.sku ?? null,
+        imageUrl: p.media[0]?.media.url ?? null,
         stockStatus: p.stockStatus,
       };
     });
@@ -485,6 +513,9 @@ export class ProductsService {
       stockStatus: 'OUT_OF_STOCK',
       price: existing.price ? Number(existing.price) : undefined,
       salePrice: existing.salePrice ? Number(existing.salePrice) : undefined,
+      wholesalePrice: existing.wholesalePrice
+        ? Number(existing.wholesalePrice)
+        : undefined,
       costPerItem: existing.costPerItem ? Number(existing.costPerItem) : undefined,
       costPriceUnit: existing.costPriceUnit ?? undefined,
       shippableWeight: existing.shippableWeight ? Number(existing.shippableWeight) : undefined,
@@ -565,6 +596,7 @@ export class ProductsService {
         stockStatus: dto.stockStatus,
         price: dto.hasVariants ? undefined : dto.price,
         salePrice: dto.salePrice,
+        wholesalePrice: dto.wholesalePrice,
         // dto values are bare "YYYY-MM-DD" from <input type="date">, not
         // full ISO-8601 datetimes — Prisma 7's DateTime scalar rejects a
         // date-only string outright ("premature end of input. Expected
@@ -724,6 +756,9 @@ export class ProductsService {
         stockStatus: dto.stockStatus,
         price: effectiveHasVariants ? null : dto.price,
         salePrice: effectiveHasVariants ? null : dto.salePrice,
+        // Left alone when the product switched to variants: the bulk rate is
+        // product-level and still applies to every variant.
+        wholesalePrice: dto.wholesalePrice,
         // dto values are bare "YYYY-MM-DD" from <input type="date">, not
         // full ISO-8601 datetimes — Prisma 7's DateTime scalar rejects a
         // date-only string outright ("premature end of input. Expected

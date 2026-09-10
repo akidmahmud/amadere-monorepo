@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PaginatedResult } from '@amader/shared';
-import { Prisma, WholesaleOrderStatus } from '@amader/db';
+import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
 import { LedgerService } from '../net-profit/accounts/ledger/ledger.service';
@@ -23,6 +23,7 @@ import {
 import {
   WholesaleCustomerDto,
   WholesaleOrderDto,
+  WholesaleStatsDto,
   toWholesaleOrderDto,
 } from './wholesale.mapper';
 
@@ -31,7 +32,25 @@ const ZERO = new Decimal(0);
 
 const ORDER_INCLUDE = {
   party: { select: { id: true, name: true, phone: true } },
-  items: true,
+  // The line's picture is resolved from the product rather than snapshotted
+  // beside the name and price. The snapshots exist because those are
+  // financial facts that must never change under a past invoice; a thumbnail
+  // is not one, and a product whose photo was later replaced should show the
+  // photo it has. Null once the product is deleted -- the UI falls back to a
+  // lettered placeholder, and the name snapshot still says what was sold.
+  items: {
+    include: {
+      product: {
+        select: {
+          media: {
+            select: { media: { select: { url: true } } },
+            orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+            take: 1,
+          },
+        },
+      },
+    },
+  },
   dues: { select: { id: true, docNo: true, voidedAt: true, kind: true } },
 } satisfies Prisma.WholesaleOrderInclude;
 
@@ -163,7 +182,11 @@ export class WholesaleService {
             OR: [
               { name: { contains: search, mode: 'insensitive' } },
               { phone: { contains: search, mode: 'insensitive' } },
+              { alternativePhone: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
               { address: { contains: search, mode: 'insensitive' } },
+              { district: { contains: search, mode: 'insensitive' } },
+              { thana: { contains: search, mode: 'insensitive' } },
             ],
           }
         : {}),
@@ -193,7 +216,13 @@ export class WholesaleService {
       id: number;
       name: string;
       phone: string | null;
+      email: string | null;
+      alternativePhone: string | null;
       address: string | null;
+      district: string | null;
+      thana: string | null;
+      landmark: string | null;
+      postCode: string | null;
       creditLimit: Prisma.Decimal | null;
       creditDays: number | null;
       note: string | null;
@@ -203,16 +232,45 @@ export class WholesaleService {
     const ids = parties.map((p) => p.id);
     // Unconditional: `{ in: [] }` already returns nothing, and short-circuiting
     // on an empty page only buys a union type that loses the aggregate shape.
+    //
+    // Grouped by type as well as party so the dashboard's wholesale/cash split
+    // costs the same single query the plain count used to.
     const [totals, positions] = await Promise.all([
       this.prisma.client.wholesaleOrder.groupBy({
-        by: ['partyId'],
+        by: ['partyId', 'type'],
         where: { partyId: { in: ids }, status: { in: LIVE_STATUSES } },
         _count: { _all: true },
         _sum: { total: true },
+        _max: { placedAt: true },
       }),
       this.ledger.partyPositions(ids),
     ]);
-    const byParty = new Map(totals.map((t) => [t.partyId, t] as const));
+
+    type Agg = {
+      count: number;
+      wholesale: number;
+      cash: number;
+      total: Prisma.Decimal;
+      last: Date | null;
+    };
+    const byParty = new Map<number, Agg>();
+    for (const row of totals) {
+      const acc: Agg = byParty.get(row.partyId) ?? {
+        count: 0,
+        wholesale: 0,
+        cash: 0,
+        total: ZERO,
+        last: null,
+      };
+      const n = row._count._all;
+      acc.count += n;
+      if (row.type === 'CASH_SALE') acc.cash += n;
+      else acc.wholesale += n;
+      acc.total = acc.total.plus(row._sum.total ?? ZERO);
+      const placed = row._max.placedAt;
+      if (placed && (!acc.last || placed > acc.last)) acc.last = placed;
+      byParty.set(row.partyId, acc);
+    }
 
     return parties.map((p) => {
       const t = byParty.get(p.id);
@@ -221,15 +279,74 @@ export class WholesaleService {
         name: p.name,
         phone: p.phone,
         address: p.address,
+        email: p.email,
+        alternativePhone: p.alternativePhone,
+        district: p.district,
+        thana: p.thana,
+        landmark: p.landmark,
+        postCode: p.postCode,
         creditLimit: p.creditLimit?.toFixed(2) ?? null,
         creditDays: p.creditDays,
         note: p.note,
         isActive: p.isActive,
-        orderCount: t?._count._all ?? 0,
-        purchaseTotal: (t?._sum.total ?? ZERO).toFixed(2),
+        orderCount: t?.count ?? 0,
+        wholesaleCount: t?.wholesale ?? 0,
+        cashCount: t?.cash ?? 0,
+        purchaseTotal: (t?.total ?? ZERO).toFixed(2),
         due: (positions.get(p.id)?.receivable ?? ZERO).toFixed(2),
+        lastOrderAt: t?.last ?? null,
       };
     });
+  }
+
+  /**
+   * Headline numbers for both dashboards, in one call.
+   *
+   * Deliberately server-side. The screens page their tables, so totalling the
+   * rows the browser happens to be holding would report three orders for a
+   * business with three hundred, and would change every time someone typed in
+   * the search box.
+   */
+  async stats(): Promise<WholesaleStatsDto> {
+    const live = { status: { in: LIVE_STATUSES } };
+    const [byType, buyers, customerCount, parties] = await Promise.all([
+      this.prisma.client.wholesaleOrder.groupBy({
+        by: ['type'],
+        where: live,
+        _count: { _all: true },
+        _sum: { total: true },
+      }),
+      this.prisma.client.wholesaleOrder.groupBy({ by: ['type', 'partyId'], where: live }),
+      this.prisma.client.party.count({
+        where: { roles: { has: 'WHOLESALE' }, deletedAt: null },
+      }),
+      this.prisma.client.party.findMany({
+        where: { roles: { has: 'WHOLESALE' }, deletedAt: null },
+        select: { id: true },
+      }),
+    ]);
+
+    const countOf = (t: WholesaleOrderType) =>
+      byType.find((r) => r.type === t)?._count._all ?? 0;
+    const buyersOf = (t: WholesaleOrderType) =>
+      new Set(buyers.filter((r) => r.type === t).map((r) => r.partyId)).size;
+
+    const positions = await this.ledger.partyPositions(parties.map((p) => p.id));
+    const dueTotal = [...positions.values()].reduce(
+      (sum, pos) => sum.plus(pos.receivable ?? ZERO),
+      ZERO,
+    );
+
+    return {
+      orderCount: byType.reduce((n, r) => n + r._count._all, 0),
+      wholesaleOrderCount: countOf('WHOLESALE'),
+      cashSaleCount: countOf('CASH_SALE'),
+      salesTotal: byType.reduce((sum, r) => sum.plus(r._sum.total ?? ZERO), ZERO).toFixed(2),
+      dueTotal: dueTotal.toFixed(2),
+      customerCount,
+      wholesaleCustomerCount: buyersOf('WHOLESALE'),
+      cashCustomerCount: buyersOf('CASH_SALE'),
+    };
   }
 
   async findCustomer(id: number): Promise<WholesaleCustomerDto> {
@@ -264,6 +381,12 @@ export class WholesaleService {
         roles: ['WHOLESALE', 'CUSTOMER'],
         phone,
         address: dto.address?.trim() || null,
+        email: dto.email?.trim() || null,
+        alternativePhone: dto.alternativePhone?.trim() || null,
+        district: dto.district?.trim() || null,
+        thana: dto.thana?.trim() || null,
+        landmark: dto.landmark?.trim() || null,
+        postCode: dto.postCode?.trim() || null,
         creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : null,
         creditDays: dto.creditDays ?? null,
         openingReceivable: decimalOrThrow(dto.openingReceivable, 'openingReceivable'),
@@ -286,6 +409,14 @@ export class WholesaleService {
         ...(dto.name === undefined ? {} : { name: dto.name.trim() }),
         ...(dto.phone === undefined ? {} : { phone: dto.phone.trim() }),
         ...(dto.address === undefined ? {} : { address: dto.address.trim() || null }),
+        ...(dto.email === undefined ? {} : { email: dto.email.trim() || null }),
+        ...(dto.alternativePhone === undefined
+          ? {}
+          : { alternativePhone: dto.alternativePhone.trim() || null }),
+        ...(dto.district === undefined ? {} : { district: dto.district.trim() || null }),
+        ...(dto.thana === undefined ? {} : { thana: dto.thana.trim() || null }),
+        ...(dto.landmark === undefined ? {} : { landmark: dto.landmark.trim() || null }),
+        ...(dto.postCode === undefined ? {} : { postCode: dto.postCode.trim() || null }),
         ...(dto.creditLimit === undefined
           ? {}
           : { creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : null }),
@@ -331,13 +462,24 @@ export class WholesaleService {
     const search = query.search?.trim();
     return {
       ...(query.status ? { status: query.status } : {}),
+      ...(query.type ? { type: query.type } : {}),
       ...(query.partyId ? { partyId: query.partyId } : {}),
+      // Every column the dashboard prints is searchable, products included:
+      // staff look an order up by what was in it at least as often as by its
+      // number.
       ...(search
         ? {
             OR: [
               { orderNumber: { contains: search, mode: 'insensitive' } },
               { consignmentId: { contains: search, mode: 'insensitive' } },
+              { gpNumber: { contains: search, mode: 'insensitive' } },
+              { transactionId: { contains: search, mode: 'insensitive' } },
+              { recipientName: { contains: search, mode: 'insensitive' } },
+              { recipientPhone: { contains: search, mode: 'insensitive' } },
+              { addressLine: { contains: search, mode: 'insensitive' } },
               { party: { name: { contains: search, mode: 'insensitive' } } },
+              { party: { phone: { contains: search, mode: 'insensitive' } } },
+              { items: { some: { nameSnapshot: { contains: search, mode: 'insensitive' } } } },
             ],
           }
         : {}),
@@ -444,6 +586,32 @@ export class WholesaleService {
       throw new BadRequestException(`${party.name} is deactivated`);
     }
 
+    // A cash sale is handed over the counter and a wholesale order is
+    // couriered. Enforced here rather than left to the UI, because the
+    // difference decides whether a delivery snapshot means anything and
+    // whether `courier` may be null at all.
+    const type = dto.type ?? 'WHOLESALE';
+    if (type === 'WHOLESALE' && !dto.courier) {
+      throw new BadRequestException('A wholesale order needs a courier');
+    }
+    if (type === 'CASH_SALE' && dto.courier) {
+      throw new BadRequestException('A cash sale is not couriered');
+    }
+    // The counter voucher number. It is what a walk-in customer is handed and
+    // what the day's till is reconciled against, so a cash sale without one
+    // cannot be traced back to a physical receipt.
+    if (type === 'CASH_SALE' && !dto.gpNumber?.trim()) {
+      throw new BadRequestException('A cash sale needs its GP number');
+    }
+    // Every non-cash method settles through a gateway that hands back a
+    // reference; without it a payment cannot be reconciled against a
+    // statement later.
+    if (dto.paymentMethod && dto.paymentMethod !== 'CASH' && !dto.transactionId?.trim()) {
+      throw new BadRequestException(
+        `A ${dto.paymentMethod} payment needs its transaction ID`,
+      );
+    }
+
     const lines = await this.resolveLines(dto.items);
     const subtotal = lines.reduce((sum, l) => sum.plus(l.lineTotal), ZERO);
     const deliveryCharge = decimalOrThrow(dto.deliveryCharge, 'deliveryCharge');
@@ -487,8 +655,36 @@ export class WholesaleService {
           orderNumber: await nextOrderNumber(tx, placedAt),
           partyId: party.id,
           status: dto.status ?? 'PENDING',
-          courier: dto.courier,
+          type,
+          channel: dto.channel ?? null,
+          paymentMethod: dto.paymentMethod ?? null,
+          // Derived, not taken from the client: the truth is what was
+          // actually collected against the receivable.
+          paymentStatus: paid.isZero()
+            ? 'UNPAID'
+            : paid.greaterThanOrEqualTo(total)
+              ? 'PAID'
+              : 'PARTIALLY_PAID',
+          transactionId: dto.transactionId?.trim() || null,
+          gpNumber: dto.gpNumber?.trim() || null,
+          courier: dto.courier ?? null,
           consignmentId: dto.consignmentId?.trim() || null,
+          // Cash sales store no delivery snapshot at all — there is no
+          // delivery. Spreading the object regardless would write empty
+          // strings that read as "known to be blank" rather than "n/a".
+          ...(dto.delivery
+            ? {
+                recipientName: dto.delivery.recipientName?.trim() || null,
+                recipientPhone: dto.delivery.recipientPhone?.trim() || null,
+                alternativePhone: dto.delivery.alternativePhone?.trim() || null,
+                recipientEmail: dto.delivery.recipientEmail?.trim() || null,
+                addressLine: dto.delivery.addressLine?.trim() || null,
+                district: dto.delivery.district?.trim() || null,
+                thana: dto.delivery.thana?.trim() || null,
+                landmark: dto.delivery.landmark?.trim() || null,
+                postCode: dto.delivery.postCode?.trim() || null,
+              }
+            : {}),
           subtotal,
           deliveryCharge,
           discount,
@@ -504,6 +700,7 @@ export class WholesaleService {
               skuSnapshot: l.sku,
               unitPrice: l.unitPrice,
               quantity: l.quantity,
+              discount: l.discount,
               lineTotal: l.lineTotal,
             })),
           },
@@ -583,6 +780,11 @@ export class WholesaleService {
     if (dto.status === 'CANCELLED') {
       throw new BadRequestException('Use the cancel endpoint to cancel an order');
     }
+    // Same rule the create path enforces, restated here so an edit cannot get
+    // an order into a shape creating it never could.
+    if (order.type === 'CASH_SALE' && dto.courier) {
+      throw new BadRequestException('A cash sale is not couriered');
+    }
 
     const light = {
       ...(dto.status === undefined ? {} : { status: dto.status }),
@@ -625,6 +827,10 @@ export class WholesaleService {
           isDigital: i.product?.productType === 'DIGITAL',
           unitPrice: i.unitPrice,
           quantity: i.quantity,
+          // Carried through: this branch is "the caller changed the money but
+          // not the lines", so an existing per-line discount must survive the
+          // restatement rather than silently reset to zero.
+          discount: i.discount,
           lineTotal: i.lineTotal,
         }));
 
@@ -683,6 +889,7 @@ export class WholesaleService {
               skuSnapshot: l.sku,
               unitPrice: l.unitPrice,
               quantity: l.quantity,
+              discount: l.discount,
               lineTotal: l.lineTotal,
             })),
           },
@@ -861,6 +1068,21 @@ export class WholesaleService {
       if (unitPrice.isNegative()) {
         throw new BadRequestException('A wholesale rate cannot be negative');
       }
+      // Taka off this line, before the order-level discount. Clamped at the
+      // line's own value: a per-line discount larger than the line would make
+      // lineTotal negative, and the subtotal would then be understated with
+      // nothing on the invoice explaining why.
+      const lineDiscount = decimalOrThrow(item.discount, 'discount');
+      if (lineDiscount.isNegative()) {
+        throw new BadRequestException('A line discount cannot be negative');
+      }
+      const gross = unitPrice.times(item.quantity);
+      if (lineDiscount.greaterThan(gross)) {
+        throw new BadRequestException(
+          `A line discount of ৳${lineDiscount.toFixed(2)} is more than the ৳${gross.toFixed(2)} line`,
+        );
+      }
+      const net = gross.minus(lineDiscount);
 
       if (item.variantId) {
         const v = variantById.get(item.variantId);
@@ -873,7 +1095,8 @@ export class WholesaleService {
           isDigital: v.product.productType === 'DIGITAL',
           unitPrice,
           quantity: item.quantity,
-          lineTotal: unitPrice.times(item.quantity),
+          discount: lineDiscount,
+          lineTotal: net,
         };
       }
 
@@ -890,7 +1113,8 @@ export class WholesaleService {
         isDigital: p.productType === 'DIGITAL',
         unitPrice,
         quantity: item.quantity,
-        lineTotal: unitPrice.times(item.quantity),
+        discount: lineDiscount,
+        lineTotal: net,
       };
     });
   }
