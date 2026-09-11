@@ -11,6 +11,7 @@ import {
   type AdminProductVariant,
   type CostPriceUnit,
   useSetDefaultVariant,
+  useUpdateProduct,
   useUpdateVariantAdminOnly,
 } from "@/hooks/useProducts";
 import { useUpdateVariantPrice } from "@/hooks/useProfit";
@@ -23,13 +24,11 @@ import { VariantRowForm } from "./VariantRowForm";
 
 export interface ExistingVariantsManagerProps {
   productId: number;
-  /** Attributes actually SAVED on the product — not whatever is ticked in the
-   *  form right now. The server validates a new variant's values against the
-   *  saved set, so offering anything else guarantees a rejected save. */
+  /** Every attribute ticked in the form — what the picker offers. */
   attributes: Attribute[];
-  /** Ticked in the form but not saved yet. Named so the hint can say which
-   *  ones need a Save before their values can be used. */
-  unsavedAttributeNames?: string[];
+  /** Of those, the ones already persisted on the product. Anything ticked but
+   *  not in here is saved automatically before the variant is added. */
+  savedAttributeIds?: number[];
   variants: AdminProductVariant[];
   /** Product-wide default cost price — undefined = no cost entered. Flat per-variant unless costPriceUnit is set. */
   costPerItem?: number;
@@ -269,7 +268,7 @@ function VariantEditRow({
 export function ExistingVariantsManager({
   productId,
   attributes,
-  unsavedAttributeNames = [],
+  savedAttributeIds,
   variants,
   costPerItem,
   costPriceUnit,
@@ -277,6 +276,34 @@ export function ExistingVariantsManager({
   const toast = useToast();
   const addVariant = useAddVariant(productId);
   const removeVariant = useRemoveVariant(productId);
+  const updateProduct = useUpdateProduct(productId);
+
+  const tickedIds = attributes.map((a) => a.id);
+  const unsaved = savedAttributeIds
+    ? tickedIds.filter((id) => !savedAttributeIds.includes(id))
+    : [];
+
+  /**
+   * Add one variant, persisting the attribute selection first if it is only
+   * ticked in the form so far.
+   *
+   * This exists to break a genuine deadlock. The add-variant endpoint checks
+   * the values against the attributes SAVED on the product, so a freshly
+   * ticked attribute is rejected — but Save itself refuses a variant-enabled
+   * product with zero variants ("Variants (add at least one)"), so the
+   * attribute could never be saved either. A product without variants could
+   * not be given any.
+   *
+   * Saving the ticks here is not a liberty: the admin ticked the attribute and
+   * is using one of its values in the same breath. Only `attributeIds` is
+   * sent, so nothing else in the half-edited form is written.
+   */
+  async function addWithAttributes(input: Parameters<typeof addVariant.mutateAsync>[0]) {
+    if (unsaved.length > 0) {
+      await updateProduct.mutateAsync({ attributeIds: tickedIds });
+    }
+    return addVariant.mutateAsync(input);
+  }
 
   function handleRemove(variantId: number) {
     removeVariant.mutate(variantId, {
@@ -309,25 +336,20 @@ export function ExistingVariantsManager({
         ))}
         {variants.length === 0 && <p className="text-xs text-muted">No variants yet.</p>}
       </div>
-      {/* A newly ticked attribute only exists in this form until the product
-          is saved, but the server checks a new variant against what is
-          SAVED — so using its values would be rejected. Said plainly here
-          rather than letting the add fail. */}
-      {unsavedAttributeNames.length > 0 && (
-        <p className="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-          Save the product first to add variants using{" "}
-          {unsavedAttributeNames.join(", ")}.
-        </p>
-      )}
       {attributes.length > 0 ? (
         <VariantRowForm
           attributes={attributes}
-          submitLabel={addVariant.isPending ? "Adding…" : "Add variant"}
-          pending={addVariant.isPending}
+          submitLabel={
+            addVariant.isPending || updateProduct.isPending
+              ? "Adding…"
+              : "Add variant"
+          }
+          pending={addVariant.isPending || updateProduct.isPending}
           // mutateAsync, not mutate: the row clears itself only once this
-          // resolves, so a rejected add keeps the typed values on screen.
+          // resolves, so a rejected add keeps the typed values on screen
+          // instead of vanishing as though it had worked.
           onSubmit={(v) =>
-            addVariant.mutateAsync(v).catch((err) => {
+            addWithAttributes(v).catch((err) => {
               toast.push(
                 err instanceof ProxyApiError
                   ? err.message
@@ -342,11 +364,7 @@ export function ExistingVariantsManager({
           costPriceUnit={costPriceUnit}
         />
       ) : (
-        <p className="text-xs text-muted">
-          {unsavedAttributeNames.length > 0
-            ? "No saved attributes on this product yet."
-            : "Select at least one attribute above to add variants."}
-        </p>
+        <p className="text-xs text-muted">Select at least one attribute above to add variants.</p>
       )}
     </div>
   );

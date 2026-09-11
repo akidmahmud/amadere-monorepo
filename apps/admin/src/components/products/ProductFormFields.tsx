@@ -175,19 +175,7 @@ export function ProductFormFields({
   const selectedAttributes: Attribute[] = (attributes ?? []).filter((a) =>
     form.attributeIds.includes(a.id),
   );
-  // On an existing product the add-variant call is validated against the
-  // attributes already persisted, so the picker offers only those. Ticking a
-  // new box populates `selectedAttributes` instantly but changes nothing
-  // server-side until Save — which is exactly how an added variant used to
-  // fail with no visible reason.
-  const savedSelectedAttributes = savedAttributeIds
-    ? selectedAttributes.filter((a) => savedAttributeIds.includes(a.id))
-    : selectedAttributes;
-  const unsavedAttributeNames = savedAttributeIds
-    ? selectedAttributes
-        .filter((a) => !savedAttributeIds.includes(a.id))
-        .map((a) => a.translations[0]?.name ?? `#${a.id}`)
-    : [];
+
   // Auto-generates the slug from the name until the admin types into the
   // slug field directly — same pattern as BlogPostFormFields.tsx.
   const slugEdited = useRef(false);
@@ -695,8 +683,8 @@ export function ProductFormFields({
               {productId && variants ? (
                 <ExistingVariantsManager
                   productId={productId}
-                  attributes={savedSelectedAttributes}
-                  unsavedAttributeNames={unsavedAttributeNames}
+                  attributes={selectedAttributes}
+                  savedAttributeIds={savedAttributeIds}
                   variants={variants}
                   costPerItem={variantCostPerItem}
                   costPriceUnit={form.costPriceUnit}

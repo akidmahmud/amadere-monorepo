@@ -3628,3 +3628,59 @@ on DI resolution rather than on what it asserted. Registered it with an
 
 Product 34 was restored to exactly its original state — no attributes, no
 variants, `has_variants` false.
+
+## Variant fix, corrected: it was a deadlock, not a missing Save
+
+The "Save the product first…" hint added above was wrong, and the owner was
+right to push back: the product *was* saved. Worse, that hint hid the
+add-variant row, so it made the page less usable than before.
+
+### The actual cause
+
+Clicking **Save** on a product with "This product has variants" ticked and no
+variants yet does nothing at all — no request is sent. `handleSave` bails on
+`form.validate()`, which contains:
+
+```ts
+if (hasVariants) {
+  if (variantCount === 0) missing.push("Variants (add at least one)");
+}
+```
+
+So the two requirements referred to each other:
+
+- the **add-variant** endpoint rejects a value whose attribute is not saved on
+  the product; and
+- **Save** refuses to run while a variant-enabled product has zero variants.
+
+A product with no variants could therefore never be given any. Nothing the
+admin did could break out of it, which is exactly what "it isn't saving or
+taking that variant" looks like from the outside.
+
+### Fix
+
+Adding a variant now persists the attribute selection first, then posts the
+variant — `PATCH { attributeIds }` followed by the existing `POST`. Only
+`attributeIds` is sent, so no other half-edited field is written, and the
+server flips `hasVariants` itself once a variant exists.
+
+That is not a liberty with the form: the admin ticked the attribute and used
+one of its values in the same action. The nag banner and the picker filtering
+are both gone — the row is simply there and works.
+
+### Verified on product 34, nothing saved beforehand
+
+| step | result |
+|---|---|
+| Tick "has variants" + Weight, fill row, Add variant | variant **254** created |
+| `attributeIds` | `[1]` — persisted automatically |
+| `hasVariants` | `true` — set by the server on add |
+| Variant row in the list | `500 gram · ASH-500G · ৳250 · stock 7`, profit ৳180 |
+| products suite | 23/23 |
+| Typecheck | backend + admin clean |
+
+Product 34 restored: no attributes, no variants, `has_variants` false.
+
+**Still true from the previous entry:** the swallowed error and the
+self-clearing row are fixed, `isAdminOnly` is no longer dropped, and the
+products spec is no longer red.
