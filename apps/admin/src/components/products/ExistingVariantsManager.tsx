@@ -23,7 +23,13 @@ import { VariantRowForm } from "./VariantRowForm";
 
 export interface ExistingVariantsManagerProps {
   productId: number;
+  /** Attributes actually SAVED on the product — not whatever is ticked in the
+   *  form right now. The server validates a new variant's values against the
+   *  saved set, so offering anything else guarantees a rejected save. */
   attributes: Attribute[];
+  /** Ticked in the form but not saved yet. Named so the hint can say which
+   *  ones need a Save before their values can be used. */
+  unsavedAttributeNames?: string[];
   variants: AdminProductVariant[];
   /** Product-wide default cost price — undefined = no cost entered. Flat per-variant unless costPriceUnit is set. */
   costPerItem?: number;
@@ -260,7 +266,14 @@ function VariantEditRow({
 // mutations fire immediately, same pattern already proven on the Attributes
 // page). Price, stock, and SKU DO have real update endpoints (see
 // VariantEditRow above), so those are edited in place instead.
-export function ExistingVariantsManager({ productId, attributes, variants, costPerItem, costPriceUnit }: ExistingVariantsManagerProps) {
+export function ExistingVariantsManager({
+  productId,
+  attributes,
+  unsavedAttributeNames = [],
+  variants,
+  costPerItem,
+  costPriceUnit,
+}: ExistingVariantsManagerProps) {
   const toast = useToast();
   const addVariant = useAddVariant(productId);
   const removeVariant = useRemoveVariant(productId);
@@ -296,17 +309,44 @@ export function ExistingVariantsManager({ productId, attributes, variants, costP
         ))}
         {variants.length === 0 && <p className="text-xs text-muted">No variants yet.</p>}
       </div>
+      {/* A newly ticked attribute only exists in this form until the product
+          is saved, but the server checks a new variant against what is
+          SAVED — so using its values would be rejected. Said plainly here
+          rather than letting the add fail. */}
+      {unsavedAttributeNames.length > 0 && (
+        <p className="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          Save the product first to add variants using{" "}
+          {unsavedAttributeNames.join(", ")}.
+        </p>
+      )}
       {attributes.length > 0 ? (
         <VariantRowForm
           attributes={attributes}
           submitLabel={addVariant.isPending ? "Adding…" : "Add variant"}
           pending={addVariant.isPending}
-          onSubmit={(v) => addVariant.mutate(v)}
+          // mutateAsync, not mutate: the row clears itself only once this
+          // resolves, so a rejected add keeps the typed values on screen.
+          onSubmit={(v) =>
+            addVariant.mutateAsync(v).catch((err) => {
+              toast.push(
+                err instanceof ProxyApiError
+                  ? err.message
+                  : "Could not add that variant",
+                "error",
+              );
+              // Re-thrown so VariantRowForm knows not to clear the fields.
+              throw err;
+            })
+          }
           costPerItem={costPerItem}
           costPriceUnit={costPriceUnit}
         />
       ) : (
-        <p className="text-xs text-muted">Select at least one attribute above to add variants.</p>
+        <p className="text-xs text-muted">
+          {unsavedAttributeNames.length > 0
+            ? "No saved attributes on this product yet."
+            : "Select at least one attribute above to add variants."}
+        </p>
       )}
     </div>
   );

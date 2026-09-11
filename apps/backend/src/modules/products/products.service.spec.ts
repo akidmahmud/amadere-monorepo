@@ -5,6 +5,7 @@ import { SeoService } from '../seo/seo.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { TokenService } from '../../common/auth/token.service';
 import { RevalidationService } from '../../common/revalidation/revalidation.service';
+import { CatalogFeedService } from '../catalog-feed/catalog-feed.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -63,6 +64,10 @@ describe('ProductsService.create/update — trackInventory forced off for DIGITA
         { provide: ReviewsService, useValue: {} },
         { provide: TokenService, useValue: {} },
         { provide: RevalidationService, useValue: { revalidate: jest.fn() } },
+        // Added to ProductsService's constructor with the catalog feed work;
+        // without it every test in this file died on DI resolution, not on
+        // anything it was actually asserting.
+        { provide: CatalogFeedService, useValue: { invalidate: jest.fn() } },
       ],
     }).compile();
     service = module.get(ProductsService);
@@ -179,6 +184,7 @@ describe('ProductsService — manual related products keep the admin\'s order', 
         { provide: ReviewsService, useValue: {} },
         { provide: TokenService, useValue: {} },
         { provide: RevalidationService, useValue: { revalidateProduct: jest.fn() } },
+        { provide: CatalogFeedService, useValue: { invalidate: jest.fn() } },
       ],
     }).compile();
 

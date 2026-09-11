@@ -945,6 +945,10 @@ export class ProductsService {
           stockStatus: (dto.stock ?? 0) > 0 ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK',
           weightOverride: dto.weightOverride,
           isDefault: dto.isDefault,
+          // Was omitted here while the create-product path wrote it, so
+          // ticking "Admin only" when adding a variant to an EXISTING product
+          // was silently dropped and the variant went live to customers.
+          isAdminOnly: dto.isAdminOnly ?? false,
           attributeValues: {
             create: dto.attributeValueIds.map((attributeValueId) => ({
               attributeValueId,

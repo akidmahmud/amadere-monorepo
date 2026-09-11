@@ -8,7 +8,13 @@ import { computeVariantCost } from "@/lib/variant-cost";
 
 export interface VariantRowFormProps {
   attributes: Attribute[];
-  onSubmit: (variant: VariantInput) => void;
+  /**
+   * Returning a promise makes the row wait for it: the fields are only
+   * cleared once it resolves. The existing-product flow returns the add
+   * mutation, so a rejected save leaves the typed values on screen to be
+   * corrected instead of wiping them and looking like nothing happened.
+   */
+  onSubmit: (variant: VariantInput) => void | Promise<unknown>;
   submitLabel: string;
   pending?: boolean;
   /** Product-wide default cost price — undefined = no cost entered. Flat per-variant unless costPriceUnit is set. */
@@ -37,9 +43,20 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
 
   const canSubmit = attributes.length > 0 && attributes.every((a) => valueByAttribute[a.id]) && price;
 
+  function reset() {
+    setValueByAttribute({});
+    setSku("");
+    setPrice("");
+    setSalePrice("");
+    setWeight("");
+    setStock("0");
+    setIsDefault(false);
+    setIsAdminOnly(false);
+  }
+
   function submit() {
     if (!canSubmit) return;
-    onSubmit({
+    const result = onSubmit({
       sku: sku || undefined,
       price: Number(price),
       salePrice: salePrice ? Number(salePrice) : undefined,
@@ -49,14 +66,15 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
       isAdminOnly,
       attributeValueIds: Object.values(valueByAttribute),
     });
-    setValueByAttribute({});
-    setSku("");
-    setPrice("");
-    setSalePrice("");
-    setWeight("");
-    setStock("0");
-    setIsDefault(false);
-    setIsAdminOnly(false);
+
+    // Local-state flow (new product) returns nothing and is always a success.
+    if (!result || typeof (result as Promise<unknown>).then !== "function") {
+      reset();
+      return;
+    }
+    // The rejection is reported by the caller's own error handling; swallowed
+    // here only so it does not surface as an unhandled rejection.
+    void (result as Promise<unknown>).then(reset, () => {});
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {

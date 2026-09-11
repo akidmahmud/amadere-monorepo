@@ -3561,3 +3561,70 @@ typed.
 Note: the design in the screenshot that prompted this is in no commit on any
 branch — the shipped field was the plain version. This is a redesign of what
 is actually in the code, in the spirit of that reference.
+
+## Adding a variant silently did nothing (product 34)
+
+Reported on `/products/34` (Ashwagandha Powder). Reproduced and root-caused.
+
+### What was happening
+
+That product has **no saved attributes** and no variants. The Variants tab's
+attribute checkboxes are form state, and the add-variant picker was built from
+that same live state — so ticking "Weight" made the row appear immediately.
+But the server validates a new variant against the attributes **persisted on
+the product**, which was still empty:
+
+```
+POST /admin/products/34/variants  {"price":100,"attributeValueIds":[11]}
+-> 400  Attribute value id(s) 11 belong to an attribute not declared in attributeIds
+```
+
+Two faults turned that correct rejection into "nothing happens":
+
+1. `addVariant.mutate(v)` had **no `onError`**, so the 400 was swallowed
+   whole — no toast, no inline message, nothing in the UI.
+2. `VariantRowForm.submit()` cleared every field the instant it called
+   `onSubmit`, before knowing the outcome. So the typed row vanished too,
+   which reads as "it saved and then disappeared".
+
+### Fixed
+
+- **The picker offers only attributes actually saved on the product.**
+  `savedAttributeIds` now flows from the edit page into `ProductFormFields`,
+  which intersects it with the ticked set. Ticking a new attribute shows
+  *"Save the product first to add variants using Weight."* instead of an input
+  that cannot work.
+- **Failures are visible.** The add goes through `mutateAsync` and pushes the
+  server's own message to a toast.
+- **A failed add keeps the typed row.** `onSubmit` may now return a promise;
+  the fields clear only once it resolves. The new-product flow returns nothing
+  and still clears immediately.
+
+### A second bug in the same endpoint
+
+`addVariant` never wrote **`isAdminOnly`** — the DTO accepted it and the
+create-product path stored it, but adding a variant to an *existing* product
+dropped it silently, so a variant ticked "Admin only" went live to customers.
+One line; verified it now persists.
+
+### And a red test suite
+
+`products.service.spec.ts` was failing **8 of 23 on a clean checkout** —
+`CatalogFeedService` had been added to `ProductsService`'s constructor without
+being registered in either of the spec's two TestModules, so every test died
+on DI resolution rather than on what it asserted. Registered it with an
+`invalidate()` stub. **23/23 now pass.**
+
+### Verified
+
+| check | result |
+|---|---|
+| Reproduced the silent failure | HTTP 400, message above |
+| Unsaved attribute | amber hint, add row hidden |
+| Attribute saved, then add | variant created |
+| `isAdminOnly: true` | persisted (was dropped) |
+| products suite | 8 failing → **23/23** |
+| Typecheck | backend + admin clean |
+
+Product 34 was restored to exactly its original state — no attributes, no
+variants, `has_variants` false.

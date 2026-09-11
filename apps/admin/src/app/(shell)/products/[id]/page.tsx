@@ -155,7 +155,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      <ProductFormFields form={form} productId={productId} variants={product.variants} />
+      <ProductFormFields
+        form={form}
+        productId={productId}
+        variants={product.variants}
+        savedAttributeIds={product.attributeIds}
+      />
 
       <ConfirmDialog
         open={confirmDeleteOpen}
