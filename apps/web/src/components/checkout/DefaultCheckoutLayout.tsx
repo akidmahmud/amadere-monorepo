@@ -54,6 +54,8 @@ import type { components } from "@/lib/api/schema";
 
 import { CheckoutFbtSection, cn, toBnNum, MANUAL_METHOD_LABELS } from "./shared";
 import { useCheckoutContext } from "./CheckoutContext";
+import { banglaDigits } from "@/lib/bangla-digits";
+import { CheckoutCouponField } from "./CheckoutCouponField";
 
 export function DefaultCheckoutLayout() {
   const {
@@ -201,7 +203,7 @@ export function DefaultCheckoutLayout() {
                   )}
                 </div>
                 <div className="mb-3.5">
-                  <Input placeholder="Mobile number (optional)" {...register("contact.phone")} />
+                  <Input placeholder="Mobile number (optional)" {...banglaDigits(register("contact.phone"))} />
                   {formState.errors.contact?.phone && (
                     <p className="mt-1 font-body text-xs text-red-600">{formState.errors.contact.phone.message}</p>
                   )}
@@ -332,56 +334,7 @@ export function DefaultCheckoutLayout() {
             </div>
             )}
 
-            <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
-              <h2 className="mb-3 font-ui text-[15px] font-semibold text-green">Have a coupon or discount code?</h2>
-              {cart?.couponCode ? (
-                <div className="flex items-center justify-between rounded-lg bg-beige px-3 py-2">
-                  <span className="font-ui text-xs font-medium text-ink">{cart.couponCode}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeCoupon.mutate(undefined)}
-                    className="font-ui text-xs text-muted underline"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                // Plain div, not a nested <form> — the whole checkout page is
-                // already one big <form> (react-hook-form's own submitForm,
-                // above), and a <form> inside a <form> is invalid HTML. The
-                // browser's parser dropped this inner form during the
-                // initial SSR-HTML parse, which the client then detected as
-                // a real hydration mismatch and reacted to by throwing away
-                // and regenerating the whole tree — the actual reason
-                // clicking Apply silently did nothing (no network request
-                // ever fired) instead of erroring visibly.
-                <div
-                  className="flex gap-2"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (couponInput.trim()) applyCoupon.mutate({ code: couponInput.trim() });
-                    }
-                  }}
-                >
-                  <Input placeholder="Coupon / discount code" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      if (couponInput.trim()) applyCoupon.mutate({ code: couponInput.trim() });
-                    }}
-                  >
-                    Apply
-                  </Button>
-                </div>
-              )}
-              {applyCoupon.isError && (
-                <p className="mt-2 font-body text-xs text-red-600">
-                  {applyCoupon.error instanceof Error ? applyCoupon.error.message : "Invalid coupon"}
-                </p>
-              )}
-            </div>
+            <CheckoutCouponField />
 
             <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
               <h2 className="mb-3 font-ui text-[15px] font-semibold text-green">Have a gift voucher?</h2>

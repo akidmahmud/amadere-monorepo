@@ -3448,3 +3448,116 @@ One wrong turn worth recording: the first version read the locale off
 `useParams()` and defaulted to `"en"`. The cart API wants `EN` and answers a
 lowercase locale with **400**, and `/checkout` has no locale path segment
 anyway. Every cart caller uses `toApiLocale(useLocale())`; this one now does too.
+
+## Bengali phone numbers are accepted (and stored in ASCII)
+
+A Bangla keyboard on Android types ০১২৩৪৫৬৭৮৯ by default, so a customer who
+never switches layouts enters their number in Bengali numerals.
+
+**That number was being rejected outright.** `\d` in a JavaScript regex matches
+ASCII only, and the normalizer's first line was `raw.replace(/[^\d]/g, '')` —
+which deleted every character of a Bengali number, leaving an empty string:
+
+```
+'০১৭১১১২৩৪৫৬'.replace(/[^\d]/g,'')  ->  ''   // rejected as invalid
+```
+
+The shopper saw "Enter a valid Bangladeshi mobile number" while looking at a
+number that was perfectly correct in their own script.
+
+### Fixed at the one chokepoint
+
+`toAsciiDigits()` in `packages/shared/src/phone.ts`, applied at the top of
+`normalizeBdPhone`. Because every phone path in the app already funnels through
+that one function, this fixes checkout, the admin forms, wholesale, the OTP
+flow, fraud lookups and the SMS gateway in a single change — the storefront's
+zod schema and the backend's `@IsBdPhone()` both call it.
+
+`@NormalizeBdPhone()` then stores the ASCII `880XXXXXXXXXX` form, so nothing
+downstream ever sees a Bengali digit.
+
+### And in the field itself
+
+`banglaDigits()` wraps React Hook Form's `register()` on the four checkout
+phone inputs (shipping, billing, alternative, contact). It rewrites the DOM
+node's value, not just form state — RHF registers uncontrolled inputs, so
+writing to state alone would leave the visible text in Bengali. The mapping is
+one character for one, so the caret never jumps.
+
+### A gap this turned up
+
+Wholesale's own customer DTO had a bare `@IsString()` on `phone` — no
+normalizer — so a Bengali number there was **saved as ০১৭…**, and every SMS,
+courier booking and fraud lookup against that party would have failed. Added
+`@NormalizeBdPhone()`.
+
+Deliberately NOT `@IsBdPhone()` alongside it: that demands an `01` prefix, and
+a shop's landline should still be storable. `NormalizeBdPhone` falls through to
+the raw value when it cannot normalize, so nothing that saved before is
+rejected now — verified.
+
+### Verified
+
+| input | result |
+|---|---|
+| `০১৭১১১২৩৪৫৬` | `+8801711123456` |
+| `+৮৮০১৭১১১২৩৪৫৬` | `+8801711123456` |
+| `০১৭১১ ১২৩৪৫৬` / `০১৭১১-১২৩৪৫৬` | `+8801711123456` |
+| `০১৭1১১২৩৪৫৬` (mixed scripts) | `+8801711123456` |
+| `০১৭১১` / `০২৭১১১২৩৪৫৬` | still rejected |
+| Typed live at checkout | field shows `01711123456` as you type |
+| Wholesale customer, Bengali | stored `8801711998877` |
+| Wholesale customer, landline `0255012345` | stored unchanged, still accepted |
+
+New spec `apps/backend/src/common/validators/bd-phone.spec.ts` — 7 cases
+covering the scripts, the mixed case, and that invalid numbers stay invalid.
+81/81 pass across common + wholesale + orders; all three apps typecheck.
+
+## Checkout: coupon field redesigned
+
+### One component, not two copies
+
+`DefaultCheckoutLayout` and the slot-based layout each carried their own copy
+of the coupon markup — identical today, guaranteed to drift. Both now render
+`CheckoutCouponField`.
+
+### What changed and why
+
+- **One heading.** Was heading + input + applied row; the reference design
+  stacked an eyebrow, a title and a subtitle on top of that. On a phone, where
+  nearly every order here is placed, three lines of encouragement push the
+  actual input toward the fold. A ticket glyph carries the "coupon" idea
+  without a line of text.
+- **The applied state is brand green, not beige.** Beige is the neutral
+  surface this app uses for inert panels, so the one genuinely good piece of
+  news on the page was rendered to look like a disabled row.
+- **The saving is stated once**, beside the code that caused it — "10%OFF
+  applied — you save ৳80". The order summary already lists it again; a third
+  celebratory restatement is noise.
+- **Remove is a 32px target**, not a 10px underlined word. It sits under a
+  thumb, and a mis-tap removes a discount.
+- **Apply now has states**: disabled while empty or in flight, "Applying…"
+  while the request runs. Previously it was always live, so an impatient
+  double-tap fired two requests.
+- The input renders upper case (`autoCapitalize`, no autocorrect/spellcheck) —
+  codes are printed and spoken that way. Display only; the typed value is what
+  is sent, since the server matches exactly.
+
+Free-shipping coupons read "free delivery" rather than an amount, and the
+saving is taken from the `COUPON` entry in `cart.discounts` specifically, so a
+promotion or upsell discount is never miscredited to the code the customer
+typed.
+
+### Verified at 420px
+
+| state | result |
+|---|---|
+| Empty | ticket icon, "Have a coupon?", Enter code + Apply |
+| Applied | green check, `10%OFF applied — you save ৳80`, round dismiss |
+| Rejected | "Coupon does not apply to any item in the cart" inline |
+| Neighbouring gift-voucher card | intact |
+| Remove control | labelled `Remove coupon 10%OFF` for screen readers |
+
+Note: the design in the screenshot that prompted this is in no commit on any
+branch — the shipped field was the plain version. This is a redesign of what
+is actually in the code, in the spirit of that reference.

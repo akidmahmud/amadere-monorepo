@@ -15,6 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 import {
   WholesaleCourier,
   WholesaleOrderChannel,
@@ -39,10 +40,16 @@ export class CreateWholesaleCustomerDto {
   @MaxLength(200)
   name!: string;
 
+  // Reshaped to the site-wide 880XXXXXXXXXX form, which also transliterates a
+  // number typed in Bengali numerals — without it a Bangla-keyboard entry is
+  // stored as ০১৭… and every SMS, courier booking and fraud lookup against it
+  // fails. Deliberately NOT paired with @IsBdPhone(): that demands an 01
+  // prefix, and a shop's landline should still be storable.
   @ApiProperty()
   @IsString()
   @MinLength(1)
   @MaxLength(40)
+  @NormalizeBdPhone()
   phone!: string;
 
   @ApiPropertyOptional()
@@ -91,7 +98,7 @@ export class CreateWholesaleCustomerDto {
 
 export class UpdateWholesaleCustomerDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(200) name?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(40) phone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(40) @NormalizeBdPhone() phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) address?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) email?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;

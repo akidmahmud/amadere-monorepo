@@ -12,6 +12,7 @@ import {
 } from "@amader/shared";
 import type { CheckoutFormValues } from "@/lib/checkout-schema";
 import { CheckoutFraudBadge } from "@/components/CheckoutFraudBadge";
+import { banglaDigits } from "@/lib/bangla-digits";
 import type { FraudPreflightResult } from "@/hooks/useCheckoutFraud";
 
 // Flat, alphabetical — division is derived server-side from district (every
@@ -73,7 +74,7 @@ export function AddressFields({
           )}
         </div>
         <div>
-          <Input placeholder="017*********" {...register(`${prefix}.phone`)} />
+          <Input placeholder="017*********" {...banglaDigits(register(`${prefix}.phone`))} />
           {fieldErrors?.phone && (
             <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.phone.message}</p>
           )}
@@ -147,7 +148,10 @@ export function AddressFields({
 
       <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <Input placeholder="Alternative Phone (optional)" {...register(`${prefix}.alternativePhone`)} />
+          <Input
+            placeholder="Alternative Phone (optional)"
+            {...banglaDigits(register(`${prefix}.alternativePhone`))}
+          />
           {fieldErrors?.alternativePhone && (
             <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.alternativePhone.message}</p>
           )}

@@ -11,8 +11,27 @@
 // ranges.
 const LOCAL_RE = /^01\d{9}$/;
 
+/**
+ * Bengali digits (০১২৩৪৫৬৭৮৯, U+09E6–U+09EF) to ASCII.
+ *
+ * A Bangla keyboard on Android types these by default, so a customer who
+ * never switches layouts enters their number in Bengali numerals. `\d` in a
+ * JS regex matches ASCII only, so before this the strip below deleted every
+ * character and the number was rejected as invalid — the shopper saw "enter a
+ * valid phone number" while looking at a phone number that was perfectly
+ * correct in their own script.
+ *
+ * Exported so an input can also convert as it is typed, rather than only at
+ * submit.
+ */
+export function toAsciiDigits(raw: string): string {
+  return raw.replace(/[০-৯]/g, (d) =>
+    String.fromCharCode(d.charCodeAt(0) - 0x09e6 + 48),
+  );
+}
+
 export function normalizeBdPhone(raw: string): string | null {
-  const digits = raw.replace(/[^\d]/g, '');
+  const digits = toAsciiDigits(raw).replace(/[^\d]/g, '');
   let local: string | null = null;
   if (digits.length === 11 && digits.startsWith('01')) {
     local = digits;
