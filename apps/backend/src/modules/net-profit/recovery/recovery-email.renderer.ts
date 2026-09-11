@@ -13,6 +13,12 @@ export interface RecoveryEmailInput {
    *  when it is not configured, rather than linking to a broken chat. */
   whatsappNumber: string | null;
   siteName: string;
+  /**
+   * Optional incentive. When present the mail carries a coupon block, and the
+   * CTA link gains `?coupon=CODE` so the storefront applies it on arrival —
+   * a code the customer has to retype is a code most of them abandon.
+   */
+  coupon?: { code: string; label: string } | null;
   /** Editable copy. Supports {{name}} and {{total}}; anything else is left
    *  alone rather than blanked, so a typo shows up in the preview instead of
    *  silently deleting a word. */
@@ -60,6 +66,30 @@ function money(v: string | number): string {
 export function renderRecoveryEmail(input: RecoveryEmailInput): RenderedRecoveryEmail {
   const name = input.recipientName?.trim() || 'প্রিয় গ্রাহক';
   const base = input.siteUrl.replace(/\/$/, '');
+  // The coupon rides on the link rather than only in the text. A code the
+  // customer has to remember and retype is a code most of them abandon.
+  // /checkout, NOT /cart — the storefront has no /cart route (the cart is a
+  // drawer), so the old link sent every recipient of this email to a 404. The
+  // whole point of the mail is that button.
+  const cartHref = input.coupon
+    ? `${base}/checkout?coupon=${encodeURIComponent(input.coupon.code)}`
+    : `${base}/checkout`;
+
+  // Dashed border and a monospace code: the visual language of a voucher, and
+  // it survives Outlook, which is more than can be said for anything fancier.
+  const couponBlock = input.coupon
+    ? `<tr>
+<td align="center" style="padding:4px 32px 0 32px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:2px dashed #1e7439; border-radius:12px; background-color:#f2f9f4;">
+<tr><td align="center" style="padding:16px 20px;">
+<div style="font-family:Arial,Helvetica,sans-serif; font-size:13px; color:#12261a;">${esc(input.coupon.label)}</div>
+<div style="font-family:'Courier New',Courier,monospace; font-size:24px; font-weight:bold; letter-spacing:2px; color:#1e7439; padding-top:6px;">${esc(input.coupon.code)}</div>
+<div style="font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#4a6553; padding-top:6px;">নিচের বাটনে ক্লিক করলে কুপনটি নিজে থেকেই যুক্ত হয়ে যাবে</div>
+</td></tr>
+</table>
+</td>
+</tr>`
+    : '';
   const fill = (text: string) =>
     text.replaceAll('{{name}}', name).replaceAll('{{total}}', money(input.subtotal));
 
@@ -152,12 +182,13 @@ ${rows}
 </table>
 </td>
 </tr>
+${couponBlock}
 <tr>
 <td align="center" style="padding:26px 32px 12px 32px;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
 <tr>
 <td align="center" bgcolor="#1e7439" style="border-radius:999px;">
-<a href="${esc(base)}/cart" target="_blank" style="display:inline-block; padding:14px 36px; font-family:Arial,Helvetica,sans-serif; font-size:16px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:999px;">${esc(fill(input.copy.ctaLabel))}</a>
+<a href="${esc(cartHref)}" target="_blank" style="display:inline-block; padding:14px 36px; font-family:Arial,Helvetica,sans-serif; font-size:16px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:999px;">${esc(fill(input.copy.ctaLabel))}</a>
 </td>
 </tr>
 </table>
@@ -190,7 +221,11 @@ ${esc(input.siteName)} · <a href="${esc(base)}" target="_blank" style="color:#1
     ...input.cart.map((i) => `- ${i.name} — ${i.quantity} × ${money(i.unitPrice)}`),
     '',
     `সর্বমোট: ${money(input.subtotal)}`,
-    `অর্ডার সম্পূর্ণ করুন: ${base}/cart`,
+    // Same coupon in the plain-text part: some clients show only this, and an
+    // offer that exists in one half of the mail is an offer half the
+    // recipients never see.
+    input.coupon ? `${input.coupon.label} — কুপন কোড: ${input.coupon.code}` : '',
+    `অর্ডার সম্পূর্ণ করুন: ${cartHref}`,
     input.whatsappNumber?.trim()
       ? `হোয়াটসঅ্যাপ: https://wa.me/${input.whatsappNumber.trim().replace(/[^0-9]/g, '')}`
       : '',

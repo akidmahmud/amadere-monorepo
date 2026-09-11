@@ -36,6 +36,15 @@ export interface RecoveryEmailCopy {
   whatsappLabel: string;
 }
 
+/**
+ * What one send may change.
+ *
+ * `couponCode` is NOT part of RecoveryEmailCopy on purpose: that interface is
+ * the saved template in Recovery > Settings, and a coupon attached to one
+ * chase must never become the default on everyone else's.
+ */
+export type RecoveryEmailOverride = Partial<RecoveryEmailCopy> & { couponCode?: string };
+
 export interface RecoverySettings {
   enabled: boolean;
   delayHours: number;
@@ -245,7 +254,7 @@ export class RecoveryService {
    */
   async buildRecoveryEmail(
     id: number,
-    override?: Partial<RecoveryEmailCopy>,
+    override?: RecoveryEmailOverride,
   ): Promise<RenderedRecoveryEmail & { to: string | null; name: string | null; copy: RecoveryEmailCopy }> {
     const row = await this.prisma.client.incompleteOrder.findUniqueOrThrow({ where: { id } });
     const [site, wa, settings] = await Promise.all([
@@ -267,6 +276,7 @@ export class RecoveryService {
 
     const rendered = renderRecoveryEmail({
       copy,
+      coupon: await this.resolveEmailCoupon(override?.couponCode),
       recipientName: row.name,
       cart: (row.cart as unknown as CartSnapshotItem[]) ?? [],
       subtotal: row.subtotal.toString(),
@@ -279,11 +289,63 @@ export class RecoveryService {
     return { ...rendered, to: row.email, name: row.name, copy };
   }
 
+  /**
+   * Turns a typed coupon code into something the email can show.
+   *
+   * Validated HERE rather than trusted, and the send is refused outright when
+   * the code will not work. Mailing a dead coupon is worse than mailing none:
+   * the customer arrives, the code is rejected at checkout, and a cart that
+   * was one nudge from converting is now a complaint.
+   *
+   * Deliberately NOT checked: per-customer usage limits and the minimum order
+   * amount. Those depend on who ends up checking out and what is in the cart
+   * by then, and the cart gate already enforces both at apply time.
+   */
+  private async resolveEmailCoupon(
+    rawCode?: string,
+  ): Promise<{ code: string; label: string } | null> {
+    const code = rawCode?.trim();
+    if (!code) return null;
+
+    const discount = await this.prisma.client.discount.findUnique({
+      where: { code },
+    });
+    if (!discount) throw new BadRequestException(`No coupon with the code ${code}`);
+    if (discount.type !== 'COUPON') {
+      throw new BadRequestException(
+        `${code} is an automatic promotion, not a coupon customers enter`,
+      );
+    }
+    if (discount.status !== 'PUBLISHED') {
+      throw new BadRequestException(`${code} is not published, so it would be rejected at checkout`);
+    }
+
+    const now = new Date();
+    if (discount.startsAt && discount.startsAt > now) {
+      throw new BadRequestException(`${code} does not start until ${discount.startsAt.toDateString()}`);
+    }
+    if (discount.endsAt && discount.endsAt < now) {
+      throw new BadRequestException(`${code} expired on ${discount.endsAt.toDateString()}`);
+    }
+    if (discount.maxUsesTotal !== null && discount.usedCount >= discount.maxUsesTotal) {
+      throw new BadRequestException(`${code} has been fully used up`);
+    }
+
+    const amount =
+      discount.valueType === 'PERCENTAGE'
+        ? `${Number(discount.value)}% ছাড়`
+        : discount.valueType === 'FREE_SHIPPING'
+          ? 'ফ্রি ডেলিভারি'
+          : `৳${Number(discount.value).toLocaleString('en-BD')} ছাড়`;
+
+    return { code: discount.code as string, label: `আপনার জন্য ${amount}` };
+  }
+
   /** Sends the email built above, and counts it as a recovery attempt so the
    *  funnel's attempt column reflects every channel, not just SMS. */
   async sendRecoveryEmail(
     id: number,
-    override?: Partial<RecoveryEmailCopy>,
+    override?: RecoveryEmailOverride,
   ): Promise<{ sent: boolean; error?: string }> {
     // Rendered from the SAME call the preview used, with the same override —
     // so what was approved on screen is what goes out.

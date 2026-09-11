@@ -3300,3 +3300,151 @@ back to its single real row.
 `Cannot read properties of undefined (reading 'findMany')` — its Prisma mock
 has no `orderItem`. Untouched by this work; every other net-profit suite passes
 (186/186).
+
+## Overview: live site traffic, and two fixes to the stat cards
+
+### Today's Orders was missing the early-morning shift
+
+`new Date().setHours(0,0,0,0)` is midnight in the **server's** timezone. On a
+UTC host that is 06:00 in Dhaka, so every order placed between midnight and 6am
+local counted as *yesterday* and vanished from the one card people check first.
+
+Proved rather than assumed:
+
+```
+                    TZ=Asia/Dhaka          TZ=UTC
+old setHours()   2026-09-09T18:00Z    2026-09-10T00:00Z   <- 6 hours late
+new Dhaka start  2026-09-09T18:00Z    2026-09-09T18:00Z
+```
+
+Identical on a Dhaka machine, which is exactly why this survives local testing
+and only misbehaves in production. Now pinned to +06:00 like the rest of the
+codebase already does (customers.service.ts); Bangladesh has no DST, so no tz
+library is warranted.
+
+Second, smaller bug in the same cards: **trashed orders were counted**. The
+Orders list filters `deleted_at IS NULL`; these aggregates did not, so a binned
+order still added to Lifetime Sales and the status split. Verified against the
+DB — the API now reports 3398 live rather than 3401 total.
+
+The sub-label used to repeat the value ("0" above "0 Orders"); it now says what
+the card actually counts: *All statuses, since midnight*.
+
+### Pending Orders card removed
+
+At the owner's request. The skeleton dropped from 9 placeholders to 8 to match,
+so the page still does not jump on load.
+
+### Site traffic — first-party
+
+The owner asked whether the Overview could show current traffic. It could not:
+the GA4/GTM/Meta/TikTok tags in Settings > Analytics are **client-side pixels
+that report to Google and Meta**, never to us, and there was no pageview table
+and no `googleapis` dependency. Given the choice between reading GA4 back via
+its Data API and owning the data, the owner chose first-party.
+
+**`page_views`** — one row per view, written by a same-origin beacon on the
+storefront. Being same-origin it survives the ad blockers that eat
+analytics.google.com, so these numbers tend to run *higher* than GA's.
+
+*Privacy by construction:* no IP, no user agent, no cookies stored. The UA and
+Cloudflare's `cf-ipcountry` are read at the controller to derive a device class
+and a country code, then discarded. `visitorId` (localStorage, counts people)
+and `sessionId` (sessionStorage, counts visits) are random ids the browser
+mints for itself — that one distinction is the whole difference between
+"visitors today" and "on site now", for the cost of one column.
+
+Other deliberate choices: query strings are stripped from `path` (they carry
+search terms and coupon codes, and would shatter Top Pages into near
+duplicates); self-referrals are dropped; `utm_source` beats the referrer header
+because a tagged campaign is telling us what it is while its referrer is
+usually an ad redirector; bots are dropped by UA; rows are pruned at 90 days;
+and `record()` swallows its own errors, because an analytics write must never
+break a page load.
+
+### Verified end to end
+
+| check | result |
+|---|---|
+| Beacon on a real page load | recorded `/`, utm `newsletter`, device `desktop` |
+| Client-side navigation | second view recorded — 1 visitor, 1 session, 2 views |
+| Bot user agent | **not stored** — 6 posts in, 5 rows out |
+| Query string | `/products/gawa-ghee?utm_source=…` stored as `/products/gawa-ghee` |
+| Referrer | `https://www.google.com/search?q=…` stored as `google.com` |
+| utm vs referrer | `l.facebook.com` + utm `facebook` counted as **facebook** |
+| Panel | live dot, on-site-now, visitors/views today, top pages, top sources, device pills |
+| Typecheck | backend, admin **and web** all clean |
+| Tests | 220/220 (orders + net-profit, excluding the pre-existing VAT mock failure) |
+
+**Note for deploy:** traffic history starts the moment the beacon ships. There
+is no backfill — nothing was being recorded before this, so the panel shows an
+explicit empty state rather than a misleading zero.
+
+## Recovery: send a coupon with the email, and apply it on arrival
+
+The abandoned-cart email can now carry a discount code, and clicking its button
+applies that code at checkout without the customer typing anything.
+
+### Admin
+
+A coupon picker in **Send recovery email**, listing only PUBLISHED `COUPON`
+discounts that have a code — a `PROMOTION` applies itself and has no code to
+print. Optional; the live preview re-renders as soon as one is picked, so staff
+see the voucher block exactly as the customer will.
+
+The code travels as a per-send override, never saved. It is deliberately NOT
+part of `RecoveryEmailCopy`: those fields have defaults in Recovery > Settings,
+and a coupon attached to one chase must not become everyone's template. Hence a
+separate `RecoveryEmailOverride` type on both sides.
+
+### Server
+
+`resolveEmailCoupon()` validates before anything is sent, and **refuses the
+send** if the code would not work — unknown, not a coupon, unpublished, not
+started, expired, or fully used up. Mailing a dead coupon is worse than mailing
+none: the customer arrives, checkout rejects it, and a cart that was one nudge
+from converting becomes a complaint.
+
+Not checked, on purpose: per-customer limits and the minimum order amount.
+Both depend on who checks out and what is in the cart by then, and the cart
+gate already enforces them at apply time.
+
+The voucher block is a dashed border and a monospace code — the visual language
+of a voucher, and it survives Outlook. The same code also goes in the
+plain-text part, because some clients show only that.
+
+### Storefront
+
+`CouponFromLink` reads `?coupon=`, **remembers it**, and applies it once a cart
+with items exists. Not "apply on load": people read the email on a phone having
+abandoned the cart on a laptop, so there is often nothing to discount yet. It
+never overwrites a coupon the customer chose by hand, and it clears the stored
+code on success *or* rejection — a code that failed once fails identically on
+every later page.
+
+### A pre-existing bug found on the way
+
+The email's main button pointed at **`/storefront/cart`, which does not exist** —
+the storefront has no `/cart` route (the cart is a drawer), so every recipient
+of every recovery email so far landed on a 404. On the one button the entire
+email exists to get clicked. Now `/checkout`, which is also where the coupon
+needs to land.
+
+### Verified end to end
+
+| check | result |
+|---|---|
+| Email with valid coupon | voucher block + code, link `…/checkout?coupon=10%25OFF` |
+| Plain-text part | carries the code and the same link |
+| Expired coupon | **refused**: "FatemaNorinAPCM10 expired on Thu Jan 15 2026" |
+| Unknown code | **refused**: "No coupon with the code NOPE-NOT-REAL" |
+| No coupon / blank | renders normally, no voucher block |
+| Following the link | `10%OFF` applied at checkout, **−৳245.90** on ৳2,459 |
+| Re-visiting the link | detects the coupon is already on, clears stored code, no second call |
+| Typecheck | backend, admin and web all clean |
+| Tests | 186/186 net-profit (excluding the pre-existing VAT mock failure) |
+
+One wrong turn worth recording: the first version read the locale off
+`useParams()` and defaulted to `"en"`. The cart API wants `EN` and answers a
+lowercase locale with **400**, and `/checkout` has no locale path segment
+anyway. Every cart caller uses `toApiLocale(useLocale())`; this one now does too.

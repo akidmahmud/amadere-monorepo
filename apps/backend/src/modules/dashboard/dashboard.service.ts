@@ -5,6 +5,35 @@ import { DashboardOverviewDto } from './dashboard.dto';
 
 const NON_CANCELED = { not: 'CANCELED' as const };
 
+/**
+ * Trashed orders are not orders any more.
+ *
+ * The Orders list filters `deleted_at IS NULL`; these cards did not, so a
+ * binned order still counted towards Lifetime Sales and the status split, and
+ * the dashboard disagreed with the screen staff actually work from.
+ */
+const LIVE_ORDERS = { deletedAt: null } as const;
+
+/**
+ * Midnight in Dhaka, expressed as the UTC instant it happened at.
+ *
+ * `new Date().setHours(0,0,0,0)` gives midnight in the SERVER's timezone. On a
+ * UTC host that is 06:00 Dhaka, so every order placed between midnight and 6am
+ * local counted as yesterday and vanished from "Today's Orders" — the whole
+ * early-morning shift, missing, on exactly the card people check first.
+ *
+ * Fixed +06:00 rather than a tz library: Bangladesh has no DST, and the rest
+ * of the codebase already pins the Dhaka day this way (see
+ * customers.service.ts).
+ */
+function startOfDhakaToday(): Date {
+  const nowInDhaka = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  const y = nowInDhaka.getUTCFullYear();
+  const m = String(nowInDhaka.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(nowInDhaka.getUTCDate()).padStart(2, '0');
+  return new Date(`${y}-${m}-${d}T00:00:00+06:00`);
+}
+
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
@@ -16,8 +45,7 @@ export class DashboardService {
     });
     if (!admin.isSuperAdmin) return this.staffOverview(adminId);
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const startOfToday = startOfDhakaToday();
 
     // ponytail: fixed 90 days. Make it a query param if anyone wants to change
     // the window from the UI.
@@ -41,10 +69,10 @@ export class DashboardService {
       customerSpendRaw,
     ] = await Promise.all([
       this.prisma.client.order.aggregate({
-        where: { status: NON_CANCELED },
+        where: { status: NON_CANCELED, ...LIVE_ORDERS },
         _sum: { totalAmount: true },
       }),
-      this.prisma.client.order.count(),
+      this.prisma.client.order.count({ where: LIVE_ORDERS }),
       // Excludes seeded review authors, which are customer rows only
       // because reviews.customer_id is NOT NULL. The top-customers list
       // below needs no such guard -- it is derived from order spend, and
@@ -53,23 +81,33 @@ export class DashboardService {
         where: { ...EXCLUDE_SEEDED_REVIEWERS },
       }),
       this.prisma.client.product.count(),
-      this.prisma.client.order.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.client.order.count({ where: { status: 'COMPLETED', ...LIVE_ORDERS } }),
       this.prisma.client.order.aggregate({
-        where: { status: 'COMPLETED' },
+        where: { status: 'COMPLETED', ...LIVE_ORDERS },
         _sum: { totalAmount: true },
       }),
       this.prisma.client.order.aggregate({
-        where: { status: 'PENDING' },
+        where: { status: 'PENDING', ...LIVE_ORDERS },
         _count: { _all: true },
         _sum: { totalAmount: true },
       }),
+      // Every order placed today, whatever its status — that is what the card
+      // says, so it must not quietly drop cancelled or unconfirmed ones.
       this.prisma.client.order.aggregate({
-        where: { createdAt: { gte: startOfToday } },
+        where: { createdAt: { gte: startOfToday }, ...LIVE_ORDERS },
         _count: { _all: true },
         _sum: { totalAmount: true },
       }),
-      this.prisma.client.order.groupBy({ by: ['status'], _count: { _all: true } }),
-      this.prisma.client.order.groupBy({ by: ['channel'], _count: { _all: true } }),
+      this.prisma.client.order.groupBy({
+        by: ['status'],
+        where: LIVE_ORDERS,
+        _count: { _all: true },
+      }),
+      this.prisma.client.order.groupBy({
+        by: ['channel'],
+        where: LIVE_ORDERS,
+        _count: { _all: true },
+      }),
       this.prisma.client.order.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -241,12 +279,13 @@ export class DashboardService {
   // A staff member (not super admin) only sees their own workload — no
   // revenue figures, no other staff's data.
   private async staffOverview(adminId: number): Promise<DashboardOverviewDto> {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const startOfToday = startOfDhakaToday();
 
     const [ordersTotal, ordersToday, statusGroups, customersTotal, recentOrdersRaw] = await Promise.all([
       this.prisma.client.order.count({ where: { assignedAdminId: adminId } }),
-      this.prisma.client.order.count({ where: { assignedAdminId: adminId, createdAt: { gte: startOfToday } } }),
+      this.prisma.client.order.count({
+        where: { assignedAdminId: adminId, createdAt: { gte: startOfToday }, ...LIVE_ORDERS },
+      }),
       this.prisma.client.order.groupBy({ by: ['status'], where: { assignedAdminId: adminId }, _count: { _all: true } }),
       this.prisma.client.customer.count({ where: { assignedAdminId: adminId } }),
       this.prisma.client.order.findMany({

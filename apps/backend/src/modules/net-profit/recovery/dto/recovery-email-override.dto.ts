@@ -38,4 +38,13 @@ export class RecoveryEmailOverrideDto {
   @IsString()
   @MaxLength(60)
   whatsappLabel?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Coupon code to offer in this email. Validated before sending, and appended to the CTA link so it applies itself when they arrive.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  couponCode?: string;
 }

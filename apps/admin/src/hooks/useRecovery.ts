@@ -347,6 +347,17 @@ export interface RecoveryEmailCopy {
   whatsappLabel: string;
 }
 
+/**
+ * What one send may change.
+ *
+ * `couponCode` is separate from RecoveryEmailCopy because it is never saved:
+ * the copy fields have defaults in Recovery > Settings, a coupon is chosen per
+ * chase and must not leak into everyone else's template.
+ */
+export type RecoveryEmailOverride = Partial<RecoveryEmailCopy> & {
+  couponCode?: string;
+};
+
 export interface RecoveryEmailPreview {
   subject: string;
   html: string;
@@ -362,7 +373,7 @@ export interface RecoveryEmailPreview {
  *  the server, so what staff approve here is what the customer receives. */
 export function useRecoveryEmailPreview(
   id: number | null,
-  override?: Partial<RecoveryEmailCopy>,
+  override?: RecoveryEmailOverride,
 ) {
   return useQuery({
     queryKey: ["recovery-email-preview", id, override],
@@ -381,7 +392,7 @@ export function useRecoveryEmailPreview(
 export function useSendRecoveryEmail() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...override }: { id: number } & Partial<RecoveryEmailCopy>) =>
+    mutationFn: ({ id, ...override }: { id: number } & RecoveryEmailOverride) =>
       proxyFetch<{ sent: boolean; error?: string }>(
         `/admin/net-profit/recovery/${id}/send-email`,
         { method: "POST", body: JSON.stringify(override) },

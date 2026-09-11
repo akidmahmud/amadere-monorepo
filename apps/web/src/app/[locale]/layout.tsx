@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { ProductCardStyleProvider, type ProductCardStyle } from "@amader/ui";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
@@ -20,6 +21,8 @@ import {
   type PublicAnalyticsConfig,
 } from "@/components/AnalyticsScripts";
 import { UserIdentityTracker } from "@/components/UserIdentityTracker";
+import { TrafficBeacon } from "@/components/TrafficBeacon";
+import { CouponFromLink } from "@/components/CouponFromLink";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import { safeGet } from "@/lib/api/client";
 import { googleSans, googleSansItalic } from "@/fonts";
@@ -294,6 +297,15 @@ export default async function LocaleLayout({
           <QueryProvider>
             <ToastProvider>
               <UserIdentityTracker />
+              {/* Suspense because TrafficBeacon reads useSearchParams, which
+                  opts its subtree out of static rendering otherwise — the
+                  boundary keeps that cost off the rest of the page. */}
+              <Suspense fallback={null}>
+                <TrafficBeacon />
+                {/* Reads ?coupon= from the link an abandoned-cart email sent
+                    them, and applies it once there is a cart to apply it to. */}
+                <CouponFromLink />
+              </Suspense>
               <SiteHeader
                 initialLogoUrl={siteInfo?.logoUrl}
                 initialNavMenu={navMenu}

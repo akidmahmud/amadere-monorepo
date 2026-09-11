@@ -1323,6 +1323,43 @@ model Cart {
   @@map("carts")
 }
 
+// ---------------------------------------------------------------------------
+// First-party traffic
+//
+// The GA4/GTM/Meta/TikTok tags configured in Settings > Analytics are
+// client-side pixels: they report to Google and Meta, never to us. So the
+// admin had no traffic number of its own. This table is that number.
+//
+// Owned rather than borrowed, for three reasons: it needs no Google Cloud
+// service account, a same-origin beacon survives ad blockers that eat
+// analytics.google.com, and "how many people are on the site right now" stops
+// depending on a third party being reachable.
+//
+// Privacy: no IP, no user agent, no cookies. `visitorId`/`sessionId` are
+// random ids the browser mints for itself.
+// ---------------------------------------------------------------------------
+model PageView {
+  id             BigInt   @id @default(autoincrement())
+  /// localStorage — survives between visits, so it counts PEOPLE.
+  visitorId      String   @map("visitor_id")
+  /// sessionStorage — dies with the tab, so it counts VISITS. Distinct
+  /// sessions in the last few minutes is what "live visitors" means.
+  sessionId      String   @map("session_id")
+  path           String
+  referrerDomain String?  @map("referrer_domain")
+  utmSource      String?  @map("utm_source")
+  country        String?
+  /// mobile | tablet | desktop, derived from the UA server-side; the UA
+  /// string itself is never stored.
+  device         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([visitorId, createdAt(sort: Desc)])
+  @@index([sessionId, createdAt(sort: Desc)])
+  @@map("page_views")
+}
+
 model CartItem {
   id                Int      @id @default(autoincrement())
   cartId            Int      @map("cart_id")

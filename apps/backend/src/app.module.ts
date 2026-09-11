@@ -41,6 +41,7 @@ import { NewsletterSegmentsModule } from './modules/newsletter-segments/newslett
 import { NewsletterTemplatesModule } from './modules/newsletter-templates/newsletter-templates.module';
 import { NewsletterTagsModule } from './modules/newsletter-tags/newsletter-tags.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { TrafficModule } from './modules/traffic/traffic.module';
 import { BlogCategoriesModule } from './modules/blog-categories/blog-categories.module';
 import { BlogTagsModule } from './modules/blog-tags/blog-tags.module';
 import { BlogPostsModule } from './modules/blog-posts/blog-posts.module';
@@ -162,6 +163,7 @@ import { PushModule } from './modules/push/push.module';
     NewsletterTemplatesModule,
     NewsletterTagsModule,
     DashboardModule,
+    TrafficModule,
     BlogCategoriesModule,
     BlogTagsModule,
     BlogPostsModule,

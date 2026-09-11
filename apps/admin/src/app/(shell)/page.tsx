@@ -5,6 +5,7 @@ import { Skeleton } from "@amader/admin-ui";
 import { useDashboardOverview, type GlobalDashboardOverview, type StaffDashboardOverview } from "@/hooks/useDashboard";
 import { OverviewCharts } from "@/components/overview/OverviewCharts";
 import { RecentOrdersTable, TopCustomersTable } from "@/components/overview/OverviewTables";
+import { TrafficPanel } from "@/components/overview/TrafficPanel";
 
 // Mirrors the real grid below (9 stat cards + Quick Actions + charts + two
 // tables) rather than a generic placeholder, so the loading state doesn't
@@ -26,7 +27,7 @@ function OverviewSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-3">
-        {Array.from({ length: 9 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <StatCardSkeleton key={i} />
         ))}
       </div>
@@ -179,7 +180,7 @@ export default function OverviewPage() {
         <StatCard
           label="Today's Orders"
           value={String(g.today.orders)}
-          sub={`${g.today.orders} Orders`}
+          sub="All statuses, since midnight" 
           bg="var(--stat-green-bg)"
           fg="var(--stat-green)"
           icon={icon(<><line x1="6" y1="20" x2="6" y2="14" /><line x1="12" y1="20" x2="12" y2="8" /><line x1="18" y1="20" x2="18" y2="11" /><line x1="3" y1="20" x2="21" y2="20" /></>)}
@@ -207,14 +208,6 @@ export default function OverviewPage() {
 
         <StatCard label="Average Order Value" value={`৳ ${Number(g.avgOrderValue).toLocaleString()}`} bg="var(--stat-indigo-bg)" fg="var(--stat-indigo)" icon={icon(<><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M9 12h6" /><path d="M9 16h6" /></>)} />
         <StatCard label="Total Revenue" value={`৳ ${Number(g.totalRevenue).toLocaleString()}`} bg="var(--stat-green-bg)" fg="var(--stat-green)" icon={icon(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></>)} />
-        <StatCard
-          label="Pending Orders"
-          value={`৳ ${Number(g.pending.revenue).toLocaleString()}`}
-          sub={`${g.pending.orders} Orders`}
-          bg="var(--stat-teal-bg)"
-          fg="var(--stat-teal)"
-          icon={icon(<><path d="m7.5 4.27 9 5.15" /><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></>)}
-        />
       </div>
 
       <div className="rounded-card border border-border bg-surface p-5 lg:row-span-3">
@@ -232,6 +225,12 @@ export default function OverviewPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      {/* Above the charts: "who is on the site right now" is the thing an
+          owner opens this page to see, and it goes stale fastest. */}
+      <div className="lg:col-span-4">
+        <TrafficPanel />
       </div>
 
       <div className="lg:col-span-4">

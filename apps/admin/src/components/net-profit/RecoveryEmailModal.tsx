@@ -5,8 +5,9 @@ import { Button, Modal } from "@amader/admin-ui";
 import {
   useRecoveryEmailPreview,
   useSendRecoveryEmail,
-  type RecoveryEmailCopy,
+  type RecoveryEmailOverride,
 } from "@/hooks/useRecovery";
+import { useDiscounts } from "@/hooks/useDiscounts";
 
 const field =
   "w-full rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-brand-500";
@@ -31,11 +32,25 @@ export function RecoveryEmailModal({
   onClose: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Partial<RecoveryEmailCopy>>({});
+  const [draft, setDraft] = useState<RecoveryEmailOverride>({});
+  const [coupon, setCoupon] = useState("");
+
+  // Only published COUPON codes. A PROMOTION applies itself and has no code to
+  // print, and a draft or expired one would be rejected at checkout — the
+  // server refuses those too, but not offering them is the kinder half.
+  const { data: discounts } = useDiscounts({ page: 1, pageSize: 100 });
+  const couponOptions = (discounts?.items ?? []).filter(
+    (d) => d.type === "COUPON" && d.code && d.status === "PUBLISHED",
+  );
   const [sent, setSent] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useRecoveryEmailPreview(incompleteId, draft);
+  // The coupon is part of the preview override, so picking one re-renders the
+  // real email — staff see the voucher block exactly as the customer will.
+  const { data, isLoading, error } = useRecoveryEmailPreview(incompleteId, {
+    ...draft,
+    couponCode: coupon || undefined,
+  });
   const send = useSendRecoveryEmail();
 
   // Seed the editor from whatever the server actually used, so opening it
@@ -49,7 +64,7 @@ export function RecoveryEmailModal({
   function handleSend() {
     setFailure(null);
     send.mutate(
-      { id: incompleteId, ...draft },
+      { id: incompleteId, ...draft, couponCode: coupon || undefined },
       {
         onSuccess: (r) => {
           if (r.sent) {
@@ -92,6 +107,34 @@ export function RecoveryEmailModal({
               {editing ? "Done editing" : "Edit text"}
             </Button>
           </div>
+
+          <label className="flex flex-col gap-1 rounded-inner border border-border p-3">
+            <span className="text-xs font-semibold text-text">
+              Attach a coupon (optional)
+            </span>
+            <select
+              className={field}
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value)}
+            >
+              <option value="">No coupon</option>
+              {couponOptions.map((d) => (
+                <option key={d.id} value={d.code as string}>
+                  {d.code} —{" "}
+                  {d.valueType === "PERCENTAGE"
+                    ? `${Number(d.value)}% off`
+                    : d.valueType === "FREE_SHIPPING"
+                      ? "Free shipping"
+                      : `৳${Number(d.value).toLocaleString()} off`}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-secondary">
+              {couponOptions.length === 0
+                ? "No published coupon codes yet — create one under Discounts."
+                : "The code is shown in the email and added to the order button's link, so it applies itself when they arrive."}
+            </span>
+          </label>
 
           {editing && (
             <div className="flex flex-col gap-2 rounded-inner border border-border p-3">
