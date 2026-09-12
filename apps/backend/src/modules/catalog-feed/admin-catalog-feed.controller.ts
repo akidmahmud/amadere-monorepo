@@ -26,7 +26,14 @@ export class AdminCatalogFeedController {
     return {
       productCount: built.items.length,
       generatedAt: built.generatedAt.toISOString(),
-      metaUrl: `${this.feed.shopUrl}/api/feed/meta`,
+      // The CSV, not the JSON: Commerce Manager's scheduled "Use a URL or
+      // Google Sheets" feed accepts only CSV, TSV, XML (RSS/ATOM) and XLSX,
+      // so the JSON URL this used to hand out could never be connected. The
+      // path ends in `.csv` because Meta sniffs the extension as well as the
+      // content type.
+      metaUrl: `${this.feed.shopUrl}/api/feed/meta.csv`,
+      // Still published, for the Catalog Batch API rather than the URL box.
+      metaJsonUrl: `${this.feed.shopUrl}/api/feed/meta`,
       googleUrl: `${this.feed.shopUrl}/api/feed/google`,
       tiktokUrl: `${this.feed.shopUrl}/api/feed/tiktok`,
       skipped: built.skipped,

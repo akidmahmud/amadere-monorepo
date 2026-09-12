@@ -54,6 +54,23 @@ function csv(value: string | number | undefined): string {
 }
 
 /**
+ * Meta's `sale_price_effective_date`: two ISO-8601 instants separated by a
+ * slash. Offsets are kept in the timestamp (+06:00 for Dhaka) rather than
+ * normalised to Z, which Meta also accepts and which is harder for staff to
+ * check against what the admin shows them.
+ *
+ * An open-ended sale gets a concrete far-future end rather than being left
+ * out: Meta requires BOTH halves of the range, and a half-written value is
+ * dropped silently along with the sale price it qualifies.
+ */
+function saleWindow(start?: Date, end?: Date): string {
+  if (!start && !end) return '';
+  const from = start ?? new Date(0);
+  const to = end ?? new Date('2099-12-31T23:59:59.000Z');
+  return `${from.toISOString()}/${to.toISOString()}`;
+}
+
+/**
  * Meta Commerce Manager — CSV.
  *
  * The JSON feed above is the right shape for Meta's API, but Commerce
@@ -80,6 +97,10 @@ export function toMetaCsv(items: FeedItem[]): string {
     'google_product_category',
     'product_type',
     'item_group_id',
+    // Meta-only, and the two that Commerce Manager actually acts on:
+    // stock it can sell, and when a sale price stops being true.
+    'quantity_to_sell_on_facebook',
+    'sale_price_effective_date',
     'custom_label_0',
     'custom_label_1',
     'custom_label_2',
@@ -102,6 +123,8 @@ export function toMetaCsv(items: FeedItem[]): string {
       csv(i.googleProductCategory ?? ''),
       csv(i.productType ?? ''),
       csv(i.itemGroupId),
+      csv(i.quantity),
+      csv(i.salePrice ? saleWindow(i.saleStartsAt, i.saleEndsAt) : ''),
       csv(i.customLabels[0]),
       csv(i.customLabels[1]),
       csv(i.customLabels[2]),
@@ -136,6 +159,10 @@ export function toMetaJson(items: FeedItem[]): string {
           : {}),
         ...(i.productType ? { product_type: i.productType } : {}),
         item_group_id: i.itemGroupId,
+        quantity_to_sell_on_facebook: i.quantity,
+        ...(i.salePrice && (i.saleStartsAt || i.saleEndsAt)
+          ? { sale_price_effective_date: saleWindow(i.saleStartsAt, i.saleEndsAt) }
+          : {}),
         ...Object.fromEntries(
           i.customLabels.slice(0, 5).map((v, n) => [`custom_label_${n}`, v]),
         ),

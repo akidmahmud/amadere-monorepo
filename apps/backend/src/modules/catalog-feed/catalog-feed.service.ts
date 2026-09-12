@@ -35,6 +35,57 @@ const MAX_EXTRA_IMAGES = 10;
  * rather than being blown up; 1200 is comfortably past Meta's 500x500
  * minimum for anything shot larger.
  */
+/**
+ * Rich-text product copy -> the plain sentence a catalogue row wants.
+ *
+ * Stripping the tags is not enough: CKEditor writes `&nbsp;` between words
+ * and `&amp;` in brand names, and Meta prints whatever it is given, so 93
+ * literal "&nbsp;" were showing up inside product descriptions in Commerce
+ * Manager. Only the five XML predefined entities plus numeric references are
+ * decoded — that is everything the editor emits, and a full HTML entity table
+ * would be a dependency for no extra coverage.
+ */
+/**
+ * Units to advertise to Meta as `quantity_to_sell_on_facebook`.
+ *
+ * NOT the raw counter. This shop manages availability with `stockStatus` and
+ * leaves the unit count at zero — measured against production, 66 of 79
+ * published products are flagged IN_STOCK while carrying stock 0. Passing
+ * that through would tell Meta the entire catalogue is sold out and stop
+ * every dynamic ad, which is worse than omitting the column.
+ *
+ * So the counter is trusted only where someone has actually maintained it;
+ * otherwise the flag staff DO maintain wins, at a nominal figure. Marked out
+ * of stock always means zero — that direction is never guessed.
+ */
+const UNTRACKED_STOCK = 100;
+
+function feedQuantity(
+  availability: FeedItem['availability'],
+  source: { stock: number; reservedStock: number },
+): number {
+  if (availability === 'out of stock') return 0;
+  const counted = Math.max(0, source.stock - source.reservedStock);
+  return counted || UNTRACKED_STOCK;
+}
+
+function plainText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(nbsp|amp|lt|gt|quot|apos|#39|#x27);/gi, (_m, e: string) => {
+      const k = e.toLowerCase();
+      if (k === 'nbsp') return ' ';
+      if (k === 'amp') return '&';
+      if (k === 'lt') return '<';
+      if (k === 'gt') return '>';
+      if (k === 'quot') return '"';
+      return "'";
+    })
+    .replace(/&#(\d+);/g, (_m, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const R2_DEV_HOST = /^https:\/\/[a-z0-9-]+\.r2\.dev/i;
 const FEED_IMAGE_PARAMS = 'width=1200,quality=85,fit=scale-down,format=jpeg';
 
@@ -138,6 +189,10 @@ export class CatalogFeedService {
         customLabels: true,
         price: true,
         salePrice: true,
+        saleStartsAt: true,
+        saleEndsAt: true,
+        stock: true,
+        reservedStock: true,
         // Both locales, so a product translated in only one still gets a row
         // rather than being silently dropped from the catalogue.
         translations: { select: { locale: true, name: true, description: true } },
@@ -147,7 +202,15 @@ export class CatalogFeedService {
           // feed goes to Google Merchant, so a staff-only variant must never
           // supply the advertised price or MPN.
           where: { isAdminOnly: false },
-          select: { id: true, sku: true, price: true, salePrice: true, isDefault: true },
+          select: {
+            id: true,
+            sku: true,
+            price: true,
+            salePrice: true,
+            isDefault: true,
+            stock: true,
+            reservedStock: true,
+          },
           orderBy: { id: 'asc' },
         },
         media: {
@@ -190,7 +253,17 @@ export class CatalogFeedService {
         continue;
       }
       const saleRaw = Number(variant?.salePrice ?? p.salePrice ?? 0);
-      const salePrice = saleRaw > 0 && saleRaw < price ? saleRaw : undefined;
+      // Same window the search provider and the pricing service enforce —
+      // sale start/end are product-level, variants have none of their own.
+      // Without it an expired or not-yet-started sale price shipped to Meta
+      // while the landing page charged full price, which is the single most
+      // common reason Commerce Manager rejects a row.
+      const now = Date.now();
+      const inSaleWindow =
+        (!p.saleStartsAt || p.saleStartsAt.getTime() <= now) &&
+        (!p.saleEndsAt || p.saleEndsAt.getTime() >= now);
+      const salePrice =
+        saleRaw > 0 && saleRaw < price && inSaleWindow ? saleRaw : undefined;
 
       const images = p.media
         .map((m) => m.media.fullUrl ?? m.media.url)
@@ -198,8 +271,15 @@ export class CatalogFeedService {
         .map((u) => toFeedImageUrl(u, this.cdnBase));
       if (images.length === 0) noImage.push(p.id);
 
-      const description = (t?.description ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const description = plainText(t?.description ?? '');
       if (description.length < MIN_DESCRIPTION) shortDescription.push(p.id);
+
+      const availability =
+        p.stockStatus === 'OUT_OF_STOCK'
+          ? ('out of stock' as const)
+          : p.stockStatus === 'ON_BACKORDER'
+            ? ('preorder' as const)
+            : ('in stock' as const);
 
       items.push({
         id: String(p.id),
@@ -208,12 +288,7 @@ export class CatalogFeedService {
         // above, because Google will reject it — the fix is real product
         // copy, not something this service should fabricate.
         description: description || title,
-        availability:
-          p.stockStatus === 'OUT_OF_STOCK'
-            ? 'out of stock'
-            : p.stockStatus === 'ON_BACKORDER'
-              ? 'preorder'
-              : 'in stock',
+        availability,
         condition: 'new',
         price,
         salePrice,
@@ -231,6 +306,9 @@ export class CatalogFeedService {
         mpn: variant?.sku ?? p.sku ?? undefined,
         customLabels: p.customLabels,
         shippable: p.productType === 'PHYSICAL',
+        quantity: feedQuantity(availability, variant ?? p),
+        saleStartsAt: salePrice ? (p.saleStartsAt ?? undefined) : undefined,
+        saleEndsAt: salePrice ? (p.saleEndsAt ?? undefined) : undefined,
       });
     }
 

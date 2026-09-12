@@ -30,8 +30,15 @@ export interface FeedItem {
   condition: 'new';
   /** Numeric, currency appended by the formatters — "790.00 BDT". */
   price: number;
-  /** Only when genuinely lower than `price`. */
+  /** Only when genuinely lower than `price` AND inside its live window. */
   salePrice?: number;
+  /**
+   * The sale window, when one is set. Meta wants `sale_price_effective_date`
+   * alongside a `sale_price`; without it a scheduled sale is treated as
+   * permanent and the row disagrees with the landing page the day it ends.
+   */
+  saleStartsAt?: Date;
+  saleEndsAt?: Date;
   link: string;
   imageLink?: string;
   additionalImageLinks: string[];
@@ -47,6 +54,12 @@ export interface FeedItem {
   customLabels: string[];
   /** Physical goods ship; a digital download does not. */
   shippable: boolean;
+  /**
+   * Units Meta may sell — `stock` less what checkout has already reserved,
+   * never negative. Meta's `quantity_to_sell_on_facebook`: without it Meta
+   * assumes unlimited stock and keeps advertising a sold-out product.
+   */
+  quantity: number;
 }
 
 export interface FeedBuildResult {

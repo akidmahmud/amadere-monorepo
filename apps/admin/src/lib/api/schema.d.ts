@@ -7541,6 +7541,7 @@ export interface components {
             productCount: number;
             generatedAt: string;
             metaUrl: string;
+            metaJsonUrl: string;
             googleUrl: string;
             tiktokUrl: string;
             skipped: components["schemas"]["FeedIssueDto"][];
@@ -19269,6 +19270,7 @@ export interface operations {
                 from: string;
                 to: string;
                 outcome: string;
+                ids: string;
             };
             header?: never;
             path?: never;

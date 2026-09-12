@@ -9,7 +9,10 @@ export class FeedIssueDto {
 export class CatalogFeedStatusDto {
   @ApiProperty() productCount!: number;
   @ApiProperty() generatedAt!: string;
+  /** CSV — what goes in Commerce Manager's scheduled-feed URL box. */
   @ApiProperty() metaUrl!: string;
+  /** JSON — for the Catalog Batch API, not the URL box. */
+  @ApiProperty() metaJsonUrl!: string;
   @ApiProperty() googleUrl!: string;
   @ApiProperty() tiktokUrl!: string;
   /** Products left out entirely, and why. */

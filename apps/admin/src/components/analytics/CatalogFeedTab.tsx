@@ -14,7 +14,15 @@ import { useCatalogFeedStatus, useRefreshCatalogFeed } from "@/hooks/useCatalogF
  * are listed here with counts rather than hidden behind a log file.
  */
 
-function FeedRow({ label, url }: { label: string; url: string }) {
+function FeedRow({
+  label,
+  url,
+  hint,
+}: {
+  label: string;
+  url: string;
+  hint?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-inner border border-border bg-surface-2 px-3 py-2.5">
@@ -38,6 +46,9 @@ function FeedRow({ label, url }: { label: string; url: string }) {
       >
         {copied ? "Copied" : "Copy"}
       </Button>
+      {hint && (
+        <p className="w-full text-[11px] text-secondary">{hint}</p>
+      )}
     </div>
   );
 }
@@ -74,7 +85,19 @@ export function CatalogFeedTab() {
           </p>
         </div>
 
-        <FeedRow label="Meta Feed" url={data.metaUrl} />
+        {/* CSV first and labelled as the one to paste — Commerce Manager's
+            URL box rejects JSON, and handing out the JSON link was why the
+            catalog could not be connected. */}
+        <FeedRow
+          label="Meta Feed"
+          url={data.metaUrl}
+          hint="Commerce Manager → Data sources → Upload data file → Use a URL or Google Sheets. Paste this one."
+        />
+        <FeedRow
+          label="Meta (JSON)"
+          url={data.metaJsonUrl}
+          hint="For the Catalog Batch API only. Commerce Manager's URL box will not accept it."
+        />
         <FeedRow label="Google Feed" url={data.googleUrl} />
         <FeedRow label="TikTok Feed" url={data.tiktokUrl} />
 
