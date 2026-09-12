@@ -12,7 +12,24 @@ import {
 } from '../../common/pagination.util';
 import { CreateDiscountDto } from './dto/create-discount.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
-import { DISCOUNT_INCLUDE, DiscountDto, toDiscountDto } from './discounts.mapper';
+import {
+  DISCOUNT_INCLUDE,
+  DiscountDto,
+  toDiscountDto,
+} from './discounts.mapper';
+
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function toScheduleDate(
+  value: string | undefined,
+  endOfDay = false,
+): Date | undefined {
+  if (!value) return undefined;
+  if (!DATE_ONLY_PATTERN.test(value)) return new Date(value);
+
+  const time = endOfDay ? '23:59:59.999' : '00:00:00.000';
+  return new Date(`${value}T${time}+06:00`);
+}
 
 @Injectable()
 export class DiscountsService {
@@ -23,7 +40,9 @@ export class DiscountsService {
     pageSize: number,
     q?: string,
   ): Promise<PaginatedResult<DiscountDto>> {
-    const where = q ? { code: { contains: q, mode: 'insensitive' as const } } : {};
+    const where = q
+      ? { code: { contains: q, mode: 'insensitive' as const } }
+      : {};
     const [items, total] = await Promise.all([
       this.prisma.client.discount.findMany({
         where,
@@ -65,8 +84,8 @@ export class DiscountsService {
         minOrderAmount: dto.minOrderAmount,
         maxUsesTotal: dto.maxUsesTotal,
         maxUsesPerCustomer: dto.maxUsesPerCustomer,
-        startsAt: dto.startsAt,
-        endsAt: dto.endsAt,
+        startsAt: toScheduleDate(dto.startsAt),
+        endsAt: toScheduleDate(dto.endsAt, true),
         status: dto.status,
         products: dto.productIds
           ? { create: dto.productIds.map((productId) => ({ productId })) }
@@ -113,8 +132,8 @@ export class DiscountsService {
         minOrderAmount: dto.minOrderAmount,
         maxUsesTotal: dto.maxUsesTotal,
         maxUsesPerCustomer: dto.maxUsesPerCustomer,
-        startsAt: dto.startsAt,
-        endsAt: dto.endsAt,
+        startsAt: toScheduleDate(dto.startsAt),
+        endsAt: toScheduleDate(dto.endsAt, true),
         status: dto.status,
         products: dto.productIds
           ? { create: dto.productIds.map((productId) => ({ productId })) }
