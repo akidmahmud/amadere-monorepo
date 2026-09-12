@@ -32,7 +32,8 @@ const RISK_LEVELS: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "UNKNOWN"];
 // datetime range (not date-only) — an ad campaign or a courier cutoff is
 // frequently a few hours inside one day, which whole-day filtering can't
 // express.
-const DATE_RANGES = [
+/** Exported so the stat cards can name the window they are reporting on. */
+export const DATE_RANGES = [
   { value: "", label: "All dates" },
   { value: "1h", label: "Last 1 hour" },
   { value: "6h", label: "Last 6 hours" },

@@ -43,6 +43,14 @@ const cancelIcon = (
   </svg>
 );
 
+const moneyIcon = (
+  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <circle cx="12" cy="12" r="2.5" />
+    <path d="M6 12h.01M18 12h.01" />
+  </svg>
+);
+
 function Stat({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 rounded-card border p-[17px_19px] shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: "#e5ebe6" }}>
@@ -61,26 +69,47 @@ function Stat({ label, value, icon }: { label: string; value: string; icon: Reac
   );
 }
 
+/**
+ * Whole taka, no decimals. An order-value card is read at a glance for its
+ * order of magnitude; ".00" on every one of them is noise, and BDT has no
+ * circulating subunit anyway.
+ */
+function money(value: string): string {
+  return `৳${Math.round(Number(value) || 0).toLocaleString("en-BD")}`;
+}
+
 export function OrderManagerStatsStrip({
   total,
+  orderValue,
+  rangeLabel,
   pending,
   processing,
   completed,
   canceled,
 }: {
   total: number;
+  /** Decimal string from the API — cancelled orders already excluded. */
+  orderValue: string;
+  /** The window every card on this strip is reporting, e.g. "Today". */
+  rangeLabel: string;
   pending: number;
   processing: number;
   completed: number;
   canceled: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-      <Stat label="Total Orders" value={total.toLocaleString()} icon={ordersIcon} />
-      <Stat label="Pending" value={pending.toLocaleString()} icon={clockIcon} />
-      <Stat label="Processing" value={processing.toLocaleString()} icon={truckIcon} />
-      <Stat label="Completed" value={completed.toLocaleString()} icon={checkIcon} />
-      <Stat label="Canceled" value={canceled.toLocaleString()} icon={cancelIcon} />
+    <div className="flex flex-col gap-2.5">
+      <div className="text-[0.72rem] font-bold tracking-wide uppercase" style={{ color: MUTED }}>
+        Showing: {rangeLabel}
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+        <Stat label="Total Orders" value={total.toLocaleString()} icon={ordersIcon} />
+        <Stat label="Order Value" value={money(orderValue)} icon={moneyIcon} />
+        <Stat label="Pending" value={pending.toLocaleString()} icon={clockIcon} />
+        <Stat label="Processing" value={processing.toLocaleString()} icon={truckIcon} />
+        <Stat label="Completed" value={completed.toLocaleString()} icon={checkIcon} />
+        <Stat label="Canceled" value={canceled.toLocaleString()} icon={cancelIcon} />
+      </div>
     </div>
   );
 }

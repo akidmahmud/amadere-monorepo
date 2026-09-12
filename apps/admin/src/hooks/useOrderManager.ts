@@ -128,13 +128,20 @@ export function useDeletedOrdersList(filters: OrderManagerFilters) {
 
 // Counts per status honoring every OTHER active filter — powers the
 // status pill-tabs' live counts (Order Manager parity).
+/** Counts per status plus the money behind them, under the same filters. */
+export interface OrderManagerStatusCounts {
+  counts: Record<string, number>;
+  /** Decimal string, cancelled orders excluded. */
+  totalValue: string;
+}
+
 export function useOrderManagerStatusCounts(
   filters: Omit<OrderManagerFilters, "status" | "page" | "pageSize">,
 ) {
   return useQuery({
     queryKey: [...KEY, "status-counts", filters],
     queryFn: () =>
-      proxyFetch<Record<string, number>>(
+      proxyFetch<OrderManagerStatusCounts>(
         `/admin/net-profit/orders/status-counts${toQueryString(filters)}`,
       ),
     refetchInterval: LIST_REFETCH_INTERVAL_MS,
@@ -158,13 +165,13 @@ export function usePendingOrderCount(enabled: boolean) {
   const { data } = useQuery({
     queryKey: [...KEY, "status-counts", "sidebar", WORKLOAD_SINCE],
     queryFn: () =>
-      proxyFetch<Record<string, number>>(
+      proxyFetch<OrderManagerStatusCounts>(
         `/admin/net-profit/orders/status-counts?from=${WORKLOAD_SINCE}`,
       ),
     enabled,
     refetchInterval: LIST_REFETCH_INTERVAL_MS,
   });
-  return data?.PENDING ?? 0;
+  return data?.counts.PENDING ?? 0;
 }
 
 export interface BulkActionResult {

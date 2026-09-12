@@ -10,7 +10,7 @@ import { FraudDetailModal } from "@/components/FraudDetailModal";
 import { OrderDetailModal } from "@/components/OrderDetailModal";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { OrderManagerStatsStrip } from "@/components/net-profit/OrderManagerStatsStrip";
-import { OrderManagerFilterBar, type OrderFilterState } from "@/components/net-profit/OrderManagerFilterBar";
+import { DATE_RANGES, OrderManagerFilterBar, type OrderFilterState } from "@/components/net-profit/OrderManagerFilterBar";
 import { OrderManagerTable, OPTIONAL_COLUMNS, DEFAULT_COLUMN_ORDER, reconcileColumnOrder, type OptionalColumn, type ColumnKey } from "@/components/net-profit/OrderManagerTable";
 import { ORDER_MANAGER_KEY, useBulkOrderAction, useOrderManagerList, useOrderManagerStatusCounts, type OrderManagerFilters, type OrderManagerRow } from "@/hooks/useOrderManager";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
@@ -40,7 +40,12 @@ const COLUMN_LABELS: Record<OptionalColumn, string> = {
   source: "Source",
 };
 
-const DEFAULT_FILTERS: OrderFilterState = { q: "" };
+// Opens on today's trading, not four years of history — this is the screen
+// staff work the day's orders on, and the stat cards above the list were
+// reporting all-time totals that told nobody anything about today. The date
+// select shows "Today" so the scope is visible, and "All dates" restores the
+// full history.
+const DEFAULT_FILTERS: OrderFilterState = { q: "", dateRange: "today" };
 
 // Rolling windows measured back from "now", in hours. "today" is
 // deliberately NOT in here — it's a calendar day, handled separately below.
@@ -303,6 +308,15 @@ function OrderManagerPageInner() {
     [uiFilters.dateRange, uiFilters.dateFrom, uiFilters.dateTo],
   );
 
+  // What the cards say they are reporting on. Without it a card reading
+  // "Total Orders 12" is indistinguishable from the shop having 12 orders.
+  const rangeLabel = useMemo(
+    () =>
+      DATE_RANGES.find((r) => r.value === (uiFilters.dateRange ?? ""))?.label ??
+      "All dates",
+    [uiFilters.dateRange],
+  );
+
   const filters: OrderManagerFilters = {
     q: uiFilters.q || undefined,
     status: uiFilters.status,
@@ -349,8 +363,9 @@ function OrderManagerPageInner() {
     }
   }, [urlSearch, data?.items, autoOpened]);
 
-  const totalCount = Object.values(statusCounts ?? {}).reduce((a, b) => a + b, 0);
-  const countFor = (statuses: string[]) => statuses.reduce((sum, s) => sum + (statusCounts?.[s] ?? 0), 0);
+  const totalCount = Object.values(statusCounts?.counts ?? {}).reduce((a, b) => a + b, 0);
+  const countFor = (statuses: string[]) =>
+    statuses.reduce((sum, s) => sum + (statusCounts?.counts?.[s] ?? 0), 0);
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -436,8 +451,12 @@ function OrderManagerPageInner() {
         <DeletedOrdersTab />
       ) : (
         <>
+          {/* Every card reads the same filters as the list below, so the
+              numbers and the rows can never describe different periods. */}
           <OrderManagerStatsStrip
             total={totalCount}
+            orderValue={statusCounts?.totalValue ?? "0"}
+            rangeLabel={rangeLabel}
             pending={countFor(["PENDING"])}
             processing={countFor(["CONFIRMED", "PROCESSING"])}
             completed={countFor(["COMPLETED"])}

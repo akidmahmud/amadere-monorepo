@@ -157,12 +157,26 @@ export class OrderManagerService {
     return conditions;
   }
 
-  async statusCounts(query: OrderManagerQueryDto): Promise<Record<string, number>> {
+  /**
+   * Counts AND money for the stat cards and the pill tabs, under whatever
+   * filters the screen has set.
+   *
+   * The value is summed in the same GROUP BY rather than by a second query:
+   * the joins and the WHERE are already assembled here, and a separate
+   * round-trip could disagree with the counts if an order landed between the
+   * two. Cancelled orders are excluded from the value — they were never
+   * revenue — while still being counted, because the Canceled card counts them.
+   */
+  async statusCounts(
+    query: OrderManagerQueryDto,
+  ): Promise<{ counts: Record<string, number>; totalValue: string }> {
     const conditions = this.buildConditions(query, false, false);
     const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
 
-    const rows = await this.prisma.client.$queryRaw<{ status: OrderStatus; count: bigint }[]>`
-      SELECT o.status, count(*)::bigint AS count
+    const rows = await this.prisma.client.$queryRaw<
+      { status: OrderStatus; count: bigint; value: Prisma.Decimal | null }[]
+    >`
+      SELECT o.status, count(*)::bigint AS count, sum(o.total_amount) AS value
       FROM orders o
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
       LEFT JOIN LATERAL (
@@ -176,8 +190,14 @@ export class OrderManagerService {
       GROUP BY o.status
     `;
     const counts: Record<string, number> = {};
-    for (const r of rows) counts[r.status] = Number(r.count);
-    return counts;
+    let totalValue = new Prisma.Decimal(0);
+    for (const r of rows) {
+      counts[r.status] = Number(r.count);
+      if (r.value && r.status !== 'CANCELED') totalValue = totalValue.plus(r.value);
+    }
+    // String, not number: Decimal through JSON.parse loses money at the
+    // scale this shop already trades at.
+    return { counts, totalValue: totalValue.toFixed(2) };
   }
 
   async list(query: OrderManagerQueryDto, deletedOnly = false): Promise<PaginatedResult<OrderManagerRowDto>> {
