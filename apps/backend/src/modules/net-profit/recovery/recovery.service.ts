@@ -116,6 +116,12 @@ export interface RecoveryListFilters {
   q?: string;
   from?: string;
   to?: string;
+  /**
+   * Restrict to these rows exactly. Used by the export, so "Export" on a
+   * screen where rows are ticked means the ticked rows and not the whole
+   * filtered set.
+   */
+  ids?: number[];
 }
 
 /** The attribution columns IncompleteOrder and Order share, by the same
@@ -156,11 +162,21 @@ export interface CartSnapshotItem {
  * non-ASCII character in an otherwise ASCII column is a reliable way to get
  * mojibake in someone's spreadsheet.
  */
-function formatCartProducts(cart: unknown): string {
+function formatCartProducts(cart: unknown, skus: Map<string, string>): string {
   const items = Array.isArray(cart) ? (cart as CartSnapshotItem[]) : [];
   return items
     .filter((i) => i && typeof i.name === 'string')
-    .map((i) => `${i.quantity} x ${i.name}`)
+    // SKU, not the product name: the sheet this export feeds is keyed on the
+    // code, and a Bengali product name is not something anyone looks up by.
+    // Falls back to the name only where no SKU is recorded — an empty cell
+    // would lose the line entirely.
+    .map((i) => {
+      const sku =
+        (i.variantId ? skus.get(`v${i.variantId}`) : undefined) ??
+        skus.get(`p${i.productId}`) ??
+        i.name;
+      return `${i.quantity} x ${sku}`;
+    })
     .join(' | ');
 }
 
@@ -718,6 +734,7 @@ export class RecoveryService {
     if (filters.hasReason === false) where.cancelReason = null;
     else if (filters.hasReason === true) where.cancelReason = { not: null };
     if (filters.stage) where.stage = filters.stage;
+    if (filters.ids?.length) where.id = { in: filters.ids };
     if (filters.from || filters.to) {
       where.lastSeenAt = {
         ...(filters.from ? { gte: new Date(filters.from) } : {}),
@@ -862,6 +879,7 @@ export class RecoveryService {
       where: await this.buildWhere(filters),
       orderBy: { lastSeenAt: 'desc' },
     });
+    const skus = await this.cartSkuLookup(rows.map((r) => r.cart));
     const header = [
       'id',
       'name',
@@ -870,7 +888,7 @@ export class RecoveryService {
       // What they were actually going to buy. Without it the export says
       // someone abandoned 1,250 taka and nothing about of what, which is the
       // one thing that makes the row actionable.
-      'products',
+      'skus',
       'subtotal',
       'stage',
       'recovered',
@@ -888,7 +906,7 @@ export class RecoveryService {
           r.name ?? '',
           r.phone ?? '',
           r.email ?? '',
-          formatCartProducts(r.cart),
+          formatCartProducts(r.cart, skus),
           r.subtotal.toString(),
           r.stage,
           r.recovered,
@@ -903,6 +921,36 @@ export class RecoveryService {
       );
     }
     return lines.join('\n');
+  }
+
+  /**
+   * `productId`/`variantId` -> SKU for every item across these carts, keyed
+   * `p<id>` / `v<id>`. The cart snapshot stores the display name captured at
+   * the time, never the SKU, so the codes have to be read back off the
+   * catalogue. Two queries for the whole export, not one per row.
+   */
+  private async cartSkuLookup(carts: unknown[]): Promise<Map<string, string>> {
+    const productIds = new Set<number>();
+    const variantIds = new Set<number>();
+    for (const cart of carts) {
+      const items = (Array.isArray(cart) ? cart : []) as CartSnapshotItem[];
+      for (const i of items) {
+        if (i?.productId) productIds.add(i.productId);
+        if (i?.variantId) variantIds.add(i.variantId);
+      }
+    }
+    const [products, variants] = await Promise.all([
+      productIds.size
+        ? this.prisma.client.product.findMany({ where: { id: { in: [...productIds] } }, select: { id: true, sku: true } })
+        : Promise.resolve([]),
+      variantIds.size
+        ? this.prisma.client.productVariant.findMany({ where: { id: { in: [...variantIds] } }, select: { id: true, sku: true } })
+        : Promise.resolve([]),
+    ]);
+    const map = new Map<string, string>();
+    for (const p of products) if (p.sku) map.set(`p${p.id}`, p.sku);
+    for (const v of variants) if (v.sku) map.set(`v${v.id}`, v.sku);
+    return map;
   }
 
   // Columns: phone,email,subtotal — recreates bare incomplete-order rows

@@ -36,6 +36,7 @@ import { RecoveryService, RecoveryListFilters } from './recovery.service';
 import type { RecoveryOutcome } from './recovery.service';
 
 const MAX_CSV_BYTES = 2 * 1024 * 1024;
+const BOM = String.fromCharCode(0xfeff);
 
 @ApiTags('admin/net-profit/recovery')
 @ApiBearerAuth()
@@ -91,6 +92,9 @@ export class AdminRecoveryController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('outcome') outcome?: RecoveryOutcome,
+    /** Comma-separated row ids — what the screen has ticked. Present means
+     *  "export these", absent means "export everything the filters match". */
+    @Query('ids') ids?: string,
   ): Promise<void> {
     // 'all' here, unlike the list: an export is a data dump, and defaulting
     // it to open carts would mean the cancelReason column came out empty in
@@ -102,10 +106,14 @@ export class AdminRecoveryController {
       stage,
       from,
       to,
+      ids: ids ? ids.split(',').map(Number).filter(Number.isInteger) : undefined,
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="incomplete-orders-${new Date().toISOString().slice(0, 10)}.csv"`);
-    res.send(csv);
+    // BOM: Excel reads a CSV in the machine's ANSI codepage unless it sees
+    // one, which turned every Bengali name and address into replacement
+    // characters on the shop's machines.
+    res.send(BOM + csv);
   }
 
   @Post('import')

@@ -100,6 +100,8 @@ export interface RecoveryFilters {
   to?: string;
   page?: number;
   pageSize?: number;
+  /** Comma-separated ids, export only. */
+  ids?: string;
 }
 
 // Mirrors CheckoutAddressDto, in the storefront checkout's field order.
@@ -315,8 +317,21 @@ export function useImportRecoveryCsv() {
   });
 }
 
-export function recoveryExportUrl(filters: RecoveryFilters = {}): string {
-  return `/api/backend/admin/net-profit/recovery/export${toQueryString(filters)}`;
+/**
+ * `ids` = the rows currently ticked on screen. Passing them narrows the
+ * export to exactly those; passing none exports everything the filters match.
+ * Paging is dropped — an export is the whole set, not the page you are on.
+ */
+export function recoveryExportUrl(
+  filters: RecoveryFilters = {},
+  ids: number[] = [],
+): string {
+  const { page: _page, pageSize: _pageSize, ...rest } = filters;
+  const query = toQueryString({
+    ...rest,
+    ids: ids.length > 0 ? ids.join(",") : undefined,
+  });
+  return `/api/backend/admin/net-profit/recovery/export${query}`;
 }
 
 export function useRecoverySettings() {

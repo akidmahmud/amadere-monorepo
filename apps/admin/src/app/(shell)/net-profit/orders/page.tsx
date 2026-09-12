@@ -89,7 +89,12 @@ function resolveDateRange(value: string | undefined, customFrom?: string, custom
 }
 
 function downloadCsv(csv: string, filename: string) {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  // Leading BOM: without it Excel reads the file in the machine's ANSI
+  // codepage, which turned every Bengali customer name and address in the
+  // export into replacement characters on the shop's own machines.
+  const blob = new Blob([String.fromCharCode(0xfeff), csv], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

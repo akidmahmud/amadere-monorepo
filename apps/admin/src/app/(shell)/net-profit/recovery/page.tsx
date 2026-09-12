@@ -53,6 +53,7 @@ import {
   type CampaignChannel,
   type DelayUnit,
 } from "@/hooks/useCartCampaigns";
+import { resolveDateRange } from "@/lib/date-range";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -74,55 +75,6 @@ const COLUMN_LABELS: Record<RecoveryOptionalColumn, string> = {
 };
 
 const DEFAULT_FILTERS: RecoveryFilterState = { q: "" };
-
-const ROLLING_WINDOW_HOURS: Record<string, number> = {
-  "1h": 1,
-  "6h": 6,
-  "12h": 12,
-  "24h": 24,
-  "7d": 7 * 24,
-  "30d": 30 * 24,
-};
-
-function parseCustomBound(value: string, edge: "start" | "end"): Date {
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  if (!dateOnly) return new Date(value);
-  return new Date(
-    edge === "start" ? `${value}T00:00:00.000` : `${value}T23:59:59.999`,
-  );
-}
-
-function resolveDateRange(
-  value: string | undefined,
-  customFrom?: string,
-  customTo?: string,
-): { from?: string; to?: string } {
-  if (value === "custom") {
-    if (!customFrom || !customTo) return {};
-    return {
-      from: parseCustomBound(customFrom, "start").toISOString(),
-      to: parseCustomBound(customTo, "end").toISOString(),
-    };
-  }
-  if (!value) return {};
-  const to = new Date();
-  if (value === "today") {
-    const from = new Date(
-      to.getFullYear(),
-      to.getMonth(),
-      to.getDate(),
-      0,
-      0,
-      0,
-      0,
-    );
-    return { from: from.toISOString(), to: to.toISOString() };
-  }
-  const hours = ROLLING_WINDOW_HOURS[value];
-  if (!hours) return {};
-  const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
-  return { from: from.toISOString(), to: to.toISOString() };
-}
 
 function HeaderButton({
   children,
@@ -539,13 +491,20 @@ function FunnelSection({
         >
           Send Bulk SMS
         </button>
-        <a href={recoveryExportUrl(filters)} className="inline-flex">
+        {/* Ticked rows win over the filters: "Export" next to "3 selected"
+            that quietly wrote the whole filtered set was the reported bug. */}
+        <a
+          href={recoveryExportUrl(filters, [...selected])}
+          className="inline-flex"
+        >
           <button
             type="button"
             className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold"
             style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
           >
-            Export CSV
+            {selected.size > 0
+              ? `Export Selected (${selected.size})`
+              : "Export CSV"}
           </button>
         </a>
         <input
