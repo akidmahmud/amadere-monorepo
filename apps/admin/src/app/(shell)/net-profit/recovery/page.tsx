@@ -24,7 +24,6 @@ import {
 import { RecoveredSection } from "./_components/RecoveredSection";
 import { TrashSection } from "./_components/TrashSection";
 import {
-  useClearAllIncomplete,
   useCreateOrderFromIncomplete,
   useDeleteIncompleteOrder,
   useImportRecoveryCsv,
@@ -386,7 +385,6 @@ function FunnelSection({
   const { data, isLoading } = useIncompleteOrders(filters);
   const send = useSendRecovery();
   const del = useDeleteIncompleteOrder();
-  const clearAll = useClearAllIncomplete();
   const importCsv = useImportRecoveryCsv();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -530,27 +528,6 @@ function FunnelSection({
           style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
         >
           {importCsv.isPending ? "Importing…" : "Import CSV"}
-        </button>
-        <button
-          type="button"
-          disabled={clearAll.isPending}
-          onClick={() => {
-            if (
-              confirm(
-                "Delete all OPEN abandoned-cart rows matching current filters?\n\nRecovered and cancelled carts are kept — cancelled ones hold the reason someone recorded.",
-              )
-            ) {
-              clearAll.mutate(undefined);
-            }
-          }}
-          className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
-          style={{
-            borderColor: "#f8ccd3",
-            background: "#feeaec",
-            color: "#e5484d",
-          }}
-        >
-          Clear All (Not Recovered)
         </button>
         <span
           className="ml-auto text-[0.76rem] font-semibold"
