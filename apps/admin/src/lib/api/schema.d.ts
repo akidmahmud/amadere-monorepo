@@ -3380,6 +3380,22 @@ export interface paths {
         patch: operations["CustomersController_updateProfile"];
         trace?: never;
     };
+    "/api/v1/customers/me/birthday-prompt/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CustomersController_dismissBirthdayPrompt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers/me/password": {
         parameters: {
             query?: never;
@@ -4892,6 +4908,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["DashboardController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/traffic/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TrafficPublicController_collect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/traffic/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminTrafficController_stats"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7311,6 +7359,8 @@ export interface components {
             lastName: string | null;
             /** Format: date-time */
             dob: string | null;
+            /** Format: date-time */
+            birthdayPromptedAt: string | null;
             /** Format: date-time */
             emailVerifiedAt: string | null;
             /** Format: date-time */
@@ -9841,6 +9891,10 @@ export interface components {
             lastSeenAt: string;
             /** Format: date-time */
             createdAt: string;
+            riskLevel: string | null;
+            riskSuccessRate: number | null;
+            /** Format: date-time */
+            riskCheckedAt: string | null;
         };
         UpdateCartReasonDto: {
             /** @description Blank clears the reason */
@@ -9853,6 +9907,8 @@ export interface components {
             message?: string;
             ctaLabel?: string;
             whatsappLabel?: string;
+            /** @description Coupon code to offer in this email. Validated before sending, and appended to the CTA link so it applies itself when they arrive. */
+            couponCode?: string;
         };
         CancelIncompleteOrderDto: {
             reason: string;
@@ -10299,6 +10355,15 @@ export interface components {
             myAssignedOrdersToday?: number;
             myAssignedOrdersByStatus?: components["schemas"]["OrderStatusCountDto"][];
             myAssignedCustomersTotal?: number;
+        };
+        CollectPageViewDto: {
+            /** @description Random id the browser keeps in localStorage */
+            visitorId: string;
+            /** @description Random id the browser keeps in sessionStorage */
+            sessionId: string;
+            path: string;
+            referrer?: string;
+            utmSource?: string;
         };
         PublicBlogCategoryDto: {
             id: number;
@@ -18459,6 +18524,33 @@ export interface operations {
             };
         };
     };
+    CustomersController_dismissBirthdayPrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+        };
+    };
     CustomersController_setPassword: {
         parameters: {
             query?: never;
@@ -21307,6 +21399,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardOverviewDto"];
+                };
+            };
+        };
+    };
+    TrafficPublicController_collect: {
+        parameters: {
+            query?: never;
+            header: {
+                "user-agent": string;
+                "cf-ipcountry": string;
+                host: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectPageViewDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrafficController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
         };

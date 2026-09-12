@@ -316,6 +316,11 @@ model Customer {
   lastName            String?        @map("last_name")
   avatarUrl           String?        @map("avatar_url")
   dob                 DateTime?      @db.Date
+  /// When the birthday prompt was last shown and dismissed. Null = never
+  /// asked. Stored per ACCOUNT, not per browser, so closing it on a laptop
+  /// also settles it on their phone. Independent of `dob`: someone who
+  /// declines to give one should not be asked forever.
+  birthdayPromptedAt  DateTime?      @map("birthday_prompted_at")
   status              CustomerStatus @default(ACTIVE)
   emailVerifiedAt     DateTime?      @map("email_verified_at")
   phoneVerifiedAt     DateTime?      @map("phone_verified_at")

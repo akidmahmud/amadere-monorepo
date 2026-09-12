@@ -3684,3 +3684,50 @@ Product 34 restored: no attributes, no variants, `has_variants` false.
 **Still true from the previous entry:** the swallowed error and the
 self-clearing row are fixed, `isAdminOnly` is no longer dropped, and the
 products spec is no longer red.
+
+## Birthday prompt: asked once per account, not once per visit
+
+The popup came back on every login. The dismissal was React state only —
+`useState(false)` in ProfileForm — so every fresh mount of the profile page
+reset it. The original spec was literally "prompt every time until a birthday
+is given"; the owner has changed that to once.
+
+### Why not localStorage
+
+A per-browser flag would bring the prompt back on the customer's phone after
+they closed it on a laptop. "Show it once" is a fact about the **account**, so
+it is stored there: `customers.birthday_prompted_at`, nullable.
+
+Null for all 2,913 existing customers, which is the right migration: the ~2,800
+without a birthday get exactly one more prompt each, then never again.
+
+### Shape
+
+- `POST /customers/me/birthday-prompt/dismiss` — its own route rather than a
+  field on the profile PATCH, so the client can say *that* it was dismissed
+  without choosing *when*; the timestamp is the server's. **Idempotent**: a
+  second call (double-tap, retry, second tab) leaves the original date alone.
+- `CustomerProfileDto` exposes `birthdayPromptedAt`, and the gate became
+  `!me.dob && !me.birthdayPromptedAt && !birthdayPopupClosed`.
+- The local flag stays, purely so the popup disappears instantly instead of
+  waiting for the round trip. The mutation is fire-and-forget — if it fails the
+  worst case is one extra prompt, which is not worth blocking the UI over.
+
+Deliberately independent of `dob`: someone who closes the prompt without giving
+a birthday has answered the question. Tying dismissal to `dob` is exactly what
+made it nag forever.
+
+### Verified end to end on a real account
+
+Registered a throwaway customer (OTP completed) — the literal "first login
+after account creation" case:
+
+| step | `dob` | `birthdayPromptedAt` | popup |
+|---|---|---|---|
+| Brand-new account, first login | null | null | **shows** |
+| Customer closes it | null | `2026-09-12T05:31:08Z` | hidden |
+| Every later login | null | `2026-09-12T05:31:08Z` | hidden |
+| Dismiss called again | — | **unchanged** | hidden |
+
+Test account and its OTP rows deleted afterwards; 2,913 customers, 0 stamped.
+15/15 customers + common tests pass; backend, web and admin all typecheck.

@@ -95,6 +95,29 @@ export class CustomersService {
     return toCustomerProfileDto(customer);
   }
 
+  /**
+   * Stamps the birthday prompt as dealt with.
+   *
+   * Idempotent by design — the first dismissal is the one that counts, and a
+   * retry or a second tab must not move the date. Deliberately separate from
+   * `dob`: a customer who closes the prompt without giving a birthday has
+   * answered the question, and should not be asked again on every visit.
+   */
+  async dismissBirthdayPrompt(customerId: number): Promise<CustomerProfileDto> {
+    const customer = await this.prisma.client.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, birthdayPromptedAt: true },
+    });
+    if (!customer) throw new NotFoundException('Customer not found');
+    if (customer.birthdayPromptedAt) return this.getProfile(customerId);
+
+    const updated = await this.prisma.client.customer.update({
+      where: { id: customerId },
+      data: { birthdayPromptedAt: new Date() },
+    });
+    return toCustomerProfileDto(updated);
+  }
+
   async updateProfile(
     customerId: number,
     dto: UpdateProfileDto,

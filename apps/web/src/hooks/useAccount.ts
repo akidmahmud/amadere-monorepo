@@ -18,6 +18,24 @@ export function useUpdateProfile() {
   });
 }
 
+/**
+ * Records that the birthday prompt has been answered, for this ACCOUNT.
+ *
+ * Not localStorage: the customer who closes it on a laptop should not meet it
+ * again on their phone. The server owns the timestamp, so the client only
+ * says "this was dismissed".
+ */
+export function useDismissBirthdayPrompt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      proxyFetch<CustomerProfileDto>("/customers/me/birthday-prompt/dismiss", {
+        method: "POST",
+      }),
+    onSuccess: (profile) => queryClient.setQueryData(["me"], profile),
+  });
+}
+
 export function useChangePassword() {
   return useMutation({
     mutationFn: (args: { currentPassword: string; newPassword: string }) =>

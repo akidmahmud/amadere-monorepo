@@ -7,6 +7,9 @@ export class CustomerProfileDto {
   firstName!: string | null;
   lastName!: string | null;
   dob!: Date | null;
+  /** When the birthday prompt was shown and dismissed. Null = never asked,
+   *  which is the only state in which the storefront shows it. */
+  birthdayPromptedAt!: Date | null;
   emailVerifiedAt!: Date | null;
   phoneVerifiedAt!: Date | null;
   /** Whether this account can log in with phone+password — false for an
@@ -23,6 +26,7 @@ export function toCustomerProfileDto(customer: Customer): CustomerProfileDto {
     firstName: customer.firstName,
     lastName: customer.lastName,
     dob: customer.dob,
+    birthdayPromptedAt: customer.birthdayPromptedAt,
     emailVerifiedAt: customer.emailVerifiedAt,
     phoneVerifiedAt: customer.phoneVerifiedAt,
     hasPassword: customer.passwordHash !== null,

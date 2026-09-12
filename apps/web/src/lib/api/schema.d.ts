@@ -3380,6 +3380,22 @@ export interface paths {
         patch: operations["CustomersController_updateProfile"];
         trace?: never;
     };
+    "/api/v1/customers/me/birthday-prompt/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CustomersController_dismissBirthdayPrompt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers/me/password": {
         parameters: {
             query?: never;
@@ -4892,6 +4908,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["DashboardController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/traffic/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TrafficPublicController_collect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/traffic/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminTrafficController_stats"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6516,6 +6564,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/payments/gateway": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminGatewayPaymentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/profit/report": {
         parameters: {
             query?: never;
@@ -7108,6 +7172,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/wholesale/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/wholesale/customers": {
         parameters: {
             query?: never;
@@ -7279,6 +7359,8 @@ export interface components {
             lastName: string | null;
             /** Format: date-time */
             dob: string | null;
+            /** Format: date-time */
+            birthdayPromptedAt: string | null;
             /** Format: date-time */
             emailVerifiedAt: string | null;
             /** Format: date-time */
@@ -7696,7 +7778,7 @@ export interface components {
             robots: string;
             ogTitle?: string;
             ogDescription?: string;
-            ogImageUrl?: string;
+            ogImageUrl?: string | null;
             structuredDataType?: string;
         };
         AuthorSocialLinkResponseDto: {
@@ -8134,6 +8216,9 @@ export interface components {
             name: string;
             price: string | null;
             salePrice: string | null;
+            wholesalePrice: string | null;
+            sku: string | null;
+            imageUrl: string | null;
             stockStatus: Record<string, never>;
         };
         AdminDeletedProductDto: {
@@ -8215,6 +8300,7 @@ export interface components {
             stockStatus: Record<string, never>;
             price: string | null;
             salePrice: string | null;
+            wholesalePrice: string | null;
             /** Format: date-time */
             saleStartsAt: string | null;
             /** Format: date-time */
@@ -8351,6 +8437,8 @@ export interface components {
             /** @description Required when hasVariants is false */
             price?: number;
             salePrice?: number;
+            /** @description What a shop pays per unit. Only the default a wholesale order line starts at — the rate actually billed is snapshotted on the order. */
+            wholesalePrice?: number;
             saleStartsAt?: string;
             saleEndsAt?: string;
             costPerItem?: number;
@@ -8438,6 +8526,8 @@ export interface components {
             /** @description Required when hasVariants is false */
             price?: number;
             salePrice?: number;
+            /** @description What a shop pays per unit. Only the default a wholesale order line starts at — the rate actually billed is snapshotted on the order. */
+            wholesalePrice?: number;
             saleStartsAt?: string;
             saleEndsAt?: string;
             costPerItem?: number;
@@ -9189,6 +9279,7 @@ export interface components {
             status: Record<string, never>;
             amount: string;
             refundedAmount: string | null;
+            transactionRef: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -9220,6 +9311,7 @@ export interface components {
             id: number;
             orderNumber: string;
             customerId: number | null;
+            customerOrderCount?: number;
             status: Record<string, never>;
             channel: Record<string, never>;
             assignedAdminId: number | null;
@@ -9349,10 +9441,16 @@ export interface components {
              * @enum {string}
              */
             channel?: "WEBSITE" | "WHATSAPP" | "PHONE" | "MARKETPLACE" | "POS" | "APP" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "X";
+            /** @description Shipping address's recipient name */
+            recipientName?: string;
             /** @description Shipping address's phone */
             phone?: string;
             /** @description Shipping address's address line */
             addressLine?: string;
+            /** @description Shipping address's district */
+            district?: string;
+            /** @description Shipping address's thana / area */
+            area?: string;
             /** @description Shipping address's division */
             division?: string;
             /** @description Campaign attribution — manual override/correction of the checkout-captured value */
@@ -9678,6 +9776,9 @@ export interface components {
             /** Format: date-time */
             dob: string | null;
             address: string | null;
+            division: string | null;
+            district: string | null;
+            area: string | null;
             topProduct: string | null;
             assignedAdminId: number | null;
             assignedAdminName: string | null;
@@ -9724,6 +9825,12 @@ export interface components {
             /** Format: email */
             email?: string;
             addressLine?: string;
+            /** @description Bangladesh division, e.g. "Dhaka" */
+            division?: string;
+            /** @description District, e.g. "Dhaka" */
+            district?: string;
+            /** @description Thana / upazila, e.g. "Adabor" */
+            area?: string;
             /** @description Birthday, ISO date, or null to clear */
             dob?: string | null;
             isFavorite?: boolean;
@@ -9784,6 +9891,10 @@ export interface components {
             lastSeenAt: string;
             /** Format: date-time */
             createdAt: string;
+            riskLevel: string | null;
+            riskSuccessRate: number | null;
+            /** Format: date-time */
+            riskCheckedAt: string | null;
         };
         UpdateCartReasonDto: {
             /** @description Blank clears the reason */
@@ -9796,6 +9907,8 @@ export interface components {
             message?: string;
             ctaLabel?: string;
             whatsappLabel?: string;
+            /** @description Coupon code to offer in this email. Validated before sending, and appended to the CTA link so it applies itself when they arrive. */
+            couponCode?: string;
         };
         CancelIncompleteOrderDto: {
             reason: string;
@@ -10242,6 +10355,15 @@ export interface components {
             myAssignedOrdersToday?: number;
             myAssignedOrdersByStatus?: components["schemas"]["OrderStatusCountDto"][];
             myAssignedCustomersTotal?: number;
+        };
+        CollectPageViewDto: {
+            /** @description Random id the browser keeps in localStorage */
+            visitorId: string;
+            /** @description Random id the browser keeps in sessionStorage */
+            sessionId: string;
+            path: string;
+            referrer?: string;
+            utmSource?: string;
         };
         PublicBlogCategoryDto: {
             id: number;
@@ -11122,7 +11244,7 @@ export interface components {
             url: string;
             /** @description Shown as the duration badge in the video list — no source here exposes a free/reliable duration API, so this is admin-entered. */
             durationSeconds?: number;
-            thumbnailUrl?: string;
+            thumbnailUrl?: string | null;
             productId?: number;
             /** @default true */
             showInHomepage: boolean;
@@ -11138,7 +11260,7 @@ export interface components {
             url?: string;
             /** @description Shown as the duration badge in the video list — no source here exposes a free/reliable duration API, so this is admin-entered. */
             durationSeconds?: number;
-            thumbnailUrl?: string;
+            thumbnailUrl?: string | null;
             productId?: number;
             /** @default true */
             showInHomepage: boolean;
@@ -11221,6 +11343,24 @@ export interface components {
             amount: number;
             /** Format: uri */
             screenshotUrl?: string;
+        };
+        GatewayPaymentDto: {
+            id: number;
+            orderId: number;
+            /** @description Human order number, e.g. ORDER-11127 */
+            orderNumber: string;
+            /** @enum {string} */
+            provider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "SSLCOMMERZ" | "BANK_TRANSFER";
+            /** @enum {string} */
+            status: "PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CANCELED";
+            /** @description Decimal string, in BDT */
+            amount: string;
+            /** @description Refunded so far, if any */
+            refundedAmount?: string | null;
+            /** @description The provider's own transaction id (bKash trxID, e.g. DI709NWKN8) — the field a merchant statement is reconciled against. */
+            transactionRef?: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
         OrderProfitDto: {
             id: number;
@@ -11327,24 +11467,50 @@ export interface components {
             from: string;
             to?: string;
         };
+        WholesaleStatsDto: {
+            orderCount: number;
+            wholesaleOrderCount: number;
+            cashSaleCount: number;
+            salesTotal: string;
+            dueTotal: string;
+            customerCount: number;
+            wholesaleCustomerCount: number;
+            cashCustomerCount: number;
+        };
         WholesaleCustomerDto: {
             id: number;
             name: string;
             phone: string | null;
             address: string | null;
+            email: string | null;
+            alternativePhone: string | null;
+            district: string | null;
+            thana: string | null;
+            landmark: string | null;
+            postCode: string | null;
             creditLimit: string | null;
             creditDays: number | null;
             note: string | null;
             isActive: boolean;
             orderCount: number;
+            wholesaleCount: number;
+            cashCount: number;
             purchaseTotal: string;
             due: string;
+            /** Format: date-time */
+            lastOrderAt: string | null;
         };
         CreateWholesaleCustomerDto: {
             /** @description Shop or trader name */
             name: string;
             phone: string;
             address?: string;
+            email?: string;
+            alternativePhone?: string;
+            district?: string;
+            thana?: string;
+            landmark?: string;
+            postCode?: string;
             /** @description Credit ceiling, as a decimal string */
             creditLimit?: string;
             /** @description Payment terms in days */
@@ -11358,10 +11524,27 @@ export interface components {
             name?: string;
             phone?: string;
             address?: string;
+            email?: string;
+            alternativePhone?: string;
+            district?: string;
+            thana?: string;
+            landmark?: string;
+            postCode?: string;
             creditLimit?: string;
             creditDays?: number;
             note?: string;
             isActive?: boolean;
+        };
+        WholesaleDeliveryDto: {
+            recipientName: string | null;
+            recipientPhone: string | null;
+            alternativePhone: string | null;
+            recipientEmail: string | null;
+            addressLine: string | null;
+            district: string | null;
+            thana: string | null;
+            landmark: string | null;
+            postCode: string | null;
         };
         WholesaleOrderItemDto: {
             id: number;
@@ -11371,7 +11554,9 @@ export interface components {
             sku: string | null;
             unitPrice: string;
             quantity: number;
+            discount: string;
             lineTotal: string;
+            imageUrl: string | null;
         };
         WholesaleOrderDto: {
             id: number;
@@ -11380,8 +11565,15 @@ export interface components {
             customerName: string;
             customerPhone: string | null;
             status: Record<string, never>;
-            courier: Record<string, never>;
+            type: Record<string, never>;
+            channel: Record<string, never> | null;
+            paymentMethod: Record<string, never> | null;
+            paymentStatus: Record<string, never>;
+            transactionId: string | null;
+            gpNumber: string | null;
+            courier: Record<string, never> | null;
             consignmentId: string | null;
+            delivery: components["schemas"]["WholesaleDeliveryDto"];
             subtotal: string;
             deliveryCharge: string;
             discount: string;
@@ -11394,6 +11586,17 @@ export interface components {
             placedAt: string;
             items: components["schemas"]["WholesaleOrderItemDto"][];
         };
+        WholesaleDeliveryInputDto: {
+            recipientName?: string;
+            recipientPhone?: string;
+            alternativePhone?: string;
+            recipientEmail?: string;
+            addressLine?: string;
+            district?: string;
+            thana?: string;
+            landmark?: string;
+            postCode?: string;
+        };
         WholesaleOrderItemInputDto: {
             /** @description Omit when the line is for a variant */
             productId?: number;
@@ -11401,12 +11604,31 @@ export interface components {
             /** @description The wholesale rate for this line, as a decimal string. Not read off the product — wholesale is priced per deal. */
             unitPrice: string;
             quantity: number;
+            /** @description Taka off THIS line, before the order-level discount. Decimal string. */
+            discount?: string;
         };
         CreateWholesaleOrderDto: {
             /** @description Wholesale customer (party) id */
             partyId: number;
+            /**
+             * @description Defaults to WHOLESALE. CASH_SALE skips the delivery leg and prices at retail.
+             * @enum {string}
+             */
+            type?: "WHOLESALE" | "CASH_SALE";
             /** @enum {string} */
-            courier: "SUNDARBAN" | "AJR";
+            channel?: "WHATSAPP" | "TELEMARKETING" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "MESSENGER" | "MARKETPLACE" | "PHONE" | "IN_STORE_POS" | "OTHER";
+            /** @enum {string} */
+            paymentMethod?: "CASH" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "BANK";
+            /** @description Required by the UI for every non-cash method */
+            transactionId?: string;
+            /** @description Counter-sale voucher number. Cash sales only. */
+            gpNumber?: string;
+            /**
+             * @description Required for WHOLESALE; a cash sale never touches a courier.
+             * @enum {string}
+             */
+            courier?: "SUNDARBAN" | "AJR" | "SA_PARIBAHAN" | "OWN_TRANSPORT" | "CUSTOMER_PICKUP" | "OTHER";
+            delivery?: components["schemas"]["WholesaleDeliveryInputDto"];
             /** @description The number the courier gives us for the parcel */
             consignmentId?: string;
             items: components["schemas"]["WholesaleOrderItemInputDto"][];
@@ -11428,7 +11650,7 @@ export interface components {
             /** @enum {string} */
             status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
             /** @enum {string} */
-            courier?: "SUNDARBAN" | "AJR";
+            courier?: "SUNDARBAN" | "AJR" | "SA_PARIBAHAN" | "OWN_TRANSPORT" | "CUSTOMER_PICKUP" | "OTHER";
             consignmentId?: string;
             note?: string;
             /** @description Replaces the order lines wholesale. Stock moves by the difference, and the invoice is restated to the new total. */
@@ -18302,6 +18524,33 @@ export interface operations {
             };
         };
     };
+    CustomersController_dismissBirthdayPrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerProfileDto"];
+                };
+            };
+        };
+    };
     CustomersController_setPassword: {
         parameters: {
             query?: never;
@@ -21150,6 +21399,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardOverviewDto"];
+                };
+            };
+        };
+    };
+    TrafficPublicController_collect: {
+        parameters: {
+            query?: never;
+            header: {
+                "user-agent": string;
+                "cf-ipcountry": string;
+                host: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectPageViewDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrafficController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
         };
@@ -24529,6 +24822,31 @@ export interface operations {
             };
         };
     };
+    AdminGatewayPaymentsController_list: {
+        parameters: {
+            query: {
+                page?: number;
+                pageSize?: number;
+                provider: string;
+                status: string;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatewayPaymentDto"][];
+                };
+            };
+        };
+    };
     AdminProfitController_report: {
         parameters: {
             query: {
@@ -25411,6 +25729,25 @@ export interface operations {
             };
         };
     };
+    AdminWholesaleController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleStatsDto"];
+                };
+            };
+        };
+    };
     AdminWholesaleController_listCustomers: {
         parameters: {
             query?: {
@@ -25543,9 +25880,11 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
-                /** @description Matches order number, consignment id or buyer name */
+                /** @description Matches order number, consignment id, buyer name or phone, recipient name or phone, GP number, transaction id, or any product on the order */
                 search?: string;
                 status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
+                /** @description Omit for both */
+                type?: "WHOLESALE" | "CASH_SALE";
                 partyId?: number;
             };
             header?: never;

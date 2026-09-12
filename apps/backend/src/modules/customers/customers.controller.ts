@@ -39,6 +39,22 @@ export class CustomersController {
     return this.customers.updateProfile(customer.id, dto);
   }
 
+  /**
+   * Records that the birthday prompt has been shown and dealt with.
+   *
+   * Its own route rather than a field on the profile PATCH: the client should
+   * be able to say "this was dismissed", not choose *when* it was — the
+   * timestamp is the server's. It is also idempotent, so a double-click or a
+   * retry cannot do anything odd.
+   */
+  @Post('birthday-prompt/dismiss')
+  @ApiOkResponse({ type: CustomerProfileDto })
+  dismissBirthdayPrompt(
+    @CurrentCustomer() customer: { id: number },
+  ): Promise<CustomerProfileDto> {
+    return this.customers.dismissBirthdayPrompt(customer.id);
+  }
+
   @Patch('password')
   @ApiOkResponse({ type: SuccessResponseDto })
   changePassword(

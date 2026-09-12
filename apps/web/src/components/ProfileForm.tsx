@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { Button, Input } from "@amader/ui";
 import { useMe } from "@/hooks/useAuth";
-import { useChangePassword, useSetPassword, useUpdateProfile } from "@/hooks/useAccount";
+import {
+  useChangePassword,
+  useDismissBirthdayPrompt,
+  useSetPassword,
+  useUpdateProfile,
+} from "@/hooks/useAccount";
 import { BirthdayPopup } from "@/components/BirthdayPopup";
 
 export function ProfileForm() {
@@ -20,17 +25,31 @@ export function ProfileForm() {
   const [newPassword, setNewPassword] = useState("");
   const [setPasswordValue, setSetPasswordValue] = useState("");
 
-  // Non-blocking birthday nudge: resets to visible on every fresh mount of
-  // this page (no dismiss-tracking storage) — closing it only hides it for
-  // this visit. Once `me.dob` is actually set, the gate itself goes false
-  // and it stops appearing for good.
+  // Asked ONCE per account, not once per visit.
+  //
+  // This used to be local state alone, so every fresh mount of the profile
+  // page brought the prompt back — a customer who had already declined met it
+  // on every single login. `birthdayPromptedAt` is the durable half: the
+  // dismissal is stamped on the account, so it does not return on another
+  // device either. The local flag still exists to hide it instantly, without
+  // waiting for the request to come back.
+  const dismissBirthdayPrompt = useDismissBirthdayPrompt();
   const [birthdayPopupClosed, setBirthdayPopupClosed] = useState(false);
 
   if (!me) return null;
 
   return (
     <div className="space-y-6">
-      {!me.dob && !birthdayPopupClosed && <BirthdayPopup onClose={() => setBirthdayPopupClosed(true)} />}
+      {!me.dob && !me.birthdayPromptedAt && !birthdayPopupClosed && (
+        <BirthdayPopup
+          onClose={() => {
+            setBirthdayPopupClosed(true);
+            // Fire-and-forget: the popup is already gone either way, and a
+            // failed stamp only means they are asked once more.
+            dismissBirthdayPrompt.mutate();
+          }}
+        />
+      )}
 
       <div className="rounded-brand border border-line bg-white p-5">
         <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Profile</h2>
