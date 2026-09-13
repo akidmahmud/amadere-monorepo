@@ -48,24 +48,6 @@ const accountIcon = (
   </svg>
 );
 
-// Cart icon for the product action bar (with plus badge)
-const cartPlusIcon = (
-  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="9" cy="20" r="1.2" fill="currentColor" stroke="none" />
-    <circle cx="17" cy="20" r="1.2" fill="currentColor" stroke="none" />
-    <path d="M3 4h2l2.2 10.3a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.2L20 7H6" />
-    <path d="M12 8.5v4M10 10.5h4" />
-  </svg>
-);
-
-const buyNowBoxIcon = (
-  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-    <line x1="12" y1="22.08" x2="12" y2="12" />
-  </svg>
-);
-
 const chatWhatsappIcon = (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-white">
     <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.92 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 1.67c2.19 0 4.25.85 5.79 2.4a8.2 8.2 0 0 1 2.42 5.84c0 4.55-3.71 8.25-8.26 8.25a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.39c0-4.55 3.71-8.24 8.29-8.24Zm-4.5 4.66c-.16 0-.42.06-.64.31-.22.25-.85.83-.85 2.03s.87 2.36.99 2.52c.12.16 1.7 2.71 4.24 3.7 2.1.82 2.53.66 2.99.62.46-.04 1.48-.6 1.69-1.19.21-.58.21-1.08.14-1.19-.06-.1-.22-.16-.46-.28-.24-.12-1.48-.73-1.71-.82-.23-.08-.4-.12-.56.13-.16.24-.64.81-.79.98-.15.16-.29.19-.53.06-.24-.12-1.03-.38-1.97-1.21-.73-.65-1.22-1.45-1.36-1.69-.14-.24-.02-.37.11-.49.11-.11.24-.29.36-.43.12-.14.16-.24.24-.4.08-.16.04-.31-.02-.43-.06-.12-.55-1.37-.77-1.87-.2-.48-.4-.42-.56-.42h-.44Z" />
@@ -119,7 +101,7 @@ function FooterItem({
 //
 // On product pages, once the user scrolls past the main Add to Cart / Buy Now
 // buttons (#pdp-buy-buttons), this bar transforms in-place into a product
-// action bar showing Chat + pill-shaped Add Cart + Buy Now buttons.
+// action bar showing Chat + Add to Cart (outline) + Buy Now (solid) pills, matching the desktop sticky bar.
 export function MobileStickyFooter() {
   const locale = useLocale();
   const isCheckoutPage = useIsCheckoutPage();
@@ -199,9 +181,9 @@ export function MobileStickyFooter() {
                 type="button"
                 disabled={isPending}
                 onClick={onBuyNow ?? undefined}
-                className="flex h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full bg-[#10B981] hover:bg-[#0e9f6e] active:bg-[#059669] font-ui text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.35)] transition-all active:scale-[0.98] disabled:opacity-60"
+                className="h-11 flex-1 rounded-full bg-green font-ui text-sm font-semibold text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span>{isPending ? "Preparing…" : "Download"}</span>
+                {isPending ? "Preparing…" : "Download"}
               </button>
             ) : (
               <>
@@ -209,19 +191,17 @@ export function MobileStickyFooter() {
               type="button"
               disabled={isPending}
               onClick={onAddToCart ?? undefined}
-              className="flex h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full bg-[#FFB800] hover:bg-[#efa900] active:bg-[#e09e00] font-ui text-[13px] font-bold text-slate-900 shadow-[0_4px_14px_rgba(255,184,0,0.35)] transition-all active:scale-[0.98] disabled:opacity-60"
+              className="h-11 flex-1 rounded-full border border-green font-ui text-sm font-semibold text-green transition-colors hover:bg-green hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {!isPending && cartPlusIcon}
-              <span>{isPending ? "Adding…" : "Add Cart"}</span>
+              {isPending ? "Adding…" : "Add to Cart"}
             </button>
             <button
               type="button"
               disabled={isPending}
               onClick={onBuyNow ?? undefined}
-              className="flex h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full bg-[#10B981] hover:bg-[#0e9f6e] active:bg-[#059669] font-ui text-[13px] font-bold text-white shadow-[0_4px_14px_rgba(16,185,129,0.35)] transition-all active:scale-[0.98] disabled:opacity-60"
+              className="h-11 flex-1 rounded-full bg-green font-ui text-sm font-semibold text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {!isPending && buyNowBoxIcon}
-              <span>{isPending ? "Adding…" : "Buy Now"}</span>
+              {isPending ? "Adding…" : "Buy Now"}
             </button>
               </>
             )}
