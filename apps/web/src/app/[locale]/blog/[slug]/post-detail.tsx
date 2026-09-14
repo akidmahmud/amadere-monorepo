@@ -156,27 +156,25 @@ export async function PostDetailBody({
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
             />
 
-            {/* Labels, not links — per explicit request tags no longer get
-                their own browsable page. They still drive what shows up in
-                Related Posts (findRelatedPosts matches on shared tags), so
-                they're still doing real work, just not as navigation. */}
-            {post.tags.length > 0 && (
-              <div className="mt-8 flex flex-wrap gap-2">
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag.slug}
-                    className="rounded-full bg-beige px-3 py-1 font-ui text-xs text-ink"
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Tags are not displayed (removed per explicit request). They
+                still drive Related Posts — findRelatedPosts matches on shared
+                tags — so keep assigning them in the admin. */}
 
             {post.faqs.length > 0 && (
               <div className="mt-10">
                 <h2 className="mb-4 font-serif text-xl font-semibold text-ink">Frequently Asked Questions</h2>
                 <FaqAccordion items={post.faqs} />
+              </div>
+            )}
+
+            {post.reference && (
+              <div className="mt-10">
+                <h2 className="mb-4 font-serif text-xl font-semibold text-ink">Reference</h2>
+                {/* eslint-disable-next-line react/no-danger */}
+                <div
+                  className="rich-content max-w-none font-body text-sm leading-relaxed text-ink [&_p]:mb-2 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-green [&_a]:underline [&_a]:break-words"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.reference) }}
+                />
               </div>
             )}
           </article>

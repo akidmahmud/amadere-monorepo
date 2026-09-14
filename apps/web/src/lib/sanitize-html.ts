@@ -19,6 +19,11 @@ export function sanitizeHtml(html: string): string {
     // DOMPurify still strips dangerous attributes (onload, javascript: src,
     // etc.) on every tag regardless of this allowlist.
     ADD_TAGS: ["iframe"],
+    // Without this, a `<style>` block at the very start of the content (how
+    // pasted HTML/CSS designs usually begin) is hoisted into <head> by the
+    // parser and silently dropped, so the design renders unstyled. Verified:
+    // same input keeps its <style> with the flag and loses it without.
+    FORCE_BODY: true,
     ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "target"],
   });
 }

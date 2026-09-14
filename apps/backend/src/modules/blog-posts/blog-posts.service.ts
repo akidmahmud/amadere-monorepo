@@ -157,6 +157,7 @@ export class BlogPostsService {
             title: t.title,
             excerpt: t.excerpt,
             content: t.content,
+            reference: t.reference,
             metaDescription: t.metaDescription,
             seoScore: computeSeoScore(t),
             faqs: t.faqs ? { create: t.faqs } : undefined,
@@ -214,6 +215,7 @@ export class BlogPostsService {
                 title: t.title,
                 excerpt: t.excerpt,
                 content: t.content,
+                reference: t.reference,
                 metaDescription: t.metaDescription,
                 seoScore: computeSeoScore(t),
                 faqs: t.faqs ? { create: t.faqs } : undefined,
@@ -266,6 +268,7 @@ export class BlogPostsService {
         push(`title (${t.locale})`, beforeTranslation?.title ?? null, t.title);
         push(`excerpt (${t.locale})`, beforeTranslation?.excerpt ?? null, t.excerpt ?? null);
         push(`content (${t.locale})`, beforeTranslation?.content ?? null, t.content);
+        push(`reference (${t.locale})`, beforeTranslation?.reference ?? null, t.reference ?? null);
         push(`metaDescription (${t.locale})`, beforeTranslation?.metaDescription ?? null, t.metaDescription ?? null);
       }
     }
@@ -538,6 +541,7 @@ export class BlogPostsService {
       ...summary,
       coverImageUrl,
       content,
+      reference: translation?.reference || null,
       metaDescription: translation?.metaDescription ?? null,
       toc,
       faqs,

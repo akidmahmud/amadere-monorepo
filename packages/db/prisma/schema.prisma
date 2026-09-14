@@ -1976,6 +1976,9 @@ model BlogPostTranslation {
   title           String
   excerpt         String?
   content         String
+  // Optional "Reference" section (sources/citations), admin-authored HTML
+  // rendered after the FAQ on the post page. Per-locale, like `content`.
+  reference       String?
   metaDescription String? @map("meta_description")
   // Cached score for the per-article SEO-score feature (AGENTS.md §6);
   // recomputed by the content-editing flow, not derived at read time.

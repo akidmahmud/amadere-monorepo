@@ -12,7 +12,7 @@ import {
   useSubmitBlogPost,
   useUpdateBlogPost,
 } from "@/hooks/useBlogPosts";
-import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
+import { BlogPostFormFields, cleanBlogFaqs, type BlogFaq } from "@/components/blog/BlogPostFormFields";
 import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
 import { RevisionHistoryTable } from "@/components/blog/RevisionHistoryTable";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
@@ -28,6 +28,9 @@ interface BlogPostDraft {
   slug: string;
   excerpt: string;
   content: string;
+  // Optional: drafts autosaved before these fields existed don't have them.
+  faqs?: BlogFaq[];
+  reference?: string;
   metaDescription: string;
   imageUrl: string | undefined;
   coverImageUrl: string | undefined;
@@ -61,6 +64,8 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
+  const [faqs, setFaqs] = useState<BlogFaq[]>([]);
+  const [reference, setReference] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>();
@@ -77,6 +82,8 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     setTitle(post.translations[0]?.title ?? "");
     setExcerpt(post.translations[0]?.excerpt ?? "");
     setContent(post.translations[0]?.content ?? "");
+    setFaqs(post.translations[0]?.faqs.map((f) => ({ question: f.question, answer: f.answer })) ?? []);
+    setReference(post.translations[0]?.reference ?? "");
     setMetaDescription(post.translations[0]?.metaDescription ?? "");
     setImageUrl(post.imageUrl ?? undefined);
     setCoverImageUrl(post.coverImageUrl ?? undefined);
@@ -92,7 +99,7 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   }, [post]);
 
   useAutosaveDraft(draftKey, () => ({
-    title, slug, excerpt, content, metaDescription, imageUrl, coverImageUrl, isFeatured, sortOrder, categoryIds, tagIds,
+    title, slug, excerpt, content, faqs, reference, metaDescription, imageUrl, coverImageUrl, isFeatured, sortOrder, categoryIds, tagIds,
   }));
 
   function restoreDraft(d: BlogPostDraft) {
@@ -100,6 +107,8 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
     setSlug(d.slug);
     setExcerpt(d.excerpt);
     setContent(d.content);
+    setFaqs(d.faqs ?? []);
+    setReference(d.reference ?? "");
     setMetaDescription(d.metaDescription);
     setImageUrl(d.imageUrl);
     setCoverImageUrl(d.coverImageUrl);
@@ -123,10 +132,15 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
         sortOrder,
         categoryIds,
         tagIds,
-        translations: [
-          { locale: "EN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-          { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-        ],
+        translations: (["EN", "BN"] as const).map((locale) => ({
+          locale,
+          title,
+          excerpt: excerpt || undefined,
+          content,
+          reference: reference || undefined,
+          metaDescription: metaDescription || undefined,
+          faqs: cleanBlogFaqs(faqs),
+        })),
       });
     } catch (err) {
       toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to save post");
@@ -235,6 +249,10 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
           setExcerpt={setExcerpt}
           content={content}
           setContent={setContent}
+          faqs={faqs}
+          setFaqs={setFaqs}
+          reference={reference}
+          setReference={setReference}
           metaDescription={metaDescription}
           setMetaDescription={setMetaDescription}
           imageUrl={imageUrl}

@@ -41,6 +41,7 @@ export class AdminBlogPostTranslationDto {
   title!: string;
   excerpt!: string | null;
   content!: string;
+  reference!: string | null;
   metaDescription!: string | null;
   seoScore!: number | null;
   faqs!: BlogPostFaqDto[];
@@ -107,6 +108,7 @@ export function toAdminBlogPostDto(
       title: t.title,
       excerpt: t.excerpt,
       content: t.content,
+      reference: t.reference,
       metaDescription: t.metaDescription,
       seoScore: t.seoScore,
       faqs: t.faqs.map((f) => ({
@@ -197,6 +199,7 @@ export class PublicBlogPostDetailDto extends PublicBlogPostSummaryDto {
   // when unset — see blog-posts.service.ts#publicGetBySlug.
   coverImageUrl!: string | null;
   content!: string;
+  reference!: string | null;
   metaDescription!: string | null;
   toc!: BlogPostTocEntryDto[];
   faqs!: BlogPostFaqPublicDto[];

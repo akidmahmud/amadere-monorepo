@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@amader/admin-ui";
 import { useCreateBlogPost } from "@/hooks/useBlogPosts";
-import { BlogPostFormFields } from "@/components/blog/BlogPostFormFields";
+import { BlogPostFormFields, cleanBlogFaqs, type BlogFaq } from "@/components/blog/BlogPostFormFields";
 import { BlogPreviewButton } from "@/components/blog/BlogPreviewButton";
 import { useAutosaveDraft, loadDraft, clearDraft, type StoredDraft } from "@/hooks/useAutosaveDraft";
 import { DraftRestoreBanner } from "@/components/DraftRestoreBanner";
@@ -24,6 +24,9 @@ interface BlogPostDraft {
   slug: string;
   excerpt: string;
   content: string;
+  // Optional: drafts autosaved before these fields existed don't have them.
+  faqs?: BlogFaq[];
+  reference?: string;
   metaDescription: string;
   imageUrl: string | undefined;
   coverImageUrl: string | undefined;
@@ -39,6 +42,8 @@ export default function NewBlogPostPage() {
   const [slug, setSlug] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
+  const [faqs, setFaqs] = useState<BlogFaq[]>([]);
+  const [reference, setReference] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>();
@@ -56,7 +61,7 @@ export default function NewBlogPostPage() {
   }, []);
 
   useAutosaveDraft(DRAFT_KEY, () => ({
-    title, slug, excerpt, content, metaDescription, imageUrl, coverImageUrl, isFeatured, sortOrder, categoryIds, tagIds,
+    title, slug, excerpt, content, faqs, reference, metaDescription, imageUrl, coverImageUrl, isFeatured, sortOrder, categoryIds, tagIds,
   }));
 
   function restoreDraft(d: BlogPostDraft) {
@@ -64,6 +69,8 @@ export default function NewBlogPostPage() {
     setSlug(d.slug);
     setExcerpt(d.excerpt);
     setContent(d.content);
+    setFaqs(d.faqs ?? []);
+    setReference(d.reference ?? "");
     setMetaDescription(d.metaDescription);
     setImageUrl(d.imageUrl);
     setCoverImageUrl(d.coverImageUrl);
@@ -89,10 +96,15 @@ export default function NewBlogPostPage() {
         sortOrder,
         categoryIds,
         tagIds,
-        translations: [
-          { locale: "EN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-          { locale: "BN", title, excerpt: excerpt || undefined, content, metaDescription: metaDescription || undefined },
-        ],
+        translations: (["EN", "BN"] as const).map((locale) => ({
+          locale,
+          title,
+          excerpt: excerpt || undefined,
+          content,
+          reference: reference || undefined,
+          metaDescription: metaDescription || undefined,
+          faqs: cleanBlogFaqs(faqs),
+        })),
       });
     } catch (err) {
       toast.push(err instanceof ProxyApiError ? friendlyErrorMessage(err.message) : "Failed to create post");
@@ -171,6 +183,10 @@ export default function NewBlogPostPage() {
         setExcerpt={setExcerpt}
         content={content}
         setContent={setContent}
+        faqs={faqs}
+        setFaqs={setFaqs}
+        reference={reference}
+        setReference={setReference}
         metaDescription={metaDescription}
         setMetaDescription={setMetaDescription}
         imageUrl={imageUrl}

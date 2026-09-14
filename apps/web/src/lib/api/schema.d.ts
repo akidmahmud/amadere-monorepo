@@ -7541,6 +7541,7 @@ export interface components {
             productCount: number;
             generatedAt: string;
             metaUrl: string;
+            metaJsonUrl: string;
             googleUrl: string;
             tiktokUrl: string;
             skipped: components["schemas"]["FeedIssueDto"][];
@@ -10505,6 +10506,7 @@ export interface components {
             tags: components["schemas"]["BlogPostTagSummaryDto"][];
             coverImageUrl: string | null;
             content: string;
+            reference: string | null;
             metaDescription: string | null;
             toc: components["schemas"]["BlogPostTocEntryDto"][];
             faqs: components["schemas"]["BlogPostFaqPublicDto"][];
@@ -10544,6 +10546,7 @@ export interface components {
             title: string;
             excerpt: string | null;
             content: string;
+            reference: string | null;
             metaDescription: string | null;
             seoScore: number | null;
             faqs: components["schemas"]["BlogPostFaqDto"][];
@@ -10581,6 +10584,7 @@ export interface components {
             title: string;
             excerpt?: string;
             content: string;
+            reference?: string;
             metaDescription?: string;
             faqs?: components["schemas"]["BlogPostFaqDto"][];
         };
@@ -19269,6 +19273,7 @@ export interface operations {
                 from: string;
                 to: string;
                 outcome: string;
+                ids: string;
             };
             header?: never;
             path?: never;
@@ -24607,9 +24612,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": Record<string, never>;
-                };
+                content?: never;
             };
         };
     };

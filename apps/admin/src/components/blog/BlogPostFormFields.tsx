@@ -5,6 +5,7 @@ import { useBlogCategories } from "@/hooks/useBlogCategories";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { MediaPicker } from "@/components/MediaPicker";
+import { ProductFaqCard } from "@/components/products/ProductFaqCard";
 import { BlogHtmlDropzone, type ParsedHtmlPost } from "./BlogHtmlDropzone";
 import { BlogTagsPicker } from "./BlogTagsPicker";
 
@@ -44,6 +45,16 @@ const wandIcon = (
   </svg>
 );
 
+export type BlogFaq = { question: string; answer: string };
+
+// Same cleanup as the product form: trimmed, half-filled rows dropped, order
+// from the list position.
+export function cleanBlogFaqs(faqs: BlogFaq[]) {
+  return faqs
+    .map((f, i) => ({ question: f.question.trim(), answer: f.answer.trim(), sortOrder: i }))
+    .filter((f) => f.question && f.answer);
+}
+
 export interface BlogPostFormFieldsProps {
   title: string;
   setTitle: (v: string) => void;
@@ -53,6 +64,10 @@ export interface BlogPostFormFieldsProps {
   setExcerpt: (v: string) => void;
   content: string;
   setContent: (v: string) => void;
+  faqs: BlogFaq[];
+  setFaqs: (v: BlogFaq[]) => void;
+  reference: string;
+  setReference: (v: string) => void;
   metaDescription: string;
   setMetaDescription: (v: string) => void;
   imageUrl: string | undefined;
@@ -171,6 +186,14 @@ export function BlogPostFormFields(props: BlogPostFormFieldsProps) {
             </span>
             <textarea value={props.metaDescription} onChange={(e) => props.setMetaDescription(e.target.value)} rows={2} className={textareaClass} placeholder="Shown in search engine results. Leave empty to use the excerpt." />
           </label>
+        </div>
+
+        <ProductFaqCard form={props} title="FAQ (optional — shown after the post content)" />
+
+        <div className="rounded-card border border-border bg-surface p-[18px] min-w-0 overflow-hidden">
+          <h3 className="mb-1 text-[0.9rem] font-extrabold text-text">Reference</h3>
+          <p className="mb-3.5 text-[0.7rem] text-muted">Optional — sources and citations. Shown after the FAQ, only when filled in.</p>
+          <RichTextEditor value={props.reference} onChange={props.setReference} />
         </div>
       </div>
 

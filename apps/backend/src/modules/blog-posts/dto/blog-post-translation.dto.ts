@@ -33,6 +33,13 @@ export class BlogPostTranslationDto {
   @IsString()
   content!: string;
 
+  // Optional "Reference" section (sources/citations) — rich HTML rendered
+  // after the FAQ on the post page.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  reference?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

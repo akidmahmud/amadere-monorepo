@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, Modal } from "@amader/admin-ui";
 import { useGenerateBlogPreviewToken } from "@/hooks/useBlogPosts";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
@@ -64,9 +65,18 @@ export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
         {eyeIcon}
         {previewToken.isPending ? "Preparing…" : "Preview"}
       </Button>
-      <Modal open={previewUrl !== null} onClose={() => setPreviewUrl(null)} title="Post Preview" className="h-[88vh] max-w-6xl">
-        {previewUrl && <iframe src={previewUrl} title="Blog post preview" className="h-full w-full rounded-sm border border-border" />}
-      </Modal>
+      {/* Portaled to <body>: this button lives in the edit page's sticky
+          action bar (`sticky z-[5]`), which is its own stacking context, so
+          an in-place Modal's z-50 was trapped under the sidebar's z-20 and
+          the left of the preview rendered behind it. Only set after a click,
+          so `document` always exists here. */}
+      {previewUrl &&
+        createPortal(
+          <Modal open onClose={() => setPreviewUrl(null)} title="Post Preview" className="h-[88vh] max-w-6xl">
+            <iframe src={previewUrl} title="Blog post preview" className="h-full w-full rounded-sm border border-border" />
+          </Modal>,
+          document.body,
+        )}
     </>
   );
 }

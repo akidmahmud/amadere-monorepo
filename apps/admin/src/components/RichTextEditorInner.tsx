@@ -43,6 +43,7 @@ import {
   FindAndReplace,
   SourceEditing,
   GeneralHtmlSupport,
+  HtmlComment,
   type Editor,
   type EditorConfig,
 } from "ckeditor5";
@@ -134,6 +135,7 @@ const CONFIG: EditorConfig = {
     FindAndReplace,
     SourceEditing,
     GeneralHtmlSupport,
+    HtmlComment,
     UploadAdapterPlugin,
   ],
   toolbar: [
@@ -215,29 +217,19 @@ const CONFIG: EditorConfig = {
   },
   // General HTML Support (still free/open-source, same `ckeditor5` package)
   // — without it CKEditor strips any class/style/element it doesn't already
-  // have a dedicated feature for, so hand-authored HTML/CSS typed via
-  // Source view would just vanish again on the next edit. Admin-only
-  // content, already sanitized again on the storefront before render, so
-  // this is a deliberate trust boundary, not a new one.
+  // have a dedicated feature for. Admin-only content, sanitized again on the
+  // storefront (DOMPurify) before render, so this is a deliberate trust
+  // boundary, not a new one.
   //
-  // Deliberately NOT a catch-all `name: /.*/` — scoped to tags with no
-  // dedicated feature above (embeds, generic layout wrappers), plus `pre`
-  // as a safety net now that the CodeBlock feature (which used to own it)
-  // is gone — without an owner, a `<pre>` block would silently disappear on
-  // the next save instead of just staying inert. (The earlier <h1>-shows-
-  // as-a-gray-chip report turned out to be the CodeBlock feature itself,
-  // not a GHS conflict — its default "HTML"/"Plain text" per-block language
-  // label was mistaken for Source Editing's icon; CodeBlock has since been
-  // removed from the toolbar entirely to stop that mix-up at the source.)
+  // Catch-all on purpose. The earlier scoped list (div/span/section/...) only
+  // covered tags WITHOUT a dedicated feature, so hand-authored designs pasted
+  // via Source lost everything else on the round-trip (verified): `<style>`
+  // blocks turned into a visible text paragraph, `class`/`style` were stripped
+  // from h2/p/a/ul/li/img, and `<button>`/`<svg>` vanished entirely. Scripts
+  // and inline event handlers stay blocked here as well as on the storefront.
   htmlSupport: {
-    allow: [
-      {
-        name: /^(div|span|section|article|figure|figcaption|iframe|video|audio|source|details|summary|mark|small|abbr|cite|time|address|nav|aside|header|footer|main|pre)$/,
-        attributes: true,
-        classes: true,
-        styles: true,
-      },
-    ],
+    allow: [{ name: /.*/, attributes: true, classes: true, styles: true }],
+    disallow: [{ name: /^script$/ }, { attributes: [{ key: /^on/, value: true }] }],
   },
 };
 

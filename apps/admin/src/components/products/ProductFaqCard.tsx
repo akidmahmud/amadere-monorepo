@@ -5,7 +5,14 @@ import type { ProductFormState } from "./useProductFormState";
 const inputClass = "h-9 w-full rounded-sm border border-border bg-surface px-2.5 text-sm text-text outline-none focus:border-brand-500";
 const textareaClass = "w-full rounded-sm border border-border bg-surface p-2.5 text-sm text-text outline-none focus:border-brand-500";
 
-export function ProductFaqCard({ form }: { form: ProductFormState }) {
+// Only needs the FAQ list, so the blog post form reuses it with its own state.
+export function ProductFaqCard({
+  form,
+  title = "FAQ (optional — rendered as the product page's FAQ tab)",
+}: {
+  form: { faqs: ProductFormState["faqs"]; setFaqs: (faqs: ProductFormState["faqs"]) => void };
+  title?: string;
+}) {
   function update(index: number, patch: Partial<{ question: string; answer: string }>) {
     form.setFaqs(form.faqs.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }
@@ -17,7 +24,7 @@ export function ProductFaqCard({ form }: { form: ProductFormState }) {
   return (
     <div className="rounded-card border border-border bg-surface p-[18px]">
       <div className="mb-3.5 flex items-center justify-between">
-        <h3 className="text-[0.9rem] font-extrabold text-text">FAQ (optional — rendered as the product page&apos;s FAQ tab)</h3>
+        <h3 className="text-[0.9rem] font-extrabold text-text">{title}</h3>
         <button
           type="button"
           onClick={() => form.setFaqs([...form.faqs, { question: "", answer: "" }])}
