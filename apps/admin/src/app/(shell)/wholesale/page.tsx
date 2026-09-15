@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card, Icon, PageHeader, Tabs } from "@amader/admin-ui";
 import { InvoiceSettingsForm } from "@/components/settings/InvoiceSettingsForm";
+import { ChannelSettings } from "./_components/ChannelSettings";
 import {
   useWholesaleCustomers,
   type WholesaleCustomer,
@@ -15,7 +16,7 @@ import { OrderModal } from "./_components/OrderModal";
 import { OrdersDashboard } from "./_components/OrdersDashboard";
 import { PaymentModal } from "./_components/PaymentModal";
 
-type Screen = "create" | "orders" | "customers" | "invoice";
+type Screen = "create" | "orders" | "customers" | "invoice" | "channels";
 
 export default function WholesalePage() {
   const [screen, setScreen] = useState<Screen>("create");
@@ -46,8 +47,8 @@ export default function WholesalePage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Wholesale & Cash Sale"
-        subtitle="Bulk orders for shops and over-the-counter cash sales. Both raise a receivable and post to the Accounts ledger, and neither ever touches the retail Order Manager."
+        title="Wholesale & Channels"
+        subtitle="Bulk orders for shops and sales through channels like Cash Sale or Daraz. Every order raises a receivable and posts to the Accounts ledger, and none touches the retail Order Manager."
       />
 
       <Tabs
@@ -56,6 +57,7 @@ export default function WholesalePage() {
           { value: "orders", label: "Orders Dashboard" },
           { value: "customers", label: "Customer Dashboard" },
           { value: "invoice", label: "Invoice Settings" },
+          { value: "channels", label: "Channel Settings" },
         ]}
         value={screen}
         onChange={(v) => setScreen(v as Screen)}
@@ -108,6 +110,8 @@ export default function WholesalePage() {
           <InvoiceSettingsForm />
         </div>
       )}
+
+      {screen === "channels" && <ChannelSettings onSaved={announce} />}
 
       {customerModalOpen && (
         <CustomerModal

@@ -294,7 +294,7 @@ function WholesaleCustomerRow({
         {c.orderCount}
         {c.orderCount > 0 && (
           <span className="ml-1.5 text-[0.66rem] font-medium" style={{ color: FAINT }}>
-            {c.wholesaleCount} WS · {c.cashCount} cash
+            {c.wholesaleCount} WS · {c.channelCount} channel
           </span>
         )}
       </td>

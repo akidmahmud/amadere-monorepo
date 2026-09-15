@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
-import { Button, Modal } from "@amader/admin-ui";
+import { Button } from "@amader/admin-ui";
 import { useGenerateBlogPreviewToken } from "@/hooks/useBlogPosts";
 import { useStorefrontUrl } from "@/hooks/useStorefrontUrl";
 
@@ -18,10 +17,18 @@ const eyeIcon = (
   </svg>
 );
 
+// Opens the preview in a new tab, exactly like ProductPreviewButton. It used
+// to render the storefront in an <iframe> modal, which production can never
+// show: amadere.com is served with `X-Frame-Options: SAMEORIGIN` (set at the
+// server/CDN, not in this repo), so a frame on admin.amadere.com — a different
+// origin — stays blank. It only ever worked on localhost, where that header
+// isn't sent. A tab has no framing rules to fall foul of.
 export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
   const previewToken = useGenerateBlogPreviewToken();
   const storefrontUrl = useStorefrontUrl();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Only set when the browser blocked the popup — then we show a link the
+  // admin can click themselves rather than silently doing nothing.
+  const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
 
   if (!postId) {
     return (
@@ -32,51 +39,43 @@ export function BlogPreviewButton({ postId, slug }: BlogPreviewButtonProps) {
     );
   }
 
+  function openPreview() {
+    setBlockedUrl(null);
+
+    // Opened SYNCHRONOUSLY, inside the click, before the async token call:
+    // browsers only allow window.open during a user gesture, so opening it
+    // from the mutation callback would be blocked as a popup.
+    const tab = window.open("", "_blank");
+    if (tab) tab.document.write("Preparing preview…");
+
+    previewToken.mutate(postId!, {
+      onSuccess: ({ token }) => {
+        // The saved slug, not a possibly-unsaved form field — preview shows
+        // what's persisted. The `/en` prefix is load-bearing: the token is a
+        // JWT (it contains dots) and apps/web's proxy matcher skips any path
+        // with a dot, so the locale rewrite never runs on a preview URL.
+        const url = `${storefrontUrl}/en/blog/${slug}/preview/${token}`;
+        if (tab && !tab.closed) {
+          tab.location.replace(url);
+        } else {
+          setBlockedUrl(url);
+        }
+      },
+      onError: () => tab?.close(),
+    });
+  }
+
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={previewToken.isPending || !slug}
-        onClick={() => {
-          previewToken.mutate(postId, {
-            onSuccess: ({ token }) => {
-              // Uses the saved post's slug, not a possibly-unsaved form
-              // field — preview shows what's actually persisted. Path-based
-              // token (not `?previewToken=`) so the real post route never
-              // has to read searchParams and can stay statically cached —
-              // see PERF-BRIEF.md §3 / post-detail.tsx.
-              //
-              // The `/en` prefix is load-bearing, NOT cosmetic — it's why
-              // ProductPreviewButton always worked and this one always
-              // 404'd. The token is a JWT, so it contains dots, and
-              // apps/web's proxy.ts matcher excludes every path containing
-              // one (`.*\..*`, there to skip static files). next-intl's
-              // locale proxy therefore never runs on a preview URL and
-              // never rewrites `/blog/...` to `/en/blog/...`, leaving a
-              // 4-segment path that can't match [locale]/blog/[slug]/
-              // preview/[token]. Sending the locale explicitly means the
-              // route resolves without needing the rewrite at all.
-              setPreviewUrl(`${storefrontUrl}/en/blog/${slug}/preview/${token}`);
-            },
-          });
-        }}
-      >
+      <Button type="button" variant="ghost" disabled={previewToken.isPending || !slug} onClick={openPreview}>
         {eyeIcon}
         {previewToken.isPending ? "Preparing…" : "Preview"}
       </Button>
-      {/* Portaled to <body>: this button lives in the edit page's sticky
-          action bar (`sticky z-[5]`), which is its own stacking context, so
-          an in-place Modal's z-50 was trapped under the sidebar's z-20 and
-          the left of the preview rendered behind it. Only set after a click,
-          so `document` always exists here. */}
-      {previewUrl &&
-        createPortal(
-          <Modal open onClose={() => setPreviewUrl(null)} title="Post Preview" className="h-[88vh] max-w-6xl">
-            <iframe src={previewUrl} title="Blog post preview" className="h-full w-full rounded-sm border border-border" />
-          </Modal>,
-          document.body,
-        )}
+      {blockedUrl && (
+        <a href={blockedUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold underline" onClick={() => setBlockedUrl(null)}>
+          Popup blocked — open preview
+        </a>
+      )}
     </>
   );
 }

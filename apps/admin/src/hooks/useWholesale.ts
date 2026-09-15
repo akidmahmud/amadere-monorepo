@@ -15,10 +15,14 @@ export type WholesaleCourier =
   | "SA_PARIBAHAN"
   | "OWN_TRANSPORT"
   | "CUSTOMER_PICKUP"
-  | "OTHER";
+  | "OTHER"
+  | "CHANNEL_DELIVERY"
+  | "STEADFAST";
 export type WholesaleOrderStatus =
   "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
-export type WholesaleOrderType = "WHOLESALE" | "CASH_SALE";
+/** CHANNEL = any admin-managed sales channel (Cash Sale, Daraz, Cartup...). */
+export type WholesaleOrderType = "WHOLESALE" | "CHANNEL";
+export type WholesalePriceList = "RETAIL" | "WHOLESALE";
 export type WholesaleOrderChannel =
   | "WHATSAPP"
   | "TELEMARKETING"
@@ -39,7 +43,8 @@ export type WholesalePaymentMethod =
   | "BANK";
 export type WholesalePaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID";
 
-export const COURIERS: { value: WholesaleCourier; label: string }[] = [
+/** The wholesale courier dropdown. */
+export const WHOLESALE_COURIERS: { value: WholesaleCourier; label: string }[] = [
   { value: "SUNDARBAN", label: "সুন্দরবন Courier" },
   { value: "AJR", label: "AJR Courier" },
   { value: "SA_PARIBAHAN", label: "S.A. Paribahan" },
@@ -47,6 +52,18 @@ export const COURIERS: { value: WholesaleCourier; label: string }[] = [
   { value: "CUSTOMER_PICKUP", label: "Customer Pickup" },
   { value: "OTHER", label: "Other" },
 ];
+
+/** The courier dropdown on channel orders (Daraz, Cartup...): the channel's
+ *  own delivery and Steadfast, then every wholesale courier (which ends with
+ *  "Other"). Steadfast is a label only — nothing is booked through its API. */
+export const CHANNEL_COURIERS: { value: WholesaleCourier; label: string }[] = [
+  { value: "CHANNEL_DELIVERY", label: "By Own / Channel" },
+  { value: "STEADFAST", label: "Steadfast" },
+  ...WHOLESALE_COURIERS,
+];
+
+/** Every courier, for printing a label off any order. */
+export const COURIERS: { value: WholesaleCourier; label: string }[] = CHANNEL_COURIERS;
 
 export const ORDER_CHANNELS: { value: WholesaleOrderChannel; label: string }[] =
   [
@@ -85,8 +102,35 @@ export const PAYMENT_STATUSES: {
 
 export const ORDER_TYPES: { value: WholesaleOrderType; label: string }[] = [
   { value: "WHOLESALE", label: "Wholesale" },
-  { value: "CASH_SALE", label: "Cash Sale" },
+  { value: "CHANNEL", label: "Channel" },
 ];
+
+export type ChannelFieldType = "text" | "number" | "date" | "select";
+
+export interface ChannelField {
+  /** Fixed once created; blank on a field that hasn't been saved yet. */
+  key?: string;
+  label: string;
+  type: ChannelFieldType;
+  required: boolean;
+  showInTable: boolean;
+  options?: string[];
+}
+
+export interface WholesaleChannel {
+  id: number;
+  name: string;
+  priceList: WholesalePriceList;
+  /** false = handed over on the spot (Cash Sale): no courier, no delivery charge. */
+  hasDelivery: boolean;
+  fields: ChannelField[];
+  isActive: boolean;
+  isSystem: boolean;
+  sortOrder: number;
+  orderCount: number;
+}
+
+export type ChannelInput = Pick<WholesaleChannel, "name" | "priceList" | "hasDelivery" | "fields" | "isActive">;
 
 /** Enum -> the label the dashboards print. Falls back to the raw value so a
  *  newly added enum member shows as itself rather than as blank. */
@@ -123,7 +167,7 @@ export interface WholesaleCustomer {
   isActive: boolean;
   orderCount: number;
   wholesaleCount: number;
-  cashCount: number;
+  channelCount: number;
   purchaseTotal: string;
   due: string;
   lastOrderAt: string | null;
@@ -181,12 +225,12 @@ export interface WholesaleDelivery {
 export interface WholesaleStats {
   orderCount: number;
   wholesaleOrderCount: number;
-  cashSaleCount: number;
+  channelOrderCount: number;
   salesTotal: string;
   dueTotal: string;
   customerCount: number;
   wholesaleCustomerCount: number;
-  cashCustomerCount: number;
+  channelCustomerCount: number;
 }
 
 export interface WholesaleOrderItem {
@@ -212,13 +256,16 @@ export interface WholesaleOrder {
   customerPhone: string | null;
   status: WholesaleOrderStatus;
   type: WholesaleOrderType;
+  /** Where a WHOLESALE order came in from (WhatsApp, phone...). */
   channel: WholesaleOrderChannel | null;
+  channelId: number | null;
+  channelName: string | null;
+  /** Values for the channel's custom fields, keyed by field key. */
+  channelData: Record<string, string | number> | null;
   paymentMethod: WholesalePaymentMethod | null;
   paymentStatus: WholesalePaymentStatus;
   transactionId: string | null;
-  /** Counter-sale voucher number. Cash sales only. */
-  gpNumber: string | null;
-  /** Null on a cash sale — nothing is couriered. */
+  /** Null on a channel without delivery (Cash Sale). */
   courier: WholesaleCourier | null;
   consignmentId: string | null;
   delivery: WholesaleDelivery;
@@ -258,6 +305,7 @@ export interface OrderEditInput {
   courier?: WholesaleCourier;
   consignmentId?: string;
   note?: string;
+  channelData?: Record<string, string>;
   items?: {
     productId?: number;
     variantId?: number;
@@ -273,13 +321,13 @@ export interface OrderInput {
   partyId: number;
   type?: WholesaleOrderType;
   channel?: WholesaleOrderChannel;
+  channelId?: number;
+  channelData?: Record<string, string>;
   paymentMethod?: WholesalePaymentMethod;
   transactionId?: string;
-  gpNumber?: string;
-  /** Required for WHOLESALE; a cash sale never touches a courier. */
+  /** Required for WHOLESALE and channels with delivery. */
   courier?: WholesaleCourier;
   consignmentId?: string;
-  /** Omitted entirely for a cash sale. */
   delivery?: {
     recipientName?: string;
     recipientPhone?: string;
@@ -368,6 +416,7 @@ export function useWholesaleOrders(
   partyId?: number,
   page = 1,
   pageSize: number = PAGE_SIZE,
+  channelId?: number,
 ) {
   return useQuery({
     queryKey: [
@@ -378,6 +427,7 @@ export function useWholesaleOrders(
       partyId ?? null,
       page,
       pageSize,
+      channelId ?? null,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -388,6 +438,7 @@ export function useWholesaleOrders(
       if (status !== "ALL") params.set("status", status);
       if (type !== "ALL") params.set("type", type);
       if (partyId) params.set("partyId", String(partyId));
+      if (channelId) params.set("channelId", String(channelId));
       const res = await proxyFetch<Paginated<WholesaleOrder>>(
         `/admin/wholesale/orders?${params}`,
       );
@@ -582,13 +633,59 @@ export interface PickableProduct {
  * way this is only the starting point — the rate that actually bills is
  * whatever is typed on the line, and that is what gets invoiced.
  */
+/** The price a cart line starts at: a wholesale order and a wholesale-priced
+ *  channel use the wholesale price; a retail-priced channel (Cash Sale) the
+ *  retail one. */
 export function defaultUnitPrice(
   product: PickableProduct,
-  type: WholesaleOrderType,
+  priceList: WholesalePriceList,
 ): string {
   const retail = product.salePrice ?? product.price ?? "0";
-  if (type === "CASH_SALE") return retail;
+  if (priceList === "RETAIL") return retail;
   return product.wholesalePrice ?? retail;
+}
+
+const CHANNELS_KEY = ["admin-wholesale-channels"];
+
+export function useWholesaleChannels() {
+  return useQuery({
+    queryKey: CHANNELS_KEY,
+    queryFn: () => proxyFetch<WholesaleChannel[]>("/admin/wholesale/channels"),
+  });
+}
+
+export function useSaveWholesaleChannel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: Partial<ChannelInput> & { id?: number }) =>
+      proxyFetch<WholesaleChannel>(id ? `/admin/wholesale/channels/${id}` : "/admin/wholesale/channels", {
+        method: id ? "PATCH" : "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHANNELS_KEY }),
+  });
+}
+
+export function useDeleteWholesaleChannel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<{ id: number }>(`/admin/wholesale/channels/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHANNELS_KEY }),
+  });
+}
+
+/** "GP Number: 123 · Daraz ID: DZ-1", using the channel's current labels —
+ *  only fields marked "show in table" unless `all` is set. */
+export function channelDetails(
+  order: Pick<WholesaleOrder, "channelId" | "channelData">,
+  channels: WholesaleChannel[] | undefined,
+  all = false,
+): { label: string; value: string }[] {
+  const data = order.channelData ?? {};
+  const fields = channels?.find((c) => c.id === order.channelId)?.fields ?? [];
+  return fields
+    .filter((f) => f.key && data[f.key] !== undefined && (all || f.showInTable))
+    .map((f) => ({ label: f.label, value: String(data[f.key!]) }));
 }
 
 export function useWholesaleProducts() {

@@ -108,6 +108,7 @@ describe('WholesaleService', () => {
         product: { findMany: jest.fn().mockResolvedValue([SATTU, EBOOK]) },
         productVariant: { findMany: jest.fn().mockResolvedValue([]) },
         wholesaleOrderItem: { findMany: jest.fn().mockResolvedValue([]) },
+        wholesaleChannel: { findUnique: jest.fn().mockResolvedValue(null) },
         wholesaleOrder: {
           findUnique: jest.fn().mockResolvedValue(savedOrder),
           findMany: jest.fn(),
@@ -206,16 +207,28 @@ describe('WholesaleService', () => {
   // downstream -- whether a delivery snapshot means anything, whether a
   // payment can ever be reconciled, whether a till can be counted -- so none
   // of them is left to the form to remember.
-  describe('the wholesale / cash sale split', () => {
-    const cash = (over = {}) =>
-      order({ type: 'CASH_SALE' as const, courier: undefined, gpNumber: 'GP-1', ...over });
+  describe('the wholesale / channel split', () => {
+    const CASH_SALE = {
+      id: 1, name: 'Cash Sale', hasDelivery: false, isActive: true,
+      fields: [{ key: 'gp_number', label: 'GP Number', type: 'text', required: true, showInTable: true }],
+    };
+    const DARAZ = {
+      id: 2, name: 'Daraz', hasDelivery: true, isActive: true,
+      fields: [{ key: 'order_ref', label: 'Order ID', type: 'text', required: true, showInTable: true }],
+    };
+    const viaChannel = (over = {}) =>
+      order({ type: 'CHANNEL' as const, channelId: 1, courier: undefined, channelData: { gp_number: 'GP-1' }, ...over });
 
-    it('accepts a cash sale with a GP number and no courier', async () => {
-      await service.createOrder(cash(), 1);
+    it('accepts a Cash Sale channel order with its GP number and no courier', async () => {
+      prisma.client.wholesaleChannel.findUnique.mockResolvedValue(CASH_SALE);
+      await service.createOrder(viaChannel({ deliveryCharge: undefined }), 1);
       const data = tx.wholesaleOrder.create.mock.calls[0][0].data;
-      expect(data.type).toBe('CASH_SALE');
+      expect(data.type).toBe('CHANNEL');
+      expect(data.channelId).toBe(1);
       expect(data.courier).toBeNull();
-      expect(data.gpNumber).toBe('GP-1');
+      expect(data.channel).toBeNull();
+      expect(data.channelData).toEqual({ gp_number: 'GP-1' });
+      expect(data.channelSearch).toBe('GP-1');
     });
 
     it('refuses a wholesale order with no courier', async () => {
@@ -224,16 +237,39 @@ describe('WholesaleService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('refuses a cash sale that names a courier', async () => {
+    it('refuses a courier or delivery charge on a channel without delivery', async () => {
+      prisma.client.wholesaleChannel.findUnique.mockResolvedValue(CASH_SALE);
       await expect(
-        service.createOrder(cash({ courier: 'SUNDARBAN' as const }), 1),
+        service.createOrder(viaChannel({ courier: 'SUNDARBAN' as const, deliveryCharge: undefined }), 1),
       ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('refuses a cash sale with no GP number', async () => {
-      await expect(service.createOrder(cash({ gpNumber: '  ' }), 1)).rejects.toBeInstanceOf(
+      await expect(service.createOrder(viaChannel({ deliveryCharge: '60' }), 1)).rejects.toBeInstanceOf(
         BadRequestException,
       );
+    });
+
+    it("refuses a channel order missing one of the channel's required fields", async () => {
+      prisma.client.wholesaleChannel.findUnique.mockResolvedValue(CASH_SALE);
+      await expect(
+        service.createOrder(viaChannel({ deliveryCharge: undefined, channelData: { gp_number: '  ' } }), 1),
+      ).rejects.toThrow('GP Number is required');
+    });
+
+    it('needs a courier on a channel with delivery, and an active channel at all', async () => {
+      prisma.client.wholesaleChannel.findUnique.mockResolvedValue(DARAZ);
+      await expect(
+        service.createOrder(viaChannel({ channelId: 2, channelData: { order_ref: 'DZ-1' } }), 1),
+      ).rejects.toThrow('needs a courier');
+      await service.createOrder(
+        viaChannel({ channelId: 2, courier: 'STEADFAST' as const, channelData: { order_ref: 'DZ-1' } }),
+        1,
+      );
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.courier).toBe('STEADFAST');
+
+      prisma.client.wholesaleChannel.findUnique.mockResolvedValue({ ...DARAZ, isActive: false });
+      await expect(
+        service.createOrder(viaChannel({ channelId: 2, courier: 'STEADFAST' as const, channelData: { order_ref: 'x' } }), 1),
+      ).rejects.toThrow('deactivated');
+      await expect(service.createOrder(viaChannel({ channelId: undefined }), 1)).rejects.toThrow('Choose a channel');
     });
 
     it('refuses a non-cash payment with no transaction id', async () => {

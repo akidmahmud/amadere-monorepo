@@ -96,9 +96,9 @@ export function CustomersDashboard({
           }
         />
         <StatCard
-          label="Cash Sale Customers"
-          value={String(s?.cashCustomerCount ?? 0)}
-          footer="With cash sale history"
+          label="Channel Customers"
+          value={String(s?.channelCustomerCount ?? 0)}
+          footer="With Cash Sale / Daraz / other channel orders"
           icon={<Icon name="storefront" size={24} className="text-amber-500" />}
         />
         <StatCard
@@ -272,7 +272,7 @@ function CustomerDetail({
           label="Wholesale Orders"
           value={String(customer.wholesaleCount)}
         />
-        <StatCard label="Cash Sale Orders" value={String(customer.cashCount)} />
+        <StatCard label="Channel Orders" value={String(customer.channelCount)} />
       </div>
 
       <Card className="p-0 shadow-card">
@@ -360,7 +360,7 @@ function CustomerDetail({
                       <OrderCell order={o} />
                     </td>
                     <td className="px-3 py-3">
-                      <TypeBadge type={o.type} />
+                      <TypeBadge order={o} />
                     </td>
                     <td className="px-3 py-3">
                       <ProductsCell order={o} />

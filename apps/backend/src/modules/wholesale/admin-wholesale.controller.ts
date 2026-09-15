@@ -32,14 +32,17 @@ import { ProductsService } from '../products/products.service';
 import { AdminProductPickerItemDto } from '../products/dto/product-response.dto';
 import { WholesaleService } from './wholesale.service';
 import {
+  WholesaleChannelDto,
   WholesaleCustomerDto,
   WholesaleOrderDto,
   WholesaleStatsDto,
 } from './wholesale.mapper';
 import {
+  CreateWholesaleChannelDto,
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
   RecordWholesalePaymentDto,
+  UpdateWholesaleChannelDto,
   UpdateWholesaleCustomerDto,
   UpdateWholesaleOrderDto,
   WholesaleCustomerQueryDto,
@@ -116,6 +119,38 @@ export class AdminWholesaleController {
       throw new ForbiddenException('Missing permission: assignment.manage');
     }
     return this.wholesale.updateCustomer(id, dto);
+  }
+
+  // --- channels (Channel Settings) ---
+
+  @Get('channels')
+  @RequirePermission('wholesale.view')
+  @ApiOkResponse({ type: [WholesaleChannelDto] })
+  listChannels(): Promise<WholesaleChannelDto[]> {
+    return this.wholesale.listChannels();
+  }
+
+  @Post('channels')
+  @RequirePermission('wholesale.update')
+  @ApiOkResponse({ type: WholesaleChannelDto })
+  createChannel(@Body() dto: CreateWholesaleChannelDto): Promise<WholesaleChannelDto> {
+    return this.wholesale.createChannel(dto);
+  }
+
+  @Patch('channels/:id')
+  @RequirePermission('wholesale.update')
+  @ApiOkResponse({ type: WholesaleChannelDto })
+  updateChannel(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateWholesaleChannelDto,
+  ): Promise<WholesaleChannelDto> {
+    return this.wholesale.updateChannel(id, dto);
+  }
+
+  @Delete('channels/:id')
+  @RequirePermission('wholesale.delete')
+  deleteChannel(@Param('id', ParseIntPipe) id: number): Promise<{ id: number }> {
+    return this.wholesale.deleteChannel(id);
   }
 
   @Get('assignable-staff')

@@ -6,7 +6,9 @@ import {
   ORDER_CHANNELS,
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
+  channelDetails,
   labelOf,
+  useWholesaleChannels,
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
 import { Thumb } from "./Thumb";
@@ -51,6 +53,7 @@ export function OrderDetailModal({
 }) {
   const d = order.delivery;
   const wholesale = order.type === "WHOLESALE";
+  const channels = useWholesaleChannels();
   const address = [d.addressLine, d.district, d.thana, d.landmark, d.postCode]
     .filter(Boolean)
     .join(" · ");
@@ -65,16 +68,19 @@ export function OrderDetailModal({
       <div className="space-y-5 p-1">
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <Item label="Order ID" value={order.orderNumber} />
-          <Item label="Order type" value={wholesale ? "Wholesale" : "Cash Sale"} />
+          <Item label="Order type" value={wholesale ? "Wholesale" : (order.channelName ?? "Channel")} />
           <Item label="Customer" value={order.customerName} />
           <Item label="Customer phone" value={order.customerPhone ?? ""} />
-          <Item label="Channel" value={labelOf(ORDER_CHANNELS, order.channel)} />
+          {wholesale && <Item label="Source" value={labelOf(ORDER_CHANNELS, order.channel)} />}
+          {/* Every value the channel stores, not just the table columns. */}
+          {channelDetails(order, channels.data, true).map((f) => (
+            <Item key={f.label} label={f.label} value={f.value} />
+          ))}
           <Item
             label="Payment method"
             value={labelOf(PAYMENT_METHODS, order.paymentMethod)}
           />
           <Item label="Transaction ID" value={order.transactionId ?? ""} />
-          <Item label="GP number" value={order.gpNumber ?? ""} />
           <Item
             label="Payment status"
             value={labelOf(PAYMENT_STATUSES, order.paymentStatus)}

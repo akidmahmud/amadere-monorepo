@@ -3590,14 +3590,44 @@ enum WholesaleOrderStatus {
   CANCELLED
 }
 
-/// Wholesale ships to a shop; a cash sale is handed over on the spot. They
-/// share one table because they share everything that matters downstream --
-/// the same items, the same receivable, the same accounts ledger posting --
-/// and differ only in which price list is used and whether there is a
-/// delivery leg at all.
+/// WHOLESALE ships to a shop through the original wholesale flow. CHANNEL is
+/// every other kind of sale, and WHICH channel (Cash Sale, Daraz, Cartup...)
+/// is an admin-managed WholesaleChannel row -- the channel decides the price
+/// list, whether there is a delivery leg, and what extra fields are captured.
+/// CHANNEL was CASH_SALE until Cash Sale became one channel among many.
 enum WholesaleOrderType {
   WHOLESALE
-  CASH_SALE
+  CHANNEL
+}
+
+/// Which product price a channel's cart starts from.
+enum WholesalePriceList {
+  RETAIL
+  WHOLESALE
+}
+
+/// A sales channel for non-wholesale orders, created in Wholesale -> Channel
+/// Settings. `fields` defines the channel's own extra inputs, as JSON:
+/// [{ key, label, type: "text"|"number"|"date"|"select", required,
+/// showInTable, options? }]. `key` is fixed when the field is created, so
+/// renaming a label never orphans values already stored on orders.
+model WholesaleChannel {
+  id          Int                @id @default(autoincrement())
+  name        String             @unique
+  priceList   WholesalePriceList @default(RETAIL) @map("price_list")
+  /// false = handed over on the spot (Cash Sale): no courier, no delivery charge.
+  hasDelivery Boolean            @default(true) @map("has_delivery")
+  fields      Json               @default("[]")
+  isActive    Boolean            @default(true) @map("is_active")
+  /// Built-in channels (Cash Sale) can be edited but never deleted.
+  isSystem    Boolean            @default(false) @map("is_system")
+  sortOrder   Int                @default(0) @map("sort_order")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  orders WholesaleOrder[]
+
+  @@map("wholesale_channels")
 }
 
 /// Where the order came in from. Free-standing from OrderChannel (retail):
@@ -3647,6 +3677,10 @@ enum WholesaleCourier {
   /// a second nullable "delivered how" column that means the same thing.
   CUSTOMER_PICKUP
   OTHER
+  /// Channel orders: delivered by us or by the marketplace itself.
+  CHANNEL_DELIVERY
+  /// Channel orders: a label only, no Steadfast API booking.
+  STEADFAST
 }
 
 model WholesaleOrder {
@@ -3701,7 +3735,15 @@ model WholesaleOrder {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  party Party                @relation(fields: [partyId], references: [id])
+  /// Set on CHANNEL orders. Restrict: a channel with orders is deactivated, never deleted.
+  channelId     Int?    @map("channel_id")
+  /// Values for the channel's custom fields, keyed by field key.
+  channelData   Json?   @map("channel_data")
+  /// Those values flattened to text, so the orders search box finds them.
+  channelSearch String? @map("channel_search")
+
+  party          Party                @relation(fields: [partyId], references: [id])
+  salesChannel   WholesaleChannel?    @relation(fields: [channelId], references: [id], onDelete: Restrict)
   items WholesaleOrderItem[]
   // Deliberately a list, not a single due: the invoice is one row today, but
   // a part-shipped order raising a second one must not require a schema change.
@@ -3710,6 +3752,7 @@ model WholesaleOrder {
   @@index([partyId])
   @@index([status])
   @@index([placedAt])
+  @@index([channelId])
   @@map("wholesale_orders")
 }
 

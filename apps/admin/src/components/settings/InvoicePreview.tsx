@@ -22,10 +22,12 @@ const SAMPLE: WholesaleOrder = {
   status: "DELIVERED",
   type: "WHOLESALE",
   channel: "WHATSAPP",
+  channelId: null,
+  channelName: null,
+  channelData: null,
   paymentMethod: "BKASH",
   paymentStatus: "PARTIALLY_PAID",
   transactionId: "BKS-000000",
-  gpNumber: null,
   courier: "SUNDARBAN",
   consignmentId: "SB-000000",
   delivery: {

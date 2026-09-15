@@ -1,11 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
+  IsObject,
   IsNumberString,
   IsOptional,
   IsString,
@@ -16,11 +18,13 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { CHANNEL_FIELD_TYPES, type ChannelFieldType } from '../wholesale-channel-fields';
 import {
   CustomerBehaviour,
   CustomerCrmStatus,
   CustomerPriority,
   WholesaleCourier,
+  WholesalePriceList,
   WholesaleOrderChannel,
   WholesaleOrderStatus,
   WholesaleOrderType,
@@ -207,16 +211,26 @@ export class CreateWholesaleOrderDto {
 
   @ApiPropertyOptional({
     enum: WholesaleOrderType,
-    description: 'Defaults to WHOLESALE. CASH_SALE skips the delivery leg and prices at retail.',
+    description: 'Defaults to WHOLESALE. CHANNEL orders need `channelId`; the channel decides whether there is a delivery leg.',
   })
   @IsOptional()
   @IsEnum(WholesaleOrderType)
   type?: WholesaleOrderType;
 
-  @ApiPropertyOptional({ enum: WholesaleOrderChannel })
+  @ApiPropertyOptional({ enum: WholesaleOrderChannel, description: 'Where a WHOLESALE order came in from (WhatsApp, phone...).' })
   @IsOptional()
   @IsEnum(WholesaleOrderChannel)
   channel?: WholesaleOrderChannel;
+
+  @ApiPropertyOptional({ description: 'The sales channel (Cash Sale, Daraz...). CHANNEL orders only.' })
+  @IsOptional()
+  @IsInt()
+  channelId?: number;
+
+  @ApiPropertyOptional({ description: "Values for the channel's custom fields, keyed by field key." })
+  @IsOptional()
+  @IsObject()
+  channelData?: Record<string, unknown>;
 
   @ApiPropertyOptional({ enum: WholesalePaymentMethod })
   @IsOptional()
@@ -229,15 +243,9 @@ export class CreateWholesaleOrderDto {
   @MaxLength(100)
   transactionId?: string;
 
-  @ApiPropertyOptional({ description: 'Counter-sale voucher number. Cash sales only.' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  gpNumber?: string;
-
   @ApiPropertyOptional({
     enum: WholesaleCourier,
-    description: 'Required for WHOLESALE; a cash sale never touches a courier.',
+    description: 'Required for WHOLESALE and for channels with delivery; refused for channels without (Cash Sale).',
   })
   @IsOptional()
   @IsEnum(WholesaleCourier)
@@ -329,6 +337,11 @@ export class UpdateWholesaleOrderDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) consignmentId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) note?: string;
 
+  @ApiPropertyOptional({ description: "Channel orders: the full set of values for the channel's custom fields. Replaces what is stored, so send every value, not just the changed one." })
+  @IsOptional()
+  @IsObject()
+  channelData?: Record<string, unknown>;
+
   @ApiPropertyOptional({
     type: [WholesaleOrderItemInputDto],
     description:
@@ -377,7 +390,7 @@ export class WholesaleOrderQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Matches order number, consignment id, buyer name or phone, recipient name or phone, GP number, transaction id, or any product on the order',
+      "Matches order number, consignment id, buyer name or phone, recipient name or phone, the channel's field values, transaction id, or any product on the order",
   })
   @IsOptional()
   @IsString()
@@ -394,4 +407,55 @@ export class WholesaleOrderQueryDto {
   type?: WholesaleOrderType;
 
   @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) partyId?: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) channelId?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Channels (Wholesale -> Channel Settings)
+// ---------------------------------------------------------------------------
+
+export class WholesaleChannelFieldInputDto {
+  @ApiPropertyOptional({ description: 'Keep the existing key when editing a field; omit for a new one' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  key?: string;
+
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(80) label!: string;
+
+  @ApiProperty({ enum: CHANNEL_FIELD_TYPES })
+  @IsIn(CHANNEL_FIELD_TYPES)
+  type!: ChannelFieldType;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() required?: boolean;
+  @ApiPropertyOptional({ description: 'Show this value as a column in the orders table' }) @IsOptional() @IsBoolean() showInTable?: boolean;
+
+  @ApiPropertyOptional({ type: [String], description: 'Dropdown choices' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  options?: string[];
+}
+
+export class CreateWholesaleChannelDto {
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(80) name!: string;
+
+  @ApiProperty({ enum: WholesalePriceList, description: 'Which product price the cart starts from' })
+  @IsEnum(WholesalePriceList)
+  priceList!: WholesalePriceList;
+
+  @ApiProperty({ description: 'false = handed over on the spot: no courier, no delivery charge' })
+  @IsBoolean()
+  hasDelivery!: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsInt() sortOrder?: number;
+
+  @ApiProperty({ type: [WholesaleChannelFieldInputDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WholesaleChannelFieldInputDto)
+  fields!: WholesaleChannelFieldInputDto[];
+}
+
+export class UpdateWholesaleChannelDto extends PartialType(CreateWholesaleChannelDto) {}

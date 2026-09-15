@@ -4,6 +4,7 @@ import {
   CustomerPriority,
   Prisma,
   WholesaleCourier,
+  WholesalePriceList,
   WholesaleOrderChannel,
   WholesaleOrderStatus,
   WholesaleOrderType,
@@ -32,7 +33,8 @@ export class WholesaleCustomerDto {
   orderCount!: number;
   /** Of `orderCount`, how many were each kind. */
   wholesaleCount!: number;
-  cashCount!: number;
+  /** Orders through any channel (Cash Sale, Daraz...). */
+  channelCount!: number;
   /** Lifetime wholesale sales to this buyer. */
   purchaseTotal!: string;
   /** Outstanding, derived from the ledger — never a stored balance. */
@@ -76,7 +78,8 @@ export class WholesaleCustomerDto {
 export class WholesaleStatsDto {
   orderCount!: number;
   wholesaleOrderCount!: number;
-  cashSaleCount!: number;
+  /** Orders through any channel (Cash Sale, Daraz...). */
+  channelOrderCount!: number;
   /** Grand total of every live order. */
   salesTotal!: string;
   /** Still outstanding across all buyers. */
@@ -84,7 +87,7 @@ export class WholesaleStatsDto {
   customerCount!: number;
   /** Buyers with at least one live order of that kind. */
   wholesaleCustomerCount!: number;
-  cashCustomerCount!: number;
+  channelCustomerCount!: number;
 }
 
 export class WholesaleOrderItemDto {
@@ -124,13 +127,17 @@ export class WholesaleOrderDto {
   customerPhone!: string | null;
   status!: WholesaleOrderStatus;
   type!: WholesaleOrderType;
+  /** Where a WHOLESALE order came in from (WhatsApp, phone...). */
   channel!: WholesaleOrderChannel | null;
+  /** The sales channel of a CHANNEL order (Cash Sale, Daraz...). */
+  channelId!: number | null;
+  channelName!: string | null;
+  /** Values for that channel's custom fields, keyed by field key. */
+  channelData!: Record<string, string | number> | null;
   paymentMethod!: WholesalePaymentMethod | null;
   paymentStatus!: WholesalePaymentStatus;
   transactionId!: string | null;
-  /** Counter-sale voucher number. Cash sales only. */
-  gpNumber!: string | null;
-  /** Null on a cash sale — nothing is couriered. */
+  /** Null on a channel without delivery (Cash Sale) — nothing is couriered. */
   courier!: WholesaleCourier | null;
   consignmentId!: string | null;
   delivery!: WholesaleDeliveryDto;
@@ -152,6 +159,7 @@ export class WholesaleOrderDto {
 type OrderRow = Prisma.WholesaleOrderGetPayload<{
   include: {
     party: { select: { id: true; name: true; phone: true } };
+    salesChannel: { select: { id: true; name: true } };
     items: {
       include: {
         product: {
@@ -184,10 +192,12 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
     status: row.status,
     type: row.type,
     channel: row.channel,
+    channelId: row.channelId,
+    channelName: row.salesChannel?.name ?? null,
+    channelData: (row.channelData as Record<string, string | number> | null) ?? null,
     paymentMethod: row.paymentMethod,
     paymentStatus: row.paymentStatus,
     transactionId: row.transactionId,
-    gpNumber: row.gpNumber,
     courier: row.courier,
     consignmentId: row.consignmentId,
     delivery: {
@@ -223,4 +233,27 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
       imageUrl: item.product?.media[0]?.media.url ?? null,
     })),
   };
+}
+
+export class WholesaleChannelFieldDto {
+  key!: string;
+  label!: string;
+  type!: 'text' | 'number' | 'date' | 'select';
+  required!: boolean;
+  showInTable!: boolean;
+  options?: string[];
+}
+
+export class WholesaleChannelDto {
+  id!: number;
+  name!: string;
+  priceList!: WholesalePriceList;
+  hasDelivery!: boolean;
+  fields!: WholesaleChannelFieldDto[];
+  isActive!: boolean;
+  /** Built-in (Cash Sale): editable, never deletable. */
+  isSystem!: boolean;
+  sortOrder!: number;
+  /** Orders placed through it; a channel with orders can only be deactivated. */
+  orderCount!: number;
 }

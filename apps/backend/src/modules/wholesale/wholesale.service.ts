@@ -27,17 +27,21 @@ import {
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
   RecordWholesalePaymentDto,
+  CreateWholesaleChannelDto,
+  UpdateWholesaleChannelDto,
   UpdateWholesaleCustomerDto,
   UpdateWholesaleOrderDto,
   WholesaleCustomerQueryDto,
   WholesaleOrderQueryDto,
 } from './dto/wholesale.dto';
 import {
+  WholesaleChannelDto,
   WholesaleCustomerDto,
   WholesaleOrderDto,
   WholesaleStatsDto,
   toWholesaleOrderDto,
 } from './wholesale.mapper';
+import { channelFieldsOf, normalizeChannelFields, validateChannelValues } from './wholesale-channel-fields';
 
 const Decimal = Prisma.Decimal;
 const ZERO = new Decimal(0);
@@ -52,6 +56,7 @@ const dateOrNull = (v: string | null) => (v ? new Date(v) : null);
 
 const ORDER_INCLUDE = {
   party: { select: { id: true, name: true, phone: true } },
+  salesChannel: { select: { id: true, name: true } },
   // The line's picture is resolved from the product rather than snapshotted
   // beside the name and price. The snapshots exist because those are
   // financial facts that must never change under a past invoice; a thumbnail
@@ -272,7 +277,7 @@ export class WholesaleService {
     type Agg = {
       count: number;
       wholesale: number;
-      cash: number;
+      channel: number;
       total: Prisma.Decimal;
       last: Date | null;
     };
@@ -281,13 +286,13 @@ export class WholesaleService {
       const acc: Agg = byParty.get(row.partyId) ?? {
         count: 0,
         wholesale: 0,
-        cash: 0,
+        channel: 0,
         total: ZERO,
         last: null,
       };
       const n = row._count._all;
       acc.count += n;
-      if (row.type === 'CASH_SALE') acc.cash += n;
+      if (row.type === 'CHANNEL') acc.channel += n;
       else acc.wholesale += n;
       acc.total = acc.total.plus(row._sum.total ?? ZERO);
       const placed = row._max.placedAt;
@@ -317,7 +322,7 @@ export class WholesaleService {
         isActive: p.isActive,
         orderCount: t?.count ?? 0,
         wholesaleCount: t?.wholesale ?? 0,
-        cashCount: t?.cash ?? 0,
+        channelCount: t?.channel ?? 0,
         purchaseTotal: (t?.total ?? ZERO).toFixed(2),
         due: (positions.get(p.id)?.receivable ?? ZERO).toFixed(2),
         lastOrderAt: t?.last ?? null,
@@ -389,12 +394,12 @@ export class WholesaleService {
     return {
       orderCount: byType.reduce((n, r) => n + r._count._all, 0),
       wholesaleOrderCount: countOf('WHOLESALE'),
-      cashSaleCount: countOf('CASH_SALE'),
+      channelOrderCount: countOf('CHANNEL'),
       salesTotal: byType.reduce((sum, r) => sum.plus(r._sum.total ?? ZERO), ZERO).toFixed(2),
       dueTotal: dueTotal.toFixed(2),
       customerCount,
       wholesaleCustomerCount: buyersOf('WHOLESALE'),
-      cashCustomerCount: buyersOf('CASH_SALE'),
+      channelCustomerCount: buyersOf('CHANNEL'),
     };
   }
 
@@ -492,6 +497,119 @@ export class WholesaleService {
       },
     });
     return this.findCustomer(id);
+  }
+
+  // -------------------------------------------------------------------------
+  // Channels (Wholesale -> Channel Settings)
+  // -------------------------------------------------------------------------
+
+  async listChannels(): Promise<WholesaleChannelDto[]> {
+    const rows = await this.prisma.client.wholesaleChannel.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      include: { _count: { select: { orders: true } } },
+    });
+    return rows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      priceList: c.priceList,
+      hasDelivery: c.hasDelivery,
+      fields: channelFieldsOf(c.fields),
+      isActive: c.isActive,
+      isSystem: c.isSystem,
+      sortOrder: c.sortOrder,
+      orderCount: c._count.orders,
+    }));
+  }
+
+  async createChannel(dto: CreateWholesaleChannelDto): Promise<WholesaleChannelDto> {
+    const name = dto.name.trim();
+    await this.assertChannelNameFree(name);
+    const created = await this.prisma.client.wholesaleChannel.create({
+      data: {
+        name,
+        priceList: dto.priceList,
+        hasDelivery: dto.hasDelivery,
+        isActive: dto.isActive ?? true,
+        sortOrder: dto.sortOrder ?? 0,
+        fields: normalizeChannelFields(dto.fields) as unknown as Prisma.InputJsonValue,
+      },
+    });
+    return (await this.listChannels()).find((c) => c.id === created.id)!;
+  }
+
+  async updateChannel(id: number, dto: UpdateWholesaleChannelDto): Promise<WholesaleChannelDto> {
+    const existing = await this.prisma.client.wholesaleChannel.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Channel ${id} not found`);
+    const name = dto.name?.trim();
+    if (name && name !== existing.name) await this.assertChannelNameFree(name);
+    await this.prisma.client.wholesaleChannel.update({
+      where: { id },
+      data: {
+        ...(name ? { name } : {}),
+        ...(dto.priceList === undefined ? {} : { priceList: dto.priceList }),
+        ...(dto.hasDelivery === undefined ? {} : { hasDelivery: dto.hasDelivery }),
+        ...(dto.isActive === undefined ? {} : { isActive: dto.isActive }),
+        ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
+        // Removing a field only stops it being asked for; values already on
+        // orders stay in their JSON and reappear if a field with that key returns.
+        ...(dto.fields === undefined
+          ? {}
+          : { fields: normalizeChannelFields(dto.fields) as unknown as Prisma.InputJsonValue }),
+      },
+    });
+    return (await this.listChannels()).find((c) => c.id === id)!;
+  }
+
+  /** Only a channel nobody has ordered through; otherwise deactivate it, so
+   *  past orders keep saying where they came from. */
+  async deleteChannel(id: number): Promise<{ id: number }> {
+    const channel = await this.prisma.client.wholesaleChannel.findUnique({
+      where: { id },
+      include: { _count: { select: { orders: true } } },
+    });
+    if (!channel) throw new NotFoundException(`Channel ${id} not found`);
+    if (channel.isSystem) throw new BadRequestException(`${channel.name} is built in. Deactivate it instead.`);
+    if (channel._count.orders > 0) {
+      throw new BadRequestException(
+        `${channel.name} has ${channel._count.orders} order${channel._count.orders === 1 ? '' : 's'}. Deactivate it instead.`,
+      );
+    }
+    await this.prisma.client.wholesaleChannel.delete({ where: { id } });
+    return { id };
+  }
+
+  private async assertChannelNameFree(name: string) {
+    const clash = await this.prisma.client.wholesaleChannel.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (clash) throw new BadRequestException(`A channel named "${name}" already exists`);
+  }
+
+  private async activeChannel(channelId: number | undefined) {
+    if (!channelId) throw new BadRequestException('Choose a channel for this order');
+    const channel = await this.prisma.client.wholesaleChannel.findUnique({ where: { id: channelId } });
+    if (!channel) throw new NotFoundException(`Channel ${channelId} not found`);
+    if (!channel.isActive) throw new BadRequestException(`${channel.name} is deactivated`);
+    return channel;
+  }
+
+  /** A channel without delivery (Cash Sale) takes no courier and no charge;
+   *  one with delivery needs a courier — except on an edit that doesn't touch it. */
+  private assertChannelDelivery(
+    channel: { name: string; hasDelivery: boolean },
+    courier: string | undefined,
+    deliveryCharge: string | undefined,
+    editing = false,
+  ) {
+    if (!channel.hasDelivery) {
+      if (courier) throw new BadRequestException(`${channel.name} orders are not couriered`);
+      if (deliveryCharge && Number(deliveryCharge) > 0) {
+        throw new BadRequestException(`${channel.name} orders have no delivery charge`);
+      }
+    } else if (!courier && !editing) {
+      throw new BadRequestException(`A ${channel.name} order needs a courier / delivery method`);
+    }
   }
 
   /** Staff a buyer can be assigned to. Served here, under wholesale.view, so
@@ -648,6 +766,7 @@ export class WholesaleService {
       ...(query.status ? { status: query.status } : {}),
       ...(query.type ? { type: query.type } : {}),
       ...(query.partyId ? { partyId: query.partyId } : {}),
+      ...(query.channelId ? { channelId: query.channelId } : {}),
       // Every column the dashboard prints is searchable, products included:
       // staff look an order up by what was in it at least as often as by its
       // number.
@@ -656,7 +775,7 @@ export class WholesaleService {
             OR: [
               { orderNumber: { contains: search, mode: 'insensitive' } },
               { consignmentId: { contains: search, mode: 'insensitive' } },
-              { gpNumber: { contains: search, mode: 'insensitive' } },
+              { channelSearch: { contains: search, mode: 'insensitive' } },
               { transactionId: { contains: search, mode: 'insensitive' } },
               { recipientName: { contains: search, mode: 'insensitive' } },
               { recipientPhone: { contains: search, mode: 'insensitive' } },
@@ -721,9 +840,15 @@ export class WholesaleService {
       take: 10_000,
     });
     const orders = await this.withPaid(rows);
+    // Field labels per channel, so the export reads "GP Number: 123", not a raw key.
+    const labels = new Map((await this.listChannels()).map((c) => [c.id, new Map(c.fields.map((f) => [f.key, f.label]))]));
+    const details = (o: WholesaleOrderDto) =>
+      Object.entries(o.channelData ?? {})
+        .map(([k, v]) => `${labels.get(o.channelId!)?.get(k) ?? k}: ${v}`)
+        .join('; ');
 
     const header =
-      'Order,Date,Invoice,Customer,Phone,Courier,Consignment,Items,Subtotal,Delivery,Discount,Total,Paid,Due,Status';
+      'Order,Date,Invoice,Channel,Channel Details,Customer,Phone,Courier,Consignment,Items,Subtotal,Delivery,Discount,Total,Paid,Due,Status';
     const q = (v: string | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
     const lines = orders.map((o) =>
@@ -731,6 +856,8 @@ export class WholesaleService {
         o.orderNumber,
         o.placedAt.toISOString().slice(0, 10),
         o.invoiceDocNo ?? '',
+        q(o.channelName ?? 'Wholesale'),
+        q(details(o)),
         q(o.customerName),
         q(o.customerPhone),
         o.courier,
@@ -770,23 +897,23 @@ export class WholesaleService {
       throw new BadRequestException(`${party.name} is deactivated`);
     }
 
-    // A cash sale is handed over the counter and a wholesale order is
-    // couriered. Enforced here rather than left to the UI, because the
-    // difference decides whether a delivery snapshot means anything and
-    // whether `courier` may be null at all.
+    // A wholesale order is always couriered. A channel order is couriered
+    // only if its channel has a delivery leg (Daraz does, Cash Sale is handed
+    // over the counter). Enforced here rather than left to the UI, because it
+    // decides whether `courier` may be null at all. The channel's own fields
+    // (Cash Sale's GP number, a Daraz order ID...) are checked against its
+    // settings, not a hardcoded list.
     const type = dto.type ?? 'WHOLESALE';
-    if (type === 'WHOLESALE' && !dto.courier) {
-      throw new BadRequestException('A wholesale order needs a courier');
+    const salesChannel = type === 'CHANNEL' ? await this.activeChannel(dto.channelId) : null;
+    if (type === 'WHOLESALE') {
+      if (!dto.courier) throw new BadRequestException('A wholesale order needs a courier');
+      if (dto.channelId) throw new BadRequestException('A wholesale order does not belong to a channel');
+    } else {
+      this.assertChannelDelivery(salesChannel!, dto.courier, dto.deliveryCharge);
     }
-    if (type === 'CASH_SALE' && dto.courier) {
-      throw new BadRequestException('A cash sale is not couriered');
-    }
-    // The counter voucher number. It is what a walk-in customer is handed and
-    // what the day's till is reconciled against, so a cash sale without one
-    // cannot be traced back to a physical receipt.
-    if (type === 'CASH_SALE' && !dto.gpNumber?.trim()) {
-      throw new BadRequestException('A cash sale needs its GP number');
-    }
+    const channelValues = salesChannel
+      ? validateChannelValues(channelFieldsOf(salesChannel.fields), dto.channelData)
+      : null;
     // Every non-cash method settles through a gateway that hands back a
     // reference; without it a payment cannot be reconciled against a
     // statement later.
@@ -840,7 +967,12 @@ export class WholesaleService {
           partyId: party.id,
           status: dto.status ?? 'PENDING',
           type,
-          channel: dto.channel ?? null,
+          // The WhatsApp/phone source applies to wholesale orders only; a
+          // channel order's source IS its channel.
+          channel: type === 'WHOLESALE' ? (dto.channel ?? null) : null,
+          channelId: salesChannel?.id ?? null,
+          channelData: channelValues?.values ?? Prisma.JsonNull,
+          channelSearch: channelValues?.search ?? null,
           paymentMethod: dto.paymentMethod ?? null,
           // Derived, not taken from the client: the truth is what was
           // actually collected against the receivable.
@@ -850,7 +982,6 @@ export class WholesaleService {
               ? 'PAID'
               : 'PARTIALLY_PAID',
           transactionId: dto.transactionId?.trim() || null,
-          gpNumber: dto.gpNumber?.trim() || null,
           courier: dto.courier ?? null,
           consignmentId: dto.consignmentId?.trim() || null,
           // Cash sales store no delivery snapshot at all — there is no
@@ -964,13 +1095,19 @@ export class WholesaleService {
     if (dto.status === 'CANCELLED') {
       throw new BadRequestException('Use the cancel endpoint to cancel an order');
     }
-    // Same rule the create path enforces, restated here so an edit cannot get
+    // Same rules the create path enforces, restated here so an edit cannot get
     // an order into a shape creating it never could.
-    if (order.type === 'CASH_SALE' && dto.courier) {
-      throw new BadRequestException('A cash sale is not couriered');
-    }
+    const salesChannel = order.channelId
+      ? await this.prisma.client.wholesaleChannel.findUnique({ where: { id: order.channelId } })
+      : null;
+    if (salesChannel) this.assertChannelDelivery(salesChannel, dto.courier, dto.deliveryCharge, true);
+    const channelValues =
+      salesChannel && dto.channelData !== undefined
+        ? validateChannelValues(channelFieldsOf(salesChannel.fields), dto.channelData)
+        : null;
 
     const light = {
+      ...(channelValues ? { channelData: channelValues.values, channelSearch: channelValues.search } : {}),
       ...(dto.status === undefined ? {} : { status: dto.status }),
       ...(dto.courier === undefined ? {} : { courier: dto.courier }),
       ...(dto.consignmentId === undefined

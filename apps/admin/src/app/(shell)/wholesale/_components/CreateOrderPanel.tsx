@@ -7,20 +7,25 @@ import {
   ThanaAutocomplete,
 } from "@/components/DistrictThanaFields";
 import {
-  COURIERS,
+  CHANNEL_COURIERS,
   ORDER_CHANNELS,
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
+  WHOLESALE_COURIERS,
   defaultUnitPrice,
   useCreateWholesaleOrder,
+  useWholesaleChannels,
   useWholesaleProducts,
   type PickableProduct,
+  type WholesaleChannel,
   type WholesaleCustomer,
   type WholesaleOrderChannel,
   type WholesaleOrderType,
   type WholesalePaymentMethod,
   type WholesalePaymentStatus,
+  type WholesalePriceList,
 } from "@/hooks/useWholesale";
+import { ChannelFieldInputs, missingChannelFields, type ChannelValues } from "./ChannelFieldInputs";
 import { Thumb } from "./Thumb";
 
 const money = (v: number | string) =>
@@ -160,8 +165,19 @@ export function CreateOrderPanel({
   const products = useWholesaleProducts();
   const create = useCreateWholesaleOrder();
 
+  const channels = useWholesaleChannels();
+  const activeChannels = (channels.data ?? []).filter((c) => c.isActive);
+
   const [type, setType] = useState<WholesaleOrderType>("WHOLESALE");
   const wholesale = type === "WHOLESALE";
+  // "Others" orders go through an admin-managed channel (Cash Sale, Daraz...),
+  // which decides the price list, whether there's a courier leg, and what
+  // extra fields the order carries.
+  const [channelId, setChannelId] = useState<number | null>(null);
+  const [channelValues, setChannelValues] = useState<ChannelValues>({});
+  const salesChannel = wholesale ? null : (activeChannels.find((c) => c.id === channelId) ?? null);
+  const hasDelivery = wholesale || !!salesChannel?.hasDelivery;
+  const priceList: WholesalePriceList = wholesale ? "WHOLESALE" : (salesChannel?.priceList ?? "RETAIL");
 
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -180,7 +196,6 @@ export function CreateOrderPanel({
   const [channel, setChannel] = useState<WholesaleOrderChannel>("WHATSAPP");
   const [method, setMethod] = useState<WholesalePaymentMethod>("CASH");
   const [transactionId, setTransactionId] = useState("");
-  const [gpNumber, setGpNumber] = useState("");
 
   const [orderDiscount, setOrderDiscount] = useState("0");
   const [deliveryCharge, setDeliveryCharge] = useState("0");
@@ -218,9 +233,9 @@ export function CreateOrderPanel({
     Math.max(0, l.quantity * Number(l.unitPrice || 0) - Number(l.discount || 0));
 
   const subtotal = cart.reduce((sum, l) => sum + lineTotal(l), 0);
-  // A cash sale has no delivery leg, so its charge is not merely hidden — it
-  // is excluded from the total, which is what the server will also compute.
-  const charge = wholesale ? Math.max(0, Number(deliveryCharge || 0)) : 0;
+  // A channel with no delivery leg (Cash Sale) has no charge — not merely
+  // hidden, excluded from the total, which is what the server also enforces.
+  const charge = hasDelivery ? Math.max(0, Number(deliveryCharge || 0)) : 0;
   const discount = Math.max(0, Number(orderDiscount || 0));
   const grandTotal = Math.max(0, subtotal - discount + charge);
   const units = cart.reduce((n, l) => n + l.quantity, 0);
@@ -233,24 +248,41 @@ export function CreateOrderPanel({
    * because of the order the buttons were pressed in. Per-line discounts are
    * dropped with the old prices they were negotiated against.
    */
-  function switchType(next: WholesaleOrderType) {
-    setType(next);
-    setErrors([]);
+  function reprice(list: WholesalePriceList) {
     setCart((lines) =>
       lines.map((l) => ({
         ...l,
-        unitPrice: defaultUnitPrice(l.product, next),
+        unitPrice: defaultUnitPrice(l.product, list),
         discount: "0",
       })),
     );
-    if (next === "CASH_SALE") {
-      setCourier("");
-      setConsignmentId("");
-      setPaymentStatus("PAID");
-      setChannel("IN_STORE_POS");
-    } else {
-      setGpNumber("");
+  }
+
+  function switchType(next: WholesaleOrderType) {
+    setType(next);
+    setErrors([]);
+    setChannelId(null);
+    setChannelValues({});
+    setCourier("");
+    setPaymentStatus("UNPAID");
+    reprice("WHOLESALE");
+  }
+
+  /** Picking a channel re-prices the cart to its price list and resets the
+   *  delivery leg to match it. */
+  function applyChannel(c: WholesaleChannel) {
+    setChannelId(c.id);
+    setChannelValues({});
+    setErrors([]);
+    reprice(c.priceList);
+    setCourier("");
+    setConsignmentId("");
+    if (c.hasDelivery) {
       setPaymentStatus("UNPAID");
+    } else {
+      // Handed over and paid on the spot, as Cash Sale always has been.
+      setPaymentStatus("PAID");
+      setDeliveryCharge("0");
     }
   }
 
@@ -287,7 +319,7 @@ export function CreateOrderPanel({
         {
           product: p,
           quantity: 1,
-          unitPrice: defaultUnitPrice(p, type),
+          unitPrice: defaultUnitPrice(p, priceList),
           discount: "0",
         },
       ];
@@ -310,11 +342,11 @@ export function CreateOrderPanel({
     if (!phoneOk(delivery.recipientPhone))
       errs.push("A valid recipient phone is required.");
     if (!delivery.addressLine.trim()) errs.push("Delivery address is required.");
-    if (wholesale) {
-      if (!courier) errs.push("Select a courier or delivery method.");
-    } else if (!gpNumber.trim()) {
-      errs.push("GP number is required for a cash sale.");
+    if (!wholesale) {
+      if (!salesChannel) errs.push("Choose a channel.");
+      else missingChannelFields(salesChannel.fields, channelValues).forEach((label) => errs.push(`${label} is required.`));
     }
+    if (hasDelivery && !courier) errs.push("Select a courier or delivery method.");
     if (method !== "CASH" && !transactionId.trim())
       errs.push(
         "A transaction / reference ID is required for a non-cash payment.",
@@ -329,7 +361,7 @@ export function CreateOrderPanel({
     setConsignmentId("");
     setCourier("");
     setTransactionId("");
-    setGpNumber("");
+    setChannelValues({});
     setNote("");
     setErrors([]);
   }
@@ -353,12 +385,13 @@ export function CreateOrderPanel({
       const order = await create.mutateAsync({
         partyId: customerId!,
         type,
-        channel,
+        channel: wholesale ? channel : undefined,
+        channelId: salesChannel?.id,
+        channelData: salesChannel ? channelValues : undefined,
         paymentMethod: method,
         transactionId: method === "CASH" ? undefined : transactionId.trim(),
-        gpNumber: wholesale ? undefined : gpNumber.trim(),
-        courier: wholesale ? (courier as never) : undefined,
-        consignmentId: wholesale
+        courier: hasDelivery ? (courier as never) : undefined,
+        consignmentId: hasDelivery
           ? consignmentId.trim() || undefined
           : undefined,
         delivery: {
@@ -378,7 +411,7 @@ export function CreateOrderPanel({
           quantity: l.quantity,
           discount: Number(l.discount || 0).toFixed(2),
         })),
-        deliveryCharge: wholesale ? charge.toFixed(2) : undefined,
+        deliveryCharge: hasDelivery ? charge.toFixed(2) : undefined,
         discount: discount.toFixed(2),
         paidAmount,
         note: note.trim() || undefined,
@@ -392,40 +425,13 @@ export function CreateOrderPanel({
 
   return (
     <div className="space-y-5">
-      {/* Mode switch. Deliberately prominent: it changes the price list, the
-          delivery leg and what the total means. */}
-      <Card className="flex flex-wrap items-center justify-between gap-4 p-5 shadow-card">
-        <div>
-          <h2 className="text-base font-bold text-text">
-            {wholesale ? "Create Wholesale Order" : "Create Cash Sale"}
-          </h2>
-          <p className="mt-1 text-xs text-secondary">
-            {wholesale
-              ? "Select a customer, add products, courier and payment details, then create the order."
-              : "Select a customer, add products and payment details, then complete the sale over the counter."}
-          </p>
-        </div>
-        <div className="flex gap-1 rounded-xl bg-surface-2 p-1">
-          {(
-            [
-              ["WHOLESALE", "Wholesale"],
-              ["CASH_SALE", "Cash Sale"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => switchType(value)}
-              className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
-                type === value
-                  ? "bg-surface text-brand-600 shadow-sm dark:text-brand-400"
-                  : "text-secondary hover:text-text"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <Card className="p-5 shadow-card">
+        <h2 className="text-base font-bold text-text">
+          {wholesale ? "Create Wholesale Order" : `Create ${salesChannel?.name ?? "Channel"} Order`}
+        </h2>
+        <p className="mt-1 text-xs text-secondary">
+          Pick the channel above the cart — Wholesale, or one from Channel Settings — then add the customer, products and payment.
+        </p>
       </Card>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(320px,0.85fr)_minmax(480px,1.15fr)] items-start">
@@ -662,8 +668,8 @@ export function CreateOrderPanel({
             </div>
           </SectionCard>
 
-          {wholesale && (
-            <SectionCard title="Courier & Delivery" hint="Wholesale only">
+          {hasDelivery && (
+            <SectionCard title="Courier & Delivery">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Courier / delivery method" required>
                   <select
@@ -672,7 +678,7 @@ export function CreateOrderPanel({
                     onChange={(e) => setCourier(e.target.value)}
                   >
                     <option value="">Select courier…</option>
-                    {COURIERS.map((c) => (
+                    {(wholesale ? WHOLESALE_COURIERS : CHANNEL_COURIERS).map((c) => (
                       <option key={c.value} value={c.value}>
                         {c.label}
                       </option>
@@ -720,6 +726,36 @@ export function CreateOrderPanel({
 
         {/* --------------------------------------------------------- right */}
         <div className="space-y-5">
+          {/* One selector for every kind of sale. Deliberately first on this
+              side: it decides the price list, the delivery leg and what extra
+              details the order needs. */}
+          <SectionCard title="Channel" hint="Manage channels in Channel Settings">
+            <div className="space-y-4">
+              <Field label="Channel" required>
+                <select
+                  className={INPUT}
+                  value={wholesale ? "WHOLESALE" : (channelId ?? "")}
+                  onChange={(e) => {
+                    if (e.target.value === "WHOLESALE") return switchType("WHOLESALE");
+                    const next = activeChannels.find((c) => c.id === Number(e.target.value));
+                    if (next) {
+                      setType("CHANNEL");
+                      applyChannel(next);
+                    }
+                  }}
+                >
+                  <option value="WHOLESALE">Wholesale</option>
+                  {activeChannels.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </Field>
+              {salesChannel && (
+                <ChannelFieldInputs fields={salesChannel.fields} values={channelValues} onChange={setChannelValues} />
+              )}
+            </div>
+          </SectionCard>
+
           <SectionCard title="Cart & Products" hint={`${units} total unit(s)`}>
             <Field label="Search product">
               <div className="relative">
@@ -757,7 +793,7 @@ export function CreateOrderPanel({
                         </span>
                         <span className="block truncate text-[10px] text-muted">
                           {p.sku ? `SKU ${p.sku} · ` : ""}
-                          {money(defaultUnitPrice(p, type))}
+                          {money(defaultUnitPrice(p, priceList))}
                           {p.stockStatus === "OUT_OF_STOCK" &&
                             " · out of stock"}
                         </span>
@@ -897,17 +933,19 @@ export function CreateOrderPanel({
           </SectionCard>
 
           <SectionCard
-            title="Payment & Channel"
+            title={wholesale ? "Payment & Channel" : "Payment"}
             hint="A non-cash payment needs its transaction ID"
           >
             <div className="space-y-4">
-              <Field label="Sales channel">
-                <Segmented
-                  options={ORDER_CHANNELS}
-                  value={channel}
-                  onChange={setChannel}
-                />
-              </Field>
+              {wholesale && (
+                <Field label="Sales channel">
+                  <Segmented
+                    options={ORDER_CHANNELS}
+                    value={channel}
+                    onChange={setChannel}
+                  />
+                </Field>
+              )}
 
               <Field label="Payment method">
                 <Segmented
@@ -920,17 +958,6 @@ export function CreateOrderPanel({
                   tone="success"
                 />
               </Field>
-
-              {!wholesale && (
-                <Field label="GP number" required>
-                  <input
-                    className={INPUT}
-                    placeholder="Counter voucher number"
-                    value={gpNumber}
-                    onChange={(e) => setGpNumber(e.target.value)}
-                  />
-                </Field>
-              )}
 
               {method !== "CASH" && (
                 <Field label="Transaction / reference ID" required>
@@ -960,7 +987,7 @@ export function CreateOrderPanel({
                     onChange={(e) => setOrderDiscount(e.target.value)}
                   />
                 </div>
-                {wholesale && (
+                {hasDelivery && (
                   <div className="grid grid-cols-[1fr_120px] items-center gap-3">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-secondary">
                       Courier / delivery charge
@@ -1002,7 +1029,7 @@ export function CreateOrderPanel({
               >
                 {create.isPending
                   ? "Saving…"
-                  : wholesale
+                  : hasDelivery
                     ? "Create Order"
                     : "Complete Sale"}
               </Button>

@@ -6,12 +6,13 @@ import {
   COURIERS,
   ORDER_CHANNELS,
   ORDER_STATUSES,
-  ORDER_TYPES,
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
   PAGE_SIZE,
   downloadWholesaleOrdersCsv,
+  channelDetails,
   labelOf,
+  useWholesaleChannels,
   useWholesaleOrders,
   useWholesaleStats,
   wholesaleInvoiceHref,
@@ -38,17 +39,29 @@ const PAY_TONE: Record<string, string> = {
   UNPAID: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
 };
 
-export function TypeBadge({ type }: { type: WholesaleOrder["type"] }) {
+/** Wholesale, or the order's channel — with that channel's fields marked
+ *  "Show in order table" in Channel Settings listed underneath. */
+export function TypeBadge({ order }: { order: WholesaleOrder }) {
+  const channels = useWholesaleChannels();
+  const wholesale = order.type === "WHOLESALE";
+  const details = wholesale ? [] : channelDetails(order, channels.data);
   return (
-    <span
-      className={`inline-block whitespace-nowrap rounded-full px-2 py-1 text-[9px] font-black ${
-        type === "WHOLESALE"
-          ? "bg-brand-500/15 text-brand-600 dark:text-brand-400"
-          : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-      }`}
-    >
-      {type === "WHOLESALE" ? "Wholesale" : "Cash Sale"}
-    </span>
+    <div className="space-y-1">
+      <span
+        className={`inline-block whitespace-nowrap rounded-full px-2 py-1 text-[9px] font-black ${
+          wholesale
+            ? "bg-brand-500/15 text-brand-600 dark:text-brand-400"
+            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+        }`}
+      >
+        {wholesale ? "Wholesale" : (order.channelName ?? "Channel")}
+      </span>
+      {details.map((f) => (
+        <span key={f.label} className="block text-[10px] text-muted">
+          {f.label}: <span className="text-text">{f.value}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -59,11 +72,6 @@ export function PaymentCell({ order }: { order: WholesaleOrder }) {
       <span className="block text-text">
         {labelOf(PAYMENT_METHODS, order.paymentMethod) || "—"}
       </span>
-      {order.gpNumber && (
-        <span className="block text-[10px] text-muted">
-          GP: {order.gpNumber}
-        </span>
-      )}
       {order.transactionId && (
         <span className="block text-[10px] text-muted">
           Txn: {order.transactionId}
@@ -139,14 +147,25 @@ export function OrdersDashboard({
   onEditOrder: (o: WholesaleOrder) => void;
 }) {
   const [search, setSearch] = useState("");
+  // "ALL", "WHOLESALE", or a channel id as "CH:<id>".
   const [type, setType] = useState("ALL");
+  const channels = useWholesaleChannels();
+  const channelFilter = type.startsWith("CH:") ? Number(type.slice(3)) : undefined;
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
   const [viewing, setViewing] = useState<WholesaleOrder | null>(null);
   const [exporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  const orders = useWholesaleOrders(search, status, type, undefined, page);
+  const orders = useWholesaleOrders(
+    search,
+    status,
+    channelFilter ? "CHANNEL" : type,
+    undefined,
+    page,
+    undefined,
+    channelFilter,
+  );
   const stats = useWholesaleStats();
   const rows = orders.data?.items ?? [];
   const total = orders.data?.total ?? 0;
@@ -168,7 +187,7 @@ export function OrdersDashboard({
         <StatCard
           label="Total Orders"
           value={String(s?.orderCount ?? 0)}
-          footer="Wholesale + cash sale, cancelled excluded"
+          footer="Wholesale + channels, cancelled excluded"
           icon={<Icon name="receipt_long" size={24} className="text-brand-500" />}
         />
         <StatCard
@@ -186,9 +205,9 @@ export function OrdersDashboard({
           }
         />
         <StatCard
-          label="Cash Sales"
-          value={String(s?.cashSaleCount ?? 0)}
-          footer="Handed over the counter"
+          label="Channel Orders"
+          value={String(s?.channelOrderCount ?? 0)}
+          footer="Cash Sale, Daraz and other channels"
           icon={<Icon name="storefront" size={24} className="text-amber-500" />}
         />
       </div>
@@ -216,9 +235,11 @@ export function OrdersDashboard({
               aria-label="Order type"
             >
               <option value="ALL">All Order Types</option>
-              {ORDER_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              <option value="WHOLESALE">Wholesale</option>
+              <option value="CHANNEL">All channels</option>
+              {(channels.data ?? []).map((c) => (
+                <option key={c.id} value={`CH:${c.id}`}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -279,7 +300,7 @@ export function OrdersDashboard({
                     {[
                       "Order",
                       "Customer",
-                      "Type",
+                      "Type / Channel",
                       "Products",
                       "Courier",
                       "Payment",
@@ -309,7 +330,7 @@ export function OrdersDashboard({
                         <span className="text-muted">{o.customerPhone}</span>
                       </td>
                       <td className="px-3 py-3">
-                        <TypeBadge type={o.type} />
+                        <TypeBadge order={o} />
                       </td>
                       <td className="px-3 py-3">
                         <ProductsCell order={o} />
@@ -365,7 +386,7 @@ export function OrdersDashboard({
                         {dateLabel(o.placedAt)}
                       </span>
                     </div>
-                    <TypeBadge type={o.type} />
+                    <TypeBadge order={o} />
                   </div>
                   <div className="text-[11px]">
                     <strong className="block text-text">

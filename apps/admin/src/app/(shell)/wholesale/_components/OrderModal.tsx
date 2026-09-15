@@ -3,16 +3,19 @@
 import { useMemo, useState } from "react";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
-  COURIERS,
+  CHANNEL_COURIERS,
   ORDER_STATUSES,
+  WHOLESALE_COURIERS,
   useCreateWholesaleOrder,
   useUpdateWholesaleOrder,
+  useWholesaleChannels,
   useWholesaleProducts,
   type WholesaleCourier,
   type WholesaleCustomer,
   type WholesaleOrder,
   type WholesaleOrderStatus,
 } from "@/hooks/useWholesale";
+import { ChannelFieldInputs, missingChannelFields, toChannelValues, type ChannelValues } from "./ChannelFieldInputs";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text transition-all duration-200 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
@@ -88,11 +91,17 @@ export function OrderModal({
         ? String(presetCustomerId)
         : "",
   );
-  // Null while editing a cash sale, which has no courier and must not gain
-  // one — the server refuses it, so the field is hidden rather than sent.
-  const isCashSale = editing?.type === "CASH_SALE";
+  // A channel order follows its channel: no courier or delivery charge on a
+  // channel without delivery (Cash Sale) — the server refuses them, so the
+  // inputs are hidden rather than sent — and the channel's own fields to edit.
+  const channels = useWholesaleChannels();
+  const isChannel = editing?.type === "CHANNEL";
+  const salesChannel = isChannel ? channels.data?.find((c) => c.id === editing?.channelId) : undefined;
+  const noDelivery = isChannel && !salesChannel?.hasDelivery;
+  const [channelValues, setChannelValues] = useState<ChannelValues>(toChannelValues(editing?.channelData));
+  const [missing, setMissing] = useState<string[]>([]);
   const [courier, setCourier] = useState<WholesaleCourier>(
-    editing?.courier ?? "SUNDARBAN",
+    editing?.courier ?? (isChannel ? "CHANNEL_DELIVERY" : "SUNDARBAN"),
   );
   const [consignmentId, setConsignmentId] = useState(
     editing?.consignmentId ?? "",
@@ -200,6 +209,9 @@ export function OrderModal({
       quantity: l.quantity,
       discount: l.discount || "0",
     }));
+    const gaps = salesChannel ? missingChannelFields(salesChannel.fields, channelValues) : [];
+    setMissing(gaps);
+    if (gaps.length) return;
     try {
       if (editing) {
         // partyId is not sent: moving an order to a different buyer would have
@@ -207,11 +219,12 @@ export function OrderModal({
         // form field. Cancel and re-enter for that.
         await update.mutateAsync({
           id: editing.id,
-          courier: isCashSale ? undefined : courier,
+          courier: noDelivery ? undefined : courier,
           consignmentId: consignmentId.trim(),
           status,
           items,
-          deliveryCharge,
+          deliveryCharge: noDelivery ? undefined : deliveryCharge,
+          channelData: salesChannel ? channelValues : undefined,
           discount,
           note: note.trim(),
         });
@@ -328,7 +341,7 @@ export function OrderModal({
               </select>
             </ModalField>
 
-            {!isCashSale && (
+            {!noDelivery && (
               <ModalField label="Courier Partner" required>
                 <select
                   className={inputClass}
@@ -337,7 +350,7 @@ export function OrderModal({
                     setCourier(e.target.value as WholesaleCourier)
                   }
                 >
-                  {COURIERS.map((c) => (
+                  {(isChannel ? CHANNEL_COURIERS : WHOLESALE_COURIERS).map((c) => (
                     <option key={c.value} value={c.value}>
                       {c.label}
                     </option>
@@ -628,19 +641,31 @@ export function OrderModal({
           </div>
         </div>
 
+        {salesChannel && salesChannel.fields.length > 0 && (
+          <div className="space-y-2.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">{salesChannel.name} details</h4>
+            <ChannelFieldInputs fields={salesChannel.fields} values={channelValues} onChange={setChannelValues} />
+            {missing.length > 0 && (
+              <p className="text-xs font-semibold text-rose-600">{missing.map((m) => `${m} is required.`).join(" ")}</p>
+            )}
+          </div>
+        )}
+
         {/* Financial Adjustments & Summary */}
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-7">
             <div className="grid gap-3 sm:grid-cols-3">
-              <ModalField label="Delivery Charge (৳)">
-                <input
-                  type="number"
-                  min={0}
-                  className={inputClass}
-                  value={deliveryCharge}
-                  onChange={(e) => setDeliveryCharge(e.target.value)}
-                />
-              </ModalField>
+              {!noDelivery && (
+                <ModalField label="Delivery Charge (৳)">
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputClass}
+                    value={deliveryCharge}
+                    onChange={(e) => setDeliveryCharge(e.target.value)}
+                  />
+                </ModalField>
+              )}
 
               <ModalField label="Discount (৳)">
                 <input

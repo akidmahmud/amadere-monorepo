@@ -7220,6 +7220,38 @@ export interface paths {
         patch: operations["AdminWholesaleController_updateCustomer"];
         trace?: never;
     };
+    "/api/v1/admin/wholesale/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_listChannels"];
+        put?: never;
+        post: operations["AdminWholesaleController_createChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/channels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminWholesaleController_deleteChannel"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminWholesaleController_updateChannel"];
+        trace?: never;
+    };
     "/api/v1/admin/wholesale/assignable-staff": {
         parameters: {
             query?: never;
@@ -11520,12 +11552,12 @@ export interface components {
         WholesaleStatsDto: {
             orderCount: number;
             wholesaleOrderCount: number;
-            cashSaleCount: number;
+            channelOrderCount: number;
             salesTotal: string;
             dueTotal: string;
             customerCount: number;
             wholesaleCustomerCount: number;
-            cashCustomerCount: number;
+            channelCustomerCount: number;
         };
         WholesaleCustomerDto: {
             id: number;
@@ -11544,7 +11576,7 @@ export interface components {
             isActive: boolean;
             orderCount: number;
             wholesaleCount: number;
-            cashCount: number;
+            channelCount: number;
             purchaseTotal: string;
             due: string;
             /** Format: date-time */
@@ -11629,6 +11661,63 @@ export interface components {
             purchaseReason?: string;
             facebookProfileUrl?: string;
         };
+        WholesaleChannelFieldDto: {
+            key: string;
+            label: string;
+            type: Record<string, never>;
+            required: boolean;
+            showInTable: boolean;
+            options?: string[];
+        };
+        WholesaleChannelDto: {
+            id: number;
+            name: string;
+            priceList: Record<string, never>;
+            hasDelivery: boolean;
+            fields: components["schemas"]["WholesaleChannelFieldDto"][];
+            isActive: boolean;
+            isSystem: boolean;
+            sortOrder: number;
+            orderCount: number;
+        };
+        WholesaleChannelFieldInputDto: {
+            /** @description Keep the existing key when editing a field; omit for a new one */
+            key?: string;
+            label: string;
+            /** @enum {string} */
+            type: "text" | "number" | "date" | "select";
+            required?: boolean;
+            /** @description Show this value as a column in the orders table */
+            showInTable?: boolean;
+            /** @description Dropdown choices */
+            options?: string[];
+        };
+        CreateWholesaleChannelDto: {
+            name: string;
+            /**
+             * @description Which product price the cart starts from
+             * @enum {string}
+             */
+            priceList: "RETAIL" | "WHOLESALE";
+            /** @description false = handed over on the spot: no courier, no delivery charge */
+            hasDelivery: boolean;
+            isActive?: boolean;
+            sortOrder?: number;
+            fields: components["schemas"]["WholesaleChannelFieldInputDto"][];
+        };
+        UpdateWholesaleChannelDto: {
+            name?: string;
+            /**
+             * @description Which product price the cart starts from
+             * @enum {string}
+             */
+            priceList?: "RETAIL" | "WHOLESALE";
+            /** @description false = handed over on the spot: no courier, no delivery charge */
+            hasDelivery?: boolean;
+            isActive?: boolean;
+            sortOrder?: number;
+            fields?: components["schemas"]["WholesaleChannelFieldInputDto"][];
+        };
         WholesaleDeliveryDto: {
             recipientName: string | null;
             recipientPhone: string | null;
@@ -11661,10 +11750,12 @@ export interface components {
             status: Record<string, never>;
             type: Record<string, never>;
             channel: Record<string, never> | null;
+            channelId: number | null;
+            channelName: string | null;
+            channelData: Record<string, never> | null;
             paymentMethod: Record<string, never> | null;
             paymentStatus: Record<string, never>;
             transactionId: string | null;
-            gpNumber: string | null;
             courier: Record<string, never> | null;
             consignmentId: string | null;
             delivery: components["schemas"]["WholesaleDeliveryDto"];
@@ -11705,23 +11796,28 @@ export interface components {
             /** @description Wholesale customer (party) id */
             partyId: number;
             /**
-             * @description Defaults to WHOLESALE. CASH_SALE skips the delivery leg and prices at retail.
+             * @description Defaults to WHOLESALE. CHANNEL orders need `channelId`; the channel decides whether there is a delivery leg.
              * @enum {string}
              */
-            type?: "WHOLESALE" | "CASH_SALE";
-            /** @enum {string} */
+            type?: "WHOLESALE" | "CHANNEL";
+            /**
+             * @description Where a WHOLESALE order came in from (WhatsApp, phone...).
+             * @enum {string}
+             */
             channel?: "WHATSAPP" | "TELEMARKETING" | "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "MESSENGER" | "MARKETPLACE" | "PHONE" | "IN_STORE_POS" | "OTHER";
+            /** @description The sales channel (Cash Sale, Daraz...). CHANNEL orders only. */
+            channelId?: number;
+            /** @description Values for the channel's custom fields, keyed by field key. */
+            channelData?: Record<string, never>;
             /** @enum {string} */
             paymentMethod?: "CASH" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "BANK";
             /** @description Required by the UI for every non-cash method */
             transactionId?: string;
-            /** @description Counter-sale voucher number. Cash sales only. */
-            gpNumber?: string;
             /**
-             * @description Required for WHOLESALE; a cash sale never touches a courier.
+             * @description Required for WHOLESALE and for channels with delivery; refused for channels without (Cash Sale).
              * @enum {string}
              */
-            courier?: "SUNDARBAN" | "AJR" | "SA_PARIBAHAN" | "OWN_TRANSPORT" | "CUSTOMER_PICKUP" | "OTHER";
+            courier?: "SUNDARBAN" | "AJR" | "SA_PARIBAHAN" | "OWN_TRANSPORT" | "CUSTOMER_PICKUP" | "OTHER" | "CHANNEL_DELIVERY" | "STEADFAST";
             delivery?: components["schemas"]["WholesaleDeliveryInputDto"];
             /** @description The number the courier gives us for the parcel */
             consignmentId?: string;
@@ -11744,9 +11840,11 @@ export interface components {
             /** @enum {string} */
             status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
             /** @enum {string} */
-            courier?: "SUNDARBAN" | "AJR" | "SA_PARIBAHAN" | "OWN_TRANSPORT" | "CUSTOMER_PICKUP" | "OTHER";
+            courier?: "SUNDARBAN" | "AJR" | "SA_PARIBAHAN" | "OWN_TRANSPORT" | "CUSTOMER_PICKUP" | "OTHER" | "CHANNEL_DELIVERY" | "STEADFAST";
             consignmentId?: string;
             note?: string;
+            /** @description Channel orders: the full set of values for the channel's custom fields. Replaces what is stored, so send every value, not just the changed one. */
+            channelData?: Record<string, never>;
             /** @description Replaces the order lines wholesale. Stock moves by the difference, and the invoice is restated to the new total. */
             items?: components["schemas"]["WholesaleOrderItemInputDto"][];
             /** @description Decimal string */
@@ -25980,6 +26078,100 @@ export interface operations {
             };
         };
     };
+    AdminWholesaleController_listChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleChannelDto"][];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_createChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWholesaleChannelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleChannelDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleChannelDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_deleteChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminWholesaleController_updateChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWholesaleChannelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleChannelDto"];
+                };
+            };
+        };
+    };
     AdminWholesaleController_listAssignableStaff: {
         parameters: {
             query?: never;
@@ -26031,12 +26223,13 @@ export interface operations {
             query?: {
                 page?: number;
                 pageSize?: number;
-                /** @description Matches order number, consignment id, buyer name or phone, recipient name or phone, GP number, transaction id, or any product on the order */
+                /** @description Matches order number, consignment id, buyer name or phone, recipient name or phone, the channel's field values, transaction id, or any product on the order */
                 search?: string;
                 status?: "PENDING" | "PROCESSING" | "DELIVERED" | "CANCELLED";
                 /** @description Omit for both */
-                type?: "WHOLESALE" | "CASH_SALE";
+                type?: "WHOLESALE" | "CHANNEL";
                 partyId?: number;
+                channelId?: number;
             };
             header?: never;
             path?: never;
