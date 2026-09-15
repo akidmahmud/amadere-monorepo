@@ -9,11 +9,14 @@ import {
   labelOf,
   useWholesaleCustomers,
   useWholesaleOrders,
+  useWholesaleStaff,
   useWholesaleStats,
   type WholesaleCustomer,
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
+import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 import { OrderDetailModal } from "./OrderDetailModal";
+import { WholesaleCustomersTable } from "./WholesaleCustomersTable";
 import { Pager } from "./Pager";
 import {
   OrderCell,
@@ -55,6 +58,8 @@ export function CustomersDashboard({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<WholesaleCustomer | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const staff = useWholesaleStaff();
 
   const customers = useWholesaleCustomers(search, false, page);
   const stats = useWholesaleStats();
@@ -124,10 +129,16 @@ export function CustomersDashboard({
               className="pointer-events-none absolute left-3 top-2.5 text-muted"
             />
           </div>
-          <Button variant="primary" onClick={onNewCustomer}>
-            <Icon name="person_add" size={18} />
-            Create New Customer
-          </Button>
+          <div className="flex flex-wrap gap-2.5">
+            <Button variant="ghost" onClick={() => setImportOpen(true)}>
+              <Icon name="upload" size={18} />
+              Import
+            </Button>
+            <Button variant="primary" onClick={onNewCustomer}>
+              <Icon name="person_add" size={18} />
+              Create New Customer
+            </Button>
+          </div>
         </div>
 
         {customers.isLoading ? (
@@ -140,142 +151,13 @@ export function CustomersDashboard({
           </p>
         ) : (
           <>
-            <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
-              <table className="w-full min-w-[980px] border-collapse">
-                <thead>
-                  <tr className="bg-surface-2 text-[9px] uppercase tracking-wide text-muted">
-                    {[
-                      "Customer",
-                      "Phone",
-                      "Address",
-                      "Orders",
-                      "Wholesale",
-                      "Cash Sale",
-                      "Total Purchase",
-                      "Last Order",
-                      "Action",
-                    ].map((h) => (
-                      <th key={h} className="px-3 py-2.5 text-left font-bold">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-t border-border align-top text-[11px]"
-                    >
-                      <td className="px-3 py-3">
-                        <strong className="block text-text">{c.name}</strong>
-                        {c.email && (
-                          <span className="text-muted">{c.email}</span>
-                        )}
-                        {!c.isActive && (
-                          <span className="mt-1 inline-block rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-black text-muted">
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="block text-text">{c.phone}</span>
-                        {c.alternativePhone && (
-                          <span className="text-muted">
-                            Alt: {c.alternativePhone}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="block text-text">
-                          {c.address ?? "—"}
-                        </span>
-                        {(c.district || c.thana) && (
-                          <span className="text-muted">
-                            {[c.district, c.thana].filter(Boolean).join(" · ")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 font-bold text-text">
-                        {c.orderCount}
-                      </td>
-                      <td className="px-3 py-3 text-secondary">
-                        {c.wholesaleCount}
-                      </td>
-                      <td className="px-3 py-3 text-secondary">{c.cashCount}</td>
-                      <td className="px-3 py-3">
-                        <strong className="block text-text">
-                          {money(c.purchaseTotal)}
-                        </strong>
-                        {Number(c.due) > 0 && (
-                          <span className="text-rose-600 dark:text-rose-400">
-                            {money(c.due)} due
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-secondary">
-                        {dateLabel(c.lastOrderAt)}
-                      </td>
-                      <td className="px-3 py-3">
-                        <CustomerActions
-                          onView={() => setDetail(c)}
-                          onEdit={() => onEditCustomer(c)}
-                          onOrder={() => onOrderFor(c)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="space-y-3 md:hidden">
-              {rows.map((c) => (
-                <div
-                  key={c.id}
-                  className="space-y-2.5 rounded-xl border border-border p-3.5"
-                >
-                  <div>
-                    <strong className="block text-xs text-text">
-                      {c.name}
-                    </strong>
-                    <span className="text-[10px] text-muted">
-                      {c.phone}
-                      {c.alternativePhone ? ` · Alt ${c.alternativePhone}` : ""}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-secondary">
-                    {[c.address, c.district, c.thana].filter(Boolean).join(" · ") ||
-                      "No address on file"}
-                  </p>
-                  <div className="grid grid-cols-3 gap-2 text-[11px]">
-                    <Metric label="Orders" value={String(c.orderCount)} />
-                    <Metric label="Wholesale" value={String(c.wholesaleCount)} />
-                    <Metric label="Cash" value={String(c.cashCount)} />
-                  </div>
-                  <div className="flex items-end justify-between gap-3 text-[11px]">
-                    <span className="text-muted">
-                      Last: {dateLabel(c.lastOrderAt)}
-                    </span>
-                    <div className="text-right">
-                      <strong className="block text-sm text-text">
-                        {money(c.purchaseTotal)}
-                      </strong>
-                      {Number(c.due) > 0 && (
-                        <span className="text-rose-600 dark:text-rose-400">
-                          {money(c.due)} due
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <CustomerActions
-                    onView={() => setDetail(c)}
-                    onEdit={() => onEditCustomer(c)}
-                    onOrder={() => onOrderFor(c)}
-                  />
-                </div>
-              ))}
-            </div>
+            <WholesaleCustomersTable
+              customers={rows}
+              staff={staff.data}
+              onView={setDetail}
+              onOrder={onOrderFor}
+              onEdit={onEditCustomer}
+            />
             <Pager
               page={page}
               pageSize={PAGE_SIZE}
@@ -286,43 +168,15 @@ export function CustomersDashboard({
           </>
         )}
       </Card>
-    </div>
-  );
-}
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface-2 p-2 text-center">
-      <span className="block text-[9px] uppercase tracking-wide text-muted">
-        {label}
-      </span>
-      <strong className="block text-text">{value}</strong>
-    </div>
-  );
-}
-
-function CustomerActions({
-  onView,
-  onEdit,
-  onOrder,
-}: {
-  onView: () => void;
-  onEdit: () => void;
-  onOrder: () => void;
-}) {
-  const link =
-    "text-left text-[10px] font-bold text-brand-600 hover:underline dark:text-brand-400";
-  return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1">
-      <button type="button" className={link} onClick={onView}>
-        View Full History
-      </button>
-      <button type="button" className={link} onClick={onOrder}>
-        New Order
-      </button>
-      <button type="button" className={link} onClick={onEdit}>
-        Edit
-      </button>
+      {importOpen && (
+        <CustomerImportModal
+          title="Import Wholesale Customers"
+          endpoint="/api/backend/admin/wholesale/customers/import"
+          queryKey={["admin-wholesale-customers"]}
+          onClose={() => setImportOpen(false)}
+        />
+      )}
     </div>
   );
 }

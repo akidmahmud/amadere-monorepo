@@ -225,6 +225,7 @@ model AdminUser {
   customerNotes      CustomerNote[]
   customerCallLogs   CustomerCallLog[]
   assignedCustomers  Customer[]           @relation("CustomerAssignedAdmin")
+  assignedParties    Party[]              @relation("PartyAssignedAdmin")
   assignedOrders     Order[]              @relation("OrderAssignedAdmin")
   orderStatusHistory OrderStatusHistory[]
 
@@ -3373,7 +3374,31 @@ model Party {
   createdAt         DateTime             @default(now()) @map("created_at")
   updatedAt         DateTime             @updatedAt @map("updated_at")
 
+  // ---- Sales-team CRM fields for WHOLESALE buyers ----
+  // Same set, names and enums as Customer's CRM block, so the wholesale
+  // Customer Dashboard and its spreadsheet import work exactly like retail
+  // Customer Management. On Party rather than a linked Customer on purpose:
+  // wholesale buyers must not appear in (or collide with) the retail list.
+  // Nullable/defaulted, so every non-wholesale party is unaffected. "Start
+  // Date" reuses createdAt, as on Customer.
+  isFavorite          Boolean            @default(false) @map("is_favorite")
+  dob                 DateTime?          @db.Date
+  assignedAdminId     Int?               @map("assigned_admin_id")
+  nextCallTarget      DateTime?          @map("next_call_target") @db.Date
+  followUpCadenceDays Int?               @map("follow_up_cadence_days")
+  hasNewOrder         Boolean            @default(false) @map("has_new_order")
+  newOrderAt          DateTime?          @map("new_order_at") @db.Date
+  priority            CustomerPriority?
+  crmStatus           CustomerCrmStatus? @map("crm_status")
+  behaviour           CustomerBehaviour?
+  customerFeedback    String?            @map("customer_feedback")
+  amaderFeedback      String?            @map("amader_feedback")
+  familyDetails       String?            @map("family_details")
+  purchaseReason      String?            @map("purchase_reason")
+  facebookProfileUrl  String?            @map("facebook_profile_url")
+
   customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedAdmin   AdminUser?       @relation("PartyAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
   expenses        Expense[]
   dues            Due[]
   ledgerEntries   LedgerEntry[]

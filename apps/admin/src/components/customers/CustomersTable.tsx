@@ -23,30 +23,30 @@ const GREEN_HEADER = "#2f7d33";
 const BLUE = "#2570eb";
 const RED = "#e8465e";
 
-const cellSelectStyle =
+export const cellSelectStyle =
   "h-[30px] appearance-none rounded-[8px] border bg-white pr-6 pl-2.5 text-[0.7rem] font-bold outline-none cursor-pointer";
 const chevronBg =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364766b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")";
-const cellSelectStyleObj = { borderColor: LINE, color: TEXT, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 7px center" } as const;
+export const cellSelectStyleObj = { borderColor: LINE, color: TEXT, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 7px center" } as const;
 
-const cellInputClass = "h-[30px] w-[150px] rounded-[8px] border border-transparent bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:border-[color:var(--line)] hover:bg-white focus:border-[color:var(--green)] focus:bg-white";
+export const cellInputClass = "h-[30px] w-[150px] rounded-[8px] border border-transparent bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:border-[color:var(--line)] hover:bg-white focus:border-[color:var(--green)] focus:bg-white";
 
-const PRIORITY_STYLE: Record<string, { bg: string; border: string; color: string }> = {
+export const PRIORITY_STYLE: Record<string, { bg: string; border: string; color: string }> = {
   HIGH: { bg: "#feeaec", border: "#f8ccd3", color: RED },
   MEDIUM: { bg: "#fdf3dd", border: "#f3e2b3", color: "#c07d13" },
   LOW: { bg: "#e3f4e6", border: "#c8e8cf", color: "#1f7a33" },
 };
-const STATUS_STYLE: Record<string, { bg: string; border: string; color: string }> = {
+export const STATUS_STYLE: Record<string, { bg: string; border: string; color: string }> = {
   NOT_STARTED: { bg: "#eef1ee", border: "#dde3de", color: "#6b7a70" },
   IN_PROGRESS: { bg: "#e4edfd", border: "#c9dbf9", color: BLUE },
   DONE: { bg: "#e3f4e6", border: "#c8e8cf", color: "#1f7a33" },
   FOLLOW_UP: { bg: "#fdf3dd", border: "#f3e2b3", color: "#c07d13" },
 };
-const PRIORITY_LABEL: Record<string, string> = { HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
-const STATUS_LABEL: Record<string, string> = { NOT_STARTED: "Not Started", IN_PROGRESS: "In Progress", FOLLOW_UP: "Follow Up", DONE: "Done" };
-const BEHAVIOUR_LABEL: Record<string, string> = { LOYAL: "Loyal", PRICE_SENSITIVE: "Price Sensitive", OCCASIONAL: "Occasional" };
+export const PRIORITY_LABEL: Record<string, string> = { HIGH: "High", MEDIUM: "Medium", LOW: "Low" };
+export const STATUS_LABEL: Record<string, string> = { NOT_STARTED: "Not Started", IN_PROGRESS: "In Progress", FOLLOW_UP: "Follow Up", DONE: "Done" };
+export const BEHAVIOUR_LABEL: Record<string, string> = { LOYAL: "Loyal", PRICE_SENSITIVE: "Price Sensitive", OCCASIONAL: "Occasional" };
 
-function scoreBadgeStyle(score: number): { bg: string; color: string } {
+export function scoreBadgeStyle(score: number): { bg: string; color: string } {
   if (score >= 4) return { bg: "#e3f4e6", color: "#1f7a33" };
   if (score >= 3) return { bg: "#fdf3dd", color: "#c07d13" };
   return { bg: "#feeaec", color: RED };
@@ -55,18 +55,18 @@ function scoreBadgeStyle(score: number): { bg: string; color: string } {
 // ponytail: fixed day thresholds, not tied to any configurable SLA — same
 // "documented heuristic, tune later" approach as customer-score.util.ts on
 // the backend.
-function daysLeftColor(days: number): string {
+export function daysLeftColor(days: number): string {
   if (days <= 5) return RED;
   if (days <= 20) return "#c07d13";
   return "#1f7a33";
 }
 
-function formatDate(iso: string | null | undefined, opts: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" }): string {
+export function formatDate(iso: string | null | undefined, opts: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" }): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-GB", opts).replace(/ /g, "-");
 }
 
-function toDateInputValue(iso: string | null | undefined): string {
+export function toDateInputValue(iso: string | null | undefined): string {
   return iso ? iso.slice(0, 10) : "";
 }
 
@@ -74,7 +74,7 @@ function toDateInputValue(iso: string | null | undefined): string {
 // (typed fields are too easy to fat-finger while just scrolling/browsing
 // the table) — this renders the read-only view; the input it stands in for
 // is rendered instead once `editing` is true.
-function ReadOnlyText({ value, placeholder, width }: { value: string; placeholder?: string; width?: number }) {
+export function ReadOnlyText({ value, placeholder, width }: { value: string; placeholder?: string; width?: number }) {
   return (
     <span className="inline-block truncate px-2.5 align-middle" style={{ width, color: value ? TEXT : FAINT }} title={value || undefined}>
       {value || placeholder || "—"}
@@ -82,28 +82,28 @@ function ReadOnlyText({ value, placeholder, width }: { value: string; placeholde
   );
 }
 
-const starIcon = (filled: boolean) => (
+export const starIcon = (filled: boolean) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? "#f5a623" : "#dfe5e0"}>
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
-const fbIcon = (
+export const fbIcon = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
     <path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.3-1.5 1.6-1.5h1.3V4.9c-.3 0-1.1-.1-2-.1-2 0-3.4 1.2-3.4 3.5V11H8.5v3H11v7Z" />
   </svg>
 );
-const eyeIcon = (
+export const eyeIcon = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
-const editIcon = (
+export const editIcon = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
   </svg>
 );
-const checkIcon = (
+export const checkIcon = (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
   </svg>
@@ -122,7 +122,7 @@ const restoreIcon = (
   </svg>
 );
 
-const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1 | 2; style?: React.CSSProperties }) => (
+export const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1 | 2; style?: React.CSSProperties }) => (
   <th
     className="sticky top-0 z-[5] px-3 py-3 text-left text-[0.72rem] font-bold whitespace-nowrap text-white"
     style={{
@@ -564,7 +564,7 @@ function CustomerRow({
             />
           </div>
         ) : (
-          <ReadOnlyText value={district} placeholder="Add district..." width={150} />
+          <ReadOnlyText value={district} placeholder="এখানে জেলা টাইপ করুন" width={150} />
         )}
       </td>
       <td className={td} style={tdStyle}>
@@ -580,7 +580,7 @@ function CustomerRow({
             <ThanaAutocomplete district={district} value={area} onChange={setArea} />
           </div>
         ) : (
-          <ReadOnlyText value={area} placeholder="Add thana..." width={150} />
+          <ReadOnlyText value={area} placeholder="এখানে থানা টাইপ করুন" width={150} />
         )}
       </td>
       <td className={td} style={tdStyle}>

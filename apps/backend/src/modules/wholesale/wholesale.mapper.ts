@@ -1,4 +1,7 @@
 import {
+  CustomerBehaviour,
+  CustomerCrmStatus,
+  CustomerPriority,
   Prisma,
   WholesaleCourier,
   WholesaleOrderChannel,
@@ -36,6 +39,31 @@ export class WholesaleCustomerDto {
   due!: string;
   /** When they last bought, or null if never. */
   lastOrderAt!: Date | null;
+  /** "Start Date" in the CRM table. */
+  createdAt!: Date;
+
+  // ---- CRM columns, same meaning as on retail Customer Management ----
+  isFavorite!: boolean;
+  dob!: Date | null;
+  assignedAdminId!: number | null;
+  assignedAdminName!: string | null;
+  nextCallTarget!: Date | null;
+  followUpCadenceDays!: number | null;
+  hasNewOrder!: boolean;
+  newOrderAt!: Date | null;
+  priority!: CustomerPriority | null;
+  crmStatus!: CustomerCrmStatus | null;
+  behaviour!: CustomerBehaviour | null;
+  customerFeedback!: string | null;
+  amaderFeedback!: string | null;
+  familyDetails!: string | null;
+  purchaseReason!: string | null;
+  facebookProfileUrl!: string | null;
+  /** Most-bought product across live orders, e.g. "Gomer Lal Atta x995". */
+  topProduct!: string | null;
+  fScore!: number;
+  mScore!: number;
+  rfmScore!: string;
 }
 
 /**

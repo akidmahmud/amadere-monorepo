@@ -64,11 +64,11 @@ function AddressFormFields({
           options={districtOptions}
           value={value.district}
           onValueChange={(district) => onChange({ ...value, district })}
-          placeholder="District"
+          placeholder="এখানে জেলা টাইপ করুন"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Input placeholder="Thana / Area (optional)" value={value.area} onChange={(e) => onChange({ ...value, area: e.target.value })} />
+        <Input placeholder="এখানে থানা টাইপ করুন (optional)" value={value.area} onChange={(e) => onChange({ ...value, area: e.target.value })} />
         <Input placeholder="Landmark (optional)" value={value.landmark} onChange={(e) => onChange({ ...value, landmark: e.target.value })} />
       </div>
     </div>

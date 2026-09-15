@@ -2,22 +2,29 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   ParseIntPipe,
   Patch,
   Post,
   Query,
   Res,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import type { Response } from 'express';
-import { ApiBearerAuth, ApiExcludeEndpoint, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiExcludeEndpoint, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
-import { RequirePermission } from '../../common/auth/permission.decorator';
+import { Can, RequirePermission, type PermissionCheck } from '../../common/auth/permission.decorator';
+import { CustomerImportResultDto } from '../customers/dto/customer-import-result.dto';
 import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
@@ -102,8 +109,33 @@ export class AdminWholesaleController {
   updateCustomer(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateWholesaleCustomerDto,
+    @Can() can: PermissionCheck,
   ): Promise<WholesaleCustomerDto> {
+    // Same rule as retail Customer Management: reassigning needs its own permission.
+    if (dto.assignedAdminId !== undefined && !can('assignment.manage')) {
+      throw new ForbiddenException('Missing permission: assignment.manage');
+    }
     return this.wholesale.updateCustomer(id, dto);
+  }
+
+  @Get('assignable-staff')
+  @RequirePermission('wholesale.view')
+  listAssignableStaff(): Promise<{ id: number; name: string }[]> {
+    return this.wholesale.listAssignableStaff();
+  }
+
+  @Post('customers/import')
+  @RequirePermission('wholesale.create')
+  @ApiConsumes('multipart/form-data')
+  @ApiOkResponse({ type: CustomerImportResultDto })
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  importCustomers(
+    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 15 * 1024 * 1024 })] }))
+    file: Express.Multer.File,
+    // Preview unless explicitly told otherwise, exactly like the retail import.
+    @Query('dryRun') dryRun?: string,
+  ): Promise<CustomerImportResultDto> {
+    return this.wholesale.importCustomers(file.buffer, dryRun !== 'false');
   }
 
   @Delete('customers/:id')

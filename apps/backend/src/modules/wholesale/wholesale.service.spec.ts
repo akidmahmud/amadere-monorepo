@@ -107,6 +107,7 @@ describe('WholesaleService', () => {
         party: { findFirst: jest.fn().mockResolvedValue(BUYER), findMany: jest.fn(), count: jest.fn(), create: jest.fn(), update: jest.fn() },
         product: { findMany: jest.fn().mockResolvedValue([SATTU, EBOOK]) },
         productVariant: { findMany: jest.fn().mockResolvedValue([]) },
+        wholesaleOrderItem: { findMany: jest.fn().mockResolvedValue([]) },
         wholesaleOrder: {
           findUnique: jest.fn().mockResolvedValue(savedOrder),
           findMany: jest.fn(),

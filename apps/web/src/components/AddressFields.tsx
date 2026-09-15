@@ -108,7 +108,7 @@ export function AddressFields({
                 // `division` is derived from this exact string server-side, so
                 // a typo here has to be impossible.
                 allowFreeText={false}
-                placeholder="District *"
+                placeholder="এখানে জেলা টাইপ করুন *"
                 aria-label="District"
                 emptyMessage="No district matches"
               />
@@ -130,7 +130,7 @@ export function AddressFields({
                 // Free text on purpose: only two districts have a curated area
                 // list, so for the other 63 this is simply a text box that
                 // happens to have nothing to suggest.
-                placeholder="Thana / Area *"
+                placeholder="এখানে থানা টাইপ করুন *"
                 aria-label="Thana or area"
                 emptyMessage="Type your thana / area"
               />

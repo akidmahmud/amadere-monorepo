@@ -7220,6 +7220,38 @@ export interface paths {
         patch: operations["AdminWholesaleController_updateCustomer"];
         trace?: never;
     };
+    "/api/v1/admin/wholesale/assignable-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_listAssignableStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_importCustomers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/wholesale/orders": {
         parameters: {
             query?: never;
@@ -9819,6 +9851,20 @@ export interface components {
             action: "delete" | "restore" | "assign" | "purge";
             assignedAdminId?: number | null;
         };
+        CustomerImportSkippedRowDto: {
+            row: number;
+            reason: string;
+        };
+        CustomerImportResultDto: {
+            dryRun: boolean;
+            totalRows: number;
+            created: number;
+            updated: number;
+            unchanged: number;
+            skipped: number;
+            skippedRows: components["schemas"]["CustomerImportSkippedRowDto"][];
+            warnings: string[];
+        };
         UpdateCustomerDto: {
             firstName?: string;
             lastName?: string;
@@ -11503,6 +11549,31 @@ export interface components {
             due: string;
             /** Format: date-time */
             lastOrderAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            isFavorite: boolean;
+            /** Format: date-time */
+            dob: string | null;
+            assignedAdminId: number | null;
+            assignedAdminName: string | null;
+            /** Format: date-time */
+            nextCallTarget: string | null;
+            followUpCadenceDays: number | null;
+            hasNewOrder: boolean;
+            /** Format: date-time */
+            newOrderAt: string | null;
+            priority: Record<string, never> | null;
+            crmStatus: Record<string, never> | null;
+            behaviour: Record<string, never> | null;
+            customerFeedback: string | null;
+            amaderFeedback: string | null;
+            familyDetails: string | null;
+            purchaseReason: string | null;
+            facebookProfileUrl: string | null;
+            topProduct: string | null;
+            fScore: number;
+            mScore: number;
+            rfmScore: string;
         };
         CreateWholesaleCustomerDto: {
             /** @description Shop or trader name */
@@ -11538,6 +11609,25 @@ export interface components {
             creditDays?: number;
             note?: string;
             isActive?: boolean;
+            isFavorite?: boolean;
+            dob?: string | null;
+            /** @description Admin staff user ID, or null to unassign */
+            assignedAdminId?: number | null;
+            nextCallTarget?: string | null;
+            followUpCadenceDays?: number | null;
+            hasNewOrder?: boolean;
+            newOrderAt?: string | null;
+            /** @enum {string|null} */
+            priority?: "HIGH" | "MEDIUM" | "LOW" | null;
+            /** @enum {string|null} */
+            crmStatus?: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE" | null;
+            /** @enum {string|null} */
+            behaviour?: "LOYAL" | "PRICE_SENSITIVE" | "OCCASIONAL" | null;
+            customerFeedback?: string;
+            amaderFeedback?: string;
+            familyDetails?: string;
+            purchaseReason?: string;
+            facebookProfileUrl?: string;
         };
         WholesaleDeliveryDto: {
             recipientName: string | null;
@@ -19048,18 +19138,30 @@ export interface operations {
     };
     AdminCustomersController_import: {
         parameters: {
-            query?: never;
+            query: {
+                dryRun: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerImportResultDto"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CustomerImportResultDto"];
+                };
             };
         };
     };
@@ -25874,6 +25976,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_listAssignableStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminWholesaleController_importCustomers: {
+        parameters: {
+            query: {
+                dryRun: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerImportResultDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerImportResultDto"];
                 };
             };
         };

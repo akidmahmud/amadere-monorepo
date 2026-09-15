@@ -60,7 +60,7 @@ export function DistrictAutocomplete({
       value={value}
       onChange={onChange}
       allowFreeText={false}
-      placeholder="Search district…"
+      placeholder="এখানে জেলা টাইপ করুন"
       aria-label="District"
       emptyMessage="No district matches"
       inputClassName={INPUT}
@@ -91,7 +91,7 @@ export function ThanaAutocomplete({
       options={thanaOptionsFor(district)}
       value={value}
       onChange={onChange}
-      placeholder="Thana / area"
+      placeholder="এখানে থানা টাইপ করুন"
       aria-label="Thana or area"
       emptyMessage="Type the thana / area"
       inputClassName={INPUT}

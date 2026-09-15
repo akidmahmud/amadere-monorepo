@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PaginatedResult } from '@amader/shared';
+import { PaginatedResult, toBdCompact } from '@amader/shared';
 import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
@@ -11,6 +11,18 @@ import { LedgerService } from '../net-profit/accounts/ledger/ledger.service';
 import { DuesService } from '../net-profit/accounts/dues/dues.service';
 import { AccountsSettingsService } from '../net-profit/accounts/accounts-settings.service';
 import { nextDueDocNo } from '../net-profit/accounts/document-numbers';
+import { frequencyScore, monetaryScore, rfmScore } from '../customers/customer-score.util';
+import { CustomerImportResultDto } from '../customers/dto/customer-import-result.dto';
+import {
+  dedupeByPhone,
+  fillEmptyCrm,
+  importNote,
+  ImportWarnings,
+  parseImportRows,
+  readSheet,
+  staffLookup,
+  type ImportRow,
+} from '../customers/customer-import';
 import {
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
@@ -29,6 +41,14 @@ import {
 
 const Decimal = Prisma.Decimal;
 const ZERO = new Decimal(0);
+
+// Every read of a buyer carries the assignee's name for the CRM table.
+const CUSTOMER_INCLUDE = {
+  assignedAdmin: { select: { firstName: true, lastName: true } },
+} satisfies Prisma.PartyInclude;
+type CustomerParty = Prisma.PartyGetPayload<{ include: typeof CUSTOMER_INCLUDE }>;
+
+const dateOrNull = (v: string | null) => (v ? new Date(v) : null);
 
 const ORDER_INCLUDE = {
   party: { select: { id: true, name: true, phone: true } },
@@ -195,6 +215,7 @@ export class WholesaleService {
     const [rows, total] = await Promise.all([
       this.prisma.client.party.findMany({
         where,
+        include: CUSTOMER_INCLUDE,
         orderBy: { name: 'asc' },
         ...paginationArgs(page, pageSize),
       }),
@@ -211,31 +232,14 @@ export class WholesaleService {
    * which is what lets the Wholesale list and the Accounts party statement
    * agree by construction.
    */
-  private async decorateCustomers(
-    parties: {
-      id: number;
-      name: string;
-      phone: string | null;
-      email: string | null;
-      alternativePhone: string | null;
-      address: string | null;
-      district: string | null;
-      thana: string | null;
-      landmark: string | null;
-      postCode: string | null;
-      creditLimit: Prisma.Decimal | null;
-      creditDays: number | null;
-      note: string | null;
-      isActive: boolean;
-    }[],
-  ): Promise<WholesaleCustomerDto[]> {
+  private async decorateCustomers(parties: CustomerParty[]): Promise<WholesaleCustomerDto[]> {
     const ids = parties.map((p) => p.id);
     // Unconditional: `{ in: [] }` already returns nothing, and short-circuiting
     // on an empty page only buys a union type that loses the aggregate shape.
     //
     // Grouped by type as well as party so the dashboard's wholesale/cash split
     // costs the same single query the plain count used to.
-    const [totals, positions] = await Promise.all([
+    const [totals, positions, items] = await Promise.all([
       this.prisma.client.wholesaleOrder.groupBy({
         by: ['partyId', 'type'],
         where: { partyId: { in: ids }, status: { in: LIVE_STATUSES } },
@@ -244,7 +248,26 @@ export class WholesaleService {
         _max: { placedAt: true },
       }),
       this.ledger.partyPositions(ids),
+      // ponytail: every live line for the page's buyers, summed in memory; a
+      // grouped SQL query if a page of buyers ever carries tens of thousands of lines.
+      this.prisma.client.wholesaleOrderItem.findMany({
+        where: { order: { partyId: { in: ids }, status: { in: LIVE_STATUSES } } },
+        select: { nameSnapshot: true, quantity: true, order: { select: { partyId: true } } },
+      }),
     ]);
+
+    // "Product" column: the line bought in the largest quantity, as retail shows it.
+    const qtyByParty = new Map<number, Map<string, number>>();
+    for (const item of items) {
+      const perProduct = qtyByParty.get(item.order.partyId) ?? new Map<string, number>();
+      perProduct.set(item.nameSnapshot, (perProduct.get(item.nameSnapshot) ?? 0) + item.quantity);
+      qtyByParty.set(item.order.partyId, perProduct);
+    }
+    const topProductOf = (partyId: number) => {
+      let top: [string, number] | null = null;
+      for (const entry of qtyByParty.get(partyId) ?? []) if (!top || entry[1] > top[1]) top = entry;
+      return top ? `${top[0]} x${top[1]}` : null;
+    };
 
     type Agg = {
       count: number;
@@ -274,6 +297,9 @@ export class WholesaleService {
 
     return parties.map((p) => {
       const t = byParty.get(p.id);
+      // ponytail: retail's fixed F/M thresholds; wholesale-sized buckets once there's a business definition for them.
+      const fScore = frequencyScore(t?.count ?? 0);
+      const mScore = monetaryScore(Number(t?.total ?? 0));
       return {
         id: p.id,
         name: p.name,
@@ -295,6 +321,29 @@ export class WholesaleService {
         purchaseTotal: (t?.total ?? ZERO).toFixed(2),
         due: (positions.get(p.id)?.receivable ?? ZERO).toFixed(2),
         lastOrderAt: t?.last ?? null,
+        createdAt: p.createdAt,
+        isFavorite: p.isFavorite,
+        dob: p.dob,
+        assignedAdminId: p.assignedAdminId,
+        assignedAdminName: p.assignedAdmin
+          ? `${p.assignedAdmin.firstName} ${p.assignedAdmin.lastName ?? ''}`.trim()
+          : null,
+        nextCallTarget: p.nextCallTarget,
+        followUpCadenceDays: p.followUpCadenceDays,
+        hasNewOrder: p.hasNewOrder,
+        newOrderAt: p.newOrderAt,
+        priority: p.priority,
+        crmStatus: p.crmStatus,
+        behaviour: p.behaviour,
+        customerFeedback: p.customerFeedback,
+        amaderFeedback: p.amaderFeedback,
+        familyDetails: p.familyDetails,
+        purchaseReason: p.purchaseReason,
+        facebookProfileUrl: p.facebookProfileUrl,
+        topProduct: topProductOf(p.id),
+        fScore,
+        mScore,
+        rfmScore: rfmScore(fScore, mScore),
       };
     });
   }
@@ -352,6 +401,7 @@ export class WholesaleService {
   async findCustomer(id: number): Promise<WholesaleCustomerDto> {
     const party = await this.prisma.client.party.findFirst({
       where: { id, roles: { has: 'WHOLESALE' }, deletedAt: null },
+      include: CUSTOMER_INCLUDE,
     });
     if (!party) throw new NotFoundException(`Wholesale customer ${id} not found`);
     const [dto] = await this.decorateCustomers([party]);
@@ -393,6 +443,7 @@ export class WholesaleService {
         note: dto.note?.trim() || null,
         isActive: dto.isActive ?? true,
       },
+      include: CUSTOMER_INCLUDE,
     });
     const [result] = await this.decorateCustomers([party]);
     return result;
@@ -423,9 +474,142 @@ export class WholesaleService {
         ...(dto.creditDays === undefined ? {} : { creditDays: dto.creditDays }),
         ...(dto.note === undefined ? {} : { note: dto.note.trim() || null }),
         ...(dto.isActive === undefined ? {} : { isActive: dto.isActive }),
+        ...(dto.isFavorite === undefined ? {} : { isFavorite: dto.isFavorite }),
+        ...(dto.dob === undefined ? {} : { dob: dateOrNull(dto.dob) }),
+        ...(dto.assignedAdminId === undefined ? {} : { assignedAdminId: dto.assignedAdminId }),
+        ...(dto.nextCallTarget === undefined ? {} : { nextCallTarget: dateOrNull(dto.nextCallTarget) }),
+        ...(dto.followUpCadenceDays === undefined ? {} : { followUpCadenceDays: dto.followUpCadenceDays }),
+        ...(dto.hasNewOrder === undefined ? {} : { hasNewOrder: dto.hasNewOrder }),
+        ...(dto.newOrderAt === undefined ? {} : { newOrderAt: dateOrNull(dto.newOrderAt) }),
+        ...(dto.priority === undefined ? {} : { priority: dto.priority }),
+        ...(dto.crmStatus === undefined ? {} : { crmStatus: dto.crmStatus }),
+        ...(dto.behaviour === undefined ? {} : { behaviour: dto.behaviour }),
+        ...(dto.customerFeedback === undefined ? {} : { customerFeedback: dto.customerFeedback.trim() || null }),
+        ...(dto.amaderFeedback === undefined ? {} : { amaderFeedback: dto.amaderFeedback.trim() || null }),
+        ...(dto.familyDetails === undefined ? {} : { familyDetails: dto.familyDetails.trim() || null }),
+        ...(dto.purchaseReason === undefined ? {} : { purchaseReason: dto.purchaseReason.trim() || null }),
+        ...(dto.facebookProfileUrl === undefined ? {} : { facebookProfileUrl: dto.facebookProfileUrl.trim() || null }),
       },
     });
     return this.findCustomer(id);
+  }
+
+  /** Staff a buyer can be assigned to. Served here, under wholesale.view, so
+   *  wholesale-only staff don't need customer.view just to fill a dropdown. */
+  async listAssignableStaff(): Promise<{ id: number; name: string }[]> {
+    const staff = await this.prisma.client.adminUser.findMany({
+      where: { status: 'ACTIVE', deletedAt: null },
+      orderBy: { firstName: 'asc' },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    return staff.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName ?? ''}`.trim() }));
+  }
+
+  /**
+   * Wholesale Customer spreadsheet import — the same workbook layout, parser
+   * and rules as retail Customer Management's import (see
+   * CustomersService.importCustomers): matched on phone so it never
+   * duplicates a buyer, existing buyers only get EMPTY fields filled (name
+   * never replaced), a re-run changes nothing, and `dryRun` writes nothing.
+   *
+   * Only parties with the WHOLESALE role are matched. A retail customer with
+   * the same phone is a separate record and is left alone.
+   */
+  async importCustomers(buffer: Buffer, dryRun: boolean): Promise<CustomerImportResultDto> {
+    const rows = parseImportRows(await readSheet(buffer));
+    const { unique, skippedRows } = dedupeByPhone(rows);
+    const warnings = new ImportWarnings();
+
+    // ponytail: every live wholesale buyer loaded once; there are hundreds, not millions.
+    const buyers = await this.prisma.client.party.findMany({
+      where: { roles: { has: 'WHOLESALE' }, deletedAt: null },
+    });
+    const byPhone = new Map<string, (typeof buyers)[number]>();
+    for (const b of buyers) {
+      const key = b.phone && toBdCompact(b.phone);
+      if (key && !byPhone.has(key)) byPhone.set(key, b);
+    }
+    const staffIdFor = staffLookup(await this.listAssignableStaff());
+
+    let nameDifferences = 0;
+    let unchanged = 0;
+    const toCreate: Prisma.PartyCreateManyInput[] = [];
+    const toUpdate: { id: number; data: Prisma.PartyUncheckedUpdateInput }[] = [];
+
+    for (const r of unique) {
+      const staffId = staffIdFor(r.assignTo);
+      warnings.noteRow(r, staffId);
+      const name = [r.firstName, r.lastName].filter(Boolean).join(' ');
+      const existing = byPhone.get(r.phone!);
+
+      if (existing) {
+        if (name && name.toLowerCase() !== existing.name.toLowerCase()) nameDifferences++;
+        const data = {
+          ...(!existing.address && r.address ? { address: r.address } : {}),
+          ...fillEmptyCrm(existing, r, staffId),
+        };
+        if (Object.keys(data).length) toUpdate.push({ id: existing.id, data });
+        else unchanged++;
+      } else {
+        toCreate.push(this.partyFromImportRow(r, name, staffId));
+      }
+    }
+
+    if (!dryRun) {
+      for (let i = 0; i < toCreate.length; i += 500) {
+        await this.prisma.client.party.createMany({ data: toCreate.slice(i, i + 500) });
+      }
+      for (let i = 0; i < toUpdate.length; i += 200) {
+        await this.prisma.client.$transaction(
+          toUpdate.slice(i, i + 200).map((u) => this.prisma.client.party.update({ where: { id: u.id }, data: u.data })),
+        );
+      }
+    }
+
+    if (nameDifferences) {
+      warnings.add(`${nameDifferences} existing buyers have a different name in the file: the name already in the system was kept.`);
+    }
+    return {
+      dryRun,
+      totalRows: rows.length,
+      created: toCreate.length,
+      updated: toUpdate.length,
+      unchanged,
+      skipped: skippedRows.length,
+      skippedRows: skippedRows.slice(0, 100),
+      warnings: warnings.list(),
+    };
+  }
+
+  private partyFromImportRow(r: ImportRow, name: string, staffId: number | undefined): Prisma.PartyCreateManyInput {
+    return {
+      // A buyer needs a name to be pickable on an order; the phone stands in.
+      name: name || r.phone!,
+      type: 'COMPANY',
+      roles: ['WHOLESALE', 'CUSTOMER'],
+      phone: r.phone,
+      email: r.email,
+      address: r.address,
+      // The sheet's order count/products/last order have no column here, and
+      // real order history comes from real orders.
+      note: importNote(r, { includeAddress: false }),
+      // "Start Date" is createdAt, as on retail.
+      createdAt: r.startDate,
+      isFavorite: r.isFavorite,
+      dob: r.dob,
+      assignedAdminId: staffId,
+      nextCallTarget: r.nextCallTarget,
+      hasNewOrder: r.hasNewOrder,
+      newOrderAt: r.newOrderAt,
+      priority: r.priority,
+      crmStatus: r.crmStatus,
+      behaviour: r.behaviour,
+      customerFeedback: r.customerFeedback,
+      amaderFeedback: r.amaderFeedback,
+      familyDetails: r.familyDetails,
+      purchaseReason: r.purchaseReason,
+      facebookProfileUrl: r.facebookProfileUrl,
+    };
   }
 
   /**

@@ -127,7 +127,40 @@ export interface WholesaleCustomer {
   purchaseTotal: string;
   due: string;
   lastOrderAt: string | null;
+  /** "Start Date" in the CRM table. */
+  createdAt: string;
+  // CRM columns, same meaning as retail Customer Management.
+  isFavorite: boolean;
+  dob: string | null;
+  assignedAdminId: number | null;
+  assignedAdminName: string | null;
+  nextCallTarget: string | null;
+  followUpCadenceDays: number | null;
+  hasNewOrder: boolean;
+  newOrderAt: string | null;
+  priority: "HIGH" | "MEDIUM" | "LOW" | null;
+  crmStatus: "NOT_STARTED" | "IN_PROGRESS" | "FOLLOW_UP" | "DONE" | null;
+  behaviour: "LOYAL" | "PRICE_SENSITIVE" | "OCCASIONAL" | null;
+  customerFeedback: string | null;
+  amaderFeedback: string | null;
+  familyDetails: string | null;
+  purchaseReason: string | null;
+  facebookProfileUrl: string | null;
+  topProduct: string | null;
+  fScore: number;
+  mScore: number;
+  rfmScore: string;
 }
+
+/** One inline cell edit on the Customer Dashboard table. */
+export type WholesaleCustomerPatch = Partial<
+  Pick<
+    WholesaleCustomer,
+    | "name" | "phone" | "address" | "email" | "district" | "thana" | "isFavorite" | "assignedAdminId"
+    | "followUpCadenceDays" | "hasNewOrder" | "priority" | "crmStatus" | "behaviour" | "customerFeedback"
+    | "amaderFeedback" | "familyDetails" | "purchaseReason" | "facebookProfileUrl"
+  > & { dob: string | null; nextCallTarget: string | null; newOrderAt: string | null }
+>;
 
 /** Where an order shipped, frozen when it was placed. Null throughout on a
  *  cash sale, which is carried out of the shop. */
@@ -384,6 +417,26 @@ export function useSaveWholesaleCustomer() {
         { method: id ? "PATCH" : "POST", body: JSON.stringify(input) },
       ),
     onSuccess: invalidate,
+  });
+}
+
+export function usePatchWholesaleCustomer(id: number) {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (patch: WholesaleCustomerPatch) =>
+      proxyFetch<WholesaleCustomer>(`/admin/wholesale/customers/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Staff a buyer can be assigned to (served under wholesale.view). */
+export function useWholesaleStaff() {
+  return useQuery({
+    queryKey: [...CUSTOMERS_KEY, "assignable-staff"],
+    queryFn: () => proxyFetch<{ id: number; name: string }[]>("/admin/wholesale/assignable-staff"),
   });
 }
 

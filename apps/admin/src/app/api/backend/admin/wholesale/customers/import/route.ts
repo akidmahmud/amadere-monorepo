@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   async function call(token: string | undefined) {
     // Query string carries dryRun (preview vs. real import).
-    return fetch(`${BACKEND_URL}/api/v1/admin/customers/import${req.nextUrl.search}`, {
+    return fetch(`${BACKEND_URL}/api/v1/admin/wholesale/customers/import${req.nextUrl.search}`, {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,

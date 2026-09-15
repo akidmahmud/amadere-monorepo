@@ -17,6 +17,7 @@ import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { BulkCustomerActionDto } from './dto/bulk-customer-action.dto';
 import { AdminCustomerDto, AdminCustomerListItemDto, AdminCustomerStatsDto } from './admin-customer.mapper';
+import { CustomerImportResultDto } from './dto/customer-import-result.dto';
 import { AssignableStaffDto } from './customers.service';
 
 @ApiTags('admin/customers')
@@ -88,11 +89,17 @@ export class AdminCustomersController {
   @RequirePermission('customer.manage')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOkResponse({ type: CustomerImportResultDto })
   import(
-    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 })] }))
+    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 15 * 1024 * 1024 })] }))
     file: Express.Multer.File,
-  ): Promise<{ imported: number; skipped: number }> {
-    return this.customers.importCsv(file.buffer.toString('utf-8'));
+    @CurrentAdmin() admin: { id: number },
+    // Preview unless the caller explicitly says otherwise: an upload alone
+    // never writes. The admin UI sends dryRun=false only after the preview
+    // has been shown and Import pressed.
+    @Query('dryRun') dryRun?: string,
+  ): Promise<CustomerImportResultDto> {
+    return this.customers.importCustomers(file.buffer, admin.id, dryRun !== 'false');
   }
 
   @Get(':id')

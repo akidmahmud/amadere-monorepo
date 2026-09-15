@@ -37,6 +37,8 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
+import { CustomerImportResultDto } from './dto/customer-import-result.dto';
+import { dedupeByPhone, fillEmptyCrm, ImportWarnings, importNote, parseImportRows, readSheet, staffLookup, type ImportRow } from './customer-import';
 import { BulkCustomerActionDto } from './dto/bulk-customer-action.dto';
 import {
   ADMIN_CUSTOMER_LIST_INCLUDE,
@@ -874,77 +876,160 @@ export class CustomersService {
     return this.callProvider.dial(e164, customerId);
   }
 
-  // Rows with a phone that already exists as a Customer are skipped, not
-  // merged/overwritten — importing a bad file must never silently corrupt
-  // an existing customer's data. Columns: name,phone,email,dob (dob
-  // optional, YYYY-MM-DD).
-  async importCsv(csvText: string): Promise<{ imported: number; skipped: number }> {
-    const rows = parseCsv(csvText);
-    let imported = 0;
-    let skipped = 0;
-    for (const row of rows) {
-      const [name, rawPhone, email, dob] = row;
-      if (!rawPhone || rawPhone.toLowerCase() === 'phone') continue;
-      // Unlike every DTO-driven write, a CSV cell never passes through
-      // @NormalizeBdPhone() — normalize here so an import doesn't create
-      // rows in whatever ad-hoc format the source spreadsheet happened to
-      // use, and so the existence check below catches a legacy-format
-      // duplicate too.
-      const phone = toBdCompact(rawPhone) ?? rawPhone;
-      const existing = await this.prisma.client.customer.findFirst({ where: { phone: { in: phoneLookupCandidates(rawPhone) } } });
-      if (existing) {
-        skipped++;
-        continue;
-      }
-      const [firstName, ...rest] = (name || '').trim().split(/\s+/).filter(Boolean);
-      try {
-        await this.prisma.client.customer.create({
-          data: {
-            phone,
-            email: email || undefined,
-            firstName: firstName || undefined,
-            lastName: rest.length ? rest.join(' ') : undefined,
-            dob: dob ? new Date(dob) : undefined,
-          },
-        });
-        imported++;
-      } catch {
-        skipped++;
+  /**
+   * Spreadsheet import (.xlsx or .csv) for Customer Management. Safe to run
+   * again and again with the same or an updated workbook:
+   *
+   * - Matched on phone (every stored format), so it never creates a
+   *   duplicate customer; duplicate phones inside the file keep the first row.
+   * - Existing customers are never overwritten — only fields still EMPTY in
+   *   the system are filled (see fillEmptyPatch).
+   * - `dryRun` (the default at the controller) writes nothing and returns the
+   *   same report, so staff see what will happen before confirming.
+   *
+   * CUSTOMER_CREATED_EVENT is deliberately NOT emitted: its listener runs the
+   * new-customer campaign, and thousands of long-standing customers must not
+   * get a "welcome" message because a spreadsheet was uploaded.
+   */
+  async importCustomers(buffer: Buffer, adminId: number, dryRun: boolean): Promise<CustomerImportResultDto> {
+    const rows = parseImportRows(await readSheet(buffer));
+    const { unique, skippedRows } = dedupeByPhone(rows);
+    const warnings = new ImportWarnings();
+
+    // ponytail: whole file held in memory; fine for tens of thousands of rows, stream + batch if files ever grow past that.
+    const existingByPhone = new Map<string, ExistingImportCustomer>();
+    const candidates = [...new Set(unique.flatMap((r) => phoneLookupCandidates(r.phone!)))];
+    for (let i = 0; i < candidates.length; i += 5000) {
+      const found = await this.prisma.client.customer.findMany({
+        where: { phone: { in: candidates.slice(i, i + 5000) } },
+        select: EXISTING_IMPORT_SELECT,
+      });
+      for (const c of found) {
+        const key = c.phone && toBdCompact(c.phone);
+        if (key) existingByPhone.set(key, c);
       }
     }
-    return { imported, skipped };
+
+    const staffIdFor = staffLookup(await this.listAssignableStaff());
+
+    const emails = [...new Set(unique.map((r) => r.email).filter((e): e is string => !!e))];
+    const emailOwner = new Map<string, number>();
+    if (emails.length) {
+      const owners = await this.prisma.client.customer.findMany({ where: { email: { in: emails } }, select: { id: true, email: true } });
+      for (const o of owners) emailOwner.set(o.email!, o.id);
+    }
+
+    const claimedEmails = new Set<string>();
+    let emailConflicts = 0;
+    let nameDifferences = 0;
+    let unchanged = 0;
+    const toCreate: { row: ImportRow; staffId: number | undefined }[] = [];
+    const toUpdate: { id: number; data: Prisma.CustomerUncheckedUpdateInput }[] = [];
+
+    for (const r of unique) {
+      const existing = existingByPhone.get(r.phone!);
+      const staffId = staffIdFor(r.assignTo);
+      warnings.noteRow(r, staffId);
+
+      // An email already on a different customer (or claimed by an earlier
+      // row) would hit the unique index, so the row goes in without it.
+      if (r.email) {
+        const owner = emailOwner.get(r.email);
+        if ((owner !== undefined && owner !== existing?.id) || claimedEmails.has(r.email)) {
+          r.email = undefined;
+          emailConflicts++;
+        } else {
+          claimedEmails.add(r.email);
+        }
+      }
+
+      if (existing) {
+        const sheetName = [r.firstName, r.lastName].filter(Boolean).join(' ').toLowerCase();
+        const dbName = [existing.firstName, existing.lastName].filter(Boolean).join(' ').toLowerCase();
+        if (sheetName && dbName && sheetName !== dbName) nameDifferences++;
+        // Name as a pair: never half-replace a name that's already there.
+        const name = !existing.firstName && !existing.lastName && r.firstName ? { firstName: r.firstName, lastName: r.lastName } : {};
+        const data = { ...name, ...fillEmptyCrm(existing, r, staffId) };
+        if (Object.keys(data).length) toUpdate.push({ id: existing.id, data });
+        else unchanged++;
+      } else {
+        toCreate.push({ row: r, staffId });
+      }
+    }
+
+    let created = toCreate.length;
+    if (!dryRun) {
+      created = 0;
+      for (let i = 0; i < toCreate.length; i += 500) {
+        const chunk = toCreate.slice(i, i + 500);
+        created += await this.prisma.client.$transaction(async (tx) => {
+          // skipDuplicates: a customer who registered between the lookup
+          // above and this insert is left alone instead of failing the batch.
+          const inserted = await tx.customer.createManyAndReturn({
+            data: chunk.map(({ row: r, staffId }) => ({
+              phone: r.phone!,
+              email: r.email,
+              firstName: r.firstName,
+              lastName: r.lastName,
+              dob: r.dob,
+              // The CRM's "Start Date" is createdAt (see the schema comment).
+              createdAt: r.startDate,
+              assignedAdminId: staffId,
+              nextCallTarget: r.nextCallTarget,
+              hasNewOrder: r.hasNewOrder,
+              newOrderAt: r.newOrderAt,
+              priority: r.priority,
+              crmStatus: r.crmStatus,
+              behaviour: r.behaviour,
+              customerFeedback: r.customerFeedback,
+              amaderFeedback: r.amaderFeedback,
+              familyDetails: r.familyDetails,
+              purchaseReason: r.purchaseReason,
+              facebookProfileUrl: r.facebookProfileUrl,
+              isFavorite: r.isFavorite,
+            })),
+            skipDuplicates: true,
+            select: { id: true, phone: true },
+          });
+          const rowByPhone = new Map(chunk.map(({ row }) => [row.phone!, row]));
+          const notes = inserted.flatMap((c) => {
+            const body = importNote(rowByPhone.get(c.phone!)!);
+            return body ? [{ customerId: c.id, type: 'INTERNAL_NOTE' as const, body, authorAdminId: adminId }] : [];
+          });
+          if (notes.length) await tx.customerNote.createMany({ data: notes });
+          return inserted.length;
+        });
+      }
+      for (let i = 0; i < toUpdate.length; i += 200) {
+        await this.prisma.client.$transaction(
+          toUpdate.slice(i, i + 200).map((u) => this.prisma.client.customer.update({ where: { id: u.id }, data: u.data })),
+        );
+      }
+    }
+
+    if (emailConflicts) warnings.add(`${emailConflicts} rows: email already belongs to another customer, imported without email.`);
+    if (nameDifferences) {
+      warnings.add(`${nameDifferences} existing customers have a different name in the file: the name already in the system was kept.`);
+    }
+
+    return {
+      dryRun,
+      totalRows: rows.length,
+      created,
+      updated: toUpdate.length,
+      unchanged,
+      skipped: skippedRows.length,
+      skippedRows: skippedRows.slice(0, 100),
+      warnings: warnings.list(),
+    };
   }
 }
 
-function parseCsv(text: string): string[][] {
-  return text
-    .split(/\r\n|\n/)
-    .filter((line) => line.trim() !== '')
-    .map((line) => {
-      const fields: string[] = [];
-      let cur = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (inQuotes) {
-          if (ch === '"' && line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else if (ch === '"') {
-            inQuotes = false;
-          } else {
-            cur += ch;
-          }
-        } else if (ch === '"') {
-          inQuotes = true;
-        } else if (ch === ',') {
-          fields.push(cur);
-          cur = '';
-        } else {
-          cur += ch;
-        }
-      }
-      fields.push(cur);
-      return fields.map((f) => f.trim());
-    });
-}
+const EXISTING_IMPORT_SELECT = {
+  id: true, phone: true, firstName: true, lastName: true, email: true, dob: true, assignedAdminId: true,
+  nextCallTarget: true, hasNewOrder: true, newOrderAt: true, priority: true, crmStatus: true, behaviour: true,
+  customerFeedback: true, amaderFeedback: true, familyDetails: true, purchaseReason: true,
+  facebookProfileUrl: true, isFavorite: true,
+} satisfies Prisma.CustomerSelect;
+
+type ExistingImportCustomer = Prisma.CustomerGetPayload<{ select: typeof EXISTING_IMPORT_SELECT }>;

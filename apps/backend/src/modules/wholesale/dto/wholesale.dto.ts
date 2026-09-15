@@ -17,6 +17,9 @@ import {
 import { Type } from 'class-transformer';
 import { NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 import {
+  CustomerBehaviour,
+  CustomerCrmStatus,
+  CustomerPriority,
   WholesaleCourier,
   WholesaleOrderChannel,
   WholesaleOrderStatus,
@@ -111,6 +114,25 @@ export class UpdateWholesaleCustomerDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) note?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+
+  // CRM columns — the same set and validation as UpdateCustomerDto, so the
+  // wholesale Customer Dashboard edits them exactly like retail. Dates are
+  // ISO strings, or null to clear.
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isFavorite?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() dob?: string | null;
+  @ApiPropertyOptional({ description: 'Admin staff user ID, or null to unassign' }) @IsOptional() @IsInt() assignedAdminId?: number | null;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() nextCallTarget?: string | null;
+  @ApiPropertyOptional() @IsOptional() @IsInt() followUpCadenceDays?: number | null;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasNewOrder?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() newOrderAt?: string | null;
+  @ApiPropertyOptional({ enum: CustomerPriority }) @IsOptional() @IsEnum(CustomerPriority) priority?: CustomerPriority | null;
+  @ApiPropertyOptional({ enum: CustomerCrmStatus }) @IsOptional() @IsEnum(CustomerCrmStatus) crmStatus?: CustomerCrmStatus | null;
+  @ApiPropertyOptional({ enum: CustomerBehaviour }) @IsOptional() @IsEnum(CustomerBehaviour) behaviour?: CustomerBehaviour | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) customerFeedback?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) amaderFeedback?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) familyDetails?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) purchaseReason?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) facebookProfileUrl?: string;
 }
 
 export class WholesaleCustomerQueryDto {
