@@ -21,6 +21,7 @@ const SECTION_TYPE_ICONS: Record<HomepageSectionType, string> = {
   HERO_BANNER: "view_carousel",
   HOME_BANNER_TWO: "slideshow",
   NEWSLETTER: "mark_email_unread",
+  HEALTH_CONCERN: "health_and_safety",
   BANNER_STRIP: "image",
   AD_BANNER: "campaign",
   PRODUCT_COLLECTION: "grid_view",

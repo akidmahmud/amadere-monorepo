@@ -26,12 +26,12 @@ export class AdminInvoiceSettingsController {
   // the bare "Amader" default with no logo and no company details — two
   // different documents for the same order depending on who pressed print.
   //
-  // Whoever may view an order may print its invoice, so that is the permission
-  // this read belongs to. Nothing here is sensitive: it is the branding
-  // printed on the document handed to the customer. Writing stays restricted
-  // below.
+  // Any signed-in admin (AdminJwtGuard on the class). This used to require
+  // `order.view`, which still left wholesale staff printing wholesale invoices
+  // with the bare default branding. Nothing here is sensitive: it is the
+  // branding printed on the document handed to the customer. Writing stays
+  // restricted below.
   @Get()
-  @RequirePermission('order.view')
   get() {
     return this.settings.getSettings();
   }

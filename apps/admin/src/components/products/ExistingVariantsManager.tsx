@@ -238,6 +238,31 @@ function VariantEditRow({
       >
         {variant.isDefault ? "Default" : setDefault.isPending ? "Setting…" : "Make default"}
       </button>
+      {/* The way to retire a variant that already sold: Remove is refused once
+          it has order history (past orders must keep pointing at it), but
+          hiding it from the storefront never touches those orders. Reversible. */}
+      <button
+        type="button"
+        disabled={updateAdminOnly.isPending}
+        title={
+          variant.isAdminOnly
+            ? "Show this variant on the storefront again"
+            : "Hide from the storefront (search, cards, cart, Google feed). Staff can still use it; past orders are untouched."
+        }
+        onClick={() =>
+          updateAdminOnly.mutate(
+            { variantId: variant.id, isAdminOnly: !variant.isAdminOnly },
+            { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY }) },
+          )
+        }
+        className={`h-8 shrink-0 rounded-lg border px-3 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+          variant.isAdminOnly
+            ? "border-slate-700 bg-slate-700 text-white hover:bg-slate-600"
+            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+        }`}
+      >
+        {updateAdminOnly.isPending ? "Saving…" : variant.isAdminOnly ? "Show on store" : "Make admin only"}
+      </button>
       <button
         type="button"
         disabled={removePending}
@@ -249,6 +274,11 @@ function VariantEditRow({
       {updateSku.isError && (
         <span className="w-full text-xs font-bold text-rose-600">
           {updateSku.error instanceof Error ? updateSku.error.message : "Failed to save SKU"}
+        </span>
+      )}
+      {updateAdminOnly.isError && (
+        <span className="w-full text-xs font-bold text-rose-600">
+          {updateAdminOnly.error instanceof Error ? updateAdminOnly.error.message : "Failed to change visibility"}
         </span>
       )}
       {updateWeight.isError && (

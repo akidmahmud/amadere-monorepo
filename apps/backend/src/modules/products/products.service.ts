@@ -46,6 +46,7 @@ import {
   buildProductJsonLd,
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
+import { categoryLinks } from './category-links';
 
 export interface CsvImportResult {
   created: number;
@@ -416,6 +417,7 @@ export class ProductsService {
       try {
         const existing = await this.prisma.client.product.findFirst({ where: { slug } });
         if (existing) {
+          const importLinks = categoryId !== undefined ? await this.categoryLinksFor(existing.id, [categoryId]) : null;
           if (categoryId !== undefined) {
             await this.prisma.client.productCategory.deleteMany({ where: { productId: existing.id } });
           }
@@ -426,7 +428,7 @@ export class ProductsService {
               stock,
               price,
               status,
-              categories: categoryId !== undefined ? { create: [{ categoryId }] } : undefined,
+              categories: importLinks ? { create: importLinks } : undefined,
             },
           });
           result.updated++;
@@ -676,6 +678,9 @@ export class ProductsService {
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
     await this.validateReferences(dto);
 
+    // Read before the delete below: the recreated links keep this product's
+    // place in each category instead of jumping to the front (see category-links.ts).
+    const links = dto.categoryIds ? await this.categoryLinksFor(id, dto.categoryIds) : null;
     if (dto.categoryIds) {
       await this.prisma.client.productCategory.deleteMany({
         where: { productId: id },
@@ -790,9 +795,7 @@ export class ProductsService {
               })),
             }
           : undefined,
-        categories: dto.categoryIds
-          ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
-          : undefined,
+        categories: links ? { create: links } : undefined,
         tags: dto.tagIds
           ? { create: dto.tagIds.map((tagId) => ({ tagId })) }
           : undefined,
@@ -1695,6 +1698,27 @@ export class ProductsService {
           }
         : {}),
     };
+  }
+
+  /** Links for `categoryIds` that keep this product's current position in
+   *  each category; read BEFORE the old links are deleted. */
+  private async categoryLinksFor(productId: number, categoryIds: number[]) {
+    const [current, highest] = await Promise.all([
+      this.prisma.client.productCategory.findMany({
+        where: { productId },
+        select: { categoryId: true, position: true },
+      }),
+      this.prisma.client.productCategory.groupBy({
+        by: ['categoryId'],
+        where: { categoryId: { in: categoryIds }, productId: { not: productId } },
+        _max: { position: true },
+      }),
+    ]);
+    return categoryLinks(
+      categoryIds,
+      new Map(current.map((c) => [c.categoryId, c.position])),
+      new Map(highest.map((h) => [h.categoryId, h._max.position ?? 0])),
+    );
   }
 
   private buildOrderBy(

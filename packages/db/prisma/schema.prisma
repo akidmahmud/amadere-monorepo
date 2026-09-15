@@ -2423,6 +2423,11 @@ enum HomepageSectionType {
   // admin control; now a managed section so the banner artwork can be
   // uploaded and the form sits over it.
   NEWSLETTER
+  // "Shop By Health Concern": product-tag pills over a product carousel. Was
+  // hardcoded under every section (first 6 published tags, no way to hide or
+  // choose them). config: { tagIds: number[] } in display order; empty = the
+  // first 6 published tags, which is what it always showed.
+  HEALTH_CONCERN
 }
 
 model HomepageSection {

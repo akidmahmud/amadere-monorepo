@@ -66,7 +66,8 @@ type HomepageSectionType =
   | "JUST_FOR_YOU"
   | "FEATURED_DEALS"
   | "HOME_BANNER_TWO"
-  | "NEWSLETTER";
+  | "NEWSLETTER"
+  | "HEALTH_CONCERN";
 
 type HomepageSection = Omit<
   components["schemas"]["PublicHomepageSectionDto"],
@@ -75,6 +76,7 @@ type HomepageSection = Omit<
   | "topSellingProducts"
   | "justForYouProducts"
   | "featuredDealsProducts"
+  | "healthConcern"
 > & {
   type: HomepageSectionType;
   config: Record<string, unknown>;
@@ -84,6 +86,10 @@ type HomepageSection = Omit<
     (components["schemas"]["PublicProductDto"] | null)[] | null;
   featuredDealsProducts:
     (components["schemas"]["PublicProductDto"] | null)[] | null;
+  healthConcern: {
+    tags: { id: number; label: string }[];
+    initialProducts: components["schemas"]["PublicProductDto"][];
+  } | null;
 };
 
 // Fixed homepage position now (§ "Promo Videos" is no longer a reorderable
@@ -489,6 +495,24 @@ function renderSection(
       );
     }
 
+    // Tag pills over a product carousel. Tags and the first pill's products
+    // are resolved by the backend (admin-picked, or the first 6 published).
+    case "HEALTH_CONCERN": {
+      const hc = section.healthConcern;
+      if (!hc || hc.tags.length === 0) return null;
+      return (
+        <div className={WRAPPER} key={section.id}>
+          <HealthConcernSection
+            heading={section.heading ?? "Shop By Health Concern"}
+            viewAllLabel="View All"
+            tags={hc.tags}
+            initialTagId={hc.tags[0].id}
+            initialProducts={hc.initialProducts.map(toProductCardData)}
+          />
+        </div>
+      );
+    }
+
     // No longer tabbed — a single-collection product strip matching
     // amader-home-top.html's "Amader Modhu — Natural Honey" design (dropped
     // the pill-tab switcher + promo tile; resolves via the same
@@ -555,31 +579,11 @@ export default async function Home({
   setRequestLocale(locale);
   const localeParam = toApiLocale(locale);
 
-  // tagsRes is awaited on its own (not folded into the Promise.all below) so
-  // the tag-dependent firstTagProducts request can fire as soon as it
-  // resolves, instead of sitting behind the other 3 unrelated calls first —
-  // that used to make this a serial chain for no reason, since
-  // sections/categories/blog don't depend on tags at all.
-  const tagsRes = await safeGet("/api/v1/tags", {
-    params: { query: { locale: localeParam, pageSize: 6 } },
-  });
-  const tags = (tagsRes.data?.items ??
-    []) as components["schemas"]["PublicTagDto"][];
-  const firstTag = tags[0];
-  const firstTagProductsPromise = firstTag
-    ? safeGet("/api/v1/products", {
-        params: {
-          query: { locale: localeParam, tagIds: [firstTag.id], pageSize: 8 },
-        },
-      })
-    : Promise.resolve({ data: undefined });
-
   const [
     sectionsRes,
     categoriesRes,
     blogRes,
     promoVideosRes,
-    firstTagProductsRes,
     siteInfoRes,
   ] = await Promise.all([
     safeGet("/api/v1/homepage-sections", {
@@ -594,7 +598,6 @@ export default async function Home({
     safeGet("/api/v1/promo-videos", {
       params: { query: { locale: localeParam } },
     }),
-    firstTagProductsPromise,
     // Only for the <h1> below. Added to the existing Promise.all rather than
     // awaited separately, so it costs no extra round trip on the critical
     // path — and reads the admin-configured title instead of hardcoding a
@@ -609,7 +612,6 @@ export default async function Home({
     []) as components["schemas"]["PublicBlogPostSummaryDto"][];
   const promoVideos = (promoVideosRes.data ??
     []) as unknown as PublicPromoVideo[];
-  const firstTagProducts = firstTagProductsRes.data?.items ?? [];
 
   // Promo Videos has a fixed homepage position (no longer a reorderable
   // HomepageSection) — kept at the same visual slot it occupied before the
@@ -643,18 +645,6 @@ export default async function Home({
           {renderSection(section, { categories, blogPosts })}
         </Fragment>
       ))}
-
-      {firstTag && (
-        <div className={WRAPPER}>
-          <HealthConcernSection
-            heading="Shop By Health Concern"
-            viewAllLabel="View All"
-            tags={tags.map((t) => ({ id: t.id, label: t.name }))}
-            initialTagId={firstTag.id}
-            initialProducts={firstTagProducts.map(toProductCardData)}
-          />
-        </div>
-      )}
 
       {/* Fallback only. The newsletter strip predates being a managed
           section, and it is live on the homepage today — so it keeps

@@ -2,8 +2,11 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
+import { PERMISSION_CATALOG } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -19,8 +22,33 @@ const ROLE_INCLUDE = {
 } as const;
 
 @Injectable()
-export class RbacService {
+export class RbacService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(RbacService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Makes sure every permission in PERMISSION_CATALOG exists as a row.
+   *
+   * The catalog was only ever written to the table by `prisma db seed`, and
+   * deploys run migrations, not the seed — so a permission added to the
+   * catalog after an environment was first seeded never reached it. That is
+   * how production ended up with no `wholesale.*` rows: Roles had nothing to
+   * tick, and only a super admin (who bypasses the guard) could open
+   * Wholesale. Insert-only and idempotent: it never grants anything, that stays a Roles decision.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      const { count } = await this.prisma.client.permission.createMany({
+        data: PERMISSION_CATALOG,
+        skipDuplicates: true,
+      });
+      if (count > 0) this.logger.log(`Added ${count} missing permission(s) from the catalog`);
+    } catch (err) {
+      // Never block startup over this; the next boot tries again.
+      this.logger.error(`Permission catalog sync failed: ${(err as Error).message}`);
+    }
+  }
 
   async listPermissions(): Promise<PermissionDto[]> {
     const permissions = await this.prisma.client.permission.findMany({

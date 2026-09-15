@@ -11064,6 +11064,14 @@ export interface components {
             description: string | null;
             products: components["schemas"]["PublicProductDto"][];
         };
+        HealthConcernTagDto: {
+            id: number;
+            label: string;
+        };
+        PublicHealthConcernDto: {
+            tags: components["schemas"]["HealthConcernTagDto"][];
+            initialProducts: components["schemas"]["PublicProductDto"][];
+        };
         PublicHomepageSectionDto: {
             id: number;
             type: Record<string, never>;
@@ -11075,6 +11083,7 @@ export interface components {
             topSellingProducts: Record<string, never>[] | null;
             justForYouProducts: Record<string, never>[] | null;
             featuredDealsProducts: Record<string, never>[] | null;
+            healthConcern: components["schemas"]["PublicHealthConcernDto"] | null;
         };
         AdminHomepageSectionTranslationDto: {
             locale: Record<string, never>;
@@ -11098,7 +11107,7 @@ export interface components {
         };
         CreateHomepageSectionDto: {
             /** @enum {string} */
-            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO" | "NEWSLETTER";
+            type: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO" | "NEWSLETTER" | "HEALTH_CONCERN";
             /** @default 0 */
             sortOrder: number;
             /** @default true */
@@ -11114,7 +11123,7 @@ export interface components {
         };
         UpdateHomepageSectionDto: {
             /** @enum {string} */
-            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO" | "NEWSLETTER";
+            type?: "HERO_BANNER" | "PRODUCT_COLLECTION" | "BANNER_STRIP" | "CATEGORY_SHOWCASE" | "BLOG_TEASER" | "CERTIFICATION_ROW" | "TESTIMONIAL_BENTO" | "CIRCLE_BADGE_BAR" | "TABBED_COLLECTION_CAROUSEL" | "AD_BANNER" | "FEATURED_CATEGORIES" | "TOP_SELLING_PRODUCTS" | "JUST_FOR_YOU" | "FEATURED_DEALS" | "HOME_BANNER_TWO" | "NEWSLETTER" | "HEALTH_CONCERN";
             /** @default 0 */
             sortOrder: number;
             /** @default true */

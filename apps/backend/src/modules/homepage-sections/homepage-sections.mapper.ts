@@ -71,6 +71,19 @@ export class PublicHomepageSectionDto {
    * (replaces the old bundle-driven "Exclusive Combo Deals" section —
    * plain hand-picked products now, no bundle/combo pricing entity). */
   featuredDealsProducts!: (PublicProductDto | null)[] | null;
+  /** HEALTH_CONCERN only — the tag pills in display order, plus the first
+   * pill's products so the carousel renders without a client round trip. */
+  healthConcern!: PublicHealthConcernDto | null;
+}
+
+export class HealthConcernTagDto {
+  id!: number;
+  label!: string;
+}
+
+export class PublicHealthConcernDto {
+  tags!: HealthConcernTagDto[];
+  initialProducts!: PublicProductDto[];
 }
 
 export function toPublicHomepageSectionDto(
@@ -80,6 +93,7 @@ export function toPublicHomepageSectionDto(
   topSellingProducts: (PublicProductDto | null)[] | null = null,
   justForYouProducts: (PublicProductDto | null)[] | null = null,
   featuredDealsProducts: (PublicProductDto | null)[] | null = null,
+  healthConcern: PublicHealthConcernDto | null = null,
 ): PublicHomepageSectionDto {
   const translation =
     section.translations.find((t) => t.locale === locale) ??
@@ -95,5 +109,6 @@ export function toPublicHomepageSectionDto(
     topSellingProducts,
     justForYouProducts,
     featuredDealsProducts,
+    healthConcern,
   };
 }

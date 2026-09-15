@@ -7,8 +7,10 @@ import { ProductsService } from '../products/products.service';
 import { PublicProductDto } from '../products/dto/product-response.dto';
 import { CreateHomepageSectionDto } from './dto/create-homepage-section.dto';
 import { UpdateHomepageSectionDto } from './dto/update-homepage-section.dto';
+import { toPublicTagDto } from '../tags/tags.mapper';
 import {
   AdminHomepageSectionDto,
+  PublicHealthConcernDto,
   PublicHomepageSectionDto,
   toAdminHomepageSectionDto,
   toPublicHomepageSectionDto,
@@ -146,6 +148,10 @@ export class HomepageSectionsService {
           section.type === 'FEATURED_DEALS'
             ? await this.resolveConfigItemProducts(section.config, locale)
             : null;
+        const healthConcern =
+          section.type === 'HEALTH_CONCERN'
+            ? await this.resolveHealthConcern(section.config, locale)
+            : null;
         return toPublicHomepageSectionDto(
           section,
           collection,
@@ -153,9 +159,37 @@ export class HomepageSectionsService {
           topSellingProducts,
           justForYouProducts,
           featuredDealsProducts,
+          healthConcern,
         );
       }),
     );
+  }
+
+  /**
+   * HEALTH_CONCERN: the admin-picked tags in their saved order, skipping any
+   * since unpublished or deleted; no picks = the first 6 published tags (what
+   * the hardcoded section always showed). Plus the first tag's products.
+   */
+  private async resolveHealthConcern(config: unknown, locale: Locale): Promise<PublicHealthConcernDto> {
+    const raw = config && typeof config === 'object' && !Array.isArray(config) ? (config as Record<string, unknown>).tagIds : undefined;
+    const picked = Array.isArray(raw) ? raw.filter((id): id is number => typeof id === 'number') : [];
+    const live = { deletedAt: null, status: 'PUBLISHED' as const };
+    const found = await this.prisma.client.tag.findMany({
+      where: picked.length ? { ...live, id: { in: picked } } : live,
+      include: { translations: true },
+      orderBy: { id: 'asc' },
+      ...(picked.length ? {} : { take: 6 }),
+    });
+    const byId = new Map(found.map((t) => [t.id, t]));
+    const ordered = picked.length ? picked.map((id) => byId.get(id)).filter((t) => t !== undefined) : found;
+    const tags = ordered.map((t) => {
+      const dto = toPublicTagDto(t, locale);
+      return { id: dto.id, label: dto.name };
+    });
+    const initialProducts = tags.length
+      ? (await this.products.publicList(locale, 1, 8, { tagIds: [tags[0].id] })).items
+      : [];
+    return { tags, initialProducts };
   }
 
   // Shared by TOP_SELLING_PRODUCTS, JUST_FOR_YOU, and FEATURED_DEALS — all

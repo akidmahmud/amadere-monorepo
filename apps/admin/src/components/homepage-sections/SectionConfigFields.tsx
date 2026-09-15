@@ -7,6 +7,7 @@ import { MediaLibraryBrowser } from "@/components/media/MediaLibraryBrowser";
 import { useUploadMedia } from "@/hooks/useMedia";
 import { usePickerBlogPosts, usePickerCategories, usePickerCollections, usePickerProducts } from "@/hooks/usePickers";
 import type { HomepageSectionType } from "@/hooks/useHomepageSections";
+import { HealthConcernFields } from "./HealthConcernFields";
 
 export interface SectionConfigFieldsProps {
   type: HomepageSectionType;
@@ -65,6 +66,7 @@ export function SectionConfigFields({
   if (type === "AD_BANNER") return <AdBannerFields config={config} onConfigChange={onConfigChange} />;
   if (type === "HOME_BANNER_TWO") return <HomeBannerTwoFields config={config} onConfigChange={onConfigChange} />;
   if (type === "NEWSLETTER") return <NewsletterFields config={config} onConfigChange={onConfigChange} />;
+  if (type === "HEALTH_CONCERN") return <HealthConcernFields config={config} onConfigChange={onConfigChange} />;
   return <JsonConfigFields config={config} onConfigChange={onConfigChange} />;
 }
 
