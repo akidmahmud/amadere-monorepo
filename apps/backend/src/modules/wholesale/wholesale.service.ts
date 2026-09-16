@@ -36,6 +36,7 @@ import {
 } from './dto/wholesale.dto';
 import {
   WholesaleChannelDto,
+  WholesalePaymentAccountDto,
   WholesaleCustomerDto,
   WholesaleOrderDto,
   WholesaleStatsDto,
@@ -673,6 +674,32 @@ export class WholesaleService {
     } else if (!courier && !editing) {
       throw new BadRequestException(`A ${channel.name} order needs a courier / delivery method`);
     }
+  }
+
+  /**
+   * Cash/bank accounts a payment can be booked into, for the order form's
+   * "Money goes to" picker.
+   *
+   * Served here under wholesale.view rather than reusing the Accounts
+   * endpoint (net_profit_accounts.view): wholesale staff need to say where
+   * cash landed without being given the whole accounts module. The
+   * configured default is flagged so the form can preselect it.
+   */
+  async listPaymentAccounts(): Promise<WholesalePaymentAccountDto[]> {
+    const [accounts, posting] = await Promise.all([
+      this.prisma.client.cashAccount.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+        select: { id: true, name: true, type: true },
+      }),
+      this.settings.getPostingSettings(),
+    ]);
+    return accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      isDefault: a.id === posting.defaultCashAccountId,
+    }));
   }
 
   /** Staff a buyer can be assigned to. Served here, under wholesale.view, so
@@ -1389,16 +1416,24 @@ export class WholesaleService {
   private async resolveAccount(explicit?: number): Promise<number> {
     if (explicit) return explicit;
     const { defaultCashAccountId } = await this.settings.getPostingSettings();
-    if (!defaultCashAccountId) {
-      // ponytail: an error rather than a per-order account picker in the UI.
-      // Upgrade path is that picker — but silently skipping the posting, the
-      // way best-effort order postings do, would lose cash an admin typed in
-      // by hand and believed was recorded.
-      throw new BadRequestException(
-        'No default cash account is configured. Set one in Settings → Accounts, or choose an account for this payment.',
-      );
-    }
-    return defaultCashAccountId;
+    if (defaultCashAccountId) return defaultCashAccountId;
+
+    // No default configured. The order form and the Collect dialog now send
+    // the account explicitly, so this is the fallback for an API caller (or an
+    // older client): the only active account, when there is exactly one, is
+    // not a guess. Beyond that it still refuses rather than silently dropping
+    // cash someone typed in and believed was recorded.
+    const accounts = await this.prisma.client.cashAccount.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      select: { id: true },
+    });
+    if (accounts.length === 1) return accounts[0].id;
+    throw new BadRequestException(
+      accounts.length === 0
+        ? 'There is no cash or bank account to record this payment in. Add one in Net Profit → Accounts.'
+        : 'Choose which account this payment goes into.',
+    );
   }
 
   /**

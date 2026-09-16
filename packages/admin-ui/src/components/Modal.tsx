@@ -59,7 +59,7 @@ export function Modal({ open, onClose, title, children, className, tone = "light
           )}
           style={
             tone === "dark"
-              ? { background: "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, #1a0d2e 100%)" }
+              ? { background: "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, var(--wpfok-mid, #1a0d2e) 100%)" }
               : undefined
           }
         >

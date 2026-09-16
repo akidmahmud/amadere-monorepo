@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Button, Card, Icon } from "@amader/admin-ui";
+import { isValidBdPhone, toLocalBdPhone } from "@amader/shared";
 import {
   DistrictAutocomplete,
   ThanaAutocomplete,
@@ -13,8 +14,10 @@ import {
   PAYMENT_STATUSES,
   WHOLESALE_COURIERS,
   defaultUnitPrice,
+  likelyPaymentAccount,
   useCreateWholesaleOrder,
   useWholesaleChannels,
+  useWholesalePaymentAccounts,
   useWholesaleProducts,
   type PickableProduct,
   type WholesaleChannel,
@@ -37,10 +40,16 @@ const money = (v: number | string) =>
 const INPUT =
   "h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
 
-/** A Bangladeshi mobile number. The same shape checkout enforces, so an order
- *  taken over the phone cannot be saved against a number a courier will
- *  bounce. */
-const phoneOk = (p: string) => /^01[3-9]\d{8}$/.test(p.replace(/\s+/g, ""));
+/**
+ * A Bangladeshi mobile number, so an order taken over the phone cannot be
+ * saved against a number a courier will bounce.
+ *
+ * Uses the shared check rather than a local `01…` regex: buyers' numbers are
+ * stored in the site-wide 8801XXXXXXXXX form (that is what the importer and
+ * every DTO normalize to), and the regex rejected exactly the number the form
+ * had just filled in from the selected customer.
+ */
+const phoneOk = (p: string) => isValidBdPhone(p);
 
 function Field({
   label,
@@ -195,6 +204,12 @@ export function CreateOrderPanel({
 
   const [channel, setChannel] = useState<WholesaleOrderChannel>("WHATSAPP");
   const [method, setMethod] = useState<WholesalePaymentMethod>("CASH");
+  // Where a payment on this order is booked. Preselected from the accounts
+  // that exist, so a paid sale never stops on "no default cash account is
+  // configured" — which meant nothing to staff taking money over a counter.
+  const accounts = useWholesalePaymentAccounts();
+  const [accountId, setAccountId] = useState<number | undefined>();
+  const chosenAccount = accountId ?? likelyPaymentAccount(accounts.data, method);
   const [transactionId, setTransactionId] = useState("");
 
   const [orderDiscount, setOrderDiscount] = useState("0");
@@ -295,7 +310,9 @@ export function CreateOrderPanel({
     // cannot rewrite where this parcel went.
     setDelivery({
       recipientName: c.name,
-      recipientPhone: c.phone ?? "",
+      // Shown as 01XXXXXXXXX — what staff and the courier recognise — even
+      // though it is stored as 8801XXXXXXXXX.
+      recipientPhone: toLocalBdPhone(c.phone ?? "") ?? c.phone ?? "",
       addressLine: c.address ?? "",
       district: c.district ?? "",
       thana: c.thana ?? "",
@@ -414,6 +431,7 @@ export function CreateOrderPanel({
         deliveryCharge: hasDelivery ? charge.toFixed(2) : undefined,
         discount: discount.toFixed(2),
         paidAmount,
+        paymentAccountId: paidAmount === "0" ? undefined : chosenAccount,
         note: note.trim() || undefined,
       });
       reset();
@@ -954,10 +972,24 @@ export function CreateOrderPanel({
                   onChange={(m) => {
                     setMethod(m);
                     if (m === "CASH") setTransactionId("");
+                    // Follow the method unless the admin picked an account themselves.
+                    setAccountId(undefined);
                   }}
                   tone="success"
                 />
               </Field>
+
+              {/* Only when money is actually recorded now, and only worth
+                  asking when there is more than one account to choose. */}
+              {paymentStatus === "PAID" && (accounts.data?.length ?? 0) > 1 && (
+                <Field label="Money goes to">
+                  <select className={INPUT} value={chosenAccount ?? ""} onChange={(e) => setAccountId(Number(e.target.value))}>
+                    {accounts.data?.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </Field>
+              )}
 
               {method !== "CASH" && (
                 <Field label="Transaction / reference ID" required>

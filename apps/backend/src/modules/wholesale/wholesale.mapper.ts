@@ -235,6 +235,15 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
   };
 }
 
+export class WholesalePaymentAccountDto {
+  id!: number;
+  name!: string;
+  /** CASH / BANK / MOBILE_WALLET — used to preselect the likely account. */
+  type!: string;
+  /** The account configured in Accounts as the default posting account. */
+  isDefault!: boolean;
+}
+
 export class WholesaleChannelFieldDto {
   key!: string;
   label!: string;

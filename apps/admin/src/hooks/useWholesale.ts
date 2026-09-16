@@ -349,6 +349,8 @@ export interface OrderInput {
   deliveryCharge?: string;
   discount?: string;
   paidAmount?: string;
+  /** Cash/bank account the payment is booked into. */
+  paymentAccountId?: number;
   status?: WholesaleOrderStatus;
   note?: string;
 }
@@ -483,6 +485,40 @@ export function usePatchWholesaleCustomer(id: number) {
   });
 }
 
+export interface WholesalePaymentAccount {
+  id: number;
+  name: string;
+  type: string;
+  isDefault: boolean;
+}
+
+/** Cash/bank accounts a payment can be booked into (served under wholesale.view). */
+export function useWholesalePaymentAccounts() {
+  return useQuery({
+    queryKey: [...ORDERS_KEY, "payment-accounts"],
+    queryFn: () => proxyFetch<WholesalePaymentAccount[]>("/admin/wholesale/payment-accounts"),
+  });
+}
+
+/**
+ * The account a payment most likely belongs in: the one configured as
+ * default, else one whose name matches the method (bKash → "bKash"), else the
+ * first of the matching kind, else the first account there is.
+ */
+export function likelyPaymentAccount(
+  accounts: WholesalePaymentAccount[] | undefined,
+  method: WholesalePaymentMethod,
+): number | undefined {
+  if (!accounts?.length) return undefined;
+  const configured = accounts.find((a) => a.isDefault);
+  if (configured) return configured.id;
+  const label = (PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method).toLowerCase();
+  const named = accounts.find((a) => a.name.toLowerCase().includes(label));
+  if (named) return named.id;
+  const kind = method === "CASH" ? "CASH" : method === "BANK" ? "BANK" : "MOBILE_WALLET";
+  return (accounts.find((a) => a.type === kind) ?? accounts[0]).id;
+}
+
 /** Staff a buyer can be assigned to (served under wholesale.view). */
 export function useWholesaleStaff() {
   return useQuery({
@@ -599,10 +635,10 @@ export async function downloadWholesaleOrdersCsv(
 export function useRecordWholesalePayment() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ id, amount }: { id: number; amount: string }) =>
+    mutationFn: ({ id, amount, accountId }: { id: number; amount: string; accountId?: number }) =>
       proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/payments`, {
         method: "POST",
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, accountId }),
       }),
     onSuccess: invalidate,
   });

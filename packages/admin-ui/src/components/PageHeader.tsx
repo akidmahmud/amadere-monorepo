@@ -36,7 +36,7 @@ export function PageHeader({ icon, title, subtitle, actions, badge, className, s
       )}
       style={{
         background:
-          "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, #1a0d2e 50%, var(--brand-600, #7200cc) 100%)",
+          "linear-gradient(135deg, var(--wpfok-black, #0b0412) 0%, var(--wpfok-mid, #1a0d2e) 50%, var(--brand-600, #7200cc) 100%)",
         ...style,
       }}
     >
@@ -48,7 +48,7 @@ export function PageHeader({ icon, title, subtitle, actions, badge, className, s
         {icon && (
           <div
             className="grid h-10 w-10 place-items-center rounded-inner text-xl"
-            style={{ background: "rgba(143, 0, 255, 0.25)" }}
+            style={{ background: "var(--wpfok-tint, rgba(143, 0, 255, 0.25))" }}
           >
             {icon}
           </div>
@@ -59,7 +59,7 @@ export function PageHeader({ icon, title, subtitle, actions, badge, className, s
             {badge && (
               <span
                 className="rounded-pill px-3.5 py-1 text-xs font-semibold tracking-wide text-white"
-                style={{ background: "rgba(143, 0, 255, 0.3)" }}
+                style={{ background: "var(--wpfok-tint-strong, rgba(143, 0, 255, 0.3))" }}
               >
                 {badge}
               </span>

@@ -34,6 +34,7 @@ import { WholesaleService } from './wholesale.service';
 import {
   WholesaleChannelDto,
   WholesaleCustomerDto,
+  WholesalePaymentAccountDto,
   WholesaleOrderDto,
   WholesaleStatsDto,
 } from './wholesale.mapper';
@@ -171,6 +172,16 @@ export class AdminWholesaleController {
   @RequirePermission('wholesale.delete')
   deleteChannel(@Param('id', ParseIntPipe) id: number): Promise<{ id: number }> {
     return this.wholesale.deleteChannel(id);
+  }
+
+  // Where a payment can be booked, for the order form's "Money goes to"
+  // picker — so wholesale staff never need the Accounts module just to
+  // complete a paid sale.
+  @Get('payment-accounts')
+  @RequirePermission('wholesale.view')
+  @ApiOkResponse({ type: [WholesalePaymentAccountDto] })
+  listPaymentAccounts(): Promise<WholesalePaymentAccountDto[]> {
+    return this.wholesale.listPaymentAccounts();
   }
 
   @Get('assignable-staff')

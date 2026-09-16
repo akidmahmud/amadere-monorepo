@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
+  likelyPaymentAccount,
   useRecordWholesalePayment,
+  useWholesalePaymentAccounts,
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
 
@@ -26,8 +28,13 @@ export function PaymentModal({
   onClose: () => void;
 }) {
   const collect = useRecordWholesalePayment();
+  // Where the money lands. Preselected, so nobody has to configure a default
+  // posting account in Accounts before taking a payment.
+  const accounts = useWholesalePaymentAccounts();
+  const [accountId, setAccountId] = useState<number | undefined>();
   const [amount, setAmount] = useState(order?.due ?? "0");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const chosenAccount = accountId ?? likelyPaymentAccount(accounts.data, order?.paymentMethod ?? "CASH");
 
   if (!order) return null;
 
@@ -52,7 +59,7 @@ export function PaymentModal({
     }
 
     try {
-      await collect.mutateAsync({ id: orderId, amount });
+      await collect.mutateAsync({ id: orderId, amount, accountId: chosenAccount });
       onClose();
     } catch (err) {
       setErrorMsg(
@@ -107,6 +114,21 @@ export function PaymentModal({
             </span>
           </div>
         </div>
+
+        {(accounts.data?.length ?? 0) > 1 && (
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-secondary">Money goes to</label>
+            <select
+              className={inputClass}
+              value={chosenAccount ?? ""}
+              onChange={(e) => setAccountId(Number(e.target.value))}
+            >
+              {accounts.data?.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="block text-xs font-semibold text-secondary">

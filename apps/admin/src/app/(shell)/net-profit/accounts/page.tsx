@@ -35,7 +35,9 @@ export default function AccountsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    // accounts-scope: this module wears the admin's green instead of Net
+    // Profit's violet (see packages/admin-ui/src/globals.css).
+    <div className="accounts-scope flex flex-col gap-4">
       <PageHeader
         icon={<Icon name="account_balance" />}
         title="Accounts"

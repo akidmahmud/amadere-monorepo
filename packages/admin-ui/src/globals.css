@@ -214,6 +214,30 @@ button:not(:disabled):hover {
   --wpfok-recovery-bg: rgba(6, 182, 212, 0.08);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Accounts green scope — the Accounts module is read as the shop's books
+   rather than part of Net Profit's violet reporting chrome, so it wears the
+   admin's own green (the Customer Management green, #2e7d43) on request.
+   Nested INSIDE .wpfok-scope (net-profit/layout.tsx) and overriding the same
+   variable names, so every admin-ui component inside Accounts recolors with
+   no component fork — exactly how the violet scope itself works. Scoped to
+   the Accounts page wrapper only; the rest of Net Profit stays violet.
+   ═══════════════════════════════════════════════════════════════════════ */
+.accounts-scope {
+  --brand-500: #2e7d43;
+  --brand-600: #27693a;
+  --brand-700: #1d5230;
+  --brand-400: #4f9c63;
+  --brand-50: rgba(46, 125, 67, 0.07);
+
+  /* The dark hero gradient, glow and tints PageHeader/Modal paint with. */
+  --wpfok-black: #07150d;
+  --wpfok-mid: #0f2b1a;
+  --wpfok-glow: rgba(46, 125, 67, 0.18);
+  --wpfok-tint: rgba(46, 125, 67, 0.32);
+  --wpfok-tint-strong: rgba(46, 125, 67, 0.4);
+}
+
 /* Data table — shared `<Table>` primitive, used by every admin page (base theme
    and inside .wpfok-scope alike). Header gradient/hover tint are one-off literals
    (not reusable tokens) originally matched to the Net Profit plugin's own hardcoded
