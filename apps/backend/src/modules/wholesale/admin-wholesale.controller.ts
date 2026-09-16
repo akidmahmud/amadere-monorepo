@@ -92,6 +92,26 @@ export class AdminWholesaleController {
     return this.wholesale.listCustomers(query);
   }
 
+  // Before customers/:id, which would otherwise read "export" as an id.
+  // Excluded from OpenAPI for the same reason as the orders export: a file,
+  // not the JSON envelope.
+  @Get('customers/export')
+  @RequirePermission('wholesale.view')
+  @ApiExcludeEndpoint()
+  async exportCustomers(
+    @Query() query: WholesaleCustomerQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const csv = await this.wholesale.exportCustomersCsv(query);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="wholesale-customers-${new Date().toISOString().slice(0, 10)}.csv"`,
+    );
+    // BOM so Excel reads Bengali names and ৳ as UTF-8.
+    res.send(`\uFEFF${csv}`);
+  }
+
   @Get('customers/:id')
   @RequirePermission('wholesale.view')
   @ApiOkResponse({ type: WholesaleCustomerDto })

@@ -13,6 +13,10 @@ const NON_CANCELED = { not: 'CANCELED' as const };
  * the dashboard disagreed with the screen staff actually work from.
  */
 const LIVE_ORDERS = { deletedAt: null } as const;
+// Soft-deleted rows sit in their own admin screens (Deleted Products /
+// Deleted Customers), so the dashboard's totals must exclude them — otherwise
+// the card disagrees with the count on the page it links to.
+const LIVE = { deletedAt: null } as const;
 
 /**
  * Midnight in Dhaka, expressed as the UTC instant it happened at.
@@ -78,9 +82,12 @@ export class DashboardService {
       // below needs no such guard -- it is derived from order spend, and
       // a seeded author has no orders.
       this.prisma.client.customer.count({
-        where: { ...EXCLUDE_SEEDED_REVIEWERS },
+        where: { ...LIVE, ...EXCLUDE_SEEDED_REVIEWERS },
       }),
-      this.prisma.client.product.count(),
+      // Every product the Products page lists (any status), trash excluded —
+      // it counted trashed products too, so the card read higher than the
+      // "N products" total on that page.
+      this.prisma.client.product.count({ where: LIVE }),
       this.prisma.client.order.count({ where: { status: 'COMPLETED', ...LIVE_ORDERS } }),
       this.prisma.client.order.aggregate({
         where: { status: 'COMPLETED', ...LIVE_ORDERS },

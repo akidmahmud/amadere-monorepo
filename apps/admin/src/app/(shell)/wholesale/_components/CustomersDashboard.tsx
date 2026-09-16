@@ -7,6 +7,7 @@ import {
   ORDER_CHANNELS,
   PAGE_SIZE,
   labelOf,
+  downloadWholesaleCustomersCsv,
   useWholesaleCustomers,
   useWholesaleOrders,
   useWholesaleStaff,
@@ -57,11 +58,16 @@ export function CustomersDashboard({
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  // 6 by default, like Customer Management: the CRM table is very wide, and
+  // with a long page its left-right scrollbar sat far below the screen.
+  const [pageSize, setPageSize] = useState(6);
   const [detail, setDetail] = useState<WholesaleCustomer | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const staff = useWholesaleStaff();
 
-  const customers = useWholesaleCustomers(search, false, page);
+  const customers = useWholesaleCustomers(search, false, page, pageSize);
   const stats = useWholesaleStats();
   const rows = customers.data?.items ?? [];
   const total = customers.data?.total ?? 0;
@@ -130,6 +136,24 @@ export function CustomersDashboard({
             />
           </div>
           <div className="flex flex-wrap gap-2.5">
+            <Button
+              variant="ghost"
+              disabled={exporting}
+              onClick={async () => {
+                setExportError(null);
+                setExporting(true);
+                try {
+                  await downloadWholesaleCustomersCsv(search);
+                } catch (e) {
+                  setExportError(e instanceof Error ? e.message : "Couldn't export");
+                } finally {
+                  setExporting(false);
+                }
+              }}
+            >
+              <Icon name="download" size={18} />
+              {exporting ? "Exporting…" : "Export"}
+            </Button>
             <Button variant="ghost" onClick={() => setImportOpen(true)}>
               <Icon name="upload" size={18} />
               Import
@@ -140,6 +164,12 @@ export function CustomersDashboard({
             </Button>
           </div>
         </div>
+
+        {exportError && (
+          <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
+            {exportError}
+          </p>
+        )}
 
         {customers.isLoading ? (
           <p className="py-10 text-center text-sm text-muted">
@@ -158,13 +188,30 @@ export function CustomersDashboard({
               onOrder={onOrderFor}
               onEdit={onEditCustomer}
             />
-            <Pager
-              page={page}
-              pageSize={PAGE_SIZE}
-              total={total}
-              onPage={setPage}
-              noun="customers"
-            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <Pager
+                  page={page}
+                  pageSize={pageSize}
+                  total={total}
+                  onPage={setPage}
+                  noun="customers"
+                />
+              </div>
+              <select
+                aria-label="Customers per page"
+                className="h-9 rounded-lg border border-border bg-surface px-2 text-xs font-semibold text-secondary outline-none"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                {[6, 10, 25, 50].map((n) => (
+                  <option key={n} value={n}>{n} / page</option>
+                ))}
+              </select>
+            </div>
           </>
         )}
       </Card>

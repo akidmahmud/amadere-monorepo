@@ -556,6 +556,22 @@ export function wholesaleInvoiceHref(id: number) {
  * The response is a file, not the JSON envelope, so it is read as a blob rather
  * than through proxyFetch.
  */
+/** Every buyer matching the Customer Dashboard search, as a CSV download. */
+export async function downloadWholesaleCustomersCsv(search: string) {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  const res = await fetch(`/api/backend/admin/wholesale/customers/export?${params}`);
+  if (!res.ok) throw new Error("Couldn't export the customers");
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `wholesale-customers-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadWholesaleOrdersCsv(
   search: string,
   status: string,

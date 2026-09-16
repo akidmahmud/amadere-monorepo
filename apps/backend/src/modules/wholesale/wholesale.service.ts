@@ -196,9 +196,85 @@ export class WholesaleService {
   ): Promise<PaginatedResult<WholesaleCustomerDto>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
-    const search = query.search?.trim();
+    const where = this.customerWhere(query);
 
-    const where: Prisma.PartyWhereInput = {
+    const [rows, total] = await Promise.all([
+      this.prisma.client.party.findMany({
+        where,
+        include: CUSTOMER_INCLUDE,
+        orderBy: { name: 'asc' },
+        ...paginationArgs(page, pageSize),
+      }),
+      this.prisma.client.party.count({ where }),
+    ]);
+
+    const items = await this.decorateCustomers(rows);
+    return toPaginatedResult(items, total, page, pageSize);
+  }
+
+  /**
+   * Every buyer matching the dashboard's search, as CSV. Headers are the ones
+   * the customer import reads (Name, location, number, Assign to, Status…), so
+   * an export can be edited in Excel and imported straight back; the extra
+   * columns (District, Total Purchase, scores…) are ignored by the import.
+   */
+  async exportCustomersCsv(query: WholesaleCustomerQueryDto): Promise<string> {
+    const rows = await this.prisma.client.party.findMany({
+      where: this.customerWhere(query),
+      include: CUSTOMER_INCLUDE,
+      orderBy: { name: 'asc' },
+      // ponytail: one bounded read; paginate the export if buyers ever pass this.
+      take: 10_000,
+    });
+    const customers = await this.decorateCustomers(rows);
+    const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
+    const label = (v: string | null) =>
+      v ? v.toLowerCase().split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') : '';
+
+    const columns: [string, (c: WholesaleCustomerDto) => unknown][] = [
+      ['fv', (c) => (c.isFavorite ? 'Yes' : '')],
+      ['B-DAY', (c) => day(c.dob)],
+      ['Name', (c) => c.name],
+      ['location', (c) => c.address],
+      ['District', (c) => c.district],
+      ['Thana', (c) => c.thana],
+      ['number', (c) => c.phone],
+      ['Alternative Phone', (c) => c.alternativePhone],
+      ['Email', (c) => c.email],
+      ['Order Count', (c) => c.orderCount],
+      ['Total Purchase', (c) => c.purchaseTotal],
+      ['Due', (c) => c.due],
+      ['Product', (c) => c.topProduct],
+      ['Assign to', (c) => c.assignedAdminName],
+      ['Start Date', (c) => day(c.createdAt)],
+      ['Last Order Date', (c) => day(c.lastOrderAt)],
+      ['Next Call Target Date', (c) => day(c.nextCallTarget)],
+      ['Expire Time', (c) => (c.followUpCadenceDays ? `${c.followUpCadenceDays} days` : '')],
+      ['New Order', (c) => (c.hasNewOrder ? 'Yes' : '')],
+      ['New order Date', (c) => day(c.newOrderAt)],
+      ['Priority', (c) => label(c.priority)],
+      ['Status', (c) => label(c.crmStatus)],
+      ['Behaviour', (c) => label(c.behaviour)],
+      ['Customer Feedback', (c) => c.customerFeedback],
+      ['Amader Feedback', (c) => c.amaderFeedback],
+      ['Customer family details', (c) => c.familyDetails],
+      ['Purchase reason', (c) => c.purchaseReason],
+      ['F Score', (c) => c.fScore],
+      ['M Score', (c) => c.mScore],
+      ['RFM Score', (c) => c.rfmScore],
+      ['Facebook Profile Link', (c) => c.facebookProfileUrl],
+      ['Customer Type', () => 'WHOLESALER'],
+    ];
+    return [
+      columns.map(([h]) => q(h)).join(','),
+      ...customers.map((c) => columns.map(([, read]) => q(read(c))).join(',')),
+    ].join('\r\n');
+  }
+
+  private customerWhere(query: WholesaleCustomerQueryDto): Prisma.PartyWhereInput {
+    const search = query.search?.trim();
+    return {
       roles: { has: 'WHOLESALE' },
       deletedAt: null,
       ...(query.isActive === undefined ? {} : { isActive: query.isActive }),
@@ -216,19 +292,6 @@ export class WholesaleService {
           }
         : {}),
     };
-
-    const [rows, total] = await Promise.all([
-      this.prisma.client.party.findMany({
-        where,
-        include: CUSTOMER_INCLUDE,
-        orderBy: { name: 'asc' },
-        ...paginationArgs(page, pageSize),
-      }),
-      this.prisma.client.party.count({ where }),
-    ]);
-
-    const items = await this.decorateCustomers(rows);
-    return toPaginatedResult(items, total, page, pageSize);
   }
 
   /**

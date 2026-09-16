@@ -494,8 +494,8 @@ export class OrderManagerService {
         items: {
           orderBy: { id: 'asc' },
           include: {
-            variant: { select: { weightOverride: true } },
-            product: { select: { shippableWeight: true } },
+            variant: { select: { weightOverride: true, sku: true } },
+            product: { select: { shippableWeight: true, sku: true } },
           },
         },
       },
@@ -504,7 +504,7 @@ export class OrderManagerService {
 
     const header = [
       'Date', 'Order Number', 'Source', 'Origin', 'Customer Name', 'Address',
-      'Phone Number', 'Consignment ID', 'Product Name', 'Qty.', 'Price / kg',
+      'Phone Number', 'Consignment ID', 'Product SKU', 'Qty.', 'Price / kg',
       'Invoice Value', 'Delivery Charge', 'Discount', 'Grand Total',
       'Order Status', 'Payment Status', 'Payment Method', 'Notes / comment',
       'Assign', 'Division', 'District', 'Created At',
@@ -567,9 +567,14 @@ export class OrderManagerService {
             pricePerKg = unit.toFixed(2);
           }
         }
+        // SKU only, not the product name (explicit request). The snapshot is
+        // empty on orders placed before it was captured, so fall back to the
+        // variant's and then the product's current SKU; blank only when the
+        // product no longer exists and never carried one.
+        const sku = item ? (item.skuSnapshot ?? item.variant?.sku ?? item.product?.sku ?? '') : '';
         rows.push([
           ...shared,
-          item?.productNameSnapshot ?? '',
+          sku,
           qty,
           pricePerKg,
           invoice,
