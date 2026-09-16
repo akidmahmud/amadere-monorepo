@@ -14,6 +14,7 @@ import { OverviewTab } from "./_components/OverviewTab";
 import { ExpensesTab } from "./_components/ExpensesTab";
 import { DuesTab } from "./_components/DuesTab";
 import { VatCashFlowTab } from "./_components/VatCashFlowTab";
+import { SetupTab } from "./_components/SetupTab";
 import { VatExceptionTab } from "@/components/net-profit/VatExceptionTab";
 import { firstOfMonth, today } from "./_components/shared";
 
@@ -23,6 +24,7 @@ const TABS = [
   { value: "dues", label: "Dues" },
   { value: "vat", label: "VAT & Cash Flow" },
   { value: "vat-exception", label: "VAT Exception" },
+  { value: "setup", label: "Setup" },
 ];
 
 export default function AccountsPage() {
@@ -76,6 +78,7 @@ export default function AccountsPage() {
       {tab === "vat-exception" ? (
         <VatExceptionTab storeRatePercent={vatSettings?.ratePercent ?? 0} />
       ) : null}
+      {tab === "setup" ? <SetupTab range={range} /> : null}
     </div>
   );
 }

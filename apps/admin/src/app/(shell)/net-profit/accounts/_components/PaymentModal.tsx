@@ -87,7 +87,11 @@ export function PaymentModal({
             onChange={(e) => setAccountId(e.target.value)}
             className={fieldInputClass}
           >
-            <option value="">Choose an account…</option>
+            <option value="">
+              {(accounts?.length ?? 0) === 0
+                ? "No active accounts — add one in Setup"
+                : "Choose an account…"}
+            </option>
             {(accounts ?? []).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} — {money(a.balance)}

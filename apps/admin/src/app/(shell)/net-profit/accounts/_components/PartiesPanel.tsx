@@ -11,8 +11,12 @@ import {
 } from "@amader/admin-ui";
 import {
   useCreateParty,
+  useDeleteParty,
   useParties,
+  usePartyStatement,
+  useUpdateParty,
   type CourierProvider,
+  type Party,
   type PartyRole,
   type PartyType,
 } from "@/hooks/useAccounts";
@@ -32,7 +36,6 @@ const PROVIDERS: CourierProvider[] = [
   "REDX",
   "ECOURIER",
 ];
-
 const EMPTY = {
   name: "",
   type: "COMPANY" as PartyType,
@@ -45,103 +48,181 @@ const EMPTY = {
 
 export function PartiesPanel() {
   const [search, setSearch] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Party | "new" | null>(null);
+  const [viewing, setViewing] = useState<Party | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
-
   const { data } = useParties({ q: search || undefined, pageSize: 200 });
   const create = useCreateParty();
+  const update = useUpdateParty();
+  const deactivate = useDeleteParty();
+  const { data: statement, isLoading: statementLoading } = usePartyStatement(
+    viewing?.id ?? null,
+  );
   const rows = data?.items ?? [];
 
+  function openEditor(party?: Party) {
+    setEditing(party ?? "new");
+    setForm(
+      party
+        ? {
+            name: party.name,
+            type: party.type,
+            roles: party.roles,
+            phone: party.phone ?? "",
+            bin: party.bin ?? "",
+            tin: party.tin ?? "",
+            courierProvider: party.courierProvider ?? "",
+          }
+        : EMPTY,
+    );
+    setError(null);
+  }
+
+  function closeEditor() {
+    setEditing(null);
+    setError(null);
+  }
+
   function toggleRole(role: PartyRole) {
-    setForm((f) => ({
-      ...f,
-      roles: f.roles.includes(role)
-        ? f.roles.filter((r) => r !== role)
-        : [...f.roles, role],
+    setForm((current) => ({
+      ...current,
+      roles: current.roles.includes(role)
+        ? current.roles.filter((item) => item !== role)
+        : [...current.roles, role],
     }));
   }
 
+  function save() {
+    setError(null);
+    const input = {
+      name: form.name.trim(),
+      type: form.type,
+      roles: form.roles,
+      phone: form.phone.trim() || undefined,
+      bin: form.bin.trim() || undefined,
+      tin: form.tin.trim() || undefined,
+      courierProvider: form.courierProvider || undefined,
+    };
+    const options = {
+      onSuccess: closeEditor,
+      onError: (e: unknown) =>
+        setError(e instanceof Error ? e.message : "Could not save the party"),
+    };
+    if (editing === "new") create.mutate(input, options);
+    else if (editing) update.mutate({ id: editing.id, ...input }, options);
+  }
+
   return (
-    <SectionCard
-      title="Party master"
-      subtitle="One record per person or company — used by Expenses, Dues and COD settlement"
-      actions={
-        <div className="flex items-center gap-2">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or phone…"
-            className={`${fieldInputClass} w-56`}
-          />
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => setAdding(true)}
-          >
-            + Add party
-          </Button>
-        </div>
-      }
-    >
-      <div className="overflow-x-auto">
-        <Table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Roles</th>
-              <th>Phone</th>
-              <th>BIN / TIN</th>
-              <th className="text-right">They owe us</th>
-              <th className="text-right">We owe them</th>
-              <th className="text-right">Net position</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <TableEmptyRow colSpan={8}>No parties yet.</TableEmptyRow>
-            ) : (
-              rows.map((p) => {
-                const net = Number(p.net);
-                return (
-                  <tr key={p.id}>
-                    <td className="font-semibold">{p.name}</td>
-                    <td className="text-xs">
-                      {p.type === "COMPANY" ? "Company" : "Person"}
-                    </td>
+    <>
+      <SectionCard
+        title="Party master"
+        subtitle="One record per person or company — used by Expenses, Dues and COD settlement"
+        actions={
+          <div className="flex items-center gap-2">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name or phone…"
+              className={`${fieldInputClass} w-56`}
+            />
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => openEditor()}
+            >
+              + Add party
+            </Button>
+          </div>
+        }
+      >
+        <div className="overflow-x-auto">
+          <Table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Roles</th>
+                <th>Phone</th>
+                <th>BIN / TIN</th>
+                <th className="text-right">They owe us</th>
+                <th className="text-right">We owe them</th>
+                <th className="text-right">Net position</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <TableEmptyRow colSpan={9}>No parties yet.</TableEmptyRow>
+              ) : (
+                rows.map((party) => (
+                  <tr key={party.id}>
+                    <td className="font-semibold">{party.name}</td>
+                    <td>{party.type === "COMPANY" ? "Company" : "Person"}</td>
                     <td className="text-xs text-secondary">
-                      {p.roles
-                        .map((r) => r.charAt(0) + r.slice(1).toLowerCase())
-                        .join(", ")}
-                      {p.courierProvider ? ` · ${p.courierProvider}` : ""}
+                      {party.roles.map(titleCase).join(", ")}
+                      {party.courierProvider
+                        ? ` · ${party.courierProvider}`
+                        : ""}
                     </td>
-                    <td>{p.phone ?? "—"}</td>
-                    <td className="text-xs">{p.bin ?? p.tin ?? "—"}</td>
-                    <td className="text-right">{money(p.receivable)}</td>
-                    <td className="text-right">{money(p.payable)}</td>
-                    <td
-                      className={`text-right font-semibold ${
-                        net > 0 ? "text-success" : net < 0 ? "text-danger" : ""
-                      }`}
-                    >
-                      {money(p.net)}
+                    <td>{party.phone ?? "—"}</td>
+                    <td>{party.bin ?? party.tin ?? "—"}</td>
+                    <td className="text-right">{money(party.receivable)}</td>
+                    <td className="text-right">{money(party.payable)}</td>
+                    <td className="text-right font-semibold">
+                      {money(party.net)}
+                    </td>
+                    <td>
+                      <div className="flex gap-3">
+                        <Button
+                          type="button"
+                          variant="link"
+                          onClick={() => setViewing(party)}
+                        >
+                          Statement
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="link"
+                          onClick={() => openEditor(party)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="link"
+                          disabled={deactivate.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Deactivate ${party.name}? Existing accounting history will be kept.`,
+                              )
+                            )
+                              deactivate.mutate(party.id);
+                          }}
+                        >
+                          Deactivate
+                        </Button>
+                      </div>
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </Table>
-      </div>
+                ))
+              )}
+            </tbody>
+          </Table>
+        </div>
+        <p className="mt-4 text-xs text-secondary">
+          A courier sits on both sides — they hold your COD cash and they
+          invoice you for delivery. One party record keeps the net figure
+          visible.
+        </p>
+      </SectionCard>
 
-      <p className="mt-4 text-xs text-secondary">
-        A courier sits on both sides — they hold your COD cash and they invoice
-        you for delivery. With two separate name fields you would never see the
-        net figure.
-      </p>
-
-      <Modal open={adding} onClose={() => setAdding(false)} title="Add a party">
+      <Modal
+        open={editing !== null}
+        onClose={closeEditor}
+        title={editing === "new" ? "Add a party" : "Edit party"}
+      >
         <div className="grid grid-cols-2 gap-3">
           <Field label="Name" required className="col-span-2">
             <input
@@ -150,7 +231,6 @@ export function PartiesPanel() {
               className={fieldInputClass}
             />
           </Field>
-
           <Field label="Type" required>
             <select
               value={form.type}
@@ -163,7 +243,6 @@ export function PartiesPanel() {
               <option value="PERSON">Person</option>
             </select>
           </Field>
-
           <Field label="Phone">
             <input
               value={form.phone}
@@ -171,7 +250,6 @@ export function PartiesPanel() {
               className={fieldInputClass}
             />
           </Field>
-
           <Field
             label="BIN"
             hint="Required to claim input VAT on this supplier"
@@ -182,7 +260,6 @@ export function PartiesPanel() {
               className={fieldInputClass}
             />
           </Field>
-
           <Field label="TIN">
             <input
               value={form.tin}
@@ -190,12 +267,7 @@ export function PartiesPanel() {
               className={fieldInputClass}
             />
           </Field>
-
-          <Field
-            label="Courier provider"
-            className="col-span-2"
-            hint="Set this only on the party a courier settles against — one party per provider"
-          >
+          <Field label="Courier provider" className="col-span-2">
             <select
               value={form.courierProvider}
               onChange={(e) =>
@@ -207,14 +279,13 @@ export function PartiesPanel() {
               className={fieldInputClass}
             >
               <option value="">Not a courier</option>
-              {PROVIDERS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+              {PROVIDERS.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider}
                 </option>
               ))}
             </select>
           </Field>
-
           <div className="col-span-2">
             <span className="text-xs font-semibold text-secondary">
               Roles *
@@ -230,58 +301,103 @@ export function PartiesPanel() {
                     checked={form.roles.includes(role)}
                     onChange={() => toggleRole(role)}
                   />
-                  {role.charAt(0) + role.slice(1).toLowerCase()}
+                  {titleCase(role)}
                 </label>
               ))}
             </div>
           </div>
         </div>
-
         {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-
         <div className="mt-5 flex gap-2">
           <Button
             type="button"
             variant="primary"
-            disabled={!form.name || form.roles.length === 0 || create.isPending}
-            onClick={() => {
-              setError(null);
-              create.mutate(
-                {
-                  name: form.name,
-                  type: form.type,
-                  roles: form.roles,
-                  phone: form.phone || undefined,
-                  bin: form.bin || undefined,
-                  tin: form.tin || undefined,
-                  courierProvider: form.courierProvider || undefined,
-                },
-                {
-                  onSuccess: () => {
-                    setForm(EMPTY);
-                    setAdding(false);
-                  },
-                  onError: (e: unknown) =>
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : "Could not save the party",
-                    ),
-                },
-              );
-            }}
+            disabled={
+              !form.name.trim() ||
+              form.roles.length === 0 ||
+              create.isPending ||
+              update.isPending
+            }
+            onClick={save}
           >
-            {create.isPending ? "Saving…" : "Add party"}
+            {create.isPending || update.isPending ? "Saving…" : "Save party"}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setAdding(false)}
-          >
+          <Button type="button" variant="ghost" onClick={closeEditor}>
             Cancel
           </Button>
         </div>
       </Modal>
-    </SectionCard>
+
+      <Modal
+        open={viewing !== null}
+        onClose={() => setViewing(null)}
+        title={`${viewing?.name ?? "Party"} statement`}
+        className="max-w-4xl"
+      >
+        {statementLoading ? (
+          <p className="py-8 text-center text-sm text-secondary">
+            Loading statement…
+          </p>
+        ) : (
+          <>
+            <div className="mb-4 grid grid-cols-3 gap-3 rounded-sm bg-surface-2 p-3 text-sm">
+              <div>
+                They owe us
+                <br />
+                <strong>{money(statement?.position.receivable)}</strong>
+              </div>
+              <div>
+                We owe them
+                <br />
+                <strong>{money(statement?.position.payable)}</strong>
+              </div>
+              <div>
+                Net position
+                <br />
+                <strong>{money(statement?.position.net)}</strong>
+              </div>
+            </div>
+            <Table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Source</th>
+                  <th>Reference</th>
+                  <th>Note</th>
+                  <th className="text-right">In</th>
+                  <th className="text-right">Out</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(statement?.entries.length ?? 0) === 0 ? (
+                  <TableEmptyRow colSpan={6}>
+                    No ledger entries for this party.
+                  </TableEmptyRow>
+                ) : (
+                  statement?.entries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.entryDate.slice(0, 10)}</td>
+                      <td>{entry.source.replaceAll("_", " ")}</td>
+                      <td>{entry.reference ?? "—"}</td>
+                      <td>{entry.note ?? "—"}</td>
+                      <td className="text-right">
+                        {entry.direction === "IN" ? money(entry.amount) : "—"}
+                      </td>
+                      <td className="text-right">
+                        {entry.direction === "OUT" ? money(entry.amount) : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </Table>
+          </>
+        )}
+      </Modal>
+    </>
   );
+}
+
+function titleCase(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase();
 }

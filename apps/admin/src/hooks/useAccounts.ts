@@ -77,6 +77,21 @@ export interface CashAccount {
   sortOrder: number;
 }
 
+export interface CashAccountLedger {
+  opening: string;
+  closing: string;
+  entries: {
+    id: number;
+    entryDate: string;
+    direction: "IN" | "OUT";
+    amount: string;
+    source: string;
+    partyId: number | null;
+    reference: string | null;
+    note: string | null;
+  }[];
+}
+
 export interface ExpenseCategory {
   id: number;
   name: string;
@@ -333,10 +348,24 @@ export function useDeleteParty() {
 
 // --- Cash accounts ---------------------------------------------------------
 
-export function useCashAccounts() {
+export function useCashAccounts(includeInactive = false) {
   return useQuery({
-    queryKey: [...KEY, "cash-accounts"],
-    queryFn: () => proxyFetch<CashAccount[]>(`${BASE}/cash-accounts`),
+    queryKey: [...KEY, "cash-accounts", includeInactive],
+    queryFn: () =>
+      proxyFetch<CashAccount[]>(
+        `${BASE}/cash-accounts${includeInactive ? "?includeInactive=true" : ""}`,
+      ),
+  });
+}
+
+export function useCashAccountLedger(id: number | null, range: DateRange = {}) {
+  return useQuery({
+    queryKey: [...KEY, "cash-account-ledger", id, range],
+    enabled: id !== null,
+    queryFn: () =>
+      proxyFetch<CashAccountLedger>(
+        `${BASE}/cash-accounts/${id}/ledger${toQueryString(range)}`,
+      ),
   });
 }
 
@@ -388,19 +417,76 @@ export function useTransfer() {
 
 // --- Master data -----------------------------------------------------------
 
-export function useExpenseCategories() {
+export function useExpenseCategories(includeInactive = false) {
   return useQuery({
-    queryKey: [...KEY, "expense-categories"],
+    queryKey: [...KEY, "expense-categories", includeInactive],
     queryFn: () =>
-      proxyFetch<ExpenseCategory[]>(`${BASE}/masters/expense-categories`),
+      proxyFetch<ExpenseCategory[]>(
+        `${BASE}/masters/expense-categories${includeInactive ? "?includeInactive=true" : ""}`,
+      ),
   });
 }
 
-export function useCostCentres() {
+export function useCostCentres(includeInactive = false) {
   return useQuery({
-    queryKey: [...KEY, "cost-centres"],
-    queryFn: () => proxyFetch<CostCentre[]>(`${BASE}/masters/cost-centres`),
+    queryKey: [...KEY, "cost-centres", includeInactive],
+    queryFn: () =>
+      proxyFetch<CostCentre[]>(
+        `${BASE}/masters/cost-centres${includeInactive ? "?includeInactive=true" : ""}`,
+      ),
   });
+}
+
+export interface ExpenseCategoryInput {
+  name: string;
+  isVatClaimable?: boolean;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export function useCreateExpenseCategory() {
+  return useAccountsMutation((input: ExpenseCategoryInput) =>
+    proxyFetch<ExpenseCategory>(`${BASE}/masters/expense-categories`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export function useUpdateExpenseCategory() {
+  return useAccountsMutation(
+    ({ id, ...input }: Partial<ExpenseCategoryInput> & { id: number }) =>
+      proxyFetch<ExpenseCategory>(`${BASE}/masters/expense-categories/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
+  );
+}
+
+export interface CostCentreInput {
+  name: string;
+  code?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export function useCreateCostCentre() {
+  return useAccountsMutation((input: CostCentreInput) =>
+    proxyFetch<CostCentre>(`${BASE}/masters/cost-centres`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+}
+
+export function useUpdateCostCentre() {
+  return useAccountsMutation(
+    ({ id, ...input }: Partial<CostCentreInput> & { id: number }) =>
+      proxyFetch<CostCentre>(`${BASE}/masters/cost-centres/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
+  );
 }
 
 export function usePeriodLocks() {
@@ -471,6 +557,25 @@ export function useCreateExpense() {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  );
+}
+
+export interface UpdateExpenseInput {
+  categoryId?: number;
+  costCentreId?: number;
+  mushakChallanNo?: string;
+  dueDate?: string;
+  attachmentUrl?: string;
+  note?: string;
+}
+
+export function useUpdateExpense() {
+  return useAccountsMutation(
+    ({ id, ...input }: UpdateExpenseInput & { id: number }) =>
+      proxyFetch<Expense>(`${BASE}/expenses/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(input),
+      }),
   );
 }
 
@@ -629,7 +734,13 @@ export function useSetVatException() {
   return useMutation({
     // ratePercent null removes the exception (back to the store rate), which
     // is not the same as 0 (explicitly zero-rated).
-    mutationFn: ({ productId, ratePercent }: { productId: number; ratePercent: number | null }) =>
+    mutationFn: ({
+      productId,
+      ratePercent,
+    }: {
+      productId: number;
+      ratePercent: number | null;
+    }) =>
       proxyFetch<VatExceptionRow[]>(`${BASE}/vat/exceptions/${productId}`, {
         method: "PUT",
         body: JSON.stringify({ ratePercent }),
