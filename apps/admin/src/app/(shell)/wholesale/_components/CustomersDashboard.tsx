@@ -8,6 +8,7 @@ import {
   PAGE_SIZE,
   labelOf,
   downloadWholesaleCustomersCsv,
+  useDeleteWholesaleCustomer,
   useWholesaleCustomers,
   useWholesaleOrders,
   useWholesaleStaff,
@@ -15,7 +16,10 @@ import {
   type WholesaleCustomer,
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
+import { useCan } from "@/hooks/useAdminAuth";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
+import { DeletedWholesaleCustomers } from "./DeletedWholesaleCustomers";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { WholesaleCustomersTable } from "./WholesaleCustomersTable";
 import { Pager } from "./Pager";
@@ -65,7 +69,13 @@ export function CustomersDashboard({
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [customerToDelete, setCustomerToDelete] =
+    useState<WholesaleCustomer | null>(null);
   const staff = useWholesaleStaff();
+  const canDelete = useCan("wholesale.delete");
+  const deleteCustomer = useDeleteWholesaleCustomer();
 
   const customers = useWholesaleCustomers(search, false, page, pageSize);
   const stats = useWholesaleStats();
@@ -73,14 +83,62 @@ export function CustomersDashboard({
   const total = customers.data?.total ?? 0;
   const s = stats.data;
 
+  function removeCustomer(customer: WholesaleCustomer) {
+    setCustomerToDelete(customer);
+  }
+
+  function confirmCustomerDelete() {
+    if (!customerToDelete) return;
+    setDeleteError(null);
+    deleteCustomer.mutate(customerToDelete.id, {
+      onSuccess: () => {
+        setCustomerToDelete(null);
+        setDetail(null);
+      },
+      onError: (error: unknown) => {
+        setCustomerToDelete(null);
+        setDeleteError(
+          error instanceof Error
+            ? error.message
+            : "Could not delete the customer",
+        );
+      },
+    });
+  }
+
+  const deleteDialog = (
+    <ConfirmDialog
+      open={customerToDelete !== null}
+      onClose={() => setCustomerToDelete(null)}
+      onConfirm={confirmCustomerDelete}
+      title="Delete this customer?"
+      description={`${customerToDelete?.name ?? "This customer"} will move to Deleted Customers. Their order and accounting history will stay intact, and you can restore them later. Customers with live orders cannot be deleted.`}
+      confirmLabel="Delete Customer"
+      cancelLabel="Keep Customer"
+      pendingLabel="Deleting…"
+      pending={deleteCustomer.isPending}
+    />
+  );
+
+  if (showDeleted) {
+    return <DeletedWholesaleCustomers onBack={() => setShowDeleted(false)} />;
+  }
+
   if (detail) {
     return (
-      <CustomerDetail
-        customer={detail}
-        onBack={() => setDetail(null)}
-        onEdit={() => onEditCustomer(detail)}
-        onOrder={() => onOrderFor(detail)}
-      />
+      <>
+        <CustomerDetail
+          customer={detail}
+          onBack={() => setDetail(null)}
+          onEdit={() => onEditCustomer(detail)}
+          onOrder={() => onOrderFor(detail)}
+          onDelete={() => removeCustomer(detail)}
+          canDelete={canDelete}
+          deleting={deleteCustomer.isPending}
+          deleteError={deleteError}
+        />
+        {deleteDialog}
+      </>
     );
   }
 
@@ -145,7 +203,9 @@ export function CustomersDashboard({
                 try {
                   await downloadWholesaleCustomersCsv(search);
                 } catch (e) {
-                  setExportError(e instanceof Error ? e.message : "Couldn't export");
+                  setExportError(
+                    e instanceof Error ? e.message : "Couldn't export",
+                  );
                 } finally {
                   setExporting(false);
                 }
@@ -158,6 +218,10 @@ export function CustomersDashboard({
               <Icon name="upload" size={18} />
               Import
             </Button>
+            <Button variant="ghost" onClick={() => setShowDeleted(true)}>
+              <Icon name="delete" size={18} />
+              Deleted Customers
+            </Button>
             <Button variant="primary" onClick={onNewCustomer}>
               <Icon name="person_add" size={18} />
               Create New Customer
@@ -168,6 +232,12 @@ export function CustomersDashboard({
         {exportError && (
           <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
             {exportError}
+          </p>
+        )}
+
+        {deleteError && (
+          <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
+            {deleteError}
           </p>
         )}
 
@@ -187,6 +257,7 @@ export function CustomersDashboard({
               onView={setDetail}
               onOrder={onOrderFor}
               onEdit={onEditCustomer}
+              onDelete={canDelete ? removeCustomer : undefined}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -208,7 +279,9 @@ export function CustomersDashboard({
                 }}
               >
                 {[6, 10, 25, 50].map((n) => (
-                  <option key={n} value={n}>{n} / page</option>
+                  <option key={n} value={n}>
+                    {n} / page
+                  </option>
                 ))}
               </select>
             </div>
@@ -224,6 +297,7 @@ export function CustomersDashboard({
           onClose={() => setImportOpen(false)}
         />
       )}
+      {deleteDialog}
     </div>
   );
 }
@@ -266,11 +340,19 @@ function CustomerDetail({
   onBack,
   onEdit,
   onOrder,
+  onDelete,
+  canDelete,
+  deleting,
+  deleteError,
 }: {
   customer: WholesaleCustomer;
   onBack: () => void;
   onEdit: () => void;
   onOrder: () => void;
+  onDelete: () => void;
+  canDelete: boolean;
+  deleting: boolean;
+  deleteError: string | null;
 }) {
   const [page, setPage] = useState(1);
   const history = useWholesaleOrders("", "ALL", "ALL", customer.id, page);
@@ -301,8 +383,25 @@ function CustomerDetail({
             <Icon name="add" size={18} />
             New Order
           </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              disabled={deleting}
+              onClick={onDelete}
+              className="text-rose-600 dark:text-rose-400"
+            >
+              <Icon name="delete" size={18} />
+              Delete Customer
+            </Button>
+          )}
         </div>
       </Card>
+
+      {deleteError && (
+        <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
+          {deleteError}
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Orders" value={String(customer.orderCount)} />
@@ -319,7 +418,10 @@ function CustomerDetail({
           label="Wholesale Orders"
           value={String(customer.wholesaleCount)}
         />
-        <StatCard label="Channel Orders" value={String(customer.channelCount)} />
+        <StatCard
+          label="Channel Orders"
+          value={String(customer.channelCount)}
+        />
       </div>
 
       <Card className="p-0 shadow-card">
@@ -334,11 +436,7 @@ function CustomerDetail({
             value={customer.alternativePhone ?? ""}
           />
           <DetailItem label="Email" value={customer.email ?? ""} />
-          <DetailItem
-            label="Address"
-            value={customer.address ?? ""}
-            wide
-          />
+          <DetailItem label="Address" value={customer.address ?? ""} wide />
           <DetailItem label="District" value={customer.district ?? ""} />
           <DetailItem label="Thana / area" value={customer.thana ?? ""} />
           <DetailItem label="Landmark" value={customer.landmark ?? ""} />
@@ -353,10 +451,7 @@ function CustomerDetail({
               customer.creditDays === null ? "" : `${customer.creditDays} days`
             }
           />
-          <DetailItem
-            label="Outstanding"
-            value={money(customer.due)}
-          />
+          <DetailItem label="Outstanding" value={money(customer.due)} />
           {customer.note && (
             <DetailItem label="Note" value={customer.note} wide />
           )}
@@ -365,7 +460,9 @@ function CustomerDetail({
 
       <Card className="p-0 shadow-card">
         <div className="border-b border-border px-4 py-3.5">
-          <h3 className="text-sm font-bold text-text">Complete Order History</h3>
+          <h3 className="text-sm font-bold text-text">
+            Complete Order History
+          </h3>
         </div>
         {history.isLoading ? (
           <p className="py-10 text-center text-sm text-muted">

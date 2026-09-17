@@ -3731,3 +3731,33 @@ after account creation" case:
 
 Test account and its OTP rows deleted afterwards; 2,913 customers, 0 stamped.
 15/15 customers + common tests pass; backend, web and admin all typecheck.
+
+## "One or more tags not found" on a product with no tags visible
+
+Saving product 1 in the admin failed with `One or more tags not found`, even
+though the Tags box showed no chips and nothing checked.
+
+The product did have tag links — to tags that had since been **deleted**.
+`TagsService.delete` is a soft delete (`deletedAt = now()`); it leaves the
+`product_tags` rows alone. So:
+
+1. `GET /admin/products/1` mapped `product.tags.map(t => t.tagId)` with no
+   filter, handing the form the dead tag's id.
+2. The form's picker resolves labels via `/admin/tags?ids=…`, which excludes
+   deleted tags — no label, so **no chip rendered**. The id was invisible.
+3. Save sent it straight back, and `validateReferences` counts only
+   `deletedAt: null` tags → count mismatch → 400.
+
+Nothing in the UI could clear an id the UI never showed, so the product was
+permanently unsaveable.
+
+Fixed in `products.mapper.ts` (`toAdminProductDto`): drop links whose tag or
+category is soft-deleted before returning the ids. Categories have the same
+soft-delete and the same failure mode, so both are filtered. Existing stale
+rows self-heal — the next successful save rewrites the link set.
+
+Regression test in `products.mapper.spec.ts` (a row with one live + one
+deleted tag and category). 6/6 in that suite pass; backend typechecks clean.
+
+Note: this is a backend fix — amadere.com needs a deploy before the live admin
+can save that product.

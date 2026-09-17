@@ -6,12 +6,19 @@ import {
 import { PaginatedResult, toBdCompact } from '@amader/shared';
 import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
+import {
+  paginationArgs,
+  toPaginatedResult,
+} from '../../common/pagination.util';
 import { LedgerService } from '../net-profit/accounts/ledger/ledger.service';
 import { DuesService } from '../net-profit/accounts/dues/dues.service';
 import { AccountsSettingsService } from '../net-profit/accounts/accounts-settings.service';
 import { nextDueDocNo } from '../net-profit/accounts/document-numbers';
-import { frequencyScore, monetaryScore, rfmScore } from '../customers/customer-score.util';
+import {
+  frequencyScore,
+  monetaryScore,
+  rfmScore,
+} from '../customers/customer-score.util';
 import { CustomerImportResultDto } from '../customers/dto/customer-import-result.dto';
 import {
   dedupeByPhone,
@@ -42,7 +49,11 @@ import {
   WholesaleStatsDto,
   toWholesaleOrderDto,
 } from './wholesale.mapper';
-import { channelFieldsOf, normalizeChannelFields, validateChannelValues } from './wholesale-channel-fields';
+import {
+  channelFieldsOf,
+  normalizeChannelFields,
+  validateChannelValues,
+} from './wholesale-channel-fields';
 
 const Decimal = Prisma.Decimal;
 const ZERO = new Decimal(0);
@@ -51,7 +62,9 @@ const ZERO = new Decimal(0);
 const CUSTOMER_INCLUDE = {
   assignedAdmin: { select: { firstName: true, lastName: true } },
 } satisfies Prisma.PartyInclude;
-type CustomerParty = Prisma.PartyGetPayload<{ include: typeof CUSTOMER_INCLUDE }>;
+type CustomerParty = Prisma.PartyGetPayload<{
+  include: typeof CUSTOMER_INCLUDE;
+}>;
 
 const dateOrNull = (v: string | null) => (v ? new Date(v) : null);
 
@@ -81,9 +94,17 @@ const ORDER_INCLUDE = {
 } satisfies Prisma.WholesaleOrderInclude;
 
 /** Statuses that have NOT put the goods back on the shelf. */
-const LIVE_STATUSES: WholesaleOrderStatus[] = ['PENDING', 'PROCESSING', 'DELIVERED'];
+const LIVE_STATUSES: WholesaleOrderStatus[] = [
+  'PENDING',
+  'PROCESSING',
+  'DELIVERED',
+];
 
-function decimalOrThrow(value: string | undefined, field: string, fallback = ZERO) {
+function decimalOrThrow(
+  value: string | undefined,
+  field: string,
+  fallback = ZERO,
+) {
   if (value === undefined || value === '') return fallback;
   try {
     return new Decimal(value);
@@ -96,7 +117,9 @@ function decimalOrThrow(value: string | undefined, field: string, fallback = ZER
 function toDateOnly(iso?: string): Date {
   const d = iso ? new Date(iso) : new Date();
   if (Number.isNaN(d.getTime())) throw new BadRequestException('Invalid date');
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  );
 }
 
 /**
@@ -109,8 +132,12 @@ async function nextOrderNumber(
   tx: Prisma.TransactionClient,
   date: Date,
 ): Promise<string> {
-  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+  const start = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1),
+  );
+  const end = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1),
+  );
   const yymm = `${String(date.getUTCFullYear()).slice(2)}${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
   const prefix = `WS-${yymm}`;
   const latest = await tx.wholesaleOrder.findFirst({
@@ -118,7 +145,10 @@ async function nextOrderNumber(
     orderBy: { orderNumber: 'desc' },
     select: { orderNumber: true },
   });
-  const suffix = Number.parseInt(latest?.orderNumber.slice(prefix.length + 1) ?? '', 10);
+  const suffix = Number.parseInt(
+    latest?.orderNumber.slice(prefix.length + 1) ?? '',
+    10,
+  );
   const seq = Number.isFinite(suffix) ? suffix + 1 : 1;
   return `${prefix}-${String(seq).padStart(4, '0')}`;
 }
@@ -195,9 +225,22 @@ export class WholesaleService {
   async listCustomers(
     query: WholesaleCustomerQueryDto,
   ): Promise<PaginatedResult<WholesaleCustomerDto>> {
+    return this.listCustomerSet(query, false);
+  }
+
+  async listDeletedCustomers(
+    query: WholesaleCustomerQueryDto,
+  ): Promise<PaginatedResult<WholesaleCustomerDto>> {
+    return this.listCustomerSet(query, true);
+  }
+
+  private async listCustomerSet(
+    query: WholesaleCustomerQueryDto,
+    deletedOnly: boolean,
+  ): Promise<PaginatedResult<WholesaleCustomerDto>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
-    const where = this.customerWhere(query);
+    const where = this.customerWhere(query, deletedOnly);
 
     const [rows, total] = await Promise.all([
       this.prisma.client.party.findMany({
@@ -231,7 +274,13 @@ export class WholesaleService {
     const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
     const label = (v: string | null) =>
-      v ? v.toLowerCase().split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') : '';
+      v
+        ? v
+            .toLowerCase()
+            .split('_')
+            .map((w) => w[0].toUpperCase() + w.slice(1))
+            .join(' ')
+        : '';
 
     const columns: [string, (c: WholesaleCustomerDto) => unknown][] = [
       ['fv', (c) => (c.isFavorite ? 'Yes' : '')],
@@ -251,7 +300,10 @@ export class WholesaleService {
       ['Start Date', (c) => day(c.createdAt)],
       ['Last Order Date', (c) => day(c.lastOrderAt)],
       ['Next Call Target Date', (c) => day(c.nextCallTarget)],
-      ['Expire Time', (c) => (c.followUpCadenceDays ? `${c.followUpCadenceDays} days` : '')],
+      [
+        'Expire Time',
+        (c) => (c.followUpCadenceDays ? `${c.followUpCadenceDays} days` : ''),
+      ],
       ['New Order', (c) => (c.hasNewOrder ? 'Yes' : '')],
       ['New order Date', (c) => day(c.newOrderAt)],
       ['Priority', (c) => label(c.priority)],
@@ -273,11 +325,14 @@ export class WholesaleService {
     ].join('\r\n');
   }
 
-  private customerWhere(query: WholesaleCustomerQueryDto): Prisma.PartyWhereInput {
+  private customerWhere(
+    query: WholesaleCustomerQueryDto,
+    deletedOnly = false,
+  ): Prisma.PartyWhereInput {
     const search = query.search?.trim();
     return {
       roles: { has: 'WHOLESALE' },
-      deletedAt: null,
+      deletedAt: deletedOnly ? { not: null } : null,
       ...(query.isActive === undefined ? {} : { isActive: query.isActive }),
       ...(search
         ? {
@@ -301,7 +356,9 @@ export class WholesaleService {
    * which is what lets the Wholesale list and the Accounts party statement
    * agree by construction.
    */
-  private async decorateCustomers(parties: CustomerParty[]): Promise<WholesaleCustomerDto[]> {
+  private async decorateCustomers(
+    parties: CustomerParty[],
+  ): Promise<WholesaleCustomerDto[]> {
     const ids = parties.map((p) => p.id);
     // Unconditional: `{ in: [] }` already returns nothing, and short-circuiting
     // on an empty page only buys a union type that loses the aggregate shape.
@@ -320,21 +377,32 @@ export class WholesaleService {
       // ponytail: every live line for the page's buyers, summed in memory; a
       // grouped SQL query if a page of buyers ever carries tens of thousands of lines.
       this.prisma.client.wholesaleOrderItem.findMany({
-        where: { order: { partyId: { in: ids }, status: { in: LIVE_STATUSES } } },
-        select: { nameSnapshot: true, quantity: true, order: { select: { partyId: true } } },
+        where: {
+          order: { partyId: { in: ids }, status: { in: LIVE_STATUSES } },
+        },
+        select: {
+          nameSnapshot: true,
+          quantity: true,
+          order: { select: { partyId: true } },
+        },
       }),
     ]);
 
     // "Product" column: the line bought in the largest quantity, as retail shows it.
     const qtyByParty = new Map<number, Map<string, number>>();
     for (const item of items) {
-      const perProduct = qtyByParty.get(item.order.partyId) ?? new Map<string, number>();
-      perProduct.set(item.nameSnapshot, (perProduct.get(item.nameSnapshot) ?? 0) + item.quantity);
+      const perProduct =
+        qtyByParty.get(item.order.partyId) ?? new Map<string, number>();
+      perProduct.set(
+        item.nameSnapshot,
+        (perProduct.get(item.nameSnapshot) ?? 0) + item.quantity,
+      );
       qtyByParty.set(item.order.partyId, perProduct);
     }
     const topProductOf = (partyId: number) => {
       let top: [string, number] | null = null;
-      for (const entry of qtyByParty.get(partyId) ?? []) if (!top || entry[1] > top[1]) top = entry;
+      for (const entry of qtyByParty.get(partyId) ?? [])
+        if (!top || entry[1] > top[1]) top = entry;
       return top ? `${top[0]} x${top[1]}` : null;
     };
 
@@ -434,7 +502,10 @@ export class WholesaleService {
         _count: { _all: true },
         _sum: { total: true },
       }),
-      this.prisma.client.wholesaleOrder.groupBy({ by: ['type', 'partyId'], where: live }),
+      this.prisma.client.wholesaleOrder.groupBy({
+        by: ['type', 'partyId'],
+        where: live,
+      }),
       this.prisma.client.party.count({
         where: { roles: { has: 'WHOLESALE' }, deletedAt: null },
       }),
@@ -449,7 +520,9 @@ export class WholesaleService {
     const buyersOf = (t: WholesaleOrderType) =>
       new Set(buyers.filter((r) => r.type === t).map((r) => r.partyId)).size;
 
-    const positions = await this.ledger.partyPositions(parties.map((p) => p.id));
+    const positions = await this.ledger.partyPositions(
+      parties.map((p) => p.id),
+    );
     const dueTotal = [...positions.values()].reduce(
       (sum, pos) => sum.plus(pos.receivable ?? ZERO),
       ZERO,
@@ -459,7 +532,9 @@ export class WholesaleService {
       orderCount: byType.reduce((n, r) => n + r._count._all, 0),
       wholesaleOrderCount: countOf('WHOLESALE'),
       channelOrderCount: countOf('CHANNEL'),
-      salesTotal: byType.reduce((sum, r) => sum.plus(r._sum.total ?? ZERO), ZERO).toFixed(2),
+      salesTotal: byType
+        .reduce((sum, r) => sum.plus(r._sum.total ?? ZERO), ZERO)
+        .toFixed(2),
       dueTotal: dueTotal.toFixed(2),
       customerCount,
       wholesaleCustomerCount: buyersOf('WHOLESALE'),
@@ -472,12 +547,15 @@ export class WholesaleService {
       where: { id, roles: { has: 'WHOLESALE' }, deletedAt: null },
       include: CUSTOMER_INCLUDE,
     });
-    if (!party) throw new NotFoundException(`Wholesale customer ${id} not found`);
+    if (!party)
+      throw new NotFoundException(`Wholesale customer ${id} not found`);
     const [dto] = await this.decorateCustomers([party]);
     return dto;
   }
 
-  async createCustomer(dto: CreateWholesaleCustomerDto): Promise<WholesaleCustomerDto> {
+  async createCustomer(
+    dto: CreateWholesaleCustomerDto,
+  ): Promise<WholesaleCustomerDto> {
     // Duplicate NAMES are allowed on purpose — several shops genuinely trade
     // under the same one, and the request was explicitly to support that. The
     // phone number is what distinguishes them, so that is what gets checked,
@@ -508,7 +586,10 @@ export class WholesaleService {
         postCode: dto.postCode?.trim() || null,
         creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : null,
         creditDays: dto.creditDays ?? null,
-        openingReceivable: decimalOrThrow(dto.openingReceivable, 'openingReceivable'),
+        openingReceivable: decimalOrThrow(
+          dto.openingReceivable,
+          'openingReceivable',
+        ),
         note: dto.note?.trim() || null,
         isActive: dto.isActive ?? true,
       },
@@ -528,36 +609,68 @@ export class WholesaleService {
       data: {
         ...(dto.name === undefined ? {} : { name: dto.name.trim() }),
         ...(dto.phone === undefined ? {} : { phone: dto.phone.trim() }),
-        ...(dto.address === undefined ? {} : { address: dto.address.trim() || null }),
+        ...(dto.address === undefined
+          ? {}
+          : { address: dto.address.trim() || null }),
         ...(dto.email === undefined ? {} : { email: dto.email.trim() || null }),
         ...(dto.alternativePhone === undefined
           ? {}
           : { alternativePhone: dto.alternativePhone.trim() || null }),
-        ...(dto.district === undefined ? {} : { district: dto.district.trim() || null }),
+        ...(dto.district === undefined
+          ? {}
+          : { district: dto.district.trim() || null }),
         ...(dto.thana === undefined ? {} : { thana: dto.thana.trim() || null }),
-        ...(dto.landmark === undefined ? {} : { landmark: dto.landmark.trim() || null }),
-        ...(dto.postCode === undefined ? {} : { postCode: dto.postCode.trim() || null }),
+        ...(dto.landmark === undefined
+          ? {}
+          : { landmark: dto.landmark.trim() || null }),
+        ...(dto.postCode === undefined
+          ? {}
+          : { postCode: dto.postCode.trim() || null }),
         ...(dto.creditLimit === undefined
           ? {}
-          : { creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : null }),
+          : {
+              creditLimit: dto.creditLimit
+                ? new Decimal(dto.creditLimit)
+                : null,
+            }),
         ...(dto.creditDays === undefined ? {} : { creditDays: dto.creditDays }),
         ...(dto.note === undefined ? {} : { note: dto.note.trim() || null }),
         ...(dto.isActive === undefined ? {} : { isActive: dto.isActive }),
         ...(dto.isFavorite === undefined ? {} : { isFavorite: dto.isFavorite }),
         ...(dto.dob === undefined ? {} : { dob: dateOrNull(dto.dob) }),
-        ...(dto.assignedAdminId === undefined ? {} : { assignedAdminId: dto.assignedAdminId }),
-        ...(dto.nextCallTarget === undefined ? {} : { nextCallTarget: dateOrNull(dto.nextCallTarget) }),
-        ...(dto.followUpCadenceDays === undefined ? {} : { followUpCadenceDays: dto.followUpCadenceDays }),
-        ...(dto.hasNewOrder === undefined ? {} : { hasNewOrder: dto.hasNewOrder }),
-        ...(dto.newOrderAt === undefined ? {} : { newOrderAt: dateOrNull(dto.newOrderAt) }),
+        ...(dto.assignedAdminId === undefined
+          ? {}
+          : { assignedAdminId: dto.assignedAdminId }),
+        ...(dto.nextCallTarget === undefined
+          ? {}
+          : { nextCallTarget: dateOrNull(dto.nextCallTarget) }),
+        ...(dto.followUpCadenceDays === undefined
+          ? {}
+          : { followUpCadenceDays: dto.followUpCadenceDays }),
+        ...(dto.hasNewOrder === undefined
+          ? {}
+          : { hasNewOrder: dto.hasNewOrder }),
+        ...(dto.newOrderAt === undefined
+          ? {}
+          : { newOrderAt: dateOrNull(dto.newOrderAt) }),
         ...(dto.priority === undefined ? {} : { priority: dto.priority }),
         ...(dto.crmStatus === undefined ? {} : { crmStatus: dto.crmStatus }),
         ...(dto.behaviour === undefined ? {} : { behaviour: dto.behaviour }),
-        ...(dto.customerFeedback === undefined ? {} : { customerFeedback: dto.customerFeedback.trim() || null }),
-        ...(dto.amaderFeedback === undefined ? {} : { amaderFeedback: dto.amaderFeedback.trim() || null }),
-        ...(dto.familyDetails === undefined ? {} : { familyDetails: dto.familyDetails.trim() || null }),
-        ...(dto.purchaseReason === undefined ? {} : { purchaseReason: dto.purchaseReason.trim() || null }),
-        ...(dto.facebookProfileUrl === undefined ? {} : { facebookProfileUrl: dto.facebookProfileUrl.trim() || null }),
+        ...(dto.customerFeedback === undefined
+          ? {}
+          : { customerFeedback: dto.customerFeedback.trim() || null }),
+        ...(dto.amaderFeedback === undefined
+          ? {}
+          : { amaderFeedback: dto.amaderFeedback.trim() || null }),
+        ...(dto.familyDetails === undefined
+          ? {}
+          : { familyDetails: dto.familyDetails.trim() || null }),
+        ...(dto.purchaseReason === undefined
+          ? {}
+          : { purchaseReason: dto.purchaseReason.trim() || null }),
+        ...(dto.facebookProfileUrl === undefined
+          ? {}
+          : { facebookProfileUrl: dto.facebookProfileUrl.trim() || null }),
       },
     });
     return this.findCustomer(id);
@@ -585,7 +698,9 @@ export class WholesaleService {
     }));
   }
 
-  async createChannel(dto: CreateWholesaleChannelDto): Promise<WholesaleChannelDto> {
+  async createChannel(
+    dto: CreateWholesaleChannelDto,
+  ): Promise<WholesaleChannelDto> {
     const name = dto.name.trim();
     await this.assertChannelNameFree(name);
     const created = await this.prisma.client.wholesaleChannel.create({
@@ -595,14 +710,21 @@ export class WholesaleService {
         hasDelivery: dto.hasDelivery,
         isActive: dto.isActive ?? true,
         sortOrder: dto.sortOrder ?? 0,
-        fields: normalizeChannelFields(dto.fields) as unknown as Prisma.InputJsonValue,
+        fields: normalizeChannelFields(
+          dto.fields,
+        ) as unknown as Prisma.InputJsonValue,
       },
     });
     return (await this.listChannels()).find((c) => c.id === created.id)!;
   }
 
-  async updateChannel(id: number, dto: UpdateWholesaleChannelDto): Promise<WholesaleChannelDto> {
-    const existing = await this.prisma.client.wholesaleChannel.findUnique({ where: { id } });
+  async updateChannel(
+    id: number,
+    dto: UpdateWholesaleChannelDto,
+  ): Promise<WholesaleChannelDto> {
+    const existing = await this.prisma.client.wholesaleChannel.findUnique({
+      where: { id },
+    });
     if (!existing) throw new NotFoundException(`Channel ${id} not found`);
     const name = dto.name?.trim();
     if (name && name !== existing.name) await this.assertChannelNameFree(name);
@@ -611,14 +733,20 @@ export class WholesaleService {
       data: {
         ...(name ? { name } : {}),
         ...(dto.priceList === undefined ? {} : { priceList: dto.priceList }),
-        ...(dto.hasDelivery === undefined ? {} : { hasDelivery: dto.hasDelivery }),
+        ...(dto.hasDelivery === undefined
+          ? {}
+          : { hasDelivery: dto.hasDelivery }),
         ...(dto.isActive === undefined ? {} : { isActive: dto.isActive }),
         ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
         // Removing a field only stops it being asked for; values already on
         // orders stay in their JSON and reappear if a field with that key returns.
         ...(dto.fields === undefined
           ? {}
-          : { fields: normalizeChannelFields(dto.fields) as unknown as Prisma.InputJsonValue }),
+          : {
+              fields: normalizeChannelFields(
+                dto.fields,
+              ) as unknown as Prisma.InputJsonValue,
+            }),
       },
     });
     return (await this.listChannels()).find((c) => c.id === id)!;
@@ -632,7 +760,10 @@ export class WholesaleService {
       include: { _count: { select: { orders: true } } },
     });
     if (!channel) throw new NotFoundException(`Channel ${id} not found`);
-    if (channel.isSystem) throw new BadRequestException(`${channel.name} is built in. Deactivate it instead.`);
+    if (channel.isSystem)
+      throw new BadRequestException(
+        `${channel.name} is built in. Deactivate it instead.`,
+      );
     if (channel._count.orders > 0) {
       throw new BadRequestException(
         `${channel.name} has ${channel._count.orders} order${channel._count.orders === 1 ? '' : 's'}. Deactivate it instead.`,
@@ -647,14 +778,19 @@ export class WholesaleService {
       where: { name: { equals: name, mode: 'insensitive' } },
       select: { id: true },
     });
-    if (clash) throw new BadRequestException(`A channel named "${name}" already exists`);
+    if (clash)
+      throw new BadRequestException(`A channel named "${name}" already exists`);
   }
 
   private async activeChannel(channelId: number | undefined) {
-    if (!channelId) throw new BadRequestException('Choose a channel for this order');
-    const channel = await this.prisma.client.wholesaleChannel.findUnique({ where: { id: channelId } });
+    if (!channelId)
+      throw new BadRequestException('Choose a channel for this order');
+    const channel = await this.prisma.client.wholesaleChannel.findUnique({
+      where: { id: channelId },
+    });
     if (!channel) throw new NotFoundException(`Channel ${channelId} not found`);
-    if (!channel.isActive) throw new BadRequestException(`${channel.name} is deactivated`);
+    if (!channel.isActive)
+      throw new BadRequestException(`${channel.name} is deactivated`);
     return channel;
   }
 
@@ -667,12 +803,19 @@ export class WholesaleService {
     editing = false,
   ) {
     if (!channel.hasDelivery) {
-      if (courier) throw new BadRequestException(`${channel.name} orders are not couriered`);
+      if (courier)
+        throw new BadRequestException(
+          `${channel.name} orders are not couriered`,
+        );
       if (deliveryCharge && Number(deliveryCharge) > 0) {
-        throw new BadRequestException(`${channel.name} orders have no delivery charge`);
+        throw new BadRequestException(
+          `${channel.name} orders have no delivery charge`,
+        );
       }
     } else if (!courier && !editing) {
-      throw new BadRequestException(`A ${channel.name} order needs a courier / delivery method`);
+      throw new BadRequestException(
+        `A ${channel.name} order needs a courier / delivery method`,
+      );
     }
   }
 
@@ -710,7 +853,10 @@ export class WholesaleService {
       orderBy: { firstName: 'asc' },
       select: { id: true, firstName: true, lastName: true },
     });
-    return staff.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName ?? ''}`.trim() }));
+    return staff.map((s) => ({
+      id: s.id,
+      name: `${s.firstName} ${s.lastName ?? ''}`.trim(),
+    }));
   }
 
   /**
@@ -723,7 +869,10 @@ export class WholesaleService {
    * Only parties with the WHOLESALE role are matched. A retail customer with
    * the same phone is a separate record and is left alone.
    */
-  async importCustomers(buffer: Buffer, dryRun: boolean): Promise<CustomerImportResultDto> {
+  async importCustomers(
+    buffer: Buffer,
+    dryRun: boolean,
+  ): Promise<CustomerImportResultDto> {
     const rows = parseImportRows(await readSheet(buffer));
     const { unique, skippedRows } = dedupeByPhone(rows);
     const warnings = new ImportWarnings();
@@ -742,7 +891,8 @@ export class WholesaleService {
     let nameDifferences = 0;
     let unchanged = 0;
     const toCreate: Prisma.PartyCreateManyInput[] = [];
-    const toUpdate: { id: number; data: Prisma.PartyUncheckedUpdateInput }[] = [];
+    const toUpdate: { id: number; data: Prisma.PartyUncheckedUpdateInput }[] =
+      [];
 
     for (const r of unique) {
       const staffId = staffIdFor(r.assignTo);
@@ -751,7 +901,8 @@ export class WholesaleService {
       const existing = byPhone.get(r.phone!);
 
       if (existing) {
-        if (name && name.toLowerCase() !== existing.name.toLowerCase()) nameDifferences++;
+        if (name && name.toLowerCase() !== existing.name.toLowerCase())
+          nameDifferences++;
         const data = {
           ...(!existing.address && r.address ? { address: r.address } : {}),
           ...fillEmptyCrm(existing, r, staffId),
@@ -765,17 +916,28 @@ export class WholesaleService {
 
     if (!dryRun) {
       for (let i = 0; i < toCreate.length; i += 500) {
-        await this.prisma.client.party.createMany({ data: toCreate.slice(i, i + 500) });
+        await this.prisma.client.party.createMany({
+          data: toCreate.slice(i, i + 500),
+        });
       }
       for (let i = 0; i < toUpdate.length; i += 200) {
         await this.prisma.client.$transaction(
-          toUpdate.slice(i, i + 200).map((u) => this.prisma.client.party.update({ where: { id: u.id }, data: u.data })),
+          toUpdate
+            .slice(i, i + 200)
+            .map((u) =>
+              this.prisma.client.party.update({
+                where: { id: u.id },
+                data: u.data,
+              }),
+            ),
         );
       }
     }
 
     if (nameDifferences) {
-      warnings.add(`${nameDifferences} existing buyers have a different name in the file: the name already in the system was kept.`);
+      warnings.add(
+        `${nameDifferences} existing buyers have a different name in the file: the name already in the system was kept.`,
+      );
     }
     return {
       dryRun,
@@ -789,7 +951,11 @@ export class WholesaleService {
     };
   }
 
-  private partyFromImportRow(r: ImportRow, name: string, staffId: number | undefined): Prisma.PartyCreateManyInput {
+  private partyFromImportRow(
+    r: ImportRow,
+    name: string,
+    staffId: number | undefined,
+  ): Prisma.PartyCreateManyInput {
     return {
       // A buyer needs a name to be pickable on an order; the phone stands in.
       name: name || r.phone!,
@@ -844,13 +1010,56 @@ export class WholesaleService {
     return { id };
   }
 
+  async restoreCustomer(id: number): Promise<WholesaleCustomerDto> {
+    const deleted = await this.prisma.client.party.findUnique({
+      where: { id },
+      include: CUSTOMER_INCLUDE,
+    });
+    if (
+      !deleted ||
+      !deleted.roles.includes('WHOLESALE') ||
+      deleted.deletedAt === null
+    ) {
+      throw new NotFoundException(
+        'Wholesale customer not found in Deleted Customers',
+      );
+    }
+
+    const phoneClash = deleted.phone
+      ? await this.prisma.client.party.findFirst({
+          where: {
+            id: { not: id },
+            phone: deleted.phone,
+            roles: { has: 'WHOLESALE' },
+            deletedAt: null,
+          },
+          select: { id: true, name: true },
+        })
+      : null;
+    if (phoneClash) {
+      throw new BadRequestException(
+        `${phoneClash.name} is already registered on ${deleted.phone}`,
+      );
+    }
+
+    const restored = await this.prisma.client.party.update({
+      where: { id },
+      data: { deletedAt: null, isActive: true },
+      include: CUSTOMER_INCLUDE,
+    });
+    const [dto] = await this.decorateCustomers([restored]);
+    return dto;
+  }
+
   // -------------------------------------------------------------------------
   // Orders
   // -------------------------------------------------------------------------
 
   /** Shared by the list and the CSV export, so an export can never quietly
    *  cover a different set of orders than the screen that triggered it. */
-  private buildOrderWhere(query: WholesaleOrderQueryDto): Prisma.WholesaleOrderWhereInput {
+  private buildOrderWhere(
+    query: WholesaleOrderQueryDto,
+  ): Prisma.WholesaleOrderWhereInput {
     const search = query.search?.trim();
     return {
       ...(query.status ? { status: query.status } : {}),
@@ -872,7 +1081,13 @@ export class WholesaleService {
               { addressLine: { contains: search, mode: 'insensitive' } },
               { party: { name: { contains: search, mode: 'insensitive' } } },
               { party: { phone: { contains: search, mode: 'insensitive' } } },
-              { items: { some: { nameSnapshot: { contains: search, mode: 'insensitive' } } } },
+              {
+                items: {
+                  some: {
+                    nameSnapshot: { contains: search, mode: 'insensitive' },
+                  },
+                },
+              },
             ],
           }
         : {}),
@@ -931,7 +1146,12 @@ export class WholesaleService {
     });
     const orders = await this.withPaid(rows);
     // Field labels per channel, so the export reads "GP Number: 123", not a raw key.
-    const labels = new Map((await this.listChannels()).map((c) => [c.id, new Map(c.fields.map((f) => [f.key, f.label]))]));
+    const labels = new Map(
+      (await this.listChannels()).map((c) => [
+        c.id,
+        new Map(c.fields.map((f) => [f.key, f.label])),
+      ]),
+    );
     const details = (o: WholesaleOrderDto) =>
       Object.entries(o.channelData ?? {})
         .map(([k, v]) => `${labels.get(o.channelId!)?.get(k) ?? k}: ${v}`)
@@ -939,7 +1159,8 @@ export class WholesaleService {
 
     const header =
       'Order,Date,Invoice,Channel,Channel Details,Customer,Phone,Courier,Consignment,Items,Subtotal,Delivery,Discount,Total,Paid,Due,Status';
-    const q = (v: string | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const q = (v: string | null | undefined) =>
+      `"${String(v ?? '').replace(/"/g, '""')}"`;
 
     const lines = orders.map((o) =>
       [
@@ -982,7 +1203,10 @@ export class WholesaleService {
     const party = await this.prisma.client.party.findFirst({
       where: { id: dto.partyId, roles: { has: 'WHOLESALE' }, deletedAt: null },
     });
-    if (!party) throw new NotFoundException(`Wholesale customer ${dto.partyId} not found`);
+    if (!party)
+      throw new NotFoundException(
+        `Wholesale customer ${dto.partyId} not found`,
+      );
     if (!party.isActive) {
       throw new BadRequestException(`${party.name} is deactivated`);
     }
@@ -994,20 +1218,36 @@ export class WholesaleService {
     // (Cash Sale's GP number, a Daraz order ID...) are checked against its
     // settings, not a hardcoded list.
     const type = dto.type ?? 'WHOLESALE';
-    const salesChannel = type === 'CHANNEL' ? await this.activeChannel(dto.channelId) : null;
+    const salesChannel =
+      type === 'CHANNEL' ? await this.activeChannel(dto.channelId) : null;
     if (type === 'WHOLESALE') {
-      if (!dto.courier) throw new BadRequestException('A wholesale order needs a courier');
-      if (dto.channelId) throw new BadRequestException('A wholesale order does not belong to a channel');
+      if (!dto.courier)
+        throw new BadRequestException('A wholesale order needs a courier');
+      if (dto.channelId)
+        throw new BadRequestException(
+          'A wholesale order does not belong to a channel',
+        );
     } else {
-      this.assertChannelDelivery(salesChannel!, dto.courier, dto.deliveryCharge);
+      this.assertChannelDelivery(
+        salesChannel!,
+        dto.courier,
+        dto.deliveryCharge,
+      );
     }
     const channelValues = salesChannel
-      ? validateChannelValues(channelFieldsOf(salesChannel.fields), dto.channelData)
+      ? validateChannelValues(
+          channelFieldsOf(salesChannel.fields),
+          dto.channelData,
+        )
       : null;
     // Every non-cash method settles through a gateway that hands back a
     // reference; without it a payment cannot be reconciled against a
     // statement later.
-    if (dto.paymentMethod && dto.paymentMethod !== 'CASH' && !dto.transactionId?.trim()) {
+    if (
+      dto.paymentMethod &&
+      dto.paymentMethod !== 'CASH' &&
+      !dto.transactionId?.trim()
+    ) {
       throw new BadRequestException(
         `A ${dto.paymentMethod} payment needs its transaction ID`,
       );
@@ -1018,7 +1258,9 @@ export class WholesaleService {
     const deliveryCharge = decimalOrThrow(dto.deliveryCharge, 'deliveryCharge');
     const discount = decimalOrThrow(dto.discount, 'discount');
     if (deliveryCharge.isNegative() || discount.isNegative()) {
-      throw new BadRequestException('Delivery charge and discount cannot be negative');
+      throw new BadRequestException(
+        'Delivery charge and discount cannot be negative',
+      );
     }
 
     const total = subtotal.plus(deliveryCharge).minus(discount);
@@ -1032,7 +1274,8 @@ export class WholesaleService {
     }
 
     const paid = decimalOrThrow(dto.paidAmount, 'paidAmount');
-    if (paid.isNegative()) throw new BadRequestException('Paid amount cannot be negative');
+    if (paid.isNegative())
+      throw new BadRequestException('Paid amount cannot be negative');
     if (paid.greaterThan(total)) {
       throw new BadRequestException(
         `Paid amount is more than the ৳${total.toFixed(2)} bill`,
@@ -1044,7 +1287,9 @@ export class WholesaleService {
 
     // Resolved before the transaction opens: a payment with nowhere to land
     // must fail the whole order, not book a sale whose cash silently vanished.
-    const accountId = paid.isZero() ? null : await this.resolveAccount(dto.paymentAccountId);
+    const accountId = paid.isZero()
+      ? null
+      : await this.resolveAccount(dto.paymentAccountId);
 
     const dueDate = party.creditDays
       ? new Date(placedAt.getTime() + party.creditDays * 86_400_000)
@@ -1166,7 +1411,10 @@ export class WholesaleService {
    *     already collected are `LedgerEntry` rows against that due and are left
    *     untouched, which is why the new total may not fall below them.
    */
-  async updateOrder(id: number, dto: UpdateWholesaleOrderDto): Promise<WholesaleOrderDto> {
+  async updateOrder(
+    id: number,
+    dto: UpdateWholesaleOrderDto,
+  ): Promise<WholesaleOrderDto> {
     const order = await this.prisma.client.wholesaleOrder.findUnique({
       where: { id },
       include: {
@@ -1183,21 +1431,39 @@ export class WholesaleService {
     // Cancelling restocks and voids the receivable, so it cannot be a field
     // edit — it goes through cancelOrder, which does both in one transaction.
     if (dto.status === 'CANCELLED') {
-      throw new BadRequestException('Use the cancel endpoint to cancel an order');
+      throw new BadRequestException(
+        'Use the cancel endpoint to cancel an order',
+      );
     }
     // Same rules the create path enforces, restated here so an edit cannot get
     // an order into a shape creating it never could.
     const salesChannel = order.channelId
-      ? await this.prisma.client.wholesaleChannel.findUnique({ where: { id: order.channelId } })
+      ? await this.prisma.client.wholesaleChannel.findUnique({
+          where: { id: order.channelId },
+        })
       : null;
-    if (salesChannel) this.assertChannelDelivery(salesChannel, dto.courier, dto.deliveryCharge, true);
+    if (salesChannel)
+      this.assertChannelDelivery(
+        salesChannel,
+        dto.courier,
+        dto.deliveryCharge,
+        true,
+      );
     const channelValues =
       salesChannel && dto.channelData !== undefined
-        ? validateChannelValues(channelFieldsOf(salesChannel.fields), dto.channelData)
+        ? validateChannelValues(
+            channelFieldsOf(salesChannel.fields),
+            dto.channelData,
+          )
         : null;
 
     const light = {
-      ...(channelValues ? { channelData: channelValues.values, channelSearch: channelValues.search } : {}),
+      ...(channelValues
+        ? {
+            channelData: channelValues.values,
+            channelSearch: channelValues.search,
+          }
+        : {}),
       ...(dto.status === undefined ? {} : { status: dto.status }),
       ...(dto.courier === undefined ? {} : { courier: dto.courier }),
       ...(dto.consignmentId === undefined
@@ -1212,7 +1478,10 @@ export class WholesaleService {
       dto.discount !== undefined;
 
     if (!restating) {
-      await this.prisma.client.wholesaleOrder.update({ where: { id }, data: light });
+      await this.prisma.client.wholesaleOrder.update({
+        where: { id },
+        data: light,
+      });
       return this.findOrder(id);
     }
 
@@ -1225,7 +1494,9 @@ export class WholesaleService {
     );
     const discount = decimalOrThrow(dto.discount, 'discount', order.discount);
     if (deliveryCharge.isNegative() || discount.isNegative()) {
-      throw new BadRequestException('Delivery charge and discount cannot be negative');
+      throw new BadRequestException(
+        'Delivery charge and discount cannot be negative',
+      );
     }
 
     const lines = dto.items
@@ -1278,7 +1549,9 @@ export class WholesaleService {
         if (delta === 0) continue;
         const [kind, rawId] = key.split(':');
         const where = { id: Number(rawId) };
-        const data = { stock: delta > 0 ? { decrement: delta } : { increment: -delta } };
+        const data = {
+          stock: delta > 0 ? { decrement: delta } : { increment: -delta },
+        };
         if (kind === 'v') await tx.productVariant.update({ where, data });
         else await tx.product.update({ where, data });
       }
@@ -1324,7 +1597,10 @@ export class WholesaleService {
    * longer claims anything. Reverse the receipt in Accounts first — that is a
    * money decision, and it belongs where the money is managed.
    */
-  async cancelOrder(id: number, adminId: number | null): Promise<WholesaleOrderDto> {
+  async cancelOrder(
+    id: number,
+    adminId: number | null,
+  ): Promise<WholesaleOrderDto> {
     const order = await this.prisma.client.wholesaleOrder.findUnique({
       where: { id },
       include: {
@@ -1342,7 +1618,10 @@ export class WholesaleService {
 
     const liveDues = order.dues.filter((d) => !d.voidedAt);
     const paidByDue = await this.ledger.paidForDues(liveDues);
-    const paid = liveDues.reduce((sum, d) => sum.plus(paidByDue.get(d.id) ?? ZERO), ZERO);
+    const paid = liveDues.reduce(
+      (sum, d) => sum.plus(paidByDue.get(d.id) ?? ZERO),
+      ZERO,
+    );
     if (paid.greaterThan(ZERO)) {
       throw new BadRequestException(
         `৳${paid.toFixed(2)} has been collected on this order. Reverse the receipt in Accounts before cancelling.`,
@@ -1375,6 +1654,73 @@ export class WholesaleService {
     return this.findOrder(id);
   }
 
+  async restoreOrder(id: number): Promise<WholesaleOrderDto> {
+    const order = await this.prisma.client.wholesaleOrder.findUnique({
+      where: { id },
+      include: {
+        ...ORDER_INCLUDE,
+        items: { include: { product: { select: { productType: true } } } },
+      },
+    });
+    if (!order) throw new NotFoundException(`Wholesale order ${id} not found`);
+    if (order.status !== 'CANCELLED') {
+      throw new BadRequestException('Only a cancelled order can be restored');
+    }
+
+    const customer = await this.prisma.client.party.findFirst({
+      where: {
+        id: order.partyId,
+        roles: { has: 'WHOLESALE' },
+        deletedAt: null,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    if (!customer) {
+      throw new BadRequestException(
+        'Restore and activate this wholesale customer before restoring the order',
+      );
+    }
+
+    const voidedDues = order.dues.filter(
+      (due) => due.kind === 'RECEIVABLE' && due.voidedAt !== null,
+    );
+    if (
+      voidedDues.length === 0 ||
+      order.dues.some((due) => due.voidedAt === null)
+    ) {
+      throw new BadRequestException(
+        'The cancelled order does not have one safely restorable invoice',
+      );
+    }
+
+    await this.ledger.assertPeriodOpen(order.placedAt);
+    await this.prisma.client.$transaction(async (tx) => {
+      await tx.wholesaleOrder.update({
+        where: { id },
+        data: { status: 'PENDING', cancelledAt: null },
+      });
+      await this.moveStock(
+        tx,
+        order.items.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          isDigital: item.product?.productType === 'DIGITAL',
+        })),
+        'decrement',
+      );
+      for (const due of voidedDues) {
+        await tx.due.update({
+          where: { id: due.id },
+          data: { voidedAt: null },
+        });
+      }
+    });
+
+    return this.findOrder(id);
+  }
+
   /** A later collection against the order's receivable. */
   async recordPayment(
     id: number,
@@ -1388,7 +1734,9 @@ export class WholesaleService {
     if (!order) throw new NotFoundException(`Wholesale order ${id} not found`);
     const due = order.dues[0];
     if (!due) {
-      throw new BadRequestException('That order has no open invoice to pay against');
+      throw new BadRequestException(
+        'That order has no open invoice to pay against',
+      );
     }
 
     const accountId = await this.resolveAccount(dto.accountId);
@@ -1444,9 +1792,12 @@ export class WholesaleService {
    * after the product is renamed or deleted.
    */
   private async resolveLines(items: CreateWholesaleOrderDto['items']) {
-    if (!items.length) throw new BadRequestException('Add at least one product');
+    if (!items.length)
+      throw new BadRequestException('Add at least one product');
 
-    const variantIds = items.map((i) => i.variantId).filter((v): v is number => !!v);
+    const variantIds = items
+      .map((i) => i.variantId)
+      .filter((v): v is number => !!v);
     const productIds = items
       .filter((i) => !i.variantId)
       .map((i) => i.productId)
@@ -1505,7 +1856,8 @@ export class WholesaleService {
 
       if (item.variantId) {
         const v = variantById.get(item.variantId);
-        if (!v) throw new NotFoundException(`Variant ${item.variantId} not found`);
+        if (!v)
+          throw new NotFoundException(`Variant ${item.variantId} not found`);
         return {
           productId: v.productId,
           variantId: v.id,
@@ -1523,7 +1875,8 @@ export class WholesaleService {
         throw new BadRequestException('Each line needs a product or a variant');
       }
       const p = productById.get(item.productId);
-      if (!p) throw new NotFoundException(`Product ${item.productId} not found`);
+      if (!p)
+        throw new NotFoundException(`Product ${item.productId} not found`);
       return {
         productId: p.id,
         variantId: null,

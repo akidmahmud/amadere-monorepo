@@ -12,12 +12,16 @@ import {
   downloadWholesaleOrdersCsv,
   channelDetails,
   labelOf,
+  useCancelWholesaleOrder,
+  useRestoreWholesaleOrder,
   useWholesaleChannels,
   useWholesaleOrders,
   useWholesaleStats,
   wholesaleInvoiceHref,
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
+import { useCan } from "@/hooks/useAdminAuth";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { Pager } from "./Pager";
 
@@ -150,12 +154,21 @@ export function OrdersDashboard({
   // "ALL", "WHOLESALE", or a channel id as "CH:<id>".
   const [type, setType] = useState("ALL");
   const channels = useWholesaleChannels();
-  const channelFilter = type.startsWith("CH:") ? Number(type.slice(3)) : undefined;
+  const channelFilter = type.startsWith("CH:")
+    ? Number(type.slice(3))
+    : undefined;
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
   const [viewing, setViewing] = useState<WholesaleOrder | null>(null);
   const [exporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<{
+    order: WholesaleOrder;
+    action: "delete" | "restore";
+  } | null>(null);
+  const canDelete = useCan("wholesale.delete");
+  const cancelOrder = useCancelWholesaleOrder();
+  const restoreOrder = useRestoreWholesaleOrder();
 
   const orders = useWholesaleOrders(
     search,
@@ -179,6 +192,42 @@ export function OrdersDashboard({
     setPage(1);
   }
 
+  function cancel(order: WholesaleOrder) {
+    setConfirmation({ order, action: "delete" });
+  }
+
+  function confirmCancel(order: WholesaleOrder) {
+    setFailure(null);
+    cancelOrder.mutate(order.id, {
+      onSuccess: () => setConfirmation(null),
+      onError: (error: unknown) => {
+        setConfirmation(null);
+        setFailure(
+          error instanceof Error ? error.message : "Could not cancel the order",
+        );
+      },
+    });
+  }
+
+  function restore(order: WholesaleOrder) {
+    setConfirmation({ order, action: "restore" });
+  }
+
+  function confirmRestore(order: WholesaleOrder) {
+    setFailure(null);
+    restoreOrder.mutate(order.id, {
+      onSuccess: () => setConfirmation(null),
+      onError: (error: unknown) => {
+        setConfirmation(null);
+        setFailure(
+          error instanceof Error
+            ? error.message
+            : "Could not restore the order",
+        );
+      },
+    });
+  }
+
   return (
     <div className="space-y-5">
       {/* Counted server-side over every order — not over `rows`, which is one
@@ -188,7 +237,9 @@ export function OrdersDashboard({
           label="Total Orders"
           value={String(s?.orderCount ?? 0)}
           footer="Wholesale + channels, cancelled excluded"
-          icon={<Icon name="receipt_long" size={24} className="text-brand-500" />}
+          icon={
+            <Icon name="receipt_long" size={24} className="text-brand-500" />
+          }
         />
         <StatCard
           label="Total Sales"
@@ -257,24 +308,42 @@ export function OrdersDashboard({
               ))}
             </select>
           </div>
-          <Button
-            variant="ghost"
-            disabled={exporting}
-            onClick={async () => {
-              setFailure(null);
-              setExporting(true);
-              try {
-                await downloadWholesaleOrdersCsv(search, status);
-              } catch (e) {
-                setFailure(e instanceof Error ? e.message : "Couldn't export");
-              } finally {
-                setExporting(false);
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="ghost"
+              onClick={() =>
+                refilter(() =>
+                  setStatus(status === "CANCELLED" ? "ALL" : "CANCELLED"),
+                )
               }
-            }}
-          >
-            <Icon name="download" size={18} />
-            {exporting ? "Exporting…" : "Export CSV"}
-          </Button>
+            >
+              <Icon
+                name={status === "CANCELLED" ? "arrow_back" : "delete"}
+                size={18}
+              />
+              {status === "CANCELLED" ? "Back to Orders" : "Deleted Orders"}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={exporting}
+              onClick={async () => {
+                setFailure(null);
+                setExporting(true);
+                try {
+                  await downloadWholesaleOrdersCsv(search, status);
+                } catch (e) {
+                  setFailure(
+                    e instanceof Error ? e.message : "Couldn't export",
+                  );
+                } finally {
+                  setExporting(false);
+                }
+              }}
+            >
+              <Icon name="download" size={18} />
+              {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          </div>
         </div>
 
         {failure && (
@@ -284,7 +353,9 @@ export function OrdersDashboard({
         )}
 
         {orders.isLoading ? (
-          <p className="py-10 text-center text-sm text-muted">Loading orders…</p>
+          <p className="py-10 text-center text-sm text-muted">
+            Loading orders…
+          </p>
         ) : rows.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted">
             No orders match those filters.
@@ -365,6 +436,10 @@ export function OrdersDashboard({
                           onView={() => setViewing(o)}
                           onCollect={() => onCollectPayment(o)}
                           onEdit={() => onEditOrder(o)}
+                          onCancel={() => cancel(o)}
+                          onRestore={() => restore(o)}
+                          canCancel={canDelete}
+                          busy={cancelOrder.isPending || restoreOrder.isPending}
                         />
                       </td>
                     </tr>
@@ -415,6 +490,10 @@ export function OrdersDashboard({
                     onView={() => setViewing(o)}
                     onCollect={() => onCollectPayment(o)}
                     onEdit={() => onEditOrder(o)}
+                    onCancel={() => cancel(o)}
+                    onRestore={() => restore(o)}
+                    canCancel={canDelete}
+                    busy={cancelOrder.isPending || restoreOrder.isPending}
                   />
                 </div>
               ))}
@@ -433,6 +512,37 @@ export function OrdersDashboard({
       {viewing && (
         <OrderDetailModal order={viewing} onClose={() => setViewing(null)} />
       )}
+      <ConfirmDialog
+        open={confirmation !== null}
+        onClose={() => setConfirmation(null)}
+        onConfirm={() => {
+          if (!confirmation) return;
+          if (confirmation.action === "delete") {
+            confirmCancel(confirmation.order);
+          } else {
+            confirmRestore(confirmation.order);
+          }
+        }}
+        title={
+          confirmation?.action === "restore"
+            ? "Restore this order?"
+            : "Delete this order?"
+        }
+        description={
+          confirmation?.action === "restore"
+            ? `${confirmation.order.orderNumber} will return to Pending. Its products will leave stock again and the original receivable will be reopened.`
+            : `${confirmation?.order.orderNumber ?? "This order"} will be safely cancelled. Its products return to stock and its receivable is voided. You can restore it later from Deleted Orders.`
+        }
+        confirmLabel={
+          confirmation?.action === "restore" ? "Restore Order" : "Delete Order"
+        }
+        cancelLabel="Keep Order"
+        pendingLabel={
+          confirmation?.action === "restore" ? "Restoring…" : "Deleting…"
+        }
+        tone={confirmation?.action === "restore" ? "success" : "danger"}
+        pending={cancelOrder.isPending || restoreOrder.isPending}
+      />
     </div>
   );
 }
@@ -442,11 +552,19 @@ function RowActions({
   onView,
   onCollect,
   onEdit,
+  onCancel,
+  onRestore,
+  canCancel,
+  busy,
 }: {
   order: WholesaleOrder;
   onView: () => void;
   onCollect: () => void;
   onEdit: () => void;
+  onCancel: () => void;
+  onRestore: () => void;
+  canCancel: boolean;
+  busy: boolean;
 }) {
   const link =
     "text-left text-[10px] font-bold text-brand-600 hover:underline dark:text-brand-400";
@@ -475,6 +593,26 @@ function RowActions({
       >
         Invoice
       </a>
+      {canCancel && order.status !== "CANCELLED" && (
+        <button
+          type="button"
+          className="text-left text-[10px] font-bold text-rose-600 hover:underline disabled:opacity-50 dark:text-rose-400"
+          disabled={busy}
+          onClick={onCancel}
+        >
+          Delete Order
+        </button>
+      )}
+      {canCancel && order.status === "CANCELLED" && (
+        <button
+          type="button"
+          className="text-left text-[10px] font-bold text-emerald-700 hover:underline disabled:opacity-50 dark:text-emerald-400"
+          disabled={busy}
+          onClick={onRestore}
+        >
+          Restore Order
+        </button>
+      )}
     </div>
   );
 }

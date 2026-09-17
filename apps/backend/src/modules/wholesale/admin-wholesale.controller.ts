@@ -19,11 +19,21 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import type { Response } from 'express';
-import { ApiBearerAuth, ApiConsumes, ApiExcludeEndpoint, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiExcludeEndpoint,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
-import { Can, RequirePermission, type PermissionCheck } from '../../common/auth/permission.decorator';
+import {
+  Can,
+  RequirePermission,
+  type PermissionCheck,
+} from '../../common/auth/permission.decorator';
 import { CustomerImportResultDto } from '../customers/dto/customer-import-result.dto';
 import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
@@ -113,17 +123,30 @@ export class AdminWholesaleController {
     res.send(`\uFEFF${csv}`);
   }
 
+  @Get('customers/trash')
+  @RequirePermission('wholesale.view')
+  @ApiPaginatedResponse(WholesaleCustomerDto)
+  listDeletedCustomers(
+    @Query() query: WholesaleCustomerQueryDto,
+  ): Promise<PaginatedResult<WholesaleCustomerDto>> {
+    return this.wholesale.listDeletedCustomers(query);
+  }
+
   @Get('customers/:id')
   @RequirePermission('wholesale.view')
   @ApiOkResponse({ type: WholesaleCustomerDto })
-  findCustomer(@Param('id', ParseIntPipe) id: number): Promise<WholesaleCustomerDto> {
+  findCustomer(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<WholesaleCustomerDto> {
     return this.wholesale.findCustomer(id);
   }
 
   @Post('customers')
   @RequirePermission('wholesale.create')
   @ApiOkResponse({ type: WholesaleCustomerDto })
-  createCustomer(@Body() dto: CreateWholesaleCustomerDto): Promise<WholesaleCustomerDto> {
+  createCustomer(
+    @Body() dto: CreateWholesaleCustomerDto,
+  ): Promise<WholesaleCustomerDto> {
     return this.wholesale.createCustomer(dto);
   }
 
@@ -154,7 +177,9 @@ export class AdminWholesaleController {
   @Post('channels')
   @RequirePermission('wholesale.update')
   @ApiOkResponse({ type: WholesaleChannelDto })
-  createChannel(@Body() dto: CreateWholesaleChannelDto): Promise<WholesaleChannelDto> {
+  createChannel(
+    @Body() dto: CreateWholesaleChannelDto,
+  ): Promise<WholesaleChannelDto> {
     return this.wholesale.createChannel(dto);
   }
 
@@ -170,7 +195,9 @@ export class AdminWholesaleController {
 
   @Delete('channels/:id')
   @RequirePermission('wholesale.delete')
-  deleteChannel(@Param('id', ParseIntPipe) id: number): Promise<{ id: number }> {
+  deleteChannel(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ id: number }> {
     return this.wholesale.deleteChannel(id);
   }
 
@@ -196,7 +223,11 @@ export class AdminWholesaleController {
   @ApiOkResponse({ type: CustomerImportResultDto })
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   importCustomers(
-    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 15 * 1024 * 1024 })] }))
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 15 * 1024 * 1024 })],
+      }),
+    )
     file: Express.Multer.File,
     // Preview unless explicitly told otherwise, exactly like the retail import.
     @Query('dryRun') dryRun?: string,
@@ -206,8 +237,19 @@ export class AdminWholesaleController {
 
   @Delete('customers/:id')
   @RequirePermission('wholesale.delete')
-  deleteCustomer(@Param('id', ParseIntPipe) id: number): Promise<{ id: number }> {
+  deleteCustomer(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ id: number }> {
     return this.wholesale.deleteCustomer(id);
+  }
+
+  @Post('customers/:id/restore')
+  @RequirePermission('wholesale.delete')
+  @ApiOkResponse({ type: WholesaleCustomerDto })
+  restoreCustomer(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<WholesaleCustomerDto> {
+    return this.wholesale.restoreCustomer(id);
   }
 
   // --- orders ---
@@ -290,5 +332,14 @@ export class AdminWholesaleController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<WholesaleOrderDto> {
     return this.wholesale.cancelOrder(id, admin.id);
+  }
+
+  @Post('orders/:id/restore')
+  @RequirePermission('wholesale.delete')
+  @ApiOkResponse({ type: WholesaleOrderDto })
+  restoreOrder(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<WholesaleOrderDto> {
+    return this.wholesale.restoreOrder(id);
   }
 }

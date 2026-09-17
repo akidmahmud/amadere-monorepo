@@ -11,8 +11,20 @@ const D = (v: string | number) => new Prisma.Decimal(v);
 
 // Two products so a multi-line order exercises the subtotal, and one digital
 // so the "never move stock we never reserved" rule is actually covered.
-const SATTU = { id: 1, sku: 'AM-JS-001', slug: 'jober-sattu', productType: 'PHYSICAL', translations: [{ name: 'Jober Sattu' }] };
-const EBOOK = { id: 2, sku: 'AM-EB-002', slug: 'recipe-ebook', productType: 'DIGITAL', translations: [{ name: 'Recipe eBook' }] };
+const SATTU = {
+  id: 1,
+  sku: 'AM-JS-001',
+  slug: 'jober-sattu',
+  productType: 'PHYSICAL',
+  translations: [{ name: 'Jober Sattu' }],
+};
+const EBOOK = {
+  id: 2,
+  sku: 'AM-EB-002',
+  slug: 'recipe-ebook',
+  productType: 'DIGITAL',
+  translations: [{ name: 'Recipe eBook' }],
+};
 
 const BUYER = {
   id: 7,
@@ -30,7 +42,9 @@ const BUYER = {
 describe('WholesaleService', () => {
   let service: WholesaleService;
   let prisma: {
-    client: Record<string, Record<string, jest.Mock>> & { $transaction: jest.Mock };
+    client: Record<string, Record<string, jest.Mock>> & {
+      $transaction: jest.Mock;
+    };
   };
   let ledger: {
     post: jest.Mock;
@@ -92,7 +106,14 @@ describe('WholesaleService', () => {
         product: { productType: 'PHYSICAL', media: [] },
       },
     ],
-    dues: [{ id: 90, docNo: 'AR-2608-0004', voidedAt: null, kind: 'RECEIVABLE' as const }],
+    dues: [
+      {
+        id: 90,
+        docNo: 'AR-2608-0004',
+        voidedAt: null,
+        kind: 'RECEIVABLE' as const,
+      },
+    ],
   };
 
   beforeEach(async () => {
@@ -104,9 +125,17 @@ describe('WholesaleService', () => {
 
     prisma = {
       client: {
-        party: { findFirst: jest.fn().mockResolvedValue(BUYER), findMany: jest.fn(), count: jest.fn(), create: jest.fn(), update: jest.fn() },
+        party: {
+          findFirst: jest.fn().mockResolvedValue(BUYER),
+          findUnique: jest.fn(),
+          findMany: jest.fn(),
+          count: jest.fn(),
+          create: jest.fn(),
+          update: jest.fn(),
+        },
         product: { findMany: jest.fn().mockResolvedValue([SATTU, EBOOK]) },
         productVariant: { findMany: jest.fn().mockResolvedValue([]) },
+        cashAccount: { findMany: jest.fn().mockResolvedValue([]) },
         wholesaleOrderItem: { findMany: jest.fn().mockResolvedValue([]) },
         wholesaleChannel: { findUnique: jest.fn().mockResolvedValue(null) },
         wholesaleOrder: {
@@ -126,7 +155,11 @@ describe('WholesaleService', () => {
       assertPeriodOpen: jest.fn(),
     };
     dues = { void: jest.fn(), recordPayment: jest.fn() };
-    settings = { getPostingSettings: jest.fn().mockResolvedValue({ defaultCashAccountId: 4 }) };
+    settings = {
+      getPostingSettings: jest
+        .fn()
+        .mockResolvedValue({ defaultCashAccountId: 4 }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -199,7 +232,10 @@ describe('WholesaleService', () => {
   });
 
   it('moves no stock for a digital line, which never had any', async () => {
-    await service.createOrder(order({ items: [{ productId: 2, unitPrice: '450', quantity: 2 }] }), 1);
+    await service.createOrder(
+      order({ items: [{ productId: 2, unitPrice: '450', quantity: 2 }] }),
+      1,
+    );
     expect(tx.product.update).not.toHaveBeenCalled();
   });
 
@@ -209,15 +245,43 @@ describe('WholesaleService', () => {
   // of them is left to the form to remember.
   describe('the wholesale / channel split', () => {
     const CASH_SALE = {
-      id: 1, name: 'Cash Sale', hasDelivery: false, isActive: true,
-      fields: [{ key: 'gp_number', label: 'GP Number', type: 'text', required: true, showInTable: true }],
+      id: 1,
+      name: 'Cash Sale',
+      hasDelivery: false,
+      isActive: true,
+      fields: [
+        {
+          key: 'gp_number',
+          label: 'GP Number',
+          type: 'text',
+          required: true,
+          showInTable: true,
+        },
+      ],
     };
     const DARAZ = {
-      id: 2, name: 'Daraz', hasDelivery: true, isActive: true,
-      fields: [{ key: 'order_ref', label: 'Order ID', type: 'text', required: true, showInTable: true }],
+      id: 2,
+      name: 'Daraz',
+      hasDelivery: true,
+      isActive: true,
+      fields: [
+        {
+          key: 'order_ref',
+          label: 'Order ID',
+          type: 'text',
+          required: true,
+          showInTable: true,
+        },
+      ],
     };
     const viaChannel = (over = {}) =>
-      order({ type: 'CHANNEL' as const, channelId: 1, courier: undefined, channelData: { gp_number: 'GP-1' }, ...over });
+      order({
+        type: 'CHANNEL' as const,
+        channelId: 1,
+        courier: undefined,
+        channelData: { gp_number: 'GP-1' },
+        ...over,
+      });
 
     it('accepts a Cash Sale channel order with its GP number and no courier', async () => {
       prisma.client.wholesaleChannel.findUnique.mockResolvedValue(CASH_SALE);
@@ -240,36 +304,69 @@ describe('WholesaleService', () => {
     it('refuses a courier or delivery charge on a channel without delivery', async () => {
       prisma.client.wholesaleChannel.findUnique.mockResolvedValue(CASH_SALE);
       await expect(
-        service.createOrder(viaChannel({ courier: 'SUNDARBAN' as const, deliveryCharge: undefined }), 1),
+        service.createOrder(
+          viaChannel({
+            courier: 'SUNDARBAN' as const,
+            deliveryCharge: undefined,
+          }),
+          1,
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
-      await expect(service.createOrder(viaChannel({ deliveryCharge: '60' }), 1)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.createOrder(viaChannel({ deliveryCharge: '60' }), 1),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it("refuses a channel order missing one of the channel's required fields", async () => {
       prisma.client.wholesaleChannel.findUnique.mockResolvedValue(CASH_SALE);
       await expect(
-        service.createOrder(viaChannel({ deliveryCharge: undefined, channelData: { gp_number: '  ' } }), 1),
+        service.createOrder(
+          viaChannel({
+            deliveryCharge: undefined,
+            channelData: { gp_number: '  ' },
+          }),
+          1,
+        ),
       ).rejects.toThrow('GP Number is required');
     });
 
     it('needs a courier on a channel with delivery, and an active channel at all', async () => {
       prisma.client.wholesaleChannel.findUnique.mockResolvedValue(DARAZ);
       await expect(
-        service.createOrder(viaChannel({ channelId: 2, channelData: { order_ref: 'DZ-1' } }), 1),
+        service.createOrder(
+          viaChannel({ channelId: 2, channelData: { order_ref: 'DZ-1' } }),
+          1,
+        ),
       ).rejects.toThrow('needs a courier');
       await service.createOrder(
-        viaChannel({ channelId: 2, courier: 'STEADFAST' as const, channelData: { order_ref: 'DZ-1' } }),
+        viaChannel({
+          channelId: 2,
+          courier: 'STEADFAST' as const,
+          channelData: { order_ref: 'DZ-1' },
+        }),
         1,
       );
-      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.courier).toBe('STEADFAST');
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.courier).toBe(
+        'STEADFAST',
+      );
 
-      prisma.client.wholesaleChannel.findUnique.mockResolvedValue({ ...DARAZ, isActive: false });
+      prisma.client.wholesaleChannel.findUnique.mockResolvedValue({
+        ...DARAZ,
+        isActive: false,
+      });
       await expect(
-        service.createOrder(viaChannel({ channelId: 2, courier: 'STEADFAST' as const, channelData: { order_ref: 'x' } }), 1),
+        service.createOrder(
+          viaChannel({
+            channelId: 2,
+            courier: 'STEADFAST' as const,
+            channelData: { order_ref: 'x' },
+          }),
+          1,
+        ),
       ).rejects.toThrow('deactivated');
-      await expect(service.createOrder(viaChannel({ channelId: undefined }), 1)).rejects.toThrow('Choose a channel');
+      await expect(
+        service.createOrder(viaChannel({ channelId: undefined }), 1),
+      ).rejects.toThrow('Choose a channel');
     });
 
     it('refuses a non-cash payment with no transaction id', async () => {
@@ -281,7 +378,11 @@ describe('WholesaleService', () => {
     it('refuses a line discount bigger than the line it is taken off', async () => {
       await expect(
         service.createOrder(
-          order({ items: [{ productId: 1, unitPrice: '450', quantity: 2, discount: '5000' }] }),
+          order({
+            items: [
+              { productId: 1, unitPrice: '450', quantity: 2, discount: '5000' },
+            ],
+          }),
           1,
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -289,10 +390,14 @@ describe('WholesaleService', () => {
 
     it('derives payment status from what was collected, not from the client', async () => {
       await service.createOrder(order({ paidAmount: '860' }), 1);
-      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe('PAID');
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe(
+        'PAID',
+      );
       tx.wholesaleOrder.create.mockClear();
       await service.createOrder(order({ paidAmount: '0' }), 1);
-      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe('UNPAID');
+      expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe(
+        'UNPAID',
+      );
       tx.wholesaleOrder.create.mockClear();
       await service.createOrder(order({ paidAmount: '100' }), 1);
       expect(tx.wholesaleOrder.create.mock.calls[0][0].data.paymentStatus).toBe(
@@ -302,27 +407,35 @@ describe('WholesaleService', () => {
   });
 
   it('refuses a payment larger than the bill', async () => {
-    await expect(service.createOrder(order({ paidAmount: '5000' }), 1)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.createOrder(order({ paidAmount: '5000' }), 1),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('refuses a discount that would make the order worth less than nothing', async () => {
-    await expect(service.createOrder(order({ discount: '5000' }), 1)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.createOrder(order({ discount: '5000' }), 1),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('fails the whole order rather than losing cash with nowhere to post it', async () => {
-    settings.getPostingSettings.mockResolvedValue({ defaultCashAccountId: null });
-    await expect(service.createOrder(order(), 1)).rejects.toBeInstanceOf(BadRequestException);
+    settings.getPostingSettings.mockResolvedValue({
+      defaultCashAccountId: null,
+    });
+    await expect(service.createOrder(order(), 1)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     // The point of resolving the account first: nothing was written.
     expect(prisma.client.$transaction).not.toHaveBeenCalled();
   });
 
   it('still saves an unpaid order when no cash account is configured', async () => {
-    settings.getPostingSettings.mockResolvedValue({ defaultCashAccountId: null });
-    await expect(service.createOrder(order({ paidAmount: '0' }), 1)).resolves.toBeDefined();
+    settings.getPostingSettings.mockResolvedValue({
+      defaultCashAccountId: null,
+    });
+    await expect(
+      service.createOrder(order({ paidAmount: '0' }), 1),
+    ).resolves.toBeDefined();
   });
 
   it('never writes to the retail order or customer tables', async () => {
@@ -335,7 +448,9 @@ describe('WholesaleService', () => {
     ledger.paidForDues.mockResolvedValue(new Map([[90, D('0')]]));
     await service.cancelOrder(savedOrder.id, 1);
     expect(tx.wholesaleOrder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'CANCELLED' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'CANCELLED' }),
+      }),
     );
     expect(tx.product.update).toHaveBeenCalledWith({
       where: { id: 1 },
@@ -350,6 +465,102 @@ describe('WholesaleService', () => {
       BadRequestException,
     );
     expect(dues.void).not.toHaveBeenCalled();
+  });
+
+  it('restores a cancelled order by taking stock again and reopening its original invoice', async () => {
+    const cancelled = {
+      ...savedOrder,
+      status: 'CANCELLED' as const,
+      cancelledAt: new Date('2026-09-01'),
+      dues: [{ ...savedOrder.dues[0], voidedAt: new Date('2026-09-01') }],
+    };
+    prisma.client.wholesaleOrder.findUnique
+      .mockResolvedValueOnce(cancelled)
+      .mockResolvedValueOnce(savedOrder);
+
+    await service.restoreOrder(savedOrder.id);
+
+    expect(ledger.assertPeriodOpen).toHaveBeenCalledWith(savedOrder.placedAt);
+    expect(tx.wholesaleOrder.update).toHaveBeenCalledWith({
+      where: { id: savedOrder.id },
+      data: { status: 'PENDING', cancelledAt: null },
+    });
+    expect(tx.product.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { stock: { decrement: 2 } },
+    });
+    expect(tx.due.update).toHaveBeenCalledWith({
+      where: { id: 90 },
+      data: { voidedAt: null },
+    });
+  });
+
+  it('refuses to restore an order until its customer is restored and active', async () => {
+    prisma.client.wholesaleOrder.findUnique.mockResolvedValue({
+      ...savedOrder,
+      status: 'CANCELLED',
+      cancelledAt: new Date(),
+      dues: [{ ...savedOrder.dues[0], voidedAt: new Date() }],
+    });
+    prisma.client.party.findFirst.mockResolvedValue(null);
+
+    await expect(service.restoreOrder(savedOrder.id)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.client.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('lists deleted wholesale customers separately from the live dashboard', async () => {
+    prisma.client.party.findMany.mockResolvedValue([]);
+    prisma.client.party.count.mockResolvedValue(0);
+
+    await service.listDeletedCustomers({ page: 1, pageSize: 20 });
+
+    expect(prisma.client.party.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ deletedAt: { not: null } }),
+      }),
+    );
+  });
+
+  it('restores a deleted wholesale customer as an active buyer', async () => {
+    const deleted = {
+      ...BUYER,
+      isActive: false,
+      deletedAt: new Date('2026-09-01'),
+      assignedAdmin: null,
+    };
+    const restored = { ...deleted, isActive: true, deletedAt: null };
+    prisma.client.party.findUnique.mockResolvedValue(deleted);
+    prisma.client.party.findFirst.mockResolvedValue(null);
+    prisma.client.party.update.mockResolvedValue(restored);
+
+    await service.restoreCustomer(BUYER.id);
+
+    expect(prisma.client.party.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: BUYER.id },
+        data: { deletedAt: null, isActive: true },
+      }),
+    );
+  });
+
+  it('refuses to restore a customer when another live buyer now uses the phone', async () => {
+    prisma.client.party.findUnique.mockResolvedValue({
+      ...BUYER,
+      isActive: false,
+      deletedAt: new Date('2026-09-01'),
+      assignedAdmin: null,
+    });
+    prisma.client.party.findFirst.mockResolvedValue({
+      id: 99,
+      name: 'Replacement Buyer',
+    });
+
+    await expect(service.restoreCustomer(BUYER.id)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.client.party.update).not.toHaveBeenCalled();
   });
 
   it('reports outstanding as total minus what the ledger says was collected', async () => {
@@ -470,7 +681,9 @@ describe('WholesaleService', () => {
         status: 'CANCELLED',
       });
       await expect(
-        service.updateOrder(savedOrder.id, { items: [{ productId: 1, unitPrice: '450', quantity: 1 }] }),
+        service.updateOrder(savedOrder.id, {
+          items: [{ productId: 1, unitPrice: '450', quantity: 1 }],
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -488,7 +701,10 @@ describe('WholesaleService', () => {
       service.createCustomer({ name: 'Rahman Grocery', phone: '01722222222' }),
     ).resolves.toBeDefined();
 
-    prisma.client.party.findFirst.mockResolvedValue({ id: 7, name: 'Rahman Grocery' });
+    prisma.client.party.findFirst.mockResolvedValue({
+      id: 7,
+      name: 'Rahman Grocery',
+    });
     await expect(
       service.createCustomer({ name: 'Rahman Grocery', phone: '01711111111' }),
     ).rejects.toBeInstanceOf(BadRequestException);

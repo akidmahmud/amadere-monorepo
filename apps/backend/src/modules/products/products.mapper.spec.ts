@@ -1,4 +1,4 @@
-import { toPublicProductDigitalFields } from './products.mapper';
+import { toAdminProductDto, toPublicProductDigitalFields } from './products.mapper';
 import type { ProductWithRelations } from './products.mapper';
 
 // A DIGITAL product row as Prisma actually returns it — including
@@ -96,5 +96,37 @@ describe('toPublicProductDigitalFields', () => {
       digitalFileSize: null,
       previewPages: [],
     });
+  });
+});
+
+// A tag deleted in Settings is only soft-deleted; its product_tags rows stay.
+// Handing those ids to the admin edit form makes the product unsaveable —
+// the pickers can't resolve them, so the user sees no tag to remove, and
+// validateReferences rejects the PUT with "One or more tags not found".
+describe('toAdminProductDto soft-deleted links', () => {
+  function productRow(): ProductWithRelations {
+    return {
+      id: 1,
+      translations: [],
+      media: [],
+      variants: [],
+      attributes: [],
+      previewPages: [],
+      categories: [
+        { categoryId: 10, category: { deletedAt: null } },
+        { categoryId: 11, category: { deletedAt: new Date() } },
+      ],
+      tags: [
+        { tagId: 20, tag: { deletedAt: null } },
+        { tagId: 21, tag: { deletedAt: new Date() } },
+      ],
+    } as unknown as ProductWithRelations;
+  }
+
+  it('omits ids whose tag or category has been soft-deleted', () => {
+    const dto = toAdminProductDto(productRow());
+
+    expect(dto.tagIds).toEqual([20]);
+    expect(dto.categoryIds).toEqual([10]);
   });
 });

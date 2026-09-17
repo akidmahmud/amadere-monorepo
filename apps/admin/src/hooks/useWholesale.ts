@@ -35,23 +35,19 @@ export type WholesaleOrderChannel =
   | "IN_STORE_POS"
   | "OTHER";
 export type WholesalePaymentMethod =
-  | "CASH"
-  | "BKASH"
-  | "NAGAD"
-  | "ROCKET"
-  | "UPAY"
-  | "BANK";
+  "CASH" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" | "BANK";
 export type WholesalePaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID";
 
 /** The wholesale courier dropdown. */
-export const WHOLESALE_COURIERS: { value: WholesaleCourier; label: string }[] = [
-  { value: "SUNDARBAN", label: "সুন্দরবন Courier" },
-  { value: "AJR", label: "AJR Courier" },
-  { value: "SA_PARIBAHAN", label: "S.A. Paribahan" },
-  { value: "OWN_TRANSPORT", label: "Own Transport" },
-  { value: "CUSTOMER_PICKUP", label: "Customer Pickup" },
-  { value: "OTHER", label: "Other" },
-];
+export const WHOLESALE_COURIERS: { value: WholesaleCourier; label: string }[] =
+  [
+    { value: "SUNDARBAN", label: "সুন্দরবন Courier" },
+    { value: "AJR", label: "AJR Courier" },
+    { value: "SA_PARIBAHAN", label: "S.A. Paribahan" },
+    { value: "OWN_TRANSPORT", label: "Own Transport" },
+    { value: "CUSTOMER_PICKUP", label: "Customer Pickup" },
+    { value: "OTHER", label: "Other" },
+  ];
 
 /** The courier dropdown on channel orders (Daraz, Cartup...): the channel's
  *  own delivery and Steadfast, then every wholesale courier (which ends with
@@ -63,7 +59,8 @@ export const CHANNEL_COURIERS: { value: WholesaleCourier; label: string }[] = [
 ];
 
 /** Every courier, for printing a label off any order. */
-export const COURIERS: { value: WholesaleCourier; label: string }[] = CHANNEL_COURIERS;
+export const COURIERS: { value: WholesaleCourier; label: string }[] =
+  CHANNEL_COURIERS;
 
 export const ORDER_CHANNELS: { value: WholesaleOrderChannel; label: string }[] =
   [
@@ -130,7 +127,10 @@ export interface WholesaleChannel {
   orderCount: number;
 }
 
-export type ChannelInput = Pick<WholesaleChannel, "name" | "priceList" | "hasDelivery" | "fields" | "isActive">;
+export type ChannelInput = Pick<
+  WholesaleChannel,
+  "name" | "priceList" | "hasDelivery" | "fields" | "isActive"
+>;
 
 /** Enum -> the label the dashboards print. Falls back to the raw value so a
  *  newly added enum member shows as itself rather than as blank. */
@@ -200,10 +200,29 @@ export interface WholesaleCustomer {
 export type WholesaleCustomerPatch = Partial<
   Pick<
     WholesaleCustomer,
-    | "name" | "phone" | "address" | "email" | "district" | "thana" | "isFavorite" | "assignedAdminId"
-    | "followUpCadenceDays" | "hasNewOrder" | "priority" | "crmStatus" | "behaviour" | "customerFeedback"
-    | "amaderFeedback" | "familyDetails" | "purchaseReason" | "facebookProfileUrl"
-  > & { dob: string | null; nextCallTarget: string | null; newOrderAt: string | null }
+    | "name"
+    | "phone"
+    | "address"
+    | "email"
+    | "district"
+    | "thana"
+    | "isFavorite"
+    | "assignedAdminId"
+    | "followUpCadenceDays"
+    | "hasNewOrder"
+    | "priority"
+    | "crmStatus"
+    | "behaviour"
+    | "customerFeedback"
+    | "amaderFeedback"
+    | "familyDetails"
+    | "purchaseReason"
+    | "facebookProfileUrl"
+  > & {
+    dob: string | null;
+    nextCallTarget: string | null;
+    newOrderAt: string | null;
+  }
 >;
 
 /** Where an order shipped, frozen when it was placed. Null throughout on a
@@ -411,6 +430,28 @@ export function useWholesaleCustomers(
   });
 }
 
+export function useDeletedWholesaleCustomers(
+  search: string,
+  page = 1,
+  pageSize: number = PAGE_SIZE,
+) {
+  return useQuery({
+    queryKey: [...CUSTOMERS_KEY, "trash", search, page, pageSize],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (search) params.set("search", search);
+      const res = await proxyFetch<Paginated<WholesaleCustomer>>(
+        `/admin/wholesale/customers/trash?${params}`,
+      );
+      return { items: res.items ?? [], total: res.total ?? 0 };
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useWholesaleOrders(
   search: string,
   status: string,
@@ -496,7 +537,10 @@ export interface WholesalePaymentAccount {
 export function useWholesalePaymentAccounts() {
   return useQuery({
     queryKey: [...ORDERS_KEY, "payment-accounts"],
-    queryFn: () => proxyFetch<WholesalePaymentAccount[]>("/admin/wholesale/payment-accounts"),
+    queryFn: () =>
+      proxyFetch<WholesalePaymentAccount[]>(
+        "/admin/wholesale/payment-accounts",
+      ),
   });
 }
 
@@ -512,10 +556,13 @@ export function likelyPaymentAccount(
   if (!accounts?.length) return undefined;
   const configured = accounts.find((a) => a.isDefault);
   if (configured) return configured.id;
-  const label = (PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method).toLowerCase();
+  const label = (
+    PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method
+  ).toLowerCase();
   const named = accounts.find((a) => a.name.toLowerCase().includes(label));
   if (named) return named.id;
-  const kind = method === "CASH" ? "CASH" : method === "BANK" ? "BANK" : "MOBILE_WALLET";
+  const kind =
+    method === "CASH" ? "CASH" : method === "BANK" ? "BANK" : "MOBILE_WALLET";
   return (accounts.find((a) => a.type === kind) ?? accounts[0]).id;
 }
 
@@ -523,7 +570,10 @@ export function likelyPaymentAccount(
 export function useWholesaleStaff() {
   return useQuery({
     queryKey: [...CUSTOMERS_KEY, "assignable-staff"],
-    queryFn: () => proxyFetch<{ id: number; name: string }[]>("/admin/wholesale/assignable-staff"),
+    queryFn: () =>
+      proxyFetch<{ id: number; name: string }[]>(
+        "/admin/wholesale/assignable-staff",
+      ),
   });
 }
 
@@ -534,6 +584,18 @@ export function useDeleteWholesaleCustomer() {
       proxyFetch<{ id: number }>(`/admin/wholesale/customers/${id}`, {
         method: "DELETE",
       }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRestoreWholesaleCustomer() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch<WholesaleCustomer>(
+        `/admin/wholesale/customers/${id}/restore`,
+        { method: "POST" },
+      ),
     onSuccess: invalidate,
   });
 }
@@ -596,7 +658,9 @@ export function wholesaleInvoiceHref(id: number) {
 export async function downloadWholesaleCustomersCsv(search: string) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
-  const res = await fetch(`/api/backend/admin/wholesale/customers/export?${params}`);
+  const res = await fetch(
+    `/api/backend/admin/wholesale/customers/export?${params}`,
+  );
   if (!res.ok) throw new Error("Couldn't export the customers");
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement("a");
@@ -635,7 +699,15 @@ export async function downloadWholesaleOrdersCsv(
 export function useRecordWholesalePayment() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ id, amount, accountId }: { id: number; amount: string; accountId?: number }) =>
+    mutationFn: ({
+      id,
+      amount,
+      accountId,
+    }: {
+      id: number;
+      amount: string;
+      accountId?: number;
+    }) =>
       proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/payments`, {
         method: "POST",
         body: JSON.stringify({ amount, accountId }),
@@ -649,6 +721,17 @@ export function useCancelWholesaleOrder() {
   return useMutation({
     mutationFn: (id: number) =>
       proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/cancel`, {
+        method: "POST",
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRestoreWholesaleOrder() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/restore`, {
         method: "POST",
       }),
     onSuccess: invalidate,
@@ -710,10 +793,13 @@ export function useSaveWholesaleChannel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...input }: Partial<ChannelInput> & { id?: number }) =>
-      proxyFetch<WholesaleChannel>(id ? `/admin/wholesale/channels/${id}` : "/admin/wholesale/channels", {
-        method: id ? "PATCH" : "POST",
-        body: JSON.stringify(input),
-      }),
+      proxyFetch<WholesaleChannel>(
+        id ? `/admin/wholesale/channels/${id}` : "/admin/wholesale/channels",
+        {
+          method: id ? "PATCH" : "POST",
+          body: JSON.stringify(input),
+        },
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: CHANNELS_KEY }),
   });
 }
@@ -721,7 +807,10 @@ export function useSaveWholesaleChannel() {
 export function useDeleteWholesaleChannel() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => proxyFetch<{ id: number }>(`/admin/wholesale/channels/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) =>
+      proxyFetch<{ id: number }>(`/admin/wholesale/channels/${id}`, {
+        method: "DELETE",
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: CHANNELS_KEY }),
   });
 }

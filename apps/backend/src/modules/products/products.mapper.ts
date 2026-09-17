@@ -77,8 +77,16 @@ export function toAdminProductDto(
         sortOrder: f.sortOrder,
       })),
     })),
-    categoryIds: product.categories.map((c) => c.categoryId),
-    tagIds: product.tags.map((t) => t.tagId),
+    // Soft-deleted tags/categories keep their product_* link rows, so an
+    // unfiltered map hands the edit form ids the pickers can't resolve and
+    // validateReferences then rejects on save ("One or more tags not found")
+    // — a product that can never be saved again. Drop them on read instead.
+    categoryIds: product.categories
+      .filter((c) => c.category.deletedAt === null)
+      .map((c) => c.categoryId),
+    tagIds: product.tags
+      .filter((t) => t.tag.deletedAt === null)
+      .map((t) => t.tagId),
     attributeIds: product.attributes.map((a) => a.attributeId),
     media: product.media.map((m) => ({
       id: m.mediaId,
