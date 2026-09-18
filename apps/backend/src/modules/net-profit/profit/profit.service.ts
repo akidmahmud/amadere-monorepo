@@ -4,6 +4,7 @@ import { Prisma } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
+import { ProductCostHistoryService } from '../../product-cost-history/product-cost-history.service';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
 import { ORDER_STATUS_CHANGED_EVENT } from '../../orders/orders.events';
 import type { OrderStatusChangedEvent } from '../../orders/orders.events';
@@ -77,6 +78,7 @@ export class ProfitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: NetProfitSettingsService,
+    private readonly costHistory: ProductCostHistoryService,
   ) {}
 
   async getFallbackSettings(): Promise<FallbackProfitSettings> {
@@ -248,10 +250,12 @@ export class ProfitService {
   async bulkSetProductCost(rows: { productId: number; costPerItem: number }[]): Promise<number> {
     let updated = 0;
     for (const row of rows) {
-      await this.prisma.client.product.update({
+      const p = await this.prisma.client.product.update({
         where: { id: row.productId },
         data: { costPerItem: new Decimal(row.costPerItem) },
       });
+      // A changed cost becomes a dated row, so past Sales reports keep theirs.
+      await this.costHistory.recordIfChanged({ productId: row.productId, cost: row.costPerItem, costPriceUnit: p.costPriceUnit ?? null });
       updated++;
     }
     return updated;
@@ -294,6 +298,7 @@ export class ProfitService {
         attributeValues: { include: { attributeValue: true } },
       },
     });
+    await this.costHistory.recordIfChanged({ productId: v.productId, variantId, cost: Number(costPerItem) });
     const swatch = v.attributeValues.find((av) => av.attributeValue.imageUrl || av.attributeValue.colorHex)?.attributeValue;
     return {
       id: v.id,
@@ -318,11 +323,13 @@ export class ProfitService {
         price: true,
         salePrice: true,
         costPerItem: true,
+        costPriceUnit: true,
         translations: { where: { locale: 'EN' }, take: 1 },
         _count: { select: { variants: true } },
         media: { where: { isPrimary: true }, take: 1, select: { media: { select: { url: true } } } },
       },
     });
+    await this.costHistory.recordIfChanged({ productId, cost: Number(costPerItem), costPriceUnit: p.costPriceUnit ?? null });
     return {
       id: p.id,
       slug: p.slug,

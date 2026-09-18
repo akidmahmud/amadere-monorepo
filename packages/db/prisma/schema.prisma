@@ -959,6 +959,8 @@ model Product {
   stockAlerts StockAlert[]
 
   @@index([status])
+  costHistory ProductCostHistory[]
+
   // The admin list query always filters deletedAt (soft-delete) and always
   // sorts by createdAt desc (plus an optional createdAt range filter) — this
   // composite index lets Postgres satisfy the filter and the sort/range from
@@ -1119,12 +1121,38 @@ model ProductVariant {
   bundleItems     ProductBundleItem[]
   media           ProductMedia[]
   stockAlerts     StockAlert[]
+  costHistory     ProductCostHistory[]
 
   // Missing before — every "load a product with its variants" query (admin
   // list/detail, storefront PDP, cart/order line lookups) joined this table
   // on productId with no index backing it, forcing a sequential scan.
   @@index([productId])
   @@map("product_variants")
+}
+
+/// Dated buying cost (Sales report, spec 2026-09-18 §5). One row per scope
+/// (product-level `p:<id>` or variant `v:<id>`) per effective date; an order
+/// uses the row active on its order date, so a new cost never rewrites past
+/// reports. Product.costPerItem / ProductVariant.costPerItem mirror the row
+/// active TODAY so every older screen keeps working unchanged.
+model ProductCostHistory {
+  id            Int            @id @default(autoincrement())
+  productId     Int            @map("product_id")
+  variantId     Int?           @map("variant_id")
+  scopeKey      String         @map("scope_key")
+  cost          Decimal        @db.Decimal(10, 2)
+  costPriceUnit CostPriceUnit? @map("cost_price_unit")
+  effectiveFrom DateTime       @map("effective_from") @db.Date
+  confirmed     Boolean        @default(true)
+  createdBy     Int?           @map("created_by")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([scopeKey, effectiveFrom])
+  @@index([productId])
+  @@map("product_cost_history")
 }
 
 // Per-SKU attribute selection, e.g. this variant = {Color: Red, Size: M}.
@@ -1728,6 +1756,12 @@ model Shipment {
   settlementReference String?   @map("settlement_reference")
   settlementStatus    String?   @map("settlement_status")
   settledAt           DateTime? @map("settled_at")
+
+  /// What the courier billed for this parcel, from a statement import
+  /// (Sales report → Courier bills). Null = no bill imported yet.
+  billedCharge  Decimal?  @map("billed_charge") @db.Decimal(10, 2)
+  billedAt      DateTime? @map("billed_at")
+  billImportRef String?   @map("bill_import_ref")
 
   order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   events        ShipmentEvent[]

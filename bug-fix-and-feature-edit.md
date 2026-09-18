@@ -3851,3 +3851,140 @@ Verified live with an admin token: the selected export returned exactly the
 unassigned, 0 for staff 1). 53/53 wholesale and 11/11 order-manager tests pass
 (new: export ids + column mapping, csvLineCells, bulk assign, assignee
 filter). Backend and admin typecheck clean.
+
+## Sales report rebuild — Part 1: engine (plan 2026-09-18-sales-report, Tasks 1–3)
+
+The demo's calculation (`amadere-sales-report-demo.html`) is ported into a pure
+TypeScript engine in `apps/backend/src/modules/net-profit/sales-report/engine/`:
+- `calc.ts`: `rateFor`, `calcOrder`.
+- `summary.ts`: `flagsOf`, `summarize`.
+- `rows.ts`: channel, day, agent, product, courier, district and exception
+  aggregations.
+
+The tests use the demo's own 19 Excel-day orders (`demo.fixture.ts`) and
+expect the figures the demo produces. **Contribution comes out at ৳3,438**,
+as do net sales ৳10,965, courier ৳2,555, subsidy ৳1,446, 12 overcharges,
+every order's flags, and the per-channel, agent, product, courier and district
+rows. 23/23 pass.
+
+The summary's money keys are renamed from the demo (`deliveryPaid`,
+`courierCost`, `packaging`) so a later server-side money strip can't collide
+with `o.courier` (a courier name agents may see).
+
+## Sales report rebuild — Part 2: data + API (Tasks 4–10)
+
+- **Migration** `20260918100000_sales_report_costs_and_bills`:
+  - New table `product_cost_history`, unique on `(scope_key, effective_from)`,
+    where `scope_key` is `p:<id>` or `v:<id>`.
+  - `shipments` gets `billed_charge`, `billed_at` and `bill_import_ref`.
+  - Backfill: all 43 existing costs became Confirmed rows effective 2025-09-28,
+    the earliest order date.
+- **Permissions:** new `RequireAnyPermission` (OR) next to `RequirePermission`
+  (AND), plus the `net_profit_reports.view_own` permission. The nav entry
+  accepts either permission; `AppNavItem.permission` is now
+  `string | string[]`.
+- **`ProductCostHistoryService`** (new module) is the only cost writer:
+  - Saving a changed cost adds a row dated today instead of overwriting.
+  - `costPerItem` mirrors today's row, and a daily cron at 00:05 Dhaka picks
+    up costs dated in the future.
+  - Resolution: variant row first, then product row (scaled for per-kg/g/L
+    rates), otherwise missing.
+  - The product form, variant cost cell, set cost and bulk set all go
+    through it.
+- **Report settings** (`sales_report` namespace): a rate card for each
+  courier × Shipping Zone, plus fees and thresholds, with validation.
+- **Loader:** Prisma rows become engine input.
+  - Statuses map as HOLD→Confirmed, PARTIALLY_RETURNED→Returned.
+  - Dates are in Dhaka; the order discount is spread across lines by value.
+  - New/Repeat is decided by first non-cancelled order per account, else per
+    phone.
+- **v2 API** `/admin/net-profit/sales-report/v2/*`: overview, orders, agents,
+  products, couriers, districts, exceptions, settings and costs.
+  - A `view_own`-only user is scoped to their own orders, and every money key
+    is stripped on the server. A test scans every response key.
+
+**Engine fix found on live data:** the demo flags "Product cost missing"
+whenever contribution is null. On our data that also happens when a delivered
+order has no courier (no shipment), which is 18 of 18 delivered orders in the
+last month locally. It would have mislabelled those orders as missing a cost.
+`nocost` now fires only when a product cost is actually missing; courier-less
+orders get `nocourier`.
+
+All 8 endpoints return 200 on local data. 58/58 tests in the new suites pass;
+71/71 pass in products, profit and digital products.
+
+## Sales report: cost flow between the product form and the report — verified, one gap fixed
+
+Checked live on local data, in both directions:
+- **Product form to report:** editing product 65's cost from 180 to 185 kept
+  the 28/09/2025 row at 180 for past orders and added a row dated today at
+  185. The report's Rates and costs showed both.
+- **Report to product form:** removing today's row put the form back to 180.
+  Adding 190 effective today showed 190 in the form. A future-dated 200
+  (25/09) left the form at 190 until that date, when the daily job mirrors it.
+- The variant rows in the product form only display product cost × weight;
+  they never save a variant cost. Variant costs are saved through the profit
+  endpoint or Rates and costs, and both record history.
+
+**Gap fixed:** a product's FIRST-ever cost typed into the form was dated
+today, so all of its past sales stayed "Product cost missing" forever
+(product 8: 83 delivered orders, 30/09/2025–14/02/2026).
+`recordIfChanged` now dates a first cost from the earliest order day, the same
+rule as the migration backfill. Later changes are still dated today. Retested
+live: product 8's past orders went from "missing" to costed (48 units,
+৳12,000). Test added. All test products were restored.
+
+Also restored the admin test "Wholesale badges…" to assert the deep-tone
+palette the owner asked for (2026-09-18). It still expected the old pastel
+classes.
+
+Pre-existing and unrelated: `vat.service.spec.ts` has 9 failures because
+`vat.service.ts` (changed 28/08) now reads `orderItem`, but its spec (last
+updated 23/08) has no mock for it.
+
+## Sales report: export laid out like "Daily Sales Data.xlsx" + final verification (Task 19)
+
+**Export.** On the Orders tab, Export CSV now produces the owner's sheet
+layout: the group-label row, then the 26 columns A–Z (Date … Gain/Loss).
+- `salesSheet.ts` builds it from report data; a test reproduces row 5 of the
+  xlsx exactly.
+- One row per product, with Qty in kg when the product has a weight.
+- For multi-product orders, the order-level money columns (P–W and Z) appear
+  on the first row only, so column totals stay correct.
+- Gain/Loss is filled only for delivered and returned orders. The sheet also
+  counted pending and confirmed orders as profit.
+- Agents get columns A–O only.
+- The export was only the 50 rows on screen; it now fetches every matching
+  order (`orders?all=true`). Live, it produced 636 orders / 961 rows for
+  01/06–18/08.
+- Admin `tsconfig` gained `allowImportingTsExtensions` (it is `noEmit`), so
+  `salesSheet.ts` can import `./format.ts` and the node test runner can load
+  it too.
+
+**Final checks on local data:**
+- API order count matches the DB (43 = 43); `courier=none` returns only
+  orders with no shipment.
+- Bill import round-trip: the billed ৳137.50 flowed into the order's courier
+  check against an agreed ৳172. Reset afterwards.
+- A view_own-only test agent sees only their 1 order, gets zero money keys in
+  overview, orders and exceptions, and gets 403 on agents, products,
+  couriers, districts and saving settings. Test role and user deleted; the
+  order was restored to unassigned.
+- In the browser, all 8 tabs render. Phone width (390px) had 28px of sideways
+  page scroll on Overview and 211px on Rates and costs, because grids had no
+  base column template. Fixed with `grid-cols-[minmax(0,1fr)]`; all 8 tabs
+  now have 0 page overflow.
+- Removed the duplicate page heading (the shell already shows
+  "Sales Report").
+
+**Found and fixed during verification:** `@amader/shared` is consumed from
+`dist/`, so the new `view_own` permission never reached the DB until shared
+was rebuilt (`npm run build` in packages/shared). After that, the API boot
+sync added it. **Deploy note:** rebuild `packages/shared` before starting the
+API.
+
+Tests: backend 384 pass (the only failures are the 9 pre-existing VAT spec
+ones); admin 15/15; both apps typecheck.
+
+**Open item:** the courier bill importer's column names are best guesses at
+Steadfast's export; they need one real statement CSV to confirm.

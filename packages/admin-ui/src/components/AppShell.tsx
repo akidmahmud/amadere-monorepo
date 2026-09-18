@@ -14,7 +14,7 @@ export interface AppNavItem {
    * a non-super-admin. Omit for rows every admin should always see
    * (e.g. Overview). Filtering itself happens where `nav` is built, not
    * here — AppShell just renders whatever list it's given. */
-  permission?: string;
+  permission?: string | string[];
   /** Red dot on this row — e.g. Recovery when new abandoned carts arrive. */
   dot?: boolean;
   /** Count of work waiting behind this row. Takes the place of `dot`, since a

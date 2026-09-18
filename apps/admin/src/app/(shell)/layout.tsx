@@ -29,12 +29,13 @@ function filterNavByPermissions(
   granted: Set<string>,
 ): AppNavEntry[] {
   if (isSuperAdmin) return nav;
-  return nav.filter(
-    (entry) =>
-      !("permission" in entry) ||
-      !entry.permission ||
-      granted.has(entry.permission),
-  );
+  return nav.filter((entry) => {
+    if (!("permission" in entry) || !entry.permission) return true;
+    // An array means any one of them is enough (e.g. the Sales report is open
+    // to both full viewers and view_own agents).
+    const keys = Array.isArray(entry.permission) ? entry.permission : [entry.permission];
+    return keys.some((k) => granted.has(k));
+  });
 }
 
 export default function ShellLayout({

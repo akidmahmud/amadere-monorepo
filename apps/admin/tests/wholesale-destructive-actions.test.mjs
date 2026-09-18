@@ -58,13 +58,15 @@ test("Wholesale orders expose preset and custom placed-at time filters", async (
   assert.match(hooks, /params\.set\("to"/);
 });
 
-test("Wholesale badges use the muted professional palette", async () => {
+// Owner asked (2026-09-18) for solid deep tones instead of pastel tints:
+// deep green for paid/channel, with deep amber, rose and slate alongside.
+test("Wholesale badges use the solid deep-tone palette", async () => {
   const source = await readFile(component("OrdersDashboard.tsx"), "utf8");
 
   assert.doesNotMatch(source, /bg-emerald-500\/15/);
   assert.doesNotMatch(source, /bg-brand-500\/15/);
-  assert.match(source, /bg-emerald-50/);
-  assert.match(source, /bg-slate-50/);
-  assert.match(source, /border-amber-200/);
-  assert.match(source, /border-rose-200/);
+  assert.match(source, /green: "border-\[#0a4a31\] bg-\[#0f5c3e\] text-white"/);
+  assert.match(source, /amber: "border-\[#6b4106\] bg-\[#8a5409\] text-white"/);
+  assert.match(source, /rose: "border-\[#6e1430\] bg-\[#9b1c44\] text-white"/);
+  assert.match(source, /slate: "border-\[#1e293b\] bg-\[#334155\] text-white"/);
 });

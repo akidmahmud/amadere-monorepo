@@ -225,6 +225,8 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('net_profit_orders', 'view'),
   perm('net_profit_orders', 'manage'),
   perm('net_profit_reports', 'view'),
+  // Sales report for agents: only their own orders, no money (spec 2026-09-18 D5).
+  perm('net_profit_reports', 'view_own'),
   perm('net_profit_profit', 'view'),
   perm('net_profit_profit', 'manage'),
   perm('net_profit_payments', 'verify'),

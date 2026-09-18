@@ -334,7 +334,7 @@ export const adminNav: AppNavEntry[] = [
     label: "Sales Report",
     href: "/net-profit/reports",
     icon: reportsIcon,
-    permission: "net_profit_reports.view",
+    permission: ["net_profit_reports.view", "net_profit_reports.view_own"],
   },
   {
     key: "net-profit-accounts",

@@ -8,6 +8,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ContentStatus, Locale, Prisma, SeoEntityType } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
+import { ProductCostHistoryService } from '../product-cost-history/product-cost-history.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CatalogFeedService } from '../catalog-feed/catalog-feed.service';
 import { RevalidationService } from '../../common/revalidation/revalidation.service';
@@ -136,6 +137,7 @@ export class ProductsService {
     private readonly tokens: TokenService,
     private readonly revalidation: RevalidationService,
     private readonly catalogFeed: CatalogFeedService,
+    private readonly costHistory: ProductCostHistoryService,
   ) {}
 
   // Fire-and-forget so admin saves stay fast even if the storefront is
@@ -670,6 +672,10 @@ export class ProductsService {
       include: PRODUCT_INCLUDE,
     });
     this.revalidateProduct([product.slug]);
+    // A cost entered here becomes a dated history row (Sales report).
+    if (dto.costPerItem != null) {
+      await this.costHistory.recordIfChanged({ productId: product.id, cost: Number(dto.costPerItem), costPriceUnit: dto.costPriceUnit ?? null });
+    }
     return toAdminProductDto(product);
   }
 
@@ -817,6 +823,10 @@ export class ProductsService {
     });
     // Both slugs — a rename must clear the old PDP too, not just the new one.
     this.revalidateProduct([existing.slug, product.slug]);
+    // A changed cost becomes a dated row, so past Sales reports keep theirs.
+    if (dto.costPerItem != null) {
+      await this.costHistory.recordIfChanged({ productId: id, cost: Number(dto.costPerItem), costPriceUnit: dto.costPriceUnit ?? null });
+    }
     return toAdminProductDto(product);
   }
 

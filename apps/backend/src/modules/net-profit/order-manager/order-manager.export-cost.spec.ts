@@ -31,7 +31,11 @@ describe('csvLineCells', () => {
         unitPrice: D('790'),
         quantity: 2,
         skuSnapshot: null,
-        variant: { weightOverride: D('0.5'), sku: 'V-1', costPerItem: D('500') },
+        variant: {
+          weightOverride: D('0.5'),
+          sku: 'V-1',
+          costPerItem: D('500'),
+        },
         product: null,
       }),
     ).toEqual(['V-1', '1', '1580.00', '1000.00', '1580.00', '1000.00']);
@@ -44,7 +48,12 @@ describe('csvLineCells', () => {
         quantity: 3,
         skuSnapshot: 'S',
         variant: null,
-        product: { shippableWeight: null, sku: null, costPerItem: null, costPriceUnit: null },
+        product: {
+          shippableWeight: null,
+          sku: null,
+          costPerItem: null,
+          costPriceUnit: null,
+        },
       }),
     ).toEqual(['S', '3', '100.00', '', '300.00', '']);
   });

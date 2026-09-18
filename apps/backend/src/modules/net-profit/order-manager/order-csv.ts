@@ -4,11 +4,31 @@ import { CostPriceUnit, Prisma } from '@amader/db';
 // so the two files open with the same columns and the same per-line maths.
 
 export const ORDER_CSV_HEADER = [
-  'Date', 'Order Number', 'Source', 'Origin', 'Customer Name', 'Address',
-  'Phone Number', 'Consignment ID', 'Product SKU', 'Qty.', 'Price / kg',
-  'Cost / kg', 'Invoice Value', 'Cost Value', 'Delivery Charge', 'Discount',
-  'Grand Total', 'Order Status', 'Payment Status', 'Payment Method',
-  'Notes / comment', 'Assign', 'Division', 'District', 'Created At',
+  'Date',
+  'Order Number',
+  'Source',
+  'Origin',
+  'Customer Name',
+  'Address',
+  'Phone Number',
+  'Consignment ID',
+  'Product SKU',
+  'Qty.',
+  'Price / kg',
+  'Cost / kg',
+  'Invoice Value',
+  'Cost Value',
+  'Delivery Charge',
+  'Discount',
+  'Grand Total',
+  'Order Status',
+  'Payment Status',
+  'Payment Method',
+  'Notes / comment',
+  'Assign',
+  'Division',
+  'District',
+  'Created At',
 ];
 
 // How many of a CostPriceUnit fit in one of the variant's "Weight" field
@@ -41,7 +61,11 @@ export function lineUnitCost(
 }
 
 /** The Prisma `select` each export needs on its line's variant/product. */
-export const CSV_LINE_VARIANT_SELECT = { weightOverride: true, sku: true, costPerItem: true } as const;
+export const CSV_LINE_VARIANT_SELECT = {
+  weightOverride: true,
+  sku: true,
+  costPerItem: true,
+} as const;
 export const CSV_LINE_PRODUCT_SELECT = {
   shippableWeight: true,
   sku: true,
@@ -80,7 +104,9 @@ export interface CsvLineInput {
 export function csvLineCells(item: CsvLineInput | null): string[] {
   if (!item) return ['', '', '', '', '', ''];
   const unit = Number(item.unitPrice);
-  const weightKg = Number(item.variant?.weightOverride ?? item.product?.shippableWeight ?? 0);
+  const weightKg = Number(
+    item.variant?.weightOverride ?? item.product?.shippableWeight ?? 0,
+  );
   const unitCost = lineUnitCost(
     item.variant?.costPerItem,
     item.product?.costPerItem,
@@ -88,7 +114,10 @@ export function csvLineCells(item: CsvLineInput | null): string[] {
     weightKg,
   );
   const per = weightKg > 0 ? weightKg : 1;
-  const qty = weightKg > 0 ? String(Number((weightKg * item.quantity).toFixed(3))) : String(item.quantity);
+  const qty =
+    weightKg > 0
+      ? String(Number((weightKg * item.quantity).toFixed(3)))
+      : String(item.quantity);
   // SKU only, not the product name. The snapshot is empty on lines recorded
   // before it was captured, so fall back to the variant's then the product's.
   const sku = item.skuSnapshot ?? item.variant?.sku ?? item.product?.sku ?? '';
@@ -104,10 +133,14 @@ export function csvLineCells(item: CsvLineInput | null): string[] {
 
 // dd/mm/yyyy and hh:mm:ss, matching the sheet rather than ISO.
 const two = (n: number) => String(n).padStart(2, '0');
-export const csvDate = (d: Date) => `${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()}`;
-export const csvTime = (d: Date) => `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+export const csvDate = (d: Date) =>
+  `${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()}`;
+export const csvTime = (d: Date) =>
+  `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
 
 export function toOrderCsv(rows: string[][]): string {
   const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-  return [ORDER_CSV_HEADER, ...rows].map((r) => r.map(esc).join(',')).join('\n');
+  return [ORDER_CSV_HEADER, ...rows]
+    .map((r) => r.map(esc).join(','))
+    .join('\n');
 }

@@ -14,6 +14,17 @@ export const PERMISSION_KEY = 'permission';
 export const RequirePermission = (...permissions: string[]) =>
   SetMetadata(PERMISSION_KEY, permissions);
 
+export const ANY_PERMISSION_KEY = 'anyPermission';
+
+/**
+ * At least ONE listed permission is required — OR. For endpoints two tiers
+ * share with different views, e.g. the Sales report: `net_profit_reports.view`
+ * sees everything, `net_profit_reports.view_own` sees only their own orders
+ * with money stripped. The handler branches on @Can().
+ */
+export const RequireAnyPermission = (...permissions: string[]) =>
+  SetMetadata(ANY_PERMISSION_KEY, permissions);
+
 /**
  * `(key) => boolean` for the current admin, for rules a decorator cannot
  * express — a field on a shared update endpoint, or one action inside a bulk

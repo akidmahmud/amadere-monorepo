@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
-import { PERMISSION_KEY } from './permission.decorator';
+import { ANY_PERMISSION_KEY, PERMISSION_KEY } from './permission.decorator';
 import { RequestWithAdmin } from './admin-jwt.guard';
 
 interface CachedPermissions {
@@ -48,7 +48,9 @@ export class PermissionGuard implements CanActivate {
       context.getHandler(),
     );
     const required = meta === undefined ? [] : Array.isArray(meta) ? meta : [meta];
-    if (required.length === 0) return true;
+    const anyOf =
+      this.reflector.get<string[] | undefined>(ANY_PERMISSION_KEY, context.getHandler()) ?? [];
+    if (required.length === 0 && anyOf.length === 0) return true;
 
     const request = context.switchToHttp().getRequest<RequestWithAdmin>();
     const resolved = await this.getPermissions(request.adminUser.id);
@@ -61,6 +63,9 @@ export class PermissionGuard implements CanActivate {
     const missing = required.filter((key) => !granted.has(key));
     if (missing.length > 0) {
       throw new ForbiddenException(`Missing permission: ${missing.join(', ')}`);
+    }
+    if (anyOf.length > 0 && !anyOf.some((key) => granted.has(key))) {
+      throw new ForbiddenException(`Missing permission: one of ${anyOf.join(', ')}`);
     }
     return true;
   }
