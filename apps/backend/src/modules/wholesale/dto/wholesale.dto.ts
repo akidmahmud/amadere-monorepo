@@ -18,7 +18,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
-import { CHANNEL_FIELD_TYPES, type ChannelFieldType } from '../wholesale-channel-fields';
+import {
+  CHANNEL_FIELD_TYPES,
+  type ChannelFieldType,
+} from '../wholesale-channel-fields';
 import {
   CustomerBehaviour,
   CustomerCrmStatus,
@@ -65,12 +68,36 @@ export class CreateWholesaleCustomerDto {
   @MaxLength(500)
   address?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) email?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) district?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) thana?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) landmark?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) postCode?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  email?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  alternativePhone?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  district?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  thana?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postCode?: string;
 
   @ApiPropertyOptional({ description: 'Credit ceiling, as a decimal string' })
   @IsOptional()
@@ -104,19 +131,62 @@ export class CreateWholesaleCustomerDto {
 }
 
 export class UpdateWholesaleCustomerDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(200) name?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(1) @MaxLength(40) @NormalizeBdPhone() phone?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) address?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) email?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) district?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) thana?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) landmark?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) postCode?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(40)
+  @NormalizeBdPhone()
+  phone?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  email?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  alternativePhone?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  district?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  thana?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postCode?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumberString() creditLimit?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) creditDays?: number;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) note?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
 
   // CRM columns — the same set and validation as UpdateCustomerDto, so the
@@ -124,24 +194,71 @@ export class UpdateWholesaleCustomerDto {
   // ISO strings, or null to clear.
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isFavorite?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsDateString() dob?: string | null;
-  @ApiPropertyOptional({ description: 'Admin staff user ID, or null to unassign' }) @IsOptional() @IsInt() assignedAdminId?: number | null;
-  @ApiPropertyOptional() @IsOptional() @IsDateString() nextCallTarget?: string | null;
-  @ApiPropertyOptional() @IsOptional() @IsInt() followUpCadenceDays?: number | null;
+  @ApiPropertyOptional({
+    description: 'Admin staff user ID, or null to unassign',
+  })
+  @IsOptional()
+  @IsInt()
+  assignedAdminId?: number | null;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() nextCallTarget?:
+    string | null;
+  @ApiPropertyOptional() @IsOptional() @IsInt() followUpCadenceDays?:
+    number | null;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasNewOrder?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsDateString() newOrderAt?: string | null;
-  @ApiPropertyOptional({ enum: CustomerPriority }) @IsOptional() @IsEnum(CustomerPriority) priority?: CustomerPriority | null;
-  @ApiPropertyOptional({ enum: CustomerCrmStatus }) @IsOptional() @IsEnum(CustomerCrmStatus) crmStatus?: CustomerCrmStatus | null;
-  @ApiPropertyOptional({ enum: CustomerBehaviour }) @IsOptional() @IsEnum(CustomerBehaviour) behaviour?: CustomerBehaviour | null;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) customerFeedback?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) amaderFeedback?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) familyDetails?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) purchaseReason?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) facebookProfileUrl?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() newOrderAt?:
+    string | null;
+  @ApiPropertyOptional({ enum: CustomerPriority })
+  @IsOptional()
+  @IsEnum(CustomerPriority)
+  priority?: CustomerPriority | null;
+  @ApiPropertyOptional({ enum: CustomerCrmStatus })
+  @IsOptional()
+  @IsEnum(CustomerCrmStatus)
+  crmStatus?: CustomerCrmStatus | null;
+  @ApiPropertyOptional({ enum: CustomerBehaviour })
+  @IsOptional()
+  @IsEnum(CustomerBehaviour)
+  behaviour?: CustomerBehaviour | null;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  customerFeedback?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  amaderFeedback?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  familyDetails?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  purchaseReason?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  facebookProfileUrl?: string;
 }
 
 export class WholesaleCustomerQueryDto {
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) @Min(1) page?: number;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) @Min(1) pageSize?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(1)
+  page?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(1)
+  pageSize?: number;
 
   @ApiPropertyOptional({ description: 'Matches name, phone or address' })
   @IsOptional()
@@ -183,7 +300,8 @@ export class WholesaleOrderItemInputDto {
   quantity!: number;
 
   @ApiPropertyOptional({
-    description: 'Taka off THIS line, before the order-level discount. Decimal string.',
+    description:
+      'Taka off THIS line, before the order-level discount. Decimal string.',
   })
   @IsOptional()
   @IsNumberString()
@@ -193,15 +311,51 @@ export class WholesaleOrderItemInputDto {
 /** Where the order goes. Recorded for a cash sale too — only the COURIER is
  *  wholesale-only, not the address. */
 export class WholesaleDeliveryInputDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) recipientName?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) recipientPhone?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) alternativePhone?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) recipientEmail?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) addressLine?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) district?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) thana?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) landmark?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) postCode?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  recipientName?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  recipientPhone?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  alternativePhone?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  recipientEmail?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  addressLine?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  district?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  thana?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  landmark?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  postCode?: string;
 }
 
 export class CreateWholesaleOrderDto {
@@ -211,23 +365,32 @@ export class CreateWholesaleOrderDto {
 
   @ApiPropertyOptional({
     enum: WholesaleOrderType,
-    description: 'Defaults to WHOLESALE. CHANNEL orders need `channelId`; the channel decides whether there is a delivery leg.',
+    description:
+      'Defaults to WHOLESALE. CHANNEL orders need `channelId`; the channel decides whether there is a delivery leg.',
   })
   @IsOptional()
   @IsEnum(WholesaleOrderType)
   type?: WholesaleOrderType;
 
-  @ApiPropertyOptional({ enum: WholesaleOrderChannel, description: 'Where a WHOLESALE order came in from (WhatsApp, phone...).' })
+  @ApiPropertyOptional({
+    enum: WholesaleOrderChannel,
+    description: 'Where a WHOLESALE order came in from (WhatsApp, phone...).',
+  })
   @IsOptional()
   @IsEnum(WholesaleOrderChannel)
   channel?: WholesaleOrderChannel;
 
-  @ApiPropertyOptional({ description: 'The sales channel (Cash Sale, Daraz...). CHANNEL orders only.' })
+  @ApiPropertyOptional({
+    description:
+      'The sales channel (Cash Sale, Daraz...). CHANNEL orders only.',
+  })
   @IsOptional()
   @IsInt()
   channelId?: number;
 
-  @ApiPropertyOptional({ description: "Values for the channel's custom fields, keyed by field key." })
+  @ApiPropertyOptional({
+    description: "Values for the channel's custom fields, keyed by field key.",
+  })
   @IsOptional()
   @IsObject()
   channelData?: Record<string, unknown>;
@@ -237,7 +400,9 @@ export class CreateWholesaleOrderDto {
   @IsEnum(WholesalePaymentMethod)
   paymentMethod?: WholesalePaymentMethod;
 
-  @ApiPropertyOptional({ description: 'Required by the UI for every non-cash method' })
+  @ApiPropertyOptional({
+    description: 'Required by the UI for every non-cash method',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -245,7 +410,8 @@ export class CreateWholesaleOrderDto {
 
   @ApiPropertyOptional({
     enum: WholesaleCourier,
-    description: 'Required for WHOLESALE and for channels with delivery; refused for channels without (Cash Sale).',
+    description:
+      'Required for WHOLESALE and for channels with delivery; refused for channels without (Cash Sale).',
   })
   @IsOptional()
   @IsEnum(WholesaleCourier)
@@ -257,7 +423,9 @@ export class CreateWholesaleOrderDto {
   @Type(() => WholesaleDeliveryInputDto)
   delivery?: WholesaleDeliveryInputDto;
 
-  @ApiPropertyOptional({ description: 'The number the courier gives us for the parcel' })
+  @ApiPropertyOptional({
+    description: 'The number the courier gives us for the parcel',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -306,7 +474,11 @@ export class CreateWholesaleOrderDto {
   @IsDateString()
   placedAt?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) note?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 }
 
 /**
@@ -334,10 +506,21 @@ export class UpdateWholesaleOrderDto {
   @IsEnum(WholesaleCourier)
   courier?: WholesaleCourier;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) consignmentId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) note?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  consignmentId?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 
-  @ApiPropertyOptional({ description: "Channel orders: the full set of values for the channel's custom fields. Replaces what is stored, so send every value, not just the changed one." })
+  @ApiPropertyOptional({
+    description:
+      "Channel orders: the full set of values for the channel's custom fields. Replaces what is stored, so send every value, not just the changed one.",
+  })
   @IsOptional()
   @IsObject()
   channelData?: Record<string, unknown>;
@@ -375,18 +558,54 @@ export class RecordWholesalePaymentDto {
   @IsDateString()
   paymentDate?: string;
 
-  @ApiPropertyOptional({ description: 'Falls back to the configured default posting account' })
+  @ApiPropertyOptional({
+    description: 'Falls back to the configured default posting account',
+  })
   @IsOptional()
   @IsInt()
   accountId?: number;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) reference?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) note?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reference?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 }
 
-export class WholesaleOrderQueryDto {
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) @Min(1) page?: number;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) @Min(1) pageSize?: number;
+export class WholesaleDateRangeQueryDto {
+  @ApiPropertyOptional({
+    description: 'Inclusive placed-at lower bound (ISO 8601)',
+  })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({
+    description: 'Inclusive placed-at upper bound (ISO 8601)',
+  })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}
+
+export class WholesaleOrderQueryDto extends WholesaleDateRangeQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(1)
+  page?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(1)
+  pageSize?: number;
 
   @ApiPropertyOptional({
     description:
@@ -401,13 +620,24 @@ export class WholesaleOrderQueryDto {
   @IsEnum(WholesaleOrderStatus)
   status?: WholesaleOrderStatus;
 
-  @ApiPropertyOptional({ enum: WholesaleOrderType, description: 'Omit for both' })
+  @ApiPropertyOptional({
+    enum: WholesaleOrderType,
+    description: 'Omit for both',
+  })
   @IsOptional()
   @IsEnum(WholesaleOrderType)
   type?: WholesaleOrderType;
 
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) partyId?: number;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Type(() => Number) channelId?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  partyId?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  channelId?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -415,7 +645,10 @@ export class WholesaleOrderQueryDto {
 // ---------------------------------------------------------------------------
 
 export class WholesaleChannelFieldInputDto {
-  @ApiPropertyOptional({ description: 'Keep the existing key when editing a field; omit for a new one' })
+  @ApiPropertyOptional({
+    description:
+      'Keep the existing key when editing a field; omit for a new one',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(40)
@@ -428,7 +661,12 @@ export class WholesaleChannelFieldInputDto {
   type!: ChannelFieldType;
 
   @ApiPropertyOptional() @IsOptional() @IsBoolean() required?: boolean;
-  @ApiPropertyOptional({ description: 'Show this value as a column in the orders table' }) @IsOptional() @IsBoolean() showInTable?: boolean;
+  @ApiPropertyOptional({
+    description: 'Show this value as a column in the orders table',
+  })
+  @IsOptional()
+  @IsBoolean()
+  showInTable?: boolean;
 
   @ApiPropertyOptional({ type: [String], description: 'Dropdown choices' })
   @IsOptional()
@@ -440,11 +678,17 @@ export class WholesaleChannelFieldInputDto {
 export class CreateWholesaleChannelDto {
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(80) name!: string;
 
-  @ApiProperty({ enum: WholesalePriceList, description: 'Which product price the cart starts from' })
+  @ApiProperty({
+    enum: WholesalePriceList,
+    description: 'Which product price the cart starts from',
+  })
   @IsEnum(WholesalePriceList)
   priceList!: WholesalePriceList;
 
-  @ApiProperty({ description: 'false = handed over on the spot: no courier, no delivery charge' })
+  @ApiProperty({
+    description:
+      'false = handed over on the spot: no courier, no delivery charge',
+  })
   @IsBoolean()
   hasDelivery!: boolean;
 
@@ -458,4 +702,6 @@ export class CreateWholesaleChannelDto {
   fields!: WholesaleChannelFieldInputDto[];
 }
 
-export class UpdateWholesaleChannelDto extends PartialType(CreateWholesaleChannelDto) {}
+export class UpdateWholesaleChannelDto extends PartialType(
+  CreateWholesaleChannelDto,
+) {}

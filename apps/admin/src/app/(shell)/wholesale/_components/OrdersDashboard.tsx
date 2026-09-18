@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Card, Icon, StatCard } from "@amader/admin-ui";
 import {
   COURIERS,
@@ -37,10 +37,76 @@ const compactMoney = (v: string | number) =>
 const INPUT =
   "h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
 
+const DATE_RANGES = [
+  { value: "", label: "All dates" },
+  { value: "1h", label: "Last 1 hour" },
+  { value: "6h", label: "Last 6 hours" },
+  { value: "12h", label: "Last 12 hours" },
+  { value: "24h", label: "Last 24 hours" },
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "custom", label: "Custom" },
+] as const;
+
+const ROLLING_WINDOW_HOURS: Record<string, number> = {
+  "1h": 1,
+  "6h": 6,
+  "12h": 12,
+  "24h": 24,
+  "7d": 7 * 24,
+  "30d": 30 * 24,
+};
+
+function parseCustomBound(value: string, edge: "start" | "end") {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return new Date(
+    dateOnly
+      ? `${value}T${edge === "start" ? "00:00:00.000" : "23:59:59.999"}`
+      : value,
+  );
+}
+
+function resolveDateRange(
+  value: string,
+  customFrom: string,
+  customTo: string,
+): { from?: string; to?: string } {
+  if (!value) return {};
+  if (value === "custom") {
+    if (!customFrom || !customTo) return {};
+    return {
+      from: parseCustomBound(customFrom, "start").toISOString(),
+      to: parseCustomBound(customTo, "end").toISOString(),
+    };
+  }
+  const to = new Date();
+  if (value === "today") {
+    const from = new Date(
+      to.getFullYear(),
+      to.getMonth(),
+      to.getDate(),
+      0,
+      0,
+      0,
+      0,
+    );
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
+  const hours = ROLLING_WINDOW_HOURS[value];
+  if (!hours) return {};
+  return {
+    from: new Date(to.getTime() - hours * 60 * 60 * 1000).toISOString(),
+    to: to.toISOString(),
+  };
+}
+
 const PAY_TONE: Record<string, string> = {
-  PAID: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  PARTIALLY_PAID: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  UNPAID: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  PAID: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  PARTIALLY_PAID:
+    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  UNPAID:
+    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
 };
 
 /** Wholesale, or the order's channel — with that channel's fields marked
@@ -52,10 +118,10 @@ export function TypeBadge({ order }: { order: WholesaleOrder }) {
   return (
     <div className="space-y-1">
       <span
-        className={`inline-block whitespace-nowrap rounded-full px-2 py-1 text-[9px] font-black ${
+        className={`inline-block whitespace-nowrap rounded-full border px-2 py-1 text-[9px] font-bold ${
           wholesale
-            ? "bg-brand-500/15 text-brand-600 dark:text-brand-400"
-            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+            ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300"
+            : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
         }`}
       >
         {wholesale ? "Wholesale" : (order.channelName ?? "Channel")}
@@ -82,7 +148,7 @@ export function PaymentCell({ order }: { order: WholesaleOrder }) {
         </span>
       )}
       <span
-        className={`inline-block rounded-full px-2 py-0.5 text-[9px] font-black ${
+        className={`inline-block rounded-full border px-2 py-0.5 text-[9px] font-bold ${
           PAY_TONE[order.paymentStatus] ?? ""
         }`}
       >
@@ -110,7 +176,7 @@ export function OrderCell({ order }: { order: WholesaleOrder }) {
         {labelOf(ORDER_CHANNELS, order.channel)}
       </span>
       {cancelled ? (
-        <span className="inline-block rounded-full bg-rose-500/15 px-2 py-0.5 text-[9px] font-black text-rose-700 dark:text-rose-300">
+        <span className="inline-block rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
           Cancelled
         </span>
       ) : (
@@ -158,6 +224,9 @@ export function OrdersDashboard({
     ? Number(type.slice(3))
     : undefined;
   const [status, setStatus] = useState("ALL");
+  const [dateRange, setDateRange] = useState("today");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [viewing, setViewing] = useState<WholesaleOrder | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -170,6 +239,14 @@ export function OrdersDashboard({
   const cancelOrder = useCancelWholesaleOrder();
   const restoreOrder = useRestoreWholesaleOrder();
 
+  const resolvedRange = useMemo(
+    () => resolveDateRange(dateRange, dateFrom, dateTo),
+    [dateRange, dateFrom, dateTo],
+  );
+  const rangeLabel =
+    DATE_RANGES.find((range) => range.value === dateRange)?.label ??
+    "All dates";
+
   const orders = useWholesaleOrders(
     search,
     status,
@@ -178,8 +255,10 @@ export function OrdersDashboard({
     page,
     undefined,
     channelFilter,
+    resolvedRange.from,
+    resolvedRange.to,
   );
-  const stats = useWholesaleStats();
+  const stats = useWholesaleStats(resolvedRange.from, resolvedRange.to);
   const rows = orders.data?.items ?? [];
   const total = orders.data?.total ?? 0;
   const s = stats.data;
@@ -236,7 +315,7 @@ export function OrdersDashboard({
         <StatCard
           label="Total Orders"
           value={String(s?.orderCount ?? 0)}
-          footer="Wholesale + channels, cancelled excluded"
+          footer={`${rangeLabel} · wholesale + channels, cancelled excluded`}
           icon={
             <Icon name="receipt_long" size={24} className="text-brand-500" />
           }
@@ -244,13 +323,13 @@ export function OrdersDashboard({
         <StatCard
           label="Total Sales"
           value={compactMoney(s?.salesTotal ?? 0)}
-          footer={`${compactMoney(s?.dueTotal ?? 0)} still outstanding`}
+          footer={`${rangeLabel} · ${compactMoney(s?.dueTotal ?? 0)} all-time outstanding`}
           icon={<Icon name="payments" size={24} className="text-emerald-500" />}
         />
         <StatCard
           label="Wholesale Orders"
           value={String(s?.wholesaleOrderCount ?? 0)}
-          footer="Couriered to a shop"
+          footer={`${rangeLabel} · couriered to a shop`}
           icon={
             <Icon name="local_shipping" size={24} className="text-blue-500" />
           }
@@ -258,7 +337,7 @@ export function OrdersDashboard({
         <StatCard
           label="Channel Orders"
           value={String(s?.channelOrderCount ?? 0)}
-          footer="Cash Sale, Daraz and other channels"
+          footer={`${rangeLabel} · Cash Sale, Daraz and other channels`}
           icon={<Icon name="storefront" size={24} className="text-amber-500" />}
         />
       </div>
@@ -296,6 +375,45 @@ export function OrdersDashboard({
             </select>
             <select
               className={INPUT}
+              value={dateRange}
+              onChange={(event) =>
+                refilter(() => setDateRange(event.target.value))
+              }
+              aria-label="Order date range"
+            >
+              {DATE_RANGES.map((range) => (
+                <option key={range.value} value={range.value}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
+            {dateRange === "custom" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="datetime-local"
+                  aria-label="Order date from"
+                  className={INPUT}
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(event) =>
+                    refilter(() => setDateFrom(event.target.value))
+                  }
+                />
+                <span className="text-xs font-semibold text-muted">to</span>
+                <input
+                  type="datetime-local"
+                  aria-label="Order date to"
+                  className={INPUT}
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(event) =>
+                    refilter(() => setDateTo(event.target.value))
+                  }
+                />
+              </div>
+            )}
+            <select
+              className={INPUT}
               value={status}
               onChange={(e) => refilter(() => setStatus(e.target.value))}
               aria-label="Order status"
@@ -330,7 +448,12 @@ export function OrdersDashboard({
                 setFailure(null);
                 setExporting(true);
                 try {
-                  await downloadWholesaleOrdersCsv(search, status);
+                  await downloadWholesaleOrdersCsv(
+                    search,
+                    status,
+                    resolvedRange.from,
+                    resolvedRange.to,
+                  );
                 } catch (e) {
                   setFailure(
                     e instanceof Error ? e.message : "Couldn't export",

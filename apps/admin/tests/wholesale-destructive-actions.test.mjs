@@ -43,3 +43,28 @@ test("Wholesale customer restoration uses a styled confirmation dialog", async (
   assert.doesNotMatch(source, /window\.confirm/);
   assert.match(source, /Restore Customer/);
 });
+
+test("Wholesale orders expose preset and custom placed-at time filters", async () => {
+  const dashboard = await readFile(component("OrdersDashboard.tsx"), "utf8");
+  const hooks = await readFile(
+    new URL("../src/hooks/useWholesale.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dashboard, /Last 1 hour/);
+  assert.match(dashboard, /Last 30 days/);
+  assert.match(dashboard, /type="datetime-local"/);
+  assert.match(hooks, /params\.set\("from"/);
+  assert.match(hooks, /params\.set\("to"/);
+});
+
+test("Wholesale badges use the muted professional palette", async () => {
+  const source = await readFile(component("OrdersDashboard.tsx"), "utf8");
+
+  assert.doesNotMatch(source, /bg-emerald-500\/15/);
+  assert.doesNotMatch(source, /bg-brand-500\/15/);
+  assert.match(source, /bg-emerald-50/);
+  assert.match(source, /bg-slate-50/);
+  assert.match(source, /border-amber-200/);
+  assert.match(source, /border-rose-200/);
+});

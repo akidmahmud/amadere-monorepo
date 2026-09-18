@@ -460,6 +460,8 @@ export function useWholesaleOrders(
   page = 1,
   pageSize: number = PAGE_SIZE,
   channelId?: number,
+  from?: string,
+  to?: string,
 ) {
   return useQuery({
     queryKey: [
@@ -471,6 +473,8 @@ export function useWholesaleOrders(
       page,
       pageSize,
       channelId ?? null,
+      from ?? null,
+      to ?? null,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -482,6 +486,8 @@ export function useWholesaleOrders(
       if (type !== "ALL") params.set("type", type);
       if (partyId) params.set("partyId", String(partyId));
       if (channelId) params.set("channelId", String(channelId));
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
       const res = await proxyFetch<Paginated<WholesaleOrder>>(
         `/admin/wholesale/orders?${params}`,
       );
@@ -495,10 +501,18 @@ export function useWholesaleOrders(
 
 /** Both dashboards' headline cards. Server-counted, so the numbers describe
  *  the business rather than whichever page the table is showing. */
-export function useWholesaleStats() {
+export function useWholesaleStats(from?: string, to?: string) {
   return useQuery({
-    queryKey: [...ORDERS_KEY, "stats"],
-    queryFn: () => proxyFetch<WholesaleStats>("/admin/wholesale/stats"),
+    queryKey: [...ORDERS_KEY, "stats", from ?? null, to ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const query = params.toString();
+      return proxyFetch<WholesaleStats>(
+        `/admin/wholesale/stats${query ? `?${query}` : ""}`,
+      );
+    },
   });
 }
 
@@ -675,10 +689,14 @@ export async function downloadWholesaleCustomersCsv(search: string) {
 export async function downloadWholesaleOrdersCsv(
   search: string,
   status: string,
+  from?: string,
+  to?: string,
 ) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (status && status !== "ALL") params.set("status", status);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
 
   const res = await fetch(
     `/api/backend/admin/wholesale/orders/export?${params}`,

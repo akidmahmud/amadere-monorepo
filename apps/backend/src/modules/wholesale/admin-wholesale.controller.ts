@@ -57,6 +57,7 @@ import {
   UpdateWholesaleCustomerDto,
   UpdateWholesaleOrderDto,
   WholesaleCustomerQueryDto,
+  WholesaleDateRangeQueryDto,
   WholesaleOrderQueryDto,
 } from './dto/wholesale.dto';
 
@@ -88,8 +89,10 @@ export class AdminWholesaleController {
   @Get('stats')
   @RequirePermission('wholesale.view')
   @ApiOkResponse({ type: WholesaleStatsDto })
-  stats(): Promise<WholesaleStatsDto> {
-    return this.wholesale.stats();
+  stats(
+    @Query() query: WholesaleDateRangeQueryDto,
+  ): Promise<WholesaleStatsDto> {
+    return this.wholesale.stats(query);
   }
 
   // --- customers ---

@@ -186,6 +186,59 @@ describe('WholesaleService', () => {
     ...over,
   });
 
+  it('filters the wholesale order register by placed-at time', async () => {
+    prisma.client.wholesaleOrder.findMany.mockResolvedValue([]);
+    prisma.client.wholesaleOrder.count.mockResolvedValue(0);
+
+    await service.listOrders({
+      from: '2026-09-18T00:00:00.000Z',
+      to: '2026-09-18T10:30:00.000Z',
+    });
+
+    const expectedRange = {
+      gte: new Date('2026-09-18T00:00:00.000Z'),
+      lte: new Date('2026-09-18T10:30:00.000Z'),
+    };
+    expect(prisma.client.wholesaleOrder.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ placedAt: expectedRange }),
+      }),
+    );
+    expect(prisma.client.wholesaleOrder.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ placedAt: expectedRange }),
+    });
+  });
+
+  it('applies the placed-at range to wholesale dashboard order statistics', async () => {
+    prisma.client.party.count.mockResolvedValue(0);
+    prisma.client.party.findMany.mockResolvedValue([]);
+
+    await service.stats({
+      from: '2026-09-18T00:00:00.000Z',
+      to: '2026-09-18T10:30:00.000Z',
+    });
+
+    for (const call of prisma.client.wholesaleOrder.groupBy.mock.calls) {
+      expect(call[0].where).toEqual(
+        expect.objectContaining({
+          placedAt: {
+            gte: new Date('2026-09-18T00:00:00.000Z'),
+            lte: new Date('2026-09-18T10:30:00.000Z'),
+          },
+        }),
+      );
+    }
+  });
+
+  it('rejects a wholesale order range whose end precedes its start', async () => {
+    await expect(
+      service.listOrders({
+        from: '2026-09-19T00:00:00.000Z',
+        to: '2026-09-18T00:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('prices the order from the wholesale rate on the line, not the retail price', async () => {
     await service.createOrder(order(), 1);
     const data = tx.wholesaleOrder.create.mock.calls[0][0].data;

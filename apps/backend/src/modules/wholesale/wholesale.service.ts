@@ -39,6 +39,7 @@ import {
   UpdateWholesaleCustomerDto,
   UpdateWholesaleOrderDto,
   WholesaleCustomerQueryDto,
+  WholesaleDateRangeQueryDto,
   WholesaleOrderQueryDto,
 } from './dto/wholesale.dto';
 import {
@@ -493,8 +494,13 @@ export class WholesaleService {
    * business with three hundred, and would change every time someone typed in
    * the search box.
    */
-  async stats(): Promise<WholesaleStatsDto> {
-    const live = { status: { in: LIVE_STATUSES } };
+  async stats(
+    query: WholesaleDateRangeQueryDto = {},
+  ): Promise<WholesaleStatsDto> {
+    const live = {
+      status: { in: LIVE_STATUSES },
+      ...this.orderDateRange(query),
+    };
     const [byType, buyers, customerCount, parties] = await Promise.all([
       this.prisma.client.wholesaleOrder.groupBy({
         by: ['type'],
@@ -922,14 +928,12 @@ export class WholesaleService {
       }
       for (let i = 0; i < toUpdate.length; i += 200) {
         await this.prisma.client.$transaction(
-          toUpdate
-            .slice(i, i + 200)
-            .map((u) =>
-              this.prisma.client.party.update({
-                where: { id: u.id },
-                data: u.data,
-              }),
-            ),
+          toUpdate.slice(i, i + 200).map((u) =>
+            this.prisma.client.party.update({
+              where: { id: u.id },
+              data: u.data,
+            }),
+          ),
         );
       }
     }
@@ -1066,6 +1070,7 @@ export class WholesaleService {
       ...(query.type ? { type: query.type } : {}),
       ...(query.partyId ? { partyId: query.partyId } : {}),
       ...(query.channelId ? { channelId: query.channelId } : {}),
+      ...this.orderDateRange(query),
       // Every column the dashboard prints is searchable, products included:
       // staff look an order up by what was in it at least as often as by its
       // number.
@@ -1091,6 +1096,25 @@ export class WholesaleService {
             ],
           }
         : {}),
+    };
+  }
+
+  private orderDateRange(
+    query: WholesaleDateRangeQueryDto,
+  ): Prisma.WholesaleOrderWhereInput {
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+    if (from && to && from > to) {
+      throw new BadRequestException(
+        'The order date range end must be after its start',
+      );
+    }
+    if (!from && !to) return {};
+    return {
+      placedAt: {
+        ...(from ? { gte: from } : {}),
+        ...(to ? { lte: to } : {}),
+      },
     };
   }
 
