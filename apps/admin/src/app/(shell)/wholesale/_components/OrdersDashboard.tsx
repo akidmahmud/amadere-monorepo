@@ -240,6 +240,16 @@ export function OrdersDashboard({
   const openOrder = (o: WholesaleOrder) =>
     o.status === "CANCELLED" ? setViewing(o) : onEditOrder(o);
   const [exporting, setExporting] = useState(false);
+  // Kept across pages, so a selection can be built up page by page and
+  // exported in one file.
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const [failure, setFailure] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
     order: WholesaleOrder;
@@ -279,6 +289,40 @@ export function OrdersDashboard({
   function refilter(apply: () => void) {
     apply();
     setPage(1);
+  }
+
+  async function exportCsv(ids?: number[]) {
+    setFailure(null);
+    setExporting(true);
+    try {
+      await downloadWholesaleOrdersCsv({
+        search,
+        status,
+        type: channelFilter ? "CHANNEL" : type,
+        channelId: channelFilter,
+        from: resolvedRange.from,
+        to: resolvedRange.to,
+        ids,
+      });
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : "Couldn't export");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const pageIds = rows.map((o) => o.id);
+  const allOnPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  function togglePage() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of pageIds) {
+        if (allOnPageSelected) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
   }
 
   function cancel(order: WholesaleOrder) {
@@ -451,30 +495,28 @@ export function OrdersDashboard({
               />
               {status === "CANCELLED" ? "Back to Orders" : "Deleted Orders"}
             </Button>
+            {selected.size > 0 && (
+              <>
+                <Button
+                  variant="primary"
+                  disabled={exporting}
+                  onClick={() => exportCsv([...selected])}
+                >
+                  <Icon name="download" size={18} />
+                  {exporting ? "Exporting…" : `Export Selected (${selected.size})`}
+                </Button>
+                <Button variant="ghost" onClick={() => setSelected(new Set())}>
+                  Clear selection
+                </Button>
+              </>
+            )}
             <Button
               variant="ghost"
               disabled={exporting}
-              onClick={async () => {
-                setFailure(null);
-                setExporting(true);
-                try {
-                  await downloadWholesaleOrdersCsv(
-                    search,
-                    status,
-                    resolvedRange.from,
-                    resolvedRange.to,
-                  );
-                } catch (e) {
-                  setFailure(
-                    e instanceof Error ? e.message : "Couldn't export",
-                  );
-                } finally {
-                  setExporting(false);
-                }
-              }}
+              onClick={() => exportCsv()}
             >
               <Icon name="download" size={18} />
-              {exporting ? "Exporting…" : "Export CSV"}
+              {exporting && selected.size === 0 ? "Exporting…" : "Export CSV"}
             </Button>
           </div>
         </div>
@@ -501,6 +543,15 @@ export function OrdersDashboard({
               <table className="w-full min-w-[1040px] border-collapse">
                 <thead>
                   <tr className="bg-surface-2 text-[9px] uppercase tracking-wide text-muted">
+                    <th className="w-8 px-3 py-2.5 text-left">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all orders on this page"
+                        checked={allOnPageSelected}
+                        onChange={togglePage}
+                        className="h-3.5 w-3.5 accent-brand-500"
+                      />
+                    </th>
                     {[
                       "Order",
                       "Customer",
@@ -523,8 +574,22 @@ export function OrdersDashboard({
                     <tr
                       key={o.id}
                       onClick={() => openOrder(o)}
-                      className="cursor-pointer border-t border-border align-top text-[11px] transition-colors hover:bg-surface-2"
+                      className={`cursor-pointer border-t border-border align-top text-[11px] transition-colors hover:bg-surface-2 ${
+                        selected.has(o.id) ? "bg-brand-500/5" : ""
+                      }`}
                     >
+                      <td
+                        className="px-3 py-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${o.orderNumber}`}
+                          checked={selected.has(o.id)}
+                          onChange={() => toggleSelected(o.id)}
+                          className="h-3.5 w-3.5 accent-brand-500"
+                        />
+                      </td>
                       <td className="px-3 py-3">
                         <OrderCell order={o} />
                       </td>
@@ -589,7 +654,15 @@ export function OrdersDashboard({
                   className="cursor-pointer space-y-2.5 rounded-xl border border-border p-3.5 transition-colors hover:bg-surface-2"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 text-[11px]">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${o.orderNumber}`}
+                      checked={selected.has(o.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelected(o.id)}
+                      className="mt-0.5 h-3.5 w-3.5 flex-none accent-brand-500"
+                    />
+                    <div className="min-w-0 flex-1 text-[11px]">
                       <OrderCell order={o} />
                       <span className="text-[10px] text-muted">
                         {dateLabel(o.placedAt)}

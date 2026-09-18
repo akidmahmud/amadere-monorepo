@@ -11,9 +11,11 @@ import {
   IsNumberString,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -288,6 +290,29 @@ export class WholesaleCustomerQueryDto extends WholesaleDateRangeQueryDto {
   @IsBoolean()
   @Type(() => Boolean)
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Staff the customer is assigned to; 0 for unassigned. Omit for anyone.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  @Min(0)
+  assignedAdminId?: number;
+}
+
+/** Customer Dashboard's bulk "Assign to…" — same shape as retail's. */
+export class BulkAssignWholesaleCustomersDto {
+  @ApiProperty({ type: [Number] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  customerIds!: number[];
+
+  @ApiProperty({ nullable: true, description: 'Staff user ID, or null to unassign' })
+  @ValidateIf((o: { assignedAdminId: unknown }) => o.assignedAdminId !== null)
+  @IsInt()
+  assignedAdminId!: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -640,6 +665,14 @@ export class WholesaleOrderQueryDto extends WholesaleDateRangeQueryDto {
   @IsInt()
   @Type(() => Number)
   channelId?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Export only: comma-separated order ids ("Export selected"). When set, the other filters are ignored.',
+  })
+  @IsOptional()
+  @Matches(/^\d+(,\d+)*$/)
+  ids?: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -413,6 +413,8 @@ export function useWholesaleCustomers(
   pageSize: number = PAGE_SIZE,
   from?: string,
   to?: string,
+  /** Staff id; 0 = unassigned; undefined = anyone. */
+  assignedAdminId?: number,
 ) {
   return useQuery({
     queryKey: [
@@ -423,6 +425,7 @@ export function useWholesaleCustomers(
       pageSize,
       from ?? null,
       to ?? null,
+      assignedAdminId ?? null,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -433,6 +436,8 @@ export function useWholesaleCustomers(
       if (activeOnly) params.set("isActive", "true");
       if (from) params.set("from", from);
       if (to) params.set("to", to);
+      if (assignedAdminId !== undefined)
+        params.set("assignedAdminId", String(assignedAdminId));
       const res = await proxyFetch<Paginated<WholesaleCustomer>>(
         `/admin/wholesale/customers?${params}`,
       );
@@ -603,6 +608,19 @@ export function useWholesaleStaff() {
   });
 }
 
+/** Customer Dashboard's bulk "Assign to…"; null unassigns. */
+export function useBulkAssignWholesaleCustomers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { customerIds: number[]; assignedAdminId: number | null }) =>
+      proxyFetch<{ updated: number }>("/admin/wholesale/customers/bulk-assign", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CUSTOMERS_KEY }),
+  });
+}
+
 export function useDeleteWholesaleCustomer() {
   const invalidate = useInvalidateAll();
   return useMutation({
@@ -685,11 +703,14 @@ export async function downloadWholesaleCustomersCsv(
   search: string,
   from?: string,
   to?: string,
+  assignedAdminId?: number,
 ) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (from) params.set("from", from);
   if (to) params.set("to", to);
+  if (assignedAdminId !== undefined)
+    params.set("assignedAdminId", String(assignedAdminId));
   const res = await fetch(
     `/api/backend/admin/wholesale/customers/export?${params}`,
   );
@@ -704,17 +725,28 @@ export async function downloadWholesaleCustomersCsv(
   URL.revokeObjectURL(url);
 }
 
-export async function downloadWholesaleOrdersCsv(
-  search: string,
-  status: string,
-  from?: string,
-  to?: string,
-) {
+/** Same file as the retail Order Manager export. `ids` exports exactly those
+ *  orders ("Export selected") and makes the server ignore the other filters. */
+export async function downloadWholesaleOrdersCsv(opts: {
+  search?: string;
+  status?: string;
+  type?: string;
+  channelId?: number;
+  from?: string;
+  to?: string;
+  ids?: number[];
+}) {
   const params = new URLSearchParams();
-  if (search) params.set("search", search);
-  if (status && status !== "ALL") params.set("status", status);
-  if (from) params.set("from", from);
-  if (to) params.set("to", to);
+  if (opts.ids?.length) {
+    params.set("ids", opts.ids.join(","));
+  } else {
+    if (opts.search) params.set("search", opts.search);
+    if (opts.status && opts.status !== "ALL") params.set("status", opts.status);
+    if (opts.type && opts.type !== "ALL") params.set("type", opts.type);
+    if (opts.channelId) params.set("channelId", String(opts.channelId));
+    if (opts.from) params.set("from", opts.from);
+    if (opts.to) params.set("to", opts.to);
+  }
 
   const res = await fetch(
     `/api/backend/admin/wholesale/orders/export?${params}`,

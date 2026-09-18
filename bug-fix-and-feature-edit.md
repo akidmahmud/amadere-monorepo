@@ -3814,3 +3814,40 @@ screen's estimate is not used. It is the current cost, not a snapshot.
 Tests: new `order-manager.export-cost.spec.ts` and a wholesale event
 assertion. 84/84 pass across wholesale, sms, order-manager and products.
 Backend and admin typecheck clean.
+
+## Wholesale: retail-shaped order export, export selected, customer assignee filter + bulk assign
+
+**One export format.** The retail Order Manager's per-line CSV logic now
+lives in `net-profit/order-manager/order-csv.ts` (header, weight-based
+qty/price, cost, date format, escaping). The retail export and
+`WholesaleService.exportOrdersCsv` both use it, so the two files match by
+construction. Retail output is unchanged. Wholesale mapping:
+- Source = channel name plus its fields ("Cash Sale (GP Number: …)").
+- Origin = where the order came in from.
+- Customer, Phone and Address = the delivery recipient, falling back to the
+  buyer.
+- Assign = the staff member who created the order.
+- Division is blank because wholesale doesn't store one.
+- Discount = order discount + line discounts, so the invoice values still add
+  up to the Grand Total.
+
+**Export selected.** Wholesale orders have row checkboxes (desktop and
+mobile) and a select-all-on-page box. The selection is kept across pages.
+"Export Selected (N)" sends `?ids=`, and the server then ignores every other
+filter. The plain "Export CSV" now also passes the Type/Channel filter it used
+to drop.
+
+**Customer assignee filter and bulk assign.** Added `assignedAdminId` to
+`WholesaleCustomerQueryDto` (0 = unassigned), with "Assigned To: Anyone /
+Unassigned / staff…" beside the date filter. The export follows it too. New
+`POST /admin/wholesale/customers/bulk-assign`: needs `wholesale.update` +
+`assignment.manage` like the single PATCH, rejects unknown staff, and only
+touches live wholesale customers. The table has retail's sticky checkbox
+column and a bulk bar with "Assign to… / Unassign", on desktop only (like
+retail).
+
+Verified live with an admin token: the selected export returned exactly the
+2 chosen orders in the retail layout, and the assignee filter works (162
+unassigned, 0 for staff 1). 53/53 wholesale and 11/11 order-manager tests pass
+(new: export ids + column mapping, csvLineCells, bulk assign, assignee
+filter). Backend and admin typecheck clean.

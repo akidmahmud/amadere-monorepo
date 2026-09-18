@@ -776,4 +776,101 @@ describe('WholesaleService', () => {
       service.createCustomer({ name: 'Rahman Grocery', phone: '01711111111' }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+  // Same shape as the retail Order Manager export (order-csv.ts), and the
+  // "Export selected" path: `ids` wins over every other filter.
+  describe('exportOrdersCsv', () => {
+    const exportRow = {
+      ...savedOrder,
+      type: 'CHANNEL',
+      channel: null,
+      channelId: 7,
+      channelData: { gp: 'GP-1911' },
+      salesChannel: { name: 'Cash Sale' },
+      recipientName: null,
+      recipientPhone: null,
+      addressLine: null,
+      district: null,
+      paymentStatus: 'PAID',
+      paymentMethod: 'CASH',
+      createdBy: 5,
+      createdAt: new Date('2026-08-31T10:00:00Z'),
+      items: [
+        {
+          ...savedOrder.items[0],
+          discount: D('20.00'),
+          variant: null,
+          product: {
+            shippableWeight: D('0.5'),
+            sku: 'AM-JS-001',
+            costPerItem: D('300.00'),
+            costPriceUnit: null,
+          },
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      prisma.client.wholesaleOrder.findMany.mockResolvedValue([exportRow]);
+      prisma.client.adminUser = {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 5, firstName: 'Rafi', lastName: 'Ahmed' }]),
+      };
+      jest.spyOn(service, 'listChannels').mockResolvedValue([
+        { id: 7, fields: [{ key: 'gp', label: 'GP Number' }] },
+      ] as never);
+    });
+
+    it('exports only the selected ids when given', async () => {
+      await service.exportOrdersCsv({ ids: '30,31', status: 'PENDING' });
+      expect(prisma.client.wholesaleOrder.findMany.mock.calls[0][0].where).toEqual({
+        id: { in: [30, 31] },
+      });
+    });
+
+    it('writes the retail columns, one row per line, reconciling to the total', async () => {
+      const [header, row] = (await service.exportOrdersCsv({})).split('\n');
+      expect(header).toContain('"Product SKU","Qty.","Price / kg","Cost / kg"');
+      const cells = JSON.parse(`[${row}]`) as string[];
+      expect(cells[2]).toBe('Cash Sale (GP Number: GP-1911)');
+      expect(cells[8]).toBe('AM-JS-001');
+      expect(cells[9]).toBe('1'); // 2 × 0.5 kg
+      expect(cells[10]).toBe('900.00'); // 450 per 0.5 kg
+      expect(cells[11]).toBe('600.00'); // cost 300 per 0.5 kg
+      expect(cells[15]).toBe('120.00'); // 100 order + 20 line discount
+      expect(cells[21]).toBe('Rafi Ahmed');
+    });
+  });
+  describe('assignment', () => {
+    beforeEach(() => {
+      prisma.client.party.updateMany = jest.fn().mockResolvedValue({ count: 2 });
+      prisma.client.adminUser = { findUnique: jest.fn().mockResolvedValue({ id: 5 }) };
+    });
+
+    it('bulk-assigns only live wholesale customers', async () => {
+      await expect(service.bulkAssignCustomers([1, 2], 5)).resolves.toEqual({ updated: 2 });
+      expect(prisma.client.party.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: [1, 2] }, roles: { has: 'WHOLESALE' }, deletedAt: null },
+        data: { assignedAdminId: 5 },
+      });
+    });
+
+    it('rejects an unknown staff member, but unassigns without looking one up', async () => {
+      prisma.client.adminUser.findUnique.mockResolvedValue(null);
+      await expect(service.bulkAssignCustomers([1], 99)).rejects.toBeInstanceOf(BadRequestException);
+      await service.bulkAssignCustomers([1], null);
+      expect(prisma.client.party.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { assignedAdminId: null } }),
+      );
+    });
+
+    it('filters the list by assignee, 0 meaning unassigned', async () => {
+      prisma.client.party.findMany.mockResolvedValue([]);
+      prisma.client.party.count.mockResolvedValue(0);
+      await service.listCustomers({ assignedAdminId: 0 });
+      expect(prisma.client.party.findMany.mock.calls[0][0].where.assignedAdminId).toBeNull();
+      await service.listCustomers({ assignedAdminId: 5 });
+      expect(prisma.client.party.findMany.mock.calls[1][0].where.assignedAdminId).toBe(5);
+    });
+  });
 });

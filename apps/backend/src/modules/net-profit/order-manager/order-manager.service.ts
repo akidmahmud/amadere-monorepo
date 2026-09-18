@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  CostPriceUnit,
   CourierProviderName,
   OrderChannel,
   OrderStatus,
@@ -18,6 +17,14 @@ import { chargeableWeightKg, quoteShippingRule } from '@amader/shared';
 import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
 import { ShipmentsService } from '../../courier/shipments.service';
 import { BlockerService } from '../blocker/blocker.service';
+import {
+  CSV_LINE_PRODUCT_SELECT,
+  CSV_LINE_VARIANT_SELECT,
+  csvDate,
+  csvLineCells,
+  csvTime,
+  toOrderCsv,
+} from './order-csv';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
 import { OrderManagerLineDto, OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
@@ -93,35 +100,6 @@ interface RawOrderManagerRow {
 // broke silently for every order created after the rollout — this join
 // returned RiskLevel.UNKNOWN for all of them).
 const FRAUD_CHECK_JOIN = Prisma.sql`LEFT JOIN fraud_checks fc ON fc.phone = CASE length(oa.phone) WHEN 11 THEN '+88' || oa.phone WHEN 13 THEN '+' || oa.phone WHEN 14 THEN oa.phone ELSE NULL END`;
-
-// How many of a CostPriceUnit fit in one of the variant's "Weight" field
-// values (kg, or liters for the volume units) — mirrors admin's variant-cost.ts.
-const UNITS_PER_WEIGHT: Record<CostPriceUnit, number> = {
-  PER_KG: 1,
-  PER_100G: 10,
-  PER_G: 1000,
-  PER_LITER: 1,
-  PER_ML: 1000,
-};
-
-/**
- * One line's buying cost per item, resolved the way the profit screens do:
- * the variant's own cost first, else the product's. A product cost with a
- * costPriceUnit is a rate (e.g. per kg) and is scaled by the line's weight;
- * with no weight to scale by there is no honest number, so null.
- */
-export function lineUnitCost(
-  variantCost: Prisma.Decimal | number | null | undefined,
-  productCost: Prisma.Decimal | number | null | undefined,
-  costPriceUnit: CostPriceUnit | null | undefined,
-  weightKg: number,
-): number | null {
-  if (variantCost != null) return Number(variantCost);
-  if (productCost == null) return null;
-  if (!costPriceUnit) return Number(productCost);
-  if (!(weightKg > 0)) return null;
-  return Number(productCost) * weightKg * UNITS_PER_WEIGHT[costPriceUnit];
-}
 
 @Injectable()
 export class OrderManagerService {
@@ -524,28 +502,13 @@ export class OrderManagerService {
         items: {
           orderBy: { id: 'asc' },
           include: {
-            variant: { select: { weightOverride: true, sku: true, costPerItem: true } },
-            product: {
-              select: { shippableWeight: true, sku: true, costPerItem: true, costPriceUnit: true },
-            },
+            variant: { select: CSV_LINE_VARIANT_SELECT },
+            product: { select: CSV_LINE_PRODUCT_SELECT },
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
-
-    const header = [
-      'Date', 'Order Number', 'Source', 'Origin', 'Customer Name', 'Address',
-      'Phone Number', 'Consignment ID', 'Product SKU', 'Qty.', 'Price / kg',
-      'Cost / kg', 'Invoice Value', 'Cost Value', 'Delivery Charge', 'Discount', 'Grand Total',
-      'Order Status', 'Payment Status', 'Payment Method', 'Notes / comment',
-      'Assign', 'Division', 'District', 'Created At',
-    ];
-
-    // dd/mm/yyyy and hh:mm:ss, matching the sheet rather than ISO.
-    const two = (n: number) => String(n).padStart(2, '0');
-    const dmy = (d: Date) => two(d.getDate()) + '/' + two(d.getMonth() + 1) + '/' + d.getFullYear();
-    const hms = (d: Date) => two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds());
 
     const rows: string[][] = [];
     for (const o of orders) {
@@ -557,7 +520,7 @@ export class OrderManagerService {
         : '';
 
       const shared = [
-        dmy(o.createdAt),
+        csvDate(o.createdAt),
         o.orderNumber,
         o.utmSource ?? '',
         o.channel,
@@ -577,61 +540,15 @@ export class OrderManagerService {
         assignee,
         addr?.division ?? '',
         addr?.district ?? '',
-        dmy(o.createdAt) + ', ' + hms(o.createdAt),
+        csvDate(o.createdAt) + ', ' + csvTime(o.createdAt),
       ];
 
       // An order with no lines still gets one row, so it cannot vanish from
       // an export the staff are reconciling against.
       const items = o.items.length > 0 ? o.items : [null];
-      for (const item of items) {
-        let qty = '';
-        let pricePerKg = '';
-        let invoice = '';
-        let costPerKg = '';
-        let costValue = '';
-        if (item) {
-          const unit = Number(item.unitPrice);
-          invoice = (unit * item.quantity).toFixed(2);
-          const weightKg = Number(item.variant?.weightOverride ?? item.product?.shippableWeight ?? 0);
-          // Cost sits next to price in the same unit (per kg when weighted,
-          // per unit otherwise). Current cost, not a snapshot — blank when
-          // none is entered rather than the profit screen's estimate.
-          const unitCost = lineUnitCost(
-            item.variant?.costPerItem,
-            item.product?.costPerItem,
-            item.product?.costPriceUnit,
-            weightKg,
-          );
-          if (unitCost !== null) costValue = (unitCost * item.quantity).toFixed(2);
-          if (weightKg > 0) {
-            qty = String(Number((weightKg * item.quantity).toFixed(3)));
-            pricePerKg = (unit / weightKg).toFixed(2);
-            if (unitCost !== null) costPerKg = (unitCost / weightKg).toFixed(2);
-          } else {
-            qty = String(item.quantity);
-            pricePerKg = unit.toFixed(2);
-            if (unitCost !== null) costPerKg = unitCost.toFixed(2);
-          }
-        }
-        // SKU only, not the product name (explicit request). The snapshot is
-        // empty on orders placed before it was captured, so fall back to the
-        // variant's and then the product's current SKU; blank only when the
-        // product no longer exists and never carried one.
-        const sku = item ? (item.skuSnapshot ?? item.variant?.sku ?? item.product?.sku ?? '') : '';
-        rows.push([
-          ...shared,
-          sku,
-          qty,
-          pricePerKg,
-          costPerKg,
-          invoice,
-          costValue,
-          ...tail,
-        ]);
-      }
+      for (const item of items) rows.push([...shared, ...csvLineCells(item), ...tail]);
     }
 
-    const esc = (v: string) => '"' + String(v).replace(/"/g, '""') + '"';
-    return [header, ...rows].map((r) => r.map(esc).join(',')).join('\n');
+    return toOrderCsv(rows);
   }
 }

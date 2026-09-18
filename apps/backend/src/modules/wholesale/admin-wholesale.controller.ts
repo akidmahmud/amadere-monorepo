@@ -49,6 +49,7 @@ import {
   WholesaleStatsDto,
 } from './wholesale.mapper';
 import {
+  BulkAssignWholesaleCustomersDto,
   CreateWholesaleChannelDto,
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
@@ -151,6 +152,19 @@ export class AdminWholesaleController {
     @Body() dto: CreateWholesaleCustomerDto,
   ): Promise<WholesaleCustomerDto> {
     return this.wholesale.createCustomer(dto);
+  }
+
+  @Post('customers/bulk-assign')
+  @RequirePermission('wholesale.update')
+  bulkAssignCustomers(
+    @Body() dto: BulkAssignWholesaleCustomersDto,
+    @Can() can: PermissionCheck,
+  ): Promise<{ updated: number }> {
+    // Same rule as the single-customer PATCH below.
+    if (!can('assignment.manage')) {
+      throw new ForbiddenException('Missing permission: assignment.manage');
+    }
+    return this.wholesale.bulkAssignCustomers(dto.customerIds, dto.assignedAdminId);
   }
 
   @Patch('customers/:id')

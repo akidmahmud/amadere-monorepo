@@ -7,6 +7,14 @@ import { PaginatedResult, toBdCompact } from '@amader/shared';
 import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  CSV_LINE_PRODUCT_SELECT,
+  CSV_LINE_VARIANT_SELECT,
+  csvDate,
+  csvLineCells,
+  csvTime,
+  toOrderCsv,
+} from '../net-profit/order-manager/order-csv';
 import { WHOLESALE_ORDER_CREATED_EVENT, type WholesaleOrderCreatedEvent } from './wholesale.events';
 import {
   paginationArgs,
@@ -232,6 +240,25 @@ export class WholesaleService {
     return this.listCustomerSet(query, false);
   }
 
+  /** Bulk "Assign to…" from the Customer Dashboard; null unassigns. */
+  async bulkAssignCustomers(
+    customerIds: number[],
+    assignedAdminId: number | null,
+  ): Promise<{ updated: number }> {
+    if (assignedAdminId !== null) {
+      const staff = await this.prisma.client.adminUser.findUnique({
+        where: { id: assignedAdminId },
+        select: { id: true },
+      });
+      if (!staff) throw new BadRequestException('Staff member not found');
+    }
+    const { count } = await this.prisma.client.party.updateMany({
+      where: { id: { in: customerIds }, roles: { has: 'WHOLESALE' }, deletedAt: null },
+      data: { assignedAdminId },
+    });
+    return { updated: count };
+  }
+
   async listDeletedCustomers(
     query: WholesaleCustomerQueryDto,
   ): Promise<PaginatedResult<WholesaleCustomerDto>> {
@@ -338,6 +365,9 @@ export class WholesaleService {
       roles: { has: 'WHOLESALE' },
       deletedAt: deletedOnly ? { not: null } : null,
       ...(query.isActive === undefined ? {} : { isActive: query.isActive }),
+      ...(query.assignedAdminId === undefined
+        ? {}
+        : { assignedAdminId: query.assignedAdminId || null }),
       ...(query.from || query.to
         ? {
             wholesaleOrders: {
@@ -1174,14 +1204,37 @@ export class WholesaleService {
    * Quoted on every free-text column because buyer names and notes genuinely
    * contain commas.
    */
+  /**
+   * Same file as the retail Order Manager export — same columns, one row per
+   * product line with the order fields repeated, quantities and prices by
+   * weight, cost beside price (see order-csv.ts). Wholesale-only facts map
+   * onto it: Source is the channel (with its "show in table" fields), Origin
+   * where a wholesale order came in from, Assign whoever created it.
+   *
+   * Discount is the order discount plus every line's own discount, so that
+   * Σ Invoice Value − Discount + Delivery Charge still equals Grand Total.
+   * No Division is stored for a wholesale delivery; that column stays blank.
+   */
   async exportOrdersCsv(query: WholesaleOrderQueryDto): Promise<string> {
-    const rows = await this.prisma.client.wholesaleOrder.findMany({
-      where: this.buildOrderWhere(query),
-      include: ORDER_INCLUDE,
+    const ids = query.ids?.split(',').map(Number);
+    const orders = await this.prisma.client.wholesaleOrder.findMany({
+      where: ids ? { id: { in: ids } } : this.buildOrderWhere(query),
+      include: {
+        party: { select: { name: true, phone: true } },
+        salesChannel: { select: { name: true } },
+        items: {
+          orderBy: { id: 'asc' },
+          include: {
+            variant: { select: CSV_LINE_VARIANT_SELECT },
+            product: { select: CSV_LINE_PRODUCT_SELECT },
+          },
+        },
+      },
       orderBy: [{ placedAt: 'desc' }, { id: 'desc' }],
+      // ponytail: one bounded read; paginate the export if orders ever pass this.
       take: 10_000,
     });
-    const orders = await this.withPaid(rows);
+
     // Field labels per channel, so the export reads "GP Number: 123", not a raw key.
     const labels = new Map(
       (await this.listChannels()).map((c) => [
@@ -1189,38 +1242,54 @@ export class WholesaleService {
         new Map(c.fields.map((f) => [f.key, f.label])),
       ]),
     );
-    const details = (o: WholesaleOrderDto) =>
-      Object.entries(o.channelData ?? {})
-        .map(([k, v]) => `${labels.get(o.channelId!)?.get(k) ?? k}: ${v}`)
-        .join('; ');
-
-    const header =
-      'Order,Date,Invoice,Channel,Channel Details,Customer,Phone,Courier,Consignment,Items,Subtotal,Delivery,Discount,Total,Paid,Due,Status';
-    const q = (v: string | null | undefined) =>
-      `"${String(v ?? '').replace(/"/g, '""')}"`;
-
-    const lines = orders.map((o) =>
-      [
-        o.orderNumber,
-        o.placedAt.toISOString().slice(0, 10),
-        o.invoiceDocNo ?? '',
-        q(o.channelName ?? 'Wholesale'),
-        q(details(o)),
-        q(o.customerName),
-        q(o.customerPhone),
-        o.courier,
-        q(o.consignmentId),
-        o.items.length,
-        o.subtotal,
-        o.deliveryCharge,
-        o.discount,
-        o.total,
-        o.paid,
-        o.due,
-        o.status,
-      ].join(','),
+    const creatorIds = [
+      ...new Set(orders.map((o) => o.createdBy).filter((id): id is number => id !== null)),
+    ];
+    const creators = new Map(
+      (
+        await this.prisma.client.adminUser.findMany({
+          where: { id: { in: creatorIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      ).map((u) => [u.id, `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()]),
     );
-    return [header, ...lines].join('\n');
+
+    const rows: string[][] = [];
+    for (const o of orders) {
+      const details = Object.entries((o.channelData as Record<string, unknown> | null) ?? {})
+        .map(([k, v]) => `${labels.get(o.channelId!)?.get(k) ?? k}: ${String(v)}`)
+        .join('; ');
+      const source = o.salesChannel?.name ?? 'Wholesale';
+      const lineDiscounts = o.items.reduce((sum, i) => sum + Number(i.discount), 0);
+
+      const shared = [
+        csvDate(o.placedAt),
+        o.orderNumber,
+        details ? `${source} (${details})` : source,
+        o.channel ?? o.type,
+        o.recipientName ?? o.party.name,
+        o.addressLine ?? '',
+        o.recipientPhone ?? o.party.phone ?? '',
+        o.consignmentId ?? '',
+      ];
+      const tail = [
+        o.deliveryCharge.toString(),
+        (Number(o.discount) + lineDiscounts).toFixed(2),
+        o.total.toString(),
+        o.status,
+        o.paymentStatus,
+        o.paymentMethod ?? '',
+        o.note ?? '',
+        o.createdBy ? (creators.get(o.createdBy) ?? '') : '',
+        '',
+        o.district ?? '',
+        `${csvDate(o.createdAt)}, ${csvTime(o.createdAt)}`,
+      ];
+
+      const items = o.items.length > 0 ? o.items : [null];
+      for (const item of items) rows.push([...shared, ...csvLineCells(item), ...tail]);
+    }
+    return toOrderCsv(rows);
   }
 
   async findOrder(id: number): Promise<WholesaleOrderDto> {

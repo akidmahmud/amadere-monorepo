@@ -91,10 +91,17 @@ interface Actions {
 export function WholesaleCustomersTable({
   customers,
   staff,
+  selected,
+  onToggle,
+  onToggleAll,
   ...actions
 }: {
   customers: WholesaleCustomer[];
   staff?: { id: number; name: string }[];
+  // Row selection for the bulk bar — desktop table only, like retail.
+  selected: Set<number>;
+  onToggle: (id: number) => void;
+  onToggleAll: () => void;
 } & Actions) {
   return (
     <div
@@ -160,7 +167,17 @@ export function WholesaleCustomersTable({
         >
           <thead>
             <tr>
-              <TH sticky={1} style={{ minWidth: 200 }}>
+              <TH sticky={1}>
+                <input
+                  type="checkbox"
+                  aria-label="Select all customers on this page"
+                  checked={customers.length > 0 && customers.every((c) => selected.has(c.id))}
+                  onChange={onToggleAll}
+                  className="h-[15px] w-[15px]"
+                  style={{ accentColor: "#2e7d43" }}
+                />
+              </TH>
+              <TH sticky={2} style={{ minWidth: 200 }}>
                 Name
               </TH>
               <TH>Fav</TH>
@@ -201,6 +218,8 @@ export function WholesaleCustomersTable({
                 key={c.id}
                 customer={c}
                 staff={staff}
+                selected={selected.has(c.id)}
+                onToggle={() => onToggle(c.id)}
                 {...actions}
               />
             ))}
@@ -214,6 +233,8 @@ export function WholesaleCustomersTable({
 function WholesaleCustomerRow({
   customer: c,
   staff,
+  selected,
+  onToggle,
   onView,
   onOrder,
   onEdit,
@@ -221,6 +242,8 @@ function WholesaleCustomerRow({
 }: {
   customer: WholesaleCustomer;
   staff?: { id: number; name: string }[];
+  selected: boolean;
+  onToggle: () => void;
 } & Actions) {
   const update = usePatchWholesaleCustomer(c.id);
   const canAssign = useCan("assignment.manage");
@@ -294,12 +317,22 @@ function WholesaleCustomerRow({
 
   return (
     <tr className="[&:hover>td]:bg-[#f7fbf8]">
+      <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6 }}>
+        <input
+          type="checkbox"
+          aria-label={`Select ${c.name}`}
+          checked={selected}
+          onChange={onToggle}
+          className="h-[15px] w-[15px]"
+          style={{ accentColor: "#2e7d43" }}
+        />
+      </td>
       <td
         className={td}
         style={{
           ...tdStyle,
           position: "sticky",
-          left: 0,
+          left: 42,
           zIndex: 6,
           boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)",
         }}

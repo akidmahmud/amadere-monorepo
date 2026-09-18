@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Button, Card, Icon, StatCard } from "@amader/admin-ui";
 import {
   downloadWholesaleCustomersCsv,
+  useBulkAssignWholesaleCustomers,
   useDeleteWholesaleCustomer,
   useWholesaleCustomers,
   useWholesaleStaff,
@@ -49,6 +50,12 @@ export function CustomersDashboard({
     useState<WholesaleCustomer | null>(null);
   const staff = useWholesaleStaff();
   const canDelete = useCan("wholesale.delete");
+  const canAssign = useCan("assignment.manage");
+  // "" = anyone, "0" = unassigned, else a staff id — same as retail's filter.
+  const [assignee, setAssignee] = useState("");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const bulkAssign = useBulkAssignWholesaleCustomers();
+  const [assignError, setAssignError] = useState<string | null>(null);
   const deleteCustomer = useDeleteWholesaleCustomer();
 
   // Same presets and custom from/to as the order dashboards. A customer is
@@ -68,11 +75,46 @@ export function CustomersDashboard({
     pageSize,
     range.from,
     range.to,
+    assignee === "" ? undefined : Number(assignee),
   );
   const stats = useWholesaleStats(range.from, range.to);
   const rows = customers.data?.items ?? [];
   const total = customers.data?.total ?? 0;
   const s = stats.data;
+
+  function toggleOne(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) => {
+      const all = rows.length > 0 && rows.every((r) => prev.has(r.id));
+      const next = new Set(prev);
+      for (const r of rows) {
+        if (all) next.delete(r.id);
+        else next.add(r.id);
+      }
+      return next;
+    });
+  }
+
+  // No confirm dialog, like retail — reassigning isn't destructive.
+  function assignSelected(assignedAdminId: number | null) {
+    setAssignError(null);
+    bulkAssign.mutate(
+      { customerIds: [...selected], assignedAdminId },
+      {
+        onSuccess: () => setSelected(new Set()),
+        onError: (e: unknown) =>
+          setAssignError(e instanceof Error ? e.message : "Couldn't assign"),
+      },
+    );
+  }
 
   function removeCustomer(customer: WholesaleCustomer) {
     setCustomerToDelete(customer);
@@ -168,6 +210,23 @@ export function CustomersDashboard({
           </div>
           <select
             className={INPUT}
+            value={assignee}
+            onChange={(e) => {
+              setAssignee(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Filter by assigned staff"
+          >
+            <option value="">Assigned To: Anyone</option>
+            <option value="0">Unassigned</option>
+            {(staff.data ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className={INPUT}
             value={dateRange}
             onChange={(e) => {
               setDateRange(e.target.value);
@@ -220,6 +279,7 @@ export function CustomersDashboard({
                     search,
                     range.from,
                     range.to,
+                    assignee === "" ? undefined : Number(assignee),
                   );
                 } catch (e) {
                   setExportError(
@@ -270,9 +330,57 @@ export function CustomersDashboard({
           </p>
         ) : (
           <>
+            <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border px-4 py-3">
+              <span className="text-xs font-semibold text-muted">
+                {selected.size > 0
+                  ? `${selected.size} selected`
+                  : "Select customers to act on"}
+              </span>
+              <select
+                aria-label="Bulk assign to staff"
+                disabled={selected.size === 0 || bulkAssign.isPending || !canAssign}
+                title={canAssign ? undefined : "You do not have permission to reassign customers"}
+                value=""
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v) assignSelected(v === "unassign" ? null : Number(v));
+                }}
+                className={`${INPUT} h-9 text-xs font-semibold disabled:opacity-40`}
+              >
+                <option value="" disabled>
+                  {bulkAssign.isPending ? "Assigning…" : "Assign to…"}
+                </option>
+                <option value="unassign">— (Unassign)</option>
+                {(staff.data ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              {selected.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelected(new Set())}
+                  className="text-xs font-semibold text-muted hover:text-text"
+                >
+                  Clear
+                </button>
+              )}
+              <span className="ml-auto text-xs font-semibold text-muted">
+                {total} customers
+              </span>
+            </div>
+            {assignError && (
+              <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                {assignError}
+              </p>
+            )}
             <WholesaleCustomersTable
               customers={rows}
               staff={staff.data}
+              selected={selected}
+              onToggle={toggleOne}
+              onToggleAll={toggleAll}
               onView={setDetail}
               onOrder={onOrderFor}
               onEdit={onEditCustomer}
