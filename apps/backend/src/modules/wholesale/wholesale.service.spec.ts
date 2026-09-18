@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { WholesaleService } from './wholesale.service';
+import { WHOLESALE_ORDER_CREATED_EVENT } from './wholesale.events';
 import { LedgerService } from '../net-profit/accounts/ledger/ledger.service';
 import { DuesService } from '../net-profit/accounts/dues/dues.service';
 import { AccountsSettingsService } from '../net-profit/accounts/accounts-settings.service';
@@ -54,6 +56,7 @@ describe('WholesaleService', () => {
   };
   let dues: { void: jest.Mock; recordPayment: jest.Mock };
   let settings: { getPostingSettings: jest.Mock };
+  let events: { emit: jest.Mock };
 
   const tx = {
     wholesaleOrder: {
@@ -155,6 +158,7 @@ describe('WholesaleService', () => {
       assertPeriodOpen: jest.fn(),
     };
     dues = { void: jest.fn(), recordPayment: jest.fn() };
+    events = { emit: jest.fn() };
     settings = {
       getPostingSettings: jest
         .fn()
@@ -168,6 +172,7 @@ describe('WholesaleService', () => {
         { provide: LedgerService, useValue: ledger },
         { provide: DuesService, useValue: dues },
         { provide: AccountsSettingsService, useValue: settings },
+        { provide: EventEmitter2, useValue: events },
       ],
     }).compile();
 
@@ -245,6 +250,15 @@ describe('WholesaleService', () => {
     expect(data.subtotal.toFixed(2)).toBe('900.00');
     expect(data.total.toFixed(2)).toBe('860.00'); // 900 + 60 − 100
     expect(data.items.create[0].unitPrice.toFixed(2)).toBe('450.00');
+  });
+
+  // Drives the "order created" SMS to the buyer (SmsEventListener).
+  it('announces the created order with the buyer and amounts', async () => {
+    await service.createOrder(order(), 1);
+    expect(events.emit).toHaveBeenCalledWith(
+      WHOLESALE_ORDER_CREATED_EVENT,
+      expect.objectContaining({ orderId: savedOrder.id }),
+    );
   });
 
   it('raises one WHOLESALE_INVOICE receivable against the buyer for the full bill', async () => {

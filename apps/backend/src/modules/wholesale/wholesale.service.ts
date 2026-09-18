@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import { PaginatedResult, toBdCompact } from '@amader/shared';
 import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { WHOLESALE_ORDER_CREATED_EVENT, type WholesaleOrderCreatedEvent } from './wholesale.events';
 import {
   paginationArgs,
   toPaginatedResult,
@@ -217,6 +219,7 @@ export class WholesaleService {
     private readonly ledger: LedgerService,
     private readonly dues: DuesService,
     private readonly settings: AccountsSettingsService,
+    private readonly events: EventEmitter2,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -335,6 +338,16 @@ export class WholesaleService {
       roles: { has: 'WHOLESALE' },
       deletedAt: deletedOnly ? { not: null } : null,
       ...(query.isActive === undefined ? {} : { isActive: query.isActive }),
+      ...(query.from || query.to
+        ? {
+            wholesaleOrders: {
+              some: {
+                ...this.orderDateRange(query),
+                status: { not: 'CANCELLED' },
+              },
+            },
+          }
+        : {}),
       ...(search
         ? {
             OR: [
@@ -1419,7 +1432,17 @@ export class WholesaleService {
       return order;
     });
 
-    return this.findOrder(created.id);
+    const result = await this.findOrder(created.id);
+    // After the commit, so a rolled-back order never texts the customer.
+    this.events.emit(WHOLESALE_ORDER_CREATED_EVENT, {
+      orderId: result.id,
+      orderNumber: result.orderNumber,
+      customerName: result.customerName,
+      customerPhone: result.customerPhone,
+      total: result.total,
+      due: result.due,
+    } satisfies WholesaleOrderCreatedEvent);
+    return result;
   }
 
   /**

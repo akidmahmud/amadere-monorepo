@@ -37,7 +37,7 @@ const compactMoney = (v: string | number) =>
 const INPUT =
   "h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
 
-const DATE_RANGES = [
+export const DATE_RANGES = [
   { value: "", label: "All dates" },
   { value: "1h", label: "Last 1 hour" },
   { value: "6h", label: "Last 6 hours" },
@@ -67,7 +67,7 @@ function parseCustomBound(value: string, edge: "start" | "end") {
   );
 }
 
-function resolveDateRange(
+export function resolveDateRange(
   value: string,
   customFrom: string,
   customTo: string,
@@ -101,12 +101,19 @@ function resolveDateRange(
   };
 }
 
+// Solid deep tones with white text — same in light and dark, so a pill reads
+// as a status stamp rather than a pastel tint that washes into the row.
+export const TONE = {
+  green: "border-[#0a4a31] bg-[#0f5c3e] text-white",
+  amber: "border-[#6b4106] bg-[#8a5409] text-white",
+  rose: "border-[#6e1430] bg-[#9b1c44] text-white",
+  slate: "border-[#1e293b] bg-[#334155] text-white",
+};
+
 const PAY_TONE: Record<string, string> = {
-  PAID: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  PARTIALLY_PAID:
-    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  UNPAID:
-    "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
+  PAID: TONE.green,
+  PARTIALLY_PAID: TONE.amber,
+  UNPAID: TONE.rose,
 };
 
 /** Wholesale, or the order's channel — with that channel's fields marked
@@ -118,10 +125,8 @@ export function TypeBadge({ order }: { order: WholesaleOrder }) {
   return (
     <div className="space-y-1">
       <span
-        className={`inline-block whitespace-nowrap rounded-full border px-2 py-1 text-[9px] font-bold ${
-          wholesale
-            ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300"
-            : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+        className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-1 text-[9px] font-bold tracking-wide ${
+          wholesale ? TONE.slate : TONE.green
         }`}
       >
         {wholesale ? "Wholesale" : (order.channelName ?? "Channel")}
@@ -148,7 +153,7 @@ export function PaymentCell({ order }: { order: WholesaleOrder }) {
         </span>
       )}
       <span
-        className={`inline-block rounded-full border px-2 py-0.5 text-[9px] font-bold ${
+        className={`inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${
           PAY_TONE[order.paymentStatus] ?? ""
         }`}
       >
@@ -176,7 +181,7 @@ export function OrderCell({ order }: { order: WholesaleOrder }) {
         {labelOf(ORDER_CHANNELS, order.channel)}
       </span>
       {cancelled ? (
-        <span className="inline-block rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${TONE.rose}`}>
           Cancelled
         </span>
       ) : (
@@ -228,7 +233,12 @@ export function OrdersDashboard({
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  // Clicking an order opens its edit window, which doubles as its detail
+  // view. A cancelled order can't be edited, so it falls back to the
+  // read-only detail modal — otherwise it would have no way to be looked at.
   const [viewing, setViewing] = useState<WholesaleOrder | null>(null);
+  const openOrder = (o: WholesaleOrder) =>
+    o.status === "CANCELLED" ? setViewing(o) : onEditOrder(o);
   const [exporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
@@ -512,7 +522,8 @@ export function OrdersDashboard({
                   {rows.map((o) => (
                     <tr
                       key={o.id}
-                      className="border-t border-border align-top text-[11px]"
+                      onClick={() => openOrder(o)}
+                      className="cursor-pointer border-t border-border align-top text-[11px] transition-colors hover:bg-surface-2"
                     >
                       <td className="px-3 py-3">
                         <OrderCell order={o} />
@@ -556,7 +567,6 @@ export function OrdersDashboard({
                       <td className="px-3 py-3">
                         <RowActions
                           order={o}
-                          onView={() => setViewing(o)}
                           onCollect={() => onCollectPayment(o)}
                           onEdit={() => onEditOrder(o)}
                           onCancel={() => cancel(o)}
@@ -575,7 +585,8 @@ export function OrdersDashboard({
               {rows.map((o) => (
                 <div
                   key={o.id}
-                  className="space-y-2.5 rounded-xl border border-border p-3.5"
+                  onClick={() => openOrder(o)}
+                  className="cursor-pointer space-y-2.5 rounded-xl border border-border p-3.5 transition-colors hover:bg-surface-2"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 text-[11px]">
@@ -610,7 +621,6 @@ export function OrdersDashboard({
                   </div>
                   <RowActions
                     order={o}
-                    onView={() => setViewing(o)}
                     onCollect={() => onCollectPayment(o)}
                     onEdit={() => onEditOrder(o)}
                     onCancel={() => cancel(o)}
@@ -672,7 +682,6 @@ export function OrdersDashboard({
 
 function RowActions({
   order,
-  onView,
   onCollect,
   onEdit,
   onCancel,
@@ -681,7 +690,6 @@ function RowActions({
   busy,
 }: {
   order: WholesaleOrder;
-  onView: () => void;
   onCollect: () => void;
   onEdit: () => void;
   onCancel: () => void;
@@ -692,10 +700,12 @@ function RowActions({
   const link =
     "text-left text-[10px] font-bold text-brand-600 hover:underline dark:text-brand-400";
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1">
-      <button type="button" className={link} onClick={onView}>
-        View Details
-      </button>
+    // The row itself opens the order, so a click on one of these actions
+    // must not also bubble up and open the edit window underneath it.
+    <div
+      className="flex flex-wrap gap-x-3 gap-y-1"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Nothing is owed on a cancelled order, and collecting against one
           would post cash to a voided receivable. */}
       {Number(order.due) > 0 && order.status !== "CANCELLED" && (

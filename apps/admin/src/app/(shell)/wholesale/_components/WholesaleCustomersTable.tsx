@@ -318,7 +318,11 @@ function WholesaleCustomerRow({
           />
         ) : (
           <span
-            className="block w-[170px] truncate px-1.5 font-bold"
+            role="button"
+            tabIndex={0}
+            onClick={() => onView(c)}
+            onKeyDown={(e) => e.key === "Enter" && onView(c)}
+            className="block w-[170px] cursor-pointer truncate px-1.5 font-bold hover:underline"
             style={{ color: INK }}
             title={name}
           >

@@ -411,9 +411,19 @@ export function useWholesaleCustomers(
   activeOnly: boolean,
   page = 1,
   pageSize: number = PAGE_SIZE,
+  from?: string,
+  to?: string,
 ) {
   return useQuery({
-    queryKey: [...CUSTOMERS_KEY, search, activeOnly, page, pageSize],
+    queryKey: [
+      ...CUSTOMERS_KEY,
+      search,
+      activeOnly,
+      page,
+      pageSize,
+      from ?? null,
+      to ?? null,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
@@ -421,6 +431,8 @@ export function useWholesaleCustomers(
       });
       if (search) params.set("search", search);
       if (activeOnly) params.set("isActive", "true");
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
       const res = await proxyFetch<Paginated<WholesaleCustomer>>(
         `/admin/wholesale/customers?${params}`,
       );
@@ -669,9 +681,15 @@ export function wholesaleInvoiceHref(id: number) {
  * than through proxyFetch.
  */
 /** Every buyer matching the Customer Dashboard search, as a CSV download. */
-export async function downloadWholesaleCustomersCsv(search: string) {
+export async function downloadWholesaleCustomersCsv(
+  search: string,
+  from?: string,
+  to?: string,
+) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
   const res = await fetch(
     `/api/backend/admin/wholesale/customers/export?${params}`,
   );

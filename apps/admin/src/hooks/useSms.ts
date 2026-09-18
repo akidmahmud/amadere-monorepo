@@ -33,6 +33,7 @@ export const TEMPLATE_PLACEHOLDERS: Record<string, string[]> = {
   order_delivered: ["orderNumber"],
   recovery: ["resumeUrl"],
   advance_request: ["orderNumber", "amount", "payUrl"],
+  wholesale_order_placed: ["name", "orderNumber", "amount", "due"],
 };
 
 interface Paginated<T> {

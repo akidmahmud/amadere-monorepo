@@ -1,52 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Card, Icon, StatCard } from "@amader/admin-ui";
 import {
-  COURIERS,
-  ORDER_CHANNELS,
-  PAGE_SIZE,
-  labelOf,
   downloadWholesaleCustomersCsv,
   useDeleteWholesaleCustomer,
   useWholesaleCustomers,
-  useWholesaleOrders,
   useWholesaleStaff,
   useWholesaleStats,
   type WholesaleCustomer,
-  type WholesaleOrder,
 } from "@/hooks/useWholesale";
 import { useCan } from "@/hooks/useAdminAuth";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 import { DeletedWholesaleCustomers } from "./DeletedWholesaleCustomers";
-import { OrderDetailModal } from "./OrderDetailModal";
 import { WholesaleCustomersTable } from "./WholesaleCustomersTable";
 import { Pager } from "./Pager";
-import {
-  OrderCell,
-  PaymentCell,
-  ProductsCell,
-  TypeBadge,
-} from "./OrdersDashboard";
-
-const money = (v: string | number) =>
-  `৳${Number(v || 0).toLocaleString("en-BD", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+import { WholesaleCustomerDetailModal } from "./WholesaleCustomerDetailModal";
+import { DATE_RANGES, resolveDateRange } from "./OrdersDashboard";
 
 const compactMoney = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
-
-const dateLabel = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "No order yet";
 
 const INPUT =
   "h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
@@ -77,8 +51,25 @@ export function CustomersDashboard({
   const canDelete = useCan("wholesale.delete");
   const deleteCustomer = useDeleteWholesaleCustomer();
 
-  const customers = useWholesaleCustomers(search, false, page, pageSize);
-  const stats = useWholesaleStats();
+  // Same presets and custom from/to as the order dashboards. A customer is
+  // in the window when they placed an order inside it.
+  const [dateRange, setDateRange] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const range = useMemo(
+    () => resolveDateRange(dateRange, dateFrom, dateTo),
+    [dateRange, dateFrom, dateTo],
+  );
+
+  const customers = useWholesaleCustomers(
+    search,
+    false,
+    page,
+    pageSize,
+    range.from,
+    range.to,
+  );
+  const stats = useWholesaleStats(range.from, range.to);
   const rows = customers.data?.items ?? [];
   const total = customers.data?.total ?? 0;
   const s = stats.data;
@@ -122,24 +113,6 @@ export function CustomersDashboard({
 
   if (showDeleted) {
     return <DeletedWholesaleCustomers onBack={() => setShowDeleted(false)} />;
-  }
-
-  if (detail) {
-    return (
-      <>
-        <CustomerDetail
-          customer={detail}
-          onBack={() => setDetail(null)}
-          onEdit={() => onEditCustomer(detail)}
-          onOrder={() => onOrderFor(detail)}
-          onDelete={() => removeCustomer(detail)}
-          canDelete={canDelete}
-          deleting={deleteCustomer.isPending}
-          deleteError={deleteError}
-        />
-        {deleteDialog}
-      </>
-    );
   }
 
   return (
@@ -193,6 +166,48 @@ export function CustomersDashboard({
               className="pointer-events-none absolute left-3 top-2.5 text-muted"
             />
           </div>
+          <select
+            className={INPUT}
+            value={dateRange}
+            onChange={(e) => {
+              setDateRange(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Customer order date range"
+          >
+            {DATE_RANGES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          {dateRange === "custom" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="datetime-local"
+                aria-label="Customer order date from"
+                className={INPUT}
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+              />
+              <span className="text-xs font-semibold text-muted">to</span>
+              <input
+                type="datetime-local"
+                aria-label="Customer order date to"
+                className={INPUT}
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
           <div className="flex flex-wrap gap-2.5">
             <Button
               variant="ghost"
@@ -201,7 +216,11 @@ export function CustomersDashboard({
                 setExportError(null);
                 setExporting(true);
                 try {
-                  await downloadWholesaleCustomersCsv(search);
+                  await downloadWholesaleCustomersCsv(
+                    search,
+                    range.from,
+                    range.to,
+                  );
                 } catch (e) {
                   setExportError(
                     e instanceof Error ? e.message : "Couldn't export",
@@ -297,281 +316,21 @@ export function CustomersDashboard({
           onClose={() => setImportOpen(false)}
         />
       )}
+      {detail && (
+        <WholesaleCustomerDetailModal
+          // Re-read from the refetched page so an edit made from this modal
+          // shows up in it, instead of the snapshot taken when it opened.
+          customer={rows.find((r) => r.id === detail.id) ?? detail}
+          onClose={() => setDetail(null)}
+          onEdit={() => onEditCustomer(detail)}
+          onOrder={() => onOrderFor(detail)}
+          onDelete={() => removeCustomer(detail)}
+          canDelete={canDelete}
+          deleting={deleteCustomer.isPending}
+          deleteError={deleteError}
+        />
+      )}
       {deleteDialog}
-    </div>
-  );
-}
-
-function DetailItem({
-  label,
-  value,
-  wide,
-}: {
-  label: string;
-  value: string;
-  wide?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl border border-border bg-surface-2 p-3 ${
-        wide ? "sm:col-span-2" : ""
-      }`}
-    >
-      <span className="block text-[9px] font-bold uppercase tracking-wide text-muted">
-        {label}
-      </span>
-      <strong className="mt-1 block break-words text-[11px] text-text">
-        {value || "N/A"}
-      </strong>
-    </div>
-  );
-}
-
-/**
- * One buyer's profile and their complete order history.
- *
- * The history is fetched by `partyId` rather than filtered out of the list
- * above: the list is one page of orders, so filtering it client-side would
- * show "complete history" that silently stopped at whatever the last page
- * happened to contain.
- */
-function CustomerDetail({
-  customer,
-  onBack,
-  onEdit,
-  onOrder,
-  onDelete,
-  canDelete,
-  deleting,
-  deleteError,
-}: {
-  customer: WholesaleCustomer;
-  onBack: () => void;
-  onEdit: () => void;
-  onOrder: () => void;
-  onDelete: () => void;
-  canDelete: boolean;
-  deleting: boolean;
-  deleteError: string | null;
-}) {
-  const [page, setPage] = useState(1);
-  const history = useWholesaleOrders("", "ALL", "ALL", customer.id, page);
-  const [viewing, setViewing] = useState<WholesaleOrder | null>(null);
-  const orders = history.data?.items ?? [];
-  const total = history.data?.total ?? 0;
-
-  return (
-    <div className="space-y-5">
-      <Card className="flex flex-wrap items-center justify-between gap-4 p-5 shadow-card">
-        <div>
-          <h2 className="text-base font-bold text-text">
-            {customer.name} — Customer Details
-          </h2>
-          <p className="mt-1 text-xs text-secondary">
-            Full profile and complete order history
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <Button variant="ghost" onClick={onBack}>
-            <Icon name="arrow_back" size={18} />
-            Back to Customer List
-          </Button>
-          <Button variant="ghost" onClick={onEdit}>
-            Edit Customer
-          </Button>
-          <Button variant="primary" onClick={onOrder}>
-            <Icon name="add" size={18} />
-            New Order
-          </Button>
-          {canDelete && (
-            <Button
-              variant="ghost"
-              disabled={deleting}
-              onClick={onDelete}
-              className="text-rose-600 dark:text-rose-400"
-            >
-              <Icon name="delete" size={18} />
-              Delete Customer
-            </Button>
-          )}
-        </div>
-      </Card>
-
-      {deleteError && (
-        <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
-          {deleteError}
-        </p>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Orders" value={String(customer.orderCount)} />
-        <StatCard
-          label="Total Purchase"
-          value={compactMoney(customer.purchaseTotal)}
-          footer={
-            Number(customer.due) > 0
-              ? `${compactMoney(customer.due)} outstanding`
-              : "Settled in full"
-          }
-        />
-        <StatCard
-          label="Wholesale Orders"
-          value={String(customer.wholesaleCount)}
-        />
-        <StatCard
-          label="Channel Orders"
-          value={String(customer.channelCount)}
-        />
-      </div>
-
-      <Card className="p-0 shadow-card">
-        <div className="border-b border-border px-4 py-3.5">
-          <h3 className="text-sm font-bold text-text">Customer Profile</h3>
-        </div>
-        <div className="grid gap-2.5 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailItem label="Customer name" value={customer.name} />
-          <DetailItem label="Phone" value={customer.phone ?? ""} />
-          <DetailItem
-            label="Alternative phone"
-            value={customer.alternativePhone ?? ""}
-          />
-          <DetailItem label="Email" value={customer.email ?? ""} />
-          <DetailItem label="Address" value={customer.address ?? ""} wide />
-          <DetailItem label="District" value={customer.district ?? ""} />
-          <DetailItem label="Thana / area" value={customer.thana ?? ""} />
-          <DetailItem label="Landmark" value={customer.landmark ?? ""} />
-          <DetailItem label="Post code" value={customer.postCode ?? ""} />
-          <DetailItem
-            label="Credit limit"
-            value={customer.creditLimit ? money(customer.creditLimit) : ""}
-          />
-          <DetailItem
-            label="Payment terms"
-            value={
-              customer.creditDays === null ? "" : `${customer.creditDays} days`
-            }
-          />
-          <DetailItem label="Outstanding" value={money(customer.due)} />
-          {customer.note && (
-            <DetailItem label="Note" value={customer.note} wide />
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-0 shadow-card">
-        <div className="border-b border-border px-4 py-3.5">
-          <h3 className="text-sm font-bold text-text">
-            Complete Order History
-          </h3>
-        </div>
-        {history.isLoading ? (
-          <p className="py-10 text-center text-sm text-muted">
-            Loading history…
-          </p>
-        ) : orders.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted">
-            No order history yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] border-collapse">
-              <thead>
-                <tr className="bg-surface-2 text-[9px] uppercase tracking-wide text-muted">
-                  {[
-                    "Order",
-                    "Type",
-                    "Products",
-                    "Price Details",
-                    "Courier",
-                    "Payment",
-                    "Total",
-                    "Date",
-                    "Action",
-                  ].map((h) => (
-                    <th key={h} className="px-3 py-2.5 text-left font-bold">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="border-t border-border align-top text-[11px]"
-                  >
-                    <td className="px-3 py-3">
-                      <OrderCell order={o} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <TypeBadge order={o} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <ProductsCell order={o} />
-                    </td>
-                    <td className="px-3 py-3 text-secondary">
-                      {o.items.map((i) => (
-                        <span key={i.id} className="block">
-                          {money(i.unitPrice)} × {i.quantity}
-                          {Number(i.discount) > 0
-                            ? ` − ${money(i.discount)}`
-                            : ""}
-                        </span>
-                      ))}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className="block text-text">
-                        {labelOf(COURIERS, o.courier) || "N/A"}
-                      </span>
-                      {o.consignmentId && (
-                        <span className="text-muted">{o.consignmentId}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <PaymentCell order={o} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <strong className="block text-text">
-                        {money(o.total)}
-                      </strong>
-                      {Number(o.due) > 0 && (
-                        <span className="text-rose-600 dark:text-rose-400">
-                          {money(o.due)} due
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-secondary">
-                      {dateLabel(o.placedAt)}
-                    </td>
-                    <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        className="text-[10px] font-bold text-brand-600 hover:underline dark:text-brand-400"
-                        onClick={() => setViewing(o)}
-                      >
-                        View Order
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="px-4 pb-4">
-              <Pager
-                page={page}
-                pageSize={PAGE_SIZE}
-                total={total}
-                onPage={setPage}
-                noun="orders"
-              />
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {viewing && (
-        <OrderDetailModal order={viewing} onClose={() => setViewing(null)} />
-      )}
     </div>
   );
 }

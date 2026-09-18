@@ -3761,3 +3761,56 @@ deleted tag and category). 6/6 in that suite pass; backend typechecks clean.
 
 Note: this is a backend fix — amadere.com needs a deploy before the live admin
 can save that product.
+
+Addendum: the local check above queried the `amader` DB, but the app runs on
+`amader_migration`. There, product 1 has 3 live tag links and no tag is
+deleted, so production's state can't be reproduced locally. Production shows
+no chips for those tags, which only happens when the tag rows are
+soft-deleted, so the diagnosis and fix stand.
+
+## Wholesale: premium badges, click-to-open orders & customers, date filter, order SMS; retail CSV cost
+
+**Badges.** The pastel mint pills (Paid, Cash Sale / channel, Active) became
+solid deep green with white text (`#0f5c3e`). Partially paid, Unpaid,
+Cancelled and Wholesale got deep amber, rose and slate to match. The tones
+live in one `TONE` map exported from `OrdersDashboard.tsx`.
+
+**Orders dashboard.** Removed "View Details". Clicking a row (or a mobile
+card) opens the edit window. A cancelled order can't be edited, so it opens
+the read-only detail modal instead. Otherwise it could never be viewed. The
+row actions stop click propagation, so Collect, Invoice and Delete don't also
+open the order.
+
+**Customer dashboard → modal.** The full-page customer detail, which replaced
+the list, is now `WholesaleCustomerDetailModal`, built like the retail
+Customer Management modal: identity strip, then Overview (personal, address,
+account, CRM, notes) and Orders tabs, with Delete, Edit, New Order and Close
+at the bottom. The name, the #WS id and the eye icon all open it. The modal
+re-reads the customer from the refetched page, so edits show up while it is
+open.
+
+**Customer date filter.** Uses the same presets and custom datetime range as
+the order dashboards. A customer matches when they placed a non-cancelled
+order in the window. The backend `WholesaleCustomerQueryDto` now extends
+`WholesaleDateRangeQueryDto` and reuses `orderDateRange`. The stat cards and
+the CSV export follow the filter too.
+Caveat: `WholesaleOrder.placedAt` is a DATE column, so hour presets
+(1h/6h/12h) can't match same-day orders. This was already true on the Orders
+dashboard.
+
+**Wholesale order SMS.** `createOrder` emits `wholesale_order.created` after
+the transaction commits. `SmsEventListener` sends the new
+`wholesale_order_placed` template (`{{name}} {{orderNumber}} {{amount}}
+{{due}}`) to the buyer's phone and skips buyers with no number. The template
+is seeded on boot, so it shows on /net-profit/sms, where it can be edited and
+toggled. It also appears in the placeholder legend.
+
+**Retail order CSV.** Added `Cost / kg` (next to Price / kg, same unit) and
+`Cost Value` (next to Invoice Value). The cost is the variant's cost, else the
+product's, with per-kg/100g/g/L/ml rates scaled by weight, which matches
+admin `variant-cost.ts`. It is blank when no cost is set, and the profit
+screen's estimate is not used. It is the current cost, not a snapshot.
+
+Tests: new `order-manager.export-cost.spec.ts` and a wholesale event
+assertion. 84/84 pass across wholesale, sms, order-manager and products.
+Backend and admin typecheck clean.

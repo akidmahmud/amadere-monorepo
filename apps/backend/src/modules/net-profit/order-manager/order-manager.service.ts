@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  CostPriceUnit,
   CourierProviderName,
   OrderChannel,
   OrderStatus,
@@ -92,6 +93,35 @@ interface RawOrderManagerRow {
 // broke silently for every order created after the rollout — this join
 // returned RiskLevel.UNKNOWN for all of them).
 const FRAUD_CHECK_JOIN = Prisma.sql`LEFT JOIN fraud_checks fc ON fc.phone = CASE length(oa.phone) WHEN 11 THEN '+88' || oa.phone WHEN 13 THEN '+' || oa.phone WHEN 14 THEN oa.phone ELSE NULL END`;
+
+// How many of a CostPriceUnit fit in one of the variant's "Weight" field
+// values (kg, or liters for the volume units) — mirrors admin's variant-cost.ts.
+const UNITS_PER_WEIGHT: Record<CostPriceUnit, number> = {
+  PER_KG: 1,
+  PER_100G: 10,
+  PER_G: 1000,
+  PER_LITER: 1,
+  PER_ML: 1000,
+};
+
+/**
+ * One line's buying cost per item, resolved the way the profit screens do:
+ * the variant's own cost first, else the product's. A product cost with a
+ * costPriceUnit is a rate (e.g. per kg) and is scaled by the line's weight;
+ * with no weight to scale by there is no honest number, so null.
+ */
+export function lineUnitCost(
+  variantCost: Prisma.Decimal | number | null | undefined,
+  productCost: Prisma.Decimal | number | null | undefined,
+  costPriceUnit: CostPriceUnit | null | undefined,
+  weightKg: number,
+): number | null {
+  if (variantCost != null) return Number(variantCost);
+  if (productCost == null) return null;
+  if (!costPriceUnit) return Number(productCost);
+  if (!(weightKg > 0)) return null;
+  return Number(productCost) * weightKg * UNITS_PER_WEIGHT[costPriceUnit];
+}
 
 @Injectable()
 export class OrderManagerService {
@@ -494,8 +524,10 @@ export class OrderManagerService {
         items: {
           orderBy: { id: 'asc' },
           include: {
-            variant: { select: { weightOverride: true, sku: true } },
-            product: { select: { shippableWeight: true, sku: true } },
+            variant: { select: { weightOverride: true, sku: true, costPerItem: true } },
+            product: {
+              select: { shippableWeight: true, sku: true, costPerItem: true, costPriceUnit: true },
+            },
           },
         },
       },
@@ -505,7 +537,7 @@ export class OrderManagerService {
     const header = [
       'Date', 'Order Number', 'Source', 'Origin', 'Customer Name', 'Address',
       'Phone Number', 'Consignment ID', 'Product SKU', 'Qty.', 'Price / kg',
-      'Invoice Value', 'Delivery Charge', 'Discount', 'Grand Total',
+      'Cost / kg', 'Invoice Value', 'Cost Value', 'Delivery Charge', 'Discount', 'Grand Total',
       'Order Status', 'Payment Status', 'Payment Method', 'Notes / comment',
       'Assign', 'Division', 'District', 'Created At',
     ];
@@ -555,16 +587,30 @@ export class OrderManagerService {
         let qty = '';
         let pricePerKg = '';
         let invoice = '';
+        let costPerKg = '';
+        let costValue = '';
         if (item) {
           const unit = Number(item.unitPrice);
           invoice = (unit * item.quantity).toFixed(2);
           const weightKg = Number(item.variant?.weightOverride ?? item.product?.shippableWeight ?? 0);
+          // Cost sits next to price in the same unit (per kg when weighted,
+          // per unit otherwise). Current cost, not a snapshot — blank when
+          // none is entered rather than the profit screen's estimate.
+          const unitCost = lineUnitCost(
+            item.variant?.costPerItem,
+            item.product?.costPerItem,
+            item.product?.costPriceUnit,
+            weightKg,
+          );
+          if (unitCost !== null) costValue = (unitCost * item.quantity).toFixed(2);
           if (weightKg > 0) {
             qty = String(Number((weightKg * item.quantity).toFixed(3)));
             pricePerKg = (unit / weightKg).toFixed(2);
+            if (unitCost !== null) costPerKg = (unitCost / weightKg).toFixed(2);
           } else {
             qty = String(item.quantity);
             pricePerKg = unit.toFixed(2);
+            if (unitCost !== null) costPerKg = unitCost.toFixed(2);
           }
         }
         // SKU only, not the product name (explicit request). The snapshot is
@@ -577,7 +623,9 @@ export class OrderManagerService {
           sku,
           qty,
           pricePerKg,
+          costPerKg,
           invoice,
+          costValue,
           ...tail,
         ]);
       }

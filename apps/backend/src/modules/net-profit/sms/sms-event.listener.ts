@@ -5,6 +5,8 @@ import { PrismaService } from '../../../common/prisma/prisma.service';
 import { SmsService } from './sms.service';
 import { ORDER_CREATED_EVENT, ORDER_STATUS_CHANGED_EVENT } from '../../orders/orders.events';
 import type { OrderCreatedEvent, OrderStatusChangedEvent } from '../../orders/orders.events';
+import { WHOLESALE_ORDER_CREATED_EVENT } from '../../wholesale/wholesale.events';
+import type { WholesaleOrderCreatedEvent } from '../../wholesale/wholesale.events';
 
 // Status -> named-template map, each gated by its own admin toggle
 // (SmsSettings.statusTriggers) — CONFIRMED/COMPLETED are on by default
@@ -39,6 +41,21 @@ export class SmsEventListener {
     await this.sms.sendTemplate('order_placed', order.phone, 'EN', {
       orderNumber: order.orderNumber,
       amount: order.totalAmount.toString(),
+    });
+  }
+
+  // Wholesale and channel orders alike — whoever the order was raised for.
+  // Silently skipped when the buyer has no number on file (e.g. a shared
+  // walk-in party); the template's own on/off toggle on the SMS page decides
+  // whether it sends at all.
+  @OnEvent(WHOLESALE_ORDER_CREATED_EVENT)
+  async onWholesaleOrderCreated(event: WholesaleOrderCreatedEvent): Promise<void> {
+    if (!event.customerPhone) return;
+    await this.sms.sendTemplate('wholesale_order_placed', event.customerPhone, 'EN', {
+      name: event.customerName,
+      orderNumber: event.orderNumber,
+      amount: event.total,
+      due: event.due,
     });
   }
 

@@ -11,6 +11,7 @@ import {
   type ChannelInput,
   type WholesaleChannel,
 } from "@/hooks/useWholesale";
+import { TONE } from "./OrdersDashboard";
 
 const INPUT =
   "h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
@@ -110,8 +111,8 @@ function ChannelRow({ channel: c, onEdit, onSaved }: { channel: WholesaleChannel
       <td className="px-3 py-3 font-bold text-text">{c.orderCount}</td>
       <td className="px-3 py-3">
         <span
-          className={`inline-block rounded-full px-2 py-0.5 text-[9px] font-black ${
-            c.isActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-surface-2 text-muted"
+          className={`inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${
+            c.isActive ? TONE.green : "border-border bg-surface-2 text-muted"
           }`}
         >
           {c.isActive ? "Active" : "Inactive"}

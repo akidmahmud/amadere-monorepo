@@ -246,7 +246,25 @@ export class UpdateWholesaleCustomerDto {
   facebookProfileUrl?: string;
 }
 
-export class WholesaleCustomerQueryDto {
+export class WholesaleDateRangeQueryDto {
+  @ApiPropertyOptional({
+    description: 'Inclusive placed-at lower bound (ISO 8601)',
+  })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({
+    description: 'Inclusive placed-at upper bound (ISO 8601)',
+  })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}
+
+// Same from/to as the order list: a customer matches when they placed a
+// (non-cancelled) order inside the window.
+export class WholesaleCustomerQueryDto extends WholesaleDateRangeQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
@@ -575,22 +593,6 @@ export class RecordWholesalePaymentDto {
   @IsString()
   @MaxLength(1000)
   note?: string;
-}
-
-export class WholesaleDateRangeQueryDto {
-  @ApiPropertyOptional({
-    description: 'Inclusive placed-at lower bound (ISO 8601)',
-  })
-  @IsOptional()
-  @IsDateString()
-  from?: string;
-
-  @ApiPropertyOptional({
-    description: 'Inclusive placed-at upper bound (ISO 8601)',
-  })
-  @IsOptional()
-  @IsDateString()
-  to?: string;
 }
 
 export class WholesaleOrderQueryDto extends WholesaleDateRangeQueryDto {

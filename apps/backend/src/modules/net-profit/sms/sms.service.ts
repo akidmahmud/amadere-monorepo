@@ -38,7 +38,8 @@ const SMS_SETTINGS_DEFAULTS: SmsSettings = {
 };
 
 // Seed: otp, order_placed, order_confirmed, order_shipped, order_delivered,
-// recovery, advance_request (spec §7.4's exact list).
+// recovery, advance_request (spec §7.4's exact list), plus
+// wholesale_order_placed.
 const DEFAULT_TEMPLATES: { key: string; bodyEn: string; bodyBn: string }[] = [
   { key: 'otp', bodyEn: 'Your Amader verification code is {{code}}. It expires in 5 minutes.', bodyBn: 'আপনার আমাদের যাচাইকরণ কোড {{code}}। এটি ৫ মিনিটে মেয়াদ শেষ হবে।' },
   { key: 'order_placed', bodyEn: 'Thanks for your order {{orderNumber}}! Total: ৳{{amount}}. We will confirm it shortly.', bodyBn: 'আপনার অর্ডার {{orderNumber}} এর জন্য ধন্যবাদ! মোট: ৳{{amount}}। আমরা শীঘ্রই এটি নিশ্চিত করব।' },
@@ -46,6 +47,9 @@ const DEFAULT_TEMPLATES: { key: string; bodyEn: string; bodyBn: string }[] = [
   { key: 'order_shipped', bodyEn: 'Your order {{orderNumber}} has been shipped via {{courier}}. Track: {{trackingUrl}}', bodyBn: 'আপনার অর্ডার {{orderNumber}} {{courier}} এর মাধ্যমে পাঠানো হয়েছে। ট্র্যাক করুন: {{trackingUrl}}' },
   { key: 'order_delivered', bodyEn: 'Your order {{orderNumber}} has been delivered. Thank you for shopping with Amader!', bodyBn: 'আপনার অর্ডার {{orderNumber}} ডেলিভারি করা হয়েছে। আমাদের সাথে কেনাকাটা করার জন্য ধন্যবাদ!' },
   { key: 'recovery', bodyEn: 'You left items in your cart! Complete your order here: {{resumeUrl}}', bodyBn: 'আপনি আপনার কার্টে কিছু পণ্য রেখে গেছেন! এখানে আপনার অর্ডার সম্পূর্ণ করুন: {{resumeUrl}}' },
+  // Wholesale & Channels: texted to the buyer's number the moment staff
+  // create their order (SmsEventListener.onWholesaleOrderCreated).
+  { key: 'wholesale_order_placed', bodyEn: 'Dear {{name}}, your order {{orderNumber}} has been created. Total: ৳{{amount}}, due: ৳{{due}}. Thank you for choosing Amader!', bodyBn: 'প্রিয় {{name}}, আপনার অর্ডার {{orderNumber}} তৈরি করা হয়েছে। মোট: ৳{{amount}}, বাকি: ৳{{due}}। আমাদের সাথে থাকার জন্য ধন্যবাদ!' },
   { key: 'advance_request', bodyEn: 'Please pay ৳{{amount}} in advance to confirm order {{orderNumber}}: {{payUrl}}', bodyBn: 'অর্ডার {{orderNumber}} নিশ্চিত করতে অনুগ্রহ করে ৳{{amount}} অগ্রিম পরিশোধ করুন: {{payUrl}}' },
 ];
 
