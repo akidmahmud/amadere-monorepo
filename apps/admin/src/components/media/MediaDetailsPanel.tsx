@@ -2,20 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@amader/admin-ui";
-import { useUpdateMediaAltText } from "@/hooks/useMedia";
+import { useRenameMedia, useUpdateMediaAltText } from "@/hooks/useMedia";
 import type { components } from "@/lib/api/schema";
-import { mediaDisplayName, mediaExtension } from "@/lib/media-name";
+import { mediaDisplayName, mediaExtension, mediaLabel } from "@/lib/media-name";
 
 type MediaDto = components["schemas"]["MediaDto"];
 
-function Row({ label, children, icon }: { label: string; children: React.ReactNode; icon?: React.ReactNode }) {
+function Row({
+  label,
+  children,
+  icon,
+}: {
+  label: string;
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-1 rounded-xl bg-surface-2/60 p-2.5 border border-border/50">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted">
         {icon}
         <span>{label}</span>
       </div>
-      <div className="break-words text-xs font-medium text-text">{children}</div>
+      <div className="break-words text-xs font-medium text-text">
+        {children}
+      </div>
     </div>
   );
 }
@@ -48,6 +58,26 @@ export function MediaDetailsPanel({
     await updateAltText.mutateAsync({ id: item.id, altText: altDraft });
     setAltSaved(true);
     setTimeout(() => setAltSaved(false), 2000);
+  }
+
+  const rename = useRenameMedia();
+  const [nameDraft, setNameDraft] = useState(mediaLabel(item));
+  // Reset per file by remounting (the browser keys this panel on item.id),
+  // not by syncing state in an effect.
+  const [nameSaved, setNameSaved] = useState(false);
+
+  async function saveName() {
+    const next = nameDraft.trim();
+    if (next === mediaLabel(item)) return;
+    // Typing the original file name back (or clearing the box) resets the
+    // display name, so the stored name never just duplicates the URL.
+    await rename.mutateAsync({
+      id: item.id,
+      name: next === mediaDisplayName(item.url) ? "" : next,
+    });
+    if (!next) setNameDraft(mediaDisplayName(item.url));
+    setNameSaved(true);
+    setTimeout(() => setNameSaved(false), 2000);
   }
 
   async function copyUrl() {
@@ -94,7 +124,11 @@ export function MediaDetailsPanel({
       {/* Preview Box */}
       <div className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-gradient-to-b from-surface-2 to-surface p-2 shadow-inner">
         {item.type === "VIDEO" ? (
-          <video src={url} controls className="h-full w-full rounded-lg object-contain" />
+          <video
+            src={url}
+            controls
+            className="h-full w-full rounded-lg object-contain"
+          />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -113,7 +147,16 @@ export function MediaDetailsPanel({
           title="Open full size"
           className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-lg bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-sm hover:bg-brand-500"
         >
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
             <polyline points="15 3 21 3 21 9" />
             <line x1="10" y1="14" x2="21" y2="3" />
@@ -121,19 +164,52 @@ export function MediaDetailsPanel({
         </a>
       </div>
 
-      {/* Title */}
-      <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Filename</span>
-        <span className="break-all text-xs font-semibold text-text" title={mediaDisplayName(item.url)}>
-          {mediaDisplayName(item.url)}
-        </span>
+      {/* Title — renames the display name only; the URL below never changes. */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor={`media-name-${item.id}`}
+            className="text-[10px] font-bold uppercase tracking-wider text-muted"
+          >
+            File name
+          </label>
+          {nameSaved && (
+            <span className="text-[10px] font-bold text-success">Saved ✓</span>
+          )}
+        </div>
+        <input
+          id={`media-name-${item.id}`}
+          value={nameDraft}
+          maxLength={200}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={saveName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") setNameDraft(mediaLabel(item));
+          }}
+          className="w-full min-w-0 rounded-xl border border-border/70 bg-surface px-3 py-1.5 text-xs font-semibold text-text outline-none focus:border-brand-500"
+        />
+        {item.name && (
+          <span
+            className="break-all text-[10px] text-muted"
+            title={mediaDisplayName(item.url)}
+          >
+            Original file: {mediaDisplayName(item.url)}
+          </span>
+        )}
       </div>
 
       {/* Copy Link Input */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Direct URL</span>
-          {copied && <span className="text-[10px] font-bold text-success animate-pulse">✓ Copied to clipboard</span>}
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
+            Direct URL
+          </span>
+          {copied && (
+            <span className="text-[10px] font-bold text-success animate-pulse">
+              ✓ Copied to clipboard
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <input
@@ -149,7 +225,9 @@ export function MediaDetailsPanel({
             className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-xl border border-brand-500/30 bg-brand-50 px-2.5 text-xs font-semibold text-brand-600 hover:bg-brand-500 hover:text-white transition-all active:scale-95"
           >
             <Icon name={copied ? "check" : "content_copy"} size={14} />
-            <span className="text-[11px] font-bold">{copied ? "Copied" : "Copy"}</span>
+            <span className="text-[11px] font-bold">
+              {copied ? "Copied" : "Copy"}
+            </span>
           </button>
         </div>
       </div>
@@ -157,8 +235,12 @@ export function MediaDetailsPanel({
       {/* Alt Text Box */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Alt Description</span>
-          {altSaved && <span className="text-[10px] font-bold text-success">Saved ✓</span>}
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
+            Alt Description
+          </span>
+          {altSaved && (
+            <span className="text-[10px] font-bold text-success">Saved ✓</span>
+          )}
         </div>
         <textarea
           rows={2}
@@ -183,7 +265,8 @@ export function MediaDetailsPanel({
         </p>
         {updateAltText.isError && (
           <p className="text-[10px] font-semibold text-danger">
-            {(updateAltText.error as Error)?.message ?? "Failed to save alt text"}
+            {(updateAltText.error as Error)?.message ??
+              "Failed to save alt text"}
           </p>
         )}
       </div>
@@ -191,7 +274,9 @@ export function MediaDetailsPanel({
       {/* Details Specs */}
       <div className="grid grid-cols-2 gap-2 pt-1">
         <Row label="Dimensions">
-          {item.width && item.height ? `${item.width} × ${item.height} px` : "N/A"}
+          {item.width && item.height
+            ? `${item.width} × ${item.height} px`
+            : "N/A"}
         </Row>
         <Row label="Format">{ext}</Row>
       </div>
@@ -208,4 +293,3 @@ export function MediaDetailsPanel({
     </aside>
   );
 }
-

@@ -28,5 +28,7 @@ export interface MediaStorage {
     contentType: string,
   ): Promise<PrivateObject>;
   getObjectStream(key: string): Promise<Readable>;
+  /** Server-side copy of a public object (duplicating a media folder). */
+  copy(fromKey: string, toKey: string): Promise<UploadedObject>;
   delete(key: string): Promise<void>;
 }

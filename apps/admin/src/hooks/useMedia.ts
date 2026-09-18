@@ -54,6 +54,17 @@ export function useUpdateMediaAltText() {
   });
 }
 
+// Display name only — the URL never changes. Blank clears it back to the
+// file name taken from the URL.
+export function useRenameMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      proxyFetch<MediaDto>(`/admin/media/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-media"] }),
+  });
+}
+
 // Drag-a-thumbnail-onto-a-folder — same PATCH endpoint as alt text, just a
 // distinct hook so call sites read clearly. `folderId: null` un-files it.
 export function useMoveMediaToFolder() {
@@ -106,6 +117,27 @@ export function useCreateMediaFolder() {
         body: JSON.stringify({ name, parentId: parentId ?? undefined }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: FOLDERS_KEY }),
+  });
+}
+
+export function useRenameMediaFolder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      proxyFetch<MediaFolderDto>(`/admin/media-folders/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FOLDERS_KEY }),
+  });
+}
+
+/** "<name> (copy)" beside the original, with every subfolder and file copied. */
+export function useDuplicateMediaFolder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => proxyFetch<MediaFolderDto>(`/admin/media-folders/${id}/duplicate`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: FOLDERS_KEY });
+      qc.invalidateQueries({ queryKey: ["admin-media"] });
+    },
   });
 }
 

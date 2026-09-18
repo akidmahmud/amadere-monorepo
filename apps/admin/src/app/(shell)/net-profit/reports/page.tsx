@@ -2,10 +2,18 @@
 
 import { Suspense, useCallback, useRef, useState } from "react";
 import { useCan } from "@/hooks/useAdminAuth";
-import { useReportExceptions, useReportOverview } from "@/hooks/useSalesReportV2";
+import {
+  useReportExceptions,
+  useReportOverview,
+} from "@/hooks/useSalesReportV2";
 import { COLORS } from "@/components/net-profit/sales-report/format";
-import { downloadCsv } from "@/components/net-profit/sales-report/exportCsv";
-import { ReportFilters, type ExportRows, type TabProps } from "@/components/net-profit/sales-report/ReportFilters";
+import { downloadXlsx } from "@/components/net-profit/sales-report/exportXlsx";
+import type { SheetLayout } from "@/components/net-profit/sales-report/sheetStyle";
+import {
+  ReportFilters,
+  type ExportRows,
+  type TabProps,
+} from "@/components/net-profit/sales-report/ReportFilters";
 import { useReportFilters } from "@/components/net-profit/sales-report/useReportFilters";
 import { OverviewTab } from "@/components/net-profit/sales-report/OverviewTab";
 import { OrdersTab } from "@/components/net-profit/sales-report/OrdersTab";
@@ -17,8 +25,14 @@ import { ExceptionsTab } from "@/components/net-profit/sales-report/ExceptionsTa
 import { RatesAndCostsTab } from "@/components/net-profit/sales-report/RatesAndCostsTab";
 
 const ALL_TABS = [
-  ["overview", "Overview"], ["orders", "Orders"], ["agents", "Agents"], ["products", "Products"],
-  ["couriers", "Couriers"], ["districts", "Districts"], ["exceptions", "Exceptions"], ["settings", "Rates and costs"],
+  ["overview", "Overview"],
+  ["orders", "Orders"],
+  ["agents", "Agents"],
+  ["products", "Products"],
+  ["couriers", "Couriers"],
+  ["districts", "Districts"],
+  ["exceptions", "Exceptions"],
+  ["settings", "Rates and costs"],
 ] as const;
 const AGENT_TABS = ["overview", "orders", "exceptions"];
 
@@ -30,11 +44,15 @@ function SalesReport() {
   const tab = tabs.some(([k]) => k === urlTab) ? urlTab : "overview";
   const overview = useReportOverview(f);
   const exceptions = useReportExceptions(f);
-  const exportRef = useRef<{ name: string; rows: ExportRows | (() => Promise<ExportRows>) } | null>(null);
+  const exportRef = useRef<{
+    name: string;
+    rows: ExportRows | (() => Promise<ExportRows>);
+    layout?: SheetLayout;
+  } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [canExport, setCanExport] = useState(false);
-  const onExport = useCallback<TabProps["onExport"]>((name, rows) => {
-    exportRef.current = rows ? { name, rows } : null;
+  const onExport = useCallback<TabProps["onExport"]>((name, rows, layout) => {
+    exportRef.current = rows ? { name, rows, layout } : null;
     setCanExport(!!rows);
   }, []);
 
@@ -44,7 +62,9 @@ function SalesReport() {
     <div className="flex flex-col gap-3.5">
       <header className="flex flex-wrap items-center justify-between gap-4">
         {/* The shell header already shows the breadcrumb and "Sales Report" title. */}
-        <p className="text-sm" style={{ color: COLORS.ink2 }}>Orders, delivery cost and contribution for Amader eBuy Ltd.</p>
+        <p className="text-sm" style={{ color: COLORS.ink2 }}>
+          Orders, delivery cost and contribution for Amader eBuy Ltd.
+        </p>
         <button
           type="button"
           disabled={!canExport || exporting}
@@ -53,8 +73,13 @@ function SalesReport() {
             if (!ex) return;
             setExporting(true);
             try {
-              const rows = typeof ex.rows === "function" ? await ex.rows() : ex.rows;
-              downloadCsv(`${ex.name}-${f.from}-to-${f.to}`, rows);
+              const rows =
+                typeof ex.rows === "function" ? await ex.rows() : ex.rows;
+              await downloadXlsx(
+                `${ex.name}-${f.from}-to-${f.to}`,
+                rows,
+                ex.layout,
+              );
             } finally {
               setExporting(false);
             }
@@ -62,12 +87,18 @@ function SalesReport() {
           className="rounded-lg border px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
           style={{ background: COLORS.green, borderColor: COLORS.green }}
         >
-          {exporting ? "Exporting…" : "Export CSV"}
+          {exporting ? "Exporting…" : "Export Excel"}
         </button>
       </header>
 
       {tab !== "settings" && (
-        <ReportFilters f={f} set={set} reset={reset} options={overview.data?.options} showAgent={money} />
+        <ReportFilters
+          f={f}
+          set={set}
+          reset={reset}
+          options={overview.data?.options}
+          showAgent={money}
+        />
       )}
 
       <nav aria-label="Report sections" className="flex flex-wrap gap-2">
@@ -78,12 +109,30 @@ function SalesReport() {
             aria-pressed={tab === k}
             onClick={() => set({ tab: k })}
             className="rounded-[9px] border px-3.5 py-1.5 text-[14.5px] font-medium"
-            style={tab === k ? { background: COLORS.green, borderColor: COLORS.green, color: "#fff" } : { borderColor: COLORS.line, color: COLORS.ink2, background: "#fff" }}
+            style={
+              tab === k
+                ? {
+                    background: COLORS.green,
+                    borderColor: COLORS.green,
+                    color: "#fff",
+                  }
+                : {
+                    borderColor: COLORS.line,
+                    color: COLORS.ink2,
+                    background: "#fff",
+                  }
+            }
           >
             {l}
             {k === "exceptions" && (exceptions.data?.total ?? 0) > 0 && (
-              <span className="ml-1.5 inline-block rounded-full px-1.5 text-xs leading-[18px]"
-                style={tab === k ? { background: "#fff", color: COLORS.green } : { background: COLORS.loss, color: "#fff" }}>
+              <span
+                className="ml-1.5 inline-block rounded-full px-1.5 text-xs leading-[18px]"
+                style={
+                  tab === k
+                    ? { background: "#fff", color: COLORS.green }
+                    : { background: COLORS.loss, color: "#fff" }
+                }
+              >
                 {exceptions.data?.total}
               </span>
             )}

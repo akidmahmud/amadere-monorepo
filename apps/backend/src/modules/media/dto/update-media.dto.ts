@@ -1,11 +1,20 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateMediaDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   altText?: string;
+
+  @ApiPropertyOptional({
+    description: 'Display name in the library; empty clears it back to the file name. The URL never changes.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name?: string | null;
 
   // No @Type(() => Number) — this is a JSON body field (already a real
   // number/null from the parser), unlike MediaQueryDto's folderId which

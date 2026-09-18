@@ -3988,3 +3988,77 @@ ones); admin 15/15; both apps typecheck.
 
 **Open item:** the courier bill importer's column names are best guesses at
 Steadfast's export; they need one real statement CSV to confirm.
+
+## Media library: rename files, rename + duplicate folders
+
+**Files: rename is display-name only** (owner's choice). New nullable column
+`media.name` (migration `20260918120000_media_display_name`). The URL never
+changes, so every product page, blog post or banner already embedding the file
+keeps working.
+- The Details panel's "File name" is now editable; it saves on blur or Enter
+  and Esc reverts.
+- A renamed file shows "Original file: …" underneath. Clearing the box, or
+  typing the original name back, resets it.
+- Grid, list and search use the new name (`mediaLabel` in `lib/media-name.ts`).
+  Search also still matches the original file name and the alt text.
+
+**Folders:**
+- `PATCH /admin/media-folders/:id` renames a folder.
+- `POST /admin/media-folders/:id/duplicate` creates "<name> (copy)" beside the
+  original, or "(copy 2)" and so on if that name is taken. It copies every
+  subfolder and every file.
+- Files are copied inside R2 under a new UUID key (new `MediaStorage.copy`,
+  R2 `CopyObject`), along with their card and full WebPs.
+  - They are never shared, because deleting a Media row deletes its objects
+    and a shared URL would break the other copy.
+  - Storage copies run first. If any fails, the objects already copied are
+    deleted and nothing is saved.
+  - Copying runs in the request (ponytail note: move to a job if folders grow
+    past a few hundred files).
+- Hovering a folder tile shows Rename / Duplicate / Delete. Rename uses
+  `prompt()`, matching the existing `confirm()` on delete.
+
+**Verified live against local R2:**
+- Renaming a file stored "Mustard banner" and the URL was unchanged.
+- Renaming a folder trimmed the name.
+- Duplicating a folder with a subfolder and an image produced
+  "zz-dup-renamed (copy)" with its own "zz-sub", and the image under a new key
+  with its name kept.
+- All 3 copied objects (original, card, full) returned 200 with the right
+  content types.
+- Deleting the copy left the original loading (200) while the copy returned
+  404.
+- All test data deleted.
+
+Tests: new `media-folders.spec.ts` (rekey, rename, recursive duplicate, copy
+naming, rollback on a storage failure, name trimming); 19/19 media tests pass
+and 61/61 including digital products. Both apps typecheck and lint is clean.
+Admin API types regenerated (`npm run typegen`).
+
+## Sales report export: Excel (.xlsx) with coloured headings
+
+A CSV can't hold colours, so every Sales report export (all tabs) now
+downloads a real `.xlsx`. The button is renamed "Export Excel". The Order
+Manager and Wholesale exports are unchanged (still CSV).
+- **Colours copied from the owner's "Daily Sales Data.xlsx"** (read from its
+  styles.xml):
+  - Column titles: dark green `#1F5C3F` with white bold text.
+  - Courier block P–V: light blue `#DEEBF7` with blue `#4472C4` text, in the
+    header and the data rows.
+  - The group-label row above the titles: muted italic.
+  - Other tabs get the same dark-green title row.
+- Header rows are frozen and column widths fit the content.
+- Rules live in pure `sheetStyle.ts` (tested). `exportXlsx.ts` applies them
+  with exceljs, loaded only when Export is clicked. exceljs ^4.4.0 was added
+  to the admin app; the backend already had it.
+- Removed the unused `exportCsv.ts` / `csvText`.
+
+Verified by exporting in the browser and reading styles.xml back out of the
+files: the Orders export (962 rows) and the Agents export have exactly those
+fills and fonts, with 2 and 1 frozen header rows. Admin tests 18/18; typecheck
+clean.
+
+Media details panel: the file-name box now resets by remounting per file
+(`key={detailsItem.id}`) instead of syncing state in an effect (react-hooks
+lint). The alt-text box still has the old effect pattern (pre-existing lint
+error, left as is).

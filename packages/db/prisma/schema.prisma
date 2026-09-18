@@ -137,6 +137,10 @@ model Media {
   fullUrl   String?   @map("full_url")
   type      MediaType
   altText   String?   @map("alt_text")
+  /// Display name shown in the media library. Null = derive it from the URL
+  /// (the upload's file name). Renaming never touches the URL, so every page
+  /// already embedding the file keeps working.
+  name      String?
   width     Int?
   height    Int?
   folderId  Int?      @map("folder_id")

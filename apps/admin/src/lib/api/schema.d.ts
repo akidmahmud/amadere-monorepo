@@ -817,6 +817,22 @@ export interface paths {
         delete: operations["AdminMediaFoldersController_remove"];
         options?: never;
         head?: never;
+        patch: operations["AdminMediaFoldersController_rename"];
+        trace?: never;
+    };
+    "/api/v1/admin/media-folders/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminMediaFoldersController_duplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -6852,6 +6868,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/net-profit/sales-report/v2/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_exceptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_agents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_products"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/couriers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_couriers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/districts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_districts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_getSettings"];
+        put: operations["AdminSalesReportV2Controller_putSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSalesReportV2Controller_listCosts"];
+        put?: never;
+        post: operations["AdminSalesReportV2Controller_addCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/costs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminSalesReportV2Controller_removeCost"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminSalesReportV2Controller_confirmCost"];
+        trace?: never;
+    };
+    "/api/v1/admin/net-profit/sales-report/v2/courier-bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminSalesReportV2Controller_importBills"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/net-profit/overview": {
         parameters: {
             query?: never;
@@ -7204,6 +7396,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/wholesale/customers/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_listDeletedCustomers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/wholesale/customers/{id}": {
         parameters: {
             query?: never;
@@ -7218,6 +7426,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminWholesaleController_updateCustomer"];
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers/bulk-assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_bulkAssignCustomers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/wholesale/channels": {
@@ -7252,6 +7476,22 @@ export interface paths {
         patch: operations["AdminWholesaleController_updateChannel"];
         trace?: never;
     };
+    "/api/v1/admin/wholesale/payment-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_listPaymentAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/wholesale/assignable-staff": {
         parameters: {
             query?: never;
@@ -7278,6 +7518,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminWholesaleController_importCustomers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_restoreCustomer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7342,6 +7598,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminWholesaleController_cancelOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/orders/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_restoreOrder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7693,6 +7965,7 @@ export interface components {
             fullUrl: string | null;
             type: string;
             altText: string | null;
+            name: string | null;
             width: number | null;
             height: number | null;
             folderId: number | null;
@@ -7704,6 +7977,8 @@ export interface components {
         };
         UpdateMediaDto: {
             altText?: string;
+            /** @description Display name in the library; empty clears it back to the file name. The URL never changes. */
+            name?: string | null;
             /** @description Move into this folder, or null to un-file it */
             folderId?: number | null;
         };
@@ -7718,6 +7993,9 @@ export interface components {
             name: string;
             /** @description Create this folder inside another one */
             parentId?: number;
+        };
+        RenameMediaFolderDto: {
+            name: string;
         };
         AdminDigitalPreviewPageDto: {
             pageNumber: number;
@@ -11479,6 +11757,19 @@ export interface components {
         BulkSetProductCostDto: {
             rows: components["schemas"]["BulkProductCostRowDto"][];
         };
+        AddCostDto: {
+            productId: number;
+            variantId?: number | null;
+            cost: number;
+            /** @enum {string|null} */
+            costPriceUnit?: "PER_KG" | "PER_100G" | "PER_G" | "PER_LITER" | "PER_ML" | null;
+            /** @description YYYY-MM-DD (Asia/Dhaka); default today */
+            effectiveFrom?: string;
+            confirmed?: boolean;
+        };
+        ConfirmCostDto: {
+            confirmed: boolean;
+        };
         SetHourlySlotDto: {
             hourlySlotHours: number;
         };
@@ -11636,6 +11927,11 @@ export interface components {
             note?: string;
             isActive?: boolean;
         };
+        BulkAssignWholesaleCustomersDto: {
+            customerIds: number[];
+            /** @description Staff user ID, or null to unassign */
+            assignedAdminId: number | null;
+        };
         UpdateWholesaleCustomerDto: {
             name?: string;
             phone?: string;
@@ -11726,6 +12022,12 @@ export interface components {
             isActive?: boolean;
             sortOrder?: number;
             fields?: components["schemas"]["WholesaleChannelFieldInputDto"][];
+        };
+        WholesalePaymentAccountDto: {
+            id: number;
+            name: string;
+            type: string;
+            isDefault: boolean;
         };
         WholesaleDeliveryDto: {
             recipientName: string | null;
@@ -13482,6 +13784,60 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminMediaFoldersController_rename: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameMediaFolderDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFolderDto"];
+                };
+            };
+        };
+    };
+    AdminMediaFoldersController_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFolderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFolderDto"];
+                };
             };
         };
     };
@@ -25452,6 +25808,392 @@ export interface operations {
             };
         };
     };
+    AdminSalesReportV2Controller_overview: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_orders: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_exceptions: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_agents: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_products: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_couriers: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_districts: {
+        parameters: {
+            query?: {
+                basis?: "order" | "delivered";
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                from?: string;
+                /** @description YYYY-MM-DD, Asia/Dhaka */
+                to?: string;
+                channel?: string;
+                /** @description Admin id, or "none" for no agent */
+                agent?: string;
+                /** @description Courier key, or "none" */
+                courier?: string;
+                district?: string;
+                status?: "Pending" | "Confirmed" | "Shipped" | "Delivered" | "Returned" | "Cancelled";
+                q?: string;
+                sort?: "newest" | "contrib" | "sales" | "over";
+                page?: number;
+                /** @description Orders only: every matching row, unpaged (the Export CSV) */
+                all?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_putSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_listCosts: {
+        parameters: {
+            query: {
+                productId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>[];
+                };
+            };
+        };
+    };
+    AdminSalesReportV2Controller_addCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddCostDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSalesReportV2Controller_removeCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSalesReportV2Controller_confirmCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmCostDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminSalesReportV2Controller_importBills: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     AdminOverviewController_get: {
         parameters: {
             query: {
@@ -25943,7 +26685,12 @@ export interface operations {
     };
     AdminWholesaleController_stats: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Inclusive placed-at lower bound (ISO 8601) */
+                from?: string;
+                /** @description Inclusive placed-at upper bound (ISO 8601) */
+                to?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -25963,12 +26710,18 @@ export interface operations {
     AdminWholesaleController_listCustomers: {
         parameters: {
             query?: {
+                /** @description Inclusive placed-at lower bound (ISO 8601) */
+                from?: string;
+                /** @description Inclusive placed-at upper bound (ISO 8601) */
+                to?: string;
                 page?: number;
                 pageSize?: number;
                 /** @description Matches name, phone or address */
                 search?: string;
                 /** @description Omit for all */
                 isActive?: boolean;
+                /** @description Staff the customer is assigned to; 0 for unassigned. Omit for anyone. */
+                assignedAdminId?: number;
             };
             header?: never;
             path?: never;
@@ -26018,6 +26771,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_listDeletedCustomers: {
+        parameters: {
+            query?: {
+                /** @description Inclusive placed-at lower bound (ISO 8601) */
+                from?: string;
+                /** @description Inclusive placed-at upper bound (ISO 8601) */
+                to?: string;
+                page?: number;
+                pageSize?: number;
+                /** @description Matches name, phone or address */
+                search?: string;
+                /** @description Omit for all */
+                isActive?: boolean;
+                /** @description Staff the customer is assigned to; 0 for unassigned. Omit for anyone. */
+                assignedAdminId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["WholesaleCustomerDto"][];
+                        total?: number;
+                        page?: number;
+                        pageSize?: number;
+                    };
                 };
             };
         };
@@ -26084,6 +26874,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WholesaleCustomerDto"];
                 };
+            };
+        };
+    };
+    AdminWholesaleController_bulkAssignCustomers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAssignWholesaleCustomersDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -26181,6 +26992,25 @@ export interface operations {
             };
         };
     };
+    AdminWholesaleController_listPaymentAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesalePaymentAccountDto"][];
+                };
+            };
+        };
+    };
     AdminWholesaleController_listAssignableStaff: {
         parameters: {
             query?: never;
@@ -26227,9 +27057,42 @@ export interface operations {
             };
         };
     };
+    AdminWholesaleController_restoreCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleCustomerDto"];
+                };
+            };
+        };
+    };
     AdminWholesaleController_listOrders: {
         parameters: {
             query?: {
+                /** @description Inclusive placed-at lower bound (ISO 8601) */
+                from?: string;
+                /** @description Inclusive placed-at upper bound (ISO 8601) */
+                to?: string;
                 page?: number;
                 pageSize?: number;
                 /** @description Matches order number, consignment id, buyer name or phone, recipient name or phone, the channel's field values, transaction id, or any product on the order */
@@ -26239,6 +27102,8 @@ export interface operations {
                 type?: "WHOLESALE" | "CHANNEL";
                 partyId?: number;
                 channelId?: number;
+                /** @description Export only: comma-separated order ids ("Export selected"). When set, the other filters are ignored. */
+                ids?: string;
             };
             header?: never;
             path?: never;
@@ -26372,6 +27237,35 @@ export interface operations {
         };
     };
     AdminWholesaleController_cancelOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WholesaleOrderDto"];
+                };
+            };
+        };
+    };
+    AdminWholesaleController_restoreOrder: {
         parameters: {
             query?: never;
             header?: never;

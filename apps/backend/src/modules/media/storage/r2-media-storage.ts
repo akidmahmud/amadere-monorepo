@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Readable } from 'node:stream';
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
@@ -102,6 +103,20 @@ export class R2MediaStorage implements MediaStorage {
       new GetObjectCommand({ Bucket: bucket, Key: key }),
     );
     return res.Body as Readable;
+  }
+
+  async copy(fromKey: string, toKey: string): Promise<UploadedObject> {
+    const { client, bucket, publicBaseUrl } = this.getClient();
+    // Copied within R2 — nothing is downloaded. Metadata (content type) is
+    // carried over by the default MetadataDirective=COPY.
+    await client.send(
+      new CopyObjectCommand({
+        Bucket: bucket,
+        CopySource: `${bucket}/${encodeURIComponent(fromKey)}`,
+        Key: toKey,
+      }),
+    );
+    return { url: `${publicBaseUrl}/${toKey}` };
   }
 
   async delete(key: string): Promise<void> {

@@ -10,7 +10,8 @@
  * Falls back to the whole last segment if the prefix isn't a UUID (migrated
  * rows, derivative files like `backfill-282-card.webp`).
  */
-const UUID_PREFIX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
+const UUID_PREFIX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
 
 export function mediaDisplayName(url: string): string {
   const lastSlash = url.lastIndexOf("/");
@@ -27,6 +28,16 @@ export function mediaDisplayName(url: string): string {
 
   const stripped = name.replace(UUID_PREFIX, "");
   return stripped || name;
+}
+
+/** What the library shows for a file: its renamed display name if it has one,
+ * otherwise the file name recovered from the URL. Renaming never changes the
+ * URL (so embedded images keep working). */
+export function mediaLabel(item: {
+  name?: string | null;
+  url: string;
+}): string {
+  return item.name?.trim() || mediaDisplayName(item.url);
 }
 
 /** Extension, uppercased, for the details panel's type row. Empty when the

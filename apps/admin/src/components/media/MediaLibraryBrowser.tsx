@@ -4,14 +4,17 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   useCreateMediaFolder,
   useDeleteMediaFolder,
+  useDuplicateMediaFolder,
   useMediaFolders,
   useMediaLibrary,
   useMoveMediaToFolder,
+  useRenameMediaFolder,
   useUploadMedia,
 } from "@/hooks/useMedia";
+import { Icon } from "@amader/admin-ui";
 import type { components } from "@/lib/api/schema";
 import { MediaDetailsPanel } from "./MediaDetailsPanel";
-import { mediaDisplayName, mediaExtension } from "@/lib/media-name";
+import { mediaDisplayName, mediaExtension, mediaLabel } from "@/lib/media-name";
 
 type MediaDto = components["schemas"]["MediaDto"];
 type MediaFolderDto = components["schemas"]["MediaFolderDto"];
@@ -102,6 +105,8 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
   const moveMedia = useMoveMediaToFolder();
   const createFolder = useCreateMediaFolder();
   const deleteFolder = useDeleteMediaFolder();
+  const renameFolder = useRenameMediaFolder();
+  const duplicateFolder = useDuplicateMediaFolder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentFolder = folders?.find((f) => f.id === folderId);
@@ -163,9 +168,10 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
       // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const name = mediaDisplayName(item.url).toLowerCase();
+        const name = mediaLabel(item).toLowerCase();
+        const file = mediaDisplayName(item.url).toLowerCase();
         const alt = (item.altText ?? "").toLowerCase();
-        if (!name.includes(q) && !alt.includes(q)) return false;
+        if (!name.includes(q) && !file.includes(q) && !alt.includes(q)) return false;
       }
       return true;
     });
@@ -403,6 +409,14 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
                   folder={f}
                   dragOver={dragOverFolderId === f.id}
                   onOpen={() => setFolderId(f.id)}
+                  onRename={() => {
+                    const next = prompt("Rename folder", f.name)?.trim();
+                    if (next && next !== f.name) renameFolder.mutate({ id: f.id, name: next });
+                  }}
+                  onDuplicate={() => {
+                    if (confirm(`Duplicate "${f.name}" with all its subfolders and files?`)) duplicateFolder.mutate(f.id);
+                  }}
+                  duplicating={duplicateFolder.isPending && duplicateFolder.variables === f.id}
                   onDelete={() => {
                     const kids = (folders ?? []).filter((x) => x.parentId === f.id).length;
                     const warning = kids > 0
@@ -511,8 +525,8 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
                   </button>
 
                   <div className="flex flex-col px-0.5 min-w-0">
-                    <span className="truncate text-xs font-semibold text-text" title={mediaDisplayName(item.url)}>
-                      {mediaDisplayName(item.url)}
+                    <span className="truncate text-xs font-semibold text-text" title={mediaLabel(item)}>
+                      {mediaLabel(item)}
                     </span>
                     <span className="truncate text-[10px] text-muted font-medium">
                       {item.width && item.height ? `${item.width}×${item.height} px` : item.type}
@@ -565,7 +579,7 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
                     </div>
 
                     <div className="flex flex-col min-w-0">
-                      <span className="truncate text-xs font-semibold text-text">{mediaDisplayName(item.url)}</span>
+                      <span className="truncate text-xs font-semibold text-text">{mediaLabel(item)}</span>
                       {item.altText && <span className="truncate text-[11px] text-muted">{item.altText}</span>}
                     </div>
 
@@ -604,6 +618,7 @@ export function MediaLibraryBrowser({ onSelect, isSelected, renderItemActions, i
       {/* --- Details Slide-Over Panel --- */}
       {detailsItem && (
         <MediaDetailsPanel
+          key={detailsItem.id}
           item={media?.find((m) => m.id === detailsItem.id) ?? detailsItem}
           onClose={() => setDetailsItem(null)}
           isModal={inModal}
@@ -618,6 +633,9 @@ function FolderTile({
   folder,
   dragOver,
   onOpen,
+  onRename,
+  onDuplicate,
+  duplicating,
   onDelete,
   onDragOver,
   onDragLeave,
@@ -627,6 +645,9 @@ function FolderTile({
   folder: MediaFolderDto;
   dragOver: boolean;
   onOpen: () => void;
+  onRename: () => void;
+  onDuplicate: () => void;
+  duplicating: boolean;
   onDelete: () => void;
   onDragOver: () => void;
   onDragLeave: () => void;
@@ -657,17 +678,46 @@ function FolderTile({
           : "border-border/80 bg-surface hover:border-brand-500/60 hover:bg-surface-2/60 hover:shadow-sm"
       }`}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        aria-label="Delete folder"
-        className="absolute right-1.5 top-1.5 hidden rounded-lg p-1 text-muted hover:bg-danger/10 hover:text-danger group-hover:block transition-colors"
-      >
-        {trashIcon}
-      </button>
+      <div className="absolute right-1.5 top-1.5 hidden items-center gap-0.5 group-hover:flex group-focus-within:flex">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRename();
+          }}
+          aria-label="Rename folder"
+          title="Rename"
+          className="rounded-lg p-1 text-muted hover:bg-brand-500/10 hover:text-brand-600 transition-colors"
+        >
+          <Icon name="edit" size={14} />
+        </button>
+        <button
+          type="button"
+          disabled={duplicating}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate();
+          }}
+          aria-label="Duplicate folder"
+          title="Duplicate"
+          className="rounded-lg p-1 text-muted hover:bg-brand-500/10 hover:text-brand-600 transition-colors disabled:opacity-40"
+        >
+          <Icon name="content_copy" size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          aria-label="Delete folder"
+          title="Delete"
+          className="rounded-lg p-1 text-muted hover:bg-danger/10 hover:text-danger transition-colors"
+        >
+          {trashIcon}
+        </button>
+      </div>
+      {duplicating && <span className="text-[10px] font-semibold text-brand-600">Duplicating…</span>}
 
       <button type="button" onClick={onOpen} className="flex flex-col items-center gap-1.5 text-brand-500">
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500/10 text-brand-600 transition-transform group-hover:scale-110">

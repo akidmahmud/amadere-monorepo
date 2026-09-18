@@ -3,7 +3,8 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReportFilters } from "@/hooks/useSalesReportV2";
 
-const todayDhaka = () => new Date(Date.now() + 6 * 3600_000).toISOString().slice(0, 10);
+const todayDhaka = () =>
+  new Date(Date.now() + 6 * 3600_000).toISOString().slice(0, 10);
 export const addDays = (s: string, n: number) => {
   const d = new Date(`${s}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -12,7 +13,16 @@ export const addDays = (s: string, n: number) => {
 
 export function defaultFilters(): ReportFilters {
   const t = todayDhaka();
-  return { basis: "order", from: addDays(t, -6), to: t, channel: "all", agent: "all", courier: "all", district: "all", status: "all" };
+  return {
+    basis: "order",
+    from: addDays(t, -6),
+    to: t,
+    channel: "all",
+    agent: "all",
+    courier: "all",
+    district: "all",
+    status: "all",
+  };
 }
 
 export function quickRanges() {
@@ -20,7 +30,12 @@ export function quickRanges() {
   const monthStart = `${t.slice(0, 8)}01`;
   return [
     { key: "today", label: "Today", from: t, to: t },
-    { key: "yday", label: "Yesterday", from: addDays(t, -1), to: addDays(t, -1) },
+    {
+      key: "yday",
+      label: "Yesterday",
+      from: addDays(t, -1),
+      to: addDays(t, -1),
+    },
     { key: "7d", label: "Last 7 days", from: addDays(t, -6), to: t },
     { key: "30d", label: "Last 30 days", from: addDays(t, -29), to: t },
     { key: "month", label: "This month", from: monthStart, to: t },
@@ -37,19 +52,30 @@ export function useReportFilters() {
     const g = (k: keyof ReportFilters) => params.get(k) ?? d[k];
     return {
       basis: g("basis") === "delivered" ? "delivered" : "order",
-      from: g("from"), to: g("to"), channel: g("channel"), agent: g("agent"),
-      courier: g("courier"), district: g("district"), status: g("status"),
+      from: g("from"),
+      to: g("to"),
+      channel: g("channel"),
+      agent: g("agent"),
+      courier: g("courier"),
+      district: g("district"),
+      status: g("status"),
     };
   }, [params]);
 
   const set = useCallback(
-    (p: Partial<ReportFilters> & { tab?: string; q?: string; open?: string }) => {
+    (
+      p: Partial<ReportFilters> & { tab?: string; q?: string; open?: string },
+    ) => {
       const next = new URLSearchParams(params.toString());
       for (const [k, v] of Object.entries(p)) {
         if (v === undefined || v === "all" || v === "") next.delete(k);
         else next.set(k, String(v));
       }
-      if (next.get("from") && next.get("to") && next.get("from")! > next.get("to")!) {
+      if (
+        next.get("from") &&
+        next.get("to") &&
+        next.get("from")! > next.get("to")!
+      ) {
         if ("from" in p) next.set("to", next.get("from")!);
         else next.set("from", next.get("to")!);
       }
@@ -59,8 +85,22 @@ export function useReportFilters() {
   );
 
   const reset = useCallback(
-    () => set({ channel: "all", agent: "all", courier: "all", district: "all", status: "all" }),
+    () =>
+      set({
+        channel: "all",
+        agent: "all",
+        courier: "all",
+        district: "all",
+        status: "all",
+      }),
     [set],
   );
-  return { f, set, reset, tab: params.get("tab") ?? "overview", q: params.get("q") ?? "", open: Number(params.get("open")) || null };
+  return {
+    f,
+    set,
+    reset,
+    tab: params.get("tab") ?? "overview",
+    q: params.get("q") ?? "",
+    open: Number(params.get("open")) || null,
+  };
 }

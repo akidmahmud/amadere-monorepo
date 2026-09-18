@@ -8,6 +8,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { imageSize } from 'image-size';
 import { MediaType } from '@amader/db';
+import type { Media, MediaFolder } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -50,6 +51,19 @@ export function sanitizeFilename(originalname: string): string {
   const safeStem = clean(stem).slice(0, 80) || 'file';
   const safeExt = clean(ext).toLowerCase();
   return safeExt ? `${safeStem}.${safeExt}` : safeStem;
+}
+
+/** Storage key from a public URL: its last two segments (`image/<uuid>-name.png`). */
+const keyOf = (url: string) => url.split('/').slice(-2).join('/');
+
+const LEADING_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=-)/i;
+
+/** The same key under a new UUID — how a duplicated file gets its own object. */
+export function rekey(key: string, newId: string): string {
+  const slash = key.lastIndexOf('/');
+  const dir = key.slice(0, slash + 1);
+  const file = key.slice(slash + 1);
+  return LEADING_UUID.test(file) ? dir + file.replace(LEADING_UUID, newId) : `${dir}${newId}-${file}`;
 }
 
 @Injectable()
@@ -137,7 +151,13 @@ export class MediaService {
     }
     const updated = await this.prisma.client.media.update({
       where: { id },
-      data: { altText: dto.altText, folderId: dto.folderId },
+      data: {
+        altText: dto.altText,
+        folderId: dto.folderId,
+        // Display name only — the URL never changes. Blank clears it back to
+        // the file name taken from the URL.
+        name: dto.name === undefined ? undefined : dto.name?.trim() || null,
+      },
     });
     return toMediaDto(updated);
   }
@@ -158,6 +178,100 @@ export class MediaService {
       data: { name, parentId: parentId ?? null },
     });
     return toMediaFolderDto(folder);
+  }
+
+  async renameFolder(id: number, name: string): Promise<MediaFolderDto> {
+    const folder = await this.prisma.client.mediaFolder.findUnique({ where: { id } });
+    if (!folder) throw new NotFoundException('Folder not found');
+    const updated = await this.prisma.client.mediaFolder.update({
+      where: { id },
+      data: { name: name.trim() },
+    });
+    return toMediaFolderDto(updated);
+  }
+
+  /**
+   * "<name> (copy)" beside the original, with every subfolder and file inside.
+   * Files are physically copied in R2 under new keys (never shared), because
+   * deleting a Media row deletes its objects — a shared URL would break the
+   * other copy. Storage goes first: if any copy fails, what was copied is
+   * removed and nothing is saved, so there is never a half-built folder.
+   */
+  // ponytail: copies run in-request, one file at a time — fine for a few
+  // hundred files; move to a background job if folders get much larger.
+  async duplicateFolder(id: number): Promise<MediaFolderDto> {
+    const all = await this.prisma.client.mediaFolder.findMany();
+    const root = all.find((f) => f.id === id);
+    if (!root) throw new NotFoundException('Folder not found');
+
+    // Parents before children, so each copy's parent exists when it's created.
+    const order = [root];
+    for (let i = 0; i < order.length; i++) {
+      order.push(...all.filter((f) => f.parentId === order[i].id));
+    }
+    const media = await this.prisma.client.media.findMany({
+      where: { folderId: { in: order.map((f) => f.id) } },
+      orderBy: { id: 'asc' },
+    });
+
+    const taken = new Set(all.filter((f) => f.parentId === root.parentId).map((f) => f.name));
+    let name = `${root.name} (copy)`;
+    for (let n = 2; taken.has(name); n++) name = `${root.name} (copy ${n})`;
+
+    const copied: string[] = [];
+    try {
+      const copies: { src: Media; url: string; cardUrl: string | null; fullUrl: string | null }[] = [];
+      for (const m of media) {
+        const newId = randomUUID();
+        const dup = async (url: string | null) => {
+          if (!url) return null;
+          const to = rekey(keyOf(url), newId);
+          const res = await this.storage.copy(keyOf(url), to);
+          copied.push(to);
+          return res.url;
+        };
+        copies.push({
+          src: m,
+          url: (await dup(m.url)) as string,
+          cardUrl: await dup(m.cardUrl),
+          fullUrl: await dup(m.fullUrl),
+        });
+      }
+
+      return await this.prisma.client.$transaction(async (tx) => {
+        const newIds = new Map<number, number>();
+        let rootCopy: MediaFolder | undefined;
+        for (const f of order) {
+          const created = await tx.mediaFolder.create({
+            data:
+              f.id === root.id
+                ? { name, parentId: root.parentId }
+                : { name: f.name, parentId: newIds.get(f.parentId as number) as number },
+          });
+          newIds.set(f.id, created.id);
+          rootCopy ??= created;
+        }
+        for (const c of copies) {
+          await tx.media.create({
+            data: {
+              url: c.url,
+              cardUrl: c.cardUrl,
+              fullUrl: c.fullUrl,
+              type: c.src.type,
+              altText: c.src.altText,
+              name: c.src.name,
+              width: c.src.width,
+              height: c.src.height,
+              folderId: newIds.get(c.src.folderId as number) as number,
+            },
+          });
+        }
+        return toMediaFolderDto(rootCopy as MediaFolder);
+      });
+    } catch (err) {
+      await Promise.allSettled(copied.map((k) => this.storage.delete(k)));
+      throw err;
+    }
   }
 
   async deleteFolder(id: number): Promise<void> {
@@ -185,9 +299,7 @@ export class MediaService {
     const urls = [media.url, media.cardUrl, media.fullUrl].filter(
       (u): u is string => u !== null && u !== undefined,
     );
-    await Promise.all(
-      urls.map((u) => this.storage.delete(u.split('/').slice(-2).join('/'))),
-    );
+    await Promise.all(urls.map((u) => this.storage.delete(keyOf(u))));
     await this.prisma.client.media.delete({ where: { id } });
   }
 }

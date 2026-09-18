@@ -11,6 +11,8 @@ export class MediaDto {
   fullUrl!: string | null;
   type!: string;
   altText!: string | null;
+  /** Library display name; null = show the file name from the URL. */
+  name!: string | null;
   width!: number | null;
   height!: number | null;
   folderId!: number | null;
@@ -27,6 +29,7 @@ export function toMediaDto(media: Media): MediaDto {
     fullUrl: media.fullUrl,
     type: media.type,
     altText: media.altText,
+    name: media.name,
     width: media.width,
     height: media.height,
     folderId: media.folderId,
