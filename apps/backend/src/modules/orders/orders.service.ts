@@ -215,10 +215,16 @@ export class OrdersService {
           confirmedAt: dto.status === 'PROCESSING' ? new Date() : undefined,
           completedAt: dto.status === 'COMPLETED' ? new Date() : undefined,
           canceledAt: dto.status === 'CANCELED' ? new Date() : undefined,
-          // A real staff action (not a courier webhook/system transition)
-          // takes ownership of the order — same "whoever last touched it"
-          // reassignment as the Order Manager's own assign action.
-          assignedAdminId: adminUserId !== null ? adminUserId : undefined,
+          // The first staff member to act on an UNASSIGNED order (confirm,
+          // hold, ...) takes it. Once someone owns it, later status changes by
+          // other staff leave it alone: only an explicit reassign — which needs
+          // assignment.manage, or super admin — moves it. It used to be
+          // "whoever touched it last", so shipping someone else's confirmed
+          // order silently took their order away.
+          // ponytail: read-then-write outside a lock; two staff confirming the
+          // same unassigned order at the same instant = last write wins.
+          assignedAdminId:
+            adminUserId !== null && order.assignedAdminId === null ? adminUserId : undefined,
         },
       });
       await tx.orderStatusHistory.create({

@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../../common/auth/permission.guard';
-import { RequirePermission } from '../../../common/auth/permission.decorator';
+import { Can, RequirePermission, type PermissionCheck } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { CurrentAdmin } from '../../../common/auth/current-admin.decorator';
 import { OrderManagerService } from './order-manager.service';
@@ -42,7 +42,16 @@ export class AdminOrderManagerController {
 
   @Post('bulk')
   @RequirePermission('net_profit_orders.manage')
-  bulk(@Body() dto: BulkOrderActionDto, @CurrentAdmin() admin: { id: number }) {
+  bulk(
+    @Body() dto: BulkOrderActionDto,
+    @CurrentAdmin() admin: { id: number },
+    @Can() can: PermissionCheck,
+  ) {
+    // Same rule as PATCH :id/assign below. The bulk bar was a way round it:
+    // anyone with order access could reassign any number of orders at once.
+    if (dto.action === 'assign' && !can('assignment.manage')) {
+      throw new ForbiddenException('Missing permission: assignment.manage');
+    }
     return this.orderManager.bulkAction(dto, admin.id);
   }
 

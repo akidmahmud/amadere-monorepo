@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderStatusesTab } from "./OrderStatusesTab";
 import { DeletedOrdersTab } from "./DeletedOrdersTab";
 import { downloadCsvAsXlsx, presetTitleRange, reportTitle } from "@/lib/reportExport";
+import { useCan } from "@/hooks/useAdminAuth";
 import { localStamp } from "@/lib/reportTitle";
 
 const GREEN = "#2e7d43";
@@ -369,6 +370,9 @@ function OrderManagerPageInner() {
     setSelected((prev) => (prev.size === data.items.length ? new Set() : new Set(data.items.map((o) => o.id))));
   }
 
+  // Bulk reassigning needs the same permission as reassigning one order.
+  const canAssign = useCan("assignment.manage");
+
   function runBulk(action: "hold" | "block" | "export" | "consign" | "delete" | "assign", courierProvider?: string, assignedAdminId?: number | null) {
     if (selected.size === 0) return;
     bulk.mutate(
@@ -549,7 +553,8 @@ function OrderManagerPageInner() {
             </button>
             <select
               aria-label="Bulk assign to staff"
-              disabled={selected.size === 0 || bulk.isPending}
+              disabled={selected.size === 0 || bulk.isPending || !canAssign}
+              title={canAssign ? undefined : "You do not have permission to reassign orders"}
               value=""
               onChange={(e) => {
                 const v = e.target.value;

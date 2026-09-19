@@ -9,6 +9,8 @@ import { useCreateRole, useDeleteRole, usePermissions, useRoles, useUpdateRole, 
 // listed falls back to the key, title-cased.
 const RESOURCE_LABELS: Record<string, string> = {
   net_profit_reports: "Sales Report",
+  customer: "Customer Management (view = read only, manage = edit)",
+  assignment: "Assign staff to customers & orders (manage = can reassign)",
   net_profit_overview: "Net Profit Overview",
   net_profit_orders: "Order Manager",
   net_profit_fraud: "Fraud Check",
@@ -46,15 +48,39 @@ function PermissionCheckboxes({
     onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
   }
 
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  // A whole section matches on its label or internal key ("sales", "net_profit");
+  // otherwise only the actions that match ("delete") are kept. Filtering hides
+  // checkboxes, never unticks them — saving still sends every selected key.
+  const groups = Array.from(byResource.entries())
+    .map(([resource, perms]) => {
+      if (!needle || `${resourceLabel(resource)} ${resource}`.toLowerCase().includes(needle))
+        return [resource, perms!] as const;
+      return [resource, perms!.filter((p) => p.action.replace(/_/g, " ").includes(needle))] as const;
+    })
+    .filter(([, perms]) => perms.length > 0);
+
   return (
     <div className="flex flex-col gap-2">
-      {Array.from(byResource.entries()).map(([resource, perms]) => (
+      <input
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search permissions… (e.g. customer, sales, delete)"
+        aria-label="Search permissions"
+        className="h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+      />
+      {needle && groups.length === 0 && (
+        <p className="text-sm text-muted">No permission matches “{q.trim()}”.</p>
+      )}
+      {groups.map(([resource, perms]) => (
         <div key={resource}>
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted" title={resource}>
             {resourceLabel(resource)}
           </span>
           <div className="mt-1 flex flex-wrap gap-2">
-            {perms!.map((p) => (
+            {perms.map((p) => (
               <label key={p.key} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-2.5 py-1 text-xs text-text">
                 <input type="checkbox" checked={selected.includes(p.key)} onChange={() => toggle(p.key)} />
                 {ACTION_LABELS[p.action] ?? p.action.replace(/_/g, " ")}
@@ -160,19 +186,40 @@ function RoleRow({ role }: { role: Role }) {
 export default function RolesPage() {
   const { data: roles, isLoading } = useRoles();
   const [creating, setCreating] = useState(false);
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  // Name or description, client-side: the whole role list is already loaded.
+  const shown = needle
+    ? (roles ?? []).filter((r) => `${r.name} ${r.description ?? ""}`.toLowerCase().includes(needle))
+    : (roles ?? []);
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary">{roles?.length ?? 0} roles</p>
-        {!creating && <Button variant="primary" onClick={() => setCreating(true)}>Add role</Button>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-secondary">
+          {needle ? `${shown.length} of ${roles?.length ?? 0} roles` : `${roles?.length ?? 0} roles`}
+        </p>
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search roles…"
+            aria-label="Search roles"
+            className="h-10 w-full max-w-xs rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+          />
+          {!creating && <Button variant="primary" onClick={() => setCreating(true)}>Add role</Button>}
+        </div>
       </div>
 
       {creating && <NewRoleForm onDone={() => setCreating(false)} />}
       {isLoading && <p className="text-sm text-muted">Loading…</p>}
 
       <div className="flex flex-col gap-3">
-        {roles?.map((role) => <RoleRow key={role.id} role={role} />)}
+        {shown.map((role) => <RoleRow key={role.id} role={role} />)}
+        {needle && shown.length === 0 && (
+          <p className="text-sm text-muted">No role matches “{q.trim()}”.</p>
+        )}
       </div>
     </>
   );

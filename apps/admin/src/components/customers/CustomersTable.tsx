@@ -24,7 +24,7 @@ const BLUE = "#2570eb";
 const RED = "#e8465e";
 
 export const cellSelectStyle =
-  "h-[30px] appearance-none rounded-[8px] border bg-white pr-6 pl-2.5 text-[0.7rem] font-bold outline-none cursor-pointer";
+  "h-[30px] appearance-none rounded-[8px] border bg-white pr-6 pl-2.5 text-[0.7rem] font-bold outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50";
 const chevronBg =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364766b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")";
 export const cellSelectStyleObj = { borderColor: LINE, color: TEXT, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 7px center" } as const;
@@ -394,6 +394,10 @@ function CustomerRow({
 }) {
   const update = useUpdateCustomer(c.id);
   const canAssign = useCan("assignment.manage");
+  // View-only staff (customer.view without customer.manage) see every field
+  // grayed out instead of controls the server would reject with a 403.
+  const canManage = useCan("customer.manage");
+  const readOnlyTitle = canManage ? undefined : "View only — you do not have permission to edit customers";
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
   const [address, setAddress] = useState(c.address ?? "");
@@ -467,7 +471,14 @@ function CustomerRow({
         </button>
       </td>
       <td className={td} style={tdStyle}>
-        <button type="button" onClick={() => update.mutate({ isFavorite: !c.isFavorite })} aria-label="Toggle favorite">
+        <button
+          type="button"
+          disabled={!canManage}
+          title={readOnlyTitle}
+          onClick={() => update.mutate({ isFavorite: !c.isFavorite })}
+          aria-label="Toggle favorite"
+          className="disabled:cursor-not-allowed disabled:opacity-50"
+        >
           {starIcon(c.isFavorite)}
         </button>
       </td>
@@ -486,10 +497,11 @@ function CustomerRow({
           </button>
           <button
             type="button"
+            disabled={!canManage}
             onClick={() => setEditing((v) => !v)}
             aria-label={editing ? "Done editing" : "Edit"}
-            title={editing ? "Done editing" : "Edit"}
-            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border"
+            title={readOnlyTitle ?? (editing ? "Done editing" : "Edit")}
+            className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border disabled:cursor-not-allowed disabled:opacity-40"
             style={editing ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" } : { color: FAINT, borderColor: "transparent" }}
           >
             {editing ? checkIcon : editIcon}
@@ -671,6 +683,8 @@ function CustomerRow({
       <td className={td} style={tdStyle}>
         <select
           value={c.followUpCadenceDays ?? ""}
+          disabled={!canManage}
+          title={readOnlyTitle}
           onChange={(e) => update.mutate({ followUpCadenceDays: e.target.value ? Number(e.target.value) : null })}
           className={cellSelectStyle}
           style={cellSelectStyleObj}
@@ -684,6 +698,8 @@ function CustomerRow({
       <td className={td} style={tdStyle}>
         <select
           value={c.hasNewOrder ? "yes" : "no"}
+          disabled={!canManage}
+          title={readOnlyTitle}
           onChange={(e) => update.mutate({ hasNewOrder: e.target.value === "yes" })}
           className={cellSelectStyle}
           style={cellSelectStyleObj}
@@ -712,6 +728,8 @@ function CustomerRow({
       <td className={td} style={tdStyle}>
         <select
           value={c.priority ?? "MEDIUM"}
+          disabled={!canManage}
+          title={readOnlyTitle}
           onChange={(e) => update.mutate({ priority: e.target.value as never })}
           className={cellSelectStyle}
           style={{ background: priorityStyle.bg, borderColor: priorityStyle.border, color: priorityStyle.color }}
@@ -726,6 +744,8 @@ function CustomerRow({
       <td className={td} style={tdStyle}>
         <select
           value={c.crmStatus ?? "NOT_STARTED"}
+          disabled={!canManage}
+          title={readOnlyTitle}
           onChange={(e) => update.mutate({ crmStatus: e.target.value as never })}
           className={cellSelectStyle}
           style={{ background: statusStyle.bg, borderColor: statusStyle.border, color: statusStyle.color }}
@@ -738,7 +758,7 @@ function CustomerRow({
         </select>
       </td>
       <td className={td} style={tdStyle}>
-        <select value={c.behaviour ?? ""} onChange={(e) => update.mutate({ behaviour: (e.target.value || null) as never })} className={cellSelectStyle} style={cellSelectStyleObj}>
+        <select disabled={!canManage} title={readOnlyTitle} value={c.behaviour ?? ""} onChange={(e) => update.mutate({ behaviour: (e.target.value || null) as never })} className={cellSelectStyle} style={cellSelectStyleObj}>
           <option value="">—</option>
           {Object.entries(BEHAVIOUR_LABEL).map(([v, label]) => (
             <option key={v} value={v}>

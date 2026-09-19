@@ -71,6 +71,9 @@ export default function CustomersPage() {
   const { data: staff } = useAssignableStaff();
   const bulk = useBulkCustomerAction();
   const canAssign = useCan("assignment.manage");
+  // customer.view alone = look, don't touch: every write control is grayed out.
+  const canManage = useCan("customer.manage");
+  const viewOnlyTitle = canManage ? undefined : "View only — you do not have permission to edit customers";
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -186,8 +189,10 @@ export default function CustomersPage() {
           </button>
           <button
             type="button"
+            disabled={!canManage}
+            title={viewOnlyTitle}
             onClick={() => setImportOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold"
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold disabled:cursor-not-allowed disabled:opacity-40"
             style={{ borderColor: LINE, color: TEXT }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -199,8 +204,10 @@ export default function CustomersPage() {
           </button>
           <button
             type="button"
+            disabled={!canManage}
+            title={viewOnlyTitle}
             onClick={() => setAddOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-[10px] px-4 text-[0.82rem] font-bold text-white"
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] px-4 text-[0.82rem] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
             style={{ background: GREEN }}
             onMouseEnter={(e) => (e.currentTarget.style.background = GREEN_DARK)}
             onMouseLeave={(e) => (e.currentTarget.style.background = GREEN)}
@@ -240,7 +247,8 @@ export default function CustomersPage() {
             </span>
             <button
               type="button"
-              disabled={selected.size === 0 || bulk.isPending}
+              disabled={selected.size === 0 || bulk.isPending || !canManage}
+              title={viewOnlyTitle}
               onClick={() => setDeleteTarget("bulk")}
               className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
               style={{ borderColor: "#f8ccd3", background: "#feeaec", color: "#e5484d" }}
@@ -285,7 +293,7 @@ export default function CustomersPage() {
             selected={selected}
             onToggle={toggle}
             onToggleAll={toggleAll}
-            onDelete={setDeleteTarget}
+            onDelete={canManage ? setDeleteTarget : undefined}
           />
         </>
       )}

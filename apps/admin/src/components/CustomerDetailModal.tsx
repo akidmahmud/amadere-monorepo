@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button, Icon, Modal } from "@amader/admin-ui";
+import { useCan } from "@/hooks/useAdminAuth";
 import {
   BD_ALL_DISTRICTS,
   BD_DIVISIONS,
@@ -230,13 +231,20 @@ export function CustomerDetailModal({
 }
 
 function OverviewTab({ c }: { c: Customer }) {
+  const canManage = useCan("customer.manage");
   const [editing, setEditing] = useState(false);
   if (editing) return <OverviewEditor c={c} onDone={() => setEditing(false)} />;
   const a = c.defaultAddress;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
-        <Button type="button" variant="ghost" onClick={() => setEditing(true)}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={!canManage}
+          title={canManage ? undefined : "View only — you do not have permission to edit customers"}
+          onClick={() => setEditing(true)}
+        >
           <Icon name="edit" size={16} />
           Edit details
         </Button>
@@ -316,6 +324,7 @@ function EditField({ label, children }: { label: string; children: ReactNode }) 
 function OverviewEditor({ c, onDone }: { c: Customer; onDone: () => void }) {
   const update = useUpdateCustomer(c.id);
   const { data: staff } = useAssignableStaff();
+  const canAssign = useCan("assignment.manage");
   const a = c.defaultAddress;
   const initial = {
     firstName: c.firstName ?? "",
@@ -495,8 +504,10 @@ function OverviewEditor({ c, onDone }: { c: Customer; onDone: () => void }) {
           <EditField label="Assigned to">
             <select
               value={f.assignedAdminId}
+              disabled={!canAssign}
+              title={canAssign ? undefined : "You do not have permission to reassign customers"}
               onChange={(e) => set("assignedAdminId", e.target.value)}
-              className={editCls}
+              className={`${editCls} disabled:cursor-not-allowed disabled:opacity-50`}
             >
               <option value="">Unassigned</option>
               {(staff ?? []).map((s) => (
@@ -662,6 +673,7 @@ function ProductsTab({ products }: { products: Customer["purchasedProducts"] }) 
 
 function NotesTab({ customerId, notes }: { customerId: number; notes: Customer["notes"] }) {
   const addNote = useAddCustomerNote(customerId);
+  const canManage = useCan("customer.manage");
   const [type, setType] = useState<string>(NOTE_TYPES[1]);
   const [body, setBody] = useState("");
 
@@ -671,10 +683,15 @@ function NotesTab({ customerId, notes }: { customerId: number; notes: Customer["
         className="flex flex-wrap items-end gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3.5"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!body.trim()) return;
+          if (!canManage || !body.trim()) return;
           addNote.mutate({ type, body: body.trim() }, { onSuccess: () => setBody("") });
         }}
       >
+        <fieldset
+          disabled={!canManage}
+          title={canManage ? undefined : "View only — you do not have permission to add notes"}
+          className="contents disabled:[&_*]:cursor-not-allowed disabled:[&_*]:opacity-50"
+        >
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
@@ -696,6 +713,7 @@ function NotesTab({ customerId, notes }: { customerId: number; notes: Customer["
         <Button type="submit" variant="primary" disabled={addNote.isPending || !body.trim()}>
           {addNote.isPending ? "Adding…" : "Add"}
         </Button>
+        </fieldset>
       </form>
       {notes.length === 0 ? (
         <Empty>No notes yet.</Empty>
@@ -718,6 +736,7 @@ function NotesTab({ customerId, notes }: { customerId: number; notes: Customer["
 
 function CallsTab({ customerId, calls }: { customerId: number; calls: Customer["callLogs"] }) {
   const logCall = useLogCustomerCall(customerId);
+  const canManage = useCan("customer.manage");
   const dial = useDialCustomer(customerId);
   const [outcome, setOutcome] = useState<string>(CALL_OUTCOMES[0]);
   const [notes, setNotes] = useState("");
@@ -725,7 +744,11 @@ function CallsTab({ customerId, calls }: { customerId: number; calls: Customer["
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3.5">
+      <fieldset
+        disabled={!canManage}
+        title={canManage ? undefined : "View only — you do not have permission to log calls"}
+        className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3.5 disabled:[&_*]:cursor-not-allowed disabled:[&_*]:opacity-50"
+      >
         <div className="flex items-center gap-2.5">
           <Button
             type="button"
@@ -776,7 +799,7 @@ function CallsTab({ customerId, calls }: { customerId: number; calls: Customer["
             {logCall.isPending ? "Logging…" : "Log outcome"}
           </Button>
         </form>
-      </div>
+      </fieldset>
       {calls.length === 0 ? (
         <Empty>No calls logged yet.</Empty>
       ) : (
