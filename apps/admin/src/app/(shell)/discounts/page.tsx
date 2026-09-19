@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
 import { useBulkDeleteDiscounts, useDeleteDiscount, useDiscounts, type AdminDiscount } from "@/hooks/useDiscounts";
 import { PermissionButton } from "@/components/PermissionButton";
+import { CopyDiscountLinkButton } from "@/components/DiscountLink";
 
 const discountIcon = <Icon name="local_offer" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -173,6 +174,7 @@ export default function DiscountsPage() {
                     </td>
                     <td className="px-3 py-2.5 align-top">
                       <div className="flex items-center gap-2">
+                        {d.type === "COUPON" && <CopyDiscountLinkButton code={d.code} />}
                         <Link href={`/discounts/${d.id}`} aria-label="Edit discount" className="text-success hover:opacity-70">
                           <Icon name="edit" size={18} />
                         </Link>

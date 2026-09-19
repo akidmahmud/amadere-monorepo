@@ -39,7 +39,7 @@ export default function NewDiscountPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await create.mutateAsync({
+    const created = await create.mutateAsync({
       code: type === "COUPON" ? code : undefined,
       type,
       valueType,
@@ -53,7 +53,8 @@ export default function NewDiscountPage() {
       productIds,
       categoryIds,
     });
-    router.push("/discounts");
+    // A coupon opens its own page, where the share link is ready to copy.
+    router.push(type === "COUPON" ? `/discounts/${created.id}` : "/discounts");
   }
 
   return (
@@ -121,7 +122,7 @@ export default function NewDiscountPage() {
               <input type="number" value={minOrderAmount} onChange={(e) => setMinOrderAmount(e.target.value)} className={`num ${inputClass}`} />
             </label>
             <label className="flex flex-1 flex-col gap-1.5">
-              <span className="text-xs font-semibold text-secondary">Max total uses (optional)</span>
+              <span className="text-xs font-semibold text-secondary">Max total uses (1 = single-use link)</span>
               <input type="number" value={maxUsesTotal} onChange={(e) => setMaxUsesTotal(e.target.value)} className={`num ${inputClass}`} />
             </label>
             <label className="flex flex-1 flex-col gap-1.5">
@@ -145,7 +146,9 @@ export default function NewDiscountPage() {
             placeholder="Search categories..."
           />
           <p className="text-xs text-muted">
-            Restricting to specific customers isn&apos;t available here — there&apos;s no admin customer picker for it yet.
+            For one customer, give them their own code: Generate a code, set Max total uses (1 = single use),
+            publish, then copy the share link. Works for guest checkouts too — a code locked to an account
+            would only work while they are logged in.
           </p>
         </Card>
 

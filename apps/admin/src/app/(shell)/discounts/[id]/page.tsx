@@ -9,6 +9,7 @@ import { SearchPickerField } from "@/components/SearchPickerField";
 import { usePickerCategories, usePickerProducts } from "@/hooks/usePickers";
 import { useDiscount, useUpdateDiscount, type DiscountType, type DiscountValueType } from "@/hooks/useDiscounts";
 import type { PublishStatus } from "@/hooks/useBrands";
+import { DiscountLinkField } from "@/components/DiscountLink";
 
 const discountIcon = <Icon name="local_offer" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -141,7 +142,7 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
               <input type="number" value={minOrderAmount} onChange={(e) => setMinOrderAmount(e.target.value)} className={`num ${inputClass}`} />
             </label>
             <label className="flex flex-1 flex-col gap-1.5">
-              <span className="text-xs font-semibold text-secondary">Max total uses (optional)</span>
+              <span className="text-xs font-semibold text-secondary">Max total uses (1 = single-use link)</span>
               <input type="number" value={maxUsesTotal} onChange={(e) => setMaxUsesTotal(e.target.value)} className={`num ${inputClass}`} />
             </label>
             <label className="flex flex-1 flex-col gap-1.5">
@@ -165,11 +166,16 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
             placeholder="Search categories..."
           />
           <p className="text-xs text-muted">
-            Restricting to specific customers isn&apos;t available here — there&apos;s no admin customer picker for it yet.
+            For one customer, give them their own code: Generate a code, set Max total uses (1 = single use),
+            publish, then copy the share link. Works for guest checkouts too — a code locked to an account
+            would only work while they are logged in.
           </p>
         </Card>
 
         <Card className="flex h-fit flex-col gap-4">
+          {discount.type === "COUPON" && (
+            <DiscountLinkField code={discount.code} status={discount.status} maxUsesTotal={discount.maxUsesTotal} />
+          )}
           <h3 className="font-ui text-sm font-bold text-text">Schedule</h3>
           <div className="text-xs text-muted">
             Used {discount.usedCount}
