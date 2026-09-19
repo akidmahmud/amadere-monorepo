@@ -4,10 +4,19 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
+  BD_ALL_DISTRICTS,
+  BD_DIVISIONS,
+  BD_THANAS_BY_DISTRICT,
+  divisionForDistrict,
+} from "@amader/shared";
+import {
   useAddCustomerNote,
+  useAssignableStaff,
   useCustomer,
   useDialCustomer,
   useLogCustomerCall,
+  useUpdateCustomer,
+  type UpdateCustomerInput,
 } from "@/hooks/useCustomers";
 
 const NOTE_TYPES = ["CUSTOMER_FEEDBACK", "INTERNAL_NOTE", "REMARK"] as const;
@@ -221,9 +230,17 @@ export function CustomerDetailModal({
 }
 
 function OverviewTab({ c }: { c: Customer }) {
+  const [editing, setEditing] = useState(false);
+  if (editing) return <OverviewEditor c={c} onDone={() => setEditing(false)} />;
   const a = c.defaultAddress;
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <Button type="button" variant="ghost" onClick={() => setEditing(true)}>
+          <Icon name="edit" size={16} />
+          Edit details
+        </Button>
+      </div>
       <Section title="Personal">
         <Field label="Full name">{c.name}</Field>
         <Field label="Phone">{c.phone}</Field>
@@ -273,6 +290,294 @@ function OverviewTab({ c }: { c: Customer }) {
   );
 }
 
+const PRIORITIES = ["HIGH", "MEDIUM", "LOW"] as const;
+const CRM_STATUSES = ["NOT_STARTED", "IN_PROGRESS", "FOLLOW_UP", "DONE"] as const;
+const BEHAVIOURS = ["LOYAL", "PRICE_SENSITIVE", "OCCASIONAL"] as const;
+
+const editCls =
+  "h-9 w-full rounded-lg border border-border bg-surface px-2.5 text-sm text-text outline-none focus:border-brand-500";
+const isoDay = (v: string | Date | null | undefined) =>
+  v ? new Date(v).toISOString().slice(0, 10) : "";
+
+function EditField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="text-[0.68rem] font-bold uppercase tracking-wide text-muted">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/**
+ * Every stored field of the Overview, as inputs. Tier, "customer since" and
+ * completed orders stay read-only: tier is recalculated from completed orders,
+ * and the other two are facts, not settings.
+ */
+function OverviewEditor({ c, onDone }: { c: Customer; onDone: () => void }) {
+  const update = useUpdateCustomer(c.id);
+  const { data: staff } = useAssignableStaff();
+  const a = c.defaultAddress;
+  const initial = {
+    firstName: c.firstName ?? "",
+    lastName: c.lastName ?? "",
+    phone: c.phone ?? "",
+    email: c.email ?? "",
+    dob: isoDay(c.dob),
+    facebookProfileUrl: c.facebookProfileUrl ?? "",
+    recipientName: a?.recipientName ?? "",
+    addressPhone: a?.phone ?? "",
+    alternativePhone: a?.alternativePhone ?? "",
+    addressLine: a?.addressLine ?? "",
+    area: a?.area ?? "",
+    district: a?.district ?? "",
+    division: a?.division ?? "",
+    landmark: a?.landmark ?? "",
+    postCode: a?.postCode ?? "",
+    assignedAdminId: c.assignedAdminId ? String(c.assignedAdminId) : "",
+    priority: c.priority ?? "",
+    crmStatus: c.crmStatus ?? "",
+    behaviour: c.behaviour ?? "",
+    isFavorite: c.isFavorite,
+    nextCallTarget: isoDay(c.nextCallTarget),
+    followUpCadenceDays: c.followUpCadenceDays ? String(c.followUpCadenceDays) : "",
+    hasNewOrder: c.hasNewOrder,
+    newOrderAt: isoDay(c.newOrderAt),
+    customerFeedback: c.customerFeedback ?? "",
+    amaderFeedback: c.amaderFeedback ?? "",
+    familyDetails: c.familyDetails ?? "",
+    purchaseReason: c.purchaseReason ?? "",
+  };
+  const [f, setF] = useState(initial);
+  const [error, setError] = useState<string | null>(null);
+  type Key = keyof typeof initial;
+  const set = <K extends Key>(k: K, v: (typeof initial)[K]) => setF((prev) => ({ ...prev, [k]: v }));
+  const text = (k: Key, type = "text") => (
+    <input
+      type={type}
+      value={f[k] as string}
+      onChange={(e) => set(k, e.target.value as never)}
+      className={editCls}
+    />
+  );
+  const select = (k: Key, options: readonly string[]) => (
+    <select value={f[k] as string} onChange={(e) => set(k, e.target.value as never)} className={editCls}>
+      <option value="">—</option>
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {o.replace(/_/g, " ")}
+        </option>
+      ))}
+    </select>
+  );
+  const area = (k: Key) => (
+    <textarea
+      rows={2}
+      value={f[k] as string}
+      onChange={(e) => set(k, e.target.value as never)}
+      className={`${editCls} h-auto py-2`}
+    />
+  );
+  const thanas = BD_THANAS_BY_DISTRICT[f.district] ?? [];
+
+  function save() {
+    const changed = (k: Key) => f[k] !== initial[k];
+    const orNull = (v: string) => v || null;
+    const patch: UpdateCustomerInput = {};
+    // Plain text: empty clears it.
+    for (const k of [
+      "firstName", "lastName", "recipientName", "alternativePhone", "addressLine", "area",
+      "district", "division", "landmark", "postCode", "customerFeedback", "amaderFeedback",
+      "familyDetails", "purchaseReason",
+    ] as const) {
+      if (changed(k)) patch[k] = f[k];
+    }
+    // Validated server-side (phone / email / URL) — an empty value would be
+    // rejected, so these can be changed but not blanked from here.
+    for (const k of ["phone", "email", "addressPhone", "facebookProfileUrl"] as const) {
+      if (changed(k) && f[k].trim()) patch[k] = f[k].trim();
+    }
+    if (changed("dob")) patch.dob = orNull(f.dob);
+    if (changed("nextCallTarget")) patch.nextCallTarget = orNull(f.nextCallTarget);
+    if (changed("newOrderAt")) patch.newOrderAt = orNull(f.newOrderAt);
+    if (changed("assignedAdminId")) patch.assignedAdminId = f.assignedAdminId ? Number(f.assignedAdminId) : null;
+    if (changed("followUpCadenceDays"))
+      patch.followUpCadenceDays = f.followUpCadenceDays ? Number(f.followUpCadenceDays) : null;
+    if (changed("priority")) patch.priority = (f.priority || null) as UpdateCustomerInput["priority"];
+    if (changed("crmStatus")) patch.crmStatus = (f.crmStatus || null) as UpdateCustomerInput["crmStatus"];
+    if (changed("behaviour")) patch.behaviour = (f.behaviour || null) as UpdateCustomerInput["behaviour"];
+    if (changed("isFavorite")) patch.isFavorite = f.isFavorite;
+    if (changed("hasNewOrder")) patch.hasNewOrder = f.hasNewOrder;
+
+    if (Object.keys(patch).length === 0) return onDone();
+    setError(null);
+    update.mutate(patch, {
+      onSuccess: onDone,
+      onError: (err) => setError(err instanceof Error ? err.message : "Save failed"),
+    });
+  }
+
+  const grid = "grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-3";
+  const box = (title: string, children: ReactNode) => (
+    <section className="rounded-xl border border-border bg-surface-2/40 p-4">
+      <h4 className="mb-3 text-[0.72rem] font-bold uppercase tracking-wide text-secondary">{title}</h4>
+      <div className={grid}>{children}</div>
+    </section>
+  );
+
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      {box(
+        "Personal",
+        <>
+          <EditField label="First name">{text("firstName")}</EditField>
+          <EditField label="Last name">{text("lastName")}</EditField>
+          <EditField label="Phone">{text("phone", "tel")}</EditField>
+          <EditField label="Email">{text("email", "email")}</EditField>
+          <EditField label="Birth date">{text("dob", "date")}</EditField>
+          <EditField label="Facebook profile">{text("facebookProfileUrl", "url")}</EditField>
+        </>,
+      )}
+      {box(
+        "Default address",
+        <>
+          <EditField label="Recipient">{text("recipientName")}</EditField>
+          <EditField label="Phone">{text("addressPhone", "tel")}</EditField>
+          <EditField label="Alt. phone">{text("alternativePhone", "tel")}</EditField>
+          <EditField label="Address">{text("addressLine")}</EditField>
+          <EditField label="District">
+            <select
+              value={f.district}
+              onChange={(e) => {
+                const d = e.target.value;
+                setF((prev) => ({ ...prev, district: d, division: divisionForDistrict(d) ?? prev.division }));
+              }}
+              className={editCls}
+            >
+              <option value="">—</option>
+              {/* Keep an old free-typed district selectable instead of silently dropping it. */}
+              {f.district && !BD_ALL_DISTRICTS.includes(f.district) && (
+                <option value={f.district}>{f.district}</option>
+              )}
+              {BD_ALL_DISTRICTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </EditField>
+          <EditField label="Area / thana">
+            <input
+              list={`thanas-${c.id}`}
+              value={f.area}
+              onChange={(e) => set("area", e.target.value)}
+              className={editCls}
+            />
+            <datalist id={`thanas-${c.id}`}>
+              {thanas.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </EditField>
+          <EditField label="Division">{select("division", BD_DIVISIONS)}</EditField>
+          <EditField label="Landmark">{text("landmark")}</EditField>
+          <EditField label="Post code">{text("postCode")}</EditField>
+        </>,
+      )}
+      {box(
+        "CRM",
+        <>
+          <EditField label="Assigned to">
+            <select
+              value={f.assignedAdminId}
+              onChange={(e) => set("assignedAdminId", e.target.value)}
+              className={editCls}
+            >
+              <option value="">Unassigned</option>
+              {(staff ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </EditField>
+          <EditField label="Priority">{select("priority", PRIORITIES)}</EditField>
+          <EditField label="Status">{select("crmStatus", CRM_STATUSES)}</EditField>
+          <EditField label="Behaviour">{select("behaviour", BEHAVIOURS)}</EditField>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={f.isFavorite}
+              onChange={(e) => set("isFavorite", e.target.checked)}
+            />
+            Favourite
+          </label>
+        </>,
+      )}
+      {box(
+        "Follow-up",
+        <>
+          <EditField label="Next call target">{text("nextCallTarget", "date")}</EditField>
+          <EditField label="Cadence">
+            <select
+              value={f.followUpCadenceDays}
+              onChange={(e) => set("followUpCadenceDays", e.target.value)}
+              className={editCls}
+            >
+              <option value="">—</option>
+              {/* An imported custom cadence stays selectable. */}
+              {f.followUpCadenceDays && !["7", "15", "30"].includes(f.followUpCadenceDays) && (
+                <option value={f.followUpCadenceDays}>Every {f.followUpCadenceDays} days</option>
+              )}
+              {["7", "15", "30"].map((d) => (
+                <option key={d} value={d}>
+                  Every {d} days
+                </option>
+              ))}
+            </select>
+          </EditField>
+          <EditField label="New order at">{text("newOrderAt", "date")}</EditField>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={f.hasNewOrder}
+              onChange={(e) => set("hasNewOrder", e.target.checked)}
+            />
+            New order flag
+          </label>
+        </>,
+      )}
+      {box(
+        "Notes on the person",
+        <>
+          <EditField label="Customer feedback">{area("customerFeedback")}</EditField>
+          <EditField label="Agent feedback">{area("amaderFeedback")}</EditField>
+          <EditField label="Family details">{area("familyDetails")}</EditField>
+          <EditField label="Reason for purchase">{area("purchaseReason")}</EditField>
+        </>,
+      )}
+      {error && (
+        <p className="rounded-lg bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400">
+          {error}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onDone} disabled={update.isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" variant="primary" disabled={update.isPending}>
+          {update.isPending ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function OrdersTab({ orders }: { orders: Customer["orders"] }) {
   if (orders.length === 0) return <Empty>No orders yet.</Empty>;
   return (
@@ -281,6 +586,7 @@ function OrdersTab({ orders }: { orders: Customer["orders"] }) {
         <thead className="bg-surface-2 text-xs text-secondary">
           <tr>
             <th className="px-4 py-2.5 text-left font-semibold">Order</th>
+            <th className="px-4 py-2.5 text-left font-semibold">Products</th>
             <th className="px-4 py-2.5 text-left font-semibold">Placed</th>
             <th className="px-4 py-2.5 text-left font-semibold">Status</th>
             <th className="px-4 py-2.5 text-right font-semibold">Total</th>
@@ -290,6 +596,13 @@ function OrdersTab({ orders }: { orders: Customer["orders"] }) {
           {orders.map((o) => (
             <tr key={o.id} className="border-t border-border">
               <td className="px-4 py-2.5 font-semibold text-text">{o.orderNumber}</td>
+              <td className="px-4 py-2.5 text-xs text-text">
+                {o.products.map((p, i) => (
+                  <span key={i} className="block">
+                    {p}
+                  </span>
+                ))}
+              </td>
               <td className="px-4 py-2.5 text-xs text-secondary">{day(o.createdAt)}</td>
               <td className="px-4 py-2.5">
                 <Pill>{o.status}</Pill>

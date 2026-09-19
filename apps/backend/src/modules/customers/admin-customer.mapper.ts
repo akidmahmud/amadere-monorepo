@@ -192,6 +192,8 @@ export class AdminCustomerOrderSummaryDto {
   status!: string;
   totalAmount!: string;
   createdAt!: Date;
+  /** "Name × qty" per line, for the customer modal's Orders tab. */
+  products!: string[];
 }
 
 // Internal-only shape used while building the timeline — NOT the DTO field
@@ -238,6 +240,9 @@ export class AdminCustomerPurchasedProductDto {
 export class AdminCustomerDto {
   id!: number;
   name!: string;
+  /** The two halves of `name`, so the detail modal can edit them separately. */
+  firstName!: string | null;
+  lastName!: string | null;
   phone!: string | null;
   email!: string | null;
   dob!: Date | null;
@@ -348,6 +353,8 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
   return {
     id: c.id,
     name: fullName(c),
+    firstName: c.firstName,
+    lastName: c.lastName,
     // Same deletedPhone/deletedEmail fallback as the list mapper above.
     phone: c.phone ?? c.deletedPhone,
     email: c.email ?? c.deletedEmail,
@@ -374,6 +381,7 @@ export function toAdminCustomerDto(c: CustomerWithDetail): AdminCustomerDto {
       status: o.status,
       totalAmount: o.totalAmount.toString(),
       createdAt: o.createdAt,
+      products: o.items.map((i) => `${i.productNameSnapshot} × ${i.quantity}`),
     })),
     purchasedProducts: toPurchasedProducts(c),
     notes: c.notes.map((n) => ({

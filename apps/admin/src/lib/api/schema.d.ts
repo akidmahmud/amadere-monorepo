@@ -7428,6 +7428,54 @@ export interface paths {
         patch: operations["AdminWholesaleController_updateCustomer"];
         trace?: never;
     };
+    "/api/v1/admin/wholesale/customers/{id}/crm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminWholesaleController_customerCrm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_addCustomerNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/wholesale/customers/{id}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminWholesaleController_logCustomerCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/wholesale/customers/bulk-assign": {
         parameters: {
             query?: never;
@@ -9655,6 +9703,11 @@ export interface components {
             orderNumber: string;
             customerId: number | null;
             customerOrderCount?: number;
+            customer?: {
+                name: string;
+                phone: string | null;
+                email: string | null;
+            };
             status: Record<string, never>;
             channel: Record<string, never>;
             assignedAdminId: number | null;
@@ -10041,6 +10094,7 @@ export interface components {
             totalAmount: string;
             /** Format: date-time */
             createdAt: string;
+            products: string[];
         };
         AdminCustomerPurchasedProductDto: {
             productId: number | null;
@@ -10075,6 +10129,8 @@ export interface components {
             }[];
             id: number;
             name: string;
+            firstName: string | null;
+            lastName: string | null;
             phone: string | null;
             email: string | null;
             /** Format: date-time */
@@ -10188,6 +10244,12 @@ export interface components {
             district?: string;
             /** @description Thana / upazila, e.g. "Adabor" */
             area?: string;
+            recipientName?: string;
+            /** @description Delivery phone on the default address */
+            addressPhone?: string;
+            alternativePhone?: string;
+            landmark?: string;
+            postCode?: string;
             /** @description Birthday, ISO date, or null to clear */
             dob?: string | null;
             isFavorite?: boolean;
@@ -19402,9 +19464,9 @@ export interface operations {
                 assignedAdminId?: number;
                 /** @description Only customers whose birthday (month+day, any year) is today */
                 birthdayToday?: boolean;
-                /** @description Only customers created on or after this date (YYYY-MM-DD) */
+                /** @description Only customers created on or after this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time */
                 createdFrom?: string;
-                /** @description Only customers created on or before this date (YYYY-MM-DD) */
+                /** @description Only customers created on or before this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time */
                 createdTo?: string;
                 /** @description Export only these customer ids. When present every other filter is ignored — the admin has already picked the rows, and re-applying the filter bar on top of an explicit selection could only ever remove rows they asked for. */
                 ids?: number[];
@@ -19494,9 +19556,9 @@ export interface operations {
                 assignedAdminId?: number;
                 /** @description Only customers whose birthday (month+day, any year) is today */
                 birthdayToday?: boolean;
-                /** @description Only customers created on or after this date (YYYY-MM-DD) */
+                /** @description Only customers created on or after this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time */
                 createdFrom?: string;
-                /** @description Only customers created on or before this date (YYYY-MM-DD) */
+                /** @description Only customers created on or before this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time */
                 createdTo?: string;
                 /** @description Export only these customer ids. When present every other filter is ignored — the admin has already picked the rows, and re-applying the filter bar on top of an explicit selection could only ever remove rows they asked for. */
                 ids?: number[];
@@ -19548,9 +19610,9 @@ export interface operations {
                 assignedAdminId?: number;
                 /** @description Only customers whose birthday (month+day, any year) is today */
                 birthdayToday?: boolean;
-                /** @description Only customers created on or after this date (YYYY-MM-DD) */
+                /** @description Only customers created on or after this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time */
                 createdFrom?: string;
-                /** @description Only customers created on or before this date (YYYY-MM-DD) */
+                /** @description Only customers created on or before this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time */
                 createdTo?: string;
                 /** @description Export only these customer ids. When present every other filter is ignored — the admin has already picked the rows, and re-applying the filter bar on top of an explicit selection could only ever remove rows they asked for. */
                 ids?: number[];
@@ -26874,6 +26936,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WholesaleCustomerDto"];
                 };
+            };
+        };
+    };
+    AdminWholesaleController_customerCrm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdminWholesaleController_addCustomerNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerNoteDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminWholesaleController_logCustomerCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerCallLogDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

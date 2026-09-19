@@ -448,9 +448,14 @@ function CustomerRow({
             style={{ color: INK }}
           />
         ) : (
-          <span className="block w-[170px] truncate px-1.5 font-bold" style={{ color: INK }}>
+          <button
+            type="button"
+            onClick={() => onView(c.id)}
+            className="block w-[170px] truncate px-1.5 text-left font-bold hover:underline"
+            style={{ color: INK }}
+          >
             {name || "—"}
-          </span>
+          </button>
         )}
         <button
           type="button"

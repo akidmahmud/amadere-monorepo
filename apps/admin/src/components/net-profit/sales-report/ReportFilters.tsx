@@ -123,12 +123,16 @@ export function ReportFilters({
         />
         <div className="flex flex-wrap gap-1.5">
           {quickRanges().map((r) => {
-            const on = f.from === r.from && f.to === r.to;
+            const on =
+              f.from === r.from && f.to === r.to && !f.fromTime && !f.toTime;
             return (
               <button
                 key={r.key}
                 type="button"
-                onClick={() => set({ from: r.from, to: r.to })}
+                // A preset means whole days, so it drops any time window.
+                onClick={() =>
+                  set({ from: r.from, to: r.to, fromTime: "", toTime: "" })
+                }
                 className="rounded-full border px-3 py-0.5 text-[13.5px]"
                 style={
                   on
@@ -161,6 +165,14 @@ export function ReportFilters({
             value={f.from}
             onChange={(e) => set({ from: e.target.value })}
           />
+          <input
+            type="time"
+            aria-label="From time"
+            className={ctl}
+            style={{ borderColor: COLORS.line }}
+            value={f.fromTime}
+            onChange={(e) => set({ fromTime: e.target.value })}
+          />
           <label
             className="text-[13px]"
             style={{ color: COLORS.muted }}
@@ -176,8 +188,16 @@ export function ReportFilters({
             value={f.to}
             onChange={(e) => set({ to: e.target.value })}
           />
+          <input
+            type="time"
+            aria-label="To time"
+            className={ctl}
+            style={{ borderColor: COLORS.line }}
+            value={f.toTime}
+            onChange={(e) => set({ toTime: e.target.value })}
+          />
           <span className="text-[13px]" style={{ color: COLORS.muted }}>
-            {dmy(f.from)} to {dmy(f.to)}
+            {dmy(f.from)} {f.fromTime} to {dmy(f.to)} {f.toTime}
           </span>
         </div>
       </div>

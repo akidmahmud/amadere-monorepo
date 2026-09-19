@@ -173,6 +173,12 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const [refundReason, setRefundReason] = useState("");
 
   const shippingAddress = order?.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
+  // Customer card = the account, not this order's shipping address, so
+  // editing where this one parcel goes never looks like it renamed the
+  // customer. A guest checkout has no account, so it falls back.
+  const cardName = order?.customer?.name ?? shippingAddress?.recipientName;
+  const cardPhone = order?.customer ? order.customer.phone : shippingAddress?.phone;
+  const cardEmail = order?.customer ? order.customer.email : shippingAddress?.email;
   const billingAddress = order?.addresses.find((a) => (a.type as unknown as string) === "BILLING");
   const latestPayment = order?.payments[order.payments.length - 1];
   const itemsEditable = order ? ["PENDING", "CONFIRMED", "PROCESSING", "HOLD"].includes(order.status) : false;
@@ -761,7 +767,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
               </div>
               <div className="mb-4 flex flex-col gap-1 text-sm">
                 <div className="mb-1 grid h-10 w-10 place-items-center rounded-full text-base font-bold text-white" style={{ backgroundColor: GREEN }}>
-                  {(shippingAddress?.recipientName ?? "?").trim().charAt(0).toUpperCase()}
+                  {(cardName ?? "?").trim().charAt(0).toUpperCase()}
                 </div>
                 {/* Was the literal string "0 order(s)" — it had never been
                     wired to anything, so every order claimed the shopper was
@@ -772,17 +778,17 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     ? "…"
                     : `${order.customerOrderCount} order${order.customerOrderCount === 1 ? "" : "s"}`}
                 </p>
-                <p className="font-semibold text-text">{shippingAddress?.recipientName}</p>
-                {shippingAddress?.email && (
-                  <a href={`mailto:${shippingAddress.email}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
+                <p className="font-semibold text-text">{cardName}</p>
+                {cardEmail && (
+                  <a href={`mailto:${cardEmail}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
                     <Icon name="mail" size={14} />
-                    {shippingAddress.email}
+                    {cardEmail}
                   </a>
                 )}
-                {shippingAddress?.phone && (
-                  <a href={`tel:${shippingAddress.phone}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
+                {cardPhone && (
+                  <a href={`tel:${cardPhone}`} className="inline-flex items-center gap-1" style={{ color: BLUE }}>
                     <Icon name="call" size={14} />
-                    {shippingAddress.phone}
+                    {cardPhone}
                   </a>
                 )}
                 <p className="text-muted">{order.customerId ? "Have an account already" : "Guest checkout"}</p>

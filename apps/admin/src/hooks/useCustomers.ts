@@ -42,6 +42,11 @@ export interface UpdateCustomerInput {
   division?: string;
   district?: string;
   area?: string;
+  recipientName?: string;
+  addressPhone?: string;
+  alternativePhone?: string;
+  landmark?: string;
+  postCode?: string;
   dob?: string | null;
   isFavorite?: boolean;
   assignedAdminId?: number | null;

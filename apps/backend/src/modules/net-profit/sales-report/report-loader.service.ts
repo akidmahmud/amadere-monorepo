@@ -14,6 +14,9 @@ import type { ReportOrder } from './engine/types';
 export interface LoadOptions {
   from?: string;
   to?: string;
+  /** HH:mm, Dhaka. Narrows the first / last day; absent = whole day. */
+  fromTime?: string;
+  toTime?: string;
   basis: Basis;
   /** Exceptions: every order ever, date range ignored (spec §8). */
   ignoreDate?: boolean;
@@ -34,8 +37,13 @@ export class ReportLoaderService {
     if (opts.agentId !== undefined) where.assignedAdminId = opts.agentId;
     if (!opts.ignoreDate && opts.from && opts.to) {
       const range = {
-        gte: dhakaDayStart(opts.from),
-        lte: dhakaDayEnd(opts.to),
+        gte: opts.fromTime
+          ? new Date(`${opts.from}T${opts.fromTime}:00+06:00`)
+          : dhakaDayStart(opts.from),
+        // Inclusive of the whole chosen end minute.
+        lte: opts.toTime
+          ? new Date(`${opts.to}T${opts.toTime}:59.999+06:00`)
+          : dhakaDayEnd(opts.to),
       };
       if (opts.basis === 'order') where.createdAt = range;
       else

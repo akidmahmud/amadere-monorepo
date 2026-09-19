@@ -49,6 +49,10 @@ export class SalesReportV2Service {
       this.loader.load({
         from,
         to,
+        // The in-memory day check below stays day-granular; the time window
+        // is enforced by this query alone.
+        fromTime: q.fromTime,
+        toTime: q.toTime,
         basis: q.basis,
         ignoreDate,
         agentId: scope.agentId,

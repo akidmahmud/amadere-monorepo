@@ -22,6 +22,9 @@ export interface ReportFilters {
   basis: "order" | "delivered";
   from: string;
   to: string;
+  /** HH:mm (Dhaka) narrowing the first / last day; "" = whole day. */
+  fromTime: string;
+  toTime: string;
   channel: string;
   agent: string;
   courier: string;

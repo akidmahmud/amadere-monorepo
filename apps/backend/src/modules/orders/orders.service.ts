@@ -105,14 +105,25 @@ export class OrdersService {
   async adminGet(id: number): Promise<OrderDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { id },
-      include: ORDER_INCLUDE,
+      include: {
+        ...ORDER_INCLUDE,
+        customer: { select: { firstName: true, lastName: true, phone: true, email: true } },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
+    const cu = order.customer;
     return {
       ...toOrderDto(order),
       customerOrderCount: await this.countOrdersForPhone(
         order.addresses.find((a) => a.type === 'SHIPPING')?.phone,
       ),
+      customer: cu
+        ? {
+            name: [cu.firstName, cu.lastName].filter(Boolean).join(' ') || '(no name)',
+            phone: cu.phone,
+            email: cu.email,
+          }
+        : null,
     };
   }
 

@@ -218,7 +218,14 @@ export type WholesaleCustomerPatch = Partial<
     | "familyDetails"
     | "purchaseReason"
     | "facebookProfileUrl"
+    | "alternativePhone"
+    | "landmark"
+    | "postCode"
+    | "note"
+    | "isActive"
   > & {
+    creditLimit: string;
+    creditDays: number;
     dob: string | null;
     nextCallTarget: string | null;
     newOrderAt: string | null;

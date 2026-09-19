@@ -27,6 +27,17 @@ export class ReportV2QueryDto {
   @Matches(DAY)
   to?: string;
 
+  /** Optional clock times that narrow the first/last day of the range. */
+  @ApiPropertyOptional({ description: 'HH:mm, Asia/Dhaka — start time on `from`' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  fromTime?: string;
+
+  @ApiPropertyOptional({ description: 'HH:mm, Asia/Dhaka — end time on `to` (inclusive minute)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  toTime?: string;
+
   @ApiPropertyOptional() @IsOptional() @IsString() channel?: string;
   @ApiPropertyOptional({ description: 'Admin id, or "none" for no agent' })
   @IsOptional()

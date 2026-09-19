@@ -789,7 +789,12 @@ export class CustomersService {
       dto.addressLine !== undefined ||
       dto.division !== undefined ||
       dto.district !== undefined ||
-      dto.area !== undefined
+      dto.area !== undefined ||
+      dto.recipientName !== undefined ||
+      dto.addressPhone !== undefined ||
+      dto.alternativePhone !== undefined ||
+      dto.landmark !== undefined ||
+      dto.postCode !== undefined
     ) {
       const address = await this.prisma.client.customerAddress.findFirst({
         where: { customerId: id },
@@ -806,11 +811,19 @@ export class CustomersService {
             ...(dto.division !== undefined ? { division: dto.division } : {}),
             ...(dto.district !== undefined ? { district: dto.district } : {}),
             ...(dto.area !== undefined ? { area: dto.area || null } : {}),
+            ...(dto.recipientName ? { recipientName: dto.recipientName } : {}),
+            ...(dto.addressPhone ? { phone: dto.addressPhone } : {}),
+            ...(dto.alternativePhone !== undefined ? { alternativePhone: dto.alternativePhone || null } : {}),
+            ...(dto.landmark !== undefined ? { landmark: dto.landmark || null } : {}),
+            ...(dto.postCode !== undefined ? { postCode: dto.postCode || null } : {}),
           },
         });
       } else {
-        const recipientName = `${dto.firstName ?? existing.firstName ?? ''} ${dto.lastName ?? existing.lastName ?? ''}`.trim() || 'Customer';
-        const phone = dto.phone ?? existing.phone ?? '';
+        const recipientName =
+          dto.recipientName ||
+          `${dto.firstName ?? existing.firstName ?? ''} ${dto.lastName ?? existing.lastName ?? ''}`.trim() ||
+          'Customer';
+        const phone = dto.addressPhone || dto.phone || existing.phone || '';
         await this.prisma.client.customerAddress.create({
           data: {
             customerId: id,
@@ -823,6 +836,9 @@ export class CustomersService {
             district: dto.district ?? '',
             area: dto.area || null,
             addressLine: dto.addressLine ?? '',
+            alternativePhone: dto.alternativePhone || null,
+            landmark: dto.landmark || null,
+            postCode: dto.postCode || null,
             isDefault: true,
           },
         });

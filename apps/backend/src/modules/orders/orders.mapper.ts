@@ -151,6 +151,13 @@ export class OrderDto {
    * for exactly the shoppers staff most want to recognise.
    */
   customerOrderCount?: number;
+  /**
+   * The customer ACCOUNT's own name/phone/email, for the order modal's
+   * Customer card — never the shipping address, so editing where one parcel
+   * goes does not look like it renamed the customer. adminGet only: the
+   * public phone-matched order lookup must not hand out account details.
+   */
+  customer?: { name: string; phone: string | null; email: string | null } | null;
   status!: OrderStatus;
   channel!: OrderChannel;
   assignedAdminId!: number | null;

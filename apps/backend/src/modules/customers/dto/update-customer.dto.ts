@@ -58,6 +58,34 @@ export class UpdateCustomerDto {
   @IsString()
   area?: string;
 
+  // The remaining default-address fields, so the detail modal can edit the
+  // whole address card rather than just its location.
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  recipientName?: string;
+
+  @ApiPropertyOptional({ description: 'Delivery phone on the default address' })
+  @IsOptional()
+  @NormalizeBdPhone()
+  @IsBdPhone()
+  addressPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  alternativePhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  landmark?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  postCode?: string;
+
   @ApiPropertyOptional({ description: 'Birthday, ISO date, or null to clear' })
   @IsOptional()
   @IsDateString()
