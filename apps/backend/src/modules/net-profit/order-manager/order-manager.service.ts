@@ -28,6 +28,7 @@ import {
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
 import { OrderManagerLineDto, OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
+import { reclaimOrderCoupons, releaseOrderCoupons } from '../../discounts/coupon-redemption';
 
 /**
  * Filter on utm_source the way the Source COLUMN reads it, not the raw string.
@@ -415,9 +416,13 @@ export class OrderManagerService {
   }
 
   async restore(orderId: number): Promise<void> {
-    const order = await this.prisma.client.order.findUnique({ where: { id: orderId }, select: { deletedAt: true } });
+    const order = await this.prisma.client.order.findUnique({ where: { id: orderId }, select: { deletedAt: true, status: true } });
     if (!order || order.deletedAt === null) throw new NotFoundException('Order not found in Deleted Orders');
-    await this.prisma.client.order.update({ where: { id: orderId }, data: { deletedAt: null } });
+    await this.prisma.client.$transaction(async (tx) => {
+      await tx.order.update({ where: { id: orderId }, data: { deletedAt: null } });
+      // Back in the books, so its coupon use counts again (unless it is also cancelled).
+      if (order.status !== 'CANCELED') await reclaimOrderCoupons(tx, orderId);
+    });
   }
 
   async updateNote(orderId: number, note: string): Promise<void> {
@@ -462,7 +467,11 @@ export class OrderManagerService {
           if (!phone) throw new NotFoundException('Order has no shipping phone to block');
           await this.blocker.create({ type: 'PHONE', value: phone, reason: `Blocked from order #${orderId}` }, adminUserId);
         } else if (dto.action === 'delete') {
-          await this.prisma.client.order.update({ where: { id: orderId }, data: { deletedAt: new Date() } });
+          await this.prisma.client.$transaction(async (tx) => {
+            await tx.order.update({ where: { id: orderId }, data: { deletedAt: new Date() } });
+            // A deleted order's coupon use is given back, like a cancelled one's.
+            await releaseOrderCoupons(tx, orderId);
+          });
         } else if (dto.action === 'restore') {
           await this.restore(orderId);
         } else if (dto.action === 'assign') {

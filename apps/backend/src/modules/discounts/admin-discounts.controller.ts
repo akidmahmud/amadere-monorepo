@@ -48,6 +48,13 @@ export class AdminDiscountsController {
     return this.discounts.bulkDelete(dto.ids);
   }
 
+  // "Used by": every order that spent this discount, newest first.
+  @Get(':id/redemptions')
+  @RequirePermission('discount.view')
+  redemptions(@Param('id', ParseIntPipe) id: number) {
+    return this.discounts.redemptions(id);
+  }
+
   @Get(':id')
   @RequirePermission('discount.view')
   @ApiOkResponse({ type: DiscountDto })

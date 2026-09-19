@@ -52,6 +52,7 @@ import {
   cleanAddress,
   cn,
 } from "./shared";
+import { isCouponUnavailable } from "@/components/CouponPopup";
 
 /**
  * The checkout brain: form state, cart, payment, analytics, submission.
@@ -71,6 +72,7 @@ export function useCheckoutState() {
   const [voucherInput, setVoucherInput] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [blockPopupDismissed, setBlockPopupDismissed] = useState(false);
+  const [couponPopupDismissed, setCouponPopupDismissed] = useState(false);
   const [fraudResult, setFraudResult] = useState<FraudPreflightResult | null>(null);
   const [preflightBlock, setPreflightBlock] = useState<BlockPopupDetails | null>(null);
   const [showOtpPopup, setShowOtpPopup] = useState(false);
@@ -579,6 +581,7 @@ export function useCheckoutState() {
     }
 
     setBlockPopupDismissed(false);
+    setCouponPopupDismissed(false);
     // Captured here, before the order is placed: `digitalOnly` is derived
     // from the cart, and the cart is empty by the time onSuccess runs.
     const wasDigitalOnly = digitalOnly;
@@ -709,10 +712,19 @@ export function useCheckoutState() {
       ? placeOrder.error.details
       : null;
 
+  // The order was refused because its coupon is already redeemed (by this
+  // mobile number) or used up — shown as CouponPopup, which offers to remove it.
+  const couponUnavailable =
+    placeOrder.error instanceof ProxyApiError &&
+    !couponPopupDismissed &&
+    isCouponUnavailable(placeOrder.error.details)
+      ? placeOrder.error.details
+      : null;
+
   // Same condition as the bottom-of-form error paragraph below — a block
   // is shown via BlockPopup instead, not as a plain error string.
   const placeOrderErrorMessage =
-    placeOrder.isError && !blockDetails
+    placeOrder.isError && !blockDetails && !couponUnavailable
       ? placeOrder.error instanceof Error
         ? placeOrder.error.message
         : "Couldn't place your order"
@@ -757,6 +769,8 @@ export function useCheckoutState() {
     savedAddresses,
     selectedMethodConfig,
     setBlockPopupDismissed,
+    couponUnavailable,
+    setCouponPopupDismissed,
     setCopied,
     setCouponInput,
     setFraudResult,

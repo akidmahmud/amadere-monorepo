@@ -1875,11 +1875,20 @@ model DiscountRedemption {
   customerId Int?     @map("customer_id")
   orderId    Int      @map("order_id")
   redeemedAt DateTime @default(now()) @map("redeemed_at")
+  /// Last 10 digits of the order's phone ("01712345678" and "8801712345678"
+  /// alike -> "1712345678"). The per-customer limit counts by this as well as
+  /// by customerId, so a guest checkout can't reuse a code under a new cart.
+  phone      String?
+  /// Set when the order is cancelled or deleted: the use no longer counts and
+  /// usedCount was given back. Cleared again if the order is restored.
+  releasedAt DateTime? @map("released_at")
 
   discount Discount  @relation(fields: [discountId], references: [id], onDelete: Cascade)
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  @@index([discountId, phone])
+  @@index([orderId])
   @@map("discount_redemptions")
 }
 

@@ -13,6 +13,7 @@ import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
 import { ORDER_CREATED_EVENT, OrderCreatedEvent } from './orders.events';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { DownloadsService } from '../digital-products/downloads.service';
+import { redeemCoupon } from '../discounts/coupon-redemption';
 
 const Decimal = Prisma.Decimal;
 
@@ -271,13 +272,14 @@ export class AdminOrderCreationService {
       });
 
       if (couponAmount.greaterThan(0) && dto.couponCode) {
-        const discount = await tx.discount.findUnique({ where: { code: dto.couponCode } });
-        if (discount) {
-          await tx.discountRedemption.create({
-            data: { discountId: discount.id, customerId: dto.customerId ?? null, orderId: created.id },
-          });
-          await tx.discount.update({ where: { id: discount.id }, data: { usedCount: { increment: 1 } } });
-        }
+        // Same limits as storefront checkout, phone included — staff entering
+        // an order by phone must not hand out a use the customer already spent.
+        await redeemCoupon(tx, {
+          code: dto.couponCode,
+          orderId: created.id,
+          customerId: dto.customerId ?? null,
+          phone: dto.shippingAddress.phone,
+        });
       }
 
       return created;

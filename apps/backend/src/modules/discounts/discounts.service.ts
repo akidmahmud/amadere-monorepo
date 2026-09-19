@@ -62,6 +62,39 @@ export class DiscountsService {
     return { deleted: result.count };
   }
 
+  async redemptions(id: number) {
+    const rows = await this.prisma.client.discountRedemption.findMany({
+      where: { discountId: id },
+      orderBy: { redeemedAt: 'desc' },
+      take: 500,
+      include: {
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            totalAmount: true,
+            deletedAt: true,
+            addresses: { where: { type: 'SHIPPING' }, select: { recipientName: true, phone: true }, take: 1 },
+          },
+        },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      redeemedAt: r.redeemedAt,
+      orderId: r.order.id,
+      orderNumber: r.order.orderNumber,
+      orderStatus: r.order.deletedAt ? 'DELETED' : r.order.status,
+      orderTotal: r.order.totalAmount.toString(),
+      name: r.order.addresses[0]?.recipientName ?? null,
+      phone: r.order.addresses[0]?.phone ?? null,
+      customerId: r.customerId,
+      /** Given back because the order was cancelled/deleted — not counted. */
+      released: r.releasedAt !== null,
+    }));
+  }
+
   async get(id: number): Promise<DiscountDto> {
     const discount = await this.prisma.client.discount.findUnique({
       where: { id },

@@ -33,6 +33,7 @@ import {
   ORDER_STATUS_CHANGED_EVENT,
   OrderStatusChangedEvent,
 } from './orders.events';
+import { reclaimOrderCoupons, releaseOrderCoupons } from '../discounts/coupon-redemption';
 
 const Decimal = Prisma.Decimal;
 
@@ -230,6 +231,14 @@ export class OrdersService {
       await tx.orderStatusHistory.create({
         data: { orderId: id, status: dto.status, note: dto.note, adminUserId },
       });
+
+      // A cancelled order never happened as far as the coupon is concerned:
+      // its use is given back, and taken again if the order is revived.
+      if (dto.status === 'CANCELED' && order.status !== 'CANCELED') {
+        await releaseOrderCoupons(tx, id);
+      } else if (order.status === 'CANCELED' && dto.status !== 'CANCELED' && !order.deletedAt) {
+        await reclaimOrderCoupons(tx, id);
+      }
 
       // Canceling an order that's still awaiting payment means that payment
       // is never coming — leaving it at PENDING forever reads as "still

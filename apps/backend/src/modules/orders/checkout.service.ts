@@ -36,6 +36,7 @@ import { CheckoutAccountService } from './checkout-account.service';
 import type { EnsureAccountResult } from './checkout-account.service';
 import type { TokenPair } from '../../common/auth/token.types';
 import { deriveAttribution } from './attribution.util';
+import { redeemCoupon } from '../discounts/coupon-redemption';
 
 const Decimal = Prisma.Decimal;
 
@@ -529,22 +530,14 @@ export class CheckoutService {
           (d.amount.greaterThan(0) || d.freeShipping === true),
       );
       if (couponApplied && cart.couponCode) {
-        const discount = await tx.discount.findUnique({
-          where: { code: cart.couponCode },
+        // Re-checks the limits under a lock and throws (rolling the whole
+        // order back) if this phone/account already used it up.
+        await redeemCoupon(tx, {
+          code: cart.couponCode,
+          orderId: created.id,
+          customerId: resolvedCustomerId ?? null,
+          phone: contactPhone,
         });
-        if (discount) {
-          await tx.discountRedemption.create({
-            data: {
-              discountId: discount.id,
-              customerId: resolvedCustomerId,
-              orderId: created.id,
-            },
-          });
-          await tx.discount.update({
-            where: { id: discount.id },
-            data: { usedCount: { increment: 1 } },
-          });
-        }
       }
 
       if (voucher && voucherAmount.greaterThan(0)) {

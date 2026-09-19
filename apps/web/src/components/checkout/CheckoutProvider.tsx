@@ -8,6 +8,7 @@ import { CheckoutContextProvider } from "./CheckoutContext";
 import { DefaultCheckoutLayout } from "./DefaultCheckoutLayout";
 import { OrderPlacedPanel } from "./OrderPlacedPanel";
 import { useCheckoutState } from "./useCheckoutState";
+import { CouponPopup } from "@/components/CouponPopup";
 
 /**
  * Owns the form element and the popups; the visual arrangement is `children`.
@@ -31,6 +32,9 @@ export function CheckoutProvider({ children }: { children?: ReactNode }) {
     setBlockPopupDismissed,
     preflightBlock,
     setPreflightBlock,
+    couponUnavailable,
+    setCouponPopupDismissed,
+    removeCoupon,
   } = ctx;
 
   // Short-circuits exactly as the original did: once an order exists there
@@ -58,6 +62,14 @@ export function CheckoutProvider({ children }: { children?: ReactNode }) {
       )}
       {blockDetails && <BlockPopup details={blockDetails} onClose={() => setBlockPopupDismissed(true)} />}
       {!blockDetails && preflightBlock && <BlockPopup details={preflightBlock} onClose={() => setPreflightBlock(null)} />}
+      {couponUnavailable && (
+        <CouponPopup
+          details={couponUnavailable}
+          removing={removeCoupon.isPending}
+          onRemove={() => removeCoupon.mutate(undefined, { onSettled: () => setCouponPopupDismissed(true) })}
+          onClose={() => setCouponPopupDismissed(true)}
+        />
+      )}
       </FormProvider>
     </CheckoutContextProvider>
   );

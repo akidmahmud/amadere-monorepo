@@ -24,6 +24,9 @@ function createMockPrismaService() {
     productVariant: { update: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
     payment: { findFirst: jest.fn(), update: jest.fn() },
+    // A cancel gives back any coupon use; these orders have none.
+    discountRedemption: { findMany: jest.fn().mockResolvedValue([]), update: jest.fn() },
+    discount: { update: jest.fn(), updateMany: jest.fn() },
     // Same pattern as admin-order-creation.service.spec.ts — $transaction
     // just runs the callback against these mocks (tx === client).
     $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(client)),

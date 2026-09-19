@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Discount, Prisma, UpsellStage } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { UpsellBarSettingsService } from '../upsell-bar/upsell-bar-settings.service';
+import { phoneKey } from '../discounts/coupon-redemption';
 
 const Decimal = Prisma.Decimal;
 type DecimalValue = Prisma.Decimal;
@@ -234,8 +235,19 @@ export class PricingService {
       }
     }
     if (coupon.maxUsesPerCustomer && customerId) {
+      // Early warning only; the binding check is redeemCoupon() at order
+      // time, which also catches guests by the phone they check out with.
+      const account = await this.prisma.client.customer.findUnique({
+        where: { id: customerId },
+        select: { phone: true },
+      });
+      const phone = phoneKey(account?.phone);
       const used = await this.prisma.client.discountRedemption.count({
-        where: { discountId: coupon.id, customerId },
+        where: {
+          discountId: coupon.id,
+          releasedAt: null,
+          OR: [{ customerId }, ...(phone ? [{ phone }] : [])],
+        },
       });
       if (used >= coupon.maxUsesPerCustomer) {
         return 'You have already used this coupon the maximum number of times';

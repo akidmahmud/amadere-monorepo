@@ -7,7 +7,7 @@ import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
 import { StatusSelect } from "@/components/StatusSelect";
 import { SearchPickerField } from "@/components/SearchPickerField";
 import { usePickerCategories, usePickerProducts } from "@/hooks/usePickers";
-import { useDiscount, useUpdateDiscount, type DiscountType, type DiscountValueType } from "@/hooks/useDiscounts";
+import { useDiscount, useDiscountRedemptions, useUpdateDiscount, type DiscountType, type DiscountValueType } from "@/hooks/useDiscounts";
 import type { PublishStatus } from "@/hooks/useBrands";
 import { DiscountLinkField } from "@/components/DiscountLink";
 
@@ -207,6 +207,54 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
           </Button>
         </Card>
       </form>
+      <UsedBy discountId={discountId} />
     </div>
+  );
+}
+
+/** Every order that used this discount. Cancelled/deleted ones are shown struck through: their use was given back. */
+function UsedBy({ discountId }: { discountId: number }) {
+  const { data, isLoading } = useDiscountRedemptions(discountId);
+  const rows = data ?? [];
+  return (
+    <Card className="flex flex-col gap-3">
+      <h3 className="font-ui text-sm font-bold text-text">
+        Used by {rows.length > 0 && <span className="text-muted">({rows.filter((r) => !r.released).length})</span>}
+      </h3>
+      {isLoading ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted">Nobody has used this discount yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead className="bg-surface-2 text-xs text-secondary">
+              <tr>
+                {["Date", "Order", "Customer", "Mobile", "Order total", "Status"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left font-semibold">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className={`border-t border-border ${r.released ? "text-muted line-through" : "text-text"}`}>
+                  <td className="px-3 py-2">{new Date(r.redeemedAt).toLocaleString("en-GB")}</td>
+                  <td className="px-3 py-2 font-semibold">{r.orderNumber}</td>
+                  <td className="px-3 py-2">{r.name ?? "—"}</td>
+                  <td className="px-3 py-2">{r.phone ?? "—"}</td>
+                  <td className="num px-3 py-2">৳{Number(r.orderTotal).toLocaleString("en-BD")}</td>
+                  <td className="px-3 py-2">
+                    {r.orderStatus}
+                    {r.released && <span className="ml-1 no-underline">(use given back)</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }

@@ -50,6 +50,29 @@ export function useDiscount(id: number) {
   });
 }
 
+/** One use of a discount — mirrors DiscountsService.redemptions(). */
+export interface DiscountRedemption {
+  id: number;
+  redeemedAt: string;
+  orderId: number;
+  orderNumber: string;
+  orderStatus: string;
+  orderTotal: string;
+  name: string | null;
+  phone: string | null;
+  customerId: number | null;
+  /** The order was cancelled/deleted, so this use was given back. */
+  released: boolean;
+}
+
+export function useDiscountRedemptions(id: number) {
+  return useQuery({
+    queryKey: [...KEY, "redemptions", id],
+    queryFn: () => proxyFetch<DiscountRedemption[]>(`/admin/discounts/${id}/redemptions`),
+    enabled: Number.isFinite(id),
+  });
+}
+
 export function useCreateDiscount() {
   const qc = useQueryClient();
   return useMutation({
