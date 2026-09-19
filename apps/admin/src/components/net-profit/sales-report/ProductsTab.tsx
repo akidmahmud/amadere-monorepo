@@ -27,7 +27,7 @@ export function ProductsTab({ f, onExport }: TabProps) {
       data
         ? [
             [
-              "Product",
+              "Product SKU",
               "Units",
               "Net sales",
               "Product cost",
@@ -39,7 +39,7 @@ export function ProductsTab({ f, onExport }: TabProps) {
               "Cost status",
             ],
             ...rows.map((r) => [
-              r.name,
+              r.sku || r.name,
               r.units,
               Math.round(r.net),
               Math.round(r.cogs),

@@ -120,7 +120,7 @@ export function csvLineCells(item: CsvLineInput | null): string[] {
       : String(item.quantity);
   // SKU only, not the product name. The snapshot is empty on lines recorded
   // before it was captured, so fall back to the variant's then the product's.
-  const sku = item.skuSnapshot ?? item.variant?.sku ?? item.product?.sku ?? '';
+  const sku = item.skuSnapshot || item.variant?.sku || item.product?.sku || '';
   return [
     sku,
     qty,

@@ -307,6 +307,13 @@ export class WholesaleService {
       take: 10_000,
     });
     const customers = await this.decorateCustomers(rows);
+    // Most recent logged call per buyer — the export's "Call Date".
+    const lastCalls = await this.prisma.client.partyCallLog.groupBy({
+      by: ['partyId'],
+      where: { partyId: { in: customers.map((c) => c.id) } },
+      _max: { createdAt: true },
+    });
+    const lastCallAt = new Map(lastCalls.map((r) => [r.partyId, r._max.createdAt]));
     const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
     const label = (v: string | null) =>
@@ -331,17 +338,18 @@ export class WholesaleService {
       ['Order Count', (c) => c.orderCount],
       ['Total Purchase', (c) => c.purchaseTotal],
       ['Due', (c) => c.due],
-      ['Product', (c) => c.topProduct],
+      ['Product SKU', (c) => c.topProductSku],
       ['Assign to', (c) => c.assignedAdminName],
       ['Start Date', (c) => day(c.createdAt)],
       ['Last Order Date', (c) => day(c.lastOrderAt)],
-      ['Next Call Target Date', (c) => day(c.nextCallTarget)],
+      ['New Order', (c) => (c.hasNewOrder ? 'Yes' : '')],
+      ['New order Date', (c) => day(c.newOrderAt)],
+      ['Call Date', (c) => day(lastCallAt.get(c.id) ?? null)],
+      ['Next Call Date', (c) => day(c.nextCallTarget)],
       [
         'Expire Time',
         (c) => (c.followUpCadenceDays ? `${c.followUpCadenceDays} days` : ''),
       ],
-      ['New Order', (c) => (c.hasNewOrder ? 'Yes' : '')],
-      ['New order Date', (c) => day(c.newOrderAt)],
       ['Priority', (c) => label(c.priority)],
       ['Status', (c) => label(c.crmStatus)],
       ['Behaviour', (c) => label(c.behaviour)],
@@ -431,15 +439,22 @@ export class WholesaleService {
         },
         select: {
           nameSnapshot: true,
+          skuSnapshot: true,
           quantity: true,
           order: { select: { partyId: true } },
+          variant: { select: { sku: true } },
+          product: { select: { sku: true } },
         },
       }),
     ]);
 
     // "Product" column: the line bought in the largest quantity, as retail shows it.
     const qtyByParty = new Map<number, Map<string, number>>();
+    // Same line's SKU, for the exports (which print SKUs, not names).
+    const skuByName = new Map<string, string>();
     for (const item of items) {
+      const sku = item.skuSnapshot || item.variant?.sku || item.product?.sku;
+      if (sku && !skuByName.has(item.nameSnapshot)) skuByName.set(item.nameSnapshot, sku);
       const perProduct =
         qtyByParty.get(item.order.partyId) ?? new Map<string, number>();
       perProduct.set(
@@ -453,6 +468,13 @@ export class WholesaleService {
       for (const entry of qtyByParty.get(partyId) ?? [])
         if (!top || entry[1] > top[1]) top = entry;
       return top ? `${top[0]} x${top[1]}` : null;
+    };
+    const topProductSkuOf = (partyId: number) => {
+      let top: [string, number] | null = null;
+      for (const entry of qtyByParty.get(partyId) ?? [])
+        if (!top || entry[1] > top[1]) top = entry;
+      // A product with no SKU entered still needs naming — its name is the only label it has.
+      return top ? `${skuByName.get(top[0]) ?? top[0]} x${top[1]}` : null;
     };
 
     type Agg = {
@@ -527,6 +549,7 @@ export class WholesaleService {
         purchaseReason: p.purchaseReason,
         facebookProfileUrl: p.facebookProfileUrl,
         topProduct: topProductOf(p.id),
+        topProductSku: topProductSkuOf(p.id),
         fScore,
         mScore,
         rfmScore: rfmScore(fScore, mScore),

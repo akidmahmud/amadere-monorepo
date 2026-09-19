@@ -19,6 +19,7 @@ import { CreateCustomerModal } from "@/components/orders/CreateCustomerModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DeletedCustomersTab } from "./DeletedCustomersTab";
 import { useCan } from "@/hooks/useAdminAuth";
+import { downloadCsvAsXlsx, reportTitle } from "@/lib/reportExport";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -108,6 +109,8 @@ export default function CustomersPage() {
     );
   }
 
+  const [exporting, setExporting] = useState(false);
+
   function exportHref() {
     const params = new URLSearchParams();
     // A selection is the whole request: the backend ignores every other
@@ -150,9 +153,28 @@ export default function CustomersPage() {
           <HeaderButton onClick={() => setSection(section === "deleted" ? "customers" : "deleted")}>
             {section === "deleted" ? "Back to Customers" : "Deleted Customers"}
           </HeaderButton>
-          <a
-            href={exportHref()}
-            className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold"
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await downloadCsvAsXlsx(
+                  exportHref(),
+                  `retail-customers-${new Date().toISOString().slice(0, 10)}`,
+                  // A selection ignores the filters, so it is dated the day of export.
+                  reportTitle(
+                    "Retail Customers",
+                    selected.size > 0 ? {} : { from: uiFilters.createdFrom, to: uiFilters.createdTo },
+                  ),
+                );
+              } catch (err) {
+                alert(err instanceof Error ? err.message : "Export failed");
+              } finally {
+                setExporting(false);
+              }
+            }}
+            className="inline-flex h-10 items-center gap-2 rounded-[10px] border px-[15px] text-[0.8rem] font-bold disabled:opacity-50"
             style={{ borderColor: LINE, color: TEXT }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -160,8 +182,8 @@ export default function CustomersPage() {
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            {selected.size > 0 ? `Export ${selected.size} selected` : "Export"}
-          </a>
+            {exporting ? "Exporting…" : selected.size > 0 ? `Export ${selected.size} selected` : "Export"}
+          </button>
           <button
             type="button"
             onClick={() => setImportOpen(true)}

@@ -96,6 +96,7 @@ export function agentRows(set: OrderCalc[], S: ReportSettings): AgentRow[] {
 export interface ProductRow {
   key: string;
   name: string;
+  sku: string | null;
   units: number;
   net: number;
   cogs: number;
@@ -113,12 +114,13 @@ export interface ProductRow {
  */
 export function productRows(set: OrderCalc[]): ProductRow[] {
   const acc = new Map<string, ProductRow>();
-  const get = (key: string, name: string) => {
+  const get = ({ key, name, sku }: { key: string; name: string; sku?: string | null }) => {
     let r = acc.get(key);
     if (!r) {
       r = {
         key,
         name,
+        sku: sku ?? null,
         units: 0,
         net: 0,
         cogs: 0,
@@ -141,11 +143,11 @@ export function productRows(set: OrderCalc[]): ProductRow[] {
     const n = c.lines.length || 1;
     if (c.o.status === 'Delivered') {
       if (c.contribution == null) {
-        for (const l of c.lines) mark(get(l.key, l.name), l.unitCost, l.costOk);
+        for (const l of c.lines) mark(get(l), l.unitCost, l.costOk);
         continue;
       }
       for (const l of c.lines) {
-        const a = get(l.key, l.name);
+        const a = get(l);
         mark(a, l.unitCost, l.costOk);
         const ws = c.weight ? l.weight / c.weight : 1 / n;
         const vs = c.netSales ? l.net / c.netSales : 1 / n;
@@ -160,7 +162,7 @@ export function productRows(set: OrderCalc[]): ProductRow[] {
       }
     } else if (c.o.status === 'Returned' && c.contribution != null) {
       for (const l of c.lines) {
-        const a = get(l.key, l.name);
+        const a = get(l);
         mark(a, l.unitCost, l.costOk);
         const ws = c.weight ? l.weight / c.weight : 1 / n;
         a.ret += -c.contribution * ws;

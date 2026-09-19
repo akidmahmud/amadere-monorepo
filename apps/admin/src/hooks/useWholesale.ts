@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
+import { downloadCsvAsXlsx } from "@/lib/reportExport";
 
 // Typed here rather than off `components["schemas"]` because schema.d.ts is
 // regenerated from a running backend; these mirror the DTOs in
@@ -708,9 +709,11 @@ export function wholesaleInvoiceHref(id: number) {
 /** Every buyer matching the Customer Dashboard search, as a CSV download. */
 export async function downloadWholesaleCustomersCsv(
   search: string,
-  from?: string,
-  to?: string,
-  assignedAdminId?: number,
+  from: string | undefined,
+  to: string | undefined,
+  assignedAdminId: number | undefined,
+  /** The sheet's title row — reportTitle("Wholesale Customers", ...). */
+  title: string,
 ) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
@@ -718,18 +721,13 @@ export async function downloadWholesaleCustomersCsv(
   if (to) params.set("to", to);
   if (assignedAdminId !== undefined)
     params.set("assignedAdminId", String(assignedAdminId));
-  const res = await fetch(
+  await downloadCsvAsXlsx(
     `/api/backend/admin/wholesale/customers/export?${params}`,
-  );
-  if (!res.ok) throw new Error("Couldn't export the customers");
-  const url = URL.createObjectURL(await res.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `wholesale-customers-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+    `wholesale-customers-${new Date().toISOString().slice(0, 10)}`,
+    title,
+  ).catch(() => {
+    throw new Error("Couldn't export the customers");
+  });
 }
 
 /** Same file as the retail Order Manager export. `ids` exports exactly those
@@ -742,6 +740,8 @@ export async function downloadWholesaleOrdersCsv(opts: {
   from?: string;
   to?: string;
   ids?: number[];
+  /** The sheet's title row — reportTitle("Wholesale Orders", ...). */
+  title: string;
 }) {
   const params = new URLSearchParams();
   if (opts.ids?.length) {
@@ -755,20 +755,13 @@ export async function downloadWholesaleOrdersCsv(opts: {
     if (opts.to) params.set("to", opts.to);
   }
 
-  const res = await fetch(
+  await downloadCsvAsXlsx(
     `/api/backend/admin/wholesale/orders/export?${params}`,
-  );
-  if (!res.ok) throw new Error("Couldn't export the orders");
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `wholesale-orders-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+    `wholesale-orders-${new Date().toISOString().slice(0, 10)}`,
+    opts.title,
+  ).catch(() => {
+    throw new Error("Couldn't export the orders");
+  });
 }
 
 export function useRecordWholesalePayment() {

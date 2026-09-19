@@ -24,6 +24,7 @@ import { useCan } from "@/hooks/useAdminAuth";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { Pager } from "./Pager";
+import { presetTitleRange, reportTitle } from "@/lib/reportExport";
 
 const money = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", {
@@ -303,6 +304,11 @@ export function OrdersDashboard({
         from: resolvedRange.from,
         to: resolvedRange.to,
         ids,
+        // A selection ignores the filters, so it is dated the day of export.
+        title: reportTitle(
+          "Wholesale Orders",
+          ids?.length ? {} : presetTitleRange(dateRange, dateFrom, dateTo, resolvedRange),
+        ),
       });
     } catch (e) {
       setFailure(e instanceof Error ? e.message : "Couldn't export");
@@ -516,7 +522,7 @@ export function OrdersDashboard({
               onClick={() => exportCsv()}
             >
               <Icon name="download" size={18} />
-              {exporting && selected.size === 0 ? "Exporting…" : "Export CSV"}
+              {exporting && selected.size === 0 ? "Exporting…" : "Export Excel"}
             </Button>
           </div>
         </div>

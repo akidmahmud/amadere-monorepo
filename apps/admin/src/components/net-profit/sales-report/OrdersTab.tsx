@@ -43,7 +43,9 @@ export function OrdersTab({ f, money, onExport }: TabProps) {
         buildSalesSheet((await fetchAllOrders(f)).rows, codPct, money),
       {
         headerRows: 2,
-        band: [15, 21],
+        // Courier block; one column further right in the full view, where
+        // Invoice Value is inserted before it.
+        band: money ? [16, 22] : [15, 21],
       },
     );
   }, [f, money, settings.data, onExport]);

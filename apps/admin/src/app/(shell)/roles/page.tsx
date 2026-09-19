@@ -4,6 +4,30 @@ import { useState } from "react";
 import { Button, Card } from "@amader/admin-ui";
 import { useCreateRole, useDeleteRole, usePermissions, useRoles, useUpdateRole, type Role } from "@/hooks/useRbac";
 
+// Resource keys are internal names (several predate their page's current
+// title), so the picker shows what the sidebar calls each area. Anything not
+// listed falls back to the key, title-cased.
+const RESOURCE_LABELS: Record<string, string> = {
+  net_profit_reports: "Sales Report",
+  net_profit_overview: "Net Profit Overview",
+  net_profit_orders: "Order Manager",
+  net_profit_fraud: "Fraud Check",
+  net_profit_courier: "Courier Settings",
+  net_profit_sms: "SMS",
+  net_profit_advance: "Payments (advance)",
+  net_profit_blocker: "Order Blocker",
+  net_profit_recovery: "Incomplete Orders / Recovery",
+  net_profit_profit: "Product Profit",
+  net_profit_payments: "Payment Verification",
+  net_profit_settings: "Net Profit Settings",
+  net_profit_accounts: "Accounts",
+};
+const ACTION_LABELS: Record<string, string> = {
+  view_own: "view own orders only",
+};
+const titleCase = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const resourceLabel = (r: string) => RESOURCE_LABELS[r] ?? titleCase(r);
+
 function PermissionCheckboxes({
   selected,
   onChange,
@@ -26,12 +50,14 @@ function PermissionCheckboxes({
     <div className="flex flex-col gap-2">
       {Array.from(byResource.entries()).map(([resource, perms]) => (
         <div key={resource}>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{resource}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted" title={resource}>
+            {resourceLabel(resource)}
+          </span>
           <div className="mt-1 flex flex-wrap gap-2">
             {perms!.map((p) => (
               <label key={p.key} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-2.5 py-1 text-xs text-text">
                 <input type="checkbox" checked={selected.includes(p.key)} onChange={() => toggle(p.key)} />
-                {p.action}
+                {ACTION_LABELS[p.action] ?? p.action.replace(/_/g, " ")}
               </label>
             ))}
           </div>

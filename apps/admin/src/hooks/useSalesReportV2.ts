@@ -63,6 +63,8 @@ export interface Summary {
 export interface OrderLine {
   key: string;
   name: string;
+  /** Null when the product has no SKU entered. */
+  sku?: string | null;
   qty: number;
   price: number;
   disc: number;
@@ -156,6 +158,7 @@ export interface AgentRow {
 export interface ProductRow {
   key: string;
   name: string;
+  sku?: string | null;
   units: number;
   net: number;
   cogs: number;

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { addTitleRow, reportTitle } from '../../../../common/excel/report-title';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
@@ -343,6 +344,11 @@ export class ReportsService {
           note: e.note ?? '',
         })),
       );
+    }
+
+    const name = { expenses: 'Expenses', dues: 'Dues', cashflow: 'Cash Flow', ledger: 'Ledger' }[kind] ?? 'Accounts';
+    for (const sheet of workbook.worksheets) {
+      addTitleRow(sheet, reportTitle(name, query.from as string | undefined, query.to as string | undefined));
     }
 
     return Buffer.from(await workbook.xlsx.writeBuffer());

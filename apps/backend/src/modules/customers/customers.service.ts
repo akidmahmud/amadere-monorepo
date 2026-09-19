@@ -79,7 +79,7 @@ function csvCell(value: unknown): string {
   return `"${String(value).replace(/"/g, '""')}"`;
 }
 
-const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, division: null, district: null, area: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, lifetimeSpend: 0 };
+const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, division: null, district: null, area: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, topProductSku: null, lifetimeSpend: 0 };
 
 /** "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm[:ss]" as a Dhaka (UTC+6) wall-clock instant. */
 function dhakaInstant(v: string): Date {
@@ -503,7 +503,15 @@ export class CustomersService {
           customerId: true,
           createdAt: true,
           status: true,
-          items: { select: { productNameSnapshot: true, quantity: true } },
+          items: {
+            select: {
+              productNameSnapshot: true,
+              skuSnapshot: true,
+              quantity: true,
+              variant: { select: { sku: true } },
+              product: { select: { sku: true } },
+            },
+          },
         },
       }),
     ]);
@@ -515,6 +523,7 @@ export class CustomersService {
 
     const latestOrderByCustomer = new Map<number, (typeof orders)[number]>();
     const quantityByCustomerProduct = new Map<number, Map<string, number>>();
+    const skuByName = new Map<string, string>();
     for (const o of orders) {
       if (o.customerId === null) continue;
       const latest = latestOrderByCustomer.get(o.customerId);
@@ -526,6 +535,8 @@ export class CustomersService {
       }
       for (const item of o.items) {
         perProduct.set(item.productNameSnapshot, (perProduct.get(item.productNameSnapshot) ?? 0) + item.quantity);
+        const sku = item.skuSnapshot || item.variant?.sku || item.product?.sku;
+        if (sku && !skuByName.has(item.productNameSnapshot)) skuByName.set(item.productNameSnapshot, sku);
       }
     }
 
@@ -535,12 +546,15 @@ export class CustomersService {
       const address = addressByCustomer.get(id);
       const perProduct = quantityByCustomerProduct.get(id);
       let topProduct: string | null = null;
+      let topProductSku: string | null = null;
       if (perProduct) {
         let topQty = 0;
         for (const [name, qty] of perProduct) {
           if (qty > topQty) {
             topQty = qty;
             topProduct = `${name} x${qty}`;
+            // A product with no SKU entered is still named — it has no other label.
+            topProductSku = `${skuByName.get(name) ?? name} x${qty}`;
           }
         }
       }
@@ -569,6 +583,7 @@ export class CustomersService {
         lastOrderStatus: latestOrderByCustomer.get(id)?.status ?? null,
         lifetimeSpend: agg?._sum.totalAmount ? Number(agg._sum.totalAmount) : 0,
         topProduct,
+        topProductSku,
       });
     }
     return extras;
@@ -629,6 +644,13 @@ export class CustomersService {
     });
     const extras = await this.loadListExtras(items.map((c) => c.id));
     const rows = items.map((c) => toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS));
+    // Most recent logged call per customer — the export's "Call Date".
+    const lastCalls = await this.prisma.client.customerCallLog.groupBy({
+      by: ['customerId'],
+      where: { customerId: { in: items.map((c) => c.id) } },
+      _max: { createdAt: true },
+    });
+    const lastCallAt = new Map(lastCalls.map((r) => [r.customerId, r._max.createdAt]));
 
     // One list, so the header and the cells can never drift apart.
     const columns: [string, (r: AdminCustomerListItemDto) => unknown][] = [
@@ -640,10 +662,14 @@ export class CustomersService {
       ['Group', (r) => r.tier],
       ['Order Count', (r) => r.completedOrderCount],
       ['Order Status', (r) => r.lastOrderStatus],
-      ['Product Details', (r) => r.topProduct],
+      ['Product SKU', (r) => extras.get(r.id)?.topProductSku],
       ['Assign To', (r) => r.assignedAdminName],
       ['Start Date', (r) => isoDate(r.createdAt)],
       ['Last Order Date', (r) => isoDate(r.lastOrderDate)],
+      ['New Order', (r) => (r.hasNewOrder ? 'Yes' : '')],
+      ['New Order Date', (r) => isoDate(r.newOrderAt)],
+      ['Call Date', (r) => isoDate(lastCallAt.get(r.id) ?? null)],
+      ['Next Call Date', (r) => isoDate(r.nextCallTarget)],
       ['Priority', (r) => r.priority],
       ['Status', (r) => r.crmStatus],
       ['Customer Feedback', (r) => r.customerFeedback],

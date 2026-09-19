@@ -8,6 +8,7 @@ import {
 } from "@/hooks/useSalesReportV2";
 import { COLORS } from "@/components/net-profit/sales-report/format";
 import { downloadXlsx } from "@/components/net-profit/sales-report/exportXlsx";
+import { reportTitle } from "@/lib/reportTitle";
 import type { SheetLayout } from "@/components/net-profit/sales-report/sheetStyle";
 import {
   ReportFilters,
@@ -75,10 +76,15 @@ function SalesReport() {
             try {
               const rows =
                 typeof ex.rows === "function" ? await ex.rows() : ex.rows;
+              const tabLabel = tabs.find(([k]) => k === tab)?.[1];
               await downloadXlsx(
                 `${ex.name}-${f.from}-to-${f.to}`,
                 rows,
                 ex.layout,
+                reportTitle(
+                  tab === "orders" || !tabLabel ? "Sales Report" : `Sales Report (${tabLabel})`,
+                  f,
+                ),
               );
             } finally {
               setExporting(false);

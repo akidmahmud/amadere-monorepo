@@ -6,6 +6,7 @@ export const SHEET_COLORS = {
   band: "FFDEEBF7", // courier block (P–V): light blue, header and body
   bandText: "FF4472C4",
   group: "FF64766B", // group-label row above the titles
+  title: "FFE2EFDA", // report title row: pale green, as in the owner's sheets
 } as const;
 
 export interface SheetLayout {

@@ -18,6 +18,8 @@ import { useAssignableStaff } from "@/hooks/useCustomers";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderStatusesTab } from "./OrderStatusesTab";
 import { DeletedOrdersTab } from "./DeletedOrdersTab";
+import { downloadCsvAsXlsx, presetTitleRange, reportTitle } from "@/lib/reportExport";
+import { localStamp } from "@/lib/reportTitle";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -93,20 +95,6 @@ function resolveDateRange(value: string | undefined, customFrom?: string, custom
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-function downloadCsv(csv: string, filename: string) {
-  // Leading BOM: without it Excel reads the file in the machine's ANSI
-  // codepage, which turned every Bengali customer name and address in the
-  // export into replacement characters on the shop's own machines.
-  const blob = new Blob([String.fromCharCode(0xfeff), csv], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function ScreenOptionsModal({
   columns,
@@ -387,7 +375,15 @@ function OrderManagerPageInner() {
       { orderIds: [...selected], action, courierProvider, assignedAdminId },
       {
         onSuccess: (result) => {
-          if (result.csv) downloadCsv(result.csv, `orders-${Date.now()}.csv`);
+          if (result.csv)
+            void downloadCsvAsXlsx(
+              { csv: result.csv },
+              `retail-orders-${localStamp(new Date()).slice(0, 10)}`,
+              reportTitle(
+                "Retail Orders",
+                presetTitleRange(uiFilters.dateRange, uiFilters.dateFrom, uiFilters.dateTo, dateRange),
+              ),
+            );
           if (result.failed.length > 0) {
             alert(`${result.succeeded.length} succeeded, ${result.failed.length} failed:\n${result.failed.map((f) => `#${f.orderId}: ${f.error}`).join("\n")}`);
           }
@@ -497,7 +493,7 @@ function OrderManagerPageInner() {
               className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
               style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
             >
-              Export CSV
+              Export Excel
             </button>
             <button
               type="button"

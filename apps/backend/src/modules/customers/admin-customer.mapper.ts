@@ -60,6 +60,8 @@ export interface AdminCustomerListExtras {
    *  which is a different question from crmStatus ("where is the customer"). */
   lastOrderStatus: string | null;
   topProduct: string | null;
+  /** Same product labelled by SKU — the export prints SKUs, the list names. */
+  topProductSku: string | null;
   lifetimeSpend: number;
 }
 

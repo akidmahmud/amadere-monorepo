@@ -19,6 +19,7 @@ import { WholesaleCustomersTable } from "./WholesaleCustomersTable";
 import { Pager } from "./Pager";
 import { WholesaleCustomerDetailModal } from "./WholesaleCustomerDetailModal";
 import { DATE_RANGES, resolveDateRange } from "./OrdersDashboard";
+import { presetTitleRange, reportTitle } from "@/lib/reportExport";
 
 const compactMoney = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
@@ -280,6 +281,10 @@ export function CustomersDashboard({
                     range.from,
                     range.to,
                     assignee === "" ? undefined : Number(assignee),
+                    reportTitle(
+                      "Wholesale Customers",
+                      presetTitleRange(dateRange, dateFrom, dateTo, range),
+                    ),
                   );
                 } catch (e) {
                   setExportError(

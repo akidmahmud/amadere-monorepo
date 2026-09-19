@@ -28,7 +28,7 @@ const HEAD = [
   "CustomerName",
   "CustomerPhone",
   "District",
-  "Product",
+  "Product SKU",
   "Qty",
   "Sale Value",
   "Discount",
@@ -48,6 +48,8 @@ const HEAD = [
 ];
 // Agents (view_own) get the sales columns only — the money ones never reach them.
 const SALES_COLS = 15;
+/** Where Invoice Value is inserted in the full view: right after "Sale Value". */
+export const INVOICE_COL = 12;
 
 const PAYMENT_LABEL: Record<string, string> = {
   COD: "COD",
@@ -75,9 +77,17 @@ export function buildSalesSheet(
   codPct: Record<string, number>,
   money: boolean,
 ): Cell[][] {
-  const width = money ? HEAD.length : SALES_COLS;
-  const groups = Array.from({ length: width }, (_, i) => GROUPS[i] ?? "");
-  const out: Cell[][] = [groups, HEAD.slice(0, width)];
+  // "Invoice Value" (sale value + delivery charged from the customer) sits
+  // right after Sale Value. Full view only: agents never receive the delivery
+  // charge, so for them it could only ever be a wrong number.
+  const head = money
+    ? [...HEAD.slice(0, INVOICE_COL), "Invoice Value", ...HEAD.slice(INVOICE_COL)]
+    : HEAD.slice(0, SALES_COLS);
+  const groups = head.map(
+    (_, i) => GROUPS[money && i >= INVOICE_COL ? i - 1 : i] ?? "",
+  );
+  if (money) groups[INVOICE_COL] = "";
+  const out: Cell[][] = [groups, head];
   for (const c of rows) {
     const o = c.o;
     const lines = c.lines.length ? c.lines : [null];
@@ -94,7 +104,8 @@ export function buildSalesSheet(
         o.customer,
         o.phone,
         o.district,
-        l?.name ?? "",
+        // SKU, not the full name; a product with no SKU entered keeps its name.
+        l ? l.sku || l.name : "",
         l ? (weight > 0 ? r3(weight) : l.qty) : "",
         l ? r2(l.qty * l.price - l.disc) : "",
         l && l.disc ? r2(l.disc) : "",
@@ -125,6 +136,8 @@ export function buildSalesSheet(
           num(l?.cogs),
           first ? num(c.contribution) : "",
         );
+        // Order-level, so on the first line only — like the other order money.
+        row.splice(INVOICE_COL, 0, first ? r2(c.netSales + (o.delivery ?? 0)) : "");
       }
       out.push(row);
     });

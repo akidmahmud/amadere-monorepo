@@ -63,6 +63,8 @@ export class WholesaleCustomerDto {
   facebookProfileUrl!: string | null;
   /** Most-bought product across live orders, e.g. "Gomer Lal Atta x995". */
   topProduct!: string | null;
+  /** Same product as `topProduct`, labelled by SKU — what the export prints. */
+  topProductSku!: string | null;
   fScore!: number;
   mScore!: number;
   rfmScore!: string;

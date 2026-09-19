@@ -14,6 +14,7 @@ import {
   type InventoryRow,
 } from "@/hooks/useInventory";
 import { returnedOrdersExportUrl, useReturnedOrders, useReturnedOrdersList } from "@/hooks/useReturnedOrders";
+import { downloadCsvAsXlsx, reportTitle } from "@/lib/reportExport";
 
 const GREEN = "#2e7d43";
 const GREEN_HEADER = "#2f7d33";
@@ -399,15 +400,22 @@ function InventoryTab() {
           >
             Save
           </button>
-          <a href={inventoryExportUrl(filter)} download className="inline-flex">
+          <span className="inline-flex">
             <button
               type="button"
+              onClick={() =>
+                void downloadCsvAsXlsx(
+                  inventoryExportUrl(filter),
+                  `inventory-${filter}`,
+                  reportTitle(`Inventory (${INVENTORY_FILTERS.find((x) => x.value === filter)?.label ?? filter})`),
+                ).catch((e: unknown) => alert(e instanceof Error ? e.message : "Export failed"))
+              }
               className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold"
               style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
             >
-              Export CSV
+              Export Excel
             </button>
-          </a>
+          </span>
         </div>
       </div>
 
@@ -577,15 +585,22 @@ function ReturnedTab() {
             {r.label}
           </button>
         ))}
-        <a className="ml-auto" href={returnedOrdersExportUrl(range)} download>
+        <span className="ml-auto">
           <button
             type="button"
+            onClick={() =>
+              void downloadCsvAsXlsx(
+                returnedOrdersExportUrl(range),
+                `returned-orders-${range}`,
+                reportTitle(`Returned Orders (${RANGES.find((x) => x.value === range)?.label ?? range})`),
+              ).catch((e: unknown) => alert(e instanceof Error ? e.message : "Export failed"))
+            }
             className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold"
             style={{ borderColor: LINE, color: TEXT, background: "#fff" }}
           >
-            Export CSV
+            Export Excel
           </button>
-        </a>
+        </span>
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading returns data…</p>}
