@@ -11,6 +11,12 @@ import { computeCheckoutFees } from '../net-profit/accounts/accounts.constants';
 import { ShippingZonesService } from '../shipping-zones/shipping-zones.service';
 import { ShippingRulesService } from '../shipping-rules/shipping-rules.service';
 import { PricingService } from './pricing.service';
+import {
+  MAX_QTY_SETTING_KEY,
+  assertLineQuantity,
+  lineLimit,
+  parseStoreMax,
+} from './quantity-limit';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { BuyNowDto } from './dto/buy-now.dto';
 import { CART_UPDATED_EVENT, CartUpdatedEvent } from './cart.events';
@@ -84,13 +90,18 @@ export class CartService {
     dto: AddCartItemDto,
     locale: Locale,
   ): Promise<CartViewDto> {
-    const { productId, variantId, quantity, productType } = await this.validateLine(dto);
+    const { productId, variantId, quantity, productType, limit } = await this.validateLine(dto);
     const cart =
       (await this.findCart(identity)) ?? (await this.createCart(identity));
 
     const existing = await this.prisma.client.cartItem.findFirst({
       where: { cartId: cart.id, productId, variantId },
     });
+    // The line's TOTAL after this add, not just the amount being added —
+    // otherwise adding 30 twice stacks to 60.
+    if (existing && productType !== 'DIGITAL') {
+      assertLineQuantity(existing.quantity + (quantity ?? 1), limit);
+    }
 
     const unitPrice = await this.currentUnitPrice(productId, variantId);
     if (existing) {
@@ -129,9 +140,13 @@ export class CartService {
     const cart = await this.requireCart(identity);
     const item = await this.prisma.client.cartItem.findFirst({
       where: { id: itemId, cartId: cart.id },
-      include: { product: { select: { productType: true } } },
+      include: { product: { select: { productType: true, maxOrderQuantity: true } } },
     });
     if (!item) throw new NotFoundException('Cart item not found');
+    // Change-quantity used to accept anything (how 1222 × honey got in).
+    if (item.product.productType !== 'DIGITAL') {
+      assertLineQuantity(quantity, lineLimit(item.product.maxOrderQuantity, await this.storeMaxQuantity()));
+    }
 
     await this.prisma.client.cartItem.update({
       where: { id: itemId },
@@ -224,13 +239,16 @@ export class CartService {
     // productType is needed to keep a digital line pinned at 1 through the
     // merge — the same ebook sitting in both the guest and the customer cart
     // would otherwise sum to 2.
-    const mergedTypes = new Map(
-      (
-        await this.prisma.client.product.findMany({
-          where: { id: { in: guestCart.items.map((i) => i.productId) } },
-          select: { id: true, productType: true },
-        })
-      ).map((p) => [p.id, p.productType]),
+    // Merging happens at login, so an over-limit sum is clamped, not rejected —
+    // signing in must never fail over a cart line.
+    const storeMax = await this.storeMaxQuantity();
+    const mergedProducts = await this.prisma.client.product.findMany({
+      where: { id: { in: guestCart.items.map((i) => i.productId) } },
+      select: { id: true, productType: true, maxOrderQuantity: true },
+    });
+    const mergedTypes = new Map(mergedProducts.map((p) => [p.id, p.productType]));
+    const mergeLimits = new Map(
+      mergedProducts.map((p) => [p.id, lineLimit(p.maxOrderQuantity, storeMax)]),
     );
 
     for (const item of guestCart.items) {
@@ -248,7 +266,10 @@ export class CartService {
             quantity:
               mergedTypes.get(item.productId) === 'DIGITAL'
                 ? 1
-                : existing.quantity + item.quantity,
+                : Math.min(
+                    existing.quantity + item.quantity,
+                    mergeLimits.get(item.productId) ?? storeMax,
+                  ),
           },
         });
       } else {
@@ -257,7 +278,7 @@ export class CartService {
             cartId: customerCart.id,
             productId: item.productId,
             variantId: item.variantId,
-            quantity: item.quantity,
+            quantity: Math.min(item.quantity, mergeLimits.get(item.productId) ?? storeMax),
             unitPriceSnapshot: item.unitPriceSnapshot,
           },
         });
@@ -365,12 +386,9 @@ export class CartService {
           `Minimum order quantity is ${product.minOrderQuantity}`,
         );
       }
-      if (product.maxOrderQuantity && quantity > product.maxOrderQuantity) {
-        throw new BadRequestException(
-          `Maximum order quantity is ${product.maxOrderQuantity}`,
-        );
-      }
     }
+    const limit = lineLimit(product.maxOrderQuantity, await this.storeMaxQuantity());
+    if (!isDigital) assertLineQuantity(quantity, limit);
 
     // Advisory only — the atomic hold at checkout (CheckoutService.reserveStock)
     // is the real guard against overselling; this just gives an earlier,
@@ -388,7 +406,25 @@ export class CartService {
         throw new BadRequestException('Insufficient stock');
     }
 
-    return { productId: product.id, variantId, quantity, productType: product.productType };
+    return { productId: product.id, variantId, quantity, productType: product.productType, limit };
+  }
+
+  /** Store-wide per-line ceiling (Settings → Checkout); 30 when unset. */
+  async storeMaxQuantity(): Promise<number> {
+    const row = await this.prisma.client.setting.findUnique({ where: { key: MAX_QTY_SETTING_KEY } });
+    return parseStoreMax(row?.value);
+  }
+
+  /** Checkout's last guard: every physical line within its limit. */
+  async assertCartWithinLimits(
+    items: { quantity: number; product: { productType: string; maxOrderQuantity: number | null } }[],
+  ): Promise<void> {
+    const storeMax = await this.storeMaxQuantity();
+    for (const i of items) {
+      if (i.product.productType !== 'DIGITAL') {
+        assertLineQuantity(i.quantity, lineLimit(i.product.maxOrderQuantity, storeMax));
+      }
+    }
   }
 
   private async currentUnitPrice(productId: number, variantId: number | null) {

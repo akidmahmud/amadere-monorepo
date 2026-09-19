@@ -47,7 +47,10 @@ import {
   WholesalePaymentAccountDto,
   WholesaleOrderDto,
   WholesaleStatsDto,
+  type WholesaleCustomerCrmDto,
 } from './wholesale.mapper';
+import { CreateCustomerNoteDto } from '../customers/dto/create-customer-note.dto';
+import { CreateCustomerCallLogDto } from '../customers/dto/create-customer-call-log.dto';
 import {
   BulkAssignWholesaleCustomersDto,
   CreateWholesaleChannelDto,
@@ -143,6 +146,32 @@ export class AdminWholesaleController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<WholesaleCustomerDto> {
     return this.wholesale.findCustomer(id);
+  }
+
+  @Get('customers/:id/crm')
+  @RequirePermission('wholesale.view')
+  customerCrm(@Param('id', ParseIntPipe) id: number): Promise<WholesaleCustomerCrmDto> {
+    return this.wholesale.customerCrm(id);
+  }
+
+  @Post('customers/:id/notes')
+  @RequirePermission('wholesale.update')
+  addCustomerNote(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateCustomerNoteDto,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<{ id: number }> {
+    return this.wholesale.addCustomerNote(id, dto, admin.id);
+  }
+
+  @Post('customers/:id/calls')
+  @RequirePermission('wholesale.update')
+  logCustomerCall(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateCustomerCallLogDto,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<{ id: number }> {
+    return this.wholesale.logCustomerCall(id, dto, admin.id);
   }
 
   @Post('customers')

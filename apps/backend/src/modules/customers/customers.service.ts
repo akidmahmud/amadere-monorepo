@@ -81,6 +81,12 @@ function csvCell(value: unknown): string {
 
 const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, division: null, district: null, area: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, lifetimeSpend: 0 };
 
+/** "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm[:ss]" as a Dhaka (UTC+6) wall-clock instant. */
+function dhakaInstant(v: string): Date {
+  const [d, t = '00:00'] = v.split('T');
+  return new Date(`${d}T${t.length === 5 ? `${t}:00` : t}+06:00`);
+}
+
 @Injectable()
 export class CustomersService {
   constructor(
@@ -334,11 +340,19 @@ export class CustomersService {
               // Same fixed UTC+6 Dhaka-day reasoning as birthdayToday above —
               // "2026-08-11" means that calendar day in Dhaka, not UTC, since
               // that's the timezone the Start Date column is shown in.
-              ...(query.createdFrom ? { gte: new Date(`${query.createdFrom}T00:00:00+06:00`) } : {}),
-              // Exclusive upper bound one day past createdTo so the whole
-              // selected end day is included, not just its midnight instant.
+              // Either bound may carry a time ("2026-08-11T14:30", from the
+              // admin's datetime-local inputs), also read as Dhaka time.
+              ...(query.createdFrom ? { gte: dhakaInstant(query.createdFrom) } : {}),
+              // Exclusive upper bound one step past createdTo so the selected
+              // end is included: the whole day for a bare date, the whole
+              // minute for a date + time.
               ...(query.createdTo
-                ? { lt: new Date(new Date(`${query.createdTo}T00:00:00+06:00`).getTime() + 24 * 60 * 60 * 1000) }
+                ? {
+                    lt: new Date(
+                      dhakaInstant(query.createdTo).getTime() +
+                        (query.createdTo.includes('T') ? 60 * 1000 : 24 * 60 * 60 * 1000),
+                    ),
+                  }
                 : {}),
             },
           }

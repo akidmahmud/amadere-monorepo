@@ -7,6 +7,8 @@ import { PaginatedResult, toBdCompact } from '@amader/shared';
 import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { CreateCustomerNoteDto } from '../customers/dto/create-customer-note.dto';
+import { CreateCustomerCallLogDto } from '../customers/dto/create-customer-call-log.dto';
 import {
   CSV_LINE_PRODUCT_SELECT,
   CSV_LINE_VARIANT_SELECT,
@@ -59,6 +61,9 @@ import {
   WholesaleOrderDto,
   WholesaleStatsDto,
   toWholesaleOrderDto,
+  type WholesaleActivityDto,
+  type WholesaleCustomerCrmDto,
+  type WholesalePurchasedProductDto,
 } from './wholesale.mapper';
 import {
   channelFieldsOf,
@@ -600,6 +605,162 @@ export class WholesaleService {
       throw new NotFoundException(`Wholesale customer ${id} not found`);
     const [dto] = await this.decorateCustomers([party]);
     return dto;
+  }
+
+  /** 404s unless `id` is a live wholesale buyer — the CRM routes below share it. */
+  private async assertCustomer(id: number) {
+    const party = await this.prisma.client.party.findFirst({
+      where: { id, roles: { has: 'WHOLESALE' }, deletedAt: null },
+      select: { id: true, phone: true },
+    });
+    if (!party) throw new NotFoundException(`Wholesale customer ${id} not found`);
+    return party;
+  }
+
+  /**
+   * Products / Notes / Calls / Activity tabs of the wholesale customer modal —
+   * the same four the retail customer modal has, built from this buyer's
+   * wholesale + channel orders. Cancelled orders are left out of Products
+   * (nothing was bought) but still show in Activity.
+   */
+  async customerCrm(id: number): Promise<WholesaleCustomerCrmDto> {
+    await this.assertCustomer(id);
+    const [orders, notes, calls] = await Promise.all([
+      this.prisma.client.wholesaleOrder.findMany({
+        where: { partyId: id },
+        orderBy: [{ placedAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          orderNumber: true,
+          type: true,
+          status: true,
+          total: true,
+          placedAt: true,
+          createdAt: true,
+          cancelledAt: true,
+          items: {
+            select: {
+              productId: true,
+              nameSnapshot: true,
+              skuSnapshot: true,
+              quantity: true,
+              lineTotal: true,
+            },
+          },
+        },
+      }),
+      this.prisma.client.partyNote.findMany({
+        where: { partyId: id },
+        orderBy: { createdAt: 'desc' },
+        include: { author: { select: { firstName: true, lastName: true } } },
+      }),
+      this.prisma.client.partyCallLog.findMany({
+        where: { partyId: id },
+        orderBy: { createdAt: 'desc' },
+        include: { author: { select: { firstName: true, lastName: true } } },
+      }),
+    ]);
+
+    // Keyed on productId where there is one, so a renamed product still folds
+    // into one row; the snapshot name covers items whose product was deleted.
+    const byProduct = new Map<
+      string,
+      WholesalePurchasedProductDto & { orderIds: Set<number> }
+    >();
+    for (const o of orders) {
+      if (o.status === 'CANCELLED') continue;
+      for (const item of o.items) {
+        const key = item.productId !== null ? `id:${item.productId}` : `name:${item.nameSnapshot}`;
+        const row = byProduct.get(key);
+        if (row) {
+          row.totalQuantity += item.quantity;
+          row.totalSpent = new Prisma.Decimal(row.totalSpent).plus(item.lineTotal).toFixed(2);
+          row.orderIds.add(o.id);
+        } else {
+          // orders are newest first, so the first sighting is the latest purchase.
+          byProduct.set(key, {
+            productId: item.productId,
+            name: item.nameSnapshot,
+            sku: item.skuSnapshot,
+            totalQuantity: item.quantity,
+            orderCount: 0,
+            totalSpent: new Prisma.Decimal(item.lineTotal).toFixed(2),
+            lastPurchasedAt: o.placedAt,
+            orderIds: new Set([o.id]),
+          });
+        }
+      }
+    }
+    const purchasedProducts = [...byProduct.values()]
+      .map(({ orderIds, ...row }) => ({ ...row, orderCount: orderIds.size }))
+      .sort((a, b) => b.totalQuantity - a.totalQuantity);
+
+    const activity: WholesaleActivityDto[] = [
+      ...orders.map((o) => ({
+        type: 'ORDER' as const,
+        text: `${o.type === 'CHANNEL' ? 'Channel' : 'Wholesale'} order ${o.orderNumber} placed — ৳${Number(o.total).toLocaleString('en-BD')}`,
+        occurredAt: o.createdAt,
+      })),
+      ...orders
+        .filter((o) => o.cancelledAt)
+        .map((o) => ({
+          type: 'ORDER' as const,
+          text: `Order ${o.orderNumber} cancelled`,
+          occurredAt: o.cancelledAt as Date,
+        })),
+      ...notes.map((n) => ({
+        type: 'NOTE' as const,
+        text: `Note (${n.type.replace(/_/g, ' ').toLowerCase()}): ${n.body}`,
+        occurredAt: n.createdAt,
+      })),
+      ...calls.map((c) => ({
+        type: 'CALL' as const,
+        text: `Call: ${c.outcome.replace(/_/g, ' ').toLowerCase()}${c.notes ? ` — ${c.notes}` : ''}`,
+        occurredAt: c.createdAt,
+      })),
+    ].sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
+
+    return {
+      purchasedProducts,
+      notes: notes.map((n) => ({
+        id: n.id,
+        type: n.type,
+        body: n.body,
+        authorName: `${n.author.firstName} ${n.author.lastName}`.trim(),
+        createdAt: n.createdAt,
+      })),
+      calls: calls.map((c) => ({
+        id: c.id,
+        outcome: c.outcome,
+        phoneCalled: c.phoneCalled,
+        notes: c.notes,
+        authorName: `${c.author.firstName} ${c.author.lastName}`.trim(),
+        createdAt: c.createdAt,
+      })),
+      activity,
+    };
+  }
+
+  async addCustomerNote(id: number, dto: CreateCustomerNoteDto, authorAdminId: number): Promise<{ id: number }> {
+    await this.assertCustomer(id);
+    const note = await this.prisma.client.partyNote.create({
+      data: { partyId: id, type: dto.type, body: dto.body, authorAdminId },
+    });
+    return { id: note.id };
+  }
+
+  async logCustomerCall(id: number, dto: CreateCustomerCallLogDto, authorAdminId: number): Promise<{ id: number }> {
+    const party = await this.assertCustomer(id);
+    const call = await this.prisma.client.partyCallLog.create({
+      data: {
+        partyId: id,
+        phoneCalled: party.phone ?? '',
+        outcome: dto.outcome,
+        notes: dto.notes,
+        authorAdminId,
+      },
+    });
+    return { id: call.id };
   }
 
   async createCustomer(

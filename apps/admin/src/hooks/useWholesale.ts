@@ -903,3 +903,61 @@ export function useWholesaleProducts() {
     queryFn: () => proxyFetch<PickableProduct[]>("/admin/wholesale/products"),
   });
 }
+
+// ---- Customer modal CRM tabs — mirrors WholesaleCustomerCrmDto ----
+
+export interface WholesaleCustomerCrm {
+  purchasedProducts: {
+    productId: number | null;
+    name: string;
+    sku: string | null;
+    totalQuantity: number;
+    orderCount: number;
+    totalSpent: string;
+    lastPurchasedAt: string;
+  }[];
+  notes: { id: number; type: string; body: string; authorName: string; createdAt: string }[];
+  calls: {
+    id: number;
+    outcome: string;
+    phoneCalled: string;
+    notes: string | null;
+    authorName: string;
+    createdAt: string;
+  }[];
+  activity: { type: "ORDER" | "NOTE" | "CALL"; text: string; occurredAt: string }[];
+}
+
+// Under CUSTOMERS_KEY so useInvalidateAll (order writes) refreshes it too.
+const crmKey = (id: number) => [...CUSTOMERS_KEY, id, "crm"];
+
+export function useWholesaleCustomerCrm(id: number) {
+  return useQuery({
+    queryKey: crmKey(id),
+    queryFn: () => proxyFetch<WholesaleCustomerCrm>(`/admin/wholesale/customers/${id}/crm`),
+  });
+}
+
+export function useAddWholesaleCustomerNote(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { type: string; body: string }) =>
+      proxyFetch<{ id: number }>(`/admin/wholesale/customers/${id}/notes`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: crmKey(id) }),
+  });
+}
+
+export function useLogWholesaleCustomerCall(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { outcome: string; notes?: string }) =>
+      proxyFetch<{ id: number }>(`/admin/wholesale/customers/${id}/calls`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: crmKey(id) }),
+  });
+}

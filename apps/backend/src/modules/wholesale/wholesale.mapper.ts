@@ -266,3 +266,36 @@ export class WholesaleChannelDto {
   /** Orders placed through it; a channel with orders can only be deactivated. */
   orderCount!: number;
 }
+
+// ---- Customer modal CRM tabs (Products / Notes / Calls / Activity) ----
+// Plain interfaces: the admin types these by hand in useWholesale.ts.
+
+export interface WholesalePurchasedProductDto {
+  productId: number | null;
+  name: string;
+  sku: string | null;
+  totalQuantity: number;
+  orderCount: number;
+  totalSpent: string;
+  lastPurchasedAt: Date;
+}
+
+export interface WholesaleActivityDto {
+  type: 'ORDER' | 'NOTE' | 'CALL';
+  text: string;
+  occurredAt: Date;
+}
+
+export interface WholesaleCustomerCrmDto {
+  purchasedProducts: WholesalePurchasedProductDto[];
+  notes: { id: number; type: string; body: string; authorName: string; createdAt: Date }[];
+  calls: {
+    id: number;
+    outcome: string;
+    phoneCalled: string;
+    notes: string | null;
+    authorName: string;
+    createdAt: Date;
+  }[];
+  activity: WholesaleActivityDto[];
+}

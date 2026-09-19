@@ -106,7 +106,7 @@ export function CustomerFilters({
 
       <div className="flex items-center gap-1.5">
         <input
-          type="date"
+          type="datetime-local"
           aria-label="Start date from"
           value={filters.createdFrom ?? ""}
           onChange={(e) => set("createdFrom", e.target.value || undefined)}
@@ -118,7 +118,7 @@ export function CustomerFilters({
           to
         </span>
         <input
-          type="date"
+          type="datetime-local"
           aria-label="Start date to"
           value={filters.createdTo ?? ""}
           onChange={(e) => set("createdTo", e.target.value || undefined)}

@@ -42,12 +42,12 @@ export class AdminCustomerQueryDto {
   @IsBoolean()
   birthdayToday?: boolean;
 
-  @ApiPropertyOptional({ description: 'Only customers created on or after this date (YYYY-MM-DD)' })
+  @ApiPropertyOptional({ description: 'Only customers created on or after this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time' })
   @IsOptional()
   @IsDateString()
   createdFrom?: string;
 
-  @ApiPropertyOptional({ description: 'Only customers created on or before this date (YYYY-MM-DD)' })
+  @ApiPropertyOptional({ description: 'Only customers created on or before this date (YYYY-MM-DD) or moment (YYYY-MM-DDTHH:mm), Dhaka time' })
   @IsOptional()
   @IsDateString()
   createdTo?: string;

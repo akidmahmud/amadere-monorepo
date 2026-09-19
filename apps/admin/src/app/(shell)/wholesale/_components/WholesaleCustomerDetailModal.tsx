@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
   COURIERS,
   PAGE_SIZE,
   labelOf,
+  useAddWholesaleCustomerNote,
+  useLogWholesaleCustomerCall,
+  useWholesaleCustomerCrm,
   useWholesaleOrders,
   type WholesaleCustomer,
+  type WholesaleCustomerCrm,
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
 import { OrderDetailModal } from "./OrderDetailModal";
@@ -19,12 +24,21 @@ import {
   TypeBadge,
 } from "./OrdersDashboard";
 
+// Same values as the retail modal — the backend reuses the retail enums.
+const NOTE_TYPES = ["CUSTOMER_FEEDBACK", "INTERNAL_NOTE", "REMARK"] as const;
+const CALL_OUTCOMES = ["CONNECTED", "NO_ANSWER", "VOICEMAIL", "WRONG_NUMBER", "DECLINED"] as const;
+
 const AVATAR_COLORS = ["#4299e1", "#48bb78", "#ed8936", "#9f7aea", "#f56565", "#38b2ac"];
 
 const money = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", { maximumFractionDigits: 2 })}`;
 const day = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleDateString("en-GB") : null;
+const moment = (v: string) => new Date(v).toLocaleString("en-GB");
+
+function Empty({ children }: { children: ReactNode }) {
+  return <p className="py-10 text-center text-sm text-muted">{children}</p>;
+}
 
 // Field / Section / Pill mirror the retail CustomerDetailModal so the two
 // customer books open onto the same-looking record.
@@ -83,10 +97,17 @@ export function WholesaleCustomerDetailModal({
   deleting: boolean;
   deleteError: string | null;
 }) {
-  const [tab, setTab] = useState<"overview" | "orders">("overview");
+  const [tab, setTab] = useState<
+    "overview" | "orders" | "products" | "notes" | "calls" | "activity"
+  >("overview");
+  const crm = useWholesaleCustomerCrm(c.id).data;
   const tabs = [
     { key: "overview", label: "Overview", count: undefined },
     { key: "orders", label: "Orders", count: c.orderCount },
+    { key: "products", label: "Products", count: crm?.purchasedProducts.length },
+    { key: "notes", label: "Notes", count: crm?.notes.length },
+    { key: "calls", label: "Calls", count: crm?.calls.length },
+    { key: "activity", label: "Activity", count: crm?.activity.length },
   ] as const;
 
   return (
@@ -196,6 +217,13 @@ export function WholesaleCustomerDetailModal({
         <div className="min-h-[240px]">
           {tab === "overview" && <OverviewTab c={c} />}
           {tab === "orders" && <OrdersTab customerId={c.id} />}
+          {tab !== "overview" && tab !== "orders" && !crm && <Empty>Loading…</Empty>}
+          {tab === "products" && crm && <ProductsTab products={crm.purchasedProducts} />}
+          {tab === "notes" && crm && <NotesTab customerId={c.id} notes={crm.notes} />}
+          {tab === "calls" && crm && (
+            <CallsTab customerId={c.id} phone={c.phone} calls={crm.calls} />
+          )}
+          {tab === "activity" && crm && <ActivityTab activity={crm.activity} />}
         </div>
 
         <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
@@ -357,5 +385,213 @@ function OrdersTab({ customerId }: { customerId: number }) {
       />
       {viewing && <OrderDetailModal order={viewing} onClose={() => setViewing(null)} />}
     </div>
+  );
+}
+
+function ProductsTab({ products }: { products: WholesaleCustomerCrm["purchasedProducts"] }) {
+  if (products.length === 0) return <Empty>Nothing bought yet.</Empty>;
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full min-w-[620px] text-sm">
+        <thead className="bg-surface-2 text-xs text-secondary">
+          <tr>
+            {["Product", "Qty", "Orders", "Spent", "Last bought"].map((h) => (
+              <th key={h} className="px-4 py-2.5 text-left font-semibold">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((p) => (
+            <tr key={p.productId ?? p.name} className="border-t border-border">
+              <td className="px-4 py-2.5">
+                {/* productId is null once the product itself is deleted. */}
+                {p.productId ? (
+                  <Link
+                    href={`/products/${p.productId}`}
+                    className="font-semibold text-brand-500 hover:underline"
+                  >
+                    {p.name}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-text">{p.name}</span>
+                )}
+                {p.sku && <span className="ml-2 text-xs text-muted">{p.sku}</span>}
+              </td>
+              <td className="num px-4 py-2.5 text-text">{p.totalQuantity}</td>
+              <td className="num px-4 py-2.5 text-text">{p.orderCount}</td>
+              <td className="num px-4 py-2.5 text-text">{money(p.totalSpent)}</td>
+              <td className="px-4 py-2.5 text-xs text-secondary">{day(p.lastPurchasedAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const inputCls =
+  "h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+
+function NotesTab({
+  customerId,
+  notes,
+}: {
+  customerId: number;
+  notes: WholesaleCustomerCrm["notes"];
+}) {
+  const addNote = useAddWholesaleCustomerNote(customerId);
+  const [type, setType] = useState<string>(NOTE_TYPES[1]);
+  const [body, setBody] = useState("");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <form
+        className="flex flex-wrap items-end gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!body.trim()) return;
+          addNote.mutate({ type, body: body.trim() }, { onSuccess: () => setBody("") });
+        }}
+      >
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          aria-label="Note type"
+          className={inputCls}
+        >
+          {NOTE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t.replace(/_/g, " ")}
+            </option>
+          ))}
+        </select>
+        <input
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Add a note…"
+          className={`${inputCls} min-w-56 flex-1`}
+        />
+        <Button type="submit" variant="primary" disabled={addNote.isPending || !body.trim()}>
+          {addNote.isPending ? "Adding…" : "Add"}
+        </Button>
+      </form>
+      {notes.length === 0 ? (
+        <Empty>No notes yet.</Empty>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {notes.map((n) => (
+            <div key={n.id} className="rounded-xl border border-border p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <Pill>{n.type.replace(/_/g, " ")}</Pill>
+                <span className="text-xs text-muted">
+                  {n.authorName} · {moment(n.createdAt)}
+                </span>
+              </div>
+              <p className="mt-1.5 text-sm text-text">{n.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CallsTab({
+  customerId,
+  phone,
+  calls,
+}: {
+  customerId: number;
+  phone: string | null;
+  calls: WholesaleCustomerCrm["calls"];
+}) {
+  const logCall = useLogWholesaleCustomerCall(customerId);
+  const [outcome, setOutcome] = useState<string>(CALL_OUTCOMES[0]);
+  const [notes, setNotes] = useState("");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3.5">
+        {/* ponytail: tel: link, not the retail "Call now" API — no call
+            provider is configured yet, so that button only ever errors. */}
+        {phone && (
+          <a
+            href={`tel:${phone}`}
+            className="inline-flex items-center gap-1.5 self-start rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+          >
+            <Icon name="call" size={16} />
+            Call {phone}
+          </a>
+        )}
+        <form
+          className="flex flex-wrap items-end gap-2.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            logCall.mutate(
+              { outcome, notes: notes.trim() || undefined },
+              { onSuccess: () => setNotes("") },
+            );
+          }}
+        >
+          <select
+            value={outcome}
+            onChange={(e) => setOutcome(e.target.value)}
+            aria-label="Call outcome"
+            className={inputCls}
+          >
+            {CALL_OUTCOMES.map((o) => (
+              <option key={o} value={o}>
+                {o.replace(/_/g, " ")}
+              </option>
+            ))}
+          </select>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What happened on the call?"
+            className={`${inputCls} min-w-56 flex-1`}
+          />
+          <Button type="submit" variant="ghost" disabled={logCall.isPending}>
+            {logCall.isPending ? "Logging…" : "Log outcome"}
+          </Button>
+        </form>
+      </div>
+      {calls.length === 0 ? (
+        <Empty>No calls logged yet.</Empty>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {calls.map((cl) => (
+            <div key={cl.id} className="rounded-xl border border-border p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <Pill>{cl.outcome.replace(/_/g, " ")}</Pill>
+                <span className="text-xs text-muted">
+                  {cl.authorName} · {moment(cl.createdAt)}
+                </span>
+              </div>
+              {cl.notes && <p className="mt-1.5 text-sm text-text">{cl.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityTab({ activity }: { activity: WholesaleCustomerCrm["activity"] }) {
+  if (activity.length === 0) return <Empty>No activity yet.</Empty>;
+  return (
+    <ol className="flex flex-col">
+      {activity.map((e, i) => (
+        <li key={i} className="border-l-2 border-border pb-4 pl-4 last:pb-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill>{e.type}</Pill>
+            <span className="text-xs text-muted">{moment(e.occurredAt)}</span>
+          </div>
+          <p className="mt-1 text-sm text-text">{e.text}</p>
+        </li>
+      ))}
+    </ol>
   );
 }

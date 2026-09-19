@@ -230,6 +230,8 @@ model AdminUser {
   customerCallLogs   CustomerCallLog[]
   assignedCustomers  Customer[]           @relation("CustomerAssignedAdmin")
   assignedParties    Party[]              @relation("PartyAssignedAdmin")
+  partyNotes         PartyNote[]
+  partyCallLogs      PartyCallLog[]
   assignedOrders     Order[]              @relation("OrderAssignedAdmin")
   orderStatusHistory OrderStatusHistory[]
 
@@ -3447,9 +3449,45 @@ model Party {
   ledgerEntries   LedgerEntry[]
   codSettlements  CodSettlement[]
   wholesaleOrders WholesaleOrder[]
+  crmNotes        PartyNote[]
+  callLogs        PartyCallLog[]
 
   @@index([name])
   @@map("parties")
+}
+
+// Wholesale-buyer twins of CustomerNote / CustomerCallLog -- same enums, same
+// append-only rule. Separate tables because wholesale buyers are Party rows,
+// deliberately kept out of the retail Customer table (see Party's CRM block).
+model PartyNote {
+  id            Int              @id @default(autoincrement())
+  partyId       Int              @map("party_id")
+  type          CustomerNoteType
+  body          String
+  authorAdminId Int              @map("author_admin_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  party  Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  author AdminUser @relation(fields: [authorAdminId], references: [id])
+
+  @@index([partyId])
+  @@map("party_notes")
+}
+
+model PartyCallLog {
+  id            Int         @id @default(autoincrement())
+  partyId       Int         @map("party_id")
+  phoneCalled   String      @map("phone_called")
+  outcome       CallOutcome
+  notes         String?
+  authorAdminId Int         @map("author_admin_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  party  Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  author AdminUser @relation(fields: [authorAdminId], references: [id])
+
+  @@index([partyId])
+  @@map("party_call_logs")
 }
 
 enum CashAccountType {
