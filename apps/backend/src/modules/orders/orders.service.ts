@@ -218,8 +218,8 @@ export class OrdersService {
           canceledAt: dto.status === 'CANCELED' ? new Date() : undefined,
           // The first staff member to act on an UNASSIGNED order (confirm,
           // hold, ...) takes it. Once someone owns it, later status changes by
-          // other staff leave it alone: only an explicit reassign — which needs
-          // assignment.manage, or super admin — moves it. It used to be
+          // other staff leave it alone: only an explicit reassign from the
+          // Order Manager moves it. It used to be
           // "whoever touched it last", so shipping someone else's confirmed
           // order silently took their order away.
           // ponytail: read-then-write outside a lock; two staff confirming the

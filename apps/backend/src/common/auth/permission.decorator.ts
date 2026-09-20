@@ -6,10 +6,10 @@ export const PERMISSION_KEY = 'permission';
 /**
  * Every listed permission is required — AND, not OR.
  *
- * Multiple keys exist for actions that are a narrower slice of a broader one:
- * changing who an order is assigned to needs both `net_profit_orders.manage`
- * (you may edit orders at all) and `assignment.manage` (you may hand work to
- * someone else). Single-key callers are unchanged.
+ * Several keys can be listed for an action that is a narrower slice of a
+ * broader one. Nothing does today: the Order Manager's assign used to ask for
+ * `assignment.manage` on top of `net_profit_orders.manage`, and no longer
+ * does — whoever may work an order may hand it to a colleague.
  */
 export const RequirePermission = (...permissions: string[]) =>
   SetMetadata(PERMISSION_KEY, permissions);

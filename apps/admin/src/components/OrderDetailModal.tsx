@@ -25,7 +25,6 @@ import {
 } from "@/hooks/useOrders";
 import { useAssignOrder, useUpdateOrderNote } from "@/hooks/useOrderManager";
 import { useAssignableStaff } from "@/hooks/useCustomers";
-import { useCan } from "@/hooks/useAdminAuth";
 import { DistrictAutocomplete, ThanaAutocomplete } from "@/components/DistrictThanaFields";
 import { useAdvancePayment, useManualPaymentsForOrder } from "@/hooks/usePayments";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
@@ -120,7 +119,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const { data: staff } = useAssignableStaff();
   const updateStatus = useUpdateOrderStatus(row.id);
   const assign = useAssignOrder(row.id);
-  const canAssign = useCan("assignment.manage");
   const refund = useRefundOrder(row.id);
   const track = useTrackShipment();
   const updateShipmentStatus = useUpdateShipmentStatus();
@@ -1009,8 +1007,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     <span className="text-xs text-muted">Assigned to</span>
                     <select
                       value={order.assignedAdminId ?? ""}
-                      disabled={assign.isPending || !canAssign}
-                      title={canAssign ? undefined : "You do not have permission to reassign orders"}
+                      disabled={assign.isPending}
                       onChange={(e) => assign.mutate(e.target.value === "" ? null : Number(e.target.value))}
                       className="h-9 rounded-sm border border-border bg-surface px-2 text-sm text-text disabled:opacity-50"
                     >

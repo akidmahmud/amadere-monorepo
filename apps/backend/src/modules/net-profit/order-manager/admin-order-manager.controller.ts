@@ -1,8 +1,8 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../../common/auth/permission.guard';
-import { Can, RequirePermission, type PermissionCheck } from '../../../common/auth/permission.decorator';
+import { RequirePermission } from '../../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { CurrentAdmin } from '../../../common/auth/current-admin.decorator';
 import { OrderManagerService } from './order-manager.service';
@@ -40,18 +40,14 @@ export class AdminOrderManagerController {
     return this.orderManager.listDeleted(query);
   }
 
+  // Assigning is just another change to an order here, gated by the same
+  // net_profit_orders.manage as every other one — no separate
+  // assignment.manage box to tick. Whoever may work the Order Manager may
+  // hand an order to a colleague. (Customers and wholesale still ask for
+  // assignment.manage; this is only the Order Manager's rule.)
   @Post('bulk')
   @RequirePermission('net_profit_orders.manage')
-  bulk(
-    @Body() dto: BulkOrderActionDto,
-    @CurrentAdmin() admin: { id: number },
-    @Can() can: PermissionCheck,
-  ) {
-    // Same rule as PATCH :id/assign below. The bulk bar was a way round it:
-    // anyone with order access could reassign any number of orders at once.
-    if (dto.action === 'assign' && !can('assignment.manage')) {
-      throw new ForbiddenException('Missing permission: assignment.manage');
-    }
+  bulk(@Body() dto: BulkOrderActionDto, @CurrentAdmin() admin: { id: number }) {
     return this.orderManager.bulkAction(dto, admin.id);
   }
 
@@ -62,7 +58,7 @@ export class AdminOrderManagerController {
   }
 
   @Patch(':id/assign')
-  @RequirePermission('net_profit_orders.manage', 'assignment.manage')
+  @RequirePermission('net_profit_orders.manage')
   assign(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignOrderDto) {
     return this.orderManager.assign(id, dto.assignedAdminId ?? null);
   }
