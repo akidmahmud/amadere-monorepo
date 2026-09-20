@@ -15,6 +15,17 @@ export function NormalizeBdPhone() {
   );
 }
 
+// An optional field left blank arrives as "" from an HTML form, and
+// `@IsOptional()` only skips null/undefined — so "" went on to fail the
+// format check, which is how "email only, no mobile" was refused at signup
+// despite phone being optional. Put this on an OPTIONAL phone field only:
+// on a required one, blank must keep failing.
+export function BlankToUndefined() {
+  return Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  );
+}
+
 // Same acceptance rule as everywhere else a phone is validated in this app
 // (fraud checks, blocker rules, admin/storefront forms) — see
 // packages/shared/src/phone.ts's normalizeBdPhone for the single source of

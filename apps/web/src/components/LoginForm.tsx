@@ -211,8 +211,10 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
       {
         firstName,
         lastName,
-        phone: regPhone,
-        email: regEmail || undefined,
+        // Blank, not "", when the customer registered on their email alone —
+        // an empty string is a value, and it failed the phone format check.
+        phone: regPhone.trim() || undefined,
+        email: regEmail.trim() || undefined,
         password: regPassword,
         otpChannel: effectiveChannel,
       },
@@ -749,7 +751,7 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
                 disabled={!regResendCooldown.canResend || register.isPending}
                 onClick={() =>
                   register.mutate(
-                    { firstName, lastName, phone: regPhone, email: regEmail || undefined, password: regPassword, otpChannel: effectiveChannel },
+                    { firstName, lastName, phone: regPhone.trim() || undefined, email: regEmail.trim() || undefined, password: regPassword, otpChannel: effectiveChannel },
                     { onSuccess: (data) => { setRegSentTo(data.otpIdentifier); regResendCooldown.start(); } },
                   )
                 }
@@ -831,7 +833,11 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
                   onChange={(e) => setRegEmail(e.target.value)}
                   className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-body text-sm text-slate-800 outline-none transition-colors focus:border-[#197B40]"
                 />
-                {emailEntered && (
+                {/* Only a real choice when BOTH were given. With no phone the
+                    code can only go to the email, and offering "SMS to your
+                    mobile number" — pre-selected, with no number to send to —
+                    read as if the signup still needed one. */}
+                {emailEntered && phoneEntered && (
                   <div className="mt-2.5 rounded-xl border border-slate-200 bg-[#F4FAF6] p-3">
                     <p className="mb-2 font-body text-xs font-semibold text-slate-800">Where should we send your code?</p>
                     <div className="flex flex-col gap-1.5">
@@ -843,7 +849,7 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
                           onChange={() => setRegOtpChannel("PHONE")}
                           className="accent-[#197B40]"
                         />
-                        SMS to {regPhone || "your mobile number"}
+                        SMS to {regPhone}
                       </label>
                       <label className="flex items-center gap-2 font-body text-xs text-slate-700">
                         <input
@@ -857,6 +863,11 @@ export function LoginForm({ defaultMode = "login" }: { defaultMode?: "login" | "
                       </label>
                     </div>
                   </div>
+                )}
+                {emailEntered && !phoneEntered && (
+                  <p className="mt-1.5 font-body text-[11px] text-slate-500">
+                    We&apos;ll email your 6-digit code to {regEmail.trim()}.
+                  </p>
                 )}
                 {conflictField === "email" && (
                   <p className="mt-1 font-body text-xs text-red-600">This email address is already registered.</p>

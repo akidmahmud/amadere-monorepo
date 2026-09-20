@@ -88,7 +88,10 @@ export function useRegister() {
       args: {
         firstName: string;
         lastName: string;
-        phone: string;
+        // Optional: a customer with no BD mobile registers on their email
+        // alone. Send it absent, not blank — "" is a value and fails the
+        // phone format check. The backend needs one of the two.
+        phone?: string;
         email?: string;
         password: string;
         // Omitted = PHONE. Only ever sent as EMAIL when the customer both

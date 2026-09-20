@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
+import { BlankToUndefined, IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 export class RegisterDto {
   @ApiProperty()
@@ -23,12 +23,14 @@ export class RegisterDto {
   // an account with no identifier at all can never be signed into.
   @ApiPropertyOptional()
   @IsOptional()
+  @BlankToUndefined()
   @NormalizeBdPhone()
   @IsBdPhone()
   phone?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @BlankToUndefined()
   @IsEmail()
   email?: string;
 
