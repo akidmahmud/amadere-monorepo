@@ -150,6 +150,20 @@ export class AdminProductDto {
 // pulls in every variant's attribute values, every category/tag/attribute's
 // translations, etc., which made a 100-row picker list genuinely slow to
 // load once the catalog grew past a handful of products.
+/** One sellable variant of a picker row. The wholesale order form lists these
+ *  individually — a product with two pack sizes is two things to sell, and the
+ *  line has to carry the variant so stock moves off the right one. */
+export class AdminProductPickerVariantDto {
+  id!: number;
+  sku!: string | null;
+  price!: string | null;
+  salePrice!: string | null;
+  wholesalePrice!: string | null;
+  stockStatus!: StockStatus;
+  /** Live for staff, hidden from the storefront — still pickable here. */
+  isAdminOnly!: boolean;
+}
+
 export class AdminProductPickerItemDto {
   id!: number;
   slug!: string;
@@ -177,6 +191,10 @@ export class AdminProductPickerItemDto {
    *  endpoint feeds collections, discounts and promo videos, where an
    *  out-of-stock product is a perfectly valid pick. */
   stockStatus!: StockStatus;
+  /** Every variant, not just the default one. Empty for a simple product,
+   *  which sells on the product row itself. The relation pickers ignore this
+   *  and keep reading the default-variant fields above. */
+  variants!: AdminProductPickerVariantDto[];
 }
 
 // Same rationale as AdminProductPickerItemDto above, applied to the actual

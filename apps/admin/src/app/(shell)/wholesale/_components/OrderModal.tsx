@@ -10,6 +10,7 @@ import {
   useUpdateWholesaleOrder,
   useWholesaleChannels,
   useWholesaleProducts,
+  type PickableProduct,
   type WholesaleCourier,
   type WholesaleCustomer,
   type WholesaleOrder,
@@ -22,6 +23,9 @@ const inputClass =
 
 interface Line {
   productId: number;
+  /** Set when the line is a specific variant — two pack sizes of one product
+   *  are two lines, and stock has to move off the right one. */
+  variantId: number | null;
   name: string;
   unitPrice: string;
   quantity: number;
@@ -116,6 +120,7 @@ export function OrderModal({
           // A line whose product was deleted keeps its snapshot name but has
           // no id to send back, so it cannot survive a restatement.
           productId: i.productId ?? 0,
+          variantId: i.variantId,
           name: i.name,
           unitPrice: i.unitPrice,
           quantity: i.quantity,
@@ -166,30 +171,31 @@ export function OrderModal({
     return list.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
+        (p.sku ?? "").toLowerCase().includes(q) ||
         p.slug.toLowerCase().includes(q) ||
         String(p.id).includes(q),
     );
   }, [products.data, productQuery]);
 
-  function addProductToLines(
-    product: { id: number; name: string; price: string | null },
-    qty: number = 1,
-  ) {
+  function addProductToLines(product: PickableProduct, qty: number = 1) {
     const quantity = Math.max(1, qty);
+    const same = (l: Line) =>
+      product.variantId
+        ? l.variantId === product.variantId
+        : l.productId === product.id && !l.variantId;
     setLines((prev) => {
-      const existing = prev.find((l) => l.productId === product.id);
+      const existing = prev.find(same);
       if (existing) {
         return prev.map((l) =>
-          l.productId === product.id
-            ? { ...l, quantity: l.quantity + quantity }
-            : l,
+          same(l) ? { ...l, quantity: l.quantity + quantity } : l,
         );
       }
       return [
         ...prev,
         {
           productId: product.id,
-          name: product.name,
+          variantId: product.variantId ?? null,
+          name: product.sku ? `${product.name} (${product.sku})` : product.name,
           unitPrice: product.price ?? "0",
           quantity: quantity,
           discount: "0",
@@ -204,7 +210,8 @@ export function OrderModal({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const items = lines.map((l) => ({
-      productId: l.productId,
+      productId: l.variantId ? undefined : l.productId,
+      variantId: l.variantId ?? undefined,
       unitPrice: l.unitPrice || "0",
       quantity: l.quantity,
       discount: l.discount || "0",
@@ -460,7 +467,7 @@ export function OrderModal({
                 ) : (
                   filteredProducts.map((p) => (
                     <button
-                      key={p.id}
+                      key={p.variantId ? `v${p.variantId}` : `p${p.id}`}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => addProductToLines(p, Number(pickQty) || 1)}
@@ -473,6 +480,7 @@ export function OrderModal({
                         <div className="min-w-0">
                           <div className="truncate text-xs font-bold text-text">
                             {p.name}
+                            {p.sku ? ` · ${p.sku}` : ""}
                           </div>
                           <div className="text-[11px] font-medium text-secondary">
                             Retail: {p.price ? `৳${p.price}` : "N/A"}{" "}
@@ -525,7 +533,7 @@ export function OrderModal({
                 ) : (
                   lines.map((line, i) => (
                     <tr
-                      key={line.productId}
+                      key={line.variantId ? `v${line.variantId}` : `p${line.productId}-${i}`}
                       className="hover:bg-surface-2/60 transition-colors"
                     >
                       <td className="px-4 py-3 font-semibold text-text">

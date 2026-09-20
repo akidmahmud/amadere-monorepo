@@ -826,7 +826,26 @@ export interface PickableProduct {
   /** Primary image, or null when the product has none. */
   imageUrl: string | null;
   stockStatus: string;
+  /** Set when this row is one variant of a product. The order line then sends
+   *  variantId, so stock moves off the pack size that was actually sold. */
+  variantId?: number | null;
+  /** Live for staff, hidden from the storefront — sellable here. */
+  isAdminOnly?: boolean;
 }
+
+interface PickerVariant {
+  id: number;
+  sku: string | null;
+  price: string | null;
+  salePrice: string | null;
+  wholesalePrice: string | null;
+  stockStatus: string;
+  isAdminOnly: boolean;
+}
+
+/** Cart identity: two variants of one product are two different lines. */
+export const pickableKey = (p: PickableProduct) =>
+  p.variantId ? `v${p.variantId}` : `p${p.id}`;
 
 /**
  * What a line should start at for the mode being used.
@@ -897,10 +916,34 @@ export function channelDetails(
     .map((f) => ({ label: f.label, value: String(data[f.key!]) }));
 }
 
+/**
+ * One row per sellable thing, not per product: a product with two pack sizes
+ * is two rows. The endpoint returns products with their variants; the picker
+ * only ever showed the default variant, which hid every other pack size and
+ * every admin-only variant (those are never the default).
+ */
 export function useWholesaleProducts() {
   return useQuery({
     queryKey: ["admin-wholesale-products"],
-    queryFn: () => proxyFetch<PickableProduct[]>("/admin/wholesale/products"),
+    queryFn: async () => {
+      const rows = await proxyFetch<
+        (PickableProduct & { variants?: PickerVariant[] })[]
+      >("/admin/wholesale/products");
+      return rows.flatMap(({ variants, ...p }) =>
+        variants?.length
+          ? variants.map((v) => ({
+              ...p,
+              variantId: v.id,
+              sku: v.sku ?? p.sku,
+              price: v.price,
+              salePrice: v.salePrice,
+              wholesalePrice: v.wholesalePrice,
+              stockStatus: v.stockStatus,
+              isAdminOnly: v.isAdminOnly,
+            }))
+          : [p],
+      );
+    },
   });
 }
 

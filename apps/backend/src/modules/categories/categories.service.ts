@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale } from '@amader/db';
+import { Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -24,6 +24,16 @@ import {
 
 const WITH_TRANSLATIONS = { translations: true } as const;
 
+// Same tie-break as the storefront's Default sort (ProductsService.publicList),
+// so a category nobody has prioritised yet — every position still 0 — lists in
+// the admin in the order the shop actually shows. Numbering that list
+// "Priority 1..n" while the storefront showed a different order was the whole
+// confusion; ties left to Postgres are not an order at all.
+const CATEGORY_PRODUCT_ORDER: Prisma.ProductCategoryOrderByWithRelationInput[] = [
+  { position: 'asc' },
+  { productId: 'desc' },
+];
+
 // The admin edit form needs the category's current products to pre-select
 // them, so the detail read carries the join rows. The LIST deliberately does
 // not — it only needs a count, and pulling every membership for every row
@@ -32,7 +42,7 @@ const WITH_TRANSLATIONS_AND_PRODUCTS = {
   translations: true,
   // Ordered, so the edit form shows the same priority the storefront uses
   // rather than whatever order the rows happen to come back in.
-  products: { select: { productId: true }, orderBy: { position: 'asc' as const } },
+  products: { select: { productId: true }, orderBy: CATEGORY_PRODUCT_ORDER },
 } as const;
 
 // Public-only: the PLP filter sidebar shows a product count per category

@@ -243,13 +243,16 @@ export class ProductsService {
         // columns, not the full variant include the list endpoint uses.
         variants: {
           select: {
+            id: true,
             price: true,
             salePrice: true,
             wholesalePrice: true,
             sku: true,
             isDefault: true,
+            stockStatus: true,
+            isAdminOnly: true,
           },
-          orderBy: { id: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -274,6 +277,18 @@ export class ProductsService {
         sku: variant?.sku ?? p.sku ?? null,
         imageUrl: p.media[0]?.media.url ?? null,
         stockStatus: p.stockStatus,
+        // Every variant, so a picker that sells (the wholesale order form) can
+        // list each pack size — including an admin-only one, which is never
+        // the default and so never survived the pick above.
+        variants: p.variants.map((v) => ({
+          id: v.id,
+          sku: v.sku,
+          price: v.price?.toString() ?? null,
+          salePrice: v.salePrice?.toString() ?? null,
+          wholesalePrice: v.wholesalePrice?.toString() ?? null,
+          stockStatus: v.stockStatus,
+          isAdminOnly: v.isAdminOnly,
+        })),
       };
     });
   }

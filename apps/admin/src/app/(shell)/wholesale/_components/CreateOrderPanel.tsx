@@ -19,6 +19,7 @@ import {
   useWholesaleChannels,
   useWholesalePaymentAccounts,
   useWholesaleProducts,
+  pickableKey,
   type PickableProduct,
   type WholesaleChannel,
   type WholesaleCustomer,
@@ -325,10 +326,11 @@ export function CreateOrderPanel({
 
   function addProduct(p: PickableProduct) {
     setCart((lines) => {
-      const found = lines.find((l) => l.product.id === p.id);
+      const key = pickableKey(p);
+      const found = lines.find((l) => pickableKey(l.product) === key);
       if (found) {
         return lines.map((l) =>
-          l.product.id === p.id ? { ...l, quantity: l.quantity + 1 } : l,
+          pickableKey(l.product) === key ? { ...l, quantity: l.quantity + 1 } : l,
         );
       }
       return [
@@ -344,9 +346,9 @@ export function CreateOrderPanel({
     setProductQuery("");
   }
 
-  function patchLine(id: number, patch: Partial<CartLine>) {
+  function patchLine(key: string, patch: Partial<CartLine>) {
     setCart((lines) =>
-      lines.map((l) => (l.product.id === id ? { ...l, ...patch } : l)),
+      lines.map((l) => (pickableKey(l.product) === key ? { ...l, ...patch } : l)),
     );
   }
 
@@ -423,7 +425,10 @@ export function CreateOrderPanel({
           postCode: delivery.postCode.trim() || undefined,
         },
         items: cart.map((l) => ({
-          productId: l.product.id,
+          // A variant row bills and destocks the variant; a simple product
+          // has none and sells on the product row itself.
+          productId: l.product.variantId ? undefined : l.product.id,
+          variantId: l.product.variantId ?? undefined,
           unitPrice: Number(l.unitPrice || 0).toFixed(2),
           quantity: l.quantity,
           discount: Number(l.discount || 0).toFixed(2),
@@ -798,7 +803,7 @@ export function CreateOrderPanel({
                     a small thing to hit for the one action a result row has. */}
                 {productMatches.map((p) => (
                   <button
-                    key={p.id}
+                    key={pickableKey(p)}
                     type="button"
                     onClick={() => addProduct(p)}
                     className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-2"
@@ -850,7 +855,7 @@ export function CreateOrderPanel({
                 </div>
                 {cart.map((l) => (
                   <div
-                    key={l.product.id}
+                    key={pickableKey(l.product)}
                     className="grid grid-cols-2 items-center gap-2 rounded-xl border border-border p-2.5 md:grid-cols-[minmax(150px,1.4fr)_100px_110px_90px_100px_28px] md:rounded-none md:border-0 md:border-b md:border-border md:p-0 md:pb-2.5"
                   >
                     <div className="col-span-2 flex min-w-0 items-center gap-2.5 md:col-span-1">
@@ -871,7 +876,7 @@ export function CreateOrderPanel({
                         type="button"
                         className="w-7 bg-surface-2 font-black text-secondary"
                         onClick={() =>
-                          patchLine(l.product.id, {
+                          patchLine(pickableKey(l.product), {
                             quantity: Math.max(1, l.quantity - 1),
                           })
                         }
@@ -882,7 +887,7 @@ export function CreateOrderPanel({
                         className="w-full min-w-0 bg-surface text-center text-xs text-text outline-none"
                         value={l.quantity}
                         onChange={(e) =>
-                          patchLine(l.product.id, {
+                          patchLine(pickableKey(l.product), {
                             quantity: Math.max(
                               1,
                               parseInt(e.target.value || "1", 10) || 1,
@@ -894,7 +899,7 @@ export function CreateOrderPanel({
                         type="button"
                         className="w-7 bg-surface-2 font-black text-secondary"
                         onClick={() =>
-                          patchLine(l.product.id, { quantity: l.quantity + 1 })
+                          patchLine(pickableKey(l.product), { quantity: l.quantity + 1 })
                         }
                       >
                         +
@@ -906,7 +911,9 @@ export function CreateOrderPanel({
                       className={`${INPUT} h-9 text-xs`}
                       value={l.unitPrice}
                       onChange={(e) =>
-                        patchLine(l.product.id, { unitPrice: e.target.value })
+                        patchLine(pickableKey(l.product), {
+                          unitPrice: e.target.value,
+                        })
                       }
                     />
                     <input
@@ -915,7 +922,9 @@ export function CreateOrderPanel({
                       className={`${INPUT} h-9 text-xs`}
                       value={l.discount}
                       onChange={(e) =>
-                        patchLine(l.product.id, { discount: e.target.value })
+                        patchLine(pickableKey(l.product), {
+                          discount: e.target.value,
+                        })
                       }
                     />
                     <span className="text-right text-xs font-bold text-text">
@@ -927,7 +936,9 @@ export function CreateOrderPanel({
                       className="justify-self-end text-muted hover:text-danger"
                       onClick={() =>
                         setCart((lines) =>
-                          lines.filter((x) => x.product.id !== l.product.id),
+                          lines.filter(
+                            (x) => pickableKey(x.product) !== pickableKey(l.product),
+                          ),
                         )
                       }
                     >

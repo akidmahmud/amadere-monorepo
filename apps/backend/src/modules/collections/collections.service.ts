@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Locale } from '@amader/db';
+import { Locale, Prisma } from '@amader/db';
 import { PaginatedResult } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -27,9 +27,16 @@ import {
   toPublicNavCollectionDto,
 } from './collections.mapper';
 
+// id tie-breaks so products added in one go — all sortOrder 0 — keep a stable
+// order between reads; ties left to Postgres are not an order at all.
+const COLLECTION_PRODUCT_ORDER: Prisma.CollectionProductOrderByWithRelationInput[] = [
+  { sortOrder: 'asc' },
+  { id: 'asc' },
+];
+
 const WITH_TRANSLATIONS_AND_PRODUCTS = {
   translations: true,
-  products: { orderBy: { sortOrder: 'asc' as const } },
+  products: { orderBy: COLLECTION_PRODUCT_ORDER },
 } as const;
 
 // Collection products are only ever rendered as CARDS — image, name, price
@@ -162,7 +169,7 @@ export class CollectionsService {
   async publicNavList(locale: Locale): Promise<PublicNavCollectionDto[]> {
     const items = await this.prisma.client.collection.findMany({
       where: { deletedAt: null, status: 'PUBLISHED', showInNav: true },
-      include: { translations: true, products: { orderBy: { sortOrder: 'asc' as const } } },
+      include: { translations: true, products: { orderBy: COLLECTION_PRODUCT_ORDER } },
       orderBy: { sortOrder: 'asc' },
     });
     return items.map((c) => toPublicNavCollectionDto(c, locale));
