@@ -120,7 +120,11 @@ export class FraudService {
 
     if (!force) {
       const cached = await this.prisma.client.fraudCheck.findUnique({ where: { phone } });
-      if (cached && cached.expiresAt > new Date()) {
+      // A row recording a FAILED lookup is never served from cache, whatever
+      // its TTL says: rows written before failures were capped at 60s are
+      // still out there as 0/0 HIGH for up to 72h, and re-serving one keeps a
+      // real customer mis-scored long after the source came back.
+      if (cached && cached.expiresAt > new Date() && !this.allSourcesUnavailable(cached.breakdown)) {
         return toFraudCheckDto({ ...cached, source: 'cache' });
       }
     }
@@ -158,7 +162,11 @@ export class FraudService {
     );
 
     const successRate = total > 0 ? delivered / total : null;
-    const riskLevel = this.deriveRiskLevel(successRate, total, settings);
+    const allUnavailable = this.allSourcesUnavailable(breakdown);
+    // A lookup that failed is not a customer with no history. Without this,
+    // allowNoHistory=false rated every phone HIGH during an outage (or with a
+    // missing/exhausted API key) and the gate demanded an OTP from everybody.
+    const riskLevel = allUnavailable ? 'UNKNOWN' : this.deriveRiskLevel(successRate, total, settings);
 
     /*
      * "Every source was unavailable" is NOT "this customer has no history",
@@ -174,12 +182,6 @@ export class FraudService {
      * The verdict itself still fails OPEN. Blocking every COD order because a
      * third party is down would be far worse than letting a few through.
      */
-    const allUnavailable =
-      this.sources.length > 0 &&
-      this.sources.every((src) => {
-        const entry = breakdown[src.name] as { unavailable?: boolean } | undefined;
-        return entry?.unavailable === true;
-      });
     const expiresAt = new Date(
       Date.now() +
         (allUnavailable ? 60 * 1000 : settings.cacheTtlHours * 60 * 60 * 1000),
@@ -219,6 +221,12 @@ export class FraudService {
     return toFraudCheckDto(saved);
   }
 
+  /** Every source failed (no key, quota, timeout, error) — no data, not zero data. */
+  private allSourcesUnavailable(breakdown: unknown): boolean {
+    const map = (breakdown ?? {}) as Record<string, { unavailable?: boolean } | undefined>;
+    return this.sources.length > 0 && this.sources.every((src) => map[src.name]?.unavailable === true);
+  }
+
   // RiskLevel badge derived from the exact same thresholds the checkout
   // gate acts on (ADDENDUM §A: "the badge and the gate never disagree").
   private deriveRiskLevel(successRate: number | null, total: number, settings: FraudSettingsDto): RiskLevel {
@@ -246,6 +254,13 @@ export class FraudService {
     }
 
     const check = await this.evaluate(rawPhone);
+    // Fail open: the courier lookup itself failed, so there is nothing to
+    // score. Treating it as "no history" put every customer through the
+    // allowNoHistory=false path (HIGH -> OTP/advance/block) whenever
+    // bdcourier was down, out of quota, or had no API key.
+    if (this.allSourcesUnavailable(check.breakdown)) {
+      return { allowed: true, riskLevel: 'UNKNOWN', verdict: 'pass' };
+    }
     const noHistory = check.totalOrders === 0;
 
     if (noHistory) {
