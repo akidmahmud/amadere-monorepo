@@ -88,7 +88,15 @@ export class CheckoutService {
     ip?: string,
   ): Promise<void> {
     const otpSettings = await this.otpSecurity.getSettings();
-    if (!otpSettings.codOtpEnabled) {
+    // Same two reasons checkout() demands a code: the shop asks every COD
+    // customer, or the fraud gate flags this phone (Fraud > "Require OTP for
+    // risky customers"). Checking only codOtpEnabled here meant a risky
+    // customer was asked for a code at order time that this endpoint refused
+    // to send. The gate reads the cached FraudCheck row, so it's cheap.
+    if (
+      !otpSettings.codOtpEnabled &&
+      !(await this.fraud.evaluateCheckoutGate(dto.phone)).requiresOtp
+    ) {
       throw new BadRequestException('COD OTP verification is currently disabled');
     }
 
