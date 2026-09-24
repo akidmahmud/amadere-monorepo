@@ -107,3 +107,8 @@ export function useBulkDeleteDiscounts() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+/** ISO timestamp → `datetime-local` value in Dhaka time (UTC+6, no DST); the API reads it back the same way. */
+export function toDhakaInput(iso: string | null | undefined): string {
+  return iso ? new Date(new Date(iso).getTime() + 6 * 3600_000).toISOString().slice(0, 16) : "";
+}

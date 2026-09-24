@@ -137,6 +137,7 @@ export default function NewDiscountPage() {
             selected={productIds}
             onChange={setProductIds}
             placeholder="Search products..."
+            bulk
           />
           <SearchPickerField
             label="Restrict to categories (none = all)"
@@ -144,6 +145,7 @@ export default function NewDiscountPage() {
             selected={categoryIds}
             onChange={setCategoryIds}
             placeholder="Search categories..."
+            bulk
           />
           <p className="text-xs text-muted">
             For one customer, give them their own code: Generate a code, set Max total uses (1 = single use),
@@ -155,13 +157,13 @@ export default function NewDiscountPage() {
         <Card className="flex h-fit flex-col gap-4">
           <h3 className="font-ui text-sm font-bold text-text">Schedule</h3>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Starts (optional)</span>
-            <input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputClass} />
+            <span className="text-xs font-semibold text-secondary">Starts (optional, Bangladesh time)</span>
+            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Ends</span>
+            <span className="text-xs font-semibold text-secondary">Ends (Bangladesh time)</span>
             <input
-              type="date"
+              type="datetime-local"
               value={endsAt}
               disabled={neverExpires}
               onChange={(e) => setEndsAt(e.target.value)}

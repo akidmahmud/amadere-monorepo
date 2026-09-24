@@ -7,7 +7,7 @@ import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
 import { StatusSelect } from "@/components/StatusSelect";
 import { SearchPickerField } from "@/components/SearchPickerField";
 import { usePickerCategories, usePickerProducts } from "@/hooks/usePickers";
-import { useDiscount, useDiscountRedemptions, useUpdateDiscount, type DiscountType, type DiscountValueType } from "@/hooks/useDiscounts";
+import { toDhakaInput, useDiscount, useDiscountRedemptions, useUpdateDiscount, type DiscountType, type DiscountValueType } from "@/hooks/useDiscounts";
 import type { PublishStatus } from "@/hooks/useBrands";
 import { DiscountLinkField } from "@/components/DiscountLink";
 
@@ -47,8 +47,8 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
     setMaxUsesTotal(discount.maxUsesTotal != null ? String(discount.maxUsesTotal) : "");
     setMaxUsesPerCustomer(discount.maxUsesPerCustomer != null ? String(discount.maxUsesPerCustomer) : "");
     setNeverExpires(!discount.endsAt);
-    setStartsAt(discount.startsAt?.slice(0, 10) ?? "");
-    setEndsAt(discount.endsAt?.slice(0, 10) ?? "");
+    setStartsAt(toDhakaInput(discount.startsAt));
+    setEndsAt(toDhakaInput(discount.endsAt));
     setStatus(discount.status);
     setProductIds(discount.productIds);
     setCategoryIds(discount.categoryIds);
@@ -157,6 +157,7 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
             selected={productIds}
             onChange={setProductIds}
             placeholder="Search products..."
+            bulk
           />
           <SearchPickerField
             label="Restrict to categories (none = all)"
@@ -164,6 +165,7 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
             selected={categoryIds}
             onChange={setCategoryIds}
             placeholder="Search categories..."
+            bulk
           />
           <p className="text-xs text-muted">
             For one customer, give them their own code: Generate a code, set Max total uses (1 = single use),
@@ -182,13 +184,13 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
             {discount.maxUsesTotal ? ` / ${discount.maxUsesTotal}` : ""} time{discount.usedCount === 1 ? "" : "s"}
           </div>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Starts (optional)</span>
-            <input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputClass} />
+            <span className="text-xs font-semibold text-secondary">Starts (optional, Bangladesh time)</span>
+            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-secondary">Ends</span>
+            <span className="text-xs font-semibold text-secondary">Ends (Bangladesh time)</span>
             <input
-              type="date"
+              type="datetime-local"
               value={endsAt}
               disabled={neverExpires}
               onChange={(e) => setEndsAt(e.target.value)}

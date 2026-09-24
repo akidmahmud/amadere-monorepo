@@ -19,12 +19,15 @@ import {
 } from './discounts.mapper';
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+// `<input type="datetime-local">` value, no zone — read as Dhaka time like date-only values.
+const LOCAL_DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 function toScheduleDate(
   value: string | undefined,
   endOfDay = false,
 ): Date | undefined {
   if (!value) return undefined;
+  if (LOCAL_DATETIME_PATTERN.test(value)) return new Date(`${value}:00+06:00`);
   if (!DATE_ONLY_PATTERN.test(value)) return new Date(value);
 
   const time = endOfDay ? '23:59:59.999' : '00:00:00.000';

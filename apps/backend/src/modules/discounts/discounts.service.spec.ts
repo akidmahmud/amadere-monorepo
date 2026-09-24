@@ -63,4 +63,39 @@ describe('DiscountsService date schedules', () => {
     expect(createData?.startsAt).toEqual(new Date('2026-09-11T18:00:00.000Z'));
     expect(createData?.endsAt).toEqual(new Date('2026-09-12T17:59:59.999Z'));
   });
+
+  it('reads datetime-local values as Bangladesh time', async () => {
+    let createData: Prisma.DiscountCreateInput | undefined;
+    const prisma = {
+      client: {
+        discount: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest
+            .fn()
+            .mockImplementation(({ data }: Prisma.DiscountCreateArgs) => {
+              createData = data;
+              return Promise.resolve(
+                discountRow({
+                  startsAt: createData.startsAt,
+                  endsAt: createData.endsAt,
+                }),
+              );
+            }),
+        },
+      },
+    };
+    const service = new DiscountsService(prisma as unknown as PrismaService);
+
+    await service.create({
+      code: 'SAVE10',
+      type: DiscountType.COUPON,
+      valueType: DiscountValueType.PERCENTAGE,
+      value: 10,
+      startsAt: '2026-09-12T09:30',
+      endsAt: '2026-09-12T21:15',
+    });
+
+    expect(createData?.startsAt).toEqual(new Date('2026-09-12T03:30:00.000Z'));
+    expect(createData?.endsAt).toEqual(new Date('2026-09-12T15:15:00.000Z'));
+  });
 });

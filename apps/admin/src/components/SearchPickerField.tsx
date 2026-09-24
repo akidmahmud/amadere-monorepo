@@ -25,6 +25,7 @@ export function SearchPickerField({
   onChange,
   placeholder = "Search...",
   emptyHint = "No matches.",
+  bulk = false,
 }: {
   label: string;
   options: SearchPickerOption[];
@@ -32,6 +33,8 @@ export function SearchPickerField({
   onChange: (ids: number[]) => void;
   placeholder?: string;
   emptyHint?: string;
+  /** Show "Select all" (every option matching the search) and "Clear all". */
+  bulk?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const selectedOptions = options.filter((o) => selected.includes(o.id));
@@ -43,7 +46,28 @@ export function SearchPickerField({
 
   return (
     <div>
-      <span className="mb-2 block text-xs font-semibold text-secondary">{label}</span>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-secondary">{label}</span>
+        {bulk && (
+          <div className="flex gap-3 text-[0.7rem] font-bold">
+            <button
+              type="button"
+              onClick={() => onChange([...new Set([...selected, ...filtered.map((o) => o.id)])])}
+              className="text-brand-500 hover:underline"
+            >
+              {search.trim() ? `Select all ${filtered.length}` : "Select all"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              disabled={selected.length === 0}
+              className="text-muted hover:text-text disabled:opacity-40"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </div>
       {selectedOptions.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {selectedOptions.map((o) => (
