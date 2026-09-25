@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { setAuthCookies } from "@/lib/auth-cookies";
+import { expireHostOnlyCookies } from "@/lib/cookie-expiry";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
 // Shared by every Route Handler that exchanges credentials for a token pair
 // (login, 2fa/verify, refresh) — calls the backend, and on success stores
@@ -14,7 +16,10 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:30
 // the client genuinely needs that `twoFactorToken` back to complete
 // `/2fa/verify`, so (unlike a plain token response) this shape is passed
 // through rather than stripped.
-export async function proxyTokenIssuingCall(backendPath: string, body: unknown): Promise<NextResponse> {
+export async function proxyTokenIssuingCall(
+  backendPath: string,
+  body: unknown,
+): Promise<NextResponse> {
   try {
     const res = await fetch(`${BACKEND_URL}/api/v1${backendPath}`, {
       method: "POST",
@@ -29,7 +34,7 @@ export async function proxyTokenIssuingCall(backendPath: string, body: unknown):
       return NextResponse.json(json);
     }
     await setAuthCookies(json.data.accessToken, json.data.refreshToken);
-    return NextResponse.json({ success: true });
+    return expireHostOnlyCookies(NextResponse.json({ success: true }));
   } catch {
     // Backend unreachable (down, restarting, wrong port) — a clean 503
     // instead of an unhandled fetch/JSON-parse exception. Without this, a
@@ -38,7 +43,13 @@ export async function proxyTokenIssuingCall(backendPath: string, body: unknown):
     // "Invalid email or password" — the real cause (backend down) was never
     // visible to the user.
     return NextResponse.json(
-      { success: false, error: { code: "backend_unreachable", message: "Backend is unreachable" } },
+      {
+        success: false,
+        error: {
+          code: "backend_unreachable",
+          message: "Backend is unreachable",
+        },
+      },
       { status: 503 },
     );
   }

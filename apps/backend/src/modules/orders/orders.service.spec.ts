@@ -7,6 +7,7 @@ import { PricingService } from '../cart/pricing.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { DownloadsService } from '../digital-products/downloads.service';
 import { CartService } from '../cart/cart.service';
+import { StockService } from '../stock/stock.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 // reload() pulls in the full ORDER_INCLUDE shape via orders.mapper — stubbed
@@ -22,13 +23,14 @@ function createMockPrismaService() {
     order: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn() },
     product: { update: jest.fn() },
     productVariant: { update: jest.fn() },
-    orderStatusHistory: { create: jest.fn() },
+    orderStatusHistory: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
     payment: { findFirst: jest.fn(), update: jest.fn() },
     // A cancel gives back any coupon use; these orders have none.
     discountRedemption: { findMany: jest.fn().mockResolvedValue([]), update: jest.fn() },
     discount: { update: jest.fn(), updateMany: jest.fn() },
     // Same pattern as admin-order-creation.service.spec.ts — $transaction
     // just runs the callback against these mocks (tx === client).
+    $queryRaw: jest.fn(), // lockOrderRow
     $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(client)),
   };
   return { client };
@@ -63,6 +65,7 @@ describe('OrdersService.updateStatus — digital lines and stock reservation', (
         { provide: DownloadsService, useValue: downloads },
         // Only used by restoreCartFromPayment, which these tests never reach.
         { provide: CartService, useValue: { addItem: jest.fn() } },
+        { provide: StockService, useValue: { move: jest.fn() } },
       ],
     }).compile();
     service = module.get(OrdersService);
@@ -119,6 +122,8 @@ describe('OrdersService.updateStatus — digital lines and stock reservation', (
         { productId: 11, variantId: null, quantity: 2, productTypeSnapshot: 'PHYSICAL' },
       ],
     });
+    // The detour: its latest stock-affecting history entry is the CANCELED.
+    prisma.client.orderStatusHistory.findFirst.mockResolvedValue({ status: 'CANCELED' });
 
     await service.updateStatus(
       7,

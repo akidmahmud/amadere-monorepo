@@ -9,7 +9,8 @@ import { OgPreviewCard } from "@/components/OgPreviewCard";
 import { SeoCharCount } from "@/components/SeoCharCount";
 import { MediaPicker } from "@/components/MediaPicker";
 
-const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+const inputClass =
+  "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
 // `description` here can be the product's own CKEditor-authored rich-text
 // field (see the `description` prop below) — shown raw, that puts literal
@@ -75,20 +76,28 @@ export function ProductSeoTab({
       setMetaDescription(query.data.description ?? "");
       setOgImageUrl(query.data.ogImageUrl ?? "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data]);
 
   if (!productId) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/40 p-5 text-sm font-semibold text-emerald-900 shadow-sm">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-700 ring-1 ring-amber-400/40">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.5}>
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         </span>
-        <span>Save the product first — SEO metadata is edited once it has a real ID.</span>
+        <span>
+          Save the product first — SEO metadata is edited once it has a real ID.
+        </span>
       </div>
     );
   }
@@ -123,7 +132,14 @@ export function ProductSeoTab({
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-[0.95rem] font-extrabold text-emerald-950 flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-800/10 text-emerald-800">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
@@ -143,12 +159,15 @@ export function ProductSeoTab({
               {storefrontUrl}/products/{slug || "product-slug"}
             </div>
             <div className="mt-2 text-xs leading-relaxed text-emerald-950/80">
-              {effectiveDescription || "No description set yet — the storefront will fall back to the product's own description."}
+              {effectiveDescription ||
+                "No description set yet — the storefront will fall back to the product's own description."}
             </div>
           </div>
 
           <label className="mt-5 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-emerald-950">Meta title (optional, falls back to product name)</span>
+            <span className="text-xs font-bold text-emerald-950">
+              Meta title (optional, falls back to product name)
+            </span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -158,7 +177,9 @@ export function ProductSeoTab({
             <SeoCharCount value={title} limit="title" />
           </label>
           <label className="mt-4 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-emerald-950">Meta description (optional)</span>
+            <span className="text-xs font-bold text-emerald-950">
+              Meta description (optional)
+            </span>
             <textarea
               value={metaDescription}
               onChange={(e) => setMetaDescription(e.target.value)}
@@ -190,17 +211,22 @@ export function ProductSeoTab({
             />
             {ogImageUrl ? (
               <p className="text-xs text-emerald-950/60">
-                Shared links (WhatsApp, Facebook, X) will use this image instead of
-                the product photo. Remove it to go back to the primary image.
+                Shared links (WhatsApp, Facebook, X) will use this image instead
+                of the product photo. Remove it to go back to the primary image.
               </p>
             ) : primaryImageUrl ? (
               <div className="flex items-start gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={primaryImageUrl} alt="" className="h-16 w-16 shrink-0 rounded-inner border border-dashed border-border object-cover" />
+                <img
+                  src={primaryImageUrl}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-inner border border-dashed border-border object-cover"
+                />
                 <p className="text-xs text-emerald-950/60">
-                  Empty, so shared links use this product&apos;s <strong>primary
-                  image</strong>. Change it in the Media tab and the share preview
-                  follows automatically — or upload a dedicated one above.
+                  Empty, so shared links use this product&apos;s{" "}
+                  <strong>primary image</strong>. Change it in the Media tab and
+                  the share preview follows automatically — or upload a
+                  dedicated one above.
                 </p>
               </div>
             ) : (
@@ -212,8 +238,15 @@ export function ProductSeoTab({
           </div>
 
           <div className="mt-5 flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-emerald-950">Link preview (approximate)</span>
-            <OgPreviewCard imageUrl={effectiveImageUrl} title={effectiveTitle} description={effectiveDescription} domain={domain} />
+            <span className="text-xs font-bold text-emerald-950">
+              Link preview (approximate)
+            </span>
+            <OgPreviewCard
+              imageUrl={effectiveImageUrl}
+              title={effectiveTitle}
+              description={effectiveDescription}
+              domain={domain}
+            />
           </div>
 
           <div className="mt-5 flex items-center gap-3">
@@ -227,7 +260,16 @@ export function ProductSeoTab({
             </button>
             {justSaved && (
               <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 SEO Metadata Saved!

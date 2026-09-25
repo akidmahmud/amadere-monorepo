@@ -1,0 +1,292 @@
+"use client";
+
+import { Icon } from "@amader/admin-ui";
+import { taka, type PosProduct } from "@/lib/pos-cart";
+
+export const LOW_STOCK = 10; // same threshold as the backend's POS_LOW_STOCK
+
+// Chip icons by category name; anything unmatched gets a generic tag.
+const CATEGORY_ICONS: [RegExp, string][] = [
+  [/beverage|drink|juice|water/i, "local_drink"],
+  [/snack|chip|biscuit/i, "cookie"],
+  [/grocer|rice|atta|flour|oil|dal/i, "shopping_cart"],
+  [/personal|care|beauty|soap|shampoo/i, "sanitizer"],
+  [/household|clean|home/i, "home"],
+  [/electronic|bulb|battery/i, "devices"],
+  [/stationer|paper|pen|book/i, "menu_book"],
+  [/honey|ghee|dairy|milk/i, "egg"],
+];
+const iconFor = (name: string) =>
+  CATEGORY_ICONS.find(([re]) => re.test(name))?.[1] ?? "sell";
+
+export function CategoryChips({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: { id: number; name: string }[];
+  value?: number;
+  onChange: (v?: number) => void;
+}) {
+  const chip = (active: boolean) =>
+    `flex h-12 shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors ${
+      active
+        ? "border-[#1d7a46] bg-[#1d7a46] text-white"
+        : "border-gray-200 bg-white text-gray-800 hover:border-gray-300"
+    }`;
+  return (
+    <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">
+      <button
+        className={chip(value === undefined)}
+        onClick={() => onChange(undefined)}
+      >
+        <Icon name="grid_view" size={20} /> All Products
+      </button>
+      {categories.map((c) => (
+        <button
+          key={c.id}
+          className={chip(value === c.id)}
+          onClick={() => onChange(c.id)}
+        >
+          <Icon name={iconFor(c.name)} size={20} /> {c.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function StatCards({
+  stats,
+  activeCustomer,
+}: {
+  stats?: { totalProducts: number; lowStock: number; todaySales: string };
+  activeCustomer: number;
+}) {
+  const cards = [
+    {
+      label: "Total Products",
+      value: stats ? String(stats.totalProducts) : "—",
+      icon: "deployed_code",
+      tone: "bg-emerald-50 text-[#1d7a46]",
+    },
+    {
+      label: "Low Stock Items",
+      value: stats ? String(stats.lowStock) : "—",
+      icon: "warning",
+      tone: "bg-red-50 text-red-500",
+    },
+    {
+      label: "Today's Sales",
+      value: stats ? taka(stats.todaySales) : "—",
+      icon: "bar_chart",
+      tone: "bg-emerald-50 text-[#1d7a46]",
+    },
+    {
+      label: "Active Customer",
+      value: String(activeCustomer),
+      icon: "person",
+      tone: "bg-emerald-50 text-[#1d7a46]",
+    },
+  ];
+  return (
+    <div className="grid shrink-0 grid-cols-2 gap-4 xl:grid-cols-4">
+      {cards.map((c) => (
+        <div
+          key={c.label}
+          className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+        >
+          <div>
+            <div className="text-sm text-gray-600">{c.label}</div>
+            <div className="mt-2 text-2xl font-extrabold">{c.value}</div>
+          </div>
+          <span
+            className={`grid h-12 w-12 place-items-center rounded-full ${c.tone}`}
+          >
+            <Icon name={c.icon} size={24} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StockLine({ stock }: { stock: number }) {
+  if (stock <= 0) return <Line dot="bg-red-500" text="Out of Stock" />;
+  if (stock >= 9999) return <Line dot="bg-emerald-500" text="In Stock" />;
+  if (stock <= LOW_STOCK)
+    return <Line dot="bg-orange-500" text={`Low Stock (${stock})`} />;
+  return <Line dot="bg-emerald-500" text={`In Stock (${stock})`} />;
+}
+function Line({ dot, text }: { dot: string; text: string }) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-gray-600">
+      <span className={`h-2 w-2 rounded-full ${dot}`} /> {text}
+    </div>
+  );
+}
+
+function Price({ p }: { p: PosProduct }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-base font-extrabold">
+        {taka(p.salePrice ?? p.price)}
+      </span>
+      {p.salePrice && (
+        <span className="text-xs text-gray-400 line-through">
+          {taka(p.price)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function ProductGrid({
+  items,
+  loading,
+  sort,
+  onSort,
+  view,
+  onView,
+  onAdd,
+}: {
+  items: PosProduct[];
+  loading: boolean;
+  sort: string;
+  onSort: (s: string) => void;
+  view: "grid" | "list";
+  onView: (v: "grid" | "list") => void;
+  onAdd: (p: PosProduct) => void;
+}) {
+  const toggle = (active: boolean) =>
+    `grid h-10 w-10 place-items-center rounded-lg ${active ? "bg-[#1d7a46] text-white" : "text-gray-600 hover:bg-gray-100"}`;
+  return (
+    <section>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-2xl font-extrabold">Products</h2>
+        <div className="flex items-center gap-2">
+          <select
+            value={sort}
+            onChange={(e) => onSort(e.target.value)}
+            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+            aria-label="Sort"
+          >
+            <option value="popular">Sort: Popular</option>
+            <option value="name">Sort: Name</option>
+            <option value="price">Sort: Price</option>
+          </select>
+          <button
+            className={toggle(view === "grid")}
+            onClick={() => onView("grid")}
+            aria-label="Grid view"
+          >
+            <Icon name="grid_view" size={20} />
+          </button>
+          <button
+            className={toggle(view === "list")}
+            onClick={() => onView("list")}
+            aria-label="List view"
+          >
+            <Icon name="list" size={20} />
+          </button>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="py-10 text-center text-gray-500">Loading products…</div>
+      )}
+      {!loading && items.length === 0 && (
+        <div className="py-10 text-center text-gray-500">No products found</div>
+      )}
+
+      {view === "grid" ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-4">
+          {items.map((p) => (
+            <div
+              key={`${p.productId}:${p.variantId ?? 0}`}
+              className="flex flex-col rounded-2xl border border-gray-100 bg-white p-3.5 shadow-sm"
+            >
+              <div className="relative mb-3 grid h-28 place-items-center">
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.imageUrl}
+                    alt=""
+                    className="max-h-28 max-w-full object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <Icon name="image" size={40} className="text-gray-300" />
+                )}
+                {p.storeOnly && (
+                  <span className="absolute left-0 top-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                    Store item
+                  </span>
+                )}
+              </div>
+              <div className="line-clamp-2 text-sm font-semibold leading-snug">
+                {p.name}
+              </div>
+              <div className="mb-1 h-4 text-xs text-gray-500">
+                {p.variantLabel ?? ""}
+              </div>
+              <Price p={p} />
+              <div className="mb-3 mt-1">
+                <StockLine stock={p.stock} />
+              </div>
+              <button
+                disabled={p.stock <= 0}
+                onClick={() => onAdd(p)}
+                className="mt-auto flex h-9 items-center justify-center gap-1 rounded-lg bg-emerald-50 text-sm font-bold text-[#1d7a46] hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Icon name="add" size={18} /> Add
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white">
+          {items.map((p) => (
+            <div
+              key={`${p.productId}:${p.variantId ?? 0}`}
+              className="flex items-center gap-4 px-4 py-2.5"
+            >
+              <div className="grid h-12 w-12 shrink-0 place-items-center">
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.imageUrl}
+                    alt=""
+                    className="max-h-12 max-w-full object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <Icon name="image" size={24} className="text-gray-300" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {p.name}{" "}
+                  {p.variantLabel && (
+                    <span className="text-gray-500">· {p.variantLabel}</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">{p.sku ?? ""}</div>
+              </div>
+              <StockLine stock={p.stock} />
+              <div className="w-24 text-right">
+                <Price p={p} />
+              </div>
+              <button
+                disabled={p.stock <= 0}
+                onClick={() => onAdd(p)}
+                className="flex h-9 items-center gap-1 rounded-lg bg-emerald-50 px-4 text-sm font-bold text-[#1d7a46] hover:bg-emerald-100 disabled:opacity-40"
+              >
+                <Icon name="add" size={18} /> Add
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}

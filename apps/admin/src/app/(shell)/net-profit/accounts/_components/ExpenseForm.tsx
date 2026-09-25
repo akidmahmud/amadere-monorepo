@@ -1,5 +1,8 @@
 "use client";
 
+import { useAdminMe } from "@/hooks/useAdminAuth";
+import { usePosStores } from "@/hooks/usePos";
+import { defaultCostCentre } from "@/lib/pos-transfer";
 import { useMemo, useState } from "react";
 import { computeExpenseAmounts, fromPaisa, toPaisa } from "@amader/shared";
 import { Button, Field, fieldInputClass } from "@amader/admin-ui";
@@ -55,6 +58,18 @@ const EMPTY = {
 
 export function ExpenseForm() {
   const [form, setForm] = useState(EMPTY);
+  // A store's staff book expenses to their own store's cost centre by default.
+  const { data: me } = useAdminMe();
+  const { data: stores = [] } = usePosStores(!!me?.storeId);
+  const blank = {
+    ...EMPTY,
+    costCentreId: defaultCostCentre(me?.storeId, stores),
+  };
+  const [defaulted, setDefaulted] = useState(false);
+  if (!defaulted && blank.costCentreId && form.costCentreId === "") {
+    setDefaulted(true);
+    setForm((f) => ({ ...f, costCentreId: blank.costCentreId }));
+  }
   const [error, setError] = useState<string | null>(null);
 
   const { data: categories } = useExpenseCategories();
@@ -127,7 +142,7 @@ export function ExpenseForm() {
       note: form.note || undefined,
     };
     create.mutate(input, {
-      onSuccess: () => setForm({ ...EMPTY, expenseDate: form.expenseDate }),
+      onSuccess: () => setForm({ ...blank, expenseDate: form.expenseDate }),
       onError: (e: unknown) =>
         setError(e instanceof Error ? e.message : "Could not save the expense"),
     });
@@ -367,7 +382,7 @@ export function ExpenseForm() {
         >
           {create.isPending ? "Saving…" : "+ Add expense"}
         </Button>
-        <Button type="button" variant="ghost" onClick={() => setForm(EMPTY)}>
+        <Button type="button" variant="ghost" onClick={() => setForm(blank)}>
           Clear form
         </Button>
       </div>

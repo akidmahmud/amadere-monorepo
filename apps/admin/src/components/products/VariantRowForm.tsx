@@ -27,8 +27,17 @@ export interface VariantRowFormProps {
 // variant's own sku/price/stock — shared between the "build variants before
 // the product exists yet" flow (new product) and the "add one more variant"
 // flow (existing product), since the row shape is identical either way.
-export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, costPerItem, costPriceUnit }: VariantRowFormProps) {
-  const [valueByAttribute, setValueByAttribute] = useState<Record<number, number>>({});
+export function VariantRowForm({
+  attributes,
+  onSubmit,
+  submitLabel,
+  pending,
+  costPerItem,
+  costPriceUnit,
+}: VariantRowFormProps) {
+  const [valueByAttribute, setValueByAttribute] = useState<
+    Record<number, number>
+  >({});
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
@@ -37,11 +46,22 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
   const [isDefault, setIsDefault] = useState(false);
   const [isAdminOnly, setIsAdminOnly] = useState(false);
 
-  const effectiveCost = computeVariantCost(costPerItem, costPriceUnit, weight ? Number(weight) : undefined);
-  const profit = effectiveCost !== undefined && price ? Number(price) - effectiveCost : null;
-  const saleProfit = effectiveCost !== undefined && salePrice ? Number(salePrice) - effectiveCost : null;
+  const effectiveCost = computeVariantCost(
+    costPerItem,
+    costPriceUnit,
+    weight ? Number(weight) : undefined,
+  );
+  const profit =
+    effectiveCost !== undefined && price ? Number(price) - effectiveCost : null;
+  const saleProfit =
+    effectiveCost !== undefined && salePrice
+      ? Number(salePrice) - effectiveCost
+      : null;
 
-  const canSubmit = attributes.length > 0 && attributes.every((a) => valueByAttribute[a.id]) && price;
+  const canSubmit =
+    attributes.length > 0 &&
+    attributes.every((a) => valueByAttribute[a.id]) &&
+    price;
 
   function reset() {
     setValueByAttribute({});
@@ -88,13 +108,23 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
   // elements are invalid HTML / trigger a hydration mismatch. Enter-to-submit
   // is preserved via onKeyDown instead of native form submission.
   return (
-    <div onKeyDown={handleKeyDown} className="flex flex-wrap items-end gap-2.5 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/30 p-3.5 shadow-sm">
+    <div
+      onKeyDown={handleKeyDown}
+      className="flex flex-wrap items-end gap-2.5 rounded-xl border border-emerald-800/20 bg-gradient-to-r from-emerald-50 via-white to-amber-50/30 p-3.5 shadow-sm"
+    >
       {attributes.map((attr) => (
         <label key={attr.id} className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold text-emerald-950">{attr.translations[0]?.name}</span>
+          <span className="text-[11px] font-bold text-emerald-950">
+            {attr.translations[0]?.name}
+          </span>
           <select
             value={valueByAttribute[attr.id] ?? ""}
-            onChange={(e) => setValueByAttribute((prev) => ({ ...prev, [attr.id]: Number(e.target.value) }))}
+            onChange={(e) =>
+              setValueByAttribute((prev) => ({
+                ...prev,
+                [attr.id]: Number(e.target.value),
+              }))
+            }
             className="h-9 rounded-lg border border-emerald-800/20 bg-white px-2.5 text-xs font-semibold text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
           >
             <option value="">Select</option>
@@ -124,7 +154,9 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-bold text-emerald-950">Sale price</span>
+        <span className="text-[11px] font-bold text-emerald-950">
+          Sale price
+        </span>
         <input
           type="number"
           value={salePrice}
@@ -134,7 +166,9 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
       </label>
       {costPriceUnit && (
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold text-emerald-950">Weight (kg)</span>
+          <span className="text-[11px] font-bold text-emerald-950">
+            Weight (kg)
+          </span>
           <input
             type="number"
             value={weight}
@@ -146,7 +180,9 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
       {costPerItem !== undefined && (
         <>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-emerald-950">Profit</span>
+            <span className="text-[11px] font-bold text-emerald-950">
+              Profit
+            </span>
             <span
               className={`flex h-9 w-20 items-center rounded-lg border px-2.5 text-xs font-extrabold shadow-xs ${
                 profit !== null && profit < 0
@@ -158,7 +194,9 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
             </span>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-emerald-950">Sale profit</span>
+            <span className="text-[11px] font-bold text-emerald-950">
+              Sale profit
+            </span>
             <span
               className={`flex h-9 w-20 items-center rounded-lg border px-2.5 text-xs font-extrabold shadow-xs ${
                 saleProfit !== null && saleProfit < 0
@@ -181,7 +219,12 @@ export function VariantRowForm({ attributes, onSubmit, submitLabel, pending, cos
         />
       </label>
       <label className="flex items-center gap-1.5 pb-2 text-xs font-bold text-emerald-950 cursor-pointer select-none">
-        <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} className="h-3.5 w-3.5 accent-emerald-700" />
+        <input
+          type="checkbox"
+          checked={isDefault}
+          onChange={(e) => setIsDefault(e.target.checked)}
+          className="h-3.5 w-3.5 accent-emerald-700"
+        />
         Default
       </label>
       <label

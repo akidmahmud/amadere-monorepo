@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { safeNext } from "@/lib/pos-host";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAdminLogin, useAdminVerifyTwoFactor } from "@/hooks/useAdminAuth";
@@ -35,35 +36,80 @@ const leafBrandIcon = (
 );
 
 const shieldIcon = (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
     <path d="m9 12 2 2 4-4" />
   </svg>
 );
 
 const mailIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <rect x="2" y="4" width="20" height="16" rx="2" />
     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </svg>
 );
 
 const lockIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <rect x="3" y="11" width="18" height="11" rx="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
 
 const eyeOpenIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
 const eyeClosedIcon = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
     <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
     <path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
@@ -85,7 +131,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = safeNext(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -112,7 +158,9 @@ function LoginForm() {
       // Surface the real reason (e.g. "Backend is unreachable") instead of
       // always blaming the credentials — a down backend and a wrong
       // password are different problems and shouldn't look identical.
-      setError(err instanceof Error ? err.message : "Invalid email or password.");
+      setError(
+        err instanceof Error ? err.message : "Invalid email or password.",
+      );
     }
   }
 
@@ -141,22 +189,45 @@ function LoginForm() {
             center-crop on tall/narrow viewports clips straight through it.
             Cropping surplus width off the right (plain shelf photography)
             is always safe. */}
-        <Image src="/login-hero.png" alt="" fill priority sizes="54vw" className="object-cover object-left" />
+        <Image
+          src="/login-hero.png"
+          alt=""
+          fill
+          priority
+          sizes="54vw"
+          className="object-cover object-left"
+        />
         <div className="relative z-[1] flex h-full min-h-screen flex-col p-11">
           <div className="mt-auto flex flex-wrap items-end justify-between gap-5 pt-10">
             <div
               className="flex max-w-[250px] items-center gap-2.5 rounded-xl px-4 py-3 text-[0.8rem] font-semibold leading-snug"
-              style={{ background: "rgba(255,255,255,.92)", color: "#3d4a41", boxShadow: "0 4px 14px rgba(60,80,50,.10)" }}
+              style={{
+                background: "rgba(255,255,255,.92)",
+                color: "#3d4a41",
+                boxShadow: "0 4px 14px rgba(60,80,50,.10)",
+              }}
             >
               <span style={{ color: green600 }}>{shieldIcon}</span>
               Trusted by thousands of customers across Bangladesh
             </div>
-            <div className="rounded-full px-[30px] py-3.5 text-center text-white" style={{ background: green900, boxShadow: "0 8px 22px rgba(20,50,28,.35)" }}>
+            <div
+              className="rounded-full px-[30px] py-3.5 text-center text-white"
+              style={{
+                background: green900,
+                boxShadow: "0 8px 22px rgba(20,50,28,.35)",
+              }}
+            >
               <div className="flex items-center justify-center gap-2 text-[1.35rem] font-bold">
                 {leafPillIcon}
-                আমাদের<sup className="-translate-y-1.5 text-[0.55rem] font-semibold">™</sup>
+                আমাদের
+                <sup className="-translate-y-1.5 text-[0.55rem] font-semibold">
+                  ™
+                </sup>
               </div>
-              <div className="mt-[3px] text-[0.78rem] font-medium" style={{ color: "#cfe6cf" }}>
+              <div
+                className="mt-[3px] text-[0.78rem] font-medium"
+                style={{ color: "#cfe6cf" }}
+              >
                 প্রাকৃতিক খাবার, সুস্থ জীবন
               </div>
             </div>
@@ -171,31 +242,59 @@ function LoginForm() {
       >
         <div className="mt-1 text-center">
           <div className="flex justify-center">{leafBrandIcon}</div>
-          <div className="mt-2 text-[2.15rem] font-extrabold tracking-tight" style={{ fontFamily: "'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif", color: green900 }}>
+          <div
+            className="mt-2 text-[2.15rem] font-extrabold tracking-tight"
+            style={{
+              fontFamily:
+                "'Google Sans Flex', 'Open Sans', 'Noto Sans Bengali', sans-serif",
+              color: green900,
+            }}
+          >
             Amader Ltd
           </div>
-          <div className="mt-1.5 text-[0.95rem] font-semibold" style={{ color: green800 }}>
+          <div
+            className="mt-1.5 text-[0.95rem] font-semibold"
+            style={{ color: green800 }}
+          >
             প্রাকৃতিক খাবার, সুস্থ জীবন
           </div>
         </div>
 
-        <div className="mt-[26px] border-b pb-[26px] text-center" style={{ borderColor: "#eef1ee" }}>
-          <h1 className="text-[1.75rem] font-extrabold tracking-tight" style={{ color: ink }}>
+        <div
+          className="mt-[26px] border-b pb-[26px] text-center"
+          style={{ borderColor: "#eef1ee" }}
+        >
+          <h1
+            className="text-[1.75rem] font-extrabold tracking-tight"
+            style={{ color: ink }}
+          >
             Welcome Back!
           </h1>
-          <p className="mt-2.5 text-[0.95rem] font-medium" style={{ color: muted }}>
-            {twoFactorToken ? "Enter the 6-digit code we emailed to your account address." : "Sign in to continue to your admin dashboard"}
+          <p
+            className="mt-2.5 text-[0.95rem] font-medium"
+            style={{ color: muted }}
+          >
+            {twoFactorToken
+              ? "Enter the 6-digit code we emailed to your account address."
+              : "Sign in to continue to your admin dashboard"}
           </p>
         </div>
 
         {!twoFactorToken ? (
           <form onSubmit={handleLogin} className="mt-[26px]">
             <div className="mb-5">
-              <label htmlFor="email" className="mb-2.5 block text-[0.88rem] font-semibold" style={{ color: ink }}>
+              <label
+                htmlFor="email"
+                className="mb-2.5 block text-[0.88rem] font-semibold"
+                style={{ color: ink }}
+              >
                 Email Address
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute top-1/2 left-[15px] -translate-y-1/2" style={{ color: faint }}>
+                <span
+                  className="pointer-events-none absolute top-1/2 left-[15px] -translate-y-1/2"
+                  style={{ color: faint }}
+                >
                   {mailIcon}
                 </span>
                 <input
@@ -215,11 +314,18 @@ function LoginForm() {
             </div>
 
             <div className="mb-5">
-              <label htmlFor="password" className="mb-2.5 block text-[0.88rem] font-semibold" style={{ color: ink }}>
+              <label
+                htmlFor="password"
+                className="mb-2.5 block text-[0.88rem] font-semibold"
+                style={{ color: ink }}
+              >
                 Password
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute top-1/2 left-[15px] -translate-y-1/2" style={{ color: faint }}>
+                <span
+                  className="pointer-events-none absolute top-1/2 left-[15px] -translate-y-1/2"
+                  style={{ color: faint }}
+                >
                   {lockIcon}
                 </span>
                 <input
@@ -248,7 +354,10 @@ function LoginForm() {
             </div>
 
             <div className="my-0.5 mb-6 flex items-center justify-between">
-              <label className="flex cursor-pointer items-center gap-2.5 text-[0.88rem] font-semibold select-none" style={{ color: "#3d4a41" }}>
+              <label
+                className="flex cursor-pointer items-center gap-2.5 text-[0.88rem] font-semibold select-none"
+                style={{ color: "#3d4a41" }}
+              >
                 {/* ponytail: native accent-color instead of a hand-rolled SVG-checkmark
                     checkbox — same visual result (tinted, rounded), a fraction of the CSS. */}
                 <input
@@ -263,7 +372,10 @@ function LoginForm() {
             </div>
 
             {error && (
-              <p className="mb-4 text-[0.85rem] font-semibold" style={{ color: "#c0392b" }}>
+              <p
+                className="mb-4 text-[0.85rem] font-semibold"
+                style={{ color: "#c0392b" }}
+              >
                 {error}
               </p>
             )}
@@ -273,8 +385,13 @@ function LoginForm() {
               disabled={login.isPending}
               className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-xl text-[1rem] font-bold text-white transition-colors disabled:opacity-70"
               style={{ background: green900 }}
-              onMouseEnter={(e) => !login.isPending && (e.currentTarget.style.background = "#153520")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = green900)}
+              onMouseEnter={(e) =>
+                !login.isPending &&
+                (e.currentTarget.style.background = "#153520")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = green900)
+              }
             >
               {lockIcon}
               {login.isPending ? "Signing in…" : "Sign In"}
@@ -283,7 +400,11 @@ function LoginForm() {
         ) : (
           <form onSubmit={handleVerify} className="mt-[26px]">
             <div className="mb-6">
-              <label htmlFor="code" className="mb-2.5 block text-[0.88rem] font-semibold" style={{ color: ink }}>
+              <label
+                htmlFor="code"
+                className="mb-2.5 block text-[0.88rem] font-semibold"
+                style={{ color: ink }}
+              >
                 Verification Code
               </label>
               <input
@@ -301,7 +422,10 @@ function LoginForm() {
             </div>
 
             {error && (
-              <p className="mb-4 text-[0.85rem] font-semibold" style={{ color: "#c0392b" }}>
+              <p
+                className="mb-4 text-[0.85rem] font-semibold"
+                style={{ color: "#c0392b" }}
+              >
                 {error}
               </p>
             )}
@@ -319,7 +443,10 @@ function LoginForm() {
 
         <div className="my-[26px] h-px" style={{ background: line }} />
 
-        <div className="flex items-start gap-[15px] rounded-[13px] border px-5 py-[18px]" style={{ background: greenSoft, borderColor: greenSoftLine }}>
+        <div
+          className="flex items-start gap-[15px] rounded-[13px] border px-5 py-[18px]"
+          style={{ background: greenSoft, borderColor: greenSoftLine }}
+        >
           <span className="mt-0.5" style={{ color: green800 }}>
             {shieldIcon}
           </span>
@@ -327,13 +454,20 @@ function LoginForm() {
             <h4 className="text-[0.92rem] font-bold" style={{ color: ink }}>
               Secure Admin Access
             </h4>
-            <p className="mt-1.5 text-[0.85rem] leading-relaxed font-medium" style={{ color: muted }}>
-              Your data is protected with enterprise-grade security and encryption.
+            <p
+              className="mt-1.5 text-[0.85rem] leading-relaxed font-medium"
+              style={{ color: muted }}
+            >
+              Your data is protected with enterprise-grade security and
+              encryption.
             </p>
           </div>
         </div>
 
-        <div className="mt-auto pt-[30px] text-center text-[0.8rem] font-medium" style={{ color: faint }}>
+        <div
+          className="mt-auto pt-[30px] text-center text-[0.8rem] font-medium"
+          style={{ color: faint }}
+        >
           © 2026 Amader Ltd. All rights reserved.
         </div>
       </section>

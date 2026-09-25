@@ -11,18 +11,35 @@ const COOKIE_OPTS = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
+  // ".amadere.com" in production so admin. and pos. share one login.
+  // Unset in dev → host-only cookies, as before.
+  ...(process.env.ADMIN_COOKIE_DOMAIN
+    ? { domain: process.env.ADMIN_COOKIE_DOMAIN }
+    : {}),
 };
 
-export async function setAuthCookies(accessToken: string, refreshToken: string): Promise<void> {
+export async function setAuthCookies(
+  accessToken: string,
+  refreshToken: string,
+): Promise<void> {
   const store = await cookies();
-  store.set("admin_access_token", accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });
-  store.set("admin_refresh_token", refreshToken, { ...COOKIE_OPTS, maxAge: REFRESH_MAX_AGE });
+  store.set("admin_access_token", accessToken, {
+    ...COOKIE_OPTS,
+    maxAge: ACCESS_MAX_AGE,
+  });
+  store.set("admin_refresh_token", refreshToken, {
+    ...COOKIE_OPTS,
+    maxAge: REFRESH_MAX_AGE,
+  });
 }
 
 export async function clearAuthCookies(): Promise<void> {
   const store = await cookies();
-  store.delete("admin_access_token");
-  store.delete("admin_refresh_token");
+  // Expire with the same domain/path they were set with — a bare delete()
+  // would miss the parent-domain cookie and leave the user logged in.
+  for (const name of ["admin_access_token", "admin_refresh_token"]) {
+    store.set(name, "", { ...COOKIE_OPTS, maxAge: 0 });
+  }
 }
 
 export async function getAccessToken(): Promise<string | undefined> {

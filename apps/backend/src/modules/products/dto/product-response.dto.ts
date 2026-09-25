@@ -84,6 +84,10 @@ export class AdminProductDto {
   id!: number;
   slug!: string;
   sku!: string | null;
+  /** Simple products only; variants carry their own. */
+  barcode!: string | null;
+  /** Null = shared catalogue; set = only that store (always ADMIN_ONLY). */
+  storeId!: number | null;
   brandId!: number | null;
   /** Linked Author record (book author), null when none is picked. */
   authorId!: number | null;

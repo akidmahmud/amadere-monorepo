@@ -1,8 +1,15 @@
 import { QRCodeSVG } from "qrcode.react";
+import { orderTaxView } from "@/lib/order-tax";
 import type { AdminOrder } from "@/hooks/useOrders";
-import { useInvoiceSettings, type InvoiceDateFormat } from "@/hooks/useInvoiceSettings";
+import {
+  useInvoiceSettings,
+  type InvoiceDateFormat,
+} from "@/hooks/useInvoiceSettings";
 import { useInvoiceTemplateSettings } from "@/hooks/useInvoiceTemplateSettings";
-import { buildInvoiceMergeTags, renderInvoiceTemplate } from "@/lib/invoice-template";
+import {
+  buildInvoiceMergeTags,
+  renderInvoiceTemplate,
+} from "@/lib/invoice-template";
 
 // Brand green, matching the storefront's own palette (packages/ui/src/tokens.css
 // --color-green/-dark) — the invoice is a customer-facing document reflecting
@@ -25,6 +32,8 @@ const PAYMENT_PROVIDER_DISPLAY_NAME: Record<string, string> = {
   UPAY: "Upay",
   SSLCOMMERZ: "SSLCommerz",
   BANK_TRANSFER: "Bank Transfer",
+  CASH: "Cash",
+  CARD: "Card",
 };
 
 const PAYMENT_STATUS_STYLE: Record<string, string> = {
@@ -59,14 +68,21 @@ const PAYMENT_PROVIDER_BADGE_STYLE: Record<string, string> = {
   BANK_TRANSFER: "bg-[#4a5568] text-white",
 };
 
-function formatInvoiceDate(value: string | Date, format: InvoiceDateFormat): string {
+function formatInvoiceDate(
+  value: string | Date,
+  format: InvoiceDateFormat,
+): string {
   const date = new Date(value);
   const d = date.getDate().toString().padStart(2, "0");
   const m = (date.getMonth() + 1).toString().padStart(2, "0");
   const y = date.getFullYear();
   if (format === "DMY") return `${d}/${m}/${y}`;
   if (format === "YMD") return `${y}-${m}-${d}`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 const LANGUAGE_FONT_STACK: Record<string, string> = {
@@ -77,46 +93,109 @@ const LANGUAGE_FONT_STACK: Record<string, string> = {
 };
 
 const boxIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke={GREEN}
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M21 8 12 3 3 8l9 5 9-5Z" />
     <path d="M3 8v8l9 5 9-5V8M12 13v8" />
   </svg>
 );
 const cashIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke={GREEN}
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <rect x="2" y="6" width="20" height="12" rx="2" />
     <circle cx="12" cy="12" r="3" />
     <path d="M6 6v.01M18 18v-.01" />
   </svg>
 );
 const cardIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke={GREEN}
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <rect x="2" y="5" width="20" height="14" rx="2" />
     <path d="M2 10h20" />
   </svg>
 );
 const shieldCheckIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke="#fff"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M12 3 4.5 6v6c0 4.5 3 7.5 7.5 9 4.5-1.5 7.5-4.5 7.5-9V6L12 3Z" />
     <path d="m9 12 2 2 4-4" />
   </svg>
 );
 function checkCircleIcon(color: string) {
   return (
-    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      width={16}
+      height={16}
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="9" />
       <path d="m8.5 12.5 2.5 2.5 4.5-5" />
     </svg>
   );
 }
 const warningIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="#a9740a" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke="#a9740a"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M12 3 2 20h20L12 3Z" />
     <path d="M12 10v4M12 17v.01" />
   </svg>
 );
 const headsetIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke={GREEN}
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
     <rect x="2" y="13" width="5" height="7" rx="1.5" />
     <rect x="17" y="13" width="5" height="7" rx="1.5" />
@@ -124,7 +203,16 @@ const headsetIcon = (
   </svg>
 );
 const globeIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke={GREEN}
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <circle cx="12" cy="12" r="9" />
     <path d="M3 12h18M12 3c2.3 2.3 3.6 5.4 3.6 9s-1.3 6.7-3.6 9c-2.3-2.3-3.6-5.4-3.6-9s1.3-6.7 3.6-9Z" />
   </svg>
@@ -135,7 +223,16 @@ const facebookIcon = (
   </svg>
 );
 const leafIcon = (
-  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width={16}
+    height={16}
+    fill="none"
+    stroke={GREEN}
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M4 20c8 0 13-5 13-13V5h-2C7 5 4 10 4 18Z" />
     <path d="M4 20c3-6 6-9 13-13" />
   </svg>
@@ -155,15 +252,24 @@ const leafIcon = (
 export function InvoiceDocument({ order }: { order: AdminOrder }) {
   const { data: settings } = useInvoiceSettings();
   const { data: templateSettings } = useInvoiceTemplateSettings();
-  const shipping = order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
-  const billing = order.addresses.find((a) => (a.type as unknown as string) === "BILLING") ?? shipping;
+  const shipping = order.addresses.find(
+    (a) => (a.type as unknown as string) === "SHIPPING",
+  );
+  const billing =
+    order.addresses.find((a) => (a.type as unknown as string) === "BILLING") ??
+    shipping;
   const latestPayment = order.payments[order.payments.length - 1];
 
-  if (settings?.disableUntilConfirmed && (order.status as unknown as string) === "PENDING") {
+  if (
+    settings?.disableUntilConfirmed &&
+    (order.status as unknown as string) === "PENDING"
+  ) {
     return (
       <div className="mx-auto max-w-3xl p-10 text-center text-sm text-black print:p-0">
         <p className="text-base font-semibold">Invoice not available</p>
-        <p className="text-muted">Order {order.orderNumber} hasn&apos;t been confirmed yet.</p>
+        <p className="text-muted">
+          Order {order.orderNumber} hasn&apos;t been confirmed yet.
+        </p>
       </div>
     );
   }
@@ -171,18 +277,27 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
   if (templateSettings?.enabled && templateSettings.template) {
     const tags = buildInvoiceMergeTags(order, settings);
     const html = renderInvoiceTemplate(templateSettings.template, tags);
-    // eslint-disable-next-line react/no-danger
-    return <div className="print:m-0" dangerouslySetInnerHTML={{ __html: html }} />;
+
+    return (
+      <div className="print:m-0" dangerouslySetInnerHTML={{ __html: html }} />
+    );
   }
 
   const companyName = settings?.companyName || "Amader";
   const dateFormat = settings?.dateFormat ?? "MDY";
-  const companyAddress = [settings?.companyAddress, settings?.companyCity, settings?.companyState, settings?.companyCountry]
+  const companyAddress = [
+    settings?.companyAddress,
+    settings?.companyCity,
+    settings?.companyState,
+    settings?.companyCountry,
+  ]
     .filter(Boolean)
     .join(", ");
   const languageSupport = settings?.languageSupport ?? "default";
   const fontFamily =
-    settings?.customFontEnabled && settings.customFontFamily ? `'${settings.customFontFamily}', ` : "";
+    settings?.customFontEnabled && settings.customFontFamily
+      ? `'${settings.customFontFamily}', `
+      : "";
   const bodyFontStack = fontFamily + LANGUAGE_FONT_STACK[languageSupport];
 
   // order.totalAmount is correctly floored at 0 server-side when a discount
@@ -190,13 +305,17 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
   // showing the raw discount next to that floored total makes the printed
   // rows fail to add up. Cap the displayed discount at what's actually being
   // deducted so the breakdown always reconciles with the Grand Total shown.
-  const grossBeforeDiscount = Number(order.subTotal) + Number(order.taxAmount) + Number(order.codFee) + Number(order.shippingAmount);
-  const displayDiscount = Math.min(Number(order.discountAmount), grossBeforeDiscount);
-  const taxBase = Number(order.subTotal) - displayDiscount;
-  const taxRatePercent = Number(order.taxAmount) > 0 && taxBase > 0 ? Math.round((Number(order.taxAmount) / taxBase) * 100) : null;
+  const {
+    displayDiscount,
+    ratePercent: taxRatePercent,
+    included: taxIncluded,
+  } = orderTaxView(order);
 
   const shipment = order.shipment;
-  const courierName = shipment ? COURIER_DISPLAY_NAME[shipment.provider as unknown as string] ?? String(shipment.provider) : null;
+  const courierName = shipment
+    ? (COURIER_DISPLAY_NAME[shipment.provider as unknown as string] ??
+      String(shipment.provider))
+    : null;
   const paymentProvider = latestPayment ? String(latestPayment.provider) : null;
   const paymentStatus = latestPayment ? String(latestPayment.status) : null;
   const isCod = paymentProvider === "COD";
@@ -231,54 +350,108 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
         <div className="mb-5 flex items-center justify-between">
           {settings?.companyLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={settings.companyLogoUrl} alt={companyName} className="h-[50px] object-contain" />
+            <img
+              src={settings.companyLogoUrl}
+              alt={companyName}
+              className="h-[50px] object-contain"
+            />
           ) : (
-            <div className="rounded-md px-4 py-2 text-xl font-bold text-white" style={{ backgroundColor: GREEN }}>
+            <div
+              className="rounded-md px-4 py-2 text-xl font-bold text-white"
+              style={{ backgroundColor: GREEN }}
+            >
               {companyName}
             </div>
           )}
-          <div className="text-[30px] font-bold uppercase text-[#111]">Invoice</div>
+          <div className="text-[30px] font-bold uppercase text-[#111]">
+            Invoice
+          </div>
         </div>
 
         <div className="mb-5 flex items-center">
-          <div className="mr-5 h-[3px] flex-1 rounded-full" style={{ backgroundColor: GREEN }} />
+          <div
+            className="mr-5 h-[3px] flex-1 rounded-full"
+            style={{ backgroundColor: GREEN }}
+          />
           <div className="flex gap-5 whitespace-nowrap text-[#111]">
             <p className="m-0">
-              Invoice No: <strong style={{ color: GREEN }}>{settings?.invoicePrefix}{order.orderNumber}</strong>
+              Invoice No:{" "}
+              <strong style={{ color: GREEN }}>
+                {settings?.invoicePrefix}
+                {order.orderNumber}
+              </strong>
             </p>
             <p className="m-0">
-              Date: <strong style={{ color: GREEN }}>{formatInvoiceDate(order.createdAt, dateFormat)}</strong>
+              Date:{" "}
+              <strong style={{ color: GREEN }}>
+                {formatInvoiceDate(order.createdAt, dateFormat)}
+              </strong>
             </p>
           </div>
         </div>
 
         <div className="mb-5 grid grid-cols-2 gap-5">
           <div>
-            <p className="mb-1 font-bold" style={{ color: GREEN }}>Invoice To:</p>
+            <p className="mb-1 font-bold" style={{ color: GREEN }}>
+              Invoice To:
+            </p>
             <p className="m-0">{billing?.recipientName}</p>
             <p className="m-0">{billing?.addressLine}</p>
-            <p className="m-0">{[billing?.area, billing?.district, billing?.division, billing?.postCode].filter(Boolean).join(", ")}</p>
+            <p className="m-0">
+              {[
+                billing?.area,
+                billing?.district,
+                billing?.division,
+                billing?.postCode,
+              ]
+                .filter(Boolean)
+                .join(", ")}
+            </p>
             <p className="m-0">{billing?.phone}</p>
           </div>
           <div className="text-right">
-            <p className="mb-1 font-bold" style={{ color: GREEN }}>Pay To:</p>
+            <p className="mb-1 font-bold" style={{ color: GREEN }}>
+              Pay To:
+            </p>
             <p className="m-0">{companyName}</p>
             {companyAddress && <p className="m-0">{companyAddress}</p>}
-            {settings?.companyEmail && <p className="m-0">{settings.companyEmail}</p>}
-            {settings?.companyPhone && <p className="m-0">{settings.companyPhone}</p>}
-            {settings?.companyTaxId && <p className="m-0">Tax ID: {settings.companyTaxId}</p>}
+            {settings?.companyEmail && (
+              <p className="m-0">{settings.companyEmail}</p>
+            )}
+            {settings?.companyPhone && (
+              <p className="m-0">{settings.companyPhone}</p>
+            )}
+            {settings?.companyTaxId && (
+              <p className="m-0">Tax ID: {settings.companyTaxId}</p>
+            )}
           </div>
         </div>
 
         {shipment && courierName && (
-          <div className="mb-5 rounded-md border px-5 py-4" style={{ borderColor: GREEN_TINT, backgroundColor: GREEN_TINT }}>
-            <h3 className="m-0 mb-2.5 font-bold" style={{ color: GREEN }}>For {courierName}</h3>
-            <hr className="m-0" style={{ borderColor: "rgba(31,112,60,0.25)" }} />
+          <div
+            className="mb-5 rounded-md border px-5 py-4"
+            style={{ borderColor: GREEN_TINT, backgroundColor: GREEN_TINT }}
+          >
+            <h3 className="m-0 mb-2.5 font-bold" style={{ color: GREEN }}>
+              For {courierName}
+            </h3>
+            <hr
+              className="m-0"
+              style={{ borderColor: "rgba(31,112,60,0.25)" }}
+            />
             <div className="mt-2.5 flex items-center justify-between gap-5">
               <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white">{boxIcon}</span>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white">
+                  {boxIcon}
+                </span>
                 <h5 className="m-0 font-bold text-[#111]">
-                  Parcel ID: <span style={{ color: GREEN }}>#{shipment.trackingCode ?? shipment.consignmentId ?? order.orderNumber}</span>
+                  Parcel ID:{" "}
+                  <span style={{ color: GREEN }}>
+                    #
+                    {shipment.trackingCode ??
+                      shipment.consignmentId ??
+                      order.orderNumber}
+                  </span>
                 </h5>
               </div>
               {shipment.trackingCode && (
@@ -286,14 +459,21 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
                   <QRCodeSVG value={shipment.trackingCode} size={64} />
                 </div>
               )}
-              {isCod && shipment.codAmount && Number(shipment.codAmount) > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white">{cashIcon}</span>
-                  <h5 className="m-0 font-bold text-[#111]">
-                    COD Amount: <span style={{ color: GREEN }}>{order.currency} {shipment.codAmount}</span>
-                  </h5>
-                </div>
-              )}
+              {isCod &&
+                shipment.codAmount &&
+                Number(shipment.codAmount) > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white">
+                      {cashIcon}
+                    </span>
+                    <h5 className="m-0 font-bold text-[#111]">
+                      COD Amount:{" "}
+                      <span style={{ color: GREEN }}>
+                        {order.currency} {shipment.codAmount}
+                      </span>
+                    </h5>
+                  </div>
+                )}
             </div>
           </div>
         )}
@@ -311,10 +491,23 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
             <tbody>
               {order.items.map((item) => (
                 <tr key={item.id} className="border-b border-[#dbdfea]">
-                  <td className="px-4 py-2.5">{item.name} {item.sku && <span className="text-[#b5b5b5]">({item.sku})</span>} {item.weight && <span className="text-[#b5b5b5]">— {item.weight} kg</span>}</td>
-                  <td className="px-4 py-2.5">{order.currency} {item.unitPrice}</td>
+                  <td className="px-4 py-2.5">
+                    {item.name}{" "}
+                    {item.sku && (
+                      <span className="text-[#b5b5b5]">({item.sku})</span>
+                    )}{" "}
+                    {item.weight && (
+                      <span className="text-[#b5b5b5]">— {item.weight} kg</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {order.currency} {item.unitPrice}
+                  </td>
                   <td className="px-4 py-2.5">{item.quantity}</td>
-                  <td className="px-4 py-2.5 text-right">{order.currency} {(Number(item.unitPrice) * item.quantity).toFixed(2)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {order.currency}{" "}
+                    {(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -337,7 +530,10 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
             >
               <div
                 className="rounded-md border-[4px] px-5 py-1.5"
-                style={{ borderColor: "#c53030", boxShadow: "0 0 0 2px #fff, 0 0 0 4px #c53030" }}
+                style={{
+                  borderColor: "#c53030",
+                  boxShadow: "0 0 0 2px #fff, 0 0 0 4px #c53030",
+                }}
               >
                 <span
                   className="block text-[22px] font-extrabold tracking-[0.1em] uppercase"
@@ -351,35 +547,55 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
           <div className="flex w-[48%] flex-col gap-2.5 rounded-md border border-[#dbdfea] px-5 py-4">
             <div className="flex items-center gap-2">
               {cardIcon}
-              <p className="m-0 font-bold" style={{ color: GREEN }}>Payment Information</p>
+              <p className="m-0 font-bold" style={{ color: GREEN }}>
+                Payment Information
+              </p>
             </div>
             <div className="flex items-center justify-between text-[#111]">
               <span className="font-semibold">Payment Method</span>
               {paymentProvider && !isCod ? (
-                <span className={`rounded-sm px-2 py-0.5 text-xs font-bold ${PAYMENT_PROVIDER_BADGE_STYLE[paymentProvider] ?? "bg-[#4a5568] text-white"}`}>
-                  {PAYMENT_PROVIDER_DISPLAY_NAME[paymentProvider] ?? paymentProvider}
+                <span
+                  className={`rounded-sm px-2 py-0.5 text-xs font-bold ${PAYMENT_PROVIDER_BADGE_STYLE[paymentProvider] ?? "bg-[#4a5568] text-white"}`}
+                >
+                  {PAYMENT_PROVIDER_DISPLAY_NAME[paymentProvider] ??
+                    paymentProvider}
                 </span>
               ) : (
-                <span>{paymentProvider ? PAYMENT_PROVIDER_DISPLAY_NAME[paymentProvider] ?? paymentProvider : "—"}</span>
+                <span>
+                  {paymentProvider
+                    ? (PAYMENT_PROVIDER_DISPLAY_NAME[paymentProvider] ??
+                      paymentProvider)
+                    : "—"}
+                </span>
               )}
             </div>
             <div className="flex items-center justify-between text-[#111]">
               <span className="font-semibold">Payment Status</span>
               {paymentStatus && (
-                <span className={`rounded-pill px-2.5 py-0.5 text-xs font-bold uppercase ${PAYMENT_STATUS_STYLE[paymentStatus] ?? "bg-[#eef0f3] text-[#4a5568]"}`}>
+                <span
+                  className={`rounded-pill px-2.5 py-0.5 text-xs font-bold uppercase ${PAYMENT_STATUS_STYLE[paymentStatus] ?? "bg-[#eef0f3] text-[#4a5568]"}`}
+                >
                   {PAYMENT_STATUS_DISPLAY_NAME[paymentStatus] ?? paymentStatus}
                 </span>
               )}
             </div>
             <div className="flex justify-between text-[#111]">
               <span className="font-semibold">Paid Amount</span>
-              <span className={paidAmount > 0 ? "font-bold" : ""} style={paidAmount > 0 ? { color: GREEN } : undefined}>
+              <span
+                className={paidAmount > 0 ? "font-bold" : ""}
+                style={paidAmount > 0 ? { color: GREEN } : undefined}
+              >
                 {order.currency} {paidAmount.toFixed(0)}
               </span>
             </div>
-            <div className="flex justify-between font-bold" style={{ color: dueAmount > 0 ? "#c53030" : GREEN }}>
+            <div
+              className="flex justify-between font-bold"
+              style={{ color: dueAmount > 0 ? "#c53030" : GREEN }}
+            >
               <span>Due Amount</span>
-              <span>{order.currency} {dueAmount.toFixed(0)}</span>
+              <span>
+                {order.currency} {dueAmount.toFixed(0)}
+              </span>
             </div>
             {isCod && dueAmount > 0 && paymentStatus !== "CANCELED" && (
               <div className="mt-1 flex items-center gap-2 rounded-md bg-[#fdf3d9] px-3 py-2 text-xs text-[#a9740a]">
@@ -388,60 +604,117 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
               </div>
             )}
             {!isCod && paidAmount > 0 && dueAmount === 0 && (
-              <div className="mt-1 flex items-center gap-2 rounded-md bg-[#e6f7ee] px-3 py-2 text-xs" style={{ color: GREEN }}>
+              <div
+                className="mt-1 flex items-center gap-2 rounded-md bg-[#e6f7ee] px-3 py-2 text-xs"
+                style={{ color: GREEN }}
+              >
                 {checkCircleIcon(GREEN)}
                 Payment completed successfully. Thank you!
               </div>
             )}
             {settings?.stampEnabled && settings.stampImageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={settings.stampImageUrl} alt="Stamp" className="mt-2 h-24 w-24 object-contain opacity-90" />
+              <img
+                src={settings.stampImageUrl}
+                alt="Stamp"
+                className="mt-2 h-24 w-24 object-contain opacity-90"
+              />
             )}
           </div>
           <div className="flex w-[48%] flex-col gap-1 text-[#111]">
-            <div className="flex justify-between"><span>Subtotal</span><span>{order.currency} {order.subTotal}</span></div>
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>
+                {order.currency} {order.subTotal}
+              </span>
+            </div>
             {displayDiscount > 0 && (
               <div className="flex justify-between">
-                <span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span>
-                <span>-{order.currency} {displayDiscount.toFixed(2)}</span>
+                <span>
+                  Discount{order.couponCode ? ` (${order.couponCode})` : ""}
+                </span>
+                <span>
+                  -{order.currency} {displayDiscount.toFixed(2)}
+                </span>
               </div>
             )}
-            {Number(order.shippingAmount) > 0 && <div className="flex justify-between"><span>Shipping cost</span><span>{order.currency} {order.shippingAmount}</span></div>}
+            {Number(order.shippingAmount) > 0 && (
+              <div className="flex justify-between">
+                <span>Shipping cost</span>
+                <span>
+                  {order.currency} {order.shippingAmount}
+                </span>
+              </div>
+            )}
             {Number(order.taxAmount) > 0 && (
               <div className="flex justify-between">
-                <span>Tax{taxRatePercent !== null ? ` (${taxRatePercent}%)` : ""}</span>
-                <span>{order.currency} {order.taxAmount}</span>
+                <span>
+                  {taxIncluded ? "VAT included" : "Tax"}
+                  {taxRatePercent !== null ? ` (${taxRatePercent}%)` : ""}
+                </span>
+                <span>
+                  {order.currency} {order.taxAmount}
+                </span>
               </div>
             )}
-            {Number(order.codFee) > 0 && <div className="flex justify-between"><span>COD Fee</span><span>{order.currency} {order.codFee}</span></div>}
+            {Number(order.codFee) > 0 && (
+              <div className="flex justify-between">
+                <span>COD Fee</span>
+                <span>
+                  {order.currency} {order.codFee}
+                </span>
+              </div>
+            )}
             <div className="mt-1 flex justify-between border-t border-dashed border-[#c7ccd6] pt-2.5 text-base font-bold">
               <span className="text-[#111]">Grand Total</span>
-              <span style={{ color: GREEN }}>{order.currency} {order.totalAmount}</span>
+              <span style={{ color: GREEN }}>
+                {order.currency} {order.totalAmount}
+              </span>
             </div>
             {paidAmount > 0 && (
               <>
-                <div className="mt-1 flex justify-between rounded-sm px-2 py-1.5 font-semibold" style={{ backgroundColor: GREEN_TINT, color: GREEN }}>
+                <div
+                  className="mt-1 flex justify-between rounded-sm px-2 py-1.5 font-semibold"
+                  style={{ backgroundColor: GREEN_TINT, color: GREEN }}
+                >
                   <span>Paid Amount</span>
-                  <span>- {order.currency} {paidAmount.toFixed(0)}</span>
+                  <span>
+                    - {order.currency} {paidAmount.toFixed(0)}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between rounded-sm px-2 py-2 text-base font-bold text-white" style={{ backgroundColor: GREEN_DARK }}>
-                  <span className="flex items-center gap-1.5">{checkCircleIcon("#fff")} Total Paid</span>
-                  <span>{order.currency} {dueAmount.toFixed(0)}</span>
+                <div
+                  className="flex items-center justify-between rounded-sm px-2 py-2 text-base font-bold text-white"
+                  style={{ backgroundColor: GREEN_DARK }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {checkCircleIcon("#fff")} Total Paid
+                  </span>
+                  <span>
+                    {order.currency} {dueAmount.toFixed(0)}
+                  </span>
                 </div>
               </>
             )}
           </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-center gap-2 rounded-md py-3 text-sm font-semibold text-white" style={{ backgroundColor: GREEN_DARK }}>
+        <div
+          className="mt-5 flex items-center justify-center gap-2 rounded-md py-3 text-sm font-semibold text-white"
+          style={{ backgroundColor: GREEN_DARK }}
+        >
           {shieldCheckIcon}
-          Thank you for shopping with <span style={{ color: "#f0c419" }}>{companyName}</span>!
+          Thank you for shopping with{" "}
+          <span style={{ color: "#f0c419" }}>{companyName}</span>!
         </div>
 
         {settings?.termsAndConditions && (
           <div className="mt-5 rounded-md border border-[#dbdfea] px-5 py-4">
-            <p className="mb-1 font-bold text-[#111]">Terms &amp; Conditions:</p>
-            <p className="m-0 whitespace-pre-wrap">{settings.termsAndConditions}</p>
+            <p className="mb-1 font-bold text-[#111]">
+              Terms &amp; Conditions:
+            </p>
+            <p className="m-0 whitespace-pre-wrap">
+              {settings.termsAndConditions}
+            </p>
           </div>
         )}
 
@@ -452,9 +725,21 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
             value now hides its tile rather than printing a dash. */}
         {(() => {
           const tiles = [
-            { icon: headsetIcon, label: "Need Help?", value: settings?.companyPhone },
-            { icon: globeIcon, label: "Visit Our Website", value: settings?.companyWebsite },
-            { icon: facebookIcon, label: "Like Our Page", value: settings?.companyFacebook },
+            {
+              icon: headsetIcon,
+              label: "Need Help?",
+              value: settings?.companyPhone,
+            },
+            {
+              icon: globeIcon,
+              label: "Visit Our Website",
+              value: settings?.companyWebsite,
+            },
+            {
+              icon: facebookIcon,
+              label: "Like Our Page",
+              value: settings?.companyFacebook,
+            },
             {
               icon: leafIcon,
               label: settings?.trustBadgeTitle,
@@ -467,7 +752,9 @@ export function InvoiceDocument({ order }: { order: AdminOrder }) {
           return (
             <div
               className="mt-5 grid gap-4 rounded-md bg-[#f5f6fa] px-5 py-4 text-xs text-[#111]"
-              style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
+              style={{
+                gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))`,
+              }}
             >
               {tiles.map((tile, i) => (
                 <div key={i} className="flex items-center gap-2">

@@ -2,19 +2,29 @@
 
 import type { ProductFormState } from "./useProductFormState";
 
-const inputClass = "h-9 w-full rounded-sm border border-border bg-surface px-2.5 text-sm text-text outline-none focus:border-brand-500";
-const textareaClass = "w-full rounded-sm border border-border bg-surface p-2.5 text-sm text-text outline-none focus:border-brand-500";
+const inputClass =
+  "h-9 w-full rounded-sm border border-border bg-surface px-2.5 text-sm text-text outline-none focus:border-brand-500";
+const textareaClass =
+  "w-full rounded-sm border border-border bg-surface p-2.5 text-sm text-text outline-none focus:border-brand-500";
 
 // Only needs the FAQ list, so the blog post form reuses it with its own state.
 export function ProductFaqCard({
   form,
   title = "FAQ (optional — rendered as the product page's FAQ tab)",
 }: {
-  form: { faqs: ProductFormState["faqs"]; setFaqs: (faqs: ProductFormState["faqs"]) => void };
+  form: {
+    faqs: ProductFormState["faqs"];
+    setFaqs: (faqs: ProductFormState["faqs"]) => void;
+  };
   title?: string;
 }) {
-  function update(index: number, patch: Partial<{ question: string; answer: string }>) {
-    form.setFaqs(form.faqs.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  function update(
+    index: number,
+    patch: Partial<{ question: string; answer: string }>,
+  ) {
+    form.setFaqs(
+      form.faqs.map((f, i) => (i === index ? { ...f, ...patch } : f)),
+    );
   }
 
   function remove(index: number) {
@@ -27,7 +37,9 @@ export function ProductFaqCard({
         <h3 className="text-[0.9rem] font-extrabold text-text">{title}</h3>
         <button
           type="button"
-          onClick={() => form.setFaqs([...form.faqs, { question: "", answer: "" }])}
+          onClick={() =>
+            form.setFaqs([...form.faqs, { question: "", answer: "" }])
+          }
           className="grid h-7 w-7 place-items-center rounded-full bg-brand-500 text-base font-bold leading-none text-white"
           aria-label="Add question"
           title="Add question"
@@ -35,7 +47,11 @@ export function ProductFaqCard({
           +
         </button>
       </div>
-      {form.faqs.length === 0 && <p className="text-[0.8rem] text-muted">No questions yet — click + to add one.</p>}
+      {form.faqs.length === 0 && (
+        <p className="text-[0.8rem] text-muted">
+          No questions yet — click + to add one.
+        </p>
+      )}
       <div className="flex flex-col gap-3">
         {form.faqs.map((faq, i) => (
           <div key={i} className="rounded-inner border border-border p-3">

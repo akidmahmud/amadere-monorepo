@@ -12,7 +12,8 @@ import type { ProductFormState } from "./useProductFormState";
 type Paginated<T> = { items?: T[]; total?: number };
 type AdminTagDto = components["schemas"]["AdminTagDto"];
 
-const selectClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm font-semibold text-ink outline-none focus:border-brand-500";
+const selectClass =
+  "h-10 rounded-sm border border-border bg-surface px-3 text-sm font-semibold text-ink outline-none focus:border-brand-500";
 
 function toggle(list: number[], id: number, set: (ids: number[]) => void) {
   set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -30,7 +31,11 @@ function slugify(str: string): string {
     .slice(0, 80);
 }
 
-export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) {
+export function ProductCategoriesTagsCard({
+  form,
+}: {
+  form: ProductFormState;
+}) {
   const { data: categories } = usePickerCategories();
   const { data: tags } = usePickerTags();
   const { data: brands } = useBrands();
@@ -44,7 +49,9 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
   // here (found via a targeted backend search, or freshly created — both
   // always land past that cutoff) are kept in their own bit of state so they
   // still render as real chips/checkboxes instead of silently vanishing.
-  const [extraTags, setExtraTags] = useState<{ id: number; label: string }[]>([]);
+  const [extraTags, setExtraTags] = useState<{ id: number; label: string }[]>(
+    [],
+  );
 
   const allTags = useMemo(() => {
     const map = new Map((tags ?? []).map((t) => [t.id, t] as const));
@@ -53,7 +60,9 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
   }, [tags, extraTags]);
 
   const selectedTags = allTags.filter((t) => form.tagIds.includes(t.id));
-  const filteredTags = allTags.filter((t) => t.label.toLowerCase().includes(tagSearch.trim().toLowerCase()));
+  const filteredTags = allTags.filter((t) =>
+    t.label.toLowerCase().includes(tagSearch.trim().toLowerCase()),
+  );
 
   // A product's already-assigned tags can themselves be past the picker's
   // page-1-of-100 cutoff (same root cause as the comment above) — without
@@ -64,14 +73,20 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
   // trips on a heavily-tagged product), which was most of this page's load time.
   useEffect(() => {
     if (!tags) return;
-    const known = new Set([...tags.map((t) => t.id), ...extraTags.map((t) => t.id)]);
+    const known = new Set([
+      ...tags.map((t) => t.id),
+      ...extraTags.map((t) => t.id),
+    ]);
     const missing = form.tagIds.filter((id) => !known.has(id));
     if (missing.length === 0) return;
     let cancelled = false;
     proxyFetch<Paginated<AdminTagDto>>(`/admin/tags?ids=${missing.join(",")}`)
       .then((res) => {
         if (cancelled) return;
-        const found = (res.items ?? []).map((t) => ({ id: t.id, label: t.translations?.[0]?.name ?? t.slug }));
+        const found = (res.items ?? []).map((t) => ({
+          id: t.id,
+          label: t.translations?.[0]?.name ?? t.slug,
+        }));
         if (found.length > 0) setExtraTags((prev) => [...prev, ...found]);
       })
       .catch(() => {});
@@ -87,12 +102,17 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
   // before deciding to create it, so a tag ranked past #100 doesn't get
   // silently duplicated just because it isn't in the capped local list.
   async function commitTagSearch() {
-    const names = tagSearch.split(",").map((s) => s.trim()).filter(Boolean);
+    const names = tagSearch
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (names.length === 0) return;
     const ids: number[] = [];
     const resolved: { id: number; label: string }[] = [];
     for (const name of names) {
-      const localMatch = allTags.find((t) => t.label.toLowerCase() === name.toLowerCase());
+      const localMatch = allTags.find(
+        (t) => t.label.toLowerCase() === name.toLowerCase(),
+      );
       if (localMatch) {
         ids.push(localMatch.id);
         continue;
@@ -101,11 +121,16 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
         `/admin/tags?pageSize=5&q=${encodeURIComponent(name)}`,
       );
       const serverMatch = (searchRes.items ?? []).find(
-        (t) => (t.translations?.[0]?.name ?? "").toLowerCase() === name.toLowerCase(),
+        (t) =>
+          (t.translations?.[0]?.name ?? "").toLowerCase() ===
+          name.toLowerCase(),
       );
       if (serverMatch) {
         ids.push(serverMatch.id);
-        resolved.push({ id: serverMatch.id, label: serverMatch.translations?.[0]?.name ?? name });
+        resolved.push({
+          id: serverMatch.id,
+          label: serverMatch.translations?.[0]?.name ?? name,
+        });
         continue;
       }
       const created = await createTag.mutateAsync({
@@ -127,7 +152,9 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
 
   return (
     <div className="rounded-card border border-border bg-surface p-[18px]">
-      <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">Categories &amp; Tags</h3>
+      <h3 className="mb-3.5 text-[0.9rem] font-extrabold text-text">
+        Categories &amp; Tags
+      </h3>
 
       <div className="mb-3.5">
         <span className="mb-2 block text-xs font-bold text-text">
@@ -135,8 +162,18 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
         </span>
         <div className="flex flex-wrap gap-2">
           {categories?.map((c) => (
-            <label key={c.id} className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text">
-              <input type="checkbox" checked={form.categoryIds.includes(c.id)} onChange={() => toggle(form.categoryIds, c.id, form.setCategoryIds)} className="accent-brand-500" />
+            <label
+              key={c.id}
+              className="flex items-center gap-1.5 rounded-pill border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text"
+            >
+              <input
+                type="checkbox"
+                checked={form.categoryIds.includes(c.id)}
+                onChange={() =>
+                  toggle(form.categoryIds, c.id, form.setCategoryIds)
+                }
+                className="accent-brand-500"
+              />
               {c.label}
             </label>
           ))}
@@ -145,7 +182,13 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
 
       <label className="mb-3.5 flex flex-col gap-1.5">
         <span className="text-xs font-bold text-text">Brand (optional)</span>
-        <select value={form.brandId ?? ""} onChange={(e) => form.setBrandId(e.target.value ? Number(e.target.value) : undefined)} className={selectClass}>
+        <select
+          value={form.brandId ?? ""}
+          onChange={(e) =>
+            form.setBrandId(e.target.value ? Number(e.target.value) : undefined)
+          }
+          className={selectClass}
+        >
           <option value="">None</option>
           {brands?.map((b) => (
             <option key={b.id} value={b.id}>
@@ -160,7 +203,10 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
         {selectedTags.length > 0 && (
           <div className="mb-2.5 flex flex-wrap gap-1.5">
             {selectedTags.map((t) => (
-              <span key={t.id} className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1 text-[0.68rem] font-bold text-brand-500">
+              <span
+                key={t.id}
+                className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1 text-[0.68rem] font-bold text-brand-500"
+              >
                 {t.label}
                 <button
                   type="button"
@@ -193,18 +239,29 @@ export function ProductCategoriesTagsCard({ form }: { form: ProductFormState }) 
             someone mid-way through "wallet, bags" most needs the reminder
             that commas split it into separate tags. */}
         <p className="mb-2.5 mt-1 text-[0.68rem] text-muted">
-          Tip: separate multiple tags with a comma, then press Enter to add them all at once.
+          Tip: separate multiple tags with a comma, then press Enter to add them
+          all at once.
         </p>
         <div className="flex max-h-[210px] flex-col gap-1 overflow-y-auto rounded-inner border border-border p-2">
           {filteredTags.map((t) => (
-            <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-2 py-2 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
-              <input type="checkbox" checked={form.tagIds.includes(t.id)} onChange={() => toggle(form.tagIds, t.id, form.setTagIds)} className="h-3.5 w-3.5 accent-brand-500" />
+            <label
+              key={t.id}
+              className="flex cursor-pointer items-center gap-2 rounded-[7px] px-2 py-2 text-[0.74rem] font-semibold text-text hover:bg-surface-2"
+            >
+              <input
+                type="checkbox"
+                checked={form.tagIds.includes(t.id)}
+                onChange={() => toggle(form.tagIds, t.id, form.setTagIds)}
+                className="h-3.5 w-3.5 accent-brand-500"
+              />
               {t.label}
             </label>
           ))}
           {filteredTags.length === 0 && (
             <p className="px-1.5 py-2 text-[0.72rem] text-muted">
-              {tagSearch.trim() ? "No match — press Enter to create it." : "No tags match your search."}
+              {tagSearch.trim()
+                ? "No match — press Enter to create it."
+                : "No tags match your search."}
             </p>
           )}
         </div>

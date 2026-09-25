@@ -1,5 +1,6 @@
 "use client";
 
+import { ProductStoreField } from "./ProductStoreField";
 import { useRef, useState } from "react";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useAttributes, type Attribute } from "@/hooks/useAttributes";
@@ -370,11 +371,18 @@ export function ProductFormFields({
                     onChange={form.setKeyBenefits}
                   />
                 </label>
+                <ProductStoreField
+                  value={form.storeId}
+                  onChange={form.setStoreId}
+                  onStatus={form.setStatus}
+                />
                 <div className="grid grid-cols-2 gap-3">
                   <StatusSelect
                     value={form.status}
                     onChange={form.setStatus}
-                    statuses={PRODUCT_STATUSES}
+                    statuses={
+                      form.storeId !== null ? ["ADMIN_ONLY"] : PRODUCT_STATUSES
+                    }
                     labels={PRODUCT_STATUS_LABELS}
                   />
                   <label className="flex flex-col gap-1.5">
@@ -554,6 +562,23 @@ export function ProductFormFields({
                 className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
               />
             </label>
+            {!form.hasVariants && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-emerald-950">
+                  Barcode
+                  <span className="ml-1.5 font-semibold text-emerald-900/45">
+                    EAN-13 from the pack, or leave empty and generate in POS ›
+                    Labels
+                  </span>
+                </span>
+                <input
+                  value={form.barcode}
+                  onChange={(e) => form.setBarcode(e.target.value)}
+                  lang="en"
+                  className="h-10 rounded-lg border border-emerald-800/20 bg-white px-3 text-sm font-semibold text-emerald-950 outline-none transition-all duration-150 focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+                />
+              </label>
+            )}
           </div>
           {form.hasVariants ? (
             <div className="mb-4 rounded-lg border border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-amber-400/5 p-3.5 text-xs font-semibold text-amber-900">

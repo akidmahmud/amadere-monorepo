@@ -36,7 +36,10 @@ export interface ExistingVariantsManagerProps {
   costPriceUnit?: CostPriceUnit | null;
 }
 
-function labelFor(attributes: Attribute[], attributeValueIds: number[]): string {
+function labelFor(
+  attributes: Attribute[],
+  attributeValueIds: number[],
+): string {
   return attributeValueIds
     .map((valueId) => {
       for (const attr of attributes) {
@@ -49,7 +52,8 @@ function labelFor(attributes: Attribute[], attributeValueIds: number[]): string 
     .join(" / ");
 }
 
-const editInputClass = "num h-8 w-20 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500";
+const editInputClass =
+  "num h-8 w-20 rounded-sm border border-border bg-surface px-2 text-xs text-text outline-none focus:border-brand-500";
 // Matches the row's h-8 inputs exactly — the shared Button component's
 // smallest variant is h-10, which is what made this row's box look taller
 // than its content warranted.
@@ -85,18 +89,29 @@ function VariantEditRow({
   const setDefault = useSetDefaultVariant(productId);
   const updateAdminOnly = useUpdateVariantAdminOnly(productId);
   const [price, setPrice] = useState(String(variant.price));
-  const [salePrice, setSalePrice] = useState(variant.salePrice != null ? String(variant.salePrice) : "");
+  const [salePrice, setSalePrice] = useState(
+    variant.salePrice != null ? String(variant.salePrice) : "",
+  );
   const [stock, setStock] = useState(String(variant.stock));
   const [sku, setSku] = useState(variant.sku ?? "");
   const [weight, setWeight] = useState(variant.weightOverride ?? "");
 
-  const effectiveCost = computeVariantCost(costPerItem, costPriceUnit, weight ? Number(weight) : undefined);
-  const profit = effectiveCost !== undefined && price ? Number(price) - effectiveCost : null;
-  const saleProfit = effectiveCost !== undefined && salePrice ? Number(salePrice) - effectiveCost : null;
+  const effectiveCost = computeVariantCost(
+    costPerItem,
+    costPriceUnit,
+    weight ? Number(weight) : undefined,
+  );
+  const profit =
+    effectiveCost !== undefined && price ? Number(price) - effectiveCost : null;
+  const saleProfit =
+    effectiveCost !== undefined && salePrice
+      ? Number(salePrice) - effectiveCost
+      : null;
 
   const dirty =
     price !== String(variant.price) ||
-    salePrice !== (variant.salePrice != null ? String(variant.salePrice) : "") ||
+    salePrice !==
+      (variant.salePrice != null ? String(variant.salePrice) : "") ||
     stock !== String(variant.stock) ||
     sku !== (variant.sku ?? "") ||
     weight !== (variant.weightOverride ?? "");
@@ -109,28 +124,52 @@ function VariantEditRow({
 
   function save() {
     const invalidate = () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY });
-    if (price !== String(variant.price) || salePrice !== (variant.salePrice != null ? String(variant.salePrice) : "")) {
+    if (
+      price !== String(variant.price) ||
+      salePrice !== (variant.salePrice != null ? String(variant.salePrice) : "")
+    ) {
       updatePrice.mutate(
-        { variantId: variant.id, price: Number(price), salePrice: salePrice ? Number(salePrice) : undefined },
+        {
+          variantId: variant.id,
+          price: Number(price),
+          salePrice: salePrice ? Number(salePrice) : undefined,
+        },
         { onSuccess: invalidate },
       );
     }
     if (stock !== String(variant.stock)) {
-      updateStock.mutate({ productId, variantId: variant.id, stock: Number(stock) }, { onSuccess: invalidate });
+      updateStock.mutate(
+        { productId, variantId: variant.id, stock: Number(stock) },
+        { onSuccess: invalidate },
+      );
     }
     if (sku !== (variant.sku ?? "")) {
-      updateSku.mutate({ variantId: variant.id, sku }, { onSuccess: invalidate });
+      updateSku.mutate(
+        { variantId: variant.id, sku },
+        { onSuccess: invalidate },
+      );
     }
     if (weight !== (variant.weightOverride ?? "")) {
-      updateWeight.mutate({ variantId: variant.id, weightOverride: weight ? Number(weight) : null }, { onSuccess: invalidate });
+      updateWeight.mutate(
+        {
+          variantId: variant.id,
+          weightOverride: weight ? Number(weight) : null,
+        },
+        { onSuccess: invalidate },
+      );
     }
   }
 
   return (
     <div className="flex flex-wrap items-end gap-2.5 rounded-xl border border-emerald-800/15 bg-gradient-to-r from-emerald-50/50 via-white to-amber-50/20 p-3 shadow-xs transition-all hover:border-amber-400/40">
       <span className="mb-1.5 w-28 shrink-0 truncate text-xs font-bold text-emerald-950">
-        {labelFor(attributes, variant.attributeValueIds) || `Variant #${variant.id}`}
-        {variant.isDefault && <span className="ml-1 text-[10px] font-extrabold text-amber-600">(default)</span>}
+        {labelFor(attributes, variant.attributeValueIds) ||
+          `Variant #${variant.id}`}
+        {variant.isDefault && (
+          <span className="ml-1 text-[10px] font-extrabold text-amber-600">
+            (default)
+          </span>
+        )}
         {variant.isAdminOnly && (
           <span
             className="ml-1 rounded bg-slate-700 px-1 py-px text-[9px] font-extrabold uppercase tracking-wide text-white"
@@ -158,7 +197,9 @@ function VariantEditRow({
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-bold text-emerald-900/80">Sale price</span>
+        <span className="text-[11px] font-bold text-emerald-900/80">
+          Sale price
+        </span>
         <input
           type="number"
           value={salePrice}
@@ -168,7 +209,9 @@ function VariantEditRow({
       </label>
       {costPriceUnit && (
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-bold text-emerald-900/80">Weight (kg)</span>
+          <span className="text-[11px] font-bold text-emerald-900/80">
+            Weight (kg)
+          </span>
           <input
             type="number"
             value={weight}
@@ -180,7 +223,9 @@ function VariantEditRow({
       {costPerItem !== undefined && (
         <>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-emerald-900/80">Profit</span>
+            <span className="text-[11px] font-bold text-emerald-900/80">
+              Profit
+            </span>
             <span
               className={`flex h-8 w-20 items-center rounded-lg border px-2 text-xs font-extrabold shadow-xs ${
                 profit !== null && profit < 0
@@ -192,7 +237,9 @@ function VariantEditRow({
             </span>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-emerald-900/80">Sale profit</span>
+            <span className="text-[11px] font-bold text-emerald-900/80">
+              Sale profit
+            </span>
             <span
               className={`flex h-8 w-20 items-center rounded-lg border px-2 text-xs font-extrabold shadow-xs ${
                 saleProfit !== null && saleProfit < 0
@@ -228,15 +275,27 @@ function VariantEditRow({
       <button
         type="button"
         disabled={variant.isDefault || setDefault.isPending}
-        title={variant.isDefault ? "Already the default variant" : "Make this the default variant"}
-        onClick={() => setDefault.mutate(variant.id, { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY }) })}
+        title={
+          variant.isDefault
+            ? "Already the default variant"
+            : "Make this the default variant"
+        }
+        onClick={() =>
+          setDefault.mutate(variant.id, {
+            onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY }),
+          })
+        }
         className={`h-8 shrink-0 rounded-lg border px-3 text-xs font-bold transition-all disabled:cursor-not-allowed ${
           variant.isDefault
             ? "border-amber-300 bg-amber-100 text-amber-800 opacity-70"
             : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
         }`}
       >
-        {variant.isDefault ? "Default" : setDefault.isPending ? "Setting…" : "Make default"}
+        {variant.isDefault
+          ? "Default"
+          : setDefault.isPending
+            ? "Setting…"
+            : "Make default"}
       </button>
       {/* The way to retire a variant that already sold: Remove is refused once
           it has order history (past orders must keep pointing at it), but
@@ -252,7 +311,9 @@ function VariantEditRow({
         onClick={() =>
           updateAdminOnly.mutate(
             { variantId: variant.id, isAdminOnly: !variant.isAdminOnly },
-            { onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY }) },
+            {
+              onSuccess: () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY }),
+            },
           )
         }
         className={`h-8 shrink-0 rounded-lg border px-3 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -261,7 +322,11 @@ function VariantEditRow({
             : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
         }`}
       >
-        {updateAdminOnly.isPending ? "Saving…" : variant.isAdminOnly ? "Show on store" : "Make admin only"}
+        {updateAdminOnly.isPending
+          ? "Saving…"
+          : variant.isAdminOnly
+            ? "Show on store"
+            : "Make admin only"}
       </button>
       <button
         type="button"
@@ -273,17 +338,23 @@ function VariantEditRow({
       </button>
       {updateSku.isError && (
         <span className="w-full text-xs font-bold text-rose-600">
-          {updateSku.error instanceof Error ? updateSku.error.message : "Failed to save SKU"}
+          {updateSku.error instanceof Error
+            ? updateSku.error.message
+            : "Failed to save SKU"}
         </span>
       )}
       {updateAdminOnly.isError && (
         <span className="w-full text-xs font-bold text-rose-600">
-          {updateAdminOnly.error instanceof Error ? updateAdminOnly.error.message : "Failed to change visibility"}
+          {updateAdminOnly.error instanceof Error
+            ? updateAdminOnly.error.message
+            : "Failed to change visibility"}
         </span>
       )}
       {updateWeight.isError && (
         <span className="w-full text-xs font-bold text-rose-600">
-          {updateWeight.error instanceof Error ? updateWeight.error.message : "Failed to save weight"}
+          {updateWeight.error instanceof Error
+            ? updateWeight.error.message
+            : "Failed to save weight"}
         </span>
       )}
     </div>
@@ -328,7 +399,9 @@ export function ExistingVariantsManager({
    * is using one of its values in the same breath. Only `attributeIds` is
    * sent, so nothing else in the half-edited form is written.
    */
-  async function addWithAttributes(input: Parameters<typeof addVariant.mutateAsync>[0]) {
+  async function addWithAttributes(
+    input: Parameters<typeof addVariant.mutateAsync>[0],
+  ) {
     if (unsaved.length > 0) {
       await updateProduct.mutateAsync({ attributeIds: tickedIds });
     }
@@ -343,14 +416,21 @@ export function ExistingVariantsManager({
         // ProductsService.removeVariant) — that message is already plain
         // English, not a class-validator field error, so it's shown as-is
         // rather than run through friendlyErrorMessage.
-        toast.push(err instanceof ProxyApiError ? err.message : "Failed to remove variant", "error");
+        toast.push(
+          err instanceof ProxyApiError
+            ? err.message
+            : "Failed to remove variant",
+          "error",
+        );
       },
     });
   }
 
   return (
     <div>
-      <span className="mb-2 block text-xs font-semibold text-secondary">Variants</span>
+      <span className="mb-2 block text-xs font-semibold text-secondary">
+        Variants
+      </span>
       <div className="mb-2 flex flex-col gap-1.5">
         {variants.map((v) => (
           <VariantEditRow
@@ -359,12 +439,16 @@ export function ExistingVariantsManager({
             variant={v}
             attributes={attributes}
             onRemove={() => handleRemove(v.id)}
-            removePending={removeVariant.isPending && removeVariant.variables === v.id}
+            removePending={
+              removeVariant.isPending && removeVariant.variables === v.id
+            }
             costPerItem={costPerItem}
             costPriceUnit={costPriceUnit}
           />
         ))}
-        {variants.length === 0 && <p className="text-xs text-muted">No variants yet.</p>}
+        {variants.length === 0 && (
+          <p className="text-xs text-muted">No variants yet.</p>
+        )}
       </div>
       {attributes.length > 0 ? (
         <VariantRowForm
@@ -394,7 +478,9 @@ export function ExistingVariantsManager({
           costPriceUnit={costPriceUnit}
         />
       ) : (
-        <p className="text-xs text-muted">Select at least one attribute above to add variants.</p>
+        <p className="text-xs text-muted">
+          Select at least one attribute above to add variants.
+        </p>
       )}
     </div>
   );

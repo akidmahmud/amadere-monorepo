@@ -20,10 +20,16 @@ function fieldLabel(path: string): string {
 // up from this app's DTOs — anything else passes through as-is rather than
 // risk mangling a message this doesn't recognize.
 function humanizeConstraint(message: string): string {
-  const maxLen = message.match(/must be shorter than or equal to (\d+) characters/);
-  if (maxLen) return `is too long — please keep it under ${maxLen[1]} characters`;
-  const minLen = message.match(/must be longer than or equal to (\d+) characters/);
-  if (minLen) return `is too short — please use at least ${minLen[1]} characters`;
+  const maxLen = message.match(
+    /must be shorter than or equal to (\d+) characters/,
+  );
+  if (maxLen)
+    return `is too long — please keep it under ${maxLen[1]} characters`;
+  const minLen = message.match(
+    /must be longer than or equal to (\d+) characters/,
+  );
+  if (minLen)
+    return `is too short — please use at least ${minLen[1]} characters`;
   if (/should not be empty/.test(message)) return "is required";
   return message;
 }
@@ -51,5 +57,7 @@ export function friendlyErrorMessage(raw: string): string {
     friendly.push(`${label} ${humanizeConstraint(constraint)}`);
   }
 
-  return friendly.length > 0 ? friendly.join(". ") : "Something went wrong. Please check the form and try again.";
+  return friendly.length > 0
+    ? friendly.join(". ")
+    : "Something went wrong. Please check the form and try again.";
 }

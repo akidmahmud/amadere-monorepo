@@ -52,6 +52,17 @@ export class CreateProductDto {
   @IsString()
   sku?: string;
 
+  @ApiPropertyOptional({ nullable: true, description: 'Simple products only (variants carry their own)' })
+  @IsOptional()
+  @IsString()
+  barcode?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Null = shared catalogue; set = only that store sells it (forced ADMIN_ONLY)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  storeId?: number | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

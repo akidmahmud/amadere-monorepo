@@ -39,9 +39,21 @@ export function computeSeoChecks(input: {
   const descLen = input.metaDescription.trim().length;
   const bodyLen = input.description.trim().length;
   return [
-    { label: "Title set", passed: titleLen >= SEO_LIMITS.title.min && titleLen <= SEO_LIMITS.title.max },
-    { label: "Meta description set", passed: descLen >= SEO_LIMITS.description.min && descLen <= SEO_LIMITS.description.max },
-    { label: "SEO-friendly URL", passed: /^[a-z0-9]+(-[a-z0-9]+)*$/.test(input.slug) },
+    {
+      label: "Title set",
+      passed:
+        titleLen >= SEO_LIMITS.title.min && titleLen <= SEO_LIMITS.title.max,
+    },
+    {
+      label: "Meta description set",
+      passed:
+        descLen >= SEO_LIMITS.description.min &&
+        descLen <= SEO_LIMITS.description.max,
+    },
+    {
+      label: "SEO-friendly URL",
+      passed: /^[a-z0-9]+(-[a-z0-9]+)*$/.test(input.slug),
+    },
     { label: "Image alt text", passed: !!input.primaryImageAlt.trim() },
     { label: "Meta description present", passed: descLen > 0 },
     { label: "Content readability", passed: bodyLen >= 80 },

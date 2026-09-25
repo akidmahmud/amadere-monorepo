@@ -1,18 +1,35 @@
+import { orderTaxView } from "./order-tax";
 import type { AdminOrder } from "@/hooks/useOrders";
-import type { InvoiceSettings, InvoiceDateFormat } from "@/hooks/useInvoiceSettings";
+import type {
+  InvoiceSettings,
+  InvoiceDateFormat,
+} from "@/hooks/useInvoiceSettings";
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+  return value.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ] as string,
+  );
 }
 
-function formatInvoiceDate(value: string | Date, format: InvoiceDateFormat): string {
+function formatInvoiceDate(
+  value: string | Date,
+  format: InvoiceDateFormat,
+): string {
   const date = new Date(value);
   const d = date.getDate().toString().padStart(2, "0");
   const m = (date.getMonth() + 1).toString().padStart(2, "0");
   const y = date.getFullYear();
   if (format === "DMY") return `${d}/${m}/${y}`;
   if (format === "YMD") return `${y}-${m}-${d}`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function totalsRow(label: string, amount: string, currency: string): string {
@@ -30,9 +47,16 @@ const COURIER_DISPLAY_NAME: Record<string, string> = {
 // totals rows can't be single merge tags (variable count), so they're
 // pre-rendered HTML fragments here; the default template just drops them
 // into {{itemsTableRows}} / {{discountRow}} / etc.
-export function buildInvoiceMergeTags(order: AdminOrder, settings: InvoiceSettings | undefined): Record<string, string> {
-  const shipping = order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
-  const billing = order.addresses.find((a) => (a.type as unknown as string) === "BILLING") ?? shipping;
+export function buildInvoiceMergeTags(
+  order: AdminOrder,
+  settings: InvoiceSettings | undefined,
+): Record<string, string> {
+  const shipping = order.addresses.find(
+    (a) => (a.type as unknown as string) === "SHIPPING",
+  );
+  const billing =
+    order.addresses.find((a) => (a.type as unknown as string) === "BILLING") ??
+    shipping;
   const latestPayment = order.payments[order.payments.length - 1];
   const dateFormat = settings?.dateFormat ?? "MDY";
   const currency = order.currency;
@@ -49,13 +73,17 @@ export function buildInvoiceMergeTags(order: AdminOrder, settings: InvoiceSettin
   // showing the raw discount next to that floored total makes the printed
   // rows fail to add up. Cap the displayed discount at what's actually being
   // deducted so the breakdown always reconciles with the Grand Total shown.
-  const grossBeforeDiscount = Number(order.subTotal) + Number(order.taxAmount) + Number(order.codFee) + Number(order.shippingAmount);
-  const displayDiscount = Math.min(Number(order.discountAmount), grossBeforeDiscount);
-  const taxBase = Number(order.subTotal) - displayDiscount;
-  const taxRatePercent = Number(order.taxAmount) > 0 && taxBase > 0 ? Math.round((Number(order.taxAmount) / taxBase) * 100) : null;
+  const {
+    displayDiscount,
+    ratePercent: taxRatePercent,
+    included: taxIncluded,
+  } = orderTaxView(order);
 
   const shipment = order.shipment;
-  const courierName = shipment ? COURIER_DISPLAY_NAME[shipment.provider as unknown as string] ?? String(shipment.provider) : null;
+  const courierName = shipment
+    ? (COURIER_DISPLAY_NAME[shipment.provider as unknown as string] ??
+      String(shipment.provider))
+    : null;
   const isCod = (latestPayment?.provider as unknown as string) === "COD";
   // No QR code here (unlike InvoiceDocument.tsx's built-in layout, which uses
   // qrcode.react) — generating a scannable code from a raw HTML string would
@@ -74,10 +102,21 @@ export function buildInvoiceMergeTags(order: AdminOrder, settings: InvoiceSettin
       : "";
 
   const companyName = settings?.companyName || "Amader";
-  const companyAddress = [settings?.companyAddress, settings?.companyCity, settings?.companyState, settings?.companyCountry]
+  const companyAddress = [
+    settings?.companyAddress,
+    settings?.companyCity,
+    settings?.companyState,
+    settings?.companyCountry,
+  ]
     .filter(Boolean)
     .join(", ");
-  const customerAddress = [billing?.addressLine, billing?.area, billing?.district, billing?.division, billing?.postCode]
+  const customerAddress = [
+    billing?.addressLine,
+    billing?.area,
+    billing?.district,
+    billing?.division,
+    billing?.postCode,
+  ]
     .filter(Boolean)
     .join(", ");
 
@@ -99,10 +138,30 @@ export function buildInvoiceMergeTags(order: AdminOrder, settings: InvoiceSettin
     itemsTableRows,
     currency,
     subTotal: String(order.subTotal),
-    discountRow: displayDiscount > 0 ? totalsRow(`Discount${order.couponCode ? ` (${order.couponCode})` : ""}`, `-${displayDiscount.toFixed(2)}`, currency) : "",
-    taxRow: Number(order.taxAmount) > 0 ? totalsRow(`Tax${taxRatePercent !== null ? ` (${taxRatePercent}%)` : ""}`, order.taxAmount, currency) : "",
-    codFeeRow: Number(order.codFee) > 0 ? totalsRow("COD Fee", order.codFee, currency) : "",
-    shippingRow: Number(order.shippingAmount) > 0 ? totalsRow("Shipping cost", order.shippingAmount, currency) : "",
+    discountRow:
+      displayDiscount > 0
+        ? totalsRow(
+            `Discount${order.couponCode ? ` (${order.couponCode})` : ""}`,
+            `-${displayDiscount.toFixed(2)}`,
+            currency,
+          )
+        : "",
+    taxRow:
+      Number(order.taxAmount) > 0
+        ? totalsRow(
+            `${taxIncluded ? "VAT included" : "Tax"}${taxRatePercent !== null ? ` (${taxRatePercent}%)` : ""}`,
+            order.taxAmount,
+            currency,
+          )
+        : "",
+    codFeeRow:
+      Number(order.codFee) > 0
+        ? totalsRow("COD Fee", order.codFee, currency)
+        : "",
+    shippingRow:
+      Number(order.shippingAmount) > 0
+        ? totalsRow("Shipping cost", order.shippingAmount, currency)
+        : "",
     totalAmount: String(order.totalAmount),
     paymentMethod: latestPayment ? String(latestPayment.provider) : "—",
     paymentStatus: latestPayment ? String(latestPayment.status) : "—",
@@ -116,6 +175,12 @@ export function buildInvoiceMergeTags(order: AdminOrder, settings: InvoiceSettin
   };
 }
 
-export function renderInvoiceTemplate(template: string, tags: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => tags[key] ?? "");
+export function renderInvoiceTemplate(
+  template: string,
+  tags: Record<string, string>,
+): string {
+  return template.replace(
+    /\{\{(\w+)\}\}/g,
+    (_, key: string) => tags[key] ?? "",
+  );
 }

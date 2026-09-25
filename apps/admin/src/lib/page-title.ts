@@ -31,6 +31,7 @@ const SECTIONS: { base: string; label: string }[] = [
   { base: "/discounts", label: "Discounts" },
   { base: "/gift-vouchers", label: "Gift Vouchers" },
   { base: "/wholesale", label: "Wholesale" },
+  { base: "/stores", label: "Stores" },
   { base: "/reviews", label: "Reviews" },
   { base: "/blog-posts", label: "Blog Posts" },
   { base: "/blog-categories", label: "Blog Categories" },

@@ -139,8 +139,14 @@ function SortableProductRow({
     listeners: ReturnType<typeof useSortable>["listeners"];
   }) => React.ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   return (
     <tr
       ref={setNodeRef}
@@ -473,349 +479,366 @@ export function ProductsTable({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className="w-[26px] rounded-l-[8px] bg-[#f7f9fc] px-1 py-[11px]">
-                <span className="sr-only">Reorder</span>
-              </th>
-              <th className="w-[34px] bg-[#f7f9fc] px-2.5 py-[11px]">
-                <input
-                  type="checkbox"
-                  checked={
-                    products.length > 0 && selected.size === products.length
-                  }
-                  onChange={toggleAll}
-                  className="h-4 w-4 accent-brand-500"
-                />
-              </th>
-              {[
-                "Product",
-                "SKU",
-                "Category",
-                "Stock",
-                "Price",
-                "Status",
-                "SEO Score",
-                "Created At",
-              ].map((h) => (
-                <th
-                  key={h}
-                  className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary"
-                >
-                  {h}
-                </th>
-              ))}
-              <th className="rounded-r-[8px] bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.length === 0 && (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
               <tr>
-                <td
-                  colSpan={11}
-                  className="px-2.5 py-8 text-center text-sm text-muted"
-                >
-                  No products match these filters.
-                </td>
+                <th className="w-[26px] rounded-l-[8px] bg-[#f7f9fc] px-1 py-[11px]">
+                  <span className="sr-only">Reorder</span>
+                </th>
+                <th className="w-[34px] bg-[#f7f9fc] px-2.5 py-[11px]">
+                  <input
+                    type="checkbox"
+                    checked={
+                      products.length > 0 && selected.size === products.length
+                    }
+                    onChange={toggleAll}
+                    className="h-4 w-4 accent-brand-500"
+                  />
+                </th>
+                {[
+                  "Product",
+                  "SKU",
+                  "Category",
+                  "Stock",
+                  "Price",
+                  "Status",
+                  "SEO Score",
+                  "Created At",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="whitespace-nowrap bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary"
+                  >
+                    {h}
+                  </th>
+                ))}
+                <th className="rounded-r-[8px] bg-[#f7f9fc] px-2.5 py-[11px] text-left text-[0.73rem] font-bold text-secondary">
+                  Actions
+                </th>
               </tr>
-            )}
-            <SortableContext
-              items={orderedProducts.map((p) => p.id)}
-              strategy={verticalListSortingStrategy}
-            >
-            {orderedProducts.map((p) => {
-              const name = p.name;
-              const thumb = p.thumbnailUrl
-                ? { url: p.thumbnailUrl }
-                : undefined;
-              const categoryLabel =
-                p.categoryIds
-                  .map((id) => categoryName.get(id))
-                  .filter(Boolean)[0] ?? "—";
-              // Variant products carry no meaningful stock/price on the parent row itself
-              // (those live per-variant) — show the real aggregate instead of the
-              // always-zero parent fields, which is what produced the confusing
-              // "0 stock, yet In Stock" pill combination.
-              const variantStock = p.hasVariants
-                ? p.variants.reduce((sum, v) => sum + v.stock, 0)
-                : p.stock;
-              // Reserved = held by pending (not yet COMPLETED) orders — stock itself
-              // only decrements on completion, so this is the only place that shows
-              // a marketer/salesperson what's actually still sellable right now.
-              const variantReserved = p.hasVariants
-                ? p.variants.reduce((sum, v) => sum + v.reservedStock, 0)
-                : p.reservedStock;
-              const displayPrice = p.hasVariants
-                ? (p.variants.find((v) => v.isDefault) ?? p.variants[0])?.price
-                : p.price;
-              const isExpanded = expanded.has(p.id);
-              return (
-                <Fragment key={p.id}>
-                  <SortableProductRow id={p.id}>
-                  {({ attributes, listeners }) => (
-                  <>
-                    <td className="px-1 py-3.5 align-middle">
-                      <button
-                        {...attributes}
-                        {...listeners}
-                        type="button"
-                        aria-label="Drag to reorder this product"
-                        title="Drag to reorder. This is the order customers see on the storefront."
-                        className="cursor-grab touch-none px-0.5 text-[#c3cbd8] transition-colors hover:text-brand-500"
-                      >
-                        <Icon name="drag_indicator" size={18} />
-                      </button>
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(p.id)}
-                        onChange={() => toggleOne(p.id)}
-                        className="h-4 w-4 accent-brand-500"
-                      />
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle">
-                      <div className="flex min-w-[190px] items-center gap-2">
-                        {p.hasVariants && (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpanded(p.id)}
-                            aria-label={
-                              isExpanded ? "Hide variants" : "Show variants"
-                            }
-                            className="grid h-5 w-5 flex-none place-items-center rounded-[6px] text-muted hover:bg-surface-2"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="12"
-                              height="12"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2.5}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className={isExpanded ? "rotate-90" : ""}
-                            >
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                          </button>
-                        )}
-                        {thumb ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={thumb.url}
-                            alt=""
-                            className="h-[46px] w-[46px] flex-none rounded-[9px] border border-border object-cover"
-                          />
-                        ) : (
-                          <div className="grid h-[46px] w-[46px] flex-none place-items-center rounded-[9px] border border-border bg-surface-2 text-lg">
-                            📦
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <span className="line-clamp-2 block max-w-[180px] font-bold text-text">
-                            {name}
-                          </span>
-                          {p.hasVariants && (
-                            <span className="text-[0.68rem] font-semibold text-brand-500">
-                              {p.variants.length} variants
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
-                      {p.sku ?? "—"}
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
-                      {categoryLabel}
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle whitespace-nowrap">
-                      <div className="font-bold text-text">{variantStock}</div>
-                      <Pill
-                        className={`mt-[5px] ${STOCK_PILL[p.stockStatus] ?? "bg-surface-2 text-secondary"}`}
-                      >
-                        {STOCK_LABEL[p.stockStatus] ?? p.stockStatus}
-                      </Pill>
-                      {variantReserved > 0 && (
-                        <div className="mt-[3px] text-[0.68rem] font-semibold text-[#e0821c]">
-                          {variantReserved} on hold &middot;{" "}
-                          {variantStock - variantReserved} available
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle whitespace-nowrap font-bold text-text">
-                      ৳{displayPrice ?? "—"}
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle whitespace-nowrap">
-                      <Pill
-                        className={
-                          STATUS_PILL[p.status] ?? "bg-surface-2 text-secondary"
-                        }
-                      >
-                        {p.status === "PUBLISHED" ? "Active" : p.status}
-                      </Pill>
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle">
-                      <SeoRing score={p.seoScore} />
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
-                      {p.createdAt
-                        ? new Date(p.createdAt).toLocaleDateString("en", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="px-2.5 py-3.5 align-middle">
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          href={`/products/${p.id}`}
-                          aria-label="Edit"
-                          className="grid h-[30px] w-[30px] place-items-center rounded-[8px] bg-brand-50 text-brand-500 hover:bg-brand-100"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="13"
-                            height="13"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                          </svg>
-                        </Link>
-                        <button
-                          type="button"
-                          aria-label="Duplicate"
-                          title="Duplicate product"
-                          disabled={duplicateProduct.isPending}
-                          onClick={() => handleDuplicate(p.id)}
-                          className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="13"
-                            height="13"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect x="9" y="9" width="12" height="12" rx="2" />
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Delete"
-                          onClick={() => setDeleteTarget({ id: p.id, name })}
-                          className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="13"
-                            height="13"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M3 6h18" />
-                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                  )}
-                  </SortableProductRow>
-                  {isExpanded && p.hasVariants && (
-                    <tr
-                      key={`${p.id}-variants`}
-                      className="border-b border-[#f1f5fa] bg-surface-2"
-                    >
-                      <td />
-                      <td colSpan={10} className="px-2.5 py-3">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr>
-                              {[
-                                "Variant SKU",
-                                "Stock",
-                                "Status",
-                                "Price",
-                                "Sale Price",
-                                "Default",
-                              ].map((h) => (
-                                <th
-                                  key={h}
-                                  className="px-2.5 py-1.5 text-left text-[0.68rem] font-bold text-muted"
-                                >
-                                  {h}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {p.variants.map((v) => (
-                              <tr key={v.id}>
-                                <td className="px-2.5 py-1.5 text-[0.75rem] font-bold text-text">
-                                  {v.sku ?? `Variant #${v.id}`}
-                                </td>
-                                <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
-                                  {v.stock}
-                                  {v.reservedStock > 0 && (
-                                    <span className="ml-1 font-semibold text-[#e0821c]">
-                                      ({v.reservedStock} on hold &middot;{" "}
-                                      {v.stock - v.reservedStock} available)
+            </thead>
+            <tbody>
+              {products.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="px-2.5 py-8 text-center text-sm text-muted"
+                  >
+                    No products match these filters.
+                  </td>
+                </tr>
+              )}
+              <SortableContext
+                items={orderedProducts.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {orderedProducts.map((p) => {
+                  const name = p.name;
+                  const thumb = p.thumbnailUrl
+                    ? { url: p.thumbnailUrl }
+                    : undefined;
+                  const categoryLabel =
+                    p.categoryIds
+                      .map((id) => categoryName.get(id))
+                      .filter(Boolean)[0] ?? "—";
+                  // Variant products carry no meaningful stock/price on the parent row itself
+                  // (those live per-variant) — show the real aggregate instead of the
+                  // always-zero parent fields, which is what produced the confusing
+                  // "0 stock, yet In Stock" pill combination.
+                  const variantStock = p.hasVariants
+                    ? p.variants.reduce((sum, v) => sum + v.stock, 0)
+                    : p.stock;
+                  // Reserved = held by pending (not yet COMPLETED) orders — stock itself
+                  // only decrements on completion, so this is the only place that shows
+                  // a marketer/salesperson what's actually still sellable right now.
+                  const variantReserved = p.hasVariants
+                    ? p.variants.reduce((sum, v) => sum + v.reservedStock, 0)
+                    : p.reservedStock;
+                  const displayPrice = p.hasVariants
+                    ? (p.variants.find((v) => v.isDefault) ?? p.variants[0])
+                        ?.price
+                    : p.price;
+                  const isExpanded = expanded.has(p.id);
+                  return (
+                    <Fragment key={p.id}>
+                      <SortableProductRow id={p.id}>
+                        {({ attributes, listeners }) => (
+                          <>
+                            <td className="px-1 py-3.5 align-middle">
+                              <button
+                                {...attributes}
+                                {...listeners}
+                                type="button"
+                                aria-label="Drag to reorder this product"
+                                title="Drag to reorder. This is the order customers see on the storefront."
+                                className="cursor-grab touch-none px-0.5 text-[#c3cbd8] transition-colors hover:text-brand-500"
+                              >
+                                <Icon name="drag_indicator" size={18} />
+                              </button>
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle">
+                              <input
+                                type="checkbox"
+                                checked={selected.has(p.id)}
+                                onChange={() => toggleOne(p.id)}
+                                className="h-4 w-4 accent-brand-500"
+                              />
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle">
+                              <div className="flex min-w-[190px] items-center gap-2">
+                                {p.hasVariants && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpanded(p.id)}
+                                    aria-label={
+                                      isExpanded
+                                        ? "Hide variants"
+                                        : "Show variants"
+                                    }
+                                    className="grid h-5 w-5 flex-none place-items-center rounded-[6px] text-muted hover:bg-surface-2"
+                                  >
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      width="12"
+                                      height="12"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth={2.5}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className={isExpanded ? "rotate-90" : ""}
+                                    >
+                                      <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                  </button>
+                                )}
+                                {thumb ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={thumb.url}
+                                    alt=""
+                                    className="h-[46px] w-[46px] flex-none rounded-[9px] border border-border object-cover"
+                                  />
+                                ) : (
+                                  <div className="grid h-[46px] w-[46px] flex-none place-items-center rounded-[9px] border border-border bg-surface-2 text-lg">
+                                    📦
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <span className="line-clamp-2 block max-w-[180px] font-bold text-text">
+                                    {name}
+                                  </span>
+                                  {p.hasVariants && (
+                                    <span className="text-[0.68rem] font-semibold text-brand-500">
+                                      {p.variants.length} variants
                                     </span>
                                   )}
-                                </td>
-                                <td className="px-2.5 py-1.5">
-                                  <Pill
-                                    className={
-                                      STOCK_PILL[v.stockStatus] ??
-                                      "bg-surface-2 text-secondary"
-                                    }
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
+                              {p.sku ?? "—"}
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
+                              {categoryLabel}
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle whitespace-nowrap">
+                              <div className="font-bold text-text">
+                                {variantStock}
+                              </div>
+                              <Pill
+                                className={`mt-[5px] ${STOCK_PILL[p.stockStatus] ?? "bg-surface-2 text-secondary"}`}
+                              >
+                                {STOCK_LABEL[p.stockStatus] ?? p.stockStatus}
+                              </Pill>
+                              {variantReserved > 0 && (
+                                <div className="mt-[3px] text-[0.68rem] font-semibold text-[#e0821c]">
+                                  {variantReserved} on hold &middot;{" "}
+                                  {variantStock - variantReserved} available
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle whitespace-nowrap font-bold text-text">
+                              ৳{displayPrice ?? "—"}
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle whitespace-nowrap">
+                              <Pill
+                                className={
+                                  STATUS_PILL[p.status] ??
+                                  "bg-surface-2 text-secondary"
+                                }
+                              >
+                                {p.status === "PUBLISHED" ? "Active" : p.status}
+                              </Pill>
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle">
+                              <SeoRing score={p.seoScore} />
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle whitespace-nowrap text-[0.78rem] font-semibold text-text">
+                              {p.createdAt
+                                ? new Date(p.createdAt).toLocaleDateString(
+                                    "en",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    },
+                                  )
+                                : "—"}
+                            </td>
+                            <td className="px-2.5 py-3.5 align-middle">
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  href={`/products/${p.id}`}
+                                  aria-label="Edit"
+                                  className="grid h-[30px] w-[30px] place-items-center rounded-[8px] bg-brand-50 text-brand-500 hover:bg-brand-100"
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="13"
+                                    height="13"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                   >
-                                    {STOCK_LABEL[v.stockStatus] ??
-                                      v.stockStatus}
-                                  </Pill>
-                                </td>
-                                <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
-                                  ৳{v.price ?? "—"}
-                                </td>
-                                <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
-                                  {v.salePrice ? `৳${v.salePrice}` : "—"}
-                                </td>
-                                <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
-                                  {v.isDefault ? "Yes" : ""}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-            </SortableContext>
-          </tbody>
-        </table>
-      </div>
+                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                  </svg>
+                                </Link>
+                                <button
+                                  type="button"
+                                  aria-label="Duplicate"
+                                  title="Duplicate product"
+                                  disabled={duplicateProduct.isPending}
+                                  onClick={() => handleDuplicate(p.id)}
+                                  className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="13"
+                                    height="13"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <rect
+                                      x="9"
+                                      y="9"
+                                      width="12"
+                                      height="12"
+                                      rx="2"
+                                    />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Delete"
+                                  onClick={() =>
+                                    setDeleteTarget({ id: p.id, name })
+                                  }
+                                  className="grid h-[30px] w-[30px] place-items-center rounded-[8px] text-muted hover:bg-surface-2"
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="13"
+                                    height="13"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M3 6h18" />
+                                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </SortableProductRow>
+                      {isExpanded && p.hasVariants && (
+                        <tr
+                          key={`${p.id}-variants`}
+                          className="border-b border-[#f1f5fa] bg-surface-2"
+                        >
+                          <td />
+                          <td colSpan={10} className="px-2.5 py-3">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr>
+                                  {[
+                                    "Variant SKU",
+                                    "Stock",
+                                    "Status",
+                                    "Price",
+                                    "Sale Price",
+                                    "Default",
+                                  ].map((h) => (
+                                    <th
+                                      key={h}
+                                      className="px-2.5 py-1.5 text-left text-[0.68rem] font-bold text-muted"
+                                    >
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {p.variants.map((v) => (
+                                  <tr key={v.id}>
+                                    <td className="px-2.5 py-1.5 text-[0.75rem] font-bold text-text">
+                                      {v.sku ?? `Variant #${v.id}`}
+                                    </td>
+                                    <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
+                                      {v.stock}
+                                      {v.reservedStock > 0 && (
+                                        <span className="ml-1 font-semibold text-[#e0821c]">
+                                          ({v.reservedStock} on hold &middot;{" "}
+                                          {v.stock - v.reservedStock} available)
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-2.5 py-1.5">
+                                      <Pill
+                                        className={
+                                          STOCK_PILL[v.stockStatus] ??
+                                          "bg-surface-2 text-secondary"
+                                        }
+                                      >
+                                        {STOCK_LABEL[v.stockStatus] ??
+                                          v.stockStatus}
+                                      </Pill>
+                                    </td>
+                                    <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
+                                      ৳{v.price ?? "—"}
+                                    </td>
+                                    <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
+                                      {v.salePrice ? `৳${v.salePrice}` : "—"}
+                                    </td>
+                                    <td className="px-2.5 py-1.5 text-[0.75rem] font-semibold text-text">
+                                      {v.isDefault ? "Yes" : ""}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </SortableContext>
+            </tbody>
+          </table>
+        </div>
       </DndContext>
 
       <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3.5">
@@ -824,86 +847,87 @@ export function ProductsTable({
             ? "No products"
             : showingAll
               ? total > ALL_PAGE_SIZE
-                // Only reachable once the catalogue outgrows the cap; said
-                // plainly rather than quietly showing the first 1000.
-                ? `Showing the first ${ALL_PAGE_SIZE} of ${total} products — pick a page size to see the rest`
+                ? // Only reachable once the catalogue outgrows the cap; said
+                  // plainly rather than quietly showing the first 1000.
+                  `Showing the first ${ALL_PAGE_SIZE} of ${total} products — pick a page size to see the rest`
                 : `Showing all ${total} products`
               : `Showing ${start} to ${end} of ${total} products`}
         </div>
         <div className="flex items-center gap-1.5">
           {!showingAll && (
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => onFiltersChange({ ...filters, page: page - 1 })}
-            className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-border text-text disabled:opacity-40"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="12"
-              height="12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onFiltersChange({ ...filters, page: page - 1 })}
+              className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-border text-text disabled:opacity-40"
             >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
           )}
-          {!showingAll && Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter(
-              (n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1,
-            )
-            .reduce<number[]>((acc, n) => {
-              if (acc.length && n - acc[acc.length - 1] > 1) acc.push(-1);
-              acc.push(n);
-              return acc;
-            }, [])
-            .map((n, i) =>
-              n === -1 ? (
-                <span
-                  key={`dots-${i}`}
-                  className="px-1 text-[0.74rem] text-muted"
-                >
-                  …
-                </span>
-              ) : (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => onFiltersChange({ ...filters, page: n })}
-                  className={`h-[30px] min-w-[30px] rounded-[8px] border px-2 text-[0.74rem] font-bold ${
-                    n === page
-                      ? "border-brand-500 bg-brand-500 text-white"
-                      : "border-border text-text hover:bg-surface-2"
-                  }`}
-                >
-                  {n}
-                </button>
-              ),
-            )}
+          {!showingAll &&
+            Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(
+                (n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1,
+              )
+              .reduce<number[]>((acc, n) => {
+                if (acc.length && n - acc[acc.length - 1] > 1) acc.push(-1);
+                acc.push(n);
+                return acc;
+              }, [])
+              .map((n, i) =>
+                n === -1 ? (
+                  <span
+                    key={`dots-${i}`}
+                    className="px-1 text-[0.74rem] text-muted"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => onFiltersChange({ ...filters, page: n })}
+                    className={`h-[30px] min-w-[30px] rounded-[8px] border px-2 text-[0.74rem] font-bold ${
+                      n === page
+                        ? "border-brand-500 bg-brand-500 text-white"
+                        : "border-border text-text hover:bg-surface-2"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ),
+              )}
           {!showingAll && (
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => onFiltersChange({ ...filters, page: page + 1 })}
-            className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-border text-text disabled:opacity-40"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="12"
-              height="12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onFiltersChange({ ...filters, page: page + 1 })}
+              className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-border text-text disabled:opacity-40"
             >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
           )}
           <select
             value={pageSize}

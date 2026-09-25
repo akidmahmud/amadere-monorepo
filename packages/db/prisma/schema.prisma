@@ -235,6 +235,10 @@ model AdminUser {
   assignedOrders     Order[]              @relation("OrderAssignedAdmin")
   orderStatusHistory OrderStatusHistory[]
 
+  /// Home store for POS. Null = no store (POS refuses unless pos.all_stores).
+  storeId Int?   @map("store_id")
+  store   Store? @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
   @@map("admin_users")
 }
 
@@ -935,8 +939,18 @@ model Product {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  // PHASE 2 HOOK: batch/expiry tracking, warehouse bins, per-warehouse
-  // stock, and costing method attach here. Do not build now.
+  // Per-store stock is StoreStock (Multi-Store POS, 2026-09-25). PHASE 2
+  // HOOK: batch/expiry tracking, warehouse bins and costing method attach
+  // here. Do not build now.
+
+  /// Null = shared catalogue. Set = only that store sees/sells it; such a
+  /// product is always ADMIN_ONLY so the storefront never shows it.
+  storeId        Int?            @map("store_id")
+  store          Store?          @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  /// Simple products only; variants keep ProductVariant.barcode.
+  barcode        String?         @unique
+  storeStock     StoreStock[]
+  stockMovements StockMovement[]
 
   brand            Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
   author           Author?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
@@ -1128,6 +1142,7 @@ model ProductVariant {
   media           ProductMedia[]
   stockAlerts     StockAlert[]
   costHistory     ProductCostHistory[]
+  storeStock      StoreStock[]
 
   // Missing before — every "load a product with its variants" query (admin
   // list/detail, storefront PDP, cart/order line lookups) joined this table
@@ -1556,6 +1571,13 @@ model Order {
 
   customer         Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
   assignedAdmin    AdminUser?              @relation("OrderAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  // Set for channel = POS: the store the sale happened at.
+  storeId          Int?                    @map("store_id")
+  // When the order became RETURNED (returns are reported on this day, not the sale's).
+  returnedAt       DateTime?               @map("returned_at")
+  // POS cash sales: what the customer handed over (change = this - total).
+  tenderedAmount   Decimal?                @map("tendered_amount") @db.Decimal(10, 2)
+  store            Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
   items            OrderItem[]
   addresses        OrderAddress[]
   statusHistory    OrderStatusHistory[]
@@ -1576,6 +1598,7 @@ model Order {
   @@index([deletedAt])
   @@index([deletedAt, createdAt])
   @@index([status, deletedAt, createdAt])
+  @@index([storeId, createdAt])
   @@map("orders")
 }
 
@@ -1667,6 +1690,8 @@ enum PaymentProvider {
   UPAY // ADDENDUM §J
   SSLCOMMERZ
   BANK_TRANSFER
+  CASH // POS counter cash
+  CARD // POS card terminal
 }
 
 enum PaymentStatus {
@@ -3523,6 +3548,9 @@ model CashAccount {
   ledgerEntries  LedgerEntry[]
   codSettlements CodSettlement[]
 
+  // Informational grouping for Accounts screens (which store's till/wallet).
+  storeId Int? @map("store_id")
+
   @@map("cash_accounts")
 }
 
@@ -3604,8 +3632,198 @@ model CostCentre {
   sortOrder Int     @default(0) @map("sort_order")
 
   expenses Expense[]
+  store    Store?
 
   @@map("cost_centres")
+}
+
+// Physical store / outlet. Exactly one row has isOnlineStore = true: website
+// orders consume ITS stock, which lives in Product.stock / ProductVariant.stock
+// (not in store_stock). Every other store's stock is in store_stock.
+model Store {
+  id              Int      @id @default(autoincrement())
+  name            String
+  code            String   @unique
+  address         String?
+  phone           String?
+  isOnlineStore   Boolean  @default(false) @map("is_online_store")
+  isActive        Boolean  @default(true) @map("is_active")
+  costCentreId    Int?     @unique @map("cost_centre_id")
+  cashAccountId   Int?     @map("cash_account_id")
+  cardAccountId   Int?     @map("card_account_id")
+  mobileAccountId Int?     @map("mobile_account_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  costCentre   CostCentre?     @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
+  staff        AdminUser[]
+  products     Product[]
+  orders       Order[]
+  stock        StoreStock[]
+  movements    StockMovement[]
+  stockIns     StockIn[]
+  transfersOut StockTransfer[] @relation("TransferFrom")
+  transfersIn  StockTransfer[] @relation("TransferTo")
+  heldSales    PosHeldSale[]
+  invoiceTemplate PosInvoiceTemplate?
+
+  @@map("stores")
+}
+
+// Stock of one SKU at one non-online store. Written ONLY by StockService.move.
+// Uniqueness is (store_id, product_id, COALESCE(variant_id, 0)) -- an
+// expression index in the migration, because a plain unique treats NULLs as
+// distinct.
+// WARNING: that index (store_stock_store_product_variant_key), the CHECK
+// (store_stock_quantity_nonneg) and stores_one_online live only in
+// migrations/20260925090000_multi_store_pos. If a generated migration ever
+// proposes dropping them, delete those lines: StockService.move's
+// ON CONFLICT depends on the index and fails without it.
+model StoreStock {
+  id        Int  @id @default(autoincrement())
+  storeId   Int  @map("store_id")
+  productId Int  @map("product_id")
+  variantId Int? @map("variant_id")
+  quantity  Int  @default(0)
+
+  store   Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("store_stock")
+}
+
+enum StockMovementType {
+  OPENING
+  SALE
+  RETURN
+  STOCK_IN
+  ADJUSTMENT
+  TRANSFER_OUT
+  TRANSFER_IN
+}
+
+// Append-only. qty is signed (+ in, - out).
+// ponytail: website checkout/cancel and admin product-form stock edits still
+// write the online store's scalar directly and leave no row here, so the
+// online store's movement history covers POS-originated changes only. Route
+// OrdersService.commitReservations etc. through StockService if a full
+// online-store ledger is ever needed.
+model StockMovement {
+  id          Int               @id @default(autoincrement())
+  storeId     Int               @map("store_id")
+  productId   Int               @map("product_id")
+  variantId   Int?              @map("variant_id")
+  type        StockMovementType
+  qty         Int
+  reason      String?
+  orderId     Int?              @map("order_id")
+  transferId  Int?              @map("transfer_id")
+  stockInId   Int?              @map("stock_in_id")
+  unitCost    Decimal?          @map("unit_cost") @db.Decimal(12, 2)
+  adminUserId Int?              @map("admin_user_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  store    Store          @relation(fields: [storeId], references: [id])
+  product  Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  transfer StockTransfer? @relation(fields: [transferId], references: [id])
+  stockIn  StockIn?       @relation(fields: [stockInId], references: [id])
+
+  @@index([storeId, productId, variantId, createdAt])
+  @@map("stock_movements")
+}
+
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  DISPATCHED
+  RECEIVED
+  CANCELLED
+}
+
+model StockTransfer {
+  id             Int            @id @default(autoincrement())
+  number         String         @unique
+  fromStoreId    Int            @map("from_store_id")
+  toStoreId      Int            @map("to_store_id")
+  status         TransferStatus @default(REQUESTED)
+  note           String?
+  requestedById  Int            @map("requested_by_id")
+  approvedById   Int?           @map("approved_by_id")
+  dispatchedById Int?           @map("dispatched_by_id")
+  receivedById   Int?           @map("received_by_id")
+  approvedAt     DateTime?      @map("approved_at")
+  dispatchedAt   DateTime?      @map("dispatched_at")
+  receivedAt     DateTime?      @map("received_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  fromStore Store               @relation("TransferFrom", fields: [fromStoreId], references: [id])
+  toStore   Store               @relation("TransferTo", fields: [toStoreId], references: [id])
+  items     StockTransferItem[]
+  movements StockMovement[]
+
+  @@map("stock_transfers")
+}
+
+model StockTransferItem {
+  id          Int  @id @default(autoincrement())
+  transferId  Int  @map("transfer_id")
+  productId   Int  @map("product_id")
+  variantId   Int? @map("variant_id")
+  qty         Int
+  receivedQty Int? @map("received_qty")
+
+  transfer StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@map("stock_transfer_items")
+}
+
+// Goods receipt (GRN) at a store.
+model StockIn {
+  id              Int      @id @default(autoincrement())
+  number          String   @unique
+  storeId         Int      @map("store_id")
+  supplierPartyId Int?     @map("supplier_party_id")
+  note            String?
+  adminUserId     Int      @map("admin_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  store     Store           @relation(fields: [storeId], references: [id])
+  movements StockMovement[]
+
+  @@map("stock_ins")
+}
+
+// POS receipt/invoice HTML with {{tags}}. storeId null = the Default template
+// (a partial unique index in the migration keeps it single); a store with no
+// row prints the Default, and with no rows at all the built-in template is used.
+// The HTML is sanitised on save (PosInvoiceService).
+model PosInvoiceTemplate {
+  id          Int      @id @default(autoincrement())
+  storeId     Int?     @unique @map("store_id")
+  html        String   @db.Text
+  updatedById Int?     @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  store Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("pos_invoice_templates")
+}
+
+// A parked POS cart. Server-side so it survives a refresh or a second till.
+model PosHeldSale {
+  id          Int      @id @default(autoincrement())
+  storeId     Int      @map("store_id")
+  adminUserId Int      @map("admin_user_id")
+  label       String
+  cart        Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("pos_held_sales")
 }
 
 // A closed accounting period. Once a VAT return is filed for a month, that

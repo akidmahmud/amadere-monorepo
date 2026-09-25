@@ -31,7 +31,9 @@ export function computeVariantCost(
   if (costPerItem === undefined) return undefined;
   if (!costPriceUnit) return costPerItem;
   if (weightFieldValue == null) return undefined;
-  return costPerItem * (weightFieldValue * UNITS_PER_FIELD_VALUE[costPriceUnit]);
+  return (
+    costPerItem * (weightFieldValue * UNITS_PER_FIELD_VALUE[costPriceUnit])
+  );
 }
 
 export const COST_PRICE_UNIT_LABELS: Record<CostPriceUnit, string> = {

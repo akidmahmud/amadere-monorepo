@@ -23,6 +23,7 @@ function makeService(opts: {
     {} as never,
     {} as never,
     cart,
+    {} as never, // StockService — never reached here
   );
   const updateStatus = jest.spyOn(service, 'updateStatus').mockResolvedValue({} as never);
   return { service, updateStatus, cart: cart as unknown as { addItem: jest.Mock } };

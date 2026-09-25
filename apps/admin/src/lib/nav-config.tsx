@@ -51,6 +51,8 @@ const newsletterTemplatesIcon = <Icon name="dashboard_customize" />;
 const newsletterSegmentsIcon = <Icon name="groups" />;
 const customersIcon = <Icon name="people" />;
 const wholesaleIcon = <Icon name="local_mall" />;
+const posIcon = <Icon name="point_of_sale" />;
+const storesIcon = <Icon name="storefront" />;
 const customerTiersIcon = <Icon name="military_tech" />;
 const analyticsIcon = <Icon name="monitoring" />;
 const whatsappIcon = <Icon name="chat" />;
@@ -141,6 +143,23 @@ export const adminNav: AppNavEntry[] = [
     href: "/wholesale",
     icon: wholesaleIcon,
     permission: "wholesale.view",
+  },
+
+  // The POS opens full-screen at /pos (also served as pos.amadere.com).
+  label("pos-label", "Point of Sale"),
+  {
+    key: "pos",
+    label: "POS",
+    href: "/pos",
+    icon: posIcon,
+    permission: "pos.access",
+  },
+  {
+    key: "stores",
+    label: "Stores",
+    href: "/stores",
+    icon: storesIcon,
+    permission: "stores.manage",
   },
 
   label("catalog-label", "Product Management"),

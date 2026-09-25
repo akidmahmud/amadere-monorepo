@@ -12,7 +12,8 @@ export function ting() {
   try {
     const Ctor =
       window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
     if (!Ctor) return;
     const ctx = new Ctor();
     // Browsers start the context suspended until a user gesture. An admin has
@@ -47,4 +48,3 @@ export function ting() {
     // the admin shell it is mounted in.
   }
 }
-

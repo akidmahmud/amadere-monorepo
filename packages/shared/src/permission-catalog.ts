@@ -254,4 +254,18 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('wholesale', 'create'),
   perm('wholesale', 'update'),
   perm('wholesale', 'delete'),
+
+  // Multi-Store POS (docs/superpowers/specs/2026-09-25-multi-store-pos-design.md)
+  perm('pos', 'access'),
+  perm('pos', 'refund'),
+  perm('pos', 'stock_in'),
+  perm('pos', 'adjust'),
+  perm('pos', 'transfer'),
+  perm('pos', 'transfer_approve'),
+  perm('pos', 'labels'),
+  perm('pos', 'store_products'),
+  perm('pos', 'all_stores'),
+  perm('pos', 'reports'),
+  perm('pos', 'settings'),
+  perm('stores', 'manage'),
 ];

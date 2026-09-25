@@ -16,6 +16,7 @@ import {
 import { PaymentsService } from '../payments/payments.service';
 import { PricingService } from '../cart/pricing.service';
 import { CartService, type CartIdentity } from '../cart/cart.service';
+import { StockService } from '../stock/stock.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
 import { DownloadsService } from '../digital-products/downloads.service';
 import { ORDER_INCLUDE, OrderDto, toOrderDto } from './orders.mapper';
@@ -33,7 +34,10 @@ import {
   ORDER_STATUS_CHANGED_EVENT,
   OrderStatusChangedEvent,
 } from './orders.events';
-import { reclaimOrderCoupons, releaseOrderCoupons } from '../discounts/coupon-redemption';
+import {
+  reclaimOrderCoupons,
+  releaseOrderCoupons,
+} from '../discounts/coupon-redemption';
 
 const Decimal = Prisma.Decimal;
 
@@ -49,14 +53,23 @@ const Decimal = Prisma.Decimal;
 // to move; upgrade path is a real returns line-item model, not a guess here,
 // but leaving stock untouched entirely (the old behavior) was strictly worse
 // than restocking the full quantity.
-const RELEASE_ON_CANCEL = new Set(['CANCELED', 'RETURNED', 'PARTIALLY_RETURNED']);
+const RELEASE_ON_CANCEL = new Set([
+  'CANCELED',
+  'RETURNED',
+  'PARTIALLY_RETURNED',
+]);
 const COMMIT_ON_COMPLETE = new Set(['COMPLETED']);
 
 // Line items can only be edited before stock has been committed/released —
 // once an order is COMPLETED (stock decremented for real) or in a terminal
 // state (CANCELED/RETURNED/PARTIALLY_RETURNED), further edits here would
 // desync the reservation accounting those transitions already settled.
-const ITEM_EDITABLE_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HOLD']);
+const ITEM_EDITABLE_STATUSES = new Set([
+  'PENDING',
+  'CONFIRMED',
+  'PROCESSING',
+  'HOLD',
+]);
 
 // A customer can self-cancel only before fulfillment has actually started —
 // once an order moves to PROCESSING, staff are likely already picking/
@@ -74,6 +87,7 @@ export class OrdersService {
     private readonly orderEmails: OrderEmailsService,
     private readonly downloads: DownloadsService,
     private readonly cart: CartService,
+    private readonly stock: StockService,
   ) {}
 
   async adminList(
@@ -108,7 +122,9 @@ export class OrdersService {
       where: { id },
       include: {
         ...ORDER_INCLUDE,
-        customer: { select: { firstName: true, lastName: true, phone: true, email: true } },
+        customer: {
+          select: { firstName: true, lastName: true, phone: true, email: true },
+        },
       },
     });
     if (!order) throw new NotFoundException('Order not found');
@@ -120,7 +136,9 @@ export class OrdersService {
       ),
       customer: cu
         ? {
-            name: [cu.firstName, cu.lastName].filter(Boolean).join(' ') || '(no name)',
+            name:
+              [cu.firstName, cu.lastName].filter(Boolean).join(' ') ||
+              '(no name)',
             phone: cu.phone,
             email: cu.email,
           }
@@ -141,11 +159,15 @@ export class OrdersService {
    * Counted by phone rather than customerId because most orders are guest
    * checkouts with no customer record — see OrderDto.customerOrderCount.
    */
-  private async countOrdersForPhone(phone: string | undefined): Promise<number> {
+  private async countOrdersForPhone(
+    phone: string | undefined,
+  ): Promise<number> {
     const last10 = phone?.replace(/\D/g, '').slice(-10);
     if (!last10 || last10.length < 10) return 0;
     return this.prisma.client.order.count({
-      where: { addresses: { some: { type: 'SHIPPING', phone: { endsWith: last10 } } } },
+      where: {
+        addresses: { some: { type: 'SHIPPING', phone: { endsWith: last10 } } },
+      },
     });
   }
 
@@ -176,36 +198,97 @@ export class OrdersService {
     // COMPLETED → PROCESSING → CANCELED left reservedStock at -1 because the
     // CANCELED branch saw status='PROCESSING' and (wrongly) tried to release
     // a reservation that had already been consumed.
-    const wasEverCompleted = order.completedAt !== null;
-
+    let alreadyThere = false;
     await this.prisma.client.$transaction(async (tx) => {
+      // Lock the row and re-read it: a POS return (or another staff member)
+      // may have moved this order since the read above. Every stock decision
+      // below is taken from the locked copy, so two concurrent changes can't
+      // both restock or both take stock.
+      await lockOrderRow(tx, id);
+      const cur = await tx.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      if (!cur) throw new NotFoundException('Order not found');
+      if (cur.status === dto.status) {
+        alreadyThere = true;
+        return;
+      }
+      const wasEverCompleted = cur.completedAt !== null;
       // Guarded on the FROM status too, not just the TO status — without
       // this, bouncing between two release statuses (e.g. RETURNED then
       // CANCELED) would release/restock the same order twice.
-      if (RELEASE_ON_CANCEL.has(dto.status) && !RELEASE_ON_CANCEL.has(order.status)) {
-        if (wasEverCompleted) {
+      // For an order completed at some point: is its stock out of the shelf
+      // right now? Status labels can't tell (COMPLETED → PROCESSING →
+      // COMPLETED vs COMPLETED → CANCELED → PROCESSING → COMPLETED), the
+      // history can.
+      const stockOut = wasEverCompleted
+        ? await this.stockIsOut(tx, id, cur.status)
+        : false;
+      if (
+        RELEASE_ON_CANCEL.has(dto.status) &&
+        !RELEASE_ON_CANCEL.has(cur.status)
+      ) {
+        if (wasEverCompleted && !stockOut) {
+          // Already restocked by an earlier CANCELED/RETURNED — nothing to put back.
+        } else if (wasEverCompleted) {
           // Stock was already committed (decremented for real) at some
           // point in this order's history — the physical items are coming
           // back, so restock instead of releasing a reservation that no
           // longer exists.
-          await this.restockReturnedItems(tx, order.items);
+          const posStore = await this.posStoreId(tx, cur.storeId);
+          if (posStore) {
+            for (const i of cur.items) {
+              if (!i.productId) continue;
+              await this.stock.move(tx, {
+                storeId: posStore,
+                productId: i.productId,
+                variantId: i.variantId,
+                type: 'RETURN',
+                qty: i.quantity,
+                orderId: id,
+                adminUserId,
+              });
+            }
+          } else {
+            await this.restockReturnedItems(tx, cur.items);
+          }
         } else {
-          await this.releaseReservations(tx, order.items);
+          await this.releaseReservations(tx, cur.items);
         }
       }
       if (COMMIT_ON_COMPLETE.has(dto.status)) {
-        if (wasEverCompleted) {
+        if (wasEverCompleted && stockOut) {
+          // Still out since the last completion (e.g. COMPLETED → PROCESSING
+          // → COMPLETED): taking it again would double-count the sale.
+        } else if (wasEverCompleted) {
           // Re-completing (directly or via a detour through another active
           // status) after an earlier CANCELED/RETURNED — that reservation
           // was already resolved, so there's nothing left in reservedStock
           // to consume. Decrementing it again would drive it negative,
           // making every later availability check (stock - reservedStock)
           // overstate what's actually sellable. Only stock should move.
-          await this.decrementStockOnly(tx, order.items);
+          const posStore = await this.posStoreId(tx, cur.storeId);
+          if (posStore) {
+            for (const i of cur.items) {
+              if (!i.productId) continue;
+              await this.stock.move(tx, {
+                storeId: posStore,
+                productId: i.productId,
+                variantId: i.variantId,
+                type: 'SALE',
+                qty: -i.quantity,
+                orderId: id,
+                adminUserId,
+              });
+            }
+          } else {
+            await this.decrementStockOnly(tx, cur.items);
+          }
         } else {
           // Genuinely the first completion — a live reservation still
           // exists, so consume it for real (reservedStock AND stock).
-          await this.commitReservations(tx, order.items);
+          await this.commitReservations(tx, cur.items);
         }
       }
 
@@ -216,6 +299,14 @@ export class OrdersService {
           confirmedAt: dto.status === 'PROCESSING' ? new Date() : undefined,
           completedAt: dto.status === 'COMPLETED' ? new Date() : undefined,
           canceledAt: dto.status === 'CANCELED' ? new Date() : undefined,
+          // Returns are reported on the day they happen, not the sale's day.
+          returnedAt:
+            dto.status === 'RETURNED' || dto.status === 'PARTIALLY_RETURNED'
+              ? new Date()
+              : // leaving a return (undone by staff) → no longer a return
+                cur.status === 'RETURNED' || cur.status === 'PARTIALLY_RETURNED'
+                ? null
+                : undefined,
           // The first staff member to act on an UNASSIGNED order (confirm,
           // hold, ...) takes it. Once someone owns it, later status changes by
           // other staff leave it alone: only an explicit reassign from the
@@ -225,7 +316,9 @@ export class OrdersService {
           // ponytail: read-then-write outside a lock; two staff confirming the
           // same unassigned order at the same instant = last write wins.
           assignedAdminId:
-            adminUserId !== null && order.assignedAdminId === null ? adminUserId : undefined,
+            adminUserId !== null && cur.assignedAdminId === null
+              ? adminUserId
+              : undefined,
         },
       });
       await tx.orderStatusHistory.create({
@@ -234,9 +327,13 @@ export class OrdersService {
 
       // A cancelled order never happened as far as the coupon is concerned:
       // its use is given back, and taken again if the order is revived.
-      if (dto.status === 'CANCELED' && order.status !== 'CANCELED') {
+      if (dto.status === 'CANCELED' && cur.status !== 'CANCELED') {
         await releaseOrderCoupons(tx, id);
-      } else if (order.status === 'CANCELED' && dto.status !== 'CANCELED' && !order.deletedAt) {
+      } else if (
+        cur.status === 'CANCELED' &&
+        dto.status !== 'CANCELED' &&
+        !cur.deletedAt
+      ) {
         await reclaimOrderCoupons(tx, id);
       }
 
@@ -262,6 +359,8 @@ export class OrdersService {
       }
     });
 
+    if (alreadyThere) return this.reload(id);
+
     if (dto.status === 'CONFIRMED') {
       await this.orderEmails.sendOrderConfirmed(id, adminUserId);
     } else if (dto.status === 'CANCELED') {
@@ -274,7 +373,11 @@ export class OrdersService {
       // a real admin (adminUserId set) typed it via the status-change
       // dialog; system-triggered cancels fall back to OrderEmailsService's
       // own 'Not specified' default.
-      await this.orderEmails.sendOrderCanceled(id, adminUserId, adminUserId !== null ? dto.note : undefined);
+      await this.orderEmails.sendOrderCanceled(
+        id,
+        adminUserId,
+        adminUserId !== null ? dto.note : undefined,
+      );
     } else if (dto.status === 'COMPLETED') {
       await this.orderEmails.sendOrderDelivered(id, adminUserId);
       // The second (non-manual-payment) unlock hook — a priced digital
@@ -325,8 +428,12 @@ export class OrdersService {
     return this.reload(id);
   }
 
-  private async assertItemsEditable(orderId: number): Promise<{ id: number; status: string }> {
-    const order = await this.prisma.client.order.findUnique({ where: { id: orderId } });
+  private async assertItemsEditable(
+    orderId: number,
+  ): Promise<{ id: number; status: string }> {
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: orderId },
+    });
     if (!order) throw new NotFoundException('Order not found');
     if (!ITEM_EDITABLE_STATUSES.has(order.status)) {
       throw new BadRequestException(
@@ -341,7 +448,10 @@ export class OrdersService {
   // deliberately held fixed across item edits (ponytail: re-validating
   // coupon eligibility, e.g. minOrderAmount, on every quantity tweak is a
   // materially bigger feature; revisit if staff report stale discounts).
-  private async recomputeTotals(tx: Prisma.TransactionClient, orderId: number): Promise<void> {
+  private async recomputeTotals(
+    tx: Prisma.TransactionClient,
+    orderId: number,
+  ): Promise<void> {
     await lockOrderRow(tx, orderId);
     const [order, items] = await Promise.all([
       tx.order.findUniqueOrThrow({ where: { id: orderId } }),
@@ -352,10 +462,17 @@ export class OrdersService {
       new Decimal(0),
     );
     const totalAmount = Decimal.max(
-      subTotal.minus(order.discountAmount).plus(order.taxAmount).plus(order.codFee).plus(order.shippingAmount),
+      subTotal
+        .minus(order.discountAmount)
+        .plus(order.taxAmount)
+        .plus(order.codFee)
+        .plus(order.shippingAmount),
       new Decimal(0),
     );
-    await tx.order.update({ where: { id: orderId }, data: { subTotal, totalAmount } });
+    await tx.order.update({
+      where: { id: orderId },
+      data: { subTotal, totalAmount },
+    });
   }
 
   async addItem(orderId: number, dto: AddOrderItemDto): Promise<OrderDto> {
@@ -363,21 +480,44 @@ export class OrdersService {
 
     const product = await this.prisma.client.product.findUnique({
       where: { id: dto.productId },
-      include: { translations: { where: { locale: 'EN' }, take: 1 }, variants: true },
+      include: {
+        translations: { where: { locale: 'EN' }, take: 1 },
+        variants: true,
+      },
     });
-    if (!product) throw new BadRequestException(`Product #${dto.productId} not found`);
-    if (dto.variantId && !product.variants.some((v) => v.id === dto.variantId)) {
-      throw new BadRequestException(`Variant #${dto.variantId} does not belong to product #${dto.productId}`);
+    if (!product)
+      throw new BadRequestException(`Product #${dto.productId} not found`);
+    if (
+      dto.variantId &&
+      !product.variants.some((v) => v.id === dto.variantId)
+    ) {
+      throw new BadRequestException(
+        `Variant #${dto.variantId} does not belong to product #${dto.productId}`,
+      );
     }
 
     const [priced] = await this.pricing.priceLines([
-      { productId: dto.productId, variantId: dto.variantId ?? null, quantity: dto.quantity },
+      {
+        productId: dto.productId,
+        variantId: dto.variantId ?? null,
+        quantity: dto.quantity,
+      },
     ]);
-    const unitPrice = dto.unitPrice !== undefined ? new Decimal(dto.unitPrice) : priced.unitPrice;
-    const variant = dto.variantId ? product.variants.find((v) => v.id === dto.variantId) : undefined;
+    const unitPrice =
+      dto.unitPrice !== undefined
+        ? new Decimal(dto.unitPrice)
+        : priced.unitPrice;
+    const variant = dto.variantId
+      ? product.variants.find((v) => v.id === dto.variantId)
+      : undefined;
 
     await this.prisma.client.$transaction(async (tx) => {
-      await reserveStock(tx, dto.productId, dto.variantId ?? null, dto.quantity);
+      await reserveStock(
+        tx,
+        dto.productId,
+        dto.variantId ?? null,
+        dto.quantity,
+      );
       await tx.orderItem.create({
         data: {
           orderId,
@@ -396,10 +536,17 @@ export class OrdersService {
     return this.reload(orderId);
   }
 
-  async updateItemQuantity(orderId: number, itemId: number, dto: UpdateOrderItemDto): Promise<OrderDto> {
+  async updateItemQuantity(
+    orderId: number,
+    itemId: number,
+    dto: UpdateOrderItemDto,
+  ): Promise<OrderDto> {
     await this.assertItemsEditable(orderId);
-    const item = await this.prisma.client.orderItem.findUnique({ where: { id: itemId } });
-    if (!item || item.orderId !== orderId) throw new NotFoundException('Order item not found');
+    const item = await this.prisma.client.orderItem.findUnique({
+      where: { id: itemId },
+    });
+    if (!item || item.orderId !== orderId)
+      throw new NotFoundException('Order item not found');
 
     const delta = dto.quantity - item.quantity;
     await this.prisma.client.$transaction(async (tx) => {
@@ -412,7 +559,10 @@ export class OrdersService {
           await releaseStock(tx, item.productId, item.variantId, -delta);
         }
       }
-      await tx.orderItem.update({ where: { id: itemId }, data: { quantity: dto.quantity } });
+      await tx.orderItem.update({
+        where: { id: itemId },
+        data: { quantity: dto.quantity },
+      });
       await this.recomputeTotals(tx, orderId);
     });
 
@@ -425,8 +575,10 @@ export class OrdersService {
       this.prisma.client.orderItem.findUnique({ where: { id: itemId } }),
       this.prisma.client.orderItem.count({ where: { orderId } }),
     ]);
-    if (!item || item.orderId !== orderId) throw new NotFoundException('Order item not found');
-    if (itemCount <= 1) throw new BadRequestException('An order must have at least one item');
+    if (!item || item.orderId !== orderId)
+      throw new NotFoundException('Order item not found');
+    if (itemCount <= 1)
+      throw new BadRequestException('An order must have at least one item');
 
     await this.prisma.client.$transaction(async (tx) => {
       if (item.productId) {
@@ -439,8 +591,13 @@ export class OrdersService {
     return this.reload(orderId);
   }
 
-  async updateDetails(orderId: number, dto: UpdateOrderDetailsDto): Promise<OrderDto> {
-    const order = await this.prisma.client.order.findUnique({ where: { id: orderId } });
+  async updateDetails(
+    orderId: number,
+    dto: UpdateOrderDetailsDto,
+  ): Promise<OrderDto> {
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: orderId },
+    });
     if (!order) throw new NotFoundException('Order not found');
 
     await this.prisma.client.$transaction(async (tx) => {
@@ -467,12 +624,16 @@ export class OrdersService {
             // recipientName is NOT NULL, so an emptied box is rejected
             // rather than written as "" — a parcel with no name on it is not
             // something the courier can deliver.
-            ...(dto.recipientName?.trim() ? { recipientName: dto.recipientName.trim() } : {}),
+            ...(dto.recipientName?.trim()
+              ? { recipientName: dto.recipientName.trim() }
+              : {}),
             ...(dto.division !== undefined ? { division: dto.division } : {}),
             ...(dto.district !== undefined ? { district: dto.district } : {}),
             ...(dto.area !== undefined ? { area: dto.area || null } : {}),
             ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-            ...(dto.addressLine !== undefined ? { addressLine: dto.addressLine } : {}),
+            ...(dto.addressLine !== undefined
+              ? { addressLine: dto.addressLine }
+              : {}),
           },
         });
       }
@@ -481,7 +642,10 @@ export class OrdersService {
     return this.reload(orderId);
   }
 
-  async updatePayment(orderId: number, dto: UpdateOrderPaymentDto): Promise<OrderDto> {
+  async updatePayment(
+    orderId: number,
+    dto: UpdateOrderPaymentDto,
+  ): Promise<OrderDto> {
     const latest = await this.prisma.client.payment.findFirst({
       where: { orderId },
       orderBy: { createdAt: 'desc' },
@@ -496,16 +660,36 @@ export class OrdersService {
     return this.reload(orderId);
   }
 
-  async updateAmounts(orderId: number, dto: UpdateOrderAmountsDto): Promise<OrderDto> {
+  async updateAmounts(
+    orderId: number,
+    dto: UpdateOrderAmountsDto,
+  ): Promise<OrderDto> {
     await this.prisma.client.$transaction(async (tx) => {
       await lockOrderRow(tx, orderId);
       const order = await tx.order.findUnique({ where: { id: orderId } });
       if (!order) throw new NotFoundException('Order not found');
+      // A POS sale was priced at the till (possibly with VAT inside the price,
+      // which this total formula would add again). Correct it by a return.
+      if (order.channel === 'POS') {
+        throw new BadRequestException(
+          "A POS sale's amounts can't be edited — return it from the POS instead",
+        );
+      }
 
-      const discountAmount = dto.discountAmount !== undefined ? new Decimal(dto.discountAmount) : order.discountAmount;
-      const shippingAmount = dto.shippingAmount !== undefined ? new Decimal(dto.shippingAmount) : order.shippingAmount;
+      const discountAmount =
+        dto.discountAmount !== undefined
+          ? new Decimal(dto.discountAmount)
+          : order.discountAmount;
+      const shippingAmount =
+        dto.shippingAmount !== undefined
+          ? new Decimal(dto.shippingAmount)
+          : order.shippingAmount;
       const totalAmount = Decimal.max(
-        order.subTotal.minus(discountAmount).plus(order.taxAmount).plus(order.codFee).plus(shippingAmount),
+        order.subTotal
+          .minus(discountAmount)
+          .plus(order.taxAmount)
+          .plus(order.codFee)
+          .plus(shippingAmount),
         new Decimal(0),
       );
 
@@ -515,7 +699,8 @@ export class OrdersService {
           discountAmount,
           shippingAmount,
           totalAmount,
-          couponCode: dto.couponCode !== undefined ? dto.couponCode || null : undefined,
+          couponCode:
+            dto.couponCode !== undefined ? dto.couponCode || null : undefined,
         },
       });
     });
@@ -603,7 +788,10 @@ export class OrdersService {
 
     const order = await this.prisma.client.order.findUnique({
       where: { id: payment.orderId },
-      include: { items: true, addresses: { where: { type: 'SHIPPING' }, take: 1 } },
+      include: {
+        items: true,
+        addresses: { where: { type: 'SHIPPING' }, take: 1 },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== 'PENDING' && order.status !== 'HOLD') {
@@ -641,7 +829,11 @@ export class OrdersService {
       try {
         await this.cart.addItem(
           identity,
-          { productId: item.productId, variantId: item.variantId ?? undefined, quantity: item.quantity },
+          {
+            productId: item.productId,
+            variantId: item.variantId ?? undefined,
+            quantity: item.quantity,
+          },
           locale,
         );
         restored += 1;
@@ -704,6 +896,41 @@ export class OrdersService {
         });
       }
     }
+  }
+
+  /**
+   * Whether a once-completed order's stock is currently off the shelf: the
+   * most recent COMPLETED / CANCELED / RETURNED entry in its history decides.
+   * Without history (very old rows) fall back to the current status label.
+   */
+  private async stockIsOut(
+    tx: Prisma.TransactionClient,
+    orderId: number,
+    currentStatus: string,
+  ): Promise<boolean> {
+    const last = await tx.orderStatusHistory.findFirst({
+      where: {
+        orderId,
+        status: { in: ['COMPLETED', ...RELEASE_ON_CANCEL] as never },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { status: true },
+    });
+    return last
+      ? last.status === 'COMPLETED'
+      : !RELEASE_ON_CANCEL.has(currentStatus);
+  }
+
+  // A POS sale's stock lives at its store. Only a non-online store needs
+  // rerouting: the online store's stock IS the scalar columns the helpers
+  // below already write.
+  private async posStoreId(
+    tx: Prisma.TransactionClient,
+    storeId: number | null | undefined,
+  ): Promise<number | null> {
+    if (storeId == null) return null;
+    const store = await tx.store.findUnique({ where: { id: storeId } });
+    return store && !store.isOnlineStore ? store.id : null;
   }
 
   // Counterpart to commitReservations — a return after COMPLETED puts

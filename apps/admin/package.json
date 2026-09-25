@@ -26,6 +26,7 @@
     "ckeditor5": "^44.3.0",
     "diff": "^9.0.0",
     "exceljs": "^4.4.0",
+    "jsbarcode": "^3.12.3",
     "next": "16.2.10",
     "openapi-fetch": "^0.17.0",
     "qrcode.react": "^4.2.0",

@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react";
 import { Button, Card, FormSkeleton } from "@amader/admin-ui";
 import { usePickerProducts } from "@/hooks/usePickers";
-import { useFrequentlyBoughtTogether, useUpdateFrequentlyBoughtTogether } from "@/hooks/useFrequentlyBoughtTogether";
+import {
+  useFrequentlyBoughtTogether,
+  useUpdateFrequentlyBoughtTogether,
+} from "@/hooks/useFrequentlyBoughtTogether";
 import { SearchPickerField } from "@/components/SearchPickerField";
 
 // Same self-contained sibling-section pattern as CrossSellFields — its own
 // query/mutation/save button. Powers the PDP's "Frequently bought together"
 // checkbox bundle widget (this product + these picks, customer can
 // uncheck any of them before adding all checked items to cart at once).
-export function FrequentlyBoughtTogetherFields({ productId }: { productId: number }) {
+export function FrequentlyBoughtTogetherFields({
+  productId,
+}: {
+  productId: number;
+}) {
   const { data: products } = usePickerProducts();
   const { data: current, isLoading } = useFrequentlyBoughtTogether(productId);
   const update = useUpdateFrequentlyBoughtTogether(productId);
@@ -30,10 +37,13 @@ export function FrequentlyBoughtTogetherFields({ productId }: { productId: numbe
 
   return (
     <Card className="flex max-w-2xl flex-col gap-4">
-      <h3 className="font-ui text-sm font-bold text-text">Frequently Bought Together</h3>
+      <h3 className="font-ui text-sm font-bold text-text">
+        Frequently Bought Together
+      </h3>
       <p className="text-xs text-muted">
-        Shown on the product page as a bundle: this product plus the picks below, each with its own checkbox and a
-        single "Add to cart" for everything checked.
+        Shown on the product page as a bundle: this product plus the picks
+        below, each with its own checkbox and a single "Add to cart" for
+        everything checked.
       </p>
 
       {isLoading ? (

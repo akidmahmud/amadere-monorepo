@@ -19,6 +19,9 @@ import type { GalleryImage } from "./ProductMediaGallery";
 export interface ProductFormSnapshot {
   slug: string;
   sku: string;
+  // Optional: drafts saved before the POS fields existed lack them.
+  barcode?: string;
+  storeId?: number | null;
   brandId: number | undefined;
   authorId: number | undefined;
   isbn: string;
@@ -93,6 +96,16 @@ function countWords(str: string): number {
 export function useProductFormState(initial?: AdminProduct) {
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
+  const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+  // null = shared catalogue; a store id = only that store sells it.
+  const [storeId, setStoreId] = useState<number | null>(
+    initial?.storeId ?? null,
+  );
+  // The saved value: storeId is sent only when changed, so a catalog editor
+  // without POS permissions can still edit a store product's other fields.
+  const [savedStoreId, setSavedStoreId] = useState<number | null>(
+    initial?.storeId ?? null,
+  );
   const [brandId, setBrandId] = useState<number | undefined>(
     initial?.brandId ?? undefined,
   );
@@ -227,6 +240,8 @@ export function useProductFormState(initial?: AdminProduct) {
     return {
       slug,
       sku: sku || undefined,
+      barcode: barcode.trim() || null,
+      ...(storeId !== savedStoreId ? { storeId } : {}),
       brandId,
       // Explicit null (not undefined) so clearing the dropdown/field really
       // unlinks — the update endpoint treats undefined as "leave unchanged",
@@ -345,6 +360,9 @@ export function useProductFormState(initial?: AdminProduct) {
   function seedFrom(product: AdminProduct) {
     setSlug(product.slug);
     setSku(product.sku ?? "");
+    setBarcode(product.barcode ?? "");
+    setStoreId(product.storeId ?? null);
+    setSavedStoreId(product.storeId ?? null);
     setBrandId(product.brandId ?? undefined);
     setAuthorId(product.authorId ?? undefined);
     setIsbn(product.isbn ?? "");
@@ -446,6 +464,8 @@ export function useProductFormState(initial?: AdminProduct) {
     return {
       slug,
       sku,
+      barcode,
+      storeId,
       brandId,
       authorId,
       isbn,
@@ -494,6 +514,8 @@ export function useProductFormState(initial?: AdminProduct) {
   function applySnapshot(s: ProductFormSnapshot) {
     setSlug(s.slug);
     setSku(s.sku);
+    setBarcode(s.barcode ?? "");
+    setStoreId(s.storeId ?? null);
     setBrandId(s.brandId);
     setAuthorId(s.authorId);
     setIsbn(s.isbn);
@@ -543,6 +565,10 @@ export function useProductFormState(initial?: AdminProduct) {
     setSlug,
     sku,
     setSku,
+    barcode,
+    setBarcode,
+    storeId,
+    setStoreId,
     brandId,
     setBrandId,
     authorId,

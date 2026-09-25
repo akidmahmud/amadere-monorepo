@@ -1,20 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Card, FormSkeleton, Icon } from "@amader/admin-ui";
 import { usePickerProducts } from "@/hooks/usePickers";
 import { PickerPrice } from "@/components/PickerPrice";
-import { useRelatedProducts, useUpdateRelatedProducts } from "@/hooks/useRelatedProducts";
+import {
+  useRelatedProducts,
+  useUpdateRelatedProducts,
+} from "@/hooks/useRelatedProducts";
 
 // One picked product. Draggable because ORDER is the whole point of this
 // section — the storefront renders these left to right in exactly this
 // sequence (ProductRelation.position), unlike cross-sell/FBT where the
 // admin has no say.
-function SortableRow({ id, label, onRemove }: { id: number; label: string; onRemove: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+function SortableRow({
+  id,
+  label,
+  onRemove,
+}: {
+  id: number;
+  label: string;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   return (
     <div
       ref={setNodeRef}
@@ -30,7 +60,9 @@ function SortableRow({ id, label, onRemove }: { id: number; label: string; onRem
       >
         <Icon name="drag_indicator" size={18} />
       </button>
-      <span className="min-w-0 flex-1 truncate text-[0.74rem] font-semibold text-text">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-[0.74rem] font-semibold text-text">
+        {label}
+      </span>
       <button
         type="button"
         onClick={onRemove}
@@ -58,7 +90,9 @@ export function RelatedProductsFields({ productId }: { productId: number }) {
   const update = useUpdateRelatedProducts(productId);
   const [selected, setSelected] = useState<number[]>([]);
   const [search, setSearch] = useState("");
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
 
   useEffect(() => {
     if (current) setSelected(current);
@@ -71,27 +105,43 @@ export function RelatedProductsFields({ productId }: { productId: number }) {
   const options = (products ?? []).filter(
     (p) => p.id !== productId && (!p.outOfStock || selected.includes(p.id)),
   );
-  const labelOf = (id: number) => options.find((p) => p.id === id)?.label ?? `#${id}`;
-  const filteredProducts = options.filter((p) => p.label.toLowerCase().includes(search.trim().toLowerCase()));
+  const labelOf = (id: number) =>
+    options.find((p) => p.id === id)?.label ?? `#${id}`;
+  const filteredProducts = options.filter((p) =>
+    p.label.toLowerCase().includes(search.trim().toLowerCase()),
+  );
 
   function toggle(id: number) {
     // Appended, not inserted — a newly ticked product joins the END of the
     // order, which is what an admin building a list top-down expects.
-    setSelected(selected.includes(id) ? selected.filter((i) => i !== id) : [...selected, id]);
+    setSelected(
+      selected.includes(id)
+        ? selected.filter((i) => i !== id)
+        : [...selected, id],
+    );
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setSelected((ids) => arrayMove(ids, ids.indexOf(active.id as number), ids.indexOf(over.id as number)));
+    setSelected((ids) =>
+      arrayMove(
+        ids,
+        ids.indexOf(active.id as number),
+        ids.indexOf(over.id as number),
+      ),
+    );
   }
 
   return (
     <Card className="flex max-w-2xl flex-col gap-4">
-      <h3 className="font-ui text-sm font-bold text-text">Related Products (&ldquo;আমাদের শপে আরও দেখতে পারেন&rdquo;)</h3>
+      <h3 className="font-ui text-sm font-bold text-text">
+        Related Products (&ldquo;আমাদের শপে আরও দেখতে পারেন&rdquo;)
+      </h3>
       <p className="text-xs text-muted">
-        Shown at the bottom of this product&apos;s page, in the order below — drag to rearrange. Leave empty and the
-        storefront falls back to its automatic same-category suggestions.
+        Shown at the bottom of this product&apos;s page, in the order below —
+        drag to rearrange. Leave empty and the storefront falls back to its
+        automatic same-category suggestions.
       </p>
 
       {isLoading ? (
@@ -99,11 +149,23 @@ export function RelatedProductsFields({ productId }: { productId: number }) {
       ) : (
         <>
           {selected.length > 0 && (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={selected} strategy={verticalListSortingStrategy}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={selected}
+                strategy={verticalListSortingStrategy}
+              >
                 <div className="flex flex-col gap-1.5">
                   {selected.map((id) => (
-                    <SortableRow key={id} id={id} label={labelOf(id)} onRemove={() => toggle(id)} />
+                    <SortableRow
+                      key={id}
+                      id={id}
+                      label={labelOf(id)}
+                      onRemove={() => toggle(id)}
+                    />
                   ))}
                 </div>
               </SortableContext>
@@ -123,15 +185,30 @@ export function RelatedProductsFields({ productId }: { productId: number }) {
                 key={p.id}
                 className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2"
               >
-                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} className="h-3.5 w-3.5 shrink-0 accent-brand-500" />
+                <input
+                  type="checkbox"
+                  checked={selected.includes(p.id)}
+                  onChange={() => toggle(p.id)}
+                  className="h-3.5 w-3.5 shrink-0 accent-brand-500"
+                />
                 <span className="min-w-0 flex-1 truncate">{p.label}</span>
                 <PickerPrice price={p.price} salePrice={p.salePrice} />
               </label>
             ))}
-            {filteredProducts.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No products match your search.</p>}
+            {filteredProducts.length === 0 && (
+              <p className="px-1.5 py-2 text-[0.72rem] text-muted">
+                No products match your search.
+              </p>
+            )}
           </div>
 
-          <Button type="button" variant="primary" className="self-start" disabled={update.isPending} onClick={() => update.mutate(selected)}>
+          <Button
+            type="button"
+            variant="primary"
+            className="self-start"
+            disabled={update.isPending}
+            onClick={() => update.mutate(selected)}
+          >
             {update.isPending ? "Saving…" : "Save related products"}
           </Button>
         </>

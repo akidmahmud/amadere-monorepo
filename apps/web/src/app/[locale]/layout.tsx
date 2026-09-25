@@ -279,6 +279,20 @@ export default async function LocaleLayout({
           no parent height, so the footer now starts below the fold on the
           first paint and stays there. */}
       <body className="min-h-dvh flex flex-col pb-[55px] font-body md:pb-0">
+        {/* Cloudflare Image Resizing fallback. When a /cdn-cgi/image/ URL fails
+            (err=9422: the free plan's 5,000 transformations/month are used up),
+            load the original R2 file from the same CDN instead. Every page load
+            tries the resized URL first, so resizing resumes by itself once the
+            quota is back.
+            ponytail: serves the unresized original, not an origin-resized copy.
+            On-VPS resizing took the site down before (see next.config.ts).
+            Must be the first thing in <body> so it is listening before any
+            <img> can fail. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `addEventListener("error",function(e){var t=e.target,m="/cdn-cgi/image/";if(!t||t.tagName!=="IMG")return;var s=t.currentSrc||t.src,i=s.indexOf(m);if(i<0)return;var r=s.slice(i+m.length);t.removeAttribute("srcset");t.removeAttribute("sizes");t.src=s.slice(0,i)+r.slice(r.indexOf("/"))},true)`,
+          }}
+        />
         <AnalyticsScripts
           config={
             (analyticsConfig as PublicAnalyticsConfig | undefined) ?? {

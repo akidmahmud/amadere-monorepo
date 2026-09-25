@@ -12,6 +12,8 @@ export class AdminProfileDto {
   // permission check (backend PermissionGuard and the frontend nav filter
   // both check isSuperAdmin first).
   permissions!: string[];
+  /** POS home store; null = none assigned. */
+  storeId!: number | null;
 }
 
 export function toAdminProfileDto(admin: AdminUser, permissions: string[] = []): AdminProfileDto {
@@ -23,6 +25,7 @@ export function toAdminProfileDto(admin: AdminUser, permissions: string[] = []):
     isSuperAdmin: admin.isSuperAdmin,
     twoFactorEnabled: admin.twoFactorEnabled,
     permissions,
+    storeId: admin.storeId,
   };
 }
 

@@ -4,8 +4,13 @@ import type { AdminOrder } from "@/hooks/useOrders";
 // templates elsewhere in this codebase — plain string replace, no template
 // engine. Shared by the settings page's live preview and LabelDocument so
 // both ever compute merge tags exactly one way.
-export function buildLabelMergeTags(order: AdminOrder, companyName: string): Record<string, string> {
-  const shipping = order.addresses.find((a) => (a.type as unknown as string) === "SHIPPING");
+export function buildLabelMergeTags(
+  order: AdminOrder,
+  companyName: string,
+): Record<string, string> {
+  const shipping = order.addresses.find(
+    (a) => (a.type as unknown as string) === "SHIPPING",
+  );
   const shipment = order.shipment;
   const weight = shipment?.weight ?? order.totalWeight;
 
@@ -16,7 +21,14 @@ export function buildLabelMergeTags(order: AdminOrder, companyName: string): Rec
     recipientName: shipping?.recipientName ?? "",
     phone: shipping?.phone ?? "",
     addressLine: shipping?.addressLine ?? "",
-    addressFull: [shipping?.area, shipping?.district, shipping?.division, shipping?.postCode].filter(Boolean).join(", "),
+    addressFull: [
+      shipping?.area,
+      shipping?.district,
+      shipping?.division,
+      shipping?.postCode,
+    ]
+      .filter(Boolean)
+      .join(", "),
     trackingCode: shipment?.trackingCode ?? order.orderNumber,
     provider: shipment ? String(shipment.provider) : "—",
     weight: weight ? String(weight) : "—",
@@ -26,6 +38,12 @@ export function buildLabelMergeTags(order: AdminOrder, companyName: string): Rec
   };
 }
 
-export function renderLabelTemplate(template: string, tags: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => tags[key] ?? "");
+export function renderLabelTemplate(
+  template: string,
+  tags: Record<string, string>,
+): string {
+  return template.replace(
+    /\{\{(\w+)\}\}/g,
+    (_, key: string) => tags[key] ?? "",
+  );
 }

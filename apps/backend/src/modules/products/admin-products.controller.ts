@@ -22,7 +22,9 @@ import { ApiBearerAuth, ApiConsumes, ApiOkResponse, ApiTags } from '@nestjs/swag
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
-import { RequirePermission } from '../../common/auth/permission.decorator';
+import { Can, type PermissionCheck, RequirePermission } from '../../common/auth/permission.decorator';
+import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
+import { StoresService } from '../stores/stores.service';
 import { SuperAdminGuard } from '../../common/auth/super-admin.guard';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
@@ -48,7 +50,10 @@ import { UpdateRelatedProductsDto } from './dto/update-related-products.dto';
 @UseInterceptors(AuditLogInterceptor)
 @Controller('admin/products')
 export class AdminProductsController {
-  constructor(private readonly products: ProductsService) {}
+  constructor(
+    private readonly products: ProductsService,
+    private readonly stores: StoresService,
+  ) {}
 
   @Get()
   @RequirePermission('product.view')
@@ -132,8 +137,12 @@ export class AdminProductsController {
   @Post()
   @RequirePermission('product.create')
   @ApiOkResponse({ type: AdminProductDto })
-  create(@Body() dto: CreateProductDto): Promise<AdminProductDto> {
-    return this.products.create(dto);
+  async create(
+    @Body() dto: CreateProductDto,
+    @CurrentAdmin() admin: { id: number },
+    @Can() can: PermissionCheck,
+  ): Promise<AdminProductDto> {
+    return this.products.create(dto, { storeId: await this.stores.adminStoreId(admin.id), can });
   }
 
   // Declared BEFORE @Patch(':id') deliberately: Nest matches routes in
@@ -148,11 +157,13 @@ export class AdminProductsController {
   @Patch(':id')
   @RequirePermission('product.update')
   @ApiOkResponse({ type: AdminProductDto })
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateProductDto,
+    @CurrentAdmin() admin: { id: number },
+    @Can() can: PermissionCheck,
   ): Promise<AdminProductDto> {
-    return this.products.update(id, dto);
+    return this.products.update(id, dto, { storeId: await this.stores.adminStoreId(admin.id), can });
   }
 
   @Delete(':id')

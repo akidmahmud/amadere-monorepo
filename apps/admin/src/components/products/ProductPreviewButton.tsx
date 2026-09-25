@@ -11,13 +11,25 @@ interface ProductPreviewButtonProps {
 }
 
 const eyeIcon = (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
-export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonProps) {
+export function ProductPreviewButton({
+  productId,
+  slug,
+}: ProductPreviewButtonProps) {
   const previewToken = useGenerateProductPreviewToken();
   const storefrontUrl = useStorefrontUrl();
   // Only set when the browser blocked the popup — then we show a link the
@@ -26,7 +38,12 @@ export function ProductPreviewButton({ productId, slug }: ProductPreviewButtonPr
 
   if (!productId) {
     return (
-      <Button type="button" variant="ghost" disabled title="Save the product first — preview needs a real product ID.">
+      <Button
+        type="button"
+        variant="ghost"
+        disabled
+        title="Save the product first — preview needs a real product ID."
+      >
         {eyeIcon}
         Preview
       </Button>

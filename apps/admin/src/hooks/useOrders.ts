@@ -82,7 +82,9 @@ export type PaymentProviderType =
   | "ROCKET"
   | "UPAY"
   | "SSLCOMMERZ"
-  | "BANK_TRANSFER";
+  | "BANK_TRANSFER"
+  | "CASH"
+  | "CARD";
 export const PAYMENT_PROVIDER_TYPES: PaymentProviderType[] = [
   "COD",
   "BKASH",

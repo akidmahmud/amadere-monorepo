@@ -68,6 +68,9 @@ import { CustomerCampaignsModule } from './modules/net-profit/customer-campaigns
 import { PromoVideosModule } from './modules/promo-videos/promo-videos.module';
 import { NetProfitModule } from './modules/net-profit/net-profit.module';
 import { WholesaleModule } from './modules/wholesale/wholesale.module';
+import { StoresModule } from './modules/stores/stores.module';
+import { StockModule } from './modules/stock/stock.module';
+import { PosModule } from './modules/pos/pos.module';
 import { ProductCostHistoryModule } from './modules/product-cost-history/product-cost-history.module';
 import { PushModule } from './modules/push/push.module';
 
@@ -192,6 +195,9 @@ import { PushModule } from './modules/push/push.module';
     PushModule,
     NetProfitModule,
     WholesaleModule,
+    StoresModule,
+    StockModule,
+    PosModule,
     ProductCostHistoryModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ClientThrottlerGuard }],

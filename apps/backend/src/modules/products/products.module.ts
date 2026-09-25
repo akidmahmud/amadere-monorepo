@@ -1,3 +1,4 @@
+import { StoresModule } from '../stores/stores.module';
 import { ProductCostHistoryModule } from '../product-cost-history/product-cost-history.module';
 import { Module } from '@nestjs/common';
 import { CatalogFeedModule } from '../catalog-feed/catalog-feed.module';
@@ -8,7 +9,7 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 
 @Module({
-  imports: [SeoModule, ReviewsModule, CatalogFeedModule, ProductCostHistoryModule],
+  imports: [SeoModule, ReviewsModule, CatalogFeedModule, ProductCostHistoryModule, StoresModule],
   controllers: [ProductsController, AdminProductsController],
   providers: [ProductsService],
   exports: [ProductsService],

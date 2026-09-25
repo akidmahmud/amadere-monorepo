@@ -27,8 +27,14 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { ProductTranslationDto } from './dto/product-translation.dto';
-import { ProductFilterQueryDto, ProductSort } from './dto/product-filter-query.dto';
-import { ADMIN_PRODUCTS_MAX_PAGE_SIZE, AdminProductQueryDto } from './dto/admin-product-query.dto';
+import {
+  ProductFilterQueryDto,
+  ProductSort,
+} from './dto/product-filter-query.dto';
+import {
+  ADMIN_PRODUCTS_MAX_PAGE_SIZE,
+  AdminProductQueryDto,
+} from './dto/admin-product-query.dto';
 import { computeSeoScore } from './seo-score.util';
 import {
   AdminDeletedProductDto,
@@ -48,6 +54,12 @@ import {
   buildVideoObjectJsonLd,
 } from '../../common/structured-data/structured-data.util';
 import { categoryLinks } from './category-links';
+import {
+  applyStoreOnlyRules,
+  type ProductActor,
+  SYSTEM_ACTOR,
+} from './store-only.util';
+import { assertBarcode } from '../stock/barcode.util';
 
 export interface CsvImportResult {
   created: number;
@@ -93,7 +105,9 @@ function parseCsvLine(line: string): string[] {
 // than actively writing NULL — keeps a client that doesn't know about this
 // field from silently clearing existing assignments on an unrelated save.
 function variantIdForMedia(
-  dto: { mediaVariantAssignments?: { mediaId: number; variantId: number | null }[] },
+  dto: {
+    mediaVariantAssignments?: { mediaId: number; variantId: number | null }[];
+  },
   mediaId: number,
 ): number | null | undefined {
   if (!dto.mediaVariantAssignments) return undefined;
@@ -107,7 +121,9 @@ function variantIdForMedia(
 // falls back to the first variant when none does, because every read path
 // (`variants.find(v => v.isDefault) ?? variants[0]`) assumes a default
 // exists. Exported for the unit test.
-export function withSingleDefault<T extends { isDefault?: boolean }>(variants: T[]): T[] {
+export function withSingleDefault<T extends { isDefault?: boolean }>(
+  variants: T[],
+): T[] {
   if (variants.length === 0) return variants;
   const chosen = variants.findIndex((v) => v.isDefault);
   const defaultIndex = chosen === -1 ? 0 : chosen;
@@ -155,7 +171,7 @@ export class ProductsService {
     // scheduled rebuild is what catches those.
     this.catalogFeed.invalidate();
 
-    const paths = new Set(["/products", "/en/products", "/bn/products"]);
+    const paths = new Set(['/products', '/en/products', '/bn/products']);
     for (const slug of slugs) {
       if (!slug) continue;
       paths.add(`/en/products/${slug}`);
@@ -174,7 +190,9 @@ export class ProductsService {
     // is a request anyone with an admin token could use to pull the whole
     // table with its nested includes in one query.
     const effectivePage = filters.all ? 1 : page;
-    const effectivePageSize = filters.all ? ADMIN_PRODUCTS_MAX_PAGE_SIZE : pageSize;
+    const effectivePageSize = filters.all
+      ? ADMIN_PRODUCTS_MAX_PAGE_SIZE
+      : pageSize;
     const [items, total] = await Promise.all([
       this.prisma.client.product.findMany({
         where,
@@ -189,7 +207,9 @@ export class ProductsService {
       }),
       this.prisma.client.product.count({ where }),
     ]);
-    const seoMetaByProductId = await this.fetchSeoMetaMap(items.map((p) => p.id));
+    const seoMetaByProductId = await this.fetchSeoMetaMap(
+      items.map((p) => p.id),
+    );
     return toPaginatedResult(
       items.map((p) => ({
         ...toAdminProductListItemDto(p),
@@ -198,7 +218,9 @@ export class ProductsService {
           metaTitle: seoMetaByProductId.get(p.id)?.title,
           metaDescription: seoMetaByProductId.get(p.id)?.description,
           slug: p.slug,
-          primaryImageAlt: p.media.find((m) => m.isPrimary)?.media.altText ?? p.media[0]?.media.altText,
+          primaryImageAlt:
+            p.media.find((m) => m.isPrimary)?.media.altText ??
+            p.media[0]?.media.altText,
           description: p.translations[0]?.description,
         }),
       })),
@@ -297,13 +319,24 @@ export class ProductsService {
   // an N+1 (one lookup per row) on a list page that can show 20+ products.
   private async fetchSeoMetaMap(
     productIds: number[],
-  ): Promise<Map<number, { title: string | null; description: string | null }>> {
+  ): Promise<
+    Map<number, { title: string | null; description: string | null }>
+  > {
     if (productIds.length === 0) return new Map();
     const rows = await this.prisma.client.seoMeta.findMany({
-      where: { entityType: SeoEntityType.PRODUCT, entityId: { in: productIds }, locale: Locale.EN },
+      where: {
+        entityType: SeoEntityType.PRODUCT,
+        entityId: { in: productIds },
+        locale: Locale.EN,
+      },
       select: { entityId: true, title: true, description: true },
     });
-    return new Map(rows.map((r) => [r.entityId, { title: r.title, description: r.description }]));
+    return new Map(
+      rows.map((r) => [
+        r.entityId,
+        { title: r.title, description: r.description },
+      ]),
+    );
   }
 
   // Low-stock threshold: a fixed constant, not a configurable setting — no
@@ -322,11 +355,18 @@ export class ProductsService {
     const base = { deletedAt: null } as const;
     const [total, active, draft, outOfStock, lowStock] = await Promise.all([
       this.prisma.client.product.count({ where: base }),
-      this.prisma.client.product.count({ where: { ...base, status: 'PUBLISHED' } }),
-      this.prisma.client.product.count({ where: { ...base, status: 'DRAFT' } }),
-      this.prisma.client.product.count({ where: { ...base, stockStatus: 'OUT_OF_STOCK' } }),
       this.prisma.client.product.count({
-        where: { ...base, stock: { gt: 0, lte: ProductsService.LOW_STOCK_THRESHOLD } },
+        where: { ...base, status: 'PUBLISHED' },
+      }),
+      this.prisma.client.product.count({ where: { ...base, status: 'DRAFT' } }),
+      this.prisma.client.product.count({
+        where: { ...base, stockStatus: 'OUT_OF_STOCK' },
+      }),
+      this.prisma.client.product.count({
+        where: {
+          ...base,
+          stock: { gt: 0, lte: ProductsService.LOW_STOCK_THRESHOLD },
+        },
       }),
     ]);
     return { total, active, draft, outOfStock, lowStock };
@@ -336,13 +376,18 @@ export class ProductsService {
   // no view/conversion tracking exists in this codebase, so this only
   // surfaces what we actually have (units sold, revenue, order count),
   // same NON_CANCELED convention as the dashboard endpoint.
-  async adminStatsFor(productId: number): Promise<{ unitsSold: number; revenue: string; orderCount: number }> {
+  async adminStatsFor(
+    productId: number,
+  ): Promise<{ unitsSold: number; revenue: string; orderCount: number }> {
     const items = await this.prisma.client.orderItem.findMany({
       where: { productId, order: { status: { not: 'CANCELED' } } },
       select: { quantity: true, unitPrice: true, orderId: true },
     });
     const unitsSold = items.reduce((sum, i) => sum + i.quantity, 0);
-    const revenue = items.reduce((sum, i) => sum + Number(i.unitPrice) * i.quantity, 0);
+    const revenue = items.reduce(
+      (sum, i) => sum + Number(i.unitPrice) * i.quantity,
+      0,
+    );
     const orderCount = new Set(items.map((i) => i.orderId)).size;
     return { unitsSold, revenue: revenue.toFixed(2), orderCount };
   }
@@ -373,7 +418,12 @@ export class ProductsService {
   // non-fatal error line.
   async importCsv(csv: string): Promise<CsvImportResult> {
     const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    const result: CsvImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
+    const result: CsvImportResult = {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [],
+    };
     if (lines.length === 0) return result;
 
     const firstRow = parseCsvLine(lines[0]).map((f) => f.trim().toLowerCase());
@@ -383,10 +433,14 @@ export class ProductsService {
 
     for (let i = 0; i < dataLines.length; i++) {
       const lineNumber = i + headerOffset + 1;
-      const [name, slug, sku, category, stockRaw, priceRaw, statusRaw] = parseCsvLine(dataLines[i]).map((f) => f.trim());
+      const [name, slug, sku, category, stockRaw, priceRaw, statusRaw] =
+        parseCsvLine(dataLines[i]).map((f) => f.trim());
 
       if (!name || !slug) {
-        result.errors.push({ line: lineNumber, reason: 'Missing Name or Slug' });
+        result.errors.push({
+          line: lineNumber,
+          reason: 'Missing Name or Slug',
+        });
         result.skipped++;
         continue;
       }
@@ -395,7 +449,10 @@ export class ProductsService {
       if (stockRaw) {
         stock = Number.parseInt(stockRaw, 10);
         if (Number.isNaN(stock)) {
-          result.errors.push({ line: lineNumber, reason: `Invalid Stock "${stockRaw}"` });
+          result.errors.push({
+            line: lineNumber,
+            reason: `Invalid Stock "${stockRaw}"`,
+          });
           result.skipped++;
           continue;
         }
@@ -405,7 +462,10 @@ export class ProductsService {
       if (priceRaw) {
         price = Number.parseFloat(priceRaw);
         if (Number.isNaN(price)) {
-          result.errors.push({ line: lineNumber, reason: `Invalid Price "${priceRaw}"` });
+          result.errors.push({
+            line: lineNumber,
+            reason: `Invalid Price "${priceRaw}"`,
+          });
           result.skipped++;
           continue;
         }
@@ -413,9 +473,14 @@ export class ProductsService {
 
       let status: ContentStatus | undefined;
       if (statusRaw) {
-        const match = Object.values(ContentStatus).find((s) => s === statusRaw.toUpperCase());
+        const match = Object.values(ContentStatus).find(
+          (s) => s === statusRaw.toUpperCase(),
+        );
         if (!match) {
-          result.errors.push({ line: lineNumber, reason: `Invalid Status "${statusRaw}"` });
+          result.errors.push({
+            line: lineNumber,
+            reason: `Invalid Status "${statusRaw}"`,
+          });
           result.skipped++;
           continue;
         }
@@ -428,15 +493,26 @@ export class ProductsService {
           where: { name: { equals: category, mode: 'insensitive' } },
         });
         if (match) categoryId = match.categoryId;
-        else result.errors.push({ line: lineNumber, reason: `Category "${category}" not found — imported uncategorized` });
+        else
+          result.errors.push({
+            line: lineNumber,
+            reason: `Category "${category}" not found — imported uncategorized`,
+          });
       }
 
       try {
-        const existing = await this.prisma.client.product.findFirst({ where: { slug } });
+        const existing = await this.prisma.client.product.findFirst({
+          where: { slug },
+        });
         if (existing) {
-          const importLinks = categoryId !== undefined ? await this.categoryLinksFor(existing.id, [categoryId]) : null;
+          const importLinks =
+            categoryId !== undefined
+              ? await this.categoryLinksFor(existing.id, [categoryId])
+              : null;
           if (categoryId !== undefined) {
-            await this.prisma.client.productCategory.deleteMany({ where: { productId: existing.id } });
+            await this.prisma.client.productCategory.deleteMany({
+              where: { productId: existing.id },
+            });
           }
           await this.prisma.client.product.update({
             where: { id: existing.id },
@@ -444,7 +520,8 @@ export class ProductsService {
               sku: sku || undefined,
               stock,
               price,
-              status,
+              // A store-only product stays ADMIN_ONLY whatever the sheet says.
+              status: existing.storeId !== null ? undefined : status,
               categories: importLinks ? { create: importLinks } : undefined,
             },
           });
@@ -458,13 +535,19 @@ export class ProductsService {
               price,
               status,
               translations: { create: [{ locale: Locale.EN, name }] },
-              categories: categoryId !== undefined ? { create: [{ categoryId }] } : undefined,
+              categories:
+                categoryId !== undefined
+                  ? { create: [{ categoryId }] }
+                  : undefined,
             },
           });
           result.created++;
         }
       } catch (e) {
-        result.errors.push({ line: lineNumber, reason: e instanceof Error ? e.message : 'Unknown error' });
+        result.errors.push({
+          line: lineNumber,
+          reason: e instanceof Error ? e.message : 'Unknown error',
+        });
         result.skipped++;
       }
     }
@@ -474,14 +557,22 @@ export class ProductsService {
   private buildAdminWhere(filters: AdminProductQueryDto) {
     return {
       ...this.buildWhere(filters, { deletedAt: null }),
-      ...(filters.productType !== undefined ? { productType: filters.productType } : {}),
+      ...(filters.productType !== undefined
+        ? { productType: filters.productType }
+        : {}),
       ...(filters.status !== undefined ? { status: filters.status } : {}),
-      ...(filters.stockStatus !== undefined ? { stockStatus: filters.stockStatus } : {}),
+      ...(filters.stockStatus !== undefined
+        ? { stockStatus: filters.stockStatus }
+        : {}),
       ...(filters.createdFrom || filters.createdTo
         ? {
             createdAt: {
-              ...(filters.createdFrom ? { gte: new Date(filters.createdFrom) } : {}),
-              ...(filters.createdTo ? { lte: new Date(filters.createdTo) } : {}),
+              ...(filters.createdFrom
+                ? { gte: new Date(filters.createdFrom) }
+                : {}),
+              ...(filters.createdTo
+                ? { lte: new Date(filters.createdTo) }
+                : {}),
             },
           }
         : {}),
@@ -513,7 +604,11 @@ export class ProductsService {
     const existing = await this.adminGet(id);
 
     let slug = `${existing.slug}-copy`;
-    for (let n = 2; await this.prisma.client.product.findUnique({ where: { slug } }); n++) {
+    for (
+      let n = 2;
+      await this.prisma.client.product.findUnique({ where: { slug } });
+      n++
+    ) {
       slug = `${existing.slug}-copy-${n}`;
     }
 
@@ -521,7 +616,9 @@ export class ProductsService {
       slug,
       brandId: existing.brandId ?? undefined,
       productType: existing.productType,
-      status: 'DRAFT',
+      // A store-only product's copy stays at that store (and so ADMIN_ONLY).
+      storeId: existing.storeId ?? undefined,
+      status: existing.storeId ? 'ADMIN_ONLY' : 'DRAFT',
       isFeatured: false,
       flagLabel: existing.flagLabel ?? undefined,
       videoUrl: existing.videoUrl ?? undefined,
@@ -535,9 +632,13 @@ export class ProductsService {
       wholesalePrice: existing.wholesalePrice
         ? Number(existing.wholesalePrice)
         : undefined,
-      costPerItem: existing.costPerItem ? Number(existing.costPerItem) : undefined,
+      costPerItem: existing.costPerItem
+        ? Number(existing.costPerItem)
+        : undefined,
       costPriceUnit: existing.costPriceUnit ?? undefined,
-      shippableWeight: existing.shippableWeight ? Number(existing.shippableWeight) : undefined,
+      shippableWeight: existing.shippableWeight
+        ? Number(existing.shippableWeight)
+        : undefined,
       salesCountOverride: existing.salesCountOverride,
       minOrderQuantity: existing.minOrderQuantity,
       maxOrderQuantity: existing.maxOrderQuantity ?? undefined,
@@ -560,7 +661,9 @@ export class ProductsService {
             price: Number(v.price),
             salePrice: v.salePrice ? Number(v.salePrice) : undefined,
             stock: 0,
-            weightOverride: v.weightOverride ? Number(v.weightOverride) : undefined,
+            weightOverride: v.weightOverride
+              ? Number(v.weightOverride)
+              : undefined,
             isDefault: v.isDefault,
             attributeValueIds: v.attributeValueIds,
           }))
@@ -570,7 +673,13 @@ export class ProductsService {
     return this.create(dto);
   }
 
-  async create(dto: CreateProductDto): Promise<AdminProductDto> {
+  async create(
+    dto: CreateProductDto,
+    actor: ProductActor = SYSTEM_ACTOR,
+  ): Promise<AdminProductDto> {
+    const storeRule = applyStoreOnlyRules(dto, actor, null);
+    assertBarcode(dto.barcode);
+    dto.variants?.forEach((v) => assertBarcode(v.barcode));
     await this.assertSlugAvailable(dto.slug);
     await this.validateReferences(dto);
     this.validatePricingShape(dto);
@@ -588,7 +697,9 @@ export class ProductsService {
         authorId: dto.authorId,
         isbn: dto.isbn,
         productType: dto.productType,
-        status: dto.status,
+        status: storeRule.status,
+        storeId: storeRule.storeId,
+        barcode: dto.barcode,
         isFeatured: dto.isFeatured,
         flagLabel: dto.flagLabel,
         googleProductCategory: dto.googleProductCategory,
@@ -609,7 +720,8 @@ export class ProductsService {
         // (orders.service.ts). Forced, not validated-and-rejected: an
         // admin who leaves the default alone should get a working
         // digital product, not an error about a field they never saw.
-        trackInventory: dto.productType === 'DIGITAL' ? false : dto.trackInventory,
+        trackInventory:
+          dto.productType === 'DIGITAL' ? false : dto.trackInventory,
         allowBackorder: dto.allowBackorder,
         stock: dto.hasVariants ? 0 : dto.stock,
         stockStatus: dto.stockStatus,
@@ -621,7 +733,9 @@ export class ProductsService {
         // date-only string outright ("premature end of input. Expected
         // ISO-8601 DateTime"), so this 500'd on every save that touched
         // either field. new Date(...) normalizes to midnight UTC first.
-        saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : dto.saleStartsAt,
+        saleStartsAt: dto.saleStartsAt
+          ? new Date(dto.saleStartsAt)
+          : dto.saleStartsAt,
         saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : dto.saleEndsAt,
         costPerItem: dto.costPerItem,
         costPriceUnit: dto.costPriceUnit,
@@ -689,19 +803,31 @@ export class ProductsService {
     this.revalidateProduct([product.slug]);
     // A cost entered here becomes a dated history row (Sales report).
     if (dto.costPerItem != null) {
-      await this.costHistory.recordIfChanged({ productId: product.id, cost: Number(dto.costPerItem), costPriceUnit: dto.costPriceUnit ?? null });
+      await this.costHistory.recordIfChanged({
+        productId: product.id,
+        cost: Number(dto.costPerItem),
+        costPriceUnit: dto.costPriceUnit ?? null,
+      });
     }
     return toAdminProductDto(product);
   }
 
-  async update(id: number, dto: UpdateProductDto): Promise<AdminProductDto> {
+  async update(
+    id: number,
+    dto: UpdateProductDto,
+    actor: ProductActor = SYSTEM_ACTOR,
+  ): Promise<AdminProductDto> {
     const existing = await this.adminGet(id);
+    const storeRule = applyStoreOnlyRules(dto, actor, existing.storeId);
+    assertBarcode(dto.barcode);
     if (dto.slug) await this.assertSlugAvailable(dto.slug, id);
     await this.validateReferences(dto);
 
     // Read before the delete below: the recreated links keep this product's
     // place in each category instead of jumping to the front (see category-links.ts).
-    const links = dto.categoryIds ? await this.categoryLinksFor(id, dto.categoryIds) : null;
+    const links = dto.categoryIds
+      ? await this.categoryLinksFor(id, dto.categoryIds)
+      : null;
     if (dto.categoryIds) {
       await this.prisma.client.productCategory.deleteMany({
         where: { productId: id },
@@ -754,7 +880,9 @@ export class ProductsService {
         authorId: dto.authorId,
         isbn: dto.isbn,
         productType: dto.productType,
-        status: dto.status,
+        status: storeRule.status,
+        storeId: storeRule.storeId,
+        barcode: dto.barcode,
         isFeatured: dto.isFeatured,
         flagLabel: dto.flagLabel,
         googleProductCategory: dto.googleProductCategory,
@@ -767,7 +895,8 @@ export class ProductsService {
         // gated solely on trackInventory, so a digital product must never
         // carry true here, however it got to DIGITAL. Forced, not
         // validated-and-rejected.
-        trackInventory: effectiveProductType === 'DIGITAL' ? false : dto.trackInventory,
+        trackInventory:
+          effectiveProductType === 'DIGITAL' ? false : dto.trackInventory,
         allowBackorder: dto.allowBackorder,
         hasVariants: dto.hasVariants,
         // Mirrors create(): on a variant product the parent row's own price and
@@ -790,7 +919,9 @@ export class ProductsService {
         // date-only string outright ("premature end of input. Expected
         // ISO-8601 DateTime"), so this 500'd on every save that touched
         // either field. new Date(...) normalizes to midnight UTC first.
-        saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : dto.saleStartsAt,
+        saleStartsAt: dto.saleStartsAt
+          ? new Date(dto.saleStartsAt)
+          : dto.saleStartsAt,
         saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : dto.saleEndsAt,
         costPerItem: dto.costPerItem,
         costPriceUnit: dto.costPriceUnit,
@@ -840,7 +971,11 @@ export class ProductsService {
     this.revalidateProduct([existing.slug, product.slug]);
     // A changed cost becomes a dated row, so past Sales reports keep theirs.
     if (dto.costPerItem != null) {
-      await this.costHistory.recordIfChanged({ productId: id, cost: Number(dto.costPerItem), costPriceUnit: dto.costPriceUnit ?? null });
+      await this.costHistory.recordIfChanged({
+        productId: id,
+        cost: Number(dto.costPerItem),
+        costPriceUnit: dto.costPriceUnit ?? null,
+      });
     }
     return toAdminProductDto(product);
   }
@@ -859,7 +994,11 @@ export class ProductsService {
   // Trash listing — soft-deleted products still within the retention window
   // (the nightly purge job below removes anything older, so `deletedAt: not
   // null` alone is equivalent to "within 30 days" in practice).
-  async listDeleted(page = 1, pageSize = 20, q?: string): Promise<PaginatedResult<AdminDeletedProductDto>> {
+  async listDeleted(
+    page = 1,
+    pageSize = 20,
+    q?: string,
+  ): Promise<PaginatedResult<AdminDeletedProductDto>> {
     const trimmed = q?.trim();
     const where = {
       deletedAt: { not: null },
@@ -868,7 +1007,13 @@ export class ProductsService {
             OR: [
               { slug: { contains: trimmed, mode: 'insensitive' as const } },
               { sku: { contains: trimmed, mode: 'insensitive' as const } },
-              { translations: { some: { name: { contains: trimmed, mode: 'insensitive' as const } } } },
+              {
+                translations: {
+                  some: {
+                    name: { contains: trimmed, mode: 'insensitive' as const },
+                  },
+                },
+              },
             ],
           }
         : {}),
@@ -882,7 +1027,11 @@ export class ProductsService {
           slug: true,
           deletedAt: true,
           translations: { select: { name: true }, take: 1 },
-          media: { orderBy: { sortOrder: 'asc' }, take: 1, select: { media: { select: { url: true } } } },
+          media: {
+            orderBy: { sortOrder: 'asc' },
+            take: 1,
+            select: { media: { select: { url: true } } },
+          },
         },
         orderBy: { deletedAt: 'desc' },
         ...paginationArgs(page, pageSize),
@@ -891,14 +1040,19 @@ export class ProductsService {
 
     const items = products.map((p) => {
       const deletedAt = p.deletedAt!;
-      const daysElapsed = Math.floor((Date.now() - deletedAt.getTime()) / 86_400_000);
+      const daysElapsed = Math.floor(
+        (Date.now() - deletedAt.getTime()) / 86_400_000,
+      );
       return {
         id: p.id,
         slug: p.slug,
         name: p.translations[0]?.name ?? p.slug,
         imageUrl: p.media[0]?.media.url ?? null,
         deletedAt,
-        daysRemaining: Math.max(0, ProductsService.TRASH_RETENTION_DAYS - daysElapsed),
+        daysRemaining: Math.max(
+          0,
+          ProductsService.TRASH_RETENTION_DAYS - daysElapsed,
+        ),
       };
     });
     return toPaginatedResult(items, total, page, pageSize);
@@ -925,11 +1079,16 @@ export class ProductsService {
   // orders keep displaying correctly with no live Product row behind them.
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async purgeExpiredTrash(): Promise<number> {
-    const cutoff = new Date(Date.now() - ProductsService.TRASH_RETENTION_DAYS * 86_400_000);
+    const cutoff = new Date(
+      Date.now() - ProductsService.TRASH_RETENTION_DAYS * 86_400_000,
+    );
     const { count } = await this.prisma.client.product.deleteMany({
       where: { deletedAt: { lt: cutoff } },
     });
-    if (count > 0) this.logger.log(`Purged ${count} product(s) from trash (past 30-day retention).`);
+    if (count > 0)
+      this.logger.log(
+        `Purged ${count} product(s) from trash (past 30-day retention).`,
+      );
     return count;
   }
 
@@ -945,6 +1104,7 @@ export class ProductsService {
       include: { attributes: true },
     });
     if (!product) throw new NotFoundException('Product not found');
+    assertBarcode(dto.barcode);
     await this.validateVariantAttributeValues(
       product.attributes.map((a) => a.attributeId),
       [dto],
@@ -970,7 +1130,12 @@ export class ProductsService {
           price: dto.price,
           salePrice: dto.salePrice,
           stock: dto.stock,
-          stockStatus: (dto.stock ?? 0) > 0 ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK',
+          stockStatus:
+            (dto.stock ?? 0) > 0
+              ? 'IN_STOCK'
+              : product.allowBackorder
+                ? 'ON_BACKORDER'
+                : 'OUT_OF_STOCK',
           weightOverride: dto.weightOverride,
           isDefault: dto.isDefault,
           // Was omitted here while the create-product path wrote it, so
@@ -1031,7 +1196,11 @@ export class ProductsService {
     });
     if (!variant) throw new NotFoundException('Variant not found');
     const stockStatus =
-      stock > 0 ? 'IN_STOCK' : variant.product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK';
+      stock > 0
+        ? 'IN_STOCK'
+        : variant.product.allowBackorder
+          ? 'ON_BACKORDER'
+          : 'OUT_OF_STOCK';
     await this.prisma.client.productVariant.update({
       where: { id: variantId },
       data: { stock, stockStatus },
@@ -1051,10 +1220,20 @@ export class ProductsService {
       this.prisma.client.productVariant.findFirst({
         where: { productId, stock: { gt: 0 }, isAdminOnly: false },
       }),
-      this.prisma.client.product.findUniqueOrThrow({ where: { id: productId }, select: { allowBackorder: true } }),
+      this.prisma.client.product.findUniqueOrThrow({
+        where: { id: productId },
+        select: { allowBackorder: true },
+      }),
     ]);
-    const stockStatus = anyInStock ? 'IN_STOCK' : product.allowBackorder ? 'ON_BACKORDER' : 'OUT_OF_STOCK';
-    await this.prisma.client.product.update({ where: { id: productId }, data: { stockStatus } });
+    const stockStatus = anyInStock
+      ? 'IN_STOCK'
+      : product.allowBackorder
+        ? 'ON_BACKORDER'
+        : 'OUT_OF_STOCK';
+    await this.prisma.client.product.update({
+      where: { id: productId },
+      data: { stockStatus },
+    });
   }
 
   // Editable in place (like price/stock) rather than requiring remove+re-add
@@ -1234,14 +1413,18 @@ export class ProductsService {
     return rows.map((r) => r.toProductId);
   }
 
-  async updateCrossSell(productId: number, productIds: number[]): Promise<number[]> {
+  async updateCrossSell(
+    productId: number,
+    productIds: number[],
+  ): Promise<number[]> {
     await this.adminGet(productId);
     const targetIds = productIds.filter((id) => id !== productId);
     if (targetIds.length) {
       const count = await this.prisma.client.product.count({
         where: { id: { in: targetIds }, deletedAt: null },
       });
-      if (count !== targetIds.length) throw new BadRequestException('One or more products not found');
+      if (count !== targetIds.length)
+        throw new BadRequestException('One or more products not found');
     }
 
     await this.prisma.client.productRelation.deleteMany({
@@ -1249,7 +1432,11 @@ export class ProductsService {
     });
     if (targetIds.length) {
       await this.prisma.client.productRelation.createMany({
-        data: targetIds.map((toProductId) => ({ fromProductId: productId, toProductId, type: 'CROSS_SELL' })),
+        data: targetIds.map((toProductId) => ({
+          fromProductId: productId,
+          toProductId,
+          type: 'CROSS_SELL',
+        })),
       });
     }
     return this.getCrossSell(productId);
@@ -1269,14 +1456,18 @@ export class ProductsService {
     return rows.map((r) => r.toProductId);
   }
 
-  async updateRelatedProducts(productId: number, productIds: number[]): Promise<number[]> {
+  async updateRelatedProducts(
+    productId: number,
+    productIds: number[],
+  ): Promise<number[]> {
     await this.adminGet(productId);
     const targetIds = productIds.filter((id) => id !== productId);
     if (targetIds.length) {
       const count = await this.prisma.client.product.count({
         where: { id: { in: targetIds }, deletedAt: null },
       });
-      if (count !== targetIds.length) throw new BadRequestException('One or more products not found');
+      if (count !== targetIds.length)
+        throw new BadRequestException('One or more products not found');
     }
 
     await this.prisma.client.productRelation.deleteMany({
@@ -1303,14 +1494,18 @@ export class ProductsService {
     return rows.map((r) => r.toProductId);
   }
 
-  async updateFrequentlyBoughtTogether(productId: number, productIds: number[]): Promise<number[]> {
+  async updateFrequentlyBoughtTogether(
+    productId: number,
+    productIds: number[],
+  ): Promise<number[]> {
     await this.adminGet(productId);
     const targetIds = productIds.filter((id) => id !== productId);
     if (targetIds.length) {
       const count = await this.prisma.client.product.count({
         where: { id: { in: targetIds }, deletedAt: null },
       });
-      if (count !== targetIds.length) throw new BadRequestException('One or more products not found');
+      if (count !== targetIds.length)
+        throw new BadRequestException('One or more products not found');
     }
 
     await this.prisma.client.productRelation.deleteMany({
@@ -1318,7 +1513,11 @@ export class ProductsService {
     });
     if (targetIds.length) {
       await this.prisma.client.productRelation.createMany({
-        data: targetIds.map((toProductId) => ({ fromProductId: productId, toProductId, type: 'FREQUENTLY_BOUGHT_TOGETHER' })),
+        data: targetIds.map((toProductId) => ({
+          fromProductId: productId,
+          toProductId,
+          type: 'FREQUENTLY_BOUGHT_TOGETHER',
+        })),
       });
     }
     return this.getFrequentlyBoughtTogether(productId);
@@ -1365,7 +1564,13 @@ export class ProductsService {
       filters.sort === ProductSort.PRICE_ASC ||
       filters.sort === ProductSort.PRICE_DESC;
     if (needsEffectivePrice) {
-      return this.publicListByEffectivePrice(locale, page, pageSize, where, filters);
+      return this.publicListByEffectivePrice(
+        locale,
+        page,
+        pageSize,
+        where,
+        filters,
+      );
     }
 
     // A category page on the Default sort reads through the join table, which
@@ -1468,7 +1673,8 @@ export class ProductsService {
     // exact same sortOrder-ordered relation elsewhere in this file.
     const now = new Date();
     const effectivePrice = (p: (typeof all)[number]) => {
-      const defaultVariant = p.variants.find((v) => v.isDefault) ?? p.variants[0];
+      const defaultVariant =
+        p.variants.find((v) => v.isDefault) ?? p.variants[0];
       const base = Number(p.price ?? defaultVariant?.price ?? 0);
       const sale = p.salePrice ?? defaultVariant?.salePrice ?? null;
       if (sale === null) return base;
@@ -1480,8 +1686,10 @@ export class ProductsService {
 
     const inRange = all.filter((p) => {
       const price = effectivePrice(p);
-      if (filters.minPrice !== undefined && price < filters.minPrice) return false;
-      if (filters.maxPrice !== undefined && price > filters.maxPrice) return false;
+      if (filters.minPrice !== undefined && price < filters.minPrice)
+        return false;
+      if (filters.maxPrice !== undefined && price > filters.maxPrice)
+        return false;
       return true;
     });
 
@@ -1508,9 +1716,16 @@ export class ProductsService {
       include: PRODUCT_INCLUDE,
     });
     const itemsById = new Map(items.map((p) => [p.id, p]));
-    const ordered = pageIds.map((id) => itemsById.get(id)).filter((p): p is (typeof items)[number] => p !== undefined);
+    const ordered = pageIds
+      .map((id) => itemsById.get(id))
+      .filter((p): p is (typeof items)[number] => p !== undefined);
 
-    return toPaginatedResult(ordered.map((p) => toPublicProductDto(p, locale)), total, page, pageSize);
+    return toPaginatedResult(
+      ordered.map((p) => toPublicProductDto(p, locale)),
+      total,
+      page,
+      pageSize,
+    );
   }
 
   async getManyByIds(
@@ -1544,7 +1759,8 @@ export class ProductsService {
     let allowUnpublished: number | null = null;
     if (previewToken) {
       try {
-        const payload = await this.tokens.verifyProductPreviewToken(previewToken);
+        const payload =
+          await this.tokens.verifyProductPreviewToken(previewToken);
         allowUnpublished = payload.productId;
       } catch {
         allowUnpublished = null;
@@ -1588,9 +1804,13 @@ export class ProductsService {
     // stale one invisible before.
     //
     // Skips VIDEO — an mp4 in og:image is not a preview.
-    const imageUrls = dto.media.filter((m) => m.type !== 'VIDEO').map((m) => m.url);
+    const imageUrls = dto.media
+      .filter((m) => m.type !== 'VIDEO')
+      .map((m) => m.url);
     const primaryImageUrl =
-      dto.media.find((m) => m.isPrimary && m.type !== 'VIDEO')?.url ?? imageUrls[0] ?? null;
+      dto.media.find((m) => m.isPrimary && m.type !== 'VIDEO')?.url ??
+      imageUrls[0] ??
+      null;
     const resolvedSeo = await this.seo.resolve('PRODUCT', product.id, locale, {
       title: dto.name,
       description: dto.description,
@@ -1599,25 +1819,35 @@ export class ProductsService {
     });
     const seo = resolvedSeo;
 
-    const [crossSell, frequentlyBoughtTogether, relatedProducts, salesSum] = await Promise.all([
-      this.getPublicRelation(product.id, 'CROSS_SELL', locale),
-      this.getPublicRelation(product.id, 'FREQUENTLY_BOUGHT_TOGETHER', locale),
-      this.getPublicRelation(product.id, 'RELATED', locale),
-      this.prisma.client.orderItem.aggregate({
-        where: { productId: product.id, order: { status: { not: 'CANCELED' } } },
-        _sum: { quantity: true },
-      }),
-    ]);
+    const [crossSell, frequentlyBoughtTogether, relatedProducts, salesSum] =
+      await Promise.all([
+        this.getPublicRelation(product.id, 'CROSS_SELL', locale),
+        this.getPublicRelation(
+          product.id,
+          'FREQUENTLY_BOUGHT_TOGETHER',
+          locale,
+        ),
+        this.getPublicRelation(product.id, 'RELATED', locale),
+        this.prisma.client.orderItem.aggregate({
+          where: {
+            productId: product.id,
+            order: { status: { not: 'CANCELED' } },
+          },
+          _sum: { quantity: true },
+        }),
+      ]);
     // Display copy, not a number: the override is whatever staff typed
     // ("1k", "2k+"), so the computed fallback is compacted here to match
     // rather than leaving the badge to format one case and not the other.
     // Blank counts as unset — clearing the field in the admin form should
     // return the badge to the real count, not print an empty badge.
     const salesCount =
-      product.salesCountOverride?.trim() || formatSalesCount(salesSum._sum.quantity ?? 0);
+      product.salesCountOverride?.trim() ||
+      formatSalesCount(salesSum._sum.quantity ?? 0);
 
     const translation =
-      product.translations.find((t) => t.locale === locale) ?? product.translations[0];
+      product.translations.find((t) => t.locale === locale) ??
+      product.translations[0];
     const faqs = (translation?.faqs ?? []).map((f) => ({
       question: f.question,
       answer: f.answer,
@@ -1702,7 +1932,11 @@ export class ProductsService {
         ? { categories: { some: { categoryId: { in: filters.categoryIds } } } }
         : {}),
       ...(filters.collectionIds?.length
-        ? { collections: { some: { collectionId: { in: filters.collectionIds } } } }
+        ? {
+            collections: {
+              some: { collectionId: { in: filters.collectionIds } },
+            },
+          }
         : {}),
       ...(filters.tagIds?.length
         ? { tags: { some: { tagId: { in: filters.tagIds } } } }
@@ -1716,9 +1950,28 @@ export class ProductsService {
       ...(filters.q?.trim()
         ? {
             OR: [
-              { translations: { some: { name: { contains: filters.q.trim(), mode: 'insensitive' as const } } } },
-              { sku: { contains: filters.q.trim(), mode: 'insensitive' as const } },
-              { slug: { contains: filters.q.trim(), mode: 'insensitive' as const } },
+              {
+                translations: {
+                  some: {
+                    name: {
+                      contains: filters.q.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              },
+              {
+                sku: {
+                  contains: filters.q.trim(),
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                slug: {
+                  contains: filters.q.trim(),
+                  mode: 'insensitive' as const,
+                },
+              },
             ],
           }
         : {}),
@@ -1735,7 +1988,10 @@ export class ProductsService {
       }),
       this.prisma.client.productCategory.groupBy({
         by: ['categoryId'],
-        where: { categoryId: { in: categoryIds }, productId: { not: productId } },
+        where: {
+          categoryId: { in: categoryIds },
+          productId: { not: productId },
+        },
         _max: { position: true },
       }),
     ]);

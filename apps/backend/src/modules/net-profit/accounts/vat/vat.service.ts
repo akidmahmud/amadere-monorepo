@@ -89,7 +89,10 @@ export class VatService {
     };
   }
 
-  private async expensesInRange(from?: string, to?: string): Promise<ExpenseForVat[]> {
+  private async expensesInRange(
+    from?: string,
+    to?: string,
+  ): Promise<ExpenseForVat[]> {
     return this.prisma.client.expense.findMany({
       where: {
         voidedAt: null,
@@ -106,7 +109,7 @@ export class VatService {
         party: { select: { name: true, bin: true } },
       },
       orderBy: { expenseDate: 'asc' },
-    }) as unknown as Promise<ExpenseForVat[]>;
+    });
   }
 
   /**
@@ -126,6 +129,7 @@ export class VatService {
         product: { vatRatePercent: { not: null } },
         order: {
           status: 'COMPLETED',
+          channel: { not: 'POS' },
           ...(from || to ? { completedAt: this.dateRange(from, to) } : {}),
         },
       },
@@ -150,7 +154,11 @@ export class VatService {
         slug: true,
         sku: true,
         vatRatePercent: true,
-        translations: { where: { locale: 'EN' }, take: 1, select: { name: true } },
+        translations: {
+          where: { locale: 'EN' },
+          take: 1,
+          select: { name: true },
+        },
       },
       orderBy: { id: 'asc' },
     });
@@ -168,13 +176,18 @@ export class VatService {
    * the product back on the store rate — which is NOT the same as setting 0,
    * and is why this takes a nullable rate rather than a delete-by-zero.
    */
-  async setException(productId: number, ratePercent: number | null): Promise<VatExceptionRow[]> {
+  async setException(
+    productId: number,
+    ratePercent: number | null,
+  ): Promise<VatExceptionRow[]> {
     if (ratePercent !== null && (ratePercent < 0 || ratePercent > 100)) {
       throw new BadRequestException('VAT rate must be between 0 and 100');
     }
     await this.prisma.client.product.update({
       where: { id: productId },
-      data: { vatRatePercent: ratePercent === null ? null : new Decimal(ratePercent) },
+      data: {
+        vatRatePercent: ratePercent === null ? null : new Decimal(ratePercent),
+      },
     });
     return this.listExceptions();
   }
@@ -188,13 +201,25 @@ export class VatService {
     // taxAmount, because tax is an internal accounting figure here rather
     // than a line the customer is charged. Revenue is treated as
     // VAT-inclusive, so the VAT within it is revenue x rate / (100 + rate).
+    // POS sales are left out of this estimate: the till records the VAT it
+    // actually charged (POS Settings › VAT), added below as-is.
     const revenueAgg = await this.prisma.client.order.aggregate({
       where: {
         status: 'COMPLETED',
+        channel: { not: 'POS' },
         ...(from || to ? { completedAt: this.dateRange(from, to) } : {}),
       },
       _sum: { totalAmount: true },
     });
+    const posAgg = await this.prisma.client.order.aggregate({
+      where: {
+        status: 'COMPLETED', // a returned POS sale is RETURNED, so its VAT drops out
+        channel: 'POS',
+        ...(from || to ? { completedAt: this.dateRange(from, to) } : {}),
+      },
+      _sum: { taxAmount: true },
+    });
+    const posVat = posAgg._sum.taxAmount ?? ZERO;
     const revenue = revenueAgg._sum.totalAmount ?? ZERO;
     const rate = new Decimal(vat.ratePercent);
 
@@ -211,7 +236,9 @@ export class VatService {
       exceptionRevenue = exceptionRevenue.plus(line.revenue);
       if (line.ratePercent.isZero()) continue;
       exceptionVat = exceptionVat.plus(
-        line.revenue.times(line.ratePercent).dividedBy(line.ratePercent.plus(100)),
+        line.revenue
+          .times(line.ratePercent)
+          .dividedBy(line.ratePercent.plus(100)),
       );
     }
 
@@ -221,7 +248,10 @@ export class VatService {
     const standardVat = rate.isZero()
       ? ZERO
       : standardRevenue.times(rate).dividedBy(rate.plus(100));
-    const outputVat = standardVat.plus(exceptionVat).toDecimalPlaces(2);
+    const outputVat = standardVat
+      .plus(exceptionVat)
+      .plus(posVat)
+      .toDecimalPlaces(2);
 
     let claimable = ZERO;
     let atRisk = ZERO;
@@ -255,8 +285,14 @@ export class VatService {
         { label: 'Input VAT claimable', amount: claimable.toFixed(2) },
         { label: 'Input VAT at risk (not claimed)', amount: atRisk.toFixed(2) },
         { label: 'Net VAT payable to NBR', amount: netPayable.toFixed(2) },
-        { label: 'Credit carried forward', amount: creditCarriedForward.toFixed(2) },
-        { label: 'Tax withheld at source, not yet deposited', amount: withheld.toFixed(2) },
+        {
+          label: 'Credit carried forward',
+          amount: creditCarriedForward.toFixed(2),
+        },
+        {
+          label: 'Tax withheld at source, not yet deposited',
+          amount: withheld.toFixed(2),
+        },
       ],
     };
   }

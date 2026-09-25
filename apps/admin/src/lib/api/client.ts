@@ -25,7 +25,11 @@ const unwrapEnvelope: Middleware = {
     try {
       body = (await response.clone().json()) as typeof body;
     } catch {
-      throw new ApiError(response.status, "invalid_response", "Response body was not valid JSON");
+      throw new ApiError(
+        response.status,
+        "invalid_response",
+        "Response body was not valid JSON",
+      );
     }
 
     if (!body.success) {

@@ -23,10 +23,11 @@ import { AdminOrdersController } from './admin-orders.controller';
 import { CheckoutService } from './checkout.service';
 import { CheckoutAccountService } from './checkout-account.service';
 import { OrdersService } from './orders.service';
+import { StockModule } from '../stock/stock.module';
 import { AdminOrderCreationService } from './admin-order-creation.service';
 
 @Module({
-  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, ShippingRulesModule, DigitalProductsModule, RecoveryModule, AuthModule],
+  imports: [CartModule, PaymentsModule, FraudModule, BlockerModule, AdvancePaymentModule, OtpSecurityModule, SmsModule, NetProfitSettingsModule, EmailSettingsModule, EmailTemplatesModule, SettingsModule, CustomersModule, OrderEmailsModule, ShippingZonesModule, ShippingRulesModule, DigitalProductsModule, RecoveryModule, AuthModule, StockModule],
   controllers: [CheckoutController, OrdersController, AdminOrdersController],
   providers: [CheckoutService, CheckoutAccountService, OrdersService, AdminOrderCreationService],
   exports: [OrdersService],

@@ -31,13 +31,18 @@ export function CrossSellFields({ productId }: { productId: number }) {
     (p) => p.id !== productId && (!p.outOfStock || selected.includes(p.id)),
   );
   const selectedProducts = options.filter((p) => selected.includes(p.id));
-  const filteredProducts = options.filter((p) => p.label.toLowerCase().includes(search.trim().toLowerCase()));
+  const filteredProducts = options.filter((p) =>
+    p.label.toLowerCase().includes(search.trim().toLowerCase()),
+  );
 
   return (
     <Card className="flex max-w-2xl flex-col gap-4">
-      <h3 className="font-ui text-sm font-bold text-text">Cross-sell ("You May Also Like")</h3>
+      <h3 className="font-ui text-sm font-bold text-text">
+        Cross-sell ("You May Also Like")
+      </h3>
       <p className="text-xs text-muted">
-        Shown to customers in the cart when this product is added. Pick the products to suggest alongside it.
+        Shown to customers in the cart when this product is added. Pick the
+        products to suggest alongside it.
       </p>
 
       {isLoading ? (
@@ -47,7 +52,10 @@ export function CrossSellFields({ productId }: { productId: number }) {
           {selectedProducts.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {selectedProducts.map((p) => (
-                <span key={p.id} className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1 text-[0.68rem] font-bold text-brand-500">
+                <span
+                  key={p.id}
+                  className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-50 px-2.5 py-1 text-[0.68rem] font-bold text-brand-500"
+                >
                   {p.label}
                   <button
                     type="button"
@@ -70,13 +78,25 @@ export function CrossSellFields({ productId }: { productId: number }) {
           />
           <div className="flex max-h-[210px] flex-col gap-0.5 overflow-y-auto rounded-inner border border-border p-1.5">
             {filteredProducts.map((p) => (
-              <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2">
-                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(selected, p.id, setSelected)} className="h-3.5 w-3.5 shrink-0 accent-brand-500" />
+              <label
+                key={p.id}
+                className="flex cursor-pointer items-center gap-2 rounded-[7px] px-1.5 py-1.5 text-[0.74rem] font-semibold text-text hover:bg-surface-2"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(p.id)}
+                  onChange={() => toggle(selected, p.id, setSelected)}
+                  className="h-3.5 w-3.5 shrink-0 accent-brand-500"
+                />
                 <span className="min-w-0 flex-1 truncate">{p.label}</span>
                 <PickerPrice price={p.price} salePrice={p.salePrice} />
               </label>
             ))}
-            {filteredProducts.length === 0 && <p className="px-1.5 py-2 text-[0.72rem] text-muted">No products match your search.</p>}
+            {filteredProducts.length === 0 && (
+              <p className="px-1.5 py-2 text-[0.72rem] text-muted">
+                No products match your search.
+              </p>
+            )}
           </div>
 
           <Button

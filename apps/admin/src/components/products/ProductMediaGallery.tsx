@@ -32,7 +32,11 @@ export interface ProductMediaGalleryProps {
 // Products reference media by id (`mediaIds: number[]`, first = primary),
 // unlike every other module's single-image MediaPicker which only tracks a
 // URL — so this is its own component, not a reuse of MediaPicker.
-export function ProductMediaGallery({ images, onChange, variants = [] }: ProductMediaGalleryProps) {
+export function ProductMediaGallery({
+  images,
+  onChange,
+  variants = [],
+}: ProductMediaGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showLibrary, setShowLibrary] = useState(false);
   // Which card is being dragged, and which one the pointer is currently over.
@@ -89,11 +93,18 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
   // browser removes it again. This is what actually fixes "no way to
   // unselect": the old grid disabled the button once added, so the only way
   // off was to close the modal and use the gallery's own × button.
-  function toggleFromLibrary(media: { id: number; url: string; altText?: string | null }) {
+  function toggleFromLibrary(media: {
+    id: number;
+    url: string;
+    altText?: string | null;
+  }) {
     if (images.some((img) => img.id === media.id)) {
       remove(media.id);
     } else {
-      onChange([...images, { id: media.id, url: media.url, alt: media.altText }]);
+      onChange([
+        ...images,
+        { id: media.id, url: media.url, alt: media.altText },
+      ]);
     }
   }
 
@@ -114,7 +125,9 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
   // Local form state only — persisted with the rest of the product on Save
   // (unlike alt text, which has its own media endpoint and saves on blur).
   function setVariant(id: number, variantId: number | null) {
-    onChange(images.map((img) => (img.id === id ? { ...img, variantId } : img)));
+    onChange(
+      images.map((img) => (img.id === id ? { ...img, variantId } : img)),
+    );
   }
 
   function saveAlt(id: number, alt: string) {
@@ -125,7 +138,13 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
     <div>
       {images.length > 1 && (
         <p className="mb-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-900/60">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" className="text-emerald-900/40">
+          <svg
+            viewBox="0 0 24 24"
+            width="13"
+            height="13"
+            fill="currentColor"
+            className="text-emerald-900/40"
+          >
             <circle cx="9" cy="6" r="1.7" />
             <circle cx="15" cy="6" r="1.7" />
             <circle cx="9" cy="12" r="1.7" />
@@ -133,8 +152,9 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
             <circle cx="9" cy="18" r="1.7" />
             <circle cx="15" cy="18" r="1.7" />
           </svg>
-          Drag a card by its handle to reorder. <strong className="font-bold">#1 is the primary
-          image</strong>, used on product cards and shared links.
+          Drag a card by its handle to reorder.{" "}
+          <strong className="font-bold">#1 is the primary image</strong>, used
+          on product cards and shared links.
         </p>
       )}
       <div className="flex flex-wrap gap-3.5">
@@ -150,7 +170,9 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
               e.dataTransfer.dropEffect = "move";
               if (overId !== img.id) setOverId(img.id);
             }}
-            onDragLeave={() => setOverId((cur) => (cur === img.id ? null : cur))}
+            onDragLeave={() =>
+              setOverId((cur) => (cur === img.id ? null : cur))
+            }
             onDrop={(e) => {
               e.preventDefault();
               reorder(dragId, img.id);
@@ -175,7 +197,12 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
               className="mb-1.5 flex cursor-grab select-none items-center justify-between gap-2 rounded-lg bg-emerald-800/8 px-2 py-1 transition-colors hover:bg-emerald-800/15 active:cursor-grabbing"
             >
               <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-900/70">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="12"
+                  height="12"
+                  fill="currentColor"
+                >
                   <circle cx="9" cy="6" r="1.7" />
                   <circle cx="15" cy="6" r="1.7" />
                   <circle cx="9" cy="12" r="1.7" />
@@ -204,7 +231,9 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
                 src={img.url}
                 alt=""
                 className={`h-44 w-full rounded-lg object-cover transition-transform duration-200 group-hover:scale-105 ${
-                  i === 0 ? "border-2 border-amber-400 shadow-sm" : "border border-emerald-800/10"
+                  i === 0
+                    ? "border-2 border-amber-400 shadow-sm"
+                    : "border border-emerald-800/10"
                 }`}
               />
               <button
@@ -213,7 +242,15 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
                 onClick={() => remove(img.id)}
                 className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-emerald-950/70 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-rose-600"
               >
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="13"
+                  height="13"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                >
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
@@ -224,7 +261,13 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
                     onClick={() => moveToFront(img.id)}
                     className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-800 to-emerald-900 px-3 py-1 text-[11px] font-bold text-amber-300 shadow-md ring-1 ring-amber-400/40 transition-all hover:scale-105 hover:from-emerald-700 hover:to-emerald-800"
                   >
-                    <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" className="text-amber-400">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="11"
+                      height="11"
+                      fill="currentColor"
+                      className="text-amber-400"
+                    >
                       <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 6.9L12 17.3 5.8 20.8l1.6-6.9L2 9.2l7.1-.6z" />
                     </svg>
                     Make primary
@@ -245,7 +288,12 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
             {variants.length > 0 && (
               <select
                 value={img.variantId != null ? String(img.variantId) : ""}
-                onChange={(e) => setVariant(img.id, e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) =>
+                  setVariant(
+                    img.id,
+                    e.target.value ? Number(e.target.value) : null,
+                  )
+                }
                 className="mt-1.5 h-8 w-full rounded-lg border border-emerald-800/15 bg-emerald-50/20 px-2 text-xs font-medium text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-amber-400/30"
               >
                 <option value="">All variants (shared)</option>
@@ -259,7 +307,14 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
           </div>
         ))}
       </div>
-      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFiles}
+      />
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
@@ -267,7 +322,17 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
           onClick={() => fileInputRef.current?.click()}
           className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#a7f3d0] bg-white px-4 py-2 text-xs font-bold text-[#044e37] shadow-2xs transition-all duration-150 hover:bg-[#ecfdf5] disabled:opacity-50"
         >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="text-[#044e37]">
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-[#044e37]"
+          >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -278,7 +343,17 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
           onClick={() => setShowLibrary(true)}
           className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#a7f3d0] bg-white px-4 py-2 text-xs font-bold text-[#044e37] shadow-2xs transition-all duration-150 hover:bg-[#ecfdf5]"
         >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="text-[#044e37]">
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-[#044e37]"
+          >
             <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <path d="m21 15-5-5L5 21" />
@@ -286,8 +361,16 @@ export function ProductMediaGallery({ images, onChange, variants = [] }: Product
           Browse Library
         </button>
       </div>
-      <Modal open={showLibrary} onClose={() => setShowLibrary(false)} title="Browse media library" className="max-w-5xl">
-        <MediaLibraryBrowser onSelect={toggleFromLibrary} isSelected={(media) => images.some((img) => img.id === media.id)} />
+      <Modal
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        title="Browse media library"
+        className="max-w-5xl"
+      >
+        <MediaLibraryBrowser
+          onSelect={toggleFromLibrary}
+          isSelected={(media) => images.some((img) => img.id === media.id)}
+        />
       </Modal>
     </div>
   );

@@ -59,6 +59,8 @@ const PAYMENT_LABEL: Record<string, string> = {
   UPAY: "Upay",
   SSLCOMMERZ: "SSLCommerz",
   BANK_TRANSFER: "Bank transfer",
+  CASH: "Cash (POS)",
+  CARD: "Card (POS)",
 };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const r3 = (n: number) => Math.round(n * 1000) / 1000;

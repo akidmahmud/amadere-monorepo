@@ -31,6 +31,8 @@ export function toAdminProductDto(
     id: product.id,
     slug: product.slug,
     sku: product.sku,
+    barcode: product.barcode,
+    storeId: product.storeId,
     brandId: product.brandId,
     authorId: product.authorId,
     isbn: product.isbn,

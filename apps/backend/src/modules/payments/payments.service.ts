@@ -34,6 +34,10 @@ export class PaymentsService {
       UPAY: manual,
       SSLCOMMERZ: new UnconfiguredPaymentProvider('SSLCommerz'),
       BANK_TRANSFER: new UnconfiguredPaymentProvider('Bank Transfer'),
+      // POS counter tenders: the money is already in the till / on the card
+      // terminal, so COD's "offline, nothing to call" behaviour is exactly right.
+      CASH: cod,
+      CARD: cod,
     };
   }
 
@@ -72,10 +76,25 @@ export class PaymentsService {
 
     // Money leaving the business. Best-effort: a ledger problem must not make
     // a refund appear to have failed when the customer has been paid.
+    // A POS refund leaves the same till/terminal/wallet the sale went into.
+    // Inline rather than injecting StoresService: one lookup isn't worth a
+    // payments -> stores module dependency.
+    const store = (
+      await this.prisma.client.order.findUnique({ where: { id: orderId }, select: { store: true } })
+    )?.store;
+    const storeAccount = store
+      ? payment.provider === 'CASH'
+        ? store.cashAccountId
+        : payment.provider === 'CARD'
+          ? store.cardAccountId
+          : store.mobileAccountId
+      : null;
+
     await this.salesPosting.postRefund({
       orderId,
       amount,
       refundedAt: new Date(),
+      accountId: storeAccount ?? undefined,
     });
 
     return updated;
