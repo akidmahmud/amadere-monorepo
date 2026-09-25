@@ -145,6 +145,14 @@ export function PosTopBar({
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
       <div className="flex items-center gap-3 pr-2">
+        <a
+          href={onPosHost ? "https://admin.amadere.com" : "/"}
+          className="grid h-11 w-11 place-items-center rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+          aria-label="Back to admin"
+          title="Back to admin"
+        >
+          <Icon name="arrow_back" size={22} />
+        </a>
         <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#1d7a46] text-white">
           <Icon name="storefront" size={24} />
         </span>

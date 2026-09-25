@@ -1827,6 +1827,13 @@ enum DiscountType {
   PROMOTION
 }
 
+// Where a coupon can be used. ALL = every channel (all coupons before the
+// POS existed); POS = only at a store till, refused at website/phone checkout.
+enum DiscountChannel {
+  ALL
+  POS
+}
+
 enum DiscountValueType {
   PERCENTAGE
   FIXED_AMOUNT
@@ -1846,6 +1853,10 @@ model Discount {
   startsAt           DateTime?         @map("starts_at")
   endsAt             DateTime?         @map("ends_at")
   status             ContentStatus     @default(DRAFT)
+  channel            DiscountChannel   @default(ALL)
+  // POS coupons only: null = every store, set = that store's till only.
+  storeId            Int?              @map("store_id")
+  store              Store?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   legacyId           Int?              @unique @map("legacy_id")
   createdAt          DateTime          @default(now()) @map("created_at")
   updatedAt          DateTime          @updatedAt @map("updated_at")
@@ -3666,6 +3677,7 @@ model Store {
   transfersIn  StockTransfer[] @relation("TransferTo")
   heldSales    PosHeldSale[]
   invoiceTemplate PosInvoiceTemplate?
+  coupons         Discount[]
 
   @@map("stores")
 }

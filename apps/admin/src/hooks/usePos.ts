@@ -138,6 +138,8 @@ export interface SaleBody {
   storeId?: number;
   items: { productId: number; variantId?: number; quantity: number }[];
   customerId?: number;
+  customerPhone?: string;
+  customerName?: string;
   couponCode?: string;
   tender: "CASH" | "CARD" | "MOBILE";
   tenderedAmount?: number;
@@ -376,3 +378,84 @@ export function useSaveInvoice() {
     },
   });
 }
+
+// ---- POS coupons (POS Settings › Coupons) --------------------------------
+
+export interface PosCoupon {
+  id: number;
+  code: string;
+  valueType: "PERCENTAGE" | "FIXED_AMOUNT";
+  value: string;
+  minOrderAmount: string | null;
+  storeId: number | null;
+  store: { id: number; name: string } | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  maxUsesTotal: number | null;
+  maxUsesPerCustomer: number | null;
+  usedCount: number;
+  status: string;
+}
+
+export interface PosCouponInput {
+  code: string;
+  valueType: "PERCENTAGE" | "FIXED_AMOUNT";
+  value: number;
+  minOrderAmount: number | null;
+  storeId: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  maxUsesTotal: number | null;
+  maxUsesPerCustomer: number | null;
+  active: boolean;
+}
+
+export const usePosCoupons = () =>
+  useQuery({
+    queryKey: ["pos-coupons"],
+    queryFn: () => proxyFetch<PosCoupon[]>("/admin/pos/coupons"),
+  });
+
+export function useSavePosCoupon() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { id?: number; input: PosCouponInput }) =>
+      proxyFetch<PosCoupon>(
+        a.id ? `/admin/pos/coupons/${a.id}` : "/admin/pos/coupons",
+        {
+          method: a.id ? "PUT" : "POST",
+          body: JSON.stringify(a.input),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pos-coupons"] }),
+  });
+}
+
+export function useDeletePosCoupon() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch(`/admin/pos/coupons/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pos-coupons"] }),
+  });
+}
+
+export interface TillCoupon {
+  code: string;
+  valueType: "PERCENTAGE" | "FIXED_AMOUNT";
+  value: string;
+  minOrderAmount: string | null;
+  endsAt: string | null;
+  /** store = only this store; pos = every store's till; all = website coupon, valid here too. */
+  scope: "store" | "pos" | "all";
+}
+
+export const useTillCoupons = (storeId: number | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ["pos-till-coupons", storeId],
+    queryFn: () =>
+      proxyFetch<TillCoupon[]>(
+        `/admin/pos/coupons/available${qs({ storeId })}`,
+      ),
+    enabled,
+  });

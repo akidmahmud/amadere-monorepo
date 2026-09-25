@@ -1,5 +1,6 @@
 "use client";
 
+import { PosCouponsTab } from "@/components/pos/PosCouponsTab";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import {
@@ -24,7 +25,7 @@ import {
 } from "@/components/pos/PosSubPage";
 
 export default function PosSettingsPage() {
-  const [tab, setTab] = useState<"vat" | "invoices">("vat");
+  const [tab, setTab] = useState<"vat" | "invoices" | "coupons">("vat");
   const tabBtn = (t: typeof tab, label: string) => (
     <button
       onClick={() => setTab(t)}
@@ -38,8 +39,15 @@ export default function PosSettingsPage() {
       <div className="mb-4 flex gap-2">
         {tabBtn("vat", "VAT")}
         {tabBtn("invoices", "Invoices")}
+        {tabBtn("coupons", "Coupons")}
       </div>
-      {tab === "vat" ? <VatSettings /> : <InvoiceSettings />}
+      {tab === "vat" ? (
+        <VatSettings />
+      ) : tab === "invoices" ? (
+        <InvoiceSettings />
+      ) : (
+        <PosCouponsTab />
+      )}
     </PosSubPage>
   );
 }

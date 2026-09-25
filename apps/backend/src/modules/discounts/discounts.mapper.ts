@@ -19,6 +19,9 @@ export class DiscountDto {
   id!: number;
   code!: string | null;
   type!: DiscountType;
+  /** ALL = everywhere; POS = store tills only (made in POS Settings). */
+  channel!: 'ALL' | 'POS';
+  storeId!: number | null;
   valueType!: DiscountValueType;
   value!: string;
   minOrderAmount!: string | null;
@@ -38,6 +41,8 @@ export function toDiscountDto(discount: DiscountWithScopes): DiscountDto {
     id: discount.id,
     code: discount.code,
     type: discount.type,
+    channel: discount.channel,
+    storeId: discount.storeId,
     valueType: discount.valueType,
     value: discount.value.toString(),
     minOrderAmount: discount.minOrderAmount?.toString() ?? null,

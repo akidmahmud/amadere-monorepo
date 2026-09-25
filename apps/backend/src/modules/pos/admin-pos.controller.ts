@@ -43,6 +43,8 @@ import {
 import { PosSettingsService } from './pos-settings.service';
 import { UpdatePosVatDto } from './dto/pos-settings.dto';
 import { PosInvoiceService } from './pos-invoice.service';
+import { PosCouponsService } from './pos-coupons.service';
+import { PosCouponDto } from './dto/pos-coupon.dto';
 import { SavePosInvoiceDto } from './dto/pos-invoice.dto';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PosSaleService } from './pos-sale.service';
@@ -69,6 +71,7 @@ export class AdminPosController {
     private readonly reports: PosReportsService,
     private readonly settings: PosSettingsService,
     private readonly invoices: PosInvoiceService,
+    private readonly coupons: PosCouponsService,
   ) {}
 
   private async oneStore(a: Admin, can: PermissionCheck, requested?: number) {
@@ -87,6 +90,48 @@ export class AdminPosController {
   @UseInterceptors(AuditLogInterceptor)
   setVat(@Body() dto: UpdatePosVatDto) {
     return this.settings.setVat(dto);
+  }
+
+  // ---- POS coupons (POS Settings › Coupons) ----
+  @Get('coupons')
+  @RequirePermission('pos.settings')
+  listCoupons() {
+    return this.coupons.list();
+  }
+
+  /** Coupons usable at this store now — for the till's "View coupons" list. */
+  @Get('coupons/available')
+  @RequirePermission('pos.access')
+  async availableCoupons(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.coupons.available(await this.oneStore(a, can, q.storeId));
+  }
+
+  @Post('coupons')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  createCoupon(@Body() dto: PosCouponDto) {
+    return this.coupons.create(dto);
+  }
+
+  @Put('coupons/:id')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  updateCoupon(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PosCouponDto,
+  ) {
+    return this.coupons.update(id, dto);
+  }
+
+  @Delete('coupons/:id')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  removeCoupon(@Param('id', ParseIntPipe) id: number) {
+    return this.coupons.remove(id);
   }
 
   // ---- invoice templates ('default' or a store id) ----

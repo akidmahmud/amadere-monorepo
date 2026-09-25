@@ -43,3 +43,15 @@ test("qty box: emptying the field keeps the current qty; digits parse", () => {
   assert.equal(parseQtyInput("0", 3), 3); // only × or − removes a line (spec 12.4.9)
   assert.equal(parseQtyInput("abc", 3), 3);
 });
+
+import { normalizeBdPhone } from "../src/lib/pos-cart.ts";
+
+test("BD mobile numbers are recognised in their common forms", () => {
+  assert.equal(normalizeBdPhone("01712345678"), "01712345678");
+  assert.equal(normalizeBdPhone("+8801712345678"), "01712345678");
+  assert.equal(normalizeBdPhone("8801712345678"), "01712345678");
+  assert.equal(normalizeBdPhone(" 017-1234-5678 "), "01712345678");
+  assert.equal(normalizeBdPhone("0171234567"), null); // too short
+  assert.equal(normalizeBdPhone("01212345678"), null); // 012 isn't a mobile prefix
+  assert.equal(normalizeBdPhone("Karim"), null);
+});

@@ -1,3 +1,4 @@
+import { couponChannelError } from '../discounts/coupon-channel';
 import { Injectable } from '@nestjs/common';
 import { Discount, Prisma, UpsellStage } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -32,7 +33,11 @@ export interface UpsellStageProgress {
 export interface UpsellBarResult {
   stages: UpsellStageProgress[];
   currentCount: string;
-  nextStage: { label: string; triggerType: 'ITEM_COUNT' | 'ORDER_AMOUNT'; remaining: string } | null;
+  nextStage: {
+    label: string;
+    triggerType: 'ITEM_COUNT' | 'ORDER_AMOUNT';
+    remaining: string;
+  } | null;
 }
 
 export interface PricingResult {
@@ -74,7 +79,12 @@ export class PricingService {
 
   async price(
     lines: CartLineInput[],
-    options: { couponCode?: string | null; customerId?: number },
+    options: {
+      couponCode?: string | null;
+      customerId?: number;
+      /** Set by the POS till: enables POS-only coupons and store limits. */
+      pos?: { storeId: number };
+    },
   ): Promise<PricingResult> {
     const pricedLines = await this.priceLines(lines);
     const subTotal = pricedLines.reduce(
@@ -93,6 +103,7 @@ export class PricingService {
         pricedLines,
         subTotal,
         options.customerId,
+        options.pos,
       );
       if (typeof result === 'string') couponError = result;
       else discounts.push(result);
@@ -105,7 +116,12 @@ export class PricingService {
       (sum, d) => sum.plus(d.amount),
       new Decimal(0),
     );
-    const upsell = await this.applyUpsellBar(pricedLines, subTotal, discounts, otherDiscountsTotal);
+    const upsell = await this.applyUpsellBar(
+      pricedLines,
+      subTotal,
+      discounts,
+      otherDiscountsTotal,
+    );
 
     const totalDiscount = discounts.reduce(
       (sum, d) => sum.plus(d.amount),
@@ -211,6 +227,7 @@ export class PricingService {
     lines: PricedLine[],
     subTotal: DecimalValue,
     customerId?: number,
+    pos?: { storeId: number },
   ): Promise<AppliedDiscount | string> {
     const coupon = await this.prisma.client.discount.findUnique({
       where: { code },
@@ -220,6 +237,8 @@ export class PricingService {
     if (!coupon || coupon.type !== 'COUPON' || coupon.status !== 'PUBLISHED') {
       return 'Invalid coupon code';
     }
+    const channelError = couponChannelError(coupon, pos);
+    if (channelError) return channelError;
     if (!this.isWithinWindow(coupon)) return 'Coupon is not currently active';
     if (this.isExhausted(coupon)) return 'Coupon usage limit reached';
     if (coupon.minOrderAmount && subTotal.lessThan(coupon.minOrderAmount)) {
@@ -388,7 +407,10 @@ export class PricingService {
         stageAmount = Decimal.min(matched.discountFixedAmount, subTotal);
       }
       if (settings.maxDiscountCap !== null) {
-        stageAmount = Decimal.min(stageAmount, new Decimal(settings.maxDiscountCap));
+        stageAmount = Decimal.min(
+          stageAmount,
+          new Decimal(settings.maxDiscountCap),
+        );
       }
 
       if (stageAmount.greaterThan(otherDiscountsTotal)) {
@@ -399,8 +421,16 @@ export class PricingService {
           amount: stageAmount,
           freeShipping: matched.freeShipping || undefined,
         });
-      } else if (matched.freeShipping && !discounts.some((d) => d.freeShipping)) {
-        discounts.push({ source: 'UPSELL', label: matched.label, amount: new Decimal(0), freeShipping: true });
+      } else if (
+        matched.freeShipping &&
+        !discounts.some((d) => d.freeShipping)
+      ) {
+        discounts.push({
+          source: 'UPSELL',
+          label: matched.label,
+          amount: new Decimal(0),
+          freeShipping: true,
+        });
       }
     }
 
@@ -419,8 +449,13 @@ export class PricingService {
             triggerType: nextStage.triggerType,
             remaining:
               nextStage.triggerType === 'ITEM_COUNT'
-                ? String(Math.max(0, nextStage.triggerValue.toNumber() - itemCount))
-                : Decimal.max(nextStage.triggerValue.minus(subTotal), new Decimal(0)).toString(),
+                ? String(
+                    Math.max(0, nextStage.triggerValue.toNumber() - itemCount),
+                  )
+                : Decimal.max(
+                    nextStage.triggerValue.minus(subTotal),
+                    new Decimal(0),
+                  ).toString(),
           }
         : null,
     };

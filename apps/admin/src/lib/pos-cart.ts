@@ -73,3 +73,10 @@ export function parseQtyInput(raw: string, current: number): number {
   if (!/^\d+$/.test(t) || Number(t) < 1) return current;
   return Number(t);
 }
+
+/** "01XXXXXXXXX" for a Bangladeshi mobile in any common form (+880…, spaces, dashes), else null. */
+export function normalizeBdPhone(raw: string): string | null {
+  const digits = raw.replace(/[\s-]/g, "").replace(/^\+/, "");
+  const local = digits.startsWith("880") ? digits.slice(2) : digits;
+  return /^01[3-9]\d{8}$/.test(local) ? local : null;
+}

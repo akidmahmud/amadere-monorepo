@@ -148,6 +148,8 @@ export class PosSaleService {
       const p = await this.pricing.price(cartLines, {
         couponCode: dto.couponCode,
         customerId: dto.customerId,
+        // Till context: POS-only coupons are allowed, store-limited ones checked.
+        pos: { storeId },
       });
       if (p.couponError) throw new BadRequestException(p.couponError);
       // Same rule as AdminOrderCreationService.resolveCartDiscount: the coupon,
@@ -205,12 +207,23 @@ export class PosSaleService {
     };
   }
 
-  async create(storeId: number, dto: CreatePosSaleDto, adminId: number) {
+  async create(storeId: number, input: CreatePosSaleDto, adminId: number) {
     assertStoreActive(
       await this.prisma.client.store.findUniqueOrThrow({
         where: { id: storeId },
       }),
     );
+    // Fast checkout: a phone typed but no customer picked → find or create
+    // the customer by that number and attach the sale (name optional).
+    const dto =
+      !input.customerId && input.customerPhone
+        ? {
+            ...input,
+            customerId: (
+              await this.quickCustomer(input.customerPhone, input.customerName)
+            ).id,
+          }
+        : input;
     const { byId, priced, discount, couponUsed, totals } = await this.price(
       storeId,
       dto,
@@ -298,7 +311,7 @@ export class PosSaleService {
           code: dto.couponCode,
           orderId: created.id,
           customerId: dto.customerId ?? null,
-          phone: null,
+          phone: dto.customerPhone ?? null,
         });
       }
       if (dto.heldSaleId)

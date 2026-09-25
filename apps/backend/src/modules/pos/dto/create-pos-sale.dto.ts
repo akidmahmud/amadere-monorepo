@@ -33,6 +33,20 @@ export class CreatePosSaleDto {
   items!: PosSaleItemDto[];
 
   @ApiPropertyOptional() @IsOptional() @IsInt() customerId?: number;
+  @ApiPropertyOptional({
+    description:
+      'Typed at the till with no customer picked: found or created by this number',
+  })
+  @IsOptional()
+  @Matches(/^(\+?88)?01[3-9]\d{8}$/, {
+    message: 'Enter a valid BD mobile number',
+  })
+  customerPhone?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  customerName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() couponCode?: string;
 
   @ApiProperty({ enum: ['CASH', 'CARD', 'MOBILE'] })

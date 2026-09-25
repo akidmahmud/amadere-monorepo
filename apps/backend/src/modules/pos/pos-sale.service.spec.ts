@@ -526,3 +526,115 @@ describe('PosSaleService.returnSale', () => {
     expect(payments.refund).not.toHaveBeenCalled();
   });
 });
+
+describe('PosSaleService — till context and quick customer', () => {
+  function setup2() {
+    const tx = {
+      order: {
+        create: jest.fn().mockResolvedValue({ id: 99, orderNumber: 'ORD-1' }),
+      },
+      payment: { create: jest.fn() },
+      posHeldSale: { deleteMany: jest.fn() },
+    };
+    const prisma = {
+      client: {
+        product: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 10,
+              slug: 'c',
+              sku: 'C',
+              productType: 'PHYSICAL',
+              vatRatePercent: null,
+              translations: [{ name: 'C' }],
+              variants: [],
+            },
+          ]),
+        },
+        customer: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({
+            id: 55,
+            firstName: null,
+            lastName: null,
+            phone: '01712345678',
+          }),
+        },
+        store: {
+          findUniqueOrThrow: jest
+            .fn()
+            .mockResolvedValue({ id: 4, isActive: true }),
+        },
+        $transaction: jest.fn((fn: (t: unknown) => unknown) => fn(tx)),
+      },
+    };
+    const pricing = {
+      priceLines: jest.fn().mockResolvedValue([{ unitPrice: D(40) }]),
+      price: jest.fn().mockResolvedValue({
+        couponError: null,
+        discounts: [{ source: 'COUPON', amount: D(4) }],
+      }),
+    };
+    const settings = { getVat: jest.fn().mockResolvedValue(VAT15) };
+    const svc = new PosSaleService(
+      prisma as never,
+      { move: jest.fn() } as never,
+      { tenderAccountId: jest.fn() } as never,
+      pricing as never,
+      { postPrepaidCapture: jest.fn() } as never,
+      settings as never,
+      {} as never,
+      { emit: jest.fn() } as never,
+    );
+    return { svc, tx, prisma, pricing };
+  }
+
+  it('coupons are priced in the till context of this store (POS-only / store-limited codes)', async () => {
+    const { svc, pricing } = setup2();
+    await svc.quote(4, {
+      items: [{ productId: 10, quantity: 1 }],
+      couponCode: 'STORE10',
+    });
+    expect(pricing.price).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ couponCode: 'STORE10', pos: { storeId: 4 } }),
+    );
+  });
+
+  it('a typed phone with no customer picked creates the customer and attaches the sale', async () => {
+    const { svc, tx, prisma } = setup2();
+    await svc.create(
+      4,
+      {
+        items: [{ productId: 10, quantity: 1 }],
+        tender: 'CARD',
+        customerPhone: '01712345678',
+      } as never,
+      7,
+    );
+    expect(prisma.client.customer.create).toHaveBeenCalledWith({
+      data: { phone: '01712345678' },
+    });
+    expect(tx.order.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ customerId: 55 }),
+    });
+  });
+
+  it('a picked customer wins over a typed phone', async () => {
+    const { svc, tx, prisma } = setup2();
+    await svc.create(
+      4,
+      {
+        items: [{ productId: 10, quantity: 1 }],
+        tender: 'CARD',
+        customerId: 8,
+        customerPhone: '01712345678',
+      } as never,
+      7,
+    );
+    expect(prisma.client.customer.create).not.toHaveBeenCalled();
+    expect(tx.order.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ customerId: 8 }),
+    });
+  });
+});

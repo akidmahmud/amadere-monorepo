@@ -6,6 +6,7 @@ import { PosCatalogService } from './pos-catalog.service';
 import { PosSaleService } from './pos-sale.service';
 import { PosSettingsService } from './pos-settings.service';
 import { PosInvoiceService } from './pos-invoice.service';
+import { PosCouponsService } from './pos-coupons.service';
 import { PosReportsService } from './pos-reports.service';
 import { CartModule } from '../cart/cart.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -26,6 +27,7 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     PosReportsService,
     PosSettingsService,
     PosInvoiceService,
+    PosCouponsService,
   ],
 })
 export class PosModule {}

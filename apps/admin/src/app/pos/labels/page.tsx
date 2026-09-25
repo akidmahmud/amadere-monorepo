@@ -1,5 +1,8 @@
 "use client";
 
+import JsBarcode from "jsbarcode";
+import { buildLabelSheet, printLabelSheet } from "@/lib/pos-labels";
+import { taka } from "@/lib/pos-cart";
 import { useState } from "react";
 import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
@@ -50,15 +53,6 @@ export default function LabelsPage() {
 
   return (
     <PosSubPage title="Barcode labels" permission="pos.labels">
-      <style>{`
-        @media print {
-          @page { size: 40mm 30mm; margin: 0; }
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; }
-        }
-      `}</style>
-
       <div className={`${card} space-y-4`}>
         <ProductPicker
           onPick={(p) =>
@@ -154,21 +148,32 @@ export default function LabelsPage() {
           <button
             className={primaryBtn}
             disabled={printable.length === 0}
-            onClick={() => window.print()}
+            onClick={() =>
+              printLabelSheet(
+                buildLabelSheet(
+                  printable.map((p) => ({
+                    name: p.name,
+                    variant: p.variantLabel,
+                    price: taka(p.salePrice ?? p.price),
+                    barcodeSvg: barcodeSvg(p.barcode),
+                  })),
+                ),
+              )
+            }
           >
             Print {printable.length} label{printable.length === 1 ? "" : "s"}
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          Labels are 40×30mm. In the print dialog pick the label printer, set
-          paper to 40×30mm and margins to none.
+          Each label prints as its own 40×30mm page. In the print dialog pick
+          the label printer; if it asks, choose paper 40×30mm and margins None.
         </p>
       </div>
 
       {printable.length > 0 && (
         <div className={`${card} mt-5`}>
           <h2 className="mb-3 font-bold">Preview</h2>
-          <div className="print-area flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {printable.map((p, i) => (
               <div
                 key={`${key(p)}-${i}`}
@@ -182,4 +187,32 @@ export default function LabelsPage() {
       )}
     </PosSubPage>
   );
+}
+
+/** Draws a barcode into a detached <svg> and returns its markup (null if none / invalid). */
+function barcodeSvg(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  try {
+    JsBarcode(svg, code, {
+      format: /^\d{13}$/.test(code) ? "EAN13" : "CODE128",
+      height: 40,
+      width: 1.4,
+      margin: 0,
+      fontSize: 11,
+      textMargin: 0,
+      displayValue: true,
+    });
+  } catch {
+    return null;
+  }
+  // Scale to the label box instead of the fixed pixel size JsBarcode writes.
+  svg.setAttribute(
+    "viewBox",
+    `0 0 ${svg.getAttribute("width")?.replace("px", "")} ${svg.getAttribute("height")?.replace("px", "")}`,
+  );
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.removeAttribute("width");
+  svg.removeAttribute("height");
+  return svg.outerHTML;
 }

@@ -3,12 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Icon, PageHeader } from "@amader/admin-ui";
-import { useBulkDeleteDiscounts, useDeleteDiscount, useDiscounts, type AdminDiscount } from "@/hooks/useDiscounts";
+import {
+  useBulkDeleteDiscounts,
+  useDeleteDiscount,
+  useDiscounts,
+  type AdminDiscount,
+} from "@/hooks/useDiscounts";
 import { PermissionButton } from "@/components/PermissionButton";
 import { CopyDiscountLinkButton } from "@/components/DiscountLink";
 
 const discountIcon = <Icon name="local_offer" />;
-const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
+const inputClass =
+  "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
 
 function valueLabel(discount: AdminDiscount): string {
   if (discount.valueType === "FREE_SHIPPING") return "Free shipping";
@@ -28,8 +34,11 @@ function discountSummary(discount: AdminDiscount): string {
       : discount.categoryIds.length > 0
         ? `${discount.categoryIds.length} selected categor${discount.categoryIds.length === 1 ? "y" : "ies"}`
         : "all orders";
-  const minOrder = discount.minOrderAmount ? ` (min. order ৳${discount.minOrderAmount})` : "";
-  if (discount.valueType === "FREE_SHIPPING") return `Free shipping for ${scope}${minOrder}`;
+  const minOrder = discount.minOrderAmount
+    ? ` (min. order ৳${discount.minOrderAmount})`
+    : "";
+  if (discount.valueType === "FREE_SHIPPING")
+    return `Free shipping for ${scope}${minOrder}`;
   return `Discount ${valueLabel(discount)} for ${scope}${minOrder}`;
 }
 
@@ -42,7 +51,9 @@ function DetailCard({ discount }: { discount: AdminDiscount }) {
   return (
     <div
       className={`relative rounded-inner border px-4 py-3 ${
-        expired ? "border-border bg-surface-2 text-muted line-through" : "border-success/30 bg-success/10"
+        expired
+          ? "border-border bg-surface-2 text-muted line-through"
+          : "border-success/30 bg-success/10"
       }`}
     >
       {expired && (
@@ -51,9 +62,18 @@ function DetailCard({ discount }: { discount: AdminDiscount }) {
         </span>
       )}
       <p className={`text-sm font-bold ${expired ? "" : "text-success"}`}>
-        {discount.code ? `Coupon code: ${discount.code}` : `Promotion #${discount.id}`}
+        {discount.code
+          ? `Coupon code: ${discount.code}`
+          : `Promotion #${discount.id}`}
+        {(discount as { channel?: string }).channel === "POS" && (
+          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+            POS only
+          </span>
+        )}
       </p>
-      <p className={`text-sm ${expired ? "" : "text-text"}`}>{discountSummary(discount)}</p>
+      <p className={`text-sm ${expired ? "" : "text-text"}`}>
+        {discountSummary(discount)}
+      </p>
     </div>
   );
 }
@@ -64,7 +84,11 @@ export default function DiscountsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<number[]>([]);
 
-  const { data, isLoading } = useDiscounts({ q: q || undefined, page, pageSize });
+  const { data, isLoading } = useDiscounts({
+    q: q || undefined,
+    page,
+    pageSize,
+  });
   const deleteDiscount = useDeleteDiscount();
   const bulkDelete = useBulkDeleteDiscounts();
 
@@ -73,14 +97,17 @@ export default function DiscountsPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
-  const allSelected = items.length > 0 && items.every((d) => selected.includes(d.id));
+  const allSelected =
+    items.length > 0 && items.every((d) => selected.includes(d.id));
 
   function toggleAll() {
     setSelected(allSelected ? [] : items.map((d) => d.id));
   }
 
   function toggleOne(id: number) {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
   }
 
   function handleBulkDelete() {
@@ -95,7 +122,9 @@ export default function DiscountsPage() {
         icon={discountIcon}
         title="Discounts"
         subtitle="Coupon codes and auto-applied promotions."
-        style={{ background: "linear-gradient(135deg, #140A24 0%, #5F03AA 100%)" }}
+        style={{
+          background: "linear-gradient(135deg, #140A24 0%, #5F03AA 100%)",
+        }}
       />
 
       <Card className="flex flex-col gap-4">
@@ -110,7 +139,9 @@ export default function DiscountsPage() {
               }}
               className={`${inputClass} w-64`}
             />
-            <span className="text-sm text-secondary">{total} discount{total === 1 ? "" : "s"}</span>
+            <span className="text-sm text-secondary">
+              {total} discount{total === 1 ? "" : "s"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {selected.length > 0 && (
@@ -126,7 +157,11 @@ export default function DiscountsPage() {
               </PermissionButton>
             )}
             <Link href="/discounts/new">
-              <PermissionButton requires="discount.create" type="button" variant="primary">
+              <PermissionButton
+                requires="discount.create"
+                type="button"
+                variant="primary"
+              >
                 <Icon name="add" size={16} /> Create
               </PermissionButton>
             </Link>
@@ -134,7 +169,9 @@ export default function DiscountsPage() {
         </div>
 
         {isLoading && <p className="text-sm text-muted">Loading…</p>}
-        {!isLoading && items.length === 0 && <p className="text-sm text-muted">No discounts yet.</p>}
+        {!isLoading && items.length === 0 && (
+          <p className="text-sm text-muted">No discounts yet.</p>
+        )}
 
         {items.length > 0 && (
           <div className="overflow-x-auto rounded-inner border border-border">
@@ -142,7 +179,11 @@ export default function DiscountsPage() {
               <thead>
                 <tr className="border-b border-border bg-surface-2 text-xs font-semibold uppercase tracking-wide text-secondary">
                   <th className="w-10 px-3 py-2.5">
-                    <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                    />
                   </th>
                   <th className="px-3 py-2.5">ID</th>
                   <th className="px-3 py-2.5">Detail</th>
@@ -154,9 +195,16 @@ export default function DiscountsPage() {
               </thead>
               <tbody>
                 {items.map((d) => (
-                  <tr key={d.id} className="border-b border-border last:border-0">
+                  <tr
+                    key={d.id}
+                    className="border-b border-border last:border-0"
+                  >
                     <td className="px-3 py-2.5 align-top">
-                      <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggleOne(d.id)} />
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(d.id)}
+                        onChange={() => toggleOne(d.id)}
+                      />
                     </td>
                     <td className="px-3 py-2.5 align-top text-muted">{d.id}</td>
                     <td className="px-3 py-2.5">
@@ -167,15 +215,24 @@ export default function DiscountsPage() {
                       {d.maxUsesTotal ? `/${d.maxUsesTotal}` : ""}
                     </td>
                     <td className="px-3 py-2.5 align-top text-muted">
-                      {d.startsAt ? new Date(d.startsAt).toLocaleDateString() : "—"}
+                      {d.startsAt
+                        ? new Date(d.startsAt).toLocaleDateString()
+                        : "—"}
                     </td>
                     <td className="px-3 py-2.5 align-top text-muted">
                       {d.endsAt ? new Date(d.endsAt).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-3 py-2.5 align-top">
                       <div className="flex items-center gap-2">
-                        {d.type === "COUPON" && <CopyDiscountLinkButton code={d.code} />}
-                        <Link href={`/discounts/${d.id}`} aria-label="Edit discount" className="text-success hover:opacity-70">
+                        {d.type === "COUPON" &&
+                          (d as { channel?: string }).channel !== "POS" && (
+                            <CopyDiscountLinkButton code={d.code} />
+                          )}
+                        <Link
+                          href={`/discounts/${d.id}`}
+                          aria-label="Edit discount"
+                          className="text-success hover:opacity-70"
+                        >
                           <Icon name="edit" size={18} />
                         </Link>
                         <button
@@ -183,7 +240,12 @@ export default function DiscountsPage() {
                           aria-label="Delete discount"
                           disabled={deleteDiscount.isPending}
                           onClick={() => {
-                            if (confirm(`Delete "${d.code ?? `Promotion #${d.id}`}"?`)) deleteDiscount.mutate(d.id);
+                            if (
+                              confirm(
+                                `Delete "${d.code ?? `Promotion #${d.id}`}"?`,
+                              )
+                            )
+                              deleteDiscount.mutate(d.id);
                           }}
                           className="text-danger hover:opacity-70"
                         >
@@ -213,16 +275,30 @@ export default function DiscountsPage() {
                 className={inputClass}
               >
                 {[20, 50, 100].map((n) => (
-                  <option key={n} value={n}>{n} / page</option>
+                  <option key={n} value={n}>
+                    {n} / page
+                  </option>
                 ))}
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 Previous
               </Button>
-              <span>Page {page} of {totalPages}</span>
-              <Button type="button" variant="ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <span>
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>

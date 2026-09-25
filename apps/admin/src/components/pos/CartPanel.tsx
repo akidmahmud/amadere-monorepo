@@ -7,6 +7,7 @@ import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import {
   quickAddCustomer,
+  useTillCoupons,
   searchPosCustomers,
   useCompleteSale,
   type PosCustomer,
@@ -16,6 +17,7 @@ import {
   taka,
   unitPrice,
   parseQtyInput,
+  normalizeBdPhone,
   type CartAction,
   type CartLine,
 } from "@/lib/pos-cart";
@@ -89,14 +91,18 @@ export function CartPanel({
   const [tender, setTender] = useState<Tender>("CASH");
   const [cashIn, setCashIn] = useState("");
   const [trxRef, setTrxRef] = useState("");
+  const [draft, setDraft] = useState<CustomerDraft>({ phone: null, name: "" });
+  const [saleCount, setSaleCount] = useState(0);
+  const [showCoupons, setShowCoupons] = useState(false);
   const sale = useCompleteSale();
   const quote = useQuote(storeId, cart, customer?.id, coupon);
 
   // Check a code with the server before keeping it, so a bad code never
   // blocks the sale.
   const [checking, setChecking] = useState(false);
-  const applyCoupon = async () => {
-    const code = couponInput.trim();
+  const applyCoupon = async (picked?: string) => {
+    const code = (picked ?? couponInput).trim();
+    if (!cart.length) return toast.push("Add items to the cart first");
     setChecking(true);
     try {
       await proxyFetch<Quote>("/admin/pos/quote", {
@@ -144,6 +150,12 @@ export function CartPanel({
           quantity: l.qty,
         })),
         customerId: customer?.id,
+        // Typed a phone but didn't pick anyone: the sale finds or creates them.
+        customerPhone: !customer && draft.phone ? draft.phone : undefined,
+        customerName:
+          !customer && draft.phone && draft.name.trim()
+            ? draft.name.trim()
+            : undefined,
         couponCode: coupon || undefined,
         tender,
         tenderedAmount:
@@ -163,6 +175,8 @@ export function CartPanel({
           setCashIn("");
           setTrxRef("");
           setTender("CASH");
+          setDraft({ phone: null, name: "" });
+          setSaleCount((n) => n + 1);
           onDone();
         },
         onError: (e) => toast.push(e.message),
@@ -259,7 +273,12 @@ export function CartPanel({
       </div>
 
       <div className="space-y-3 border-t border-gray-100 px-5 py-4">
-        <CustomerPicker customer={customer} onCustomer={onCustomer} />
+        <CustomerPicker
+          key={saleCount}
+          customer={customer}
+          onCustomer={onCustomer}
+          onDraft={setDraft}
+        />
 
         <div className="flex items-center gap-2">
           <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
@@ -274,13 +293,32 @@ export function CartPanel({
             className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
           />
           <button
-            onClick={applyCoupon}
+            onClick={() => void applyCoupon()}
             disabled={!couponInput.trim() || !cart.length || checking}
             className="h-10 rounded-lg bg-emerald-50 px-4 text-sm font-bold text-[#1d7a46] disabled:opacity-40"
           >
             Apply
           </button>
+          <button
+            onClick={() => setShowCoupons((v) => !v)}
+            aria-label="View coupons"
+            title="View coupons"
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border ${showCoupons ? "border-[#1d7a46] bg-emerald-50 text-[#1d7a46]" : "border-gray-200 text-gray-700"}`}
+          >
+            <Icon name="confirmation_number" size={20} />
+          </button>
         </div>
+        {showCoupons && (
+          <TillCouponList
+            storeId={storeId}
+            subtotal={subtotal}
+            onPick={(code) => {
+              setCouponInput(code);
+              setShowCoupons(false);
+              void applyCoupon(code);
+            }}
+          />
+        )}
 
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between">
@@ -394,16 +432,23 @@ export function CartPanel({
   );
 }
 
+/** A phone typed but not picked yet — sent with the sale, which finds or creates the customer. */
+export interface CustomerDraft {
+  phone: string | null;
+  name: string;
+}
+
 function CustomerPicker({
   customer,
   onCustomer,
+  onDraft,
 }: {
   customer: PosCustomer | null;
   onCustomer: (c: PosCustomer | null) => void;
+  onDraft: (d: CustomerDraft) => void;
 }) {
   const toast = useToast();
   const [term, setTerm] = useState("");
-  const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
@@ -415,6 +460,29 @@ function CustomerPicker({
     queryFn: () => searchPosCustomers(debounced),
     enabled: debounced.length >= 2 && !customer,
   });
+  const phone = normalizeBdPhone(term);
+  const exact = phone
+    ? results.data?.find((c) => c.phone && normalizeBdPhone(c.phone) === phone)
+    : undefined;
+  const isNew =
+    !!phone && !exact && results.isFetched && debounced === term.trim();
+
+  const pick = (c: PosCustomer) => {
+    onCustomer(c);
+    setTerm("");
+    setName("");
+    onDraft({ phone: null, name: "" });
+  };
+  const setDraft = (t: string, n: string) =>
+    onDraft({ phone: normalizeBdPhone(t), name: n });
+  const createNow = async () => {
+    if (!phone) return;
+    try {
+      pick(await quickAddCustomer(phone, name.trim() || undefined));
+    } catch (e) {
+      toast.push((e as Error).message);
+    }
+  };
 
   if (customer) {
     return (
@@ -437,37 +505,37 @@ function CustomerPicker({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <Icon name="person" size={20} className="text-[#1d7a46]" /> Customer{" "}
-          <span className="font-normal text-gray-500">(Optional)</span>
+      <span className="flex items-center gap-2 text-sm font-semibold">
+        <Icon name="person" size={20} className="text-[#1d7a46]" /> Customer{" "}
+        <span className="font-normal text-gray-500">
+          (Optional — type a phone number)
         </span>
-        <button
-          onClick={() => setAdding((v) => !v)}
-          className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold"
-        >
-          <Icon name="add" size={16} /> Add Customer
-        </button>
-      </div>
+      </span>
       <div className="relative">
         <input
           value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder={
-            adding ? "Phone number" : "Search by name, phone or ID..."
-          }
+          onChange={(e) => {
+            setTerm(e.target.value);
+            setDraft(e.target.value, name);
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            if (exact) pick(exact);
+            else if (phone) void createNow();
+          }}
+          placeholder="Phone number or name..."
           lang="en"
+          inputMode="tel"
+          aria-label="Customer phone or name"
           className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
         />
-        {!adding && !!results.data?.length && (
+        {/* Existing matches float over the panel; the new-customer row below stays in the flow so nothing covers it. */}
+        {!!results.data?.length && term.trim().length >= 2 && (
           <div className="absolute inset-x-0 top-11 z-20 rounded-xl border border-gray-200 bg-white shadow-lg">
             {results.data.map((c) => (
               <button
                 key={c.id}
-                onClick={() => {
-                  onCustomer(c);
-                  setTerm("");
-                }}
+                onClick={() => pick(c)}
                 className="flex w-full justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
               >
                 <span className="font-semibold">{c.name}</span>
@@ -477,31 +545,36 @@ function CustomerPicker({
           </div>
         )}
       </div>
-      {adding && (
-        <div className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name (optional)"
-            className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none"
-          />
-          <button
-            className="h-10 rounded-lg bg-[#1d7a46] px-4 text-sm font-bold text-white"
-            onClick={async () => {
-              try {
-                onCustomer(
-                  await quickAddCustomer(term.trim(), name.trim() || undefined),
-                );
-                setAdding(false);
-                setTerm("");
-                setName("");
-              } catch (e) {
-                toast.push((e as Error).message);
-              }
-            }}
-          >
-            Save
-          </button>
+      {phone && !exact && (
+        <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#1d7a46]">
+            <Icon name="person_add" size={18} /> New customer: {phone}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setDraft(term, e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void createNow();
+              }}
+              placeholder="Name (optional)"
+              aria-label="New customer name"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#1d7a46]"
+            />
+            <button
+              onClick={() => void createNow()}
+              disabled={!phone}
+              className="h-10 shrink-0 rounded-lg bg-[#1d7a46] px-4 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+          <p className="text-[11px] text-emerald-900/70">
+            Or just complete the sale — the customer is saved with it.
+          </p>
         </div>
       )}
     </div>
@@ -531,5 +604,67 @@ function QtyInput({ qty, onQty }: { qty: number; onQty: (q: number) => void }) {
       className="h-9 w-10 border-x border-gray-200 text-center text-sm outline-none"
       aria-label="Quantity"
     />
+  );
+}
+
+/** Coupons usable at this store now; tap one to apply it. */
+function TillCouponList({
+  storeId,
+  subtotal,
+  onPick,
+}: {
+  storeId: number | undefined;
+  subtotal: number;
+  onPick: (code: string) => void;
+}) {
+  const { data = [], isLoading } = useTillCoupons(storeId, true);
+  const SCOPE = {
+    store: "This store",
+    pos: "All stores",
+    all: "Website + POS",
+  } as const;
+  return (
+    <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white">
+      {isLoading && (
+        <div className="px-3 py-3 text-sm text-gray-500">Loading coupons…</div>
+      )}
+      {!isLoading && data.length === 0 && (
+        <div className="px-3 py-3 text-sm text-gray-500">
+          No coupons available at this store right now.
+        </div>
+      )}
+      {data.map((c) => {
+        const short =
+          c.minOrderAmount !== null && subtotal < Number(c.minOrderAmount);
+        return (
+          <button
+            key={c.code}
+            onClick={() => onPick(c.code)}
+            className="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-emerald-50"
+          >
+            <span className="min-w-0">
+              <span className="font-mono font-bold">{c.code}</span>
+              <span className="ml-2 font-semibold text-[#1d7a46]">
+                {c.valueType === "PERCENTAGE"
+                  ? `${Number(c.value)}% off`
+                  : `${taka(c.value)} off`}
+              </span>
+              <span className="block text-xs text-gray-500">
+                {SCOPE[c.scope]}
+                {c.minOrderAmount ? ` · min ${taka(c.minOrderAmount)}` : ""}
+                {c.endsAt
+                  ? ` · until ${new Date(c.endsAt).toLocaleDateString("en-GB", { timeZone: "Asia/Dhaka" })}`
+                  : ""}
+              </span>
+            </span>
+            {short && (
+              <span className="shrink-0 text-[11px] font-semibold text-amber-700">
+                Needs more
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }
