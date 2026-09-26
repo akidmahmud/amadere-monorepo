@@ -21,6 +21,10 @@ export interface PosProduct {
   /** Sellable at this store. Untracked products report 9999. */
   stock: number;
   storeOnly: boolean;
+  /** true = price/salePrice are this store's own; normal* are the product's. */
+  storePrice: boolean;
+  normalPrice: string;
+  normalSalePrice: string | null;
 }
 
 const INCLUDE = {
@@ -169,7 +173,17 @@ export class PosCatalogService {
       storeId,
       lines.map(({ p, v }) => ({ productId: p.id, variantId: v?.id ?? null })),
     );
-    return lines.map(({ p, v }) => ({
+    const own = await this.prisma.client.storePrice.findMany({
+      where: { storeId, productId: { in: rows.map((p) => p.id) } },
+    });
+    const ownBy = new Map(
+      own.map((o) => [stockKey(o.productId, o.variantId), o]),
+    );
+    return lines.map(({ p, v }) => {
+      const normalPrice = (v?.price ?? p.price ?? new Prisma.Decimal(0)).toFixed(2);
+      const normalSalePrice = (v ? v.salePrice : p.salePrice)?.toFixed(2) ?? null;
+      const o = ownBy.get(stockKey(p.id, v?.id ?? null));
+      return {
       productId: p.id,
       variantId: v?.id ?? null,
       name: p.translations[0]?.name ?? p.slug,
@@ -181,14 +195,18 @@ export class PosCatalogService {
         : null,
       sku: v?.sku ?? p.sku,
       barcode: v ? v.barcode : p.barcode,
-      price: (v?.price ?? p.price ?? new Prisma.Decimal(0)).toFixed(2),
-      salePrice: (v ? v.salePrice : p.salePrice)?.toFixed(2) ?? null,
+      price: o ? o.price.toFixed(2) : normalPrice,
+      salePrice: o ? (o.salePrice?.toFixed(2) ?? null) : normalSalePrice,
+      storePrice: !!o,
+      normalPrice,
+      normalSalePrice,
       imageUrl: p.media[0]?.media.cardUrl ?? p.media[0]?.media.url ?? null,
       categoryIds: p.categories.map((c) => c.categoryId),
       stock: p.trackInventory
         ? (qty.get(stockKey(p.id, v?.id ?? null)) ?? 0)
         : 9999,
       storeOnly: p.storeId !== null,
-    }));
+      };
+    });
   }
 }

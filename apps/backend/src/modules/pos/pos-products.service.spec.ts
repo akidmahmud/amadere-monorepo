@@ -55,3 +55,54 @@ describe('PosProductsService', () => {
     expect(slugify('আম')).toBe('product');
   });
 });
+
+describe('PosProductsService.setPrice', () => {
+  function mk(product: object | null, existing: object | null = null) {
+    const storePrice = {
+      findFirst: jest.fn().mockResolvedValue(existing),
+      create: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    const prisma = {
+      client: { product: { findFirst: jest.fn().mockResolvedValue(product) }, storePrice },
+    };
+    return { svc: new PosProductsService(prisma as never, {} as never), storePrice };
+  }
+  const simple = { id: 1, hasVariants: false, variants: [] };
+
+  it('creates, then updates, the store price for that store only', async () => {
+    const a = mk(simple);
+    await a.svc.setPrice(4, { productId: 1, price: 250, salePrice: 240 }, 7);
+    expect(a.storePrice.create).toHaveBeenCalledWith({
+      data: { storeId: 4, productId: 1, variantId: null, price: 250, salePrice: 240, updatedById: 7 },
+    });
+    const b = mk(simple, { id: 9 });
+    await b.svc.setPrice(4, { productId: 1, price: 260 }, 7);
+    expect(b.storePrice.update).toHaveBeenCalledWith({
+      where: { id: 9 },
+      data: { price: 260, salePrice: null, updatedById: 7 },
+    });
+  });
+
+  it('price null resets to the normal price', async () => {
+    const { svc, storePrice } = mk(simple);
+    await svc.setPrice(4, { productId: 1, price: null }, 7);
+    expect(storePrice.deleteMany).toHaveBeenCalledWith({
+      where: { storeId: 4, productId: 1, variantId: null },
+    });
+  });
+
+  it('refuses an offer above the price, a missing variant, or a product not sold here', async () => {
+    await expect(
+      mk(simple).svc.setPrice(4, { productId: 1, price: 100, salePrice: 150 }, 7),
+    ).rejects.toThrow(/Offer price/);
+    await expect(
+      mk({ id: 2, hasVariants: true, variants: [{ id: 20 }] }).svc.setPrice(4, { productId: 2, price: 1 }, 7),
+    ).rejects.toThrow(/variant/);
+    await expect(
+      mk({ id: 2, hasVariants: true, variants: [{ id: 20 }] }).svc.setPrice(4, { productId: 2, variantId: 99, price: 1 }, 7),
+    ).rejects.toThrow(/does not belong/);
+    await expect(mk(null).svc.setPrice(4, { productId: 1, price: 1 }, 7)).rejects.toThrow(/not sold/);
+  });
+});

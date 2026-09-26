@@ -128,7 +128,7 @@ export class PosSaleService {
       variantId: i.variantId ?? null,
       quantity: i.quantity,
     }));
-    const priced = await this.pricing.priceLines(cartLines);
+    const priced = await this.pricing.priceLines(cartLines, storeId);
     // A product with no price set would otherwise ring up at ৳0.
     priced.forEach((l, idx) => {
       if (!new D(l.unitPrice).greaterThan(0)) {

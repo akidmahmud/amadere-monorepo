@@ -11,6 +11,10 @@ export interface PosProduct {
   categoryIds?: number[];
   stock: number;
   storeOnly?: boolean;
+  /** true = price/salePrice are this store's own (POS store price). */
+  storePrice?: boolean;
+  normalPrice?: string;
+  normalSalePrice?: string | null;
 }
 
 export interface CartLine extends PosProduct {

@@ -86,7 +86,7 @@ export class PricingService {
       pos?: { storeId: number };
     },
   ): Promise<PricingResult> {
-    const pricedLines = await this.priceLines(lines);
+    const pricedLines = await this.priceLines(lines, options.pos?.storeId);
     const subTotal = pricedLines.reduce(
       (sum, l) => sum.plus(l.lineTotal),
       new Decimal(0),
@@ -143,7 +143,14 @@ export class PricingService {
   // Public so AdminOrderCreationService (manual orders) can reuse the same
   // sale-window-aware price resolution real checkout uses, instead of
   // reimplementing effectivePrice() a second time.
-  async priceLines(lines: CartLineInput[]): Promise<PricedLine[]> {
+  /**
+   * @param storeId POS only: that store's own prices (store_prices) win over
+   *   the product's. The website never passes it.
+   */
+  async priceLines(
+    lines: CartLineInput[],
+    storeId?: number,
+  ): Promise<PricedLine[]> {
     if (lines.length === 0) return [];
 
     const products = await this.prisma.client.product.findMany({
@@ -151,8 +158,23 @@ export class PricingService {
       include: { variants: true },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
+    const storePrices = storeId
+      ? await this.prisma.client.storePrice.findMany({
+          where: { storeId, productId: { in: lines.map((l) => l.productId) } },
+        })
+      : [];
 
     return lines.map((line) => {
+      const own = storePrices.find(
+        (s) =>
+          s.productId === line.productId &&
+          (s.variantId ?? null) === (line.variantId ?? null),
+      );
+      if (own && byId.has(line.productId)) {
+        const unitPrice = own.salePrice ?? own.price;
+        return { ...line, unitPrice, lineTotal: unitPrice.times(line.quantity) };
+      }
+
       const product = byId.get(line.productId);
       if (!product) {
         return {

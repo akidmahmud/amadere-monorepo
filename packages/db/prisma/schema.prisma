@@ -372,21 +372,21 @@ model Customer {
   // PHASE 2 HOOK: reward-point ledger and referral-code program attach here.
   // Loyalty/Referral are not implemented — this is the seam only.
 
-  addresses        CustomerAddress[]
-  socialAccounts   SocialAccount[]
-  carts            Cart[]
-  orders           Order[]
-  reviews          Review[]
-  discountUses     DiscountCustomer[]
-  redemptions      DiscountRedemption[]
-  wishlistItems    WishlistItem[]
-  tier             CustomerTier?        @relation(fields: [tierId], references: [id])
-  notes            CustomerNote[]
-  callLogs         CustomerCallLog[]
-  parties          Party[]
-  digitalDownloads DigitalDownload[]
+  addresses         CustomerAddress[]
+  socialAccounts    SocialAccount[]
+  carts             Cart[]
+  orders            Order[]
+  reviews           Review[]
+  discountUses      DiscountCustomer[]
+  redemptions       DiscountRedemption[]
+  wishlistItems     WishlistItem[]
+  tier              CustomerTier?        @relation(fields: [tierId], references: [id])
+  notes             CustomerNote[]
+  callLogs          CustomerCallLog[]
+  parties           Party[]
+  digitalDownloads  DigitalDownload[]
   pushSubscriptions PushSubscription[]
-  assignedAdmin    AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
+  assignedAdmin     AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
   campaignQueue CustomerCampaignQueue[]
 
@@ -950,6 +950,7 @@ model Product {
   /// Simple products only; variants keep ProductVariant.barcode.
   barcode        String?         @unique
   storeStock     StoreStock[]
+  storePrices    StorePrice[]
   stockMovements StockMovement[]
 
   brand            Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
@@ -977,10 +978,9 @@ model Product {
   promoVideos      PromoVideo[]
 
   stockAlerts StockAlert[]
-
-  @@index([status])
   costHistory ProductCostHistory[]
 
+  @@index([status])
   // The admin list query always filters deletedAt (soft-delete) and always
   // sorts by createdAt desc (plus an optional createdAt range filter) — this
   // composite index lets Postgres satisfy the filter and the sort/range from
@@ -1143,6 +1143,7 @@ model ProductVariant {
   stockAlerts     StockAlert[]
   costHistory     ProductCostHistory[]
   storeStock      StoreStock[]
+  storePrices     StorePrice[]
 
   // Missing before — every "load a product with its variants" query (admin
   // list/detail, storefront PDP, cart/order line lookups) joined this table
@@ -1906,11 +1907,11 @@ model DiscountCustomer {
 // Actual usage history, tied to the order it was redeemed on (the old app's
 // equivalent tracked customer+coupon only, not which order — worse for audit).
 model DiscountRedemption {
-  id         Int      @id @default(autoincrement())
-  discountId Int      @map("discount_id")
-  customerId Int?     @map("customer_id")
-  orderId    Int      @map("order_id")
-  redeemedAt DateTime @default(now()) @map("redeemed_at")
+  id         Int       @id @default(autoincrement())
+  discountId Int       @map("discount_id")
+  customerId Int?      @map("customer_id")
+  orderId    Int       @map("order_id")
+  redeemedAt DateTime  @default(now()) @map("redeemed_at")
   /// Last 10 digits of the order's phone ("01712345678" and "8801712345678"
   /// alike -> "1712345678"). The per-customer limit counts by this as well as
   /// by customerId, so a guest checkout can't reuse a code under a new cart.
@@ -2953,21 +2954,20 @@ model IncompleteOrder {
   /// 30-day cookie the checkout uses. Same names/types as the columns on
   /// Order, so recovery copies them straight across — without these a
   /// recovered cart lost its ad attribution entirely.
-  utmSource      String? @map("utm_source")
-  utmMedium      String? @map("utm_medium")
-  utmCampaign    String? @map("utm_campaign")
-  utmTerm        String? @map("utm_term")
-  utmContent     String? @map("utm_content")
-  landingDomain  String? @map("landing_domain")
-  landingPage    String? @map("landing_page")
-  referrerUrl    String? @map("referrer_url")
-  referrerDomain String? @map("referrer_domain")
-  createdAt        DateTime  @default(now()) @map("created_at")
+  utmSource      String?  @map("utm_source")
+  utmMedium      String?  @map("utm_medium")
+  utmCampaign    String?  @map("utm_campaign")
+  utmTerm        String?  @map("utm_term")
+  utmContent     String?  @map("utm_content")
+  landingDomain  String?  @map("landing_domain")
+  landingPage    String?  @map("landing_page")
+  referrerUrl    String?  @map("referrer_url")
+  referrerDomain String?  @map("referrer_domain")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   campaignQueue CartCampaignQueue[]
 
   @@index([utmSource])
-
   @@index([recovered, lastSeenAt])
   // The admin list filters on stage and sorts by lastSeenAt.
   @@index([stage, lastSeenAt])
@@ -3045,11 +3045,11 @@ model CustomerCampaignTemplate {
   repeatEveryDays Int?                     @map("repeat_every_days")
 
   /// Fires this long after the customer was added. 0 = immediately.
-  delayValue Int             @default(0) @map("delay_value")
-  delayUnit  DelayUnit       @default(MINUTE) @map("delay_unit")
-  status     CampaignStatus  @default(ACTIVE)
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
+  delayValue Int            @default(0) @map("delay_value")
+  delayUnit  DelayUnit      @default(MINUTE) @map("delay_unit")
+  status     CampaignStatus @default(ACTIVE)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
 
   queue CustomerCampaignQueue[]
 
@@ -3136,15 +3136,15 @@ model CartCampaignQueue {
 /// who it is; an anonymous visitor who opted in before logging in still gets
 /// a row, and gets claimed later.
 model PushSubscription {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   /// The push service URL that identifies this browser. Unique: re-subscribing
   /// the same browser must update the row, never create a duplicate that would
   /// deliver the same notification twice.
-  endpoint   String   @unique
+  endpoint   String    @unique
   /// Encryption material from the browser's own subscription object.
   p256dh     String
   auth       String
-  customerId Int?     @map("customer_id")
+  customerId Int?      @map("customer_id")
   /// The anonymous cart identity (Cart.guestToken) this browser was carrying
   /// when it subscribed.
   ///
@@ -3153,16 +3153,16 @@ model PushSubscription {
   /// cart long before they ever sign in. The guest token is the only handle
   /// that connects "this browser agreed to notifications" to "this cart was
   /// left behind".
-  guestToken String?  @map("guest_token")
+  guestToken String?   @map("guest_token")
   /// Best-effort, for segmenting later — never trusted for anything.
-  userAgent  String?  @map("user_agent")
-  locale     String   @default("EN")
+  userAgent  String?   @map("user_agent")
+  locale     String    @default("EN")
   /// Set when the push service tells us the subscription is dead (404/410).
   /// Kept rather than deleted so the opt-in funnel stays measurable.
   revokedAt  DateTime? @map("revoked_at")
-  lastSeenAt DateTime @default(now()) @map("last_seen_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
@@ -3184,18 +3184,18 @@ model PushSubscription {
 /// way stock can rise (admin edit, cancelled order, return, import) instead of
 /// needing a hook on each one.
 model StockAlert {
-  id         Int      @id @default(autoincrement())
-  productId  Int      @map("product_id")
+  id         Int       @id @default(autoincrement())
+  productId  Int       @map("product_id")
   /// Null for a simple product. The unique index below is NULLS NOT DISTINCT,
   /// so one browser cannot register twice for the same simple product.
-  variantId  Int?     @map("variant_id")
+  variantId  Int?      @map("variant_id")
   endpoint   String
-  customerId Int?     @map("customer_id")
-  locale     String   @default("EN")
+  customerId Int?      @map("customer_id")
+  locale     String    @default("EN")
   /// Set when the notification goes out. Kept rather than deleted so "how many
   /// people were waiting" stays answerable.
   notifiedAt DateTime? @map("notified_at")
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
@@ -3666,20 +3666,45 @@ model Store {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  costCentre   CostCentre?     @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
-  staff        AdminUser[]
-  products     Product[]
-  orders       Order[]
-  stock        StoreStock[]
-  movements    StockMovement[]
-  stockIns     StockIn[]
-  transfersOut StockTransfer[] @relation("TransferFrom")
-  transfersIn  StockTransfer[] @relation("TransferTo")
-  heldSales    PosHeldSale[]
+  costCentre      CostCentre?         @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
+  staff           AdminUser[]
+  products        Product[]
+  orders          Order[]
+  stock           StoreStock[]
+  movements       StockMovement[]
+  stockIns        StockIn[]
+  transfersOut    StockTransfer[]     @relation("TransferFrom")
+  transfersIn     StockTransfer[]     @relation("TransferTo")
+  heldSales       PosHeldSale[]
   invoiceTemplate PosInvoiceTemplate?
   coupons         Discount[]
+  prices          StorePrice[]
 
   @@map("stores")
+}
+
+// A store's own price for a catalogue product/variant (POS only; the website
+// and other stores keep the product's price). No row = the normal price.
+// Uniqueness is (store_id, product_id, COALESCE(variant_id, 0)) -- an
+// expression index (store_prices_store_product_variant_key) that lives only in
+// migrations/20260928090000_pos_store_prices; never let a generated migration
+// drop it.
+model StorePrice {
+  id          Int      @id @default(autoincrement())
+  storeId     Int      @map("store_id")
+  productId   Int      @map("product_id")
+  variantId   Int?     @map("variant_id")
+  price       Decimal  @db.Decimal(10, 2)
+  salePrice   Decimal? @map("sale_price") @db.Decimal(10, 2)
+  updatedById Int?     @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  store   Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("store_prices")
 }
 
 // Stock of one SKU at one non-online store. Written ONLY by StockService.move.
@@ -4004,21 +4029,21 @@ enum WholesaleCourier {
 }
 
 model WholesaleOrder {
-  id            Int                  @id @default(autoincrement())
-  orderNumber   String               @unique @map("order_number")
-  partyId       Int                  @map("party_id")
-  status        WholesaleOrderStatus @default(PENDING)
+  id            Int                     @id @default(autoincrement())
+  orderNumber   String                  @unique @map("order_number")
+  partyId       Int                     @map("party_id")
+  status        WholesaleOrderStatus    @default(PENDING)
   /// WHOLESALE for everything that existed before this column did -- a cash
   /// sale had no way to be recorded here at all until now.
-  type          WholesaleOrderType   @default(WHOLESALE)
+  type          WholesaleOrderType      @default(WHOLESALE)
   channel       WholesaleOrderChannel?
   paymentMethod WholesalePaymentMethod? @map("payment_method")
   paymentStatus WholesalePaymentStatus  @default(UNPAID) @map("payment_status")
   /// Required by the UI for every non-cash method; not enforced here because
   /// historical rows predate the field.
-  transactionId String?              @map("transaction_id")
+  transactionId String?                 @map("transaction_id")
   /// Counter-sale voucher number. Cash sales only.
-  gpNumber      String?              @map("gp_number")
+  gpNumber      String?                 @map("gp_number")
 
   /// Delivery snapshot, exactly like retail's OrderAddress: where THIS order
   /// went, frozen at the time it was placed. Editing the Party's address
@@ -4041,7 +4066,7 @@ model WholesaleOrder {
   /// The ID the courier gives us for the parcel. Optional: a wholesale order
   /// is often created before it is handed to the courier, and the number only
   /// exists after that.
-  consignmentId String?              @map("consignment_id")
+  consignmentId String?           @map("consignment_id")
 
   subtotal       Decimal @db.Decimal(12, 2)
   deliveryCharge Decimal @default(0) @map("delivery_charge") @db.Decimal(12, 2)
@@ -4062,12 +4087,12 @@ model WholesaleOrder {
   /// Those values flattened to text, so the orders search box finds them.
   channelSearch String? @map("channel_search")
 
-  party          Party                @relation(fields: [partyId], references: [id])
-  salesChannel   WholesaleChannel?    @relation(fields: [channelId], references: [id], onDelete: Restrict)
-  items WholesaleOrderItem[]
+  party        Party                @relation(fields: [partyId], references: [id])
+  salesChannel WholesaleChannel?    @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  items        WholesaleOrderItem[]
   // Deliberately a list, not a single due: the invoice is one row today, but
   // a part-shipped order raising a second one must not require a schema change.
-  dues  Due[]
+  dues         Due[]
 
   @@index([partyId])
   @@index([status])

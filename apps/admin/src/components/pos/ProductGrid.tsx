@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@amader/admin-ui";
 import { usePosContext } from "./PosContext";
 import { EMPTY_STORE_PRODUCT, StoreProductForm } from "./StoreProductForm";
+import { StorePriceDialog } from "./StorePriceDialog";
 import { taka, type PosProduct } from "@/lib/pos-cart";
 
 export const LOW_STOCK = 10; // same threshold as the backend's POS_LOW_STOCK
@@ -141,6 +142,14 @@ function Price({ p, end }: { p: PosProduct; end?: boolean }) {
           {taka(p.price)}
         </span>
       )}
+      {p.storePrice && (
+        <span
+          className="rounded bg-sky-100 px-1 text-[10px] font-bold text-sky-800"
+          title="This store's own price"
+        >
+          Store
+        </span>
+      )}
     </div>
   );
 }
@@ -166,8 +175,24 @@ export function ProductGrid({
     `grid h-10 w-10 place-items-center rounded-lg ${active ? "bg-[#1d7a46] text-white" : "text-gray-600 hover:bg-gray-100"}`;
   const { can, store } = usePosContext();
   const [adding, setAdding] = useState(false);
+  const [pricing, setPricing] = useState<PosProduct | null>(null);
+  const canPrice = can("pos.prices");
+  const pencil = (p: PosProduct, cls: string) =>
+    canPrice && (
+      <button
+        onClick={() => setPricing(p)}
+        className={`grid h-8 w-8 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#1d7a46] ${cls}`}
+        aria-label={`Edit price of ${p.name}`}
+        title="Edit this store's price"
+      >
+        <Icon name="edit" size={17} />
+      </button>
+    );
   return (
     <section>
+      {pricing && (
+        <StorePriceDialog p={pricing} onClose={() => setPricing(null)} />
+      )}
       {adding && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"
@@ -258,6 +283,7 @@ export function ProductGrid({
                     Store item
                   </span>
                 )}
+                {pencil(p, "absolute right-0 top-0 bg-white/90")}
               </div>
               <div className="line-clamp-2 text-sm font-semibold leading-snug">
                 {p.name}
@@ -312,6 +338,7 @@ export function ProductGrid({
               <div className="w-36 shrink-0">
                 <Price p={p} end />
               </div>
+              {pencil(p, "shrink-0")}
               <button
                 disabled={p.stock <= 0}
                 onClick={() => onAdd(p)}

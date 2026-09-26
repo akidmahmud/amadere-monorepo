@@ -24,7 +24,12 @@ function product(over: Record<string, unknown> = {}) {
 
 describe('PosCatalogService.list', () => {
   const findMany = jest.fn();
-  const prisma = { client: { product: { findMany } } };
+  const prisma = {
+    client: {
+      product: { findMany },
+      storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+    },
+  };
   const stock = {
     quantities: jest.fn().mockResolvedValue(
       new Map([
@@ -96,7 +101,10 @@ describe('PosCatalogService.list', () => {
 describe('PosCatalogService.lookup — exact only', () => {
   it('404s on a partial code instead of guessing the first fuzzy match', async () => {
     const prisma = {
-      client: { product: { findMany: jest.fn().mockResolvedValue([]) } },
+      client: {
+        product: { findMany: jest.fn().mockResolvedValue([]) },
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+      },
     };
     const stock = { quantities: jest.fn().mockResolvedValue(new Map()) };
     const svc = new PosCatalogService(prisma as never, stock as never);

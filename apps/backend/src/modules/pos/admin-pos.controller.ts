@@ -46,7 +46,7 @@ import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
 import { PosProductsService } from './pos-products.service';
-import { PosProductDto } from './dto/pos-product.dto';
+import { PosProductDto, StorePriceDto } from './dto/pos-product.dto';
 import { SavePosInvoiceDto } from './dto/pos-invoice.dto';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PosSaleService } from './pos-sale.service';
@@ -222,6 +222,19 @@ export class AdminPosController {
       storeId: await this.stores.adminStoreId(a.id),
       can,
     });
+  }
+
+  // A store's own price for a product it sells (website price unaffected).
+  @Put('prices')
+  @RequirePermission('pos.prices')
+  @UseInterceptors(AuditLogInterceptor)
+  async setPrice(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+    @Body() dto: StorePriceDto,
+  ) {
+    return this.products.setPrice(await this.oneStore(a, can, q.storeId), dto, a.id);
   }
 
   @Get('catalog')

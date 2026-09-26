@@ -45,3 +45,27 @@ export class PosProductDto {
   @IsInt()
   categoryId?: number | null;
 }
+
+export class StorePriceDto {
+  @Type(() => Number)
+  @IsInt()
+  productId!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  variantId?: number | null;
+
+  /** null = use the product's normal price again. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  price?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.01)
+  salePrice?: number | null;
+}

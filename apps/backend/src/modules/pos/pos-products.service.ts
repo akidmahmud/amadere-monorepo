@@ -1,9 +1,13 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { PermissionCheck } from '../../common/auth/permission.decorator';
 import { ProductsService } from '../products/products.service';
-import { PosProductDto } from './dto/pos-product.dto';
+import { PosProductDto, StorePriceDto } from './dto/pos-product.dto';
 
 /**
  * The POS's own product screen: simple (no-variant) products that belong to
@@ -82,6 +86,52 @@ export class PosProductsService {
         'Products with variants are edited from the main Products page',
       );
     return this.products.update(id, this.fields(dto), actor);
+  }
+
+  /**
+   * This store's own price for a product/variant sold here. price null =
+   * back to the product's normal price. Other stores and the website are
+   * never affected.
+   */
+  async setPrice(storeId: number, dto: StorePriceDto, adminId: number) {
+    const c = this.prisma.client;
+    const p = await c.product.findFirst({
+      where: {
+        id: dto.productId,
+        deletedAt: null,
+        OR: [{ storeId: null }, { storeId }],
+      },
+      include: { variants: { select: { id: true } } },
+    });
+    if (!p) throw new BadRequestException('Product is not sold at this store');
+    const variantId = dto.variantId ?? null;
+    if (p.hasVariants !== (variantId !== null))
+      throw new BadRequestException(
+        p.hasVariants ? 'Pick a variant' : 'This product has no variants',
+      );
+    if (variantId !== null && !p.variants.some((v) => v.id === variantId))
+      throw new BadRequestException('Variant does not belong to this product');
+    const where = { storeId, productId: p.id, variantId };
+
+    if (dto.price == null) {
+      await c.storePrice.deleteMany({ where });
+      return { reset: true };
+    }
+    if (dto.salePrice != null && dto.salePrice > dto.price)
+      throw new BadRequestException(
+        'Offer price must not be higher than the price',
+      );
+    const data = {
+      price: dto.price,
+      salePrice: dto.salePrice ?? null,
+      updatedById: adminId,
+    };
+    // ponytail: find-then-write; the unique expression index turns a rare
+    // double-submit race into an error instead of a duplicate row.
+    const existing = await c.storePrice.findFirst({ where });
+    return existing
+      ? c.storePrice.update({ where: { id: existing.id }, data })
+      : c.storePrice.create({ data: { ...where, ...data } });
   }
 
   private fields(dto: PosProductDto) {
