@@ -19,6 +19,10 @@ export function useScanner(onScan: (code: string) => void, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
+      // A scan into a popup's field (e.g. a new product's barcode) is data
+      // entry for that popup, not a sale.
+      if ((e.target as Element | null)?.closest?.('[aria-modal="true"]'))
+        return;
       const now = performance.now();
       if (now - last.current > 35) buf.current = "";
       last.current = now;

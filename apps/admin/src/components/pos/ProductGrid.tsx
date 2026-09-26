@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Icon } from "@amader/admin-ui";
+import { usePosContext } from "./PosContext";
+import { EMPTY_STORE_PRODUCT, StoreProductForm } from "./StoreProductForm";
 import { taka, type PosProduct } from "@/lib/pos-cart";
 
 export const LOW_STOCK = 10; // same threshold as the backend's POS_LOW_STOCK
@@ -119,15 +122,17 @@ function StockLine({ stock }: { stock: number }) {
 }
 function Line({ dot, text }: { dot: string; text: string }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-600">
-      <span className={`h-2 w-2 rounded-full ${dot}`} /> {text}
+    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-gray-600">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} /> {text}
     </div>
   );
 }
 
-function Price({ p }: { p: PosProduct }) {
+function Price({ p, end }: { p: PosProduct; end?: boolean }) {
   return (
-    <div className="flex items-baseline gap-2">
+    <div
+      className={`flex items-baseline gap-2 whitespace-nowrap ${end ? "justify-end" : ""}`}
+    >
       <span className="text-base font-extrabold">
         {taka(p.salePrice ?? p.price)}
       </span>
@@ -159,11 +164,42 @@ export function ProductGrid({
 }) {
   const toggle = (active: boolean) =>
     `grid h-10 w-10 place-items-center rounded-lg ${active ? "bg-[#1d7a46] text-white" : "text-gray-600 hover:bg-gray-100"}`;
+  const { can, store } = usePosContext();
+  const [adding, setAdding] = useState(false);
   return (
     <section>
+      {adding && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="New store product"
+        >
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-bold">New product</h2>
+            <p className="mb-4 text-xs text-gray-500">
+              Sold only at {store?.name}; never shown on the website.
+            </p>
+            <StoreProductForm
+              id={null}
+              initial={EMPTY_STORE_PRODUCT}
+              onDone={() => setAdding(false)}
+              onCancel={() => setAdding(false)}
+            />
+          </div>
+        </div>
+      )}
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-2xl font-extrabold">Products</h2>
         <div className="flex items-center gap-2">
+          {can("pos.store_products") && (
+            <button
+              className="flex h-10 items-center gap-1 rounded-lg bg-[#1d7a46] px-3 text-sm font-bold text-white hover:bg-[#186a3c]"
+              onClick={() => setAdding(true)}
+            >
+              <Icon name="add" size={18} /> New product
+            </button>
+          )}
           <select
             value={sort}
             onChange={(e) => onSort(e.target.value)}
@@ -273,8 +309,8 @@ export function ProductGrid({
                 <div className="text-xs text-gray-500">{p.sku ?? ""}</div>
               </div>
               <StockLine stock={p.stock} />
-              <div className="w-24 text-right">
-                <Price p={p} />
+              <div className="w-36 shrink-0">
+                <Price p={p} end />
               </div>
               <button
                 disabled={p.stock <= 0}

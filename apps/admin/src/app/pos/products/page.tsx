@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ToastProvider";
+import { useQuery } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
-import { usePosCategories } from "@/hooks/usePos";
 import { taka } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
 import {
-  PosSubPage,
-  card,
-  input,
-  primaryBtn,
-} from "@/components/pos/PosSubPage";
+  EMPTY_STORE_PRODUCT,
+  StoreProductForm,
+  type StoreProductFields,
+} from "@/components/pos/StoreProductForm";
+import { PosSubPage, card, primaryBtn } from "@/components/pos/PosSubPage";
 
 type Row = {
   id: number;
@@ -27,75 +25,19 @@ type Row = {
   categoryId: number | null;
 };
 
-type Form = {
-  name: string;
-  price: string;
-  salePrice: string;
-  costPerItem: string;
-  sku: string;
-  barcode: string;
-  categoryId: string;
-};
-
-const empty: Form = {
-  name: "",
-  price: "",
-  salePrice: "",
-  costPerItem: "",
-  sku: "",
-  barcode: "",
-  categoryId: "",
-};
-
-const num = (s: string) => (s.trim() === "" ? null : Number(s));
-
 /** This store's own products — never on amadere.com, no website form needed. */
 export default function PosProductsPage() {
   const { storeId, store } = usePosContext();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { data: cats = [] } = usePosCategories();
-  const [editing, setEditing] = useState<{ id: number | null; f: Form } | null>(
-    null,
-  );
+  const [editing, setEditing] = useState<{
+    id: number | null;
+    f: StoreProductFields;
+  } | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["pos-products", storeId],
     queryFn: () => proxyFetch<Row[]>(`/admin/pos/products?storeId=${storeId}`),
     enabled: !!storeId,
   });
-
-  const save = useMutation({
-    mutationFn: ({ id, f }: { id: number | null; f: Form }) =>
-      proxyFetch(
-        `/admin/pos/products${id ? `/${id}` : ""}?storeId=${storeId}`,
-        {
-          method: id ? "PUT" : "POST",
-          body: JSON.stringify({
-            name: f.name,
-            price: Number(f.price),
-            salePrice: num(f.salePrice),
-            costPerItem: num(f.costPerItem),
-            sku: f.sku,
-            barcode: f.barcode,
-            categoryId: f.categoryId ? Number(f.categoryId) : null,
-          }),
-        },
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pos-products"] });
-      qc.invalidateQueries({ queryKey: ["pos-catalog"] });
-      setEditing(null);
-      toast.push("Product saved", "success");
-    },
-    onError: (e) => toast.push(e.message),
-  });
-
-  const f = editing?.f;
-  const set = (k: keyof Form, v: string) =>
-    setEditing((e) => e && { ...e, f: { ...e.f, [k]: v } });
-  const valid =
-    !!f && f.name.trim() !== "" && f.price !== "" && Number(f.price) >= 0;
 
   return (
     <PosSubPage title="Store products" permission="pos.store_products">
@@ -111,88 +53,21 @@ export default function PosProductsPage() {
           </p>
           <button
             className={primaryBtn}
-            onClick={() => setEditing({ id: null, f: empty })}
+            onClick={() => setEditing({ id: null, f: EMPTY_STORE_PRODUCT })}
           >
             New product
           </button>
         </div>
 
-        {f && (
-          <div className={`${card} grid gap-3 sm:grid-cols-2`}>
-            <label className="flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs font-bold">Name *</span>
-              <input
-                className={input}
-                value={f.name}
-                onChange={(e) => set("name", e.target.value)}
-                autoFocus
-              />
-            </label>
-            {(
-              [
-                ["price", "Price (৳) *"],
-                ["salePrice", "Sale price (৳)"],
-                ["costPerItem", "Cost (৳, for profit)"],
-              ] as const
-            ).map(([k, label]) => (
-              <label key={k} className="flex flex-col gap-1">
-                <span className="text-xs font-bold">{label}</span>
-                <input
-                  className={input}
-                  inputMode="decimal"
-                  value={f[k]}
-                  onChange={(e) => set(k, e.target.value)}
-                />
-              </label>
-            ))}
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold">Category</span>
-              <select
-                className={input}
-                value={f.categoryId}
-                onChange={(e) => set("categoryId", e.target.value)}
-              >
-                <option value="">None</option>
-                {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold">SKU</span>
-              <input
-                className={input}
-                value={f.sku}
-                onChange={(e) => set("sku", e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold">
-                Barcode (blank = print one from Barcode labels)
-              </span>
-              <input
-                className={input}
-                value={f.barcode}
-                onChange={(e) => set("barcode", e.target.value)}
-              />
-            </label>
-            <div className="flex gap-2 sm:col-span-2">
-              <button
-                className={primaryBtn}
-                disabled={!valid || save.isPending}
-                onClick={() => editing && save.mutate(editing)}
-              >
-                {save.isPending ? "Saving…" : "Save"}
-              </button>
-              <button
-                className="h-10 rounded-lg border border-gray-200 px-4 text-sm font-semibold"
-                onClick={() => setEditing(null)}
-              >
-                Cancel
-              </button>
-            </div>
+        {editing && (
+          <div className={card}>
+            <StoreProductForm
+              key={editing.id ?? "new"}
+              id={editing.id}
+              initial={editing.f}
+              onDone={() => setEditing(null)}
+              onCancel={() => setEditing(null)}
+            />
           </div>
         )}
 
