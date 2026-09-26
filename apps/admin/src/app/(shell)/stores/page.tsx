@@ -61,6 +61,16 @@ export default function StoresPage() {
     onError: (e) => toast.push(e.message),
   });
 
+  const remove = useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch(`/admin/stores/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["stores"] });
+      toast.push("Store deleted", "success");
+    },
+    onError: (e) => toast.push(e.message),
+  });
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -150,6 +160,19 @@ export default function StoresPage() {
                     >
                       Edit
                     </button>
+                    {!s.isOnlineStore && (
+                      <button
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-50"
+                        disabled={remove.isPending}
+                        onClick={() =>
+                          confirm(
+                            `Delete store "${s.name}"? Only a store with no sales or stock history can be deleted.`,
+                          ) && remove.mutate(s.id)
+                        }
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

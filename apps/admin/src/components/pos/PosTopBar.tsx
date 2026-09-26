@@ -102,6 +102,12 @@ export function PosTopBar({
 
   const more = [
     {
+      href: "/pos/products",
+      label: "Store products",
+      icon: "category",
+      perm: "pos.store_products",
+    },
+    {
       href: "/pos/stock-in",
       label: "Stock in",
       icon: "inventory",

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -47,6 +48,12 @@ export class AdminStoresController {
   @RequirePermission('stores.manage')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpsertStoreDto) {
     return this.stores.update(id, dto);
+  }
+
+  @Delete(':id')
+  @RequirePermission('stores.manage')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.stores.remove(id);
   }
 
   @Put(':id/staff')

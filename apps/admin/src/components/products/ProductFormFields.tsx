@@ -1,6 +1,5 @@
 "use client";
 
-import { ProductStoreField } from "./ProductStoreField";
 import { useRef, useState } from "react";
 import { StatusSelect } from "@/components/StatusSelect";
 import { useAttributes, type Attribute } from "@/hooks/useAttributes";
@@ -371,11 +370,7 @@ export function ProductFormFields({
                     onChange={form.setKeyBenefits}
                   />
                 </label>
-                <ProductStoreField
-                  value={form.storeId}
-                  onChange={form.setStoreId}
-                  onStatus={form.setStatus}
-                />
+                {/* Store-only products are created and edited in POS → Store products. */}
                 <div className="grid grid-cols-2 gap-3">
                   <StatusSelect
                     value={form.status}

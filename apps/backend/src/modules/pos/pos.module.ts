@@ -1,3 +1,5 @@
+import { ProductsModule } from '../products/products.module';
+import { PosProductsService } from './pos-products.service';
 import { Module } from '@nestjs/common';
 import { StockModule } from '../stock/stock.module';
 import { StoresModule } from '../stores/stores.module';
@@ -19,6 +21,7 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     CartModule,
     PaymentsModule,
     AccountsModule,
+    ProductsModule,
   ],
   controllers: [AdminPosController],
   providers: [
@@ -28,6 +31,7 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     PosSettingsService,
     PosInvoiceService,
     PosCouponsService,
+    PosProductsService,
   ],
 })
 export class PosModule {}

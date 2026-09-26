@@ -33,6 +33,11 @@ describe('VatService', () => {
         order: {
           aggregate: jest.fn().mockResolvedValue({ _sum: { totalAmount: D('7666.67') } }),
         },
+        // Per-product VAT exceptions (added to VatService on 2026-08-28):
+        // none here, so the figures below are the plain store-rate case.
+        orderItem: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
       },
     };
     settings = {

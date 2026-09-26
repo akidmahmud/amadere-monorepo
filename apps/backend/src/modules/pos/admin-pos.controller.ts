@@ -45,6 +45,8 @@ import { UpdatePosVatDto } from './dto/pos-settings.dto';
 import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
+import { PosProductsService } from './pos-products.service';
+import { PosProductDto } from './dto/pos-product.dto';
 import { SavePosInvoiceDto } from './dto/pos-invoice.dto';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PosSaleService } from './pos-sale.service';
@@ -72,6 +74,7 @@ export class AdminPosController {
     private readonly settings: PosSettingsService,
     private readonly invoices: PosInvoiceService,
     private readonly coupons: PosCouponsService,
+    private readonly products: PosProductsService,
   ) {}
 
   private async oneStore(a: Admin, can: PermissionCheck, requested?: number) {
@@ -175,6 +178,50 @@ export class AdminPosController {
   @UseInterceptors(AuditLogInterceptor)
   async resetInvoice(@Param('key') key: string) {
     await this.invoices.reset(templateKey(key));
+  }
+
+  // Store-only products, managed from the POS (not the website product form).
+  @Get('products')
+  @RequirePermission('pos.store_products')
+  async listProducts(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.list(await this.oneStore(a, can, q.storeId));
+  }
+
+  @Post('products')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async createProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosProductDto,
+  ) {
+    const storeId = await this.oneStore(a, can, q.storeId);
+    return this.products.create(storeId, dto, {
+      storeId: await this.stores.adminStoreId(a.id),
+      can,
+    });
+  }
+
+  @Put('products/:id')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async updateProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosProductDto,
+  ) {
+    const storeId = await this.oneStore(a, can, q.storeId);
+    return this.products.update(storeId, id, dto, {
+      storeId: await this.stores.adminStoreId(a.id),
+      can,
+    });
   }
 
   @Get('catalog')
