@@ -84,3 +84,15 @@ export function normalizeBdPhone(raw: string): string | null {
   const local = digits.startsWith("880") ? digits.slice(2) : digits;
   return /^01[3-9]\d{8}$/.test(local) ? local : null;
 }
+
+/**
+ * Cart lines the server says can no longer be sold here (product deleted,
+ * moved to another store, or a variant removed) — from its quote error.
+ */
+export function unsellableLines(message: string, cart: CartLine[]): CartLine[] {
+  const product = /Product #(\d+) is not sold at this store/.exec(message);
+  if (product) return cart.filter((l) => l.productId === Number(product[1]));
+  const variant = /Variant #(\d+) does not belong/.exec(message);
+  if (variant) return cart.filter((l) => l.variantId === Number(variant[1]));
+  return [];
+}

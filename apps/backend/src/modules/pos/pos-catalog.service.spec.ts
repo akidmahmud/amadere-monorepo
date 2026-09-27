@@ -124,6 +124,10 @@ describe('PosCatalogService.lookup — exact only', () => {
     await expect(svc.lookup(1, 'AMD00000100000')).resolves.toEqual(
       expect.objectContaining({ productId: 1 }),
     );
+    // A scanner that doesn't send Shift types lower case.
+    await expect(svc.lookup(1, 'amd00000100000')).resolves.toEqual(
+      expect.objectContaining({ productId: 1 }),
+    );
     list.mockRestore();
   });
 });

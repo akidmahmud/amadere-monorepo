@@ -118,6 +118,11 @@ export default function PosPage() {
             view={view}
             onView={setView}
             onAdd={(p) => dispatch({ type: "add", product: p })}
+            cartQty={Object.fromEntries(cart.map((l) => [l.key, l.qty]))}
+            onQty={(key, qty) => dispatch({ type: "setQty", key, qty })}
+            today={
+              stats && { orders: stats.todayOrders, items: stats.todayItems }
+            }
           />
         </main>
         <CartPanel

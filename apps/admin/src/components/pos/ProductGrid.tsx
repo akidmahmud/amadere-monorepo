@@ -5,7 +5,7 @@ import { Icon } from "@amader/admin-ui";
 import { usePosContext } from "./PosContext";
 import { EMPTY_STORE_PRODUCT, StoreProductForm } from "./StoreProductForm";
 import { StorePriceDialog } from "./StorePriceDialog";
-import { taka, type PosProduct } from "@/lib/pos-cart";
+import { lineKey, taka, type PosProduct } from "@/lib/pos-cart";
 
 export const LOW_STOCK = 10; // same threshold as the backend's POS_LOW_STOCK
 
@@ -162,6 +162,9 @@ export function ProductGrid({
   view,
   onView,
   onAdd,
+  cartQty,
+  onQty,
+  today,
 }: {
   items: PosProduct[];
   loading: boolean;
@@ -170,6 +173,10 @@ export function ProductGrid({
   view: "grid" | "list";
   onView: (v: "grid" | "list") => void;
   onAdd: (p: PosProduct) => void;
+  /** Qty of each product already in the cart, by lineKey. */
+  cartQty: Record<string, number>;
+  onQty: (key: string, qty: number) => void;
+  today?: { orders: number; items: number };
 }) {
   const toggle = (active: boolean) =>
     `grid h-10 w-10 place-items-center rounded-lg ${active ? "bg-[#1d7a46] text-white" : "text-gray-600 hover:bg-gray-100"}`;
@@ -181,7 +188,7 @@ export function ProductGrid({
     canPrice && (
       <button
         onClick={() => setPricing(p)}
-        className={`grid h-8 w-8 place-items-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-[#1d7a46] ${cls}`}
+        className={`grid h-8 w-8 place-items-center rounded-lg text-[#1d7a46] hover:bg-emerald-50 ${cls}`}
         aria-label={`Edit price of ${p.name}`}
         title="Edit this store's price"
       >
@@ -214,9 +221,26 @@ export function ProductGrid({
           </div>
         </div>
       )}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-extrabold">Products</h2>
-        <div className="flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap">
+          <h2 className="text-2xl font-extrabold">Products</h2>
+          <span className="text-sm text-gray-500">{items.length} products</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {(
+            [
+              ["Today Orders", today?.orders],
+              ["Today Items Sold", today?.items],
+            ] as const
+          ).map(([label, n]) => (
+            <div
+              key={label}
+              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-gray-100 bg-white px-3 text-sm shadow-sm"
+            >
+              <span className="font-semibold text-[#1d7a46]">{label}</span>
+              <span className="font-extrabold">{n ?? "—"}</span>
+            </div>
+          ))}
           {can("pos.store_products") && (
             <button
               className="flex h-10 items-center gap-1 rounded-lg bg-[#1d7a46] px-3 text-sm font-bold text-white hover:bg-[#186a3c]"
@@ -235,20 +259,22 @@ export function ProductGrid({
             <option value="name">Sort: Name</option>
             <option value="price">Sort: Price</option>
           </select>
-          <button
-            className={toggle(view === "grid")}
-            onClick={() => onView("grid")}
-            aria-label="Grid view"
-          >
-            <Icon name="grid_view" size={20} />
-          </button>
-          <button
-            className={toggle(view === "list")}
-            onClick={() => onView("list")}
-            aria-label="List view"
-          >
-            <Icon name="list" size={20} />
-          </button>
+          <div className="flex gap-1">
+            <button
+              className={toggle(view === "grid")}
+              onClick={() => onView("grid")}
+              aria-label="Grid view"
+            >
+              <Icon name="grid_view" size={20} />
+            </button>
+            <button
+              className={toggle(view === "list")}
+              onClick={() => onView("list")}
+              aria-label="List view"
+            >
+              <Icon name="list" size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -295,13 +321,13 @@ export function ProductGrid({
               <div className="mb-3 mt-1">
                 <StockLine stock={p.stock} />
               </div>
-              <button
-                disabled={p.stock <= 0}
-                onClick={() => onAdd(p)}
-                className="mt-auto flex h-9 items-center justify-center gap-1 rounded-lg bg-emerald-50 text-sm font-bold text-[#1d7a46] hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Icon name="add" size={18} /> Add
-              </button>
+              <AddOrStepper
+                p={p}
+                qty={cartQty[lineKey(p)] ?? 0}
+                onAdd={onAdd}
+                onQty={onQty}
+                className="mt-auto w-full"
+              />
             </div>
           ))}
         </div>
@@ -339,17 +365,70 @@ export function ProductGrid({
                 <Price p={p} end />
               </div>
               {pencil(p, "shrink-0")}
-              <button
-                disabled={p.stock <= 0}
-                onClick={() => onAdd(p)}
-                className="flex h-9 items-center gap-1 rounded-lg bg-emerald-50 px-4 text-sm font-bold text-[#1d7a46] hover:bg-emerald-100 disabled:opacity-40"
-              >
-                <Icon name="add" size={18} /> Add
-              </button>
+              <AddOrStepper
+                p={p}
+                qty={cartQty[lineKey(p)] ?? 0}
+                onAdd={onAdd}
+                onQty={onQty}
+                className="w-32 shrink-0"
+              />
             </div>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+/** "+ Add" until the product is in the cart, then − qty + like the cart row. */
+function AddOrStepper({
+  p,
+  qty,
+  onAdd,
+  onQty,
+  className,
+}: {
+  p: PosProduct;
+  qty: number;
+  onAdd: (p: PosProduct) => void;
+  onQty: (key: string, qty: number) => void;
+  className: string;
+}) {
+  if (qty === 0)
+    return (
+      <button
+        disabled={p.stock <= 0}
+        onClick={() => onAdd(p)}
+        className={`flex h-9 items-center justify-center gap-1 rounded-lg bg-emerald-50 text-sm font-bold text-[#1d7a46] hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      >
+        <Icon name="add" size={18} /> Add
+      </button>
+    );
+  const key = lineKey(p);
+  const step =
+    "grid h-9 w-9 shrink-0 place-items-center bg-[#1d7a46] text-white hover:bg-[#186a3c] disabled:opacity-40";
+  return (
+    <div
+      className={`flex h-9 items-center overflow-hidden rounded-lg border border-[#1d7a46] ${className}`}
+    >
+      <button
+        className={step}
+        onClick={() => onQty(key, qty - 1)}
+        aria-label={`One less ${p.name}`}
+      >
+        <Icon name="remove" size={18} />
+      </button>
+      <span className="flex-1 text-center text-sm font-bold" aria-live="polite">
+        {qty}
+      </span>
+      <button
+        className={step}
+        disabled={qty >= p.stock}
+        onClick={() => onQty(key, qty + 1)}
+        aria-label={`One more ${p.name}`}
+      >
+        <Icon name="add" size={18} />
+      </button>
+    </div>
   );
 }

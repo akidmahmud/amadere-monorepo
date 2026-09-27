@@ -44,6 +44,12 @@ export class PosProductDto {
   @Type(() => Number)
   @IsInt()
   categoryId?: number | null;
+
+  /** Uploaded media id; null removes the photo, omitted leaves it. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  mediaId?: number | null;
 }
 
 export class StorePriceDto {

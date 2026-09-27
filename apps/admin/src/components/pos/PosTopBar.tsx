@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@amader/admin-ui";
+import { proxyFetch } from "@/lib/api/proxy-client";
 import { useToast } from "@/components/ToastProvider";
 import {
   useDropHeld,
@@ -71,7 +72,7 @@ export function PosTopBar({
   const { can, allStores, stores, storeId, setStoreId, store, userName } =
     usePosContext();
   const toast = useToast();
-  const [open, setOpen] = useState<"recent" | "held" | "more" | null>(null);
+  const [open, setOpen] = useState<"recent" | "held" | null>(null);
   const close = () => setOpen(null);
   const hold = useHoldSale();
   const held = usePosHeld(storeId);
@@ -100,50 +101,32 @@ export function PosTopBar({
     );
   };
 
-  const more = [
-    {
-      href: "/pos/products",
-      label: "Store products",
-      icon: "category",
-      perm: "pos.store_products",
-    },
-    {
-      href: "/pos/stock-in",
-      label: "Stock in",
-      icon: "inventory",
-      perm: "pos.stock_in",
-    },
-    {
-      href: "/pos/adjust",
-      label: "Adjust stock",
-      icon: "tune",
-      perm: "pos.adjust",
-    },
-    {
-      href: "/pos/transfers",
-      label: "Transfers",
-      icon: "local_shipping",
-      perm: "pos.transfer",
-    },
-    {
-      href: "/pos/labels",
-      label: "Barcode labels",
-      icon: "barcode",
-      perm: "pos.labels",
-    },
-    {
-      href: "/pos/reports",
-      label: "Reports",
-      icon: "bar_chart",
-      perm: "pos.reports",
-    },
-    {
-      href: "/pos/settings",
-      label: "Settings",
-      icon: "settings",
-      perm: "pos.settings",
-    },
-  ].filter((m) => can(m.perm));
+  // Site logo, same public setting the storefront header uses.
+  const { data: site } = useQuery({
+    queryKey: ["site-settings"],
+    queryFn: () =>
+      proxyFetch<{ logoUrl: string | null; siteName: string | null }>(
+        "/settings/site",
+      ),
+    staleTime: Infinity,
+  });
+  const searchRef = useRef<HTMLInputElement>(null);
+  const focusSearch = () => {
+    searchRef.current?.focus();
+    searchRef.current?.select();
+  };
+  // F4 = "ready to scan" from anywhere on the till.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "F4") return;
+      e.preventDefault();
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const onPosHost =
     typeof window !== "undefined" &&
     window.location.hostname.startsWith("pos.");
@@ -159,14 +142,25 @@ export function PosTopBar({
         >
           <Icon name="arrow_back" size={22} />
         </a>
-        <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#1d7a46] text-white">
-          <Icon name="storefront" size={24} />
-        </span>
+        {site?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={site.logoUrl}
+            alt={site.siteName ?? "Logo"}
+            className="h-9 w-auto max-w-[120px] object-contain"
+          />
+        ) : (
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#1d7a46] text-white">
+            <Icon name="storefront" size={24} />
+          </span>
+        )}
+        <span className="h-9 w-px bg-gray-200" aria-hidden />
         <div className="leading-tight">
           <div className="text-xl font-extrabold">POS</div>
           {store && (
-            <div className="text-[11px] font-semibold text-gray-500">
+            <div className="flex items-center gap-1 text-xs font-semibold text-gray-600">
               {store.name}
+              <Icon name="location_on" size={14} className="text-[#1d7a46]" />
             </div>
           )}
         </div>
@@ -175,6 +169,7 @@ export function PosTopBar({
       <label className="flex h-11 min-w-[240px] flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-[#f7f9f8] px-4">
         <Icon name="search" size={20} className="text-gray-500" />
         <input
+          ref={searchRef}
           value={q}
           onChange={(e) => onQ(e.target.value)}
           onKeyDown={(e) => {
@@ -185,7 +180,17 @@ export function PosTopBar({
           placeholder="Search products by name, SKU or barcode..."
           className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
         />
-        <Icon name="barcode_scanner" size={22} className="text-[#1d7a46]" />
+        <button
+          type="button"
+          onClick={focusSearch}
+          className="flex h-8 shrink-0 items-center gap-2 rounded-lg bg-emerald-50 px-2.5 text-sm font-semibold text-[#1d7a46] hover:bg-emerald-100"
+          title="Ready to scan: the cursor goes to search, then scan with the barcode scanner (F4)"
+        >
+          <Icon name="barcode_scanner" size={20} /> Scan
+          <kbd className="rounded border border-gray-300 bg-white px-1.5 text-[11px] font-semibold text-gray-600">
+            F4
+          </kbd>
+        </button>
       </label>
 
       {allStores && (
@@ -328,34 +333,6 @@ export function PosTopBar({
               </div>
             ))}
           </div>
-        </Popover>
-      </div>
-
-      <div className="relative">
-        <button
-          className={btn}
-          onClick={() => setOpen(open === "more" ? null : "more")}
-        >
-          <Icon name="more_horiz" size={20} /> More
-        </button>
-        <Popover open={open === "more"} onClose={close}>
-          {more.map((m) => (
-            <Link
-              key={m.href}
-              href={m.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-gray-50"
-            >
-              <Icon name={m.icon} size={20} className="text-[#1d7a46]" />{" "}
-              {m.label}
-            </Link>
-          ))}
-          <a
-            href={onPosHost ? "https://admin.amadere.com" : "/"}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-gray-50"
-          >
-            <Icon name="dashboard" size={20} className="text-gray-500" /> Back
-            to admin
-          </a>
         </Popover>
       </div>
 

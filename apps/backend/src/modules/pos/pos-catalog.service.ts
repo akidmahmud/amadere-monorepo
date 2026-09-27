@@ -85,13 +85,13 @@ export class PosCatalogService {
               },
             },
             { sku: { contains: q, mode: 'insensitive' } },
-            { barcode: q },
+            { barcode: { equals: q, mode: 'insensitive' } },
             {
               variants: {
                 some: {
                   OR: [
                     { sku: { contains: q, mode: 'insensitive' } },
-                    { barcode: q },
+                    { barcode: { equals: q, mode: 'insensitive' } },
                   ],
                 },
               },
@@ -121,8 +121,9 @@ export class PosCatalogService {
     const all = await this.list(storeId, c);
     // Exact barcode, then exact SKU — never the first fuzzy search hit, which
     // could put the wrong item in the cart on a partial scan.
-    const hit =
-      all.find((p) => p.barcode === c) ?? all.find((p) => p.sku === c);
+    // Case-insensitive: a scanner that doesn't send Shift types "amd000…".
+    const same = (v?: string | null) => !!v && v.toLowerCase() === c.toLowerCase();
+    const hit = all.find((p) => same(p.barcode)) ?? all.find((p) => same(p.sku));
     if (!hit) throw new NotFoundException(`No product with code "${c}"`);
     return hit;
   }
@@ -147,19 +148,29 @@ export class PosCatalogService {
       'popular',
       10_000,
     );
-    const sales = await this.prisma.client.order.aggregate({
-      where: {
-        storeId,
-        channel: 'POS',
-        createdAt: dhakaRange(),
-        status: { notIn: ['CANCELED', 'RETURNED'] },
-      },
-      _sum: { totalAmount: true },
-    });
+    const todayPos = {
+      storeId,
+      channel: 'POS' as const,
+      createdAt: dhakaRange(),
+      status: { notIn: ['CANCELED' as const, 'RETURNED' as const] },
+    };
+    const [sales, items_] = await Promise.all([
+      this.prisma.client.order.aggregate({
+        where: todayPos,
+        _sum: { totalAmount: true },
+        _count: { _all: true },
+      }),
+      this.prisma.client.orderItem.aggregate({
+        where: { order: todayPos },
+        _sum: { quantity: true },
+      }),
+    ]);
     return {
       totalProducts: items.length,
       lowStock: items.filter((p) => p.stock <= POS_LOW_STOCK).length,
       todaySales: (sales._sum.totalAmount ?? new Prisma.Decimal(0)).toFixed(2),
+      todayOrders: sales._count._all,
+      todayItems: items_._sum.quantity ?? 0,
     };
   }
 

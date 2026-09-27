@@ -55,3 +55,21 @@ test("BD mobile numbers are recognised in their common forms", () => {
   assert.equal(normalizeBdPhone("01212345678"), null); // 012 isn't a mobile prefix
   assert.equal(normalizeBdPhone("Karim"), null);
 });
+
+test("unsellableLines finds the cart lines a quote error names", async () => {
+  const { unsellableLines } = await import("../src/lib/pos-cart.ts");
+  const cart = [
+    { key: "101:0", productId: 101, variantId: null, name: "Gone", qty: 1 },
+    { key: "7:70", productId: 7, variantId: 70, name: "Honey 1kg", qty: 2 },
+    { key: "8:0", productId: 8, variantId: null, name: "Ok", qty: 1 },
+  ];
+  assert.deepEqual(
+    unsellableLines("Product #101 is not sold at this store", cart).map((l) => l.key),
+    ["101:0"],
+  );
+  assert.deepEqual(
+    unsellableLines("Variant #70 does not belong to product #7", cart).map((l) => l.key),
+    ["7:70"],
+  );
+  assert.deepEqual(unsellableLines("Cash received is less than the total", cart), []);
+});

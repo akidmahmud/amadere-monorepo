@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
@@ -17,6 +17,7 @@ import {
   taka,
   unitPrice,
   parseQtyInput,
+  unsellableLines,
   normalizeBdPhone,
   type CartAction,
   type CartLine,
@@ -96,6 +97,20 @@ export function CartPanel({
   const [showCoupons, setShowCoupons] = useState(false);
   const sale = useCompleteSale();
   const quote = useQuote(storeId, cart, customer?.id, coupon);
+  const qc = useQueryClient();
+
+  // A product deleted (or moved to another store) while in the cart would
+  // block every quote; drop it and say which one, instead of "Product #101".
+  useEffect(() => {
+    const gone = quote.error ? unsellableLines(quote.error.message, cart) : [];
+    if (!gone.length) return;
+    for (const l of gone) dispatch({ type: "remove", key: l.key });
+    // The product list is stale too (that is how it got into the cart).
+    qc.invalidateQueries({ queryKey: ["pos-catalog"] });
+    toast.push(
+      `${gone.map((l) => l.name).join(", ")} is no longer sold here — removed from the cart`,
+    );
+  }, [quote.error, cart, dispatch, toast, qc]);
 
   // Check a code with the server before keeping it, so a bad code never
   // blocks the sale.

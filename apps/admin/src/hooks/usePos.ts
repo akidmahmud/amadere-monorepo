@@ -121,6 +121,8 @@ export const usePosStats = (storeId?: number) =>
         totalProducts: number;
         lowStock: number;
         todaySales: string;
+        todayOrders: number;
+        todayItems: number;
       }>(`/admin/pos/stats${qs({ storeId })}`),
   });
 

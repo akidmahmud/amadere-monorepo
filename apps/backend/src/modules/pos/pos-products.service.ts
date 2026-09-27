@@ -36,15 +36,22 @@ export class PosProductsService {
         hasVariants: true,
         translations: { select: { locale: true, name: true } },
         categories: { select: { categoryId: true } },
+        media: {
+          orderBy: { sortOrder: 'asc' },
+          take: 1,
+          select: { mediaId: true, media: { select: { url: true, cardUrl: true } } },
+        },
       },
     });
-    return rows.map(({ translations, categories, ...p }) => ({
+    return rows.map(({ translations, categories, media, ...p }) => ({
       ...p,
       name:
         translations.find((t) => t.locale === 'EN')?.name ??
         translations[0]?.name ??
         '',
       categoryId: categories[0]?.categoryId ?? null,
+      mediaId: media[0]?.mediaId ?? null,
+      imageUrl: media[0]?.media.cardUrl ?? media[0]?.media.url ?? null,
     }));
   }
 
@@ -144,6 +151,8 @@ export class PosProductsService {
       salePrice: (dto.salePrice ?? null) as number,
       costPerItem: (dto.costPerItem ?? null) as number,
       categoryIds: dto.categoryId ? [dto.categoryId] : [],
+      mediaIds:
+        dto.mediaId === undefined ? undefined : dto.mediaId ? [dto.mediaId] : [],
     };
   }
 }

@@ -25,7 +25,10 @@ import { memoryStorage } from 'multer';
 import { PaginatedResult } from '@amader/shared';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
-import { RequirePermission } from '../../common/auth/permission.decorator';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { MediaService } from './media.service';
@@ -52,7 +55,8 @@ export class AdminMediaController {
   }
 
   @Post()
-  @RequirePermission('media.upload')
+  // Store staff add a product photo from the POS without full media rights.
+  @RequireAnyPermission('media.upload', 'pos.store_products')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOkResponse({ type: MediaDto })

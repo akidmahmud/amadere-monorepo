@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
-import { useMovements, useStockPost } from "@/hooks/usePos";
+import { useMovements, usePosCatalog, useStockPost } from "@/hooks/usePos";
+import { useScanner } from "@/components/pos/useScanner";
 import type { PosProduct } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
 import {
   PosSubPage,
-  ProductPicker,
   card,
   input,
   primaryBtn,
@@ -42,6 +42,22 @@ export default function AdjustPage() {
   const [note, setNote] = useState("");
   const save = useStockPost("/admin/stock/adjust");
   const moves = useMovements(p?.productId, p?.variantId, storeId);
+  const [q, setQ] = useState("");
+  const { data = [], isFetching } = usePosCatalog(
+    storeId,
+    q.trim(),
+    undefined,
+    "name",
+  );
+  // Untracked products (stock 9999) have no count to adjust.
+  const rows = data.filter((r) => r.stock < 9999);
+  useScanner((code) => {
+    const hit = rows.find((r) => r.barcode === code || r.sku === code);
+    if (hit) {
+      setP(hit);
+      setQ("");
+    } else setQ(code);
+  });
 
   const n = Number(qty);
   const valid =
@@ -50,12 +66,79 @@ export default function AdjustPage() {
   return (
     <PosSubPage title="Adjust stock" permission="pos.adjust">
       <div className={`${card} space-y-4`}>
-        <ProductPicker onPick={setP} />
+        {!p && (
+          <>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Filter products, or scan a barcode…"
+              lang="en"
+              className={`${input} w-full`}
+            />
+            <div className="max-h-[65vh] overflow-y-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 text-left text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2">Product</th>
+                    <th className="w-24">In stock</th>
+                    <th className="w-28" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-3 py-6 text-center text-gray-500"
+                      >
+                        {isFetching ? "Loading…" : "No products"}
+                      </td>
+                    </tr>
+                  )}
+                  {rows.map((r) => (
+                    <tr
+                      key={`${r.productId}:${r.variantId ?? 0}`}
+                      className="cursor-pointer border-t border-gray-100 hover:bg-emerald-50"
+                      onClick={() => setP(r)}
+                    >
+                      <td className="px-3 py-2">
+                        {productLabel(r)}
+                        <span className="ml-2 text-xs text-gray-400">
+                          {r.sku}
+                        </span>
+                      </td>
+                      <td
+                        className={
+                          r.stock <= 0 ? "text-red-600" : "text-gray-700"
+                        }
+                      >
+                        {r.stock}
+                      </td>
+                      <td className="pr-3 text-right">
+                        <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-[#1d7a46]">
+                          Adjust
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
         {p && (
           <>
-            <div className="text-sm">
-              <b>{productLabel(p)}</b> — current stock at this store:{" "}
-              <b>{p.stock}</b>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span>
+                <b>{productLabel(p)}</b> — current stock at this store:{" "}
+                <b>{p.stock}</b>
+              </span>
+              <button
+                className="font-semibold text-[#1d7a46] hover:underline"
+                onClick={() => setP(null)}
+              >
+                ← Change product
+              </button>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex overflow-hidden rounded-lg border border-gray-200">

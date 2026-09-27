@@ -11,3 +11,6 @@ migrate-report.json
 storybook-static/
 *.dump
 *.sql.gz
+
+# Internal docs (specs, plans, notes) — keep local, never push
+docs/

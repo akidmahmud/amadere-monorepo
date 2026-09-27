@@ -23,6 +23,8 @@ type Row = {
   costPerItem: string | null;
   hasVariants: boolean;
   categoryId: number | null;
+  mediaId: number | null;
+  imageUrl: string | null;
 };
 
 /** This store's own products — never on amadere.com, no website form needed. */
@@ -31,6 +33,7 @@ export default function PosProductsPage() {
   const [editing, setEditing] = useState<{
     id: number | null;
     f: StoreProductFields;
+    image?: { mediaId: number; url: string } | null;
   } | null>(null);
 
   const { data: rows = [], isLoading } = useQuery({
@@ -65,6 +68,7 @@ export default function PosProductsPage() {
               key={editing.id ?? "new"}
               id={editing.id}
               initial={editing.f}
+              initialImage={editing.image}
               onDone={() => setEditing(null)}
               onCancel={() => setEditing(null)}
             />
@@ -135,6 +139,10 @@ export default function PosProductsPage() {
                         onClick={() =>
                           setEditing({
                             id: r.id,
+                            image:
+                              r.mediaId && r.imageUrl
+                                ? { mediaId: r.mediaId, url: r.imageUrl }
+                                : null,
                             f: {
                               name: r.name,
                               price: r.price ?? "",
