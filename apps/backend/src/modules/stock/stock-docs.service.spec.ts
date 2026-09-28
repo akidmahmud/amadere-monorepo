@@ -115,11 +115,11 @@ describe('StockDocsService.generateBarcodes', () => {
     expect(await svc.generateBarcodes([1, 2, 3])).toEqual({ generated: 2 });
     expect(productUpdate).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: { barcode: 'AMD00000100000' },
+      data: { barcode: '2000001000007' },
     });
     expect(variantUpdate).toHaveBeenCalledWith({
       where: { id: 7 },
-      data: { barcode: 'AMD00000300007' },
+      data: { barcode: '2000003000074' },
     });
   });
 });
@@ -153,5 +153,32 @@ describe('StockDocsService — inactive store', () => {
       svc.adjust(1, { productId: 1, qty: 1, reason: 'DAMAGED' } as never, 7),
     ).rejects.toThrow(/inactive/i);
     expect(move).not.toHaveBeenCalled();
+  });
+
+  it('replaces old "AMD…" codes only when asked, and never a real barcode', async () => {
+    const make = () => {
+      const productUpdate = jest.fn();
+      const prisma = {
+        client: {
+          product: {
+            findMany: jest.fn().mockResolvedValue([
+              { id: 1, hasVariants: false, barcode: 'AMD00000100000', variants: [] },
+              { id: 2, hasVariants: false, barcode: '5901234123457', variants: [] },
+            ]),
+            update: productUpdate,
+          },
+          productVariant: { update: jest.fn() },
+        },
+      };
+      return { svc: new StockDocsService(prisma as never, {} as never), productUpdate };
+    };
+    const keep = make();
+    expect(await keep.svc.generateBarcodes([1, 2])).toEqual({ generated: 0 });
+    const swap = make();
+    expect(await swap.svc.generateBarcodes([1, 2], true)).toEqual({ generated: 1 });
+    expect(swap.productUpdate).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { barcode: '2000001000007' },
+    });
   });
 });

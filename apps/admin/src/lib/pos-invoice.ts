@@ -17,6 +17,8 @@ export interface PosInvoiceData {
   items: {
     name: string;
     variant?: string | null;
+    /** e.g. "500 g" — shown when the line has no variant label. */
+    weight?: string | null;
     qty: number;
     unitPrice: number;
     lineTotal: number;
@@ -24,6 +26,8 @@ export interface PosInvoiceData {
   subtotal: number;
   discount: number;
   vat: number;
+  /** VAT coupon: VAT charged then discounted back (0 = none). */
+  vatDiscount?: number;
   vatRatePercent: number;
   vatIncluded: boolean;
   total: number;
@@ -45,7 +49,7 @@ export const POS_INVOICE_TAGS: { tag: string; desc: string }[] = [
   { tag: "customerPhone", desc: "Customer phone" },
   {
     tag: "itemsRows",
-    desc: "Item lines as <tr> rows: name + variant, qty × price, line total",
+    desc: "Item lines as <tr> rows: name + variant (or weight), qty × price, line total",
   },
   { tag: "itemCount", desc: "Total quantity of items" },
   { tag: "subtotal", desc: "Subtotal before discount" },
@@ -57,6 +61,10 @@ export const POS_INVOICE_TAGS: { tag: string; desc: string }[] = [
   { tag: "vat", desc: "VAT amount" },
   { tag: "vatLabel", desc: '"VAT 15%" or "incl. VAT 15%"' },
   { tag: "vatRow", desc: "<tr> VAT row — only when VAT is charged" },
+  {
+    tag: "vatDiscountRow",
+    desc: '<tr> "VAT discount" row — only when the VAT coupon is on',
+  },
   { tag: "total", desc: "Amount paid" },
   { tag: "paidBy", desc: "Cash / Card / Mobile Banking" },
   { tag: "tendered", desc: "Cash received (cash sales)" },
@@ -66,7 +74,7 @@ export const POS_INVOICE_TAGS: { tag: string; desc: string }[] = [
     desc: "<tr> Cash received + change rows — only for cash with change",
   },
   { tag: "trxRef", desc: "Card slip / bKash TrxID" },
-  { tag: "refRow", desc: "<tr> \"Ref: …\" row — only when there is a reference" },
+  { tag: "refRow", desc: '<tr> "Ref: …" row — only when there is a reference' },
   { tag: "status", desc: "Empty, or RETURNED for a returned sale" },
 ];
 
@@ -105,7 +113,7 @@ export function renderPosInvoice(html: string, d: PosInvoiceData): string {
     itemsRows: d.items
       .map(
         (i) =>
-          `<tr><td colspan="2">${esc(i.name)}${i.variant ? ` <span class="variant">${esc(i.variant)}</span>` : ""}</td></tr>` +
+          `<tr><td colspan="2">${esc(i.name)}${i.variant ? ` <span class="variant">${esc(i.variant)}</span>` : i.weight ? ` <span class="variant">· ${esc(i.weight)}</span>` : ""}</td></tr>` +
           `<tr><td>${i.qty} × ${money(i.unitPrice)}</td><td style="text-align:right">${money(i.lineTotal)}</td></tr>`,
       )
       .join(""),
@@ -116,6 +124,10 @@ export function renderPosInvoice(html: string, d: PosInvoiceData): string {
     vat: money(d.vat),
     vatLabel: esc(vatLabel),
     vatRow: d.vat > 0 ? row(vatLabel, money(d.vat)) : "",
+    vatDiscountRow:
+      (d.vatDiscount ?? 0) > 0
+        ? row("VAT discount", `-${money(d.vatDiscount ?? 0)}`)
+        : "",
     total: money(d.total),
     paidBy: esc(d.paidBy),
     tendered: d.tendered != null ? money(d.tendered) : "",
@@ -124,7 +136,9 @@ export function renderPosInvoice(html: string, d: PosInvoiceData): string {
       ? row("Cash received", money(d.tendered)) + row("Change", money(d.change))
       : "",
     trxRef: esc(d.trxRef),
-    refRow: d.trxRef ? `<tr><td colspan="2">Ref: ${esc(d.trxRef)}</td></tr>` : "",
+    refRow: d.trxRef
+      ? `<tr><td colspan="2">Ref: ${esc(d.trxRef)}</td></tr>`
+      : "",
     status: d.status === "RETURNED" ? "RETURNED" : "",
   };
   return html.replace(/\{\{(\w+)\}\}/g, (m, tag: string) =>
@@ -159,6 +173,7 @@ export const BUILTIN_POS_INVOICE = `<style>
     <tr><td>Subtotal ({{itemCount}} items)</td><td style="text-align:right">{{subtotal}}</td></tr>
     {{discountRow}}
     {{vatRow}}
+    {{vatDiscountRow}}
     <tr class="total"><td>TOTAL (BDT)</td><td style="text-align:right">{{total}}</td></tr>
     <tr><td>Paid by {{paidBy}}</td><td style="text-align:right">{{total}}</td></tr>
     {{changeRow}}
@@ -188,8 +203,8 @@ export const SAMPLE_POS_INVOICE: PosInvoiceData = {
       lineTotal: 640,
     },
     {
-      name: "Amader Honey",
-      variant: "500 gram",
+      name: "Amader Ghee",
+      weight: "500 g",
       qty: 1,
       unitPrice: 699,
       lineTotal: 699,
@@ -206,3 +221,12 @@ export const SAMPLE_POS_INVOICE: PosInvoiceData = {
   change: 5,
   trxRef: null,
 };
+
+/** Receipt weight label from kilograms: 0.5 -> "500 g", 1.25 -> "1.25 kg". */
+export function formatWeightKg(
+  kg: string | number | null | undefined,
+): string | null {
+  const n = Number(kg);
+  if (kg == null || kg === "" || !Number.isFinite(n) || n <= 0) return null;
+  return n < 1 ? `${Math.round(n * 1000)} g` : `${Number(n.toFixed(3))} kg`;
+}

@@ -170,7 +170,8 @@ export class PricingService {
           s.productId === line.productId &&
           (s.variantId ?? null) === (line.variantId ?? null),
       );
-      if (own && byId.has(line.productId)) {
+      // A name-only row (price null) leaves the price alone.
+      if (own?.price && byId.has(line.productId)) {
         const unitPrice = own.salePrice ?? own.price;
         return { ...line, unitPrice, lineTotal: unitPrice.times(line.quantity) };
       }

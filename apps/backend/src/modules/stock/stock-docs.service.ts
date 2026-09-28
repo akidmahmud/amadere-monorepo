@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { StockService } from './stock.service';
-import { internalBarcode } from './barcode.util';
+import { internalBarcode, isLegacyInternalBarcode } from './barcode.util';
 import { assertStoreActive } from '../stores/store-scope';
 import type { AdjustStockDto, CreateStockInDto } from './dto/stock-docs.dto';
 
@@ -92,8 +92,17 @@ export class StockDocsService {
     );
   }
 
-  /** Gives every SKU without a barcode an internal Code 128 one; never overwrites. */
-  async generateBarcodes(productIds: number[]): Promise<{ generated: number }> {
+  /**
+   * Gives every SKU without a barcode an internal EAN-13. Never overwrites a
+   * real barcode; with replaceLegacy it also swaps our own old "AMD…" codes
+   * for the new format (labels printed with the old code must be reprinted).
+   */
+  async generateBarcodes(
+    productIds: number[],
+    replaceLegacy = false,
+  ): Promise<{ generated: number }> {
+    const needs = (code: string | null) =>
+      !code || (replaceLegacy && isLegacyInternalBarcode(code));
     let generated = 0;
     const products = await this.prisma.client.product.findMany({
       where: { id: { in: productIds } },
@@ -101,14 +110,14 @@ export class StockDocsService {
     });
     for (const p of products) {
       if (p.hasVariants) {
-        for (const v of p.variants.filter((x) => !x.barcode)) {
+        for (const v of p.variants.filter((x) => needs(x.barcode))) {
           await this.prisma.client.productVariant.update({
             where: { id: v.id },
             data: { barcode: internalBarcode(p.id, v.id) },
           });
           generated++;
         }
-      } else if (!p.barcode) {
+      } else if (needs(p.barcode)) {
         await this.prisma.client.product.update({
           where: { id: p.id },
           data: { barcode: internalBarcode(p.id, null) },

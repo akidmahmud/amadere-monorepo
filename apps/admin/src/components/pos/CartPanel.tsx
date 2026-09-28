@@ -27,19 +27,31 @@ type Tender = "CASH" | "CARD" | "MOBILE";
 interface Quote {
   subTotal: string;
   discount: string;
+  manualDiscount: string;
   vat: string;
+  vatDiscount: string;
   total: string;
   vatOnTop: boolean;
   vatRatePercent: number;
 }
 
-/** Server-priced totals (VAT exemptions, coupon) for the current cart. */
+type Manual = { value: string; type: "AMOUNT" | "PERCENT" };
+const manualToBody = (m: Manual) => {
+  const v = Number(m.value);
+  return m.value.trim() && v > 0
+    ? { manualDiscount: v, manualDiscountType: m.type }
+    : {};
+};
+
+/** Server-priced totals (VAT exemptions, coupon, manual discount) for the current cart. */
 function useQuote(
   storeId: number | undefined,
   cart: CartLine[],
   customerId: number | undefined,
   couponCode: string,
+  manual: Manual,
 ) {
+  const manualBody = manualToBody(manual);
   const items = cart.map((l) => ({
     productId: l.productId,
     variantId: l.variantId ?? undefined,
@@ -52,6 +64,7 @@ function useQuote(
       JSON.stringify(items),
       customerId,
       couponCode,
+      manualBody,
     ],
     queryFn: () =>
       proxyFetch<Quote>("/admin/pos/quote", {
@@ -61,6 +74,7 @@ function useQuote(
           items,
           customerId,
           couponCode: couponCode || undefined,
+          ...manualBody,
         }),
       }),
     enabled: cart.length > 0,
@@ -96,7 +110,8 @@ export function CartPanel({
   const [saleCount, setSaleCount] = useState(0);
   const [showCoupons, setShowCoupons] = useState(false);
   const sale = useCompleteSale();
-  const quote = useQuote(storeId, cart, customer?.id, coupon);
+  const [manual, setManual] = useState<Manual>({ value: "", type: "AMOUNT" });
+  const quote = useQuote(storeId, cart, customer?.id, coupon, manual);
   const qc = useQueryClient();
 
   // A product deleted (or moved to another store) while in the cart would
@@ -172,6 +187,7 @@ export function CartPanel({
             ? draft.name.trim()
             : undefined,
         couponCode: coupon || undefined,
+        ...manualToBody(manual),
         tender,
         tenderedAmount:
           tender === "CASH" && cashIn ? Number(cashIn) : undefined,
@@ -187,6 +203,7 @@ export function CartPanel({
           window.open(`/pos/receipt/${r.orderId}`, "_blank", "noopener");
           setCoupon("");
           setCouponInput("");
+          setManual({ value: "", type: "AMOUNT" });
           setCashIn("");
           setTrxRef("");
           setTender("CASH");
@@ -323,6 +340,37 @@ export function CartPanel({
             <Icon name="confirmation_number" size={20} />
           </button>
         </div>
+        <div className="flex items-center gap-2">
+          <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+            <Icon name="percent" size={20} className="text-[#1d7a46]" /> Manual
+            discount
+          </span>
+          <input
+            value={manual.value}
+            onChange={(e) => setManual({ ...manual, value: e.target.value })}
+            placeholder="0"
+            inputMode="decimal"
+            aria-label="Manual discount"
+            className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
+          />
+          <div className="flex h-10 shrink-0 overflow-hidden rounded-lg border border-gray-200 text-sm font-bold">
+            {(
+              [
+                ["AMOUNT", "৳"],
+                ["PERCENT", "%"],
+              ] as const
+            ).map(([t, label]) => (
+              <button
+                key={t}
+                onClick={() => setManual({ ...manual, type: t })}
+                aria-pressed={manual.type === t}
+                className={`w-10 ${manual.type === t ? "bg-[#1d7a46] text-white" : "bg-white text-gray-700"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {showCoupons && (
           <TillCouponList
             storeId={storeId}
@@ -344,7 +392,11 @@ export function CartPanel({
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-600">
-              Discount{coupon ? ` (${coupon})` : ""}
+              Discount
+              {[coupon, Number(q?.manualDiscount ?? 0) > 0 && "manual"]
+                .filter(Boolean)
+                .join(" + ")
+                .replace(/^(.+)$/, " ($1)")}
             </dt>
             <dd>{taka(q?.discount ?? 0)}</dd>
           </div>
@@ -356,6 +408,12 @@ export function CartPanel({
             </dt>
             <dd>{taka(q?.vat ?? 0)}</dd>
           </div>
+          {Number(q?.vatDiscount ?? 0) > 0 && (
+            <div className="flex justify-between text-[#1d7a46]">
+              <dt>VAT discount</dt>
+              <dd>−{taka(q!.vatDiscount)}</dd>
+            </div>
+          )}
         </dl>
 
         {cart.length > 0 && quote.error && (
@@ -479,8 +537,6 @@ function CustomerPicker({
   const exact = phone
     ? results.data?.find((c) => c.phone && normalizeBdPhone(c.phone) === phone)
     : undefined;
-  const isNew =
-    !!phone && !exact && results.isFetched && debounced === term.trim();
 
   const pick = (c: PosCustomer) => {
     onCustomer(c);
@@ -518,79 +574,80 @@ function CustomerPicker({
     );
   }
 
+  const field =
+    "h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]";
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    if (exact) pick(exact);
+    else if (phone) void createNow();
+  };
   return (
     <div className="space-y-2">
       <span className="flex items-center gap-2 text-sm font-semibold">
         <Icon name="person" size={20} className="text-[#1d7a46]" /> Customer{" "}
-        <span className="font-normal text-gray-500">
-          (Optional — type a phone number)
-        </span>
+        <span className="font-normal text-gray-500">(optional)</span>
       </span>
-      <div className="relative">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="relative">
+          <input
+            value={term}
+            onChange={(e) => {
+              setTerm(e.target.value);
+              setDraft(e.target.value, name);
+            }}
+            onKeyDown={onEnter}
+            placeholder="Phone"
+            lang="en"
+            inputMode="tel"
+            aria-label="Customer phone"
+            className={field}
+          />
+          {/* Existing matches float over the panel. */}
+          {!!results.data?.length && term.trim().length >= 2 && (
+            <div className="absolute inset-x-0 top-11 z-20 w-[200%] rounded-xl border border-gray-200 bg-white shadow-lg">
+              {results.data.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => pick(c)}
+                  className="flex w-full justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                >
+                  <span className="font-semibold">{c.name}</span>
+                  <span className="text-gray-500">{c.phone}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <input
-          value={term}
+          value={name}
           onChange={(e) => {
-            setTerm(e.target.value);
-            setDraft(e.target.value, name);
+            setName(e.target.value);
+            setDraft(term, e.target.value);
           }}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            if (exact) pick(exact);
-            else if (phone) void createNow();
-          }}
-          placeholder="Phone number or name..."
-          lang="en"
-          inputMode="tel"
-          aria-label="Customer phone or name"
-          className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
+          onKeyDown={onEnter}
+          placeholder="Name"
+          aria-label="Customer name"
+          className={field}
         />
-        {/* Existing matches float over the panel; the new-customer row below stays in the flow so nothing covers it. */}
-        {!!results.data?.length && term.trim().length >= 2 && (
-          <div className="absolute inset-x-0 top-11 z-20 rounded-xl border border-gray-200 bg-white shadow-lg">
-            {results.data.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => pick(c)}
-                className="flex w-full justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
-              >
-                <span className="font-semibold">{c.name}</span>
-                <span className="text-gray-500">{c.phone}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
       {phone && !exact && (
-        <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#1d7a46]">
-            <Icon name="person_add" size={18} /> New customer: {phone}
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setDraft(term, e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void createNow();
-              }}
-              placeholder="Name (optional)"
-              aria-label="New customer name"
-              className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-[#1d7a46]"
-            />
-            <button
-              onClick={() => void createNow()}
-              disabled={!phone}
-              className="h-10 shrink-0 rounded-lg bg-[#1d7a46] px-4 text-sm font-bold text-white disabled:opacity-50"
-            >
-              Add
-            </button>
-          </div>
-          <p className="text-[11px] text-emerald-900/70">
-            Or just complete the sale — the customer is saved with it.
-          </p>
+        <div className="flex items-center justify-between gap-2 text-xs text-emerald-900/80">
+          <span className="flex items-center gap-1">
+            <Icon name="person_add" size={16} className="text-[#1d7a46]" />
+            New customer {phone} — saved with the sale
+          </span>
+          <button
+            onClick={() => void createNow()}
+            className="shrink-0 rounded-md bg-[#1d7a46] px-2.5 py-1 font-bold text-white"
+          >
+            Add now
+          </button>
         </div>
+      )}
+      {!phone && name.trim() && (
+        <p className="text-xs text-amber-700">
+          Add a phone number to save this customer.
+        </p>
       )}
     </div>
   );

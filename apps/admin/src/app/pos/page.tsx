@@ -109,7 +109,7 @@ export default function PosPage() {
             value={categoryId}
             onChange={setCategoryId}
           />
-          <StatCards stats={stats} activeCustomer={customer ? 1 : 0} />
+          <StatCards stats={stats} />
           <ProductGrid
             items={catalog.data ?? []}
             loading={catalog.isLoading}
@@ -120,9 +120,6 @@ export default function PosPage() {
             onAdd={(p) => dispatch({ type: "add", product: p })}
             cartQty={Object.fromEntries(cart.map((l) => [l.key, l.qty]))}
             onQty={(key, qty) => dispatch({ type: "setQty", key, qty })}
-            today={
-              stats && { orders: stats.todayOrders, items: stats.todayItems }
-            }
           />
         </main>
         <CartPanel

@@ -67,11 +67,16 @@ function VatForm({ initial }: { initial: PosVat }) {
   const save = useSavePosVat();
   const [v, setV] = useState<PosVat>(initial);
   const rateOk = v.ratePercent >= 0 && v.ratePercent <= 100;
-  const example = v.enabled
-    ? v.pricesIncludeVat
-      ? `A ৳100 item: customer pays ৳100, of which VAT ৳${((100 * v.ratePercent) / (100 + v.ratePercent)).toFixed(2)}.`
-      : `A ৳100 item: customer pays ৳${(100 + v.ratePercent).toFixed(2)} (৳100 + ${v.ratePercent}% VAT).`
-    : "A ৳100 item: customer pays ৳100, no VAT.";
+  const example =
+    v.enabled && v.vatDiscount
+      ? v.pricesIncludeVat
+        ? `A ৳100 item: receipt shows VAT ৳${((100 * v.ratePercent) / (100 + v.ratePercent)).toFixed(2)} and a VAT discount of the same — customer pays ৳${(100 - (100 * v.ratePercent) / (100 + v.ratePercent)).toFixed(2)}.`
+        : `A ৳100 item: receipt shows + ${v.ratePercent}% VAT ৳${v.ratePercent.toFixed(2)}, then − VAT discount ৳${v.ratePercent.toFixed(2)} — customer pays ৳100.`
+      : v.enabled
+        ? v.pricesIncludeVat
+          ? `A ৳100 item: customer pays ৳100, of which VAT ৳${((100 * v.ratePercent) / (100 + v.ratePercent)).toFixed(2)}.`
+          : `A ৳100 item: customer pays ৳${(100 + v.ratePercent).toFixed(2)} (৳100 + ${v.ratePercent}% VAT).`
+        : "A ৳100 item: customer pays ৳100, no VAT.";
 
   return (
     <div className={`${card} max-w-xl space-y-5`}>
@@ -122,6 +127,23 @@ function VatForm({ initial }: { initial: PosVat }) {
           disabled={!v.enabled}
           checked={v.pricesIncludeVat}
           onChange={(e) => setV({ ...v, pricesIncludeVat: e.target.checked })}
+        />
+      </label>
+      <label className="flex items-center justify-between gap-4">
+        <span>
+          <span className="font-semibold">VAT coupon</span>
+          <span className="block text-xs text-gray-500">
+            The receipt shows the VAT, then takes it off as &ldquo;VAT
+            discount&rdquo; — the customer pays the price without VAT. The VAT
+            is still recorded as owed; it comes out of the store&apos;s revenue.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          className="h-5 w-5"
+          disabled={!v.enabled}
+          checked={!!v.vatDiscount}
+          onChange={(e) => setV({ ...v, vatDiscount: e.target.checked })}
         />
       </label>
       <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900">

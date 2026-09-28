@@ -27,10 +27,12 @@ export default function LabelsPage() {
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);
   const generate = useStockPost<
-    { productIds: number[] },
+    { productIds: number[]; replaceLegacy?: boolean },
     { generated: number }
   >("/admin/stock/barcodes/generate");
   const missing = rows.filter((r) => !r.p.barcode);
+  // Our own pre-2026-09-28 codes: long Code 128, borderline on a 40mm label.
+  const legacy = rows.filter((r) => /^AMD\d{11}$/.test(r.p.barcode ?? ""));
 
   const refresh = async () => {
     // Re-read each queued SKU so freshly generated barcodes appear.
@@ -145,6 +147,39 @@ export default function LabelsPage() {
               {missing.length > 1 ? "s" : ""}
             </button>
           )}
+          {legacy.length > 0 && (
+            <button
+              className="h-10 rounded-lg border border-amber-600 px-4 text-sm font-bold text-amber-700"
+              disabled={generate.isPending}
+              title="Old AMD… codes are long and can be hard to scan on small labels"
+              onClick={() =>
+                confirm(
+                  `Give ${legacy.length} product(s) a new, easier-to-scan barcode?
+
+Labels already printed with the old AMD… code will stop scanning — reprint them after this.`,
+                ) &&
+                generate.mutate(
+                  {
+                    productIds: [...new Set(legacy.map((r) => r.p.productId))],
+                    replaceLegacy: true,
+                  },
+                  {
+                    onSuccess: async (r) => {
+                      toast.push(
+                        `${r.generated} barcode(s) switched to the new format`,
+                        "success",
+                      );
+                      await refresh();
+                    },
+                    onError: (e) => toast.push(e.message),
+                  },
+                )
+              }
+            >
+              Switch {legacy.length} old barcode
+              {legacy.length > 1 ? "s" : ""} to the new format
+            </button>
+          )}
           <button
             className={primaryBtn}
             disabled={printable.length === 0}
@@ -193,16 +228,33 @@ export default function LabelsPage() {
 function barcodeSvg(code: string | null | undefined): string | null {
   if (!code) return null;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const ean = /^\d{13}$/.test(code);
   try {
-    JsBarcode(svg, code, {
-      format: /^\d{13}$/.test(code) ? "EAN13" : "CODE128",
-      height: 40,
-      width: 1.4,
-      margin: 0,
-      fontSize: 11,
-      textMargin: 0,
-      displayValue: true,
-    });
+    JsBarcode(
+      svg,
+      code,
+      ean
+        ? // 1 unit per module and "flat" (no guard-bar overhang): exactly 95
+          // modules wide, so it can be printed at a whole number of dots.
+          {
+            format: "EAN13",
+            flat: true,
+            width: 1,
+            height: 38,
+            margin: 0,
+            fontSize: 8,
+            textMargin: 1,
+          }
+        : {
+            format: "CODE128",
+            height: 40,
+            width: 1.4,
+            margin: 0,
+            fontSize: 11,
+            textMargin: 0,
+            displayValue: true,
+          },
+    );
   } catch {
     return null;
   }
@@ -214,5 +266,9 @@ function barcodeSvg(code: string | null | undefined): string | null {
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   svg.removeAttribute("width");
   svg.removeAttribute("height");
+  // EAN-13 at 0.375mm per module = exactly 3 whole dots on a 203 dpi label
+  // printer (35.6mm wide on a 40mm label). Tested: still decodes after heavy
+  // blur, where 2 dots/module (0.25mm) failed.
+  if (ean) svg.setAttribute("style", "width:35.625mm;height:auto");
   return svg.outerHTML;
 }

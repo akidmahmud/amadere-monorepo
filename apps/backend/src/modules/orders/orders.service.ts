@@ -103,7 +103,8 @@ export class OrdersService {
     // filters on it so manual entry does not ring like a new sale.
     const where = {
       ...(status ? { status: status as never } : {}),
-      ...(channel ? { channel: channel as never } : {}),
+      // Till sales belong to the POS Order Manager unless asked for by name.
+      channel: channel ? (channel as never) : { not: 'POS' as const },
     };
     const [items, total] = await Promise.all([
       this.prisma.client.order.findMany({

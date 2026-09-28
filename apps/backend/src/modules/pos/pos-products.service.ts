@@ -34,6 +34,7 @@ export class PosProductsService {
         salePrice: true,
         costPerItem: true,
         hasVariants: true,
+        shippableWeight: true,
         translations: { select: { locale: true, name: true } },
         categories: { select: { categoryId: true } },
         media: {
@@ -43,8 +44,9 @@ export class PosProductsService {
         },
       },
     });
-    return rows.map(({ translations, categories, media, ...p }) => ({
+    return rows.map(({ translations, categories, media, shippableWeight, ...p }) => ({
       ...p,
+      weightKg: shippableWeight?.toString() ?? null,
       name:
         translations.find((t) => t.locale === 'EN')?.name ??
         translations[0]?.name ??
@@ -95,10 +97,21 @@ export class PosProductsService {
     return this.products.update(id, this.fields(dto), actor);
   }
 
+  /** Copy of one of this store's own products (name "… (copy)", no stock). */
+  async duplicate(storeId: number, id: number) {
+    const p = await this.prisma.client.product.findUniqueOrThrow({
+      where: { id },
+      select: { storeId: true },
+    });
+    if (p.storeId !== storeId)
+      throw new ForbiddenException('This product does not belong to this store');
+    return this.products.duplicate(id);
+  }
+
   /**
-   * This store's own price for a product/variant sold here. price null =
-   * back to the product's normal price. Other stores and the website are
-   * never affected.
+   * This store's own price and/or name for a product/variant sold here.
+   * Blank name / null price = the normal one; both blank removes the row.
+   * Other stores and the website are never affected.
    */
   async setPrice(storeId: number, dto: StorePriceDto, adminId: number) {
     const c = this.prisma.client;
@@ -119,20 +132,21 @@ export class PosProductsService {
     if (variantId !== null && !p.variants.some((v) => v.id === variantId))
       throw new BadRequestException('Variant does not belong to this product');
     const where = { storeId, productId: p.id, variantId };
+    const name = dto.name?.trim() || null;
+    const price = dto.price ?? null;
+    const salePrice = dto.salePrice ?? null;
 
-    if (dto.price == null) {
+    if (salePrice !== null && price === null)
+      throw new BadRequestException('Set a price before an offer price');
+    if (name === null && price === null) {
       await c.storePrice.deleteMany({ where });
       return { reset: true };
     }
-    if (dto.salePrice != null && dto.salePrice > dto.price)
+    if (salePrice !== null && price !== null && salePrice > price)
       throw new BadRequestException(
         'Offer price must not be higher than the price',
       );
-    const data = {
-      price: dto.price,
-      salePrice: dto.salePrice ?? null,
-      updatedById: adminId,
-    };
+    const data = { price, salePrice, name, updatedById: adminId };
     // ponytail: find-then-write; the unique expression index turns a rare
     // double-submit race into an error instead of a duplicate row.
     const existing = await c.storePrice.findFirst({ where });
@@ -151,6 +165,7 @@ export class PosProductsService {
       salePrice: (dto.salePrice ?? null) as number,
       costPerItem: (dto.costPerItem ?? null) as number,
       categoryIds: dto.categoryId ? [dto.categoryId] : [],
+      shippableWeight: (dto.weightKg ?? null) as number,
       mediaIds:
         dto.mediaId === undefined ? undefined : dto.mediaId ? [dto.mediaId] : [],
     };

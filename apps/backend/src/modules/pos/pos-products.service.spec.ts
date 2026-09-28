@@ -75,13 +75,13 @@ describe('PosProductsService.setPrice', () => {
     const a = mk(simple);
     await a.svc.setPrice(4, { productId: 1, price: 250, salePrice: 240 }, 7);
     expect(a.storePrice.create).toHaveBeenCalledWith({
-      data: { storeId: 4, productId: 1, variantId: null, price: 250, salePrice: 240, updatedById: 7 },
+      data: { storeId: 4, productId: 1, variantId: null, price: 250, salePrice: 240, name: null, updatedById: 7 },
     });
     const b = mk(simple, { id: 9 });
     await b.svc.setPrice(4, { productId: 1, price: 260 }, 7);
     expect(b.storePrice.update).toHaveBeenCalledWith({
       where: { id: 9 },
-      data: { price: 260, salePrice: null, updatedById: 7 },
+      data: { price: 260, salePrice: null, name: null, updatedById: 7 },
     });
   });
 
@@ -104,5 +104,65 @@ describe('PosProductsService.setPrice', () => {
       mk({ id: 2, hasVariants: true, variants: [{ id: 20 }] }).svc.setPrice(4, { productId: 2, variantId: 99, price: 1 }, 7),
     ).rejects.toThrow(/does not belong/);
     await expect(mk(null).svc.setPrice(4, { productId: 1, price: 1 }, 7)).rejects.toThrow(/not sold/);
+  });
+});
+
+describe('PosProductsService — weight & duplicate', () => {
+  it('saves the weight (kg) as the product weight, and null clears it', async () => {
+    const products = { create: jest.fn(), update: jest.fn(), duplicate: jest.fn() };
+    const svc = new PosProductsService(
+      { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId: 4, hasVariants: false }) } } } as never,
+      products as never,
+    );
+    await svc.create(4, { name: 'Ghee', price: 900, weightKg: 0.5 }, { storeId: 4, can: () => true });
+    expect(products.create.mock.calls[0][0].shippableWeight).toBe(0.5);
+    await svc.update(4, 1, { name: 'Ghee', price: 900, weightKg: null }, { storeId: 4, can: () => true });
+    expect(products.update.mock.calls[0][1].shippableWeight).toBeNull();
+  });
+
+  it("duplicates only this store's own products", async () => {
+    const products = { duplicate: jest.fn() };
+    const mk = (storeId: number | null) =>
+      new PosProductsService(
+        { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
+        products as never,
+      );
+    await mk(4).duplicate(4, 7);
+    expect(products.duplicate).toHaveBeenCalledWith(7);
+    await expect(mk(9).duplicate(4, 7)).rejects.toThrow(/does not belong/);
+    await expect(mk(null).duplicate(4, 7)).rejects.toThrow(/does not belong/);
+  });
+});
+
+describe('PosProductsService.setPrice — store name', () => {
+  const mk = () => {
+    const storePrice = {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    };
+    const prisma = {
+      client: {
+        product: { findFirst: jest.fn().mockResolvedValue({ id: 1, hasVariants: false, variants: [] }) },
+        storePrice,
+      },
+    };
+    return { svc: new PosProductsService(prisma as never, {} as never), storePrice };
+  };
+
+  it('a name-only change keeps the normal price (price stays null)', async () => {
+    const { svc, storePrice } = mk();
+    await svc.setPrice(4, { productId: 1, name: '  Uttara Special Ghee ' }, 7);
+    expect(storePrice.create.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ name: 'Uttara Special Ghee', price: null, salePrice: null }),
+    );
+  });
+
+  it('blank name and no price removes the override; an offer needs a price', async () => {
+    const a = mk();
+    await a.svc.setPrice(4, { productId: 1, name: '  ', price: null }, 7);
+    expect(a.storePrice.deleteMany).toHaveBeenCalled();
+    await expect(mk().svc.setPrice(4, { productId: 1, salePrice: 50 }, 7)).rejects.toThrow(/price before an offer/);
   });
 });

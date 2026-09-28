@@ -22,6 +22,8 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@puckeditor/core": "^0.23.0",
     "@tanstack/react-query": "^5.101.2",
+    "@zxing/browser": "0.2.1",
+    "@zxing/library": "0.23.0",
     "chart.js": "^4.5.1",
     "ckeditor5": "^44.3.0",
     "diff": "^9.0.0",

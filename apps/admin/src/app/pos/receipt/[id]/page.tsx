@@ -9,6 +9,7 @@ import {
 } from "@/hooks/usePos";
 import {
   BUILTIN_POS_INVOICE,
+  formatWeightKg,
   renderPosInvoice,
   type PosInvoiceData,
 } from "@/lib/pos-invoice";
@@ -53,13 +54,16 @@ function toInvoiceData(
     items: s.items.map((i) => ({
       name: i.productNameSnapshot,
       variant: i.variantLabel,
+      weight: formatWeightKg(i.weightKg),
       qty: i.quantity,
       unitPrice: Number(i.unitPrice),
       lineTotal: Number(i.unitPrice) * i.quantity,
     })),
     subtotal: Number(s.subTotal),
-    discount: Number(s.discountAmount),
+    // discountAmount includes the VAT coupon; it prints on its own line.
+    discount: Number(s.discountAmount) - Number(s.posVatDiscount ?? 0),
     vat: Number(s.taxAmount),
+    vatDiscount: Number(s.posVatDiscount ?? 0),
     // ponytail: rate/mode come from today's POS Settings, not stored per sale —
     // a reprint after a VAT-setting change shows the new label (amounts are the stored ones).
     vatRatePercent: vat?.enabled ? vat.ratePercent : 0,

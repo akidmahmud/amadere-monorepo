@@ -22,6 +22,7 @@ describe('PosSettingsService VAT', () => {
       enabled: true,
       ratePercent: 15,
       pricesIncludeVat: false,
+      vatDiscount: false,
     });
   });
 
@@ -30,12 +31,18 @@ describe('PosSettingsService VAT', () => {
       enabled: true,
       ratePercent: 5,
       pricesIncludeVat: false,
+      vatDiscount: false,
     });
   });
 
   it('saves under pos.vat', async () => {
     const { s, upsert } = svc(undefined);
-    const v = { enabled: false, ratePercent: 10, pricesIncludeVat: true };
+    const v = {
+      enabled: false,
+      ratePercent: 10,
+      pricesIncludeVat: true,
+      vatDiscount: true,
+    };
     expect(await s.setVat(v)).toEqual(v);
     expect(upsert).toHaveBeenCalledWith({
       where: { key: 'pos.vat' },

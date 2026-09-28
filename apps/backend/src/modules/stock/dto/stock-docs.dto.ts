@@ -4,6 +4,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsIn,
+  IsBoolean,
   IsInt,
   IsNumber,
   IsOptional,
@@ -69,4 +70,9 @@ export class GenerateBarcodesDto {
   @ArrayNotEmpty()
   @IsInt({ each: true })
   productIds!: number[];
+
+  /** Also replace old-format "AMD…" internal codes with the new EAN-13. */
+  @IsOptional()
+  @IsBoolean()
+  replaceLegacy?: boolean;
 }

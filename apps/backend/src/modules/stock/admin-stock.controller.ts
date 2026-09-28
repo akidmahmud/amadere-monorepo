@@ -91,7 +91,7 @@ export class AdminStockController {
   @Post('barcodes/generate')
   @RequirePermission('pos.labels')
   generateBarcodes(@Body() dto: GenerateBarcodesDto) {
-    return this.docs.generateBarcodes(dto.productIds);
+    return this.docs.generateBarcodes(dto.productIds, dto.replaceLegacy);
   }
 
   @Get('transfers')

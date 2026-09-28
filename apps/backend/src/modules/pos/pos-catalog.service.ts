@@ -23,6 +23,9 @@ export interface PosProduct {
   storeOnly: boolean;
   /** true = price/salePrice are this store's own; normal* are the product's. */
   storePrice: boolean;
+  /** This store's own name is in `name`; normalName is the catalogue one. */
+  storeName: boolean;
+  normalName: string;
   normalPrice: string;
   normalSalePrice: string | null;
 }
@@ -194,10 +197,14 @@ export class PosCatalogService {
       const normalPrice = (v?.price ?? p.price ?? new Prisma.Decimal(0)).toFixed(2);
       const normalSalePrice = (v ? v.salePrice : p.salePrice)?.toFixed(2) ?? null;
       const o = ownBy.get(stockKey(p.id, v?.id ?? null));
+      const normalName = p.translations[0]?.name ?? p.slug;
+      const ownPrice = o?.price ? o : undefined;
       return {
       productId: p.id,
       variantId: v?.id ?? null,
-      name: p.translations[0]?.name ?? p.slug,
+      name: o?.name ?? normalName,
+      storeName: !!o?.name,
+      normalName,
       variantLabel: v
         ? v.attributeValues
             .map((a) => a.attributeValue.translations[0]?.value)
@@ -206,9 +213,11 @@ export class PosCatalogService {
         : null,
       sku: v?.sku ?? p.sku,
       barcode: v ? v.barcode : p.barcode,
-      price: o ? o.price.toFixed(2) : normalPrice,
-      salePrice: o ? (o.salePrice?.toFixed(2) ?? null) : normalSalePrice,
-      storePrice: !!o,
+      price: ownPrice ? ownPrice.price!.toFixed(2) : normalPrice,
+      salePrice: ownPrice
+        ? (ownPrice.salePrice?.toFixed(2) ?? null)
+        : normalSalePrice,
+      storePrice: !!ownPrice,
       normalPrice,
       normalSalePrice,
       imageUrl: p.media[0]?.media.cardUrl ?? p.media[0]?.media.url ?? null,

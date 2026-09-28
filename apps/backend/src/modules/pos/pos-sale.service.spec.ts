@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@amader/db';
-import { PosSaleService, posTotals } from './pos-sale.service';
+import {
+  manualDiscountAmount,
+  PosSaleService,
+  posTotals,
+} from './pos-sale.service';
 
 const D = (n: number | string) => new Prisma.Decimal(n);
 const VAT15 = { enabled: true, ratePercent: 15, pricesIncludeVat: false };
@@ -59,6 +63,7 @@ describe('PosSaleService.create', () => {
     };
     const prisma = {
       client: {
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
         product: {
           findMany: jest.fn().mockResolvedValue([
             {
@@ -282,6 +287,7 @@ describe('PosSaleService.quote', () => {
   it('returns the same totals create() charges, with the VAT rate used', async () => {
     const prisma = {
       client: {
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
         product: {
           findMany: jest.fn().mockResolvedValue([
             {
@@ -317,7 +323,9 @@ describe('PosSaleService.quote', () => {
     ).toEqual({
       subTotal: '80.00',
       discount: '0.00',
+      manualDiscount: '0.00',
       vat: '12.00',
+      vatDiscount: '0.00',
       total: '92.00',
       vatOnTop: true,
       vatRatePercent: 15,
@@ -326,9 +334,14 @@ describe('PosSaleService.quote', () => {
 });
 
 describe('PosSaleService VAT follows POS Settings', () => {
-  function quoteWith(vat: object, productVat: number | null = null) {
+  function quoteWith(
+    vat: object,
+    productVat: number | null = null,
+    extra: object = {},
+  ) {
     const prisma = {
       client: {
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
         product: {
           findMany: jest.fn().mockResolvedValue([
             {
@@ -359,8 +372,33 @@ describe('PosSaleService VAT follows POS Settings', () => {
       {} as never,
       {} as never,
     );
-    return svc.quote(1, { items: [{ productId: 10, quantity: 1 }] });
+    return svc.quote(1, { items: [{ productId: 10, quantity: 1 }], ...extra });
   }
+
+  it('manual 10% comes off before VAT (৳100 -> 90 + 13.50 VAT)', async () => {
+    expect(
+      await quoteWith(VAT15, null, { manualDiscount: 10, manualDiscountType: 'PERCENT' }),
+    ).toEqual(
+      expect.objectContaining({
+        discount: '10.00',
+        manualDiscount: '10.00',
+        vat: '13.50',
+        total: '103.50',
+      }),
+    );
+  });
+
+  it('VAT coupon: VAT still shown (and owed), then discounted — customer pays the shelf price', async () => {
+    expect(await quoteWith({ ...VAT15, vatDiscount: true })).toEqual(
+      expect.objectContaining({ vat: '15.00', vatDiscount: '15.00', total: '100.00' }),
+    );
+    // Prices include VAT: 100 contains 13.04 VAT; the coupon takes it off.
+    expect(
+      await quoteWith({ ...VAT15, pricesIncludeVat: true, vatDiscount: true }),
+    ).toEqual(
+      expect.objectContaining({ vat: '13.04', vatDiscount: '13.04', total: '86.96' }),
+    );
+  });
 
   it('VAT off: no VAT, total = shelf price', async () => {
     expect(
@@ -538,6 +576,7 @@ describe('PosSaleService — till context and quick customer', () => {
     };
     const prisma = {
       client: {
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
         product: {
           findMany: jest.fn().mockResolvedValue([
             {
@@ -636,5 +675,15 @@ describe('PosSaleService — till context and quick customer', () => {
     expect(tx.order.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ customerId: 8 }),
     });
+  });
+});
+
+describe('manual discount and VAT coupon', () => {
+  it('manualDiscountAmount: ৳ or %, never more than what is left', () => {
+    expect(manualDiscountAmount(D(200), 50, 'AMOUNT').toString()).toBe('50');
+    expect(manualDiscountAmount(D(200), 10, 'PERCENT').toString()).toBe('20');
+    expect(manualDiscountAmount(D(200), 500, 'AMOUNT').toString()).toBe('200');
+    expect(manualDiscountAmount(D(200), 150, 'PERCENT').toString()).toBe('200');
+    expect(manualDiscountAmount(D(200), undefined, undefined).toString()).toBe('0');
   });
 });

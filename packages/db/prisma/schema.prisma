@@ -1578,6 +1578,11 @@ model Order {
   returnedAt       DateTime?               @map("returned_at")
   // POS cash sales: what the customer handed over (change = this - total).
   tenderedAmount   Decimal?                @map("tendered_amount") @db.Decimal(10, 2)
+  /// POS: the cashier's typed discount (৳), part of discountAmount.
+  posManualDiscount Decimal @default(0) @map("pos_manual_discount") @db.Decimal(10, 2)
+  /// POS "VAT coupon": VAT charged then discounted back (the store bears it);
+  /// part of discountAmount, while taxAmount still records the VAT owed.
+  posVatDiscount    Decimal @default(0) @map("pos_vat_discount") @db.Decimal(10, 2)
   store            Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
   items            OrderItem[]
   addresses        OrderAddress[]
@@ -3683,8 +3688,8 @@ model Store {
   @@map("stores")
 }
 
-// A store's own price for a catalogue product/variant (POS only; the website
-// and other stores keep the product's price). No row = the normal price.
+// A store's own price and/or name for a catalogue product/variant (POS only;
+// the website and other stores keep the product's). No row = the normal ones.
 // Uniqueness is (store_id, product_id, COALESCE(variant_id, 0)) -- an
 // expression index (store_prices_store_product_variant_key) that lives only in
 // migrations/20260928090000_pos_store_prices; never let a generated migration
@@ -3694,8 +3699,11 @@ model StorePrice {
   storeId     Int      @map("store_id")
   productId   Int      @map("product_id")
   variantId   Int?     @map("variant_id")
-  price       Decimal  @db.Decimal(10, 2)
+  /// null = the product's normal price.
+  price       Decimal? @db.Decimal(10, 2)
   salePrice   Decimal? @map("sale_price") @db.Decimal(10, 2)
+  /// This store's own name for the product (receipt + till); null = normal name.
+  name        String?
   updatedById Int?     @map("updated_by_id")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

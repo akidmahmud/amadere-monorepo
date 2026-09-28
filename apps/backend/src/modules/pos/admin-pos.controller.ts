@@ -28,6 +28,8 @@ import { StoreQueryDto } from '../stores/dto/store.dto';
 import { requireOneStore } from '../stores/store-scope';
 import { PosCatalogService } from './pos-catalog.service';
 import {
+  PosCustomersQueryDto,
+  PosOrdersQueryDto,
   PosCatalogQueryDto,
   PosDateQueryDto,
   PosRangeQueryDto,
@@ -46,7 +48,13 @@ import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
 import { PosProductsService } from './pos-products.service';
-import { PosProductDto, StorePriceDto } from './dto/pos-product.dto';
+import {
+  DuplicateStoreDto,
+  PosProductDto,
+  StorePriceDto,
+} from './dto/pos-product.dto';
+import { PosStoresService } from './pos-stores.service';
+import { PosManagerService } from './pos-manager.service';
 import { SavePosInvoiceDto } from './dto/pos-invoice.dto';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PosSaleService } from './pos-sale.service';
@@ -75,6 +83,8 @@ export class AdminPosController {
     private readonly invoices: PosInvoiceService,
     private readonly coupons: PosCouponsService,
     private readonly products: PosProductsService,
+    private readonly posStores: PosStoresService,
+    private readonly manager: PosManagerService,
   ) {}
 
   private async oneStore(a: Admin, can: PermissionCheck, requested?: number) {
@@ -224,6 +234,30 @@ export class AdminPosController {
     });
   }
 
+  // New store set up like this one (settings, accounts, receipt, own
+  // names/prices, own products — never stock, staff or sales).
+  @Post('stores/:id/duplicate')
+  @RequirePermission('stores.manage')
+  @UseInterceptors(AuditLogInterceptor)
+  duplicateStore(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DuplicateStoreDto,
+  ) {
+    return this.posStores.duplicate(id, dto.name.trim(), dto.code.trim());
+  }
+
+  @Post('products/:id/duplicate')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async duplicateProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.duplicate(await this.oneStore(a, can, q.storeId), id);
+  }
+
   // A store's own price for a product it sells (website price unaffected).
   @Put('prices')
   @RequirePermission('pos.prices')
@@ -235,6 +269,31 @@ export class AdminPosController {
     @Body() dto: StorePriceDto,
   ) {
     return this.products.setPrice(await this.oneStore(a, can, q.storeId), dto, a.id);
+  }
+
+  // POS Order Manager: till sales of one store, or all (pos.all_stores).
+  @Get('orders')
+  @RequirePermission('pos.orders')
+  async orders(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosOrdersQueryDto,
+  ) {
+    return this.manager.orders(await this.stores.scope(a.id, can, q.storeId), q);
+  }
+
+  // POS Customer Manager: who bought at the stores.
+  @Get('customers/summary')
+  @RequirePermission('pos.customers')
+  async customerList(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosCustomersQueryDto,
+  ) {
+    return this.manager.customers(
+      await this.stores.scope(a.id, can, q.storeId),
+      q,
+    );
   }
 
   @Get('catalog')

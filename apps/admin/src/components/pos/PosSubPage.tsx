@@ -13,10 +13,16 @@ export function PosSubPage({
   title,
   permission,
   children,
+  wide = false,
+  hideStorePicker = false,
 }: {
   title: string;
   permission: string;
   children: React.ReactNode;
+  /** Full-width content (tables with many columns). */
+  wide?: boolean;
+  /** The page has its own store filter (e.g. "All stores"). */
+  hideStorePicker?: boolean;
 }) {
   const { can, allStores, stores, storeId, setStoreId, store } =
     usePosContext();
@@ -30,8 +36,10 @@ export function PosSubPage({
           <Icon name="arrow_back" size={20} /> POS
         </Link>
         <h1 className="text-xl font-extrabold">{title}</h1>
-        <span className="text-sm text-gray-500">{store?.name}</span>
-        {allStores && (
+        {!hideStorePicker && (
+          <span className="text-sm text-gray-500">{store?.name}</span>
+        )}
+        {allStores && !hideStorePicker && (
           <select
             value={storeId ?? ""}
             onChange={(e) => setStoreId(Number(e.target.value))}
@@ -46,7 +54,7 @@ export function PosSubPage({
           </select>
         )}
       </header>
-      <main className="mx-auto max-w-5xl p-5">
+      <main className={`mx-auto p-5 ${wide ? "max-w-7xl" : "max-w-5xl"}`}>
         {can(permission) ? (
           children
         ) : (

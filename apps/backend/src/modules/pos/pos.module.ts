@@ -1,3 +1,5 @@
+import { PosManagerService } from './pos-manager.service';
+import { PosStoresService } from './pos-stores.service';
 import { ProductsModule } from '../products/products.module';
 import { PosProductsService } from './pos-products.service';
 import { Module } from '@nestjs/common';
@@ -32,6 +34,8 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     PosInvoiceService,
     PosCouponsService,
     PosProductsService,
+    PosStoresService,
+    PosManagerService,
   ],
 })
 export class PosModule {}

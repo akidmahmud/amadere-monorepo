@@ -6,6 +6,12 @@ export interface PosVat {
   ratePercent: number;
   /** true = shelf prices already contain VAT (it is extracted, not added). */
   pricesIncludeVat: boolean;
+  /**
+   * "VAT coupon": VAT is charged on the receipt, then discounted back, so the
+   * customer pays the pre-VAT price. The VAT is still recorded as owed (the
+   * store bears it).
+   */
+  vatDiscount: boolean;
 }
 
 /** Matches the POS behaviour before this setting existed. */
@@ -13,6 +19,7 @@ export const POS_VAT_DEFAULT: PosVat = {
   enabled: true,
   ratePercent: 15,
   pricesIncludeVat: false,
+  vatDiscount: false,
 };
 
 const VAT_KEY = 'pos.vat';
@@ -35,11 +42,14 @@ export class PosSettingsService {
     };
   }
 
-  async setVat(v: PosVat): Promise<PosVat> {
+  async setVat(
+    v: Omit<PosVat, 'vatDiscount'> & { vatDiscount?: boolean },
+  ): Promise<PosVat> {
     const value = {
       enabled: v.enabled,
       ratePercent: v.ratePercent,
       pricesIncludeVat: v.pricesIncludeVat,
+      vatDiscount: v.vatDiscount ?? false,
     };
     await this.prisma.client.setting.upsert({
       where: { key: VAT_KEY },

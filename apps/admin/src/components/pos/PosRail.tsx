@@ -10,6 +10,18 @@ import { usePosContext } from "./PosContext";
 export const POS_MENU = [
   { href: "/pos", label: "POS", icon: "grid_view", perm: "pos.access" },
   {
+    href: "/pos/orders",
+    label: "Orders",
+    icon: "receipt_long",
+    perm: "pos.orders",
+  },
+  {
+    href: "/pos/customers",
+    label: "Customers",
+    icon: "group",
+    perm: "pos.customers",
+  },
+  {
     href: "/pos/products",
     label: "Products",
     icon: "category",

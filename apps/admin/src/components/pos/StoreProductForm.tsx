@@ -18,6 +18,8 @@ export type StoreProductFields = {
   sku: string;
   barcode: string;
   categoryId: string;
+  /** Grams, as typed; stored as kg. Printed on the receipt. */
+  weightG: string;
 };
 
 export const EMPTY_STORE_PRODUCT: StoreProductFields = {
@@ -28,6 +30,7 @@ export const EMPTY_STORE_PRODUCT: StoreProductFields = {
   sku: "",
   barcode: "",
   categoryId: "",
+  weightG: "",
 };
 
 const num = (s: string) => (s.trim() === "" ? null : Number(s));
@@ -80,6 +83,7 @@ export function StoreProductForm({
             costPerItem: num(f.costPerItem),
             sku: f.sku,
             barcode: f.barcode,
+            weightKg: f.weightG.trim() ? Number(f.weightG) / 1000 : null,
             categoryId: f.categoryId ? Number(f.categoryId) : null,
             // Create: only when a photo was added. Edit: always (null removes).
             mediaId: id === null ? image?.mediaId : (image?.mediaId ?? null),
@@ -120,7 +124,11 @@ export function StoreProductForm({
   });
 
   const valid =
-    f.name.trim() !== "" && f.price !== "" && Number(f.price) >= 0 && openingOk;
+    (f.weightG.trim() === "" || Number(f.weightG) > 0) &&
+    f.name.trim() !== "" &&
+    f.price !== "" &&
+    Number(f.price) >= 0 &&
+    openingOk;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -229,6 +237,18 @@ export function StoreProductForm({
           className={input}
           value={f.barcode}
           onChange={(e) => set("barcode", e.target.value)}
+        />
+      </label>
+      <label className={label}>
+        <span className="text-xs font-bold">
+          Weight in grams (optional, shown on the receipt)
+        </span>
+        <input
+          className={input}
+          inputMode="decimal"
+          placeholder="e.g. 500"
+          value={f.weightG}
+          onChange={(e) => set("weightG", e.target.value)}
         />
       </label>
       {withStock && (

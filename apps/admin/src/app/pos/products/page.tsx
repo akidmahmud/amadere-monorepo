@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { taka } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
@@ -25,11 +26,29 @@ type Row = {
   categoryId: number | null;
   mediaId: number | null;
   imageUrl: string | null;
+  weightKg: string | null;
 };
 
 /** This store's own products — never on amadere.com, no website form needed. */
 export default function PosProductsPage() {
   const { storeId, store } = usePosContext();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const dup = useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch(`/admin/pos/products/${id}/duplicate?storeId=${storeId}`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-products"] });
+      qc.invalidateQueries({ queryKey: ["pos-catalog"] });
+      toast.push(
+        "Duplicated — edit the copy's name, SKU and barcode",
+        "success",
+      );
+    },
+    onError: (e) => toast.push(e.message),
+  });
   const [editing, setEditing] = useState<{
     id: number | null;
     f: StoreProductFields;
@@ -153,6 +172,9 @@ export default function PosProductsPage() {
                               categoryId: r.categoryId
                                 ? String(r.categoryId)
                                 : "",
+                              weightG: r.weightKg
+                                ? String(Math.round(Number(r.weightKg) * 1000))
+                                : "",
                             },
                           })
                         }
@@ -160,6 +182,13 @@ export default function PosProductsPage() {
                         Edit
                       </button>
                     )}
+                    <button
+                      className="ml-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      disabled={dup.isPending}
+                      onClick={() => dup.mutate(r.id)}
+                    >
+                      Duplicate
+                    </button>
                   </td>
                 </tr>
               ))}

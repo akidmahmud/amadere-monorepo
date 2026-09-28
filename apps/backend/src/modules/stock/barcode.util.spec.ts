@@ -22,9 +22,18 @@ describe('EAN-13', () => {
 
 describe('internalBarcode', () => {
   it('is unique per SKU and stable', () => {
-    expect(internalBarcode(12, null)).toBe('AMD00001200000');
-    expect(internalBarcode(12, 3)).toBe('AMD00001200003');
+    expect(internalBarcode(12, null)).toBe('2000012000003');
     expect(internalBarcode(12, 3)).not.toBe(internalBarcode(123, null));
+    expect(internalBarcode(12, 3)).toBe(internalBarcode(12, 3));
+  });
+
+  it('is a valid in-store EAN-13 ("2" prefix)', () => {
+    for (const [p, v] of [[12, null], [91, 246], [999999, 99999]] as const) {
+      const code = internalBarcode(p, v);
+      expect(code).toMatch(/^2\d{12}$/);
+      expect(isValidEan13(code)).toBe(true);
+    }
+    expect(internalBarcode(91, 246).slice(0, 12)).toBe('200009100246');
   });
 });
 

@@ -13,6 +13,9 @@ export interface PosProduct {
   storeOnly?: boolean;
   /** true = price/salePrice are this store's own (POS store price). */
   storePrice?: boolean;
+  /** true = `name` is this store's own name for it. */
+  storeName?: boolean;
+  normalName?: string;
   normalPrice?: string;
   normalSalePrice?: string | null;
 }

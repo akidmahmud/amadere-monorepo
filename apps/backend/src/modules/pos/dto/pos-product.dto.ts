@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -45,6 +46,13 @@ export class PosProductDto {
   @IsInt()
   categoryId?: number | null;
 
+  /** Weight in kg (printed on the receipt); null clears it. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  weightKg?: number | null;
+
   /** Uploaded media id; null removes the photo, omitted leaves it. */
   @IsOptional()
   @Type(() => Number)
@@ -69,9 +77,25 @@ export class StorePriceDto {
   @Min(0.01)
   price?: number | null;
 
+  /** This store's own name for it; null/blank = the normal name. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name?: string | null;
+
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0.01)
   salePrice?: number | null;
+}
+
+export class DuplicateStoreDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name!: string;
+
+  @Matches(/^[A-Z0-9]{2,10}$/, { message: 'Code: 2-10 capital letters/digits' })
+  code!: string;
 }

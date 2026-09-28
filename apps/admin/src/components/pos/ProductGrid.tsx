@@ -61,10 +61,14 @@ export function CategoryChips({
 
 export function StatCards({
   stats,
-  activeCustomer,
 }: {
-  stats?: { totalProducts: number; lowStock: number; todaySales: string };
-  activeCustomer: number;
+  stats?: {
+    totalProducts: number;
+    lowStock: number;
+    todaySales: string;
+    todayOrders: number;
+    todayItems: number;
+  };
 }) {
   const cards = [
     {
@@ -86,14 +90,20 @@ export function StatCards({
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
     {
-      label: "Active Customer",
-      value: String(activeCustomer),
-      icon: "person",
+      label: "Today Orders",
+      value: stats ? String(stats.todayOrders) : "—",
+      icon: "receipt_long",
+      tone: "bg-emerald-50 text-[#1d7a46]",
+    },
+    {
+      label: "Today Items Sold",
+      value: stats ? String(stats.todayItems) : "—",
+      icon: "shopping_bag",
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
   ];
   return (
-    <div className="grid shrink-0 grid-cols-2 gap-4 xl:grid-cols-4">
+    <div className="grid shrink-0 grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
       {cards.map((c) => (
         <div
           key={c.label}
@@ -164,7 +174,6 @@ export function ProductGrid({
   onAdd,
   cartQty,
   onQty,
-  today,
 }: {
   items: PosProduct[];
   loading: boolean;
@@ -176,7 +185,6 @@ export function ProductGrid({
   /** Qty of each product already in the cart, by lineKey. */
   cartQty: Record<string, number>;
   onQty: (key: string, qty: number) => void;
-  today?: { orders: number; items: number };
 }) {
   const toggle = (active: boolean) =>
     `grid h-10 w-10 place-items-center rounded-lg ${active ? "bg-[#1d7a46] text-white" : "text-gray-600 hover:bg-gray-100"}`;
@@ -190,7 +198,7 @@ export function ProductGrid({
         onClick={() => setPricing(p)}
         className={`grid h-8 w-8 place-items-center rounded-lg text-[#1d7a46] hover:bg-emerald-50 ${cls}`}
         aria-label={`Edit price of ${p.name}`}
-        title="Edit this store's price"
+        title="This store's name and price"
       >
         <Icon name="edit" size={17} />
       </button>
@@ -227,20 +235,6 @@ export function ProductGrid({
           <span className="text-sm text-gray-500">{items.length} products</span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {(
-            [
-              ["Today Orders", today?.orders],
-              ["Today Items Sold", today?.items],
-            ] as const
-          ).map(([label, n]) => (
-            <div
-              key={label}
-              className="flex h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-gray-100 bg-white px-3 text-sm shadow-sm"
-            >
-              <span className="font-semibold text-[#1d7a46]">{label}</span>
-              <span className="font-extrabold">{n ?? "—"}</span>
-            </div>
-          ))}
           {can("pos.store_products") && (
             <button
               className="flex h-10 items-center gap-1 rounded-lg bg-[#1d7a46] px-3 text-sm font-bold text-white hover:bg-[#186a3c]"

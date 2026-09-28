@@ -118,6 +118,8 @@ export class OrderManagerService {
   private buildConditions(query: OrderManagerQueryDto, includeStatus: boolean, deletedOnly = false): Prisma.Sql[] {
     const conditions: Prisma.Sql[] = [
       deletedOnly ? Prisma.sql`o.deleted_at IS NOT NULL` : Prisma.sql`o.deleted_at IS NULL`,
+      // Till sales live in the POS Order Manager, not here.
+      Prisma.sql`o.channel <> 'POS'::"OrderChannel"`,
     ];
     if (includeStatus && query.status) conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
     if (query.paymentProvider) conditions.push(Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`);

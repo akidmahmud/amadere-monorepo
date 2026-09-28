@@ -16,6 +16,7 @@ import {
 } from "@/hooks/usePos";
 import { taka, type CartLine } from "@/lib/pos-cart";
 import { usePosContext } from "./PosContext";
+import { CameraScanner } from "./CameraScanner";
 
 const btn =
   "flex h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800 hover:border-gray-300 hover:bg-gray-50";
@@ -111,10 +112,7 @@ export function PosTopBar({
     staleTime: Infinity,
   });
   const searchRef = useRef<HTMLInputElement>(null);
-  const focusSearch = () => {
-    searchRef.current?.focus();
-    searchRef.current?.select();
-  };
+  const [camera, setCamera] = useState(false);
   // F4 = "ready to scan" from anywhere on the till.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -133,6 +131,15 @@ export function PosTopBar({
 
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
+      {camera && (
+        <CameraScanner
+          onClose={() => setCamera(false)}
+          onDetected={(code) => {
+            setCamera(false);
+            onEnter(code);
+          }}
+        />
+      )}
       <div className="flex items-center gap-3 pr-2">
         <a
           href={onPosHost ? "https://admin.amadere.com" : "/"}
@@ -182,9 +189,9 @@ export function PosTopBar({
         />
         <button
           type="button"
-          onClick={focusSearch}
+          onClick={() => setCamera(true)}
           className="flex h-8 shrink-0 items-center gap-2 rounded-lg bg-emerald-50 px-2.5 text-sm font-semibold text-[#1d7a46] hover:bg-emerald-100"
-          title="Ready to scan: the cursor goes to search, then scan with the barcode scanner (F4)"
+          title="Scan with the camera. A barcode scanner works any time; F4 puts the cursor in search."
         >
           <Icon name="barcode_scanner" size={20} /> Scan
           <kbd className="rounded border border-gray-300 bg-white px-1.5 text-[11px] font-semibold text-gray-600">

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 export class UpdatePosVatDto {
   @ApiProperty() @IsBoolean() enabled!: boolean;
@@ -11,4 +11,10 @@ export class UpdatePosVatDto {
   @ApiProperty({ description: 'true = shelf prices already include VAT' })
   @IsBoolean()
   pricesIncludeVat!: boolean;
+  @ApiPropertyOptional({
+    description: 'VAT coupon: charge VAT on the receipt, then discount it back',
+  })
+  @IsOptional()
+  @IsBoolean()
+  vatDiscount?: boolean;
 }

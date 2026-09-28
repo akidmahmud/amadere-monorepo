@@ -77,8 +77,26 @@ function toPosCustomer(c: {
 
 type PosQuoteInput = Pick<
   CreatePosSaleDto,
-  'items' | 'couponCode' | 'customerId'
+  | 'items'
+  | 'couponCode'
+  | 'customerId'
+  | 'manualDiscount'
+  | 'manualDiscountType'
 >;
+
+/** The cashier's typed discount in ৳, on what is left after the coupon. */
+export function manualDiscountAmount(
+  base: Prisma.Decimal,
+  value: number | undefined,
+  type: 'AMOUNT' | 'PERCENT' | undefined,
+): Prisma.Decimal {
+  if (!value || value <= 0 || base.lessThanOrEqualTo(0)) return ZERO;
+  const d =
+    type === 'PERCENT'
+      ? base.times(Math.min(value, 100)).dividedBy(100)
+      : new D(value);
+  return D.min(d, base).toDecimalPlaces(2);
+}
 
 @Injectable()
 export class PosSaleService {
@@ -164,6 +182,19 @@ export class PosSaleService {
       couponUsed = coupon.greaterThan(0);
     }
 
+    // ponytail: open to anyone with till access, no limit (owner's call,
+    // 2026-09-28); each sale records it (posManualDiscount) with the cashier.
+    const itemsTotal = dto.items.reduce(
+      (s, i, idx) => s.plus(new D(priced[idx].unitPrice).times(i.quantity)),
+      ZERO,
+    );
+    const manualDiscount = manualDiscountAmount(
+      D.max(itemsTotal.minus(discount), ZERO),
+      dto.manualDiscount,
+      dto.manualDiscountType,
+    );
+    discount = discount.plus(manualDiscount);
+
     // POS Settings › VAT (one setting for all stores).
     const vat = await this.posSettings.getVat();
     const storeRate = new D(vat.enabled ? vat.ratePercent : 0);
@@ -180,12 +211,16 @@ export class PosSaleService {
       vatOnTop,
     );
 
+    // VAT coupon: VAT stays on the receipt (and owed), then comes off the total.
+    const vatDiscount = vat.vatDiscount ? D.min(totals.vat, totals.total) : ZERO;
     return {
       byId,
       priced,
       discount,
+      manualDiscount,
       couponUsed,
-      totals,
+      totals: { ...totals, total: totals.total.minus(vatDiscount) },
+      vatDiscount,
       vatOnTop,
       vatRatePercent: vat.enabled ? vat.ratePercent : 0,
     };
@@ -193,14 +228,20 @@ export class PosSaleService {
 
   /** What the till shows before "Complete Sale" — same maths as create(). */
   async quote(storeId: number, dto: PosQuoteInput) {
-    const { discount, totals, vatOnTop, vatRatePercent } = await this.price(
-      storeId,
-      dto,
-    );
+    const {
+      discount,
+      manualDiscount,
+      totals,
+      vatDiscount,
+      vatOnTop,
+      vatRatePercent,
+    } = await this.price(storeId, dto);
     return {
       subTotal: totals.subTotal.toFixed(2),
       discount: D.min(discount, totals.subTotal).toFixed(2),
+      manualDiscount: manualDiscount.toFixed(2),
       vat: totals.vat.toFixed(2),
+      vatDiscount: vatDiscount.toFixed(2),
       total: totals.total.toFixed(2),
       vatOnTop,
       vatRatePercent,
@@ -224,10 +265,15 @@ export class PosSaleService {
             ).id,
           }
         : input;
-    const { byId, priced, discount, couponUsed, totals } = await this.price(
-      storeId,
-      dto,
-    );
+    const {
+      byId,
+      priced,
+      discount,
+      manualDiscount,
+      couponUsed,
+      totals,
+      vatDiscount,
+    } = await this.price(storeId, dto);
     const tendered =
       dto.tender === 'CASH'
         ? new D(dto.tenderedAmount ?? totals.total)
@@ -237,6 +283,18 @@ export class PosSaleService {
     const provider = TENDER[dto.tender];
     const now = new Date();
 
+    const storeNames = new Map(
+      (
+        await this.prisma.client.storePrice.findMany({
+          where: {
+            storeId,
+            productId: { in: dto.items.map((i) => i.productId) },
+            name: { not: null },
+          },
+          select: { productId: true, variantId: true, name: true },
+        })
+      ).map((r) => [`${r.productId}:${r.variantId ?? 0}`, r.name!]),
+    );
     const order = await this.prisma.client.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
@@ -252,7 +310,11 @@ export class PosSaleService {
           customerId: dto.customerId ?? null,
           assignedAdminId: adminId,
           subTotal: totals.subTotal,
-          discountAmount: D.min(discount, totals.subTotal),
+          // Coupon + manual + VAT coupon; taxAmount below still records the
+          // VAT owed, so a VAT coupon comes out of the store's revenue.
+          discountAmount: D.min(discount, totals.subTotal).plus(vatDiscount),
+          posManualDiscount: manualDiscount,
+          posVatDiscount: vatDiscount,
           // VAT collected — added on top or contained in the price alike.
           taxAmount: totals.vat,
           codFee: ZERO,
@@ -269,7 +331,11 @@ export class PosSaleService {
               return {
                 productId: p.id,
                 variantId: i.variantId ?? null,
-                productNameSnapshot: p.translations[0]?.name ?? p.slug,
+                // This store's own name for it, if it has one.
+              productNameSnapshot:
+                storeNames.get(`${p.id}:${i.variantId ?? 0}`) ??
+                p.translations[0]?.name ??
+                p.slug,
                 skuSnapshot: v?.sku ?? p.sku,
                 productTypeSnapshot: p.productType,
                 unitPrice: priced[idx].unitPrice,
@@ -361,6 +427,7 @@ export class PosSaleService {
       include: {
         items: {
           include: {
+            product: { select: { shippableWeight: true } },
             variant: {
               include: {
                 attributeValues: {
@@ -386,8 +453,14 @@ export class PosSaleService {
     // The receipt must tell a 1kg jar from a 500g one.
     return {
       ...o,
-      items: o.items.map(({ variant, ...i }) => ({
+      items: o.items.map(({ variant, product, ...i }) => ({
         ...i,
+        // Printed on the receipt; the product's current weight (kg).
+        // ponytail: not snapshotted per sale — a reprint after a weight
+        // edit shows the new weight. Snapshot on order_items if that matters.
+        weightKg:
+          (variant?.weightOverride ?? product?.shippableWeight)?.toString() ??
+          null,
         variantLabel:
           variant?.attributeValues
             .map((a) => a.attributeValue.translations[0]?.value)

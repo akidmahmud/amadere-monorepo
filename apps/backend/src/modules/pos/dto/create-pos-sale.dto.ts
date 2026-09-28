@@ -49,6 +49,17 @@ export class CreatePosSaleDto {
   customerName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() couponCode?: string;
 
+  /** Cashier's own discount on the whole sale: ৳ amount or % (with the type). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  manualDiscount?: number;
+  @ApiPropertyOptional({ enum: ['AMOUNT', 'PERCENT'] })
+  @IsOptional()
+  @IsIn(['AMOUNT', 'PERCENT'])
+  manualDiscountType?: 'AMOUNT' | 'PERCENT';
+
   @ApiProperty({ enum: ['CASH', 'CARD', 'MOBILE'] })
   @IsIn(['CASH', 'CARD', 'MOBILE'])
   tender!: 'CASH' | 'CARD' | 'MOBILE';
@@ -75,6 +86,8 @@ export class PosQuoteDto extends PickType(CreatePosSaleDto, [
   'items',
   'customerId',
   'couponCode',
+  'manualDiscount',
+  'manualDiscountType',
 ] as const) {}
 
 export class CreateHeldSaleDto {

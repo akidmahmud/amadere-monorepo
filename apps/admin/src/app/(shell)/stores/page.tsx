@@ -61,6 +61,35 @@ export default function StoresPage() {
     onError: (e) => toast.push(e.message),
   });
 
+  const [dupFrom, setDupFrom] = useState<{
+    id: number;
+    from: string;
+    name: string;
+    code: string;
+  } | null>(null);
+  const duplicate = useMutation({
+    mutationFn: (d: { id: number; name: string; code: string }) =>
+      proxyFetch<{
+        copied: {
+          products: number;
+          overrides: number;
+          invoiceTemplate: boolean;
+        };
+      }>(`/admin/pos/stores/${d.id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ name: d.name, code: d.code }),
+      }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["stores"] });
+      setDupFrom(null);
+      toast.push(
+        `Store created — copied ${r.copied.products} store product(s), ${r.copied.overrides} store name/price(s)${r.copied.invoiceTemplate ? " and the receipt design" : ""}. Assign its staff next.`,
+        "success",
+      );
+    },
+    onError: (e) => toast.push(e.message),
+  });
+
   const remove = useMutation({
     mutationFn: (id: number) =>
       proxyFetch(`/admin/stores/${id}`, { method: "DELETE" }),
@@ -160,6 +189,19 @@ export default function StoresPage() {
                     >
                       Edit
                     </button>
+                    <button
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold"
+                      onClick={() =>
+                        setDupFrom({
+                          id: s.id,
+                          from: s.name,
+                          name: `${s.name} (copy)`,
+                          code: "",
+                        })
+                      }
+                    >
+                      Duplicate
+                    </button>
                     {!s.isOnlineStore && (
                       <button
                         className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-50"
@@ -181,6 +223,65 @@ export default function StoresPage() {
         </table>
       </div>
 
+      {dupFrom && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Duplicate store"
+        >
+          <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-bold">Duplicate {dupFrom.from}</h2>
+            <p className="text-sm text-gray-600">
+              Copies its settings, till accounts, receipt design, store
+              names/prices and store-only products (with no stock). Staff, stock
+              and sales are not copied.
+            </p>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold">New store name</span>
+              <input
+                className={input}
+                value={dupFrom.name}
+                onChange={(e) =>
+                  setDupFrom({ ...dupFrom, name: e.target.value })
+                }
+                autoFocus
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold">
+                New store code (2-10 capital letters/digits)
+              </span>
+              <input
+                className={input}
+                value={dupFrom.code}
+                onChange={(e) =>
+                  setDupFrom({ ...dupFrom, code: e.target.value.toUpperCase() })
+                }
+              />
+            </label>
+            <div className="flex gap-2">
+              <button
+                className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white disabled:opacity-50"
+                disabled={
+                  duplicate.isPending ||
+                  !dupFrom.name.trim() ||
+                  !/^[A-Z0-9]{2,10}$/.test(dupFrom.code)
+                }
+                onClick={() => duplicate.mutate(dupFrom)}
+              >
+                {duplicate.isPending ? "Copying…" : "Create copy"}
+              </button>
+              <button
+                className="h-10 rounded-lg border border-gray-200 px-4 text-sm font-semibold"
+                onClick={() => setDupFrom(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {editing && (
         <StoreDialog
           initial={editing.form}

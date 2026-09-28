@@ -43,11 +43,15 @@ export interface PosSale {
   discountAmount: string;
   taxAmount: string;
   totalAmount: string;
+  /** Parts of discountAmount (POS). */
+  posManualDiscount?: string;
+  posVatDiscount?: string;
   createdAt: string;
   items: {
     id: number;
     productNameSnapshot: string;
     variantLabel?: string | null;
+    weightKg?: string | null;
     quantity: number;
     unitPrice: string;
   }[];
@@ -300,6 +304,8 @@ export interface PosVat {
   enabled: boolean;
   ratePercent: number;
   pricesIncludeVat: boolean;
+  /** VAT coupon: VAT shown on the receipt, then discounted back. */
+  vatDiscount?: boolean;
 }
 
 export const usePosVat = () =>
