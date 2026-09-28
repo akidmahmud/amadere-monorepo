@@ -76,6 +76,8 @@ export class PosCatalogService {
       // A counter sells physical goods; ebooks/downloads stay online-only.
       productType: { not: 'DIGITAL' },
       OR: [{ storeId: null }, { storeId }],
+      // Removed from this store only (the website still sells it).
+      storePrices: { none: { storeId, variantId: null, hidden: true } },
     };
     if (categoryId) where.categories = { some: { categoryId } };
     if (q) {
@@ -154,6 +156,7 @@ export class PosCatalogService {
     const todayPos = {
       storeId,
       channel: 'POS' as const,
+      deletedAt: null,
       createdAt: dhakaRange(),
       status: { notIn: ['CANCELED' as const, 'RETURNED' as const] },
     };

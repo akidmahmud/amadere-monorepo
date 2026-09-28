@@ -149,7 +149,11 @@ export class BkashCallbackService {
     const config = await this.prisma.client.paymentMethodConfig.findUnique({
       where: { provider: 'BKASH' },
     });
-    const next = config?.orderStatusAfterVerify ?? 'CONFIRMED';
+    // Default (and the owner's choice, 2026-09-29): a paid order stays
+    // PENDING — payment shows "Paid" in the Order Manager, and staff confirm
+    // the order themselves. Pending = leave the status alone entirely.
+    const next = config?.orderStatusAfterVerify ?? 'PENDING';
+    if (next === 'PENDING') return;
     await this.prisma.client.order.update({
       where: { id: orderId },
       data: {

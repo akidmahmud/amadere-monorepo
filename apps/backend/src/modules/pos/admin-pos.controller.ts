@@ -55,6 +55,15 @@ import {
 } from './dto/pos-product.dto';
 import { PosStoresService } from './pos-stores.service';
 import { PosManagerService } from './pos-manager.service';
+import { PosTiersService } from './pos-tiers.service';
+import { PosSmsService } from './pos-sms.service';
+import {
+  PosSmsCampaignDto,
+  PosSmsPreviewDto,
+  PosSmsSettingsDto,
+  PosSmsTestDto,
+  PosTiersDto,
+} from './dto/pos-sms.dto';
 import { SavePosInvoiceDto } from './dto/pos-invoice.dto';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { PosSaleService } from './pos-sale.service';
@@ -85,6 +94,8 @@ export class AdminPosController {
     private readonly products: PosProductsService,
     private readonly posStores: PosStoresService,
     private readonly manager: PosManagerService,
+    private readonly tiers: PosTiersService,
+    private readonly posSms: PosSmsService,
   ) {}
 
   private async oneStore(a: Admin, can: PermissionCheck, requested?: number) {
@@ -246,6 +257,75 @@ export class AdminPosController {
     return this.posStores.duplicate(id, dto.name.trim(), dto.code.trim());
   }
 
+  // Remove a shared product from this store only / put it back.
+  @Get('products/hidden')
+  @RequirePermission('pos.store_products')
+  async hiddenProducts(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.hiddenList(await this.oneStore(a, can, q.storeId));
+  }
+
+  @Get('products/deleted')
+  @RequirePermission('pos.store_products')
+  async deletedProducts(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.deletedList(await this.oneStore(a, can, q.storeId));
+  }
+
+  @Post('products/:id/restore')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async restoreProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.restore(await this.oneStore(a, can, q.storeId), id);
+  }
+
+  @Post('products/:id/hide')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async hideProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.hide(await this.oneStore(a, can, q.storeId), id, a.id);
+  }
+
+  @Delete('products/:id/hide')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async unhideProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.unhide(await this.oneStore(a, can, q.storeId), id);
+  }
+
+  @Delete('products/:id')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async deleteProduct(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.products.remove(await this.oneStore(a, can, q.storeId), id);
+  }
+
   @Post('products/:id/duplicate')
   @RequirePermission('pos.store_products')
   @UseInterceptors(AuditLogInterceptor)
@@ -271,6 +351,127 @@ export class AdminPosController {
     return this.products.setPrice(await this.oneStore(a, can, q.storeId), dto, a.id);
   }
 
+  // ---- Customer tiers (one list; each customer's tier is per store) ----
+  @Get('tiers')
+  @RequirePermission('pos.customers')
+  getTiers() {
+    return this.tiers.getTiers();
+  }
+
+  @Put('tiers')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  setTiers(@Body() dto: PosTiersDto) {
+    return this.tiers.setTiers(dto.tiers);
+  }
+
+  // ---- SMS settings (shares the website SMS gateway) ----
+  @Get('settings/sms')
+  @RequirePermission('pos.settings')
+  async getSms() {
+    return {
+      ...(await this.posSms.getSettings()),
+      gateway: await this.posSms.gateway(),
+    };
+  }
+
+  @Put('settings/sms')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  setSms(@Body() dto: PosSmsSettingsDto) {
+    return this.posSms.setSettings(dto);
+  }
+
+  @Post('settings/sms/test')
+  @RequirePermission('pos.settings')
+  testSms(@Body() dto: PosSmsTestDto) {
+    return this.posSms.testSend(dto.phone);
+  }
+
+  // ---- SMS campaigns (Customer Manager > SMS) ----
+  @Get('sms/campaigns')
+  @RequirePermission('pos.sms')
+  async campaigns(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.posSms.list(await this.stores.scope(a.id, can, q.storeId));
+  }
+
+  @Post('sms/campaigns/preview')
+  @RequirePermission('pos.sms')
+  async previewCampaign(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Body() dto: PosSmsPreviewDto,
+  ) {
+    const storeId = await this.stores.scope(a.id, can, dto.storeId ?? undefined);
+    return this.posSms.previewCount({ ...dto, storeId });
+  }
+
+  @Post('sms/campaigns')
+  @RequirePermission('pos.sms')
+  @UseInterceptors(AuditLogInterceptor)
+  async createCampaign(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Body() dto: PosSmsCampaignDto,
+  ) {
+    const storeId = await this.stores.scope(a.id, can, dto.storeId ?? undefined);
+    return this.posSms.create({ ...dto, storeId }, a.id);
+  }
+
+  @Put('sms/campaigns/:id')
+  @RequirePermission('pos.sms')
+  @UseInterceptors(AuditLogInterceptor)
+  async updateCampaign(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PosSmsCampaignDto,
+  ) {
+    await this.assertCampaignInScope(id, a, can);
+    const storeId = await this.stores.scope(a.id, can, dto.storeId ?? undefined);
+    return this.posSms.update(id, { ...dto, storeId });
+  }
+
+  @Delete('sms/campaigns/:id')
+  @RequirePermission('pos.sms')
+  @UseInterceptors(AuditLogInterceptor)
+  async deleteCampaign(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.assertCampaignInScope(id, a, can);
+    await this.posSms.remove(id);
+    return { deleted: true };
+  }
+
+  @Post('sms/campaigns/:id/send')
+  @RequirePermission('pos.sms')
+  @UseInterceptors(AuditLogInterceptor)
+  async sendCampaign(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.assertCampaignInScope(id, a, can);
+    return this.posSms.sendNow(id);
+  }
+
+  /** A store-bound user may only touch their own store's campaigns. */
+  private async assertCampaignInScope(
+    id: number,
+    a: Admin,
+    can: PermissionCheck,
+  ) {
+    const scope = await this.stores.scope(a.id, can);
+    const c = (await this.posSms.list(scope)).find((x) => x.id === id);
+    if (!c) throw new BadRequestException('Campaign not found');
+  }
+
   // POS Order Manager: till sales of one store, or all (pos.all_stores).
   @Get('orders')
   @RequirePermission('pos.orders')
@@ -280,6 +481,50 @@ export class AdminPosController {
     @Query() q: PosOrdersQueryDto,
   ) {
     return this.manager.orders(await this.stores.scope(a.id, can, q.storeId), q);
+  }
+
+  // Order Manager Trash: delete undoes a completed sale then trashes it;
+  // restore re-applies it; the Trash empties itself after 30 days.
+  @Get('orders/trash')
+  @RequirePermission('pos.orders')
+  async orderTrash(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.sales.trash(await this.stores.scope(a.id, can, q.storeId));
+  }
+
+  @Delete('orders/:id')
+  @RequirePermission('pos.refund')
+  @UseInterceptors(AuditLogInterceptor)
+  async deleteOrder(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.sales.deleteSale(
+      await this.stores.scope(a.id, can, q.storeId),
+      id,
+      a.id,
+    );
+  }
+
+  @Post('orders/:id/restore')
+  @RequirePermission('pos.refund')
+  @UseInterceptors(AuditLogInterceptor)
+  async restoreOrder(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.sales.restoreSale(
+      await this.stores.scope(a.id, can, q.storeId),
+      id,
+      a.id,
+    );
   }
 
   // POS Customer Manager: who bought at the stores.

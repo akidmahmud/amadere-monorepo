@@ -52,6 +52,8 @@ const newsletterSegmentsIcon = <Icon name="groups" />;
 const customersIcon = <Icon name="people" />;
 const wholesaleIcon = <Icon name="local_mall" />;
 const posIcon = <Icon name="point_of_sale" />;
+const posOrdersIcon = <Icon name="receipt_long" />;
+const posCustomersIcon = <Icon name="groups" />;
 const storesIcon = <Icon name="storefront" />;
 const customerTiersIcon = <Icon name="military_tech" />;
 const analyticsIcon = <Icon name="monitoring" />;
@@ -153,6 +155,21 @@ export const adminNav: AppNavEntry[] = [
     href: "/pos",
     icon: posIcon,
     permission: "pos.access",
+  },
+  // Every store's till sales / customers (the POS's own pages show one shop).
+  {
+    key: "pos-orders",
+    label: "Order Manager",
+    href: "/pos-orders",
+    icon: posOrdersIcon,
+    permission: "pos.orders",
+  },
+  {
+    key: "pos-customers",
+    label: "Customers",
+    href: "/pos-customers",
+    icon: posCustomersIcon,
+    permission: "pos.customers",
   },
   {
     key: "stores",

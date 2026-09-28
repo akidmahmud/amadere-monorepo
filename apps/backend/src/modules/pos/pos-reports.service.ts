@@ -124,6 +124,7 @@ export class PosReportsService {
     const range = dhakaRange(from, to);
     const base: Prisma.OrderWhereInput = {
       channel: 'POS',
+      deletedAt: null,
       ...(scope ? { storeId: scope } : {}),
     };
     const [sold, returned, stores] = await Promise.all([
@@ -174,6 +175,7 @@ export class PosReportsService {
     const range = dhakaRange(from, to);
     const base: Prisma.OrderWhereInput = {
       channel: 'POS',
+      deletedAt: null,
       ...(scope ? { storeId: scope } : {}),
     };
     const stores = await this.prisma.client.store.findMany({
@@ -252,7 +254,12 @@ export class PosReportsService {
   /** One row per sale line — the store's sales sheet. */
   async salesLines(storeId: number, from: string, to: string) {
     const orders = await this.prisma.client.order.findMany({
-      where: { channel: 'POS', storeId, createdAt: dhakaRange(from, to) },
+      where: {
+        channel: 'POS',
+        deletedAt: null,
+        storeId,
+        createdAt: dhakaRange(from, to),
+      },
       orderBy: { createdAt: 'asc' },
       include: {
         store: { select: { name: true } },
@@ -327,6 +334,7 @@ export class PosReportsService {
     const orders = await this.prisma.client.order.findMany({
       where: {
         channel: 'POS',
+        deletedAt: null,
         storeId,
         createdAt: dhakaRange(from, to),
         customerId: { not: null },

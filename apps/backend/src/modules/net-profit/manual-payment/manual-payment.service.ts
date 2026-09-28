@@ -132,7 +132,8 @@ export class ManualPaymentService {
     const config = provider
       ? await this.prisma.client.paymentMethodConfig.findUnique({ where: { provider } })
       : null;
-    if (config) {
+    // "Pending" means: payment is recorded, staff confirm the order themselves.
+    if (config && config.orderStatusAfterVerify !== 'PENDING') {
       if (order && (order.status === 'PENDING' || order.status === 'HOLD')) {
         await this.prisma.client.order.update({
           where: { id: submission.orderId },

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   BadGatewayException,
   ConflictException,
   Injectable,
@@ -117,6 +118,9 @@ export class ShipmentsService {
       include: { items: true, addresses: true, payments: true },
     });
     if (!order) throw new NotFoundException('Order not found');
+    // A till sale leaves the shop with the customer — nothing to courier.
+    if (order.channel === 'POS')
+      throw new BadRequestException('POS sales are not shipped');
 
     const existingActive = await this.prisma.client.shipment.findFirst({
       where: { orderId: order.id, status: { in: [...ACTIVE_STATUSES] } },
@@ -406,6 +410,8 @@ export class ShipmentsService {
     // Manager's own working-list query (`deleted_at IS NULL`).
     const where: Prisma.OrderWhereInput = {
       deletedAt: null,
+      // Till sales are handed over at the counter; they never need packing.
+      channel: { not: 'POS' },
       // Digital-only orders have nothing to pack. The queue is a packing
       // list, so an ebook sitting in it forever is noise staff cannot
       // action. Mixed orders still appear — they contain a parcel.

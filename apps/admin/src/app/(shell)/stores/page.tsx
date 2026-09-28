@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
@@ -206,10 +207,15 @@ export default function StoresPage() {
                       <button
                         className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-50"
                         disabled={remove.isPending}
-                        onClick={() =>
-                          confirm(
-                            `Delete store "${s.name}"? Only a store with no sales or stock history can be deleted.`,
-                          ) && remove.mutate(s.id)
+                        onClick={async () =>
+                          (await confirmDialog({
+                            title: `Delete store "${s.name}"?`,
+                            message:
+                              "Only a store with no sales or stock history can be deleted. Otherwise untick Active to hide it.",
+                            confirmLabel: "Delete store",
+                            tone: "danger",
+                            icon: "storefront",
+                          })) && remove.mutate(s.id)
                         }
                       >
                         Delete

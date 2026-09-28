@@ -63,6 +63,7 @@ describe('PosProductsService.setPrice', () => {
       create: jest.fn(),
       update: jest.fn(),
       deleteMany: jest.fn(),
+      updateMany: jest.fn(),
     };
     const prisma = {
       client: { product: { findFirst: jest.fn().mockResolvedValue(product) }, storePrice },
@@ -88,8 +89,9 @@ describe('PosProductsService.setPrice', () => {
   it('price null resets to the normal price', async () => {
     const { svc, storePrice } = mk(simple);
     await svc.setPrice(4, { productId: 1, price: null }, 7);
+    // A "removed from this store" row survives a name/price reset.
     expect(storePrice.deleteMany).toHaveBeenCalledWith({
-      where: { storeId: 4, productId: 1, variantId: null },
+      where: { storeId: 4, productId: 1, variantId: null, hidden: false },
     });
   });
 
@@ -141,6 +143,7 @@ describe('PosProductsService.setPrice — store name', () => {
       create: jest.fn(),
       update: jest.fn(),
       deleteMany: jest.fn(),
+      updateMany: jest.fn(),
     };
     const prisma = {
       client: {
@@ -164,5 +167,75 @@ describe('PosProductsService.setPrice — store name', () => {
     await a.svc.setPrice(4, { productId: 1, name: '  ', price: null }, 7);
     expect(a.storePrice.deleteMany).toHaveBeenCalled();
     await expect(mk().svc.setPrice(4, { productId: 1, salePrice: 50 }, 7)).rejects.toThrow(/price before an offer/);
+  });
+});
+
+describe('PosProductsService.remove', () => {
+  it("trashes only this store's own products", async () => {
+    const products = { delete: jest.fn() };
+    const mk = (storeId: number | null) =>
+      new PosProductsService(
+        { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
+        products as never,
+      );
+    await mk(4).remove(4, 7);
+    expect(products.delete).toHaveBeenCalledWith(7);
+    await expect(mk(9).remove(4, 7)).rejects.toThrow(/does not belong/);
+    await expect(mk(null).remove(4, 7)).rejects.toThrow(/does not belong/);
+  });
+});
+
+describe('PosProductsService — remove a shared product from one store', () => {
+  const mk = (product: object | null, existing: object | null = null) => {
+    const storePrice = {
+      findFirst: jest.fn().mockResolvedValue(existing),
+      create: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+      updateMany: jest.fn(),
+    };
+    const prisma = { client: { product: { findFirst: jest.fn().mockResolvedValue(product) }, storePrice } };
+    return { svc: new PosProductsService(prisma as never, {} as never), storePrice };
+  };
+
+  it('hides a shared product at this store only (product-level row)', async () => {
+    const { svc, storePrice } = mk({ storeId: null });
+    await svc.hide(4, 10, 7);
+    expect(storePrice.create).toHaveBeenCalledWith({
+      data: { storeId: 4, productId: 10, variantId: null, hidden: true, updatedById: 7 },
+    });
+  });
+
+  it("keeps this store's name/price when hiding and when putting back", async () => {
+    const a = mk({ storeId: null }, { id: 3 });
+    await a.svc.hide(4, 10, 7);
+    expect(a.storePrice.update).toHaveBeenCalledWith({ where: { id: 3 }, data: { hidden: true, updatedById: 7 } });
+    const b = mk(null);
+    await b.svc.unhide(4, 10);
+    expect(b.storePrice.deleteMany).toHaveBeenCalledWith({
+      where: { storeId: 4, productId: 10, variantId: null, hidden: true, name: null, price: null },
+    });
+    expect(b.storePrice.updateMany).toHaveBeenCalledWith({
+      where: { storeId: 4, productId: 10, variantId: null },
+      data: { hidden: false },
+    });
+  });
+
+  it("refuses a store's own product (that one is deleted instead)", async () => {
+    await expect(mk({ storeId: 4 }).svc.hide(4, 10, 7)).rejects.toThrow(/delete it instead/);
+  });
+});
+
+describe('PosProductsService.restore', () => {
+  it("restores only this store's own products", async () => {
+    const products = { restore: jest.fn() };
+    const mk = (storeId: number | null) =>
+      new PosProductsService(
+        { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
+        products as never,
+      );
+    await mk(4).restore(4, 7);
+    expect(products.restore).toHaveBeenCalledWith(7);
+    await expect(mk(9).restore(4, 7)).rejects.toThrow(/does not belong/);
   });
 });

@@ -99,6 +99,7 @@ describe('PosSaleService.create', () => {
     };
     const salesPosting = { postPrepaidCapture: jest.fn() };
     const settings = { getVat: jest.fn().mockResolvedValue(VAT15) };
+    const events = { emit: jest.fn() };
     const svc = new PosSaleService(
       prisma as never,
       stock as never,
@@ -107,9 +108,9 @@ describe('PosSaleService.create', () => {
       salesPosting as never,
       settings as never,
       {} as never,
-      {} as never,
+      events as never,
     );
-    return { svc, tx, stock, stores, salesPosting, pricing };
+    return { svc, tx, stock, stores, salesPosting, pricing, events };
   }
 
   const dto = {
@@ -119,8 +120,12 @@ describe('PosSaleService.create', () => {
   };
 
   it('creates a completed POS order at the store, moves stock, captures payment, posts to the store till', async () => {
-    const { svc, tx, stock, stores, salesPosting } = setup();
+    const { svc, tx, stock, stores, salesPosting, events } = setup();
     const out = await svc.create(4, dto, 7);
+    // Thank-you SMS / tier upgrade run off this event, not in the sale.
+    expect(events.emit).toHaveBeenCalledWith('pos.sale.completed', {
+      orderId: expect.any(Number),
+    });
 
     expect(tx.order.create).toHaveBeenCalledWith({
       data: expect.objectContaining({

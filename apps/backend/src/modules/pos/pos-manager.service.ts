@@ -5,7 +5,9 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
-import { dhakaRange } from './dhaka-range';
+import { dhakaTimeRange } from './dhaka-range';
+import { PosTiersService } from './pos-tiers.service';
+import { tierFor } from './pos-tiers';
 
 export const POS_ORDER_STATUSES = ['COMPLETED', 'RETURNED'] as const;
 const TENDER: Record<'CASH' | 'CARD' | 'MOBILE', PaymentProvider> = {
@@ -14,17 +16,25 @@ const TENDER: Record<'CASH' | 'CARD' | 'MOBILE', PaymentProvider> = {
   MOBILE: 'BKASH',
 };
 
-export interface PosOrdersQuery {
-  status?: (typeof POS_ORDER_STATUSES)[number];
-  tender?: keyof typeof TENDER;
+interface TimeFilter {
   from?: string;
   to?: string;
+  /** "HH:MM", Dhaka time. */
+  fromTime?: string;
+  toTime?: string;
+}
+
+export interface PosOrdersQuery extends TimeFilter {
+  status?: (typeof POS_ORDER_STATUSES)[number];
+  tender?: keyof typeof TENDER;
   q?: string;
   page?: number;
   pageSize?: number;
 }
 
-export interface PosCustomersQuery {
+export interface PosCustomersQuery extends TimeFilter {
+  /** Only customers in this tier (at the store, or at any store). */
+  tier?: string;
   q?: string;
   page?: number;
   pageSize?: number;
@@ -45,7 +55,10 @@ const customerSearch = (q: string): Prisma.CustomerWhereInput => ({
  */
 @Injectable()
 export class PosManagerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tiers: PosTiersService,
+  ) {}
 
   private orderWhere(
     storeId: number | null,
@@ -53,6 +66,7 @@ export class PosManagerService {
     withStatus: boolean,
   ): Prisma.OrderWhereInput {
     const term = q.q?.trim();
+    const range = dhakaTimeRange(q);
     return {
       channel: 'POS',
       deletedAt: null,
@@ -61,7 +75,7 @@ export class PosManagerService {
       ...(q.tender
         ? { payments: { some: { provider: TENDER[q.tender] } } }
         : {}),
-      ...(q.from || q.to ? { createdAt: dhakaRange(q.from, q.to ?? q.from) } : {}),
+      ...(range ? { createdAt: range } : {}),
       ...(term
         ? {
             OR: [
@@ -148,14 +162,28 @@ export class PosManagerService {
     const page = q.page ?? 1;
     const pageSize = q.pageSize ?? 25;
     const term = q.q?.trim();
+    const range = dhakaTimeRange(q);
+    const tierList = await this.tiers.getTiers();
+    // Tier filter: all-time stats at the store(s) decide who is in the tier.
+    const inTier = q.tier
+      ? [
+          ...new Set(
+            (await this.tiers.stats({ storeId }))
+              .filter((s) => tierFor(s, tierList)?.key === q.tier)
+              .map((s) => s.customerId),
+          ),
+        ]
+      : null;
     // Returned sales don't count as purchases.
     const where: Prisma.OrderWhereInput = {
       channel: 'POS',
       deletedAt: null,
       status: 'COMPLETED',
-      customerId: { not: null },
+      customerId: inTier ? { in: inTier } : { not: null },
       ...(storeId ? { storeId } : {}),
       ...(term ? { customer: customerSearch(term) } : {}),
+      // A period = customers who bought in it (and their spend in it).
+      ...(range ? { createdAt: range } : {}),
     };
     const [groups, all] = await Promise.all([
       this.prisma.client.order.groupBy({
@@ -190,6 +218,16 @@ export class PosManagerService {
       ).map((s) => [s.id, s.name]),
     );
     const byId = new Map(people.map((p) => [p.id, p]));
+    // Tier per store from ALL-TIME purchases there (not the filtered period).
+    const tierRows = await this.tiers.stats({ storeId, customerIds: ids });
+    const allNames = new Map(
+      (
+        await this.prisma.client.store.findMany({
+          where: { id: { in: [...new Set(tierRows.map((t) => t.storeId))] } },
+          select: { id: true, name: true },
+        })
+      ).map((s) => [s.id, s.name]),
+    );
     return toPaginatedResult(
       groups.map((g) => {
         const c = byId.get(g.customerId!);
@@ -206,6 +244,17 @@ export class PosManagerService {
             .filter((p) => p.customerId === g.customerId)
             .map((p) => storeNames.get(p.storeId!) ?? '')
             .filter(Boolean),
+          tiers: tierRows
+            .filter((t) => t.customerId === g.customerId)
+            .map((t) => {
+              const tier = tierFor(t, tierList);
+              return {
+                store: allNames.get(t.storeId) ?? '',
+                key: tier?.key ?? null,
+                name: tier?.name ?? null,
+                color: tier?.color ?? null,
+              };
+            }),
         };
       }),
       all.length,

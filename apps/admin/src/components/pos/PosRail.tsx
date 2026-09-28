@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@amader/admin-ui";
 import { usePosContext } from "./PosContext";
+import { PosCalculator } from "./PosCalculator";
 
 /** Every POS screen, in rail order; each shows only with its permission. */
 export const POS_MENU = [
@@ -84,8 +86,21 @@ export function PosRail() {
       return !c;
     });
 
+  const [calc, setCalc] = useState(false);
   if (path.startsWith("/pos/receipt")) return null;
   const items = POS_MENU.filter((m) => can(m.perm));
+  const calcButton = (
+    <button
+      key="calc"
+      onClick={() => setCalc(true)}
+      title="Calculator"
+      aria-label="Calculator"
+      className={`flex flex-col items-center gap-1 rounded-xl py-2.5 text-[11px] font-semibold text-gray-600 hover:bg-emerald-50 hover:text-[#1d7a46] ${collapsed ? "w-12" : "w-[68px]"}`}
+    >
+      <Icon name="calculate" size={22} />
+      {!collapsed && <span className="leading-none">Calculator</span>}
+    </button>
+  );
   const active = (href: string) =>
     href === "/pos" ? path === "/pos" : path.startsWith(href);
 
@@ -104,7 +119,7 @@ export function PosRail() {
       </button>
       {items.map((m) => {
         const on = active(m.href);
-        return (
+        const link = (
           <Link
             key={m.href}
             href={m.href}
@@ -116,7 +131,24 @@ export function PosRail() {
             {!collapsed && <span className="leading-none">{m.label}</span>}
           </Link>
         );
+        // The calculator sits just above Settings (or last, without Settings).
+        return m.href === "/pos/settings" ? (
+          <Fragment key={m.href}>
+            {calcButton}
+            {link}
+          </Fragment>
+        ) : (
+          link
+        );
       })}
+      {!items.some((m) => m.href === "/pos/settings") && calcButton}
+      {/* Portal: the sticky rail is its own stacking context, so a popup
+          inside it would sit under the product cards' badges. */}
+      {calc &&
+        createPortal(
+          <PosCalculator onClose={() => setCalc(false)} />,
+          document.body,
+        )}
     </nav>
   );
 }

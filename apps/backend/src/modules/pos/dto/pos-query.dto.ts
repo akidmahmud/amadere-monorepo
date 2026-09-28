@@ -58,6 +58,14 @@ export class PosOrdersQueryDto extends StoreQueryDto {
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   to?: string;
+  @ApiPropertyOptional({ example: '09:30', description: 'Dhaka time HH:MM' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  fromTime?: string;
+  @ApiPropertyOptional({ example: '18:00', description: 'Dhaka time HH:MM (inclusive)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  toTime?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
   @ApiPropertyOptional()
   @IsOptional()
@@ -76,6 +84,24 @@ export class PosOrdersQueryDto extends StoreQueryDto {
 
 export class PosCustomersQueryDto extends StoreQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() tier?: string;
+  @ApiPropertyOptional({ example: '2026-09-01' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  from?: string;
+  @ApiPropertyOptional({ example: '2026-09-30' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  to?: string;
+  @ApiPropertyOptional({ example: '09:30', description: 'Dhaka time HH:MM' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  fromTime?: string;
+  @ApiPropertyOptional({ example: '18:00', description: 'Dhaka time HH:MM (inclusive)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  toTime?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

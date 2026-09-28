@@ -20,12 +20,20 @@ import { PosSettingsService } from './pos-settings.service';
 import { dhakaRange } from './dhaka-range';
 import { assertStoreActive } from '../stores/store-scope';
 import { PaymentsService } from '../payments/payments.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import {
+  reclaimOrderCoupons,
+  releaseOrderCoupons,
+} from '../discounts/coupon-redemption';
 import { generateOrderNumber } from '../orders/order-number.util';
 import { redeemCoupon } from '../discounts/coupon-redemption';
 import { CreatePosSaleDto } from './dto/create-pos-sale.dto';
 
 const D = Prisma.Decimal;
 const ZERO = new D(0);
+
+export const POS_TRASH_DAYS = 30;
+export const POS_SALE_COMPLETED_EVENT = 'pos.sale.completed';
 
 const TENDER: Record<CreatePosSaleDto['tender'], PaymentProvider> = {
   CASH: 'CASH',
@@ -117,6 +125,7 @@ export class PosSaleService {
       where: {
         id: { in: dto.items.map((i) => i.productId) },
         OR: [{ storeId: null }, { storeId }],
+        storePrices: { none: { storeId, variantId: null, hidden: true } },
         // Same visibility as the POS catalog.
         deletedAt: null,
         status: { in: ['PUBLISHED', 'ADMIN_ONLY'] },
@@ -395,6 +404,9 @@ export class PosSaleService {
       reference: dto.transactionRef,
       accountId: await this.stores.tenderAccountId(storeId, provider),
     });
+    // Thank-you SMS + tier-upgrade campaigns (PosSmsService); async so the
+    // till never waits on the SMS gateway.
+    this.events.emit(POS_SALE_COMPLETED_EVENT, { orderId: order.id });
 
     return {
       orderId: order.id,
@@ -409,6 +421,7 @@ export class PosSaleService {
     return this.prisma.client.order.findMany({
       where: {
         channel: 'POS',
+        deletedAt: null,
         ...(storeId ? { storeId } : {}),
         createdAt: { gte: from, lt: to },
       },
@@ -520,6 +533,143 @@ export class PosSaleService {
       to: 'RETURNED',
     } satisfies OrderStatusChangedEvent);
     return this.get(storeId, id);
+  }
+
+  /**
+   * Order Manager "Delete": a completed sale is first undone like a return
+   * (stock back, money reversed), then moved to the Trash. The books stay
+   * right whether it is later restored or purged.
+   */
+  async deleteSale(storeId: number | null, id: number, adminId: number) {
+    const o = await this.get(storeId, id);
+    if (o.deletedAt) throw new BadRequestException('Already in the Trash');
+    const wasCompleted = o.status === 'COMPLETED';
+    if (wasCompleted)
+      await this.returnSale(storeId, id, adminId, 'Deleted from Order Manager');
+    await this.prisma.client.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id },
+        data: { deletedAt: new Date(), posVoidedByDelete: wasCompleted },
+      });
+      await releaseOrderCoupons(tx, id);
+    });
+    return { deleted: true, undone: wasCompleted };
+  }
+
+  /** Back from the Trash; a sale that delete undid is re-applied (stock out, money in). */
+  async restoreSale(storeId: number | null, id: number, adminId: number) {
+    const o = await this.get(storeId, id);
+    if (!o.deletedAt) throw new NotFoundException('Sale is not in the Trash');
+    if (!o.posVoidedByDelete) {
+      await this.prisma.client.$transaction(async (tx) => {
+        await tx.order.update({ where: { id }, data: { deletedAt: null } });
+        if (o.status !== 'CANCELED') await reclaimOrderCoupons(tx, id);
+      });
+      return this.get(storeId, id);
+    }
+    const now = new Date();
+    await this.prisma.client.$transaction(async (tx) => {
+      // Claim first so two restores can't sell the goods twice.
+      const { count } = await tx.order.updateMany({
+        where: { id, status: 'RETURNED', deletedAt: { not: null } },
+        data: {
+          status: 'COMPLETED',
+          returnedAt: null,
+          deletedAt: null,
+          posVoidedByDelete: false,
+        },
+      });
+      if (count !== 1)
+        throw new ConflictException('This sale was already restored');
+      for (const i of o.items) {
+        if (!i.productId || !o.storeId) continue;
+        // Throws if the store no longer has the stock — nothing is restored then.
+        await this.stock.move(tx, {
+          storeId: o.storeId,
+          productId: i.productId,
+          variantId: i.variantId,
+          type: 'SALE',
+          qty: -i.quantity,
+          orderId: id,
+          adminUserId: adminId,
+        });
+      }
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          status: 'COMPLETED',
+          note: 'Restored from Trash',
+          adminUserId: adminId,
+        },
+      });
+      await tx.payment.updateMany({
+        where: { orderId: id },
+        data: { status: 'CAPTURED', refundedAmount: null },
+      });
+      await reclaimOrderCoupons(tx, id);
+    });
+    const pay = o.payments[0];
+    await this.salesPosting.postPrepaidCapture({
+      orderId: id,
+      amount: new D(o.totalAmount),
+      capturedAt: now,
+      reference: pay?.transactionRef ?? undefined,
+      accountId: o.storeId && pay
+        ? await this.stores.tenderAccountId(o.storeId, pay.provider)
+        : undefined,
+    });
+    return this.get(storeId, id);
+  }
+
+  /** Sales in the Trash (one store or all). */
+  trash(storeId: number | null) {
+    return this.prisma.client.order.findMany({
+      where: {
+        channel: 'POS',
+        deletedAt: { not: null },
+        ...(storeId ? { storeId } : {}),
+      },
+      orderBy: { deletedAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        orderNumber: true,
+        createdAt: true,
+        deletedAt: true,
+        totalAmount: true,
+        posVoidedByDelete: true,
+        store: { select: { name: true } },
+        customer: { select: { firstName: true, lastName: true, phone: true } },
+      },
+    });
+  }
+
+  /**
+   * Daily: sales 30+ days in the Trash are removed for good. They were
+   * undone on delete, so their ledger entries (sale in, refund out) and
+   * stock moves net to zero and are kept, just unlinked from the order.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async purgeTrash(now = new Date()) {
+    const old = await this.prisma.client.order.findMany({
+      where: {
+        channel: 'POS',
+        deletedAt: { lt: new Date(now.getTime() - POS_TRASH_DAYS * 86_400_000) },
+        status: { not: 'COMPLETED' },
+      },
+      select: { id: true },
+    });
+    let purged = 0;
+    for (const { id } of old) {
+      try {
+        await this.prisma.client.order.delete({ where: { id } });
+        purged++;
+      } catch {
+        // ponytail: a row still referencing the order blocks it; it retries
+        // tomorrow. Log/alert if this ever shows up in practice.
+      }
+    }
+    return { purged };
   }
 
   // Cashiers don't hold customer.view; these expose only name + phone.

@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import { useState } from "react";
 import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
@@ -244,9 +245,15 @@ export default function TransfersPage() {
                       (t.status === "DISPATCHED" && mine(t.fromStoreId))) && (
                       <button
                         className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold"
-                        onClick={() =>
-                          window.confirm(`Cancel ${t.number}?`) &&
-                          doAction(t.id, "cancel")
+                        onClick={async () =>
+                          (await confirmDialog({
+                            title: `Cancel transfer ${t.number}?`,
+                            message:
+                              "Any stock already sent goes back to the sending store.",
+                            confirmLabel: "Cancel transfer",
+                            tone: "danger",
+                            icon: "local_shipping",
+                          })) && doAction(t.id, "cancel")
                         }
                       >
                         Cancel

@@ -1,3 +1,6 @@
+import { PosTiersService } from './pos-tiers.service';
+import { PosSmsService } from './pos-sms.service';
+import { SmsModule } from '../net-profit/sms/sms.module';
 import { PosManagerService } from './pos-manager.service';
 import { PosStoresService } from './pos-stores.service';
 import { ProductsModule } from '../products/products.module';
@@ -24,6 +27,7 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     PaymentsModule,
     AccountsModule,
     ProductsModule,
+    SmsModule,
   ],
   controllers: [AdminPosController],
   providers: [
@@ -36,6 +40,8 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     PosProductsService,
     PosStoresService,
     PosManagerService,
+    PosTiersService,
+    PosSmsService,
   ],
 })
 export class PosModule {}

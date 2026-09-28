@@ -218,7 +218,7 @@ export function CartPanel({
 
   return (
     <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:w-[440px]">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
         <div className="flex items-center gap-3">
           <Icon name="shopping_cart" size={26} className="text-[#1d7a46]" />
           <span className="text-lg font-extrabold">Current Sale</span>
@@ -244,15 +244,15 @@ export function CartPanel({
         {cart.map((l) => (
           <div
             key={l.key}
-            className="flex items-center gap-3 border-b border-gray-100 px-5 py-3"
+            className="flex items-center gap-3 border-b border-gray-100 px-5 py-2"
           >
-            <div className="grid h-14 w-14 shrink-0 place-items-center">
+            <div className="grid h-11 w-11 shrink-0 place-items-center">
               {l.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={l.imageUrl}
                   alt=""
-                  className="max-h-14 max-w-full object-contain"
+                  className="max-h-11 max-w-full object-contain"
                 />
               ) : (
                 <Icon name="image" size={28} className="text-gray-300" />
@@ -304,7 +304,7 @@ export function CartPanel({
         ))}
       </div>
 
-      <div className="space-y-3 border-t border-gray-100 px-5 py-4">
+      <div className="space-y-2 border-t border-gray-100 px-5 py-3">
         <CustomerPicker
           key={saleCount}
           customer={customer}
@@ -312,25 +312,48 @@ export function CartPanel({
           onDraft={setDraft}
         />
 
+        {/* Coupon and manual discount share one row to leave room for items. */}
         <div className="flex items-center gap-2">
-          <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
-            <Icon name="sell" size={20} className="text-[#1d7a46]" /> Discount /
-            Coupon
-          </span>
-          <input
-            value={couponInput}
-            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-            placeholder="Enter code..."
-            lang="en"
-            className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
-          />
-          <button
-            onClick={() => void applyCoupon()}
-            disabled={!couponInput.trim() || !cart.length || checking}
-            className="h-10 rounded-lg bg-emerald-50 px-4 text-sm font-bold text-[#1d7a46] disabled:opacity-40"
-          >
-            Apply
-          </button>
+          {coupon ? (
+            <span className="flex h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm font-bold text-[#1d7a46]">
+              <span className="flex min-w-0 items-center gap-1.5 truncate">
+                <Icon name="sell" size={18} /> {coupon}
+              </span>
+              <button
+                onClick={() => {
+                  setCoupon("");
+                  setCouponInput("");
+                }}
+                aria-label="Remove coupon"
+                title="Remove coupon"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-emerald-800 hover:bg-emerald-100"
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </span>
+          ) : (
+            <>
+              <input
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && couponInput.trim())
+                    void applyCoupon();
+                }}
+                placeholder="Coupon code"
+                aria-label="Coupon code"
+                lang="en"
+                className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
+              />
+              <button
+                onClick={() => void applyCoupon()}
+                disabled={!couponInput.trim() || !cart.length || checking}
+                className="h-10 shrink-0 rounded-lg bg-emerald-50 px-3 text-sm font-bold text-[#1d7a46] disabled:opacity-40"
+              >
+                Apply
+              </button>
+            </>
+          )}
           <button
             onClick={() => setShowCoupons((v) => !v)}
             aria-label="View coupons"
@@ -339,19 +362,14 @@ export function CartPanel({
           >
             <Icon name="confirmation_number" size={20} />
           </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="flex shrink-0 items-center gap-2 text-sm font-semibold">
-            <Icon name="percent" size={20} className="text-[#1d7a46]" /> Manual
-            discount
-          </span>
           <input
             value={manual.value}
             onChange={(e) => setManual({ ...manual, value: e.target.value })}
-            placeholder="0"
+            placeholder="Disc."
             inputMode="decimal"
             aria-label="Manual discount"
-            className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
+            title="Manual discount"
+            className="h-10 w-16 shrink-0 rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-[#1d7a46]"
           />
           <div className="flex h-10 shrink-0 overflow-hidden rounded-lg border border-gray-200 text-sm font-bold">
             {(
@@ -364,7 +382,7 @@ export function CartPanel({
                 key={t}
                 onClick={() => setManual({ ...manual, type: t })}
                 aria-pressed={manual.type === t}
-                className={`w-10 ${manual.type === t ? "bg-[#1d7a46] text-white" : "bg-white text-gray-700"}`}
+                className={`w-8 ${manual.type === t ? "bg-[#1d7a46] text-white" : "bg-white text-gray-700"}`}
               >
                 {label}
               </button>
@@ -430,7 +448,7 @@ export function CartPanel({
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3.5">
+        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-2.5">
           <span className="text-lg font-extrabold">Total Amount</span>
           <span className="text-xl font-extrabold">{taka(total)}</span>
         </div>
@@ -446,7 +464,7 @@ export function CartPanel({
             <button
               key={t}
               onClick={() => setTender(t)}
-              className={`flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold ${
+              className={`flex h-10 items-center justify-center gap-2 rounded-xl border text-sm font-semibold ${
                 tender === t
                   ? "border-[#1d7a46] bg-[#1d7a46] text-white"
                   : "border-gray-200 bg-white text-gray-800"
@@ -494,7 +512,7 @@ export function CartPanel({
         <button
           onClick={complete}
           disabled={!ready}
-          className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#1d7a46] text-lg font-extrabold text-white hover:bg-[#186a3c] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#1d7a46] text-lg font-extrabold text-white hover:bg-[#186a3c] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Icon name="lock" size={22} />{" "}
           {sale.isPending ? "Saving…" : `Complete Sale ${taka(total)}`}
@@ -582,11 +600,7 @@ function CustomerPicker({
     else if (phone) void createNow();
   };
   return (
-    <div className="space-y-2">
-      <span className="flex items-center gap-2 text-sm font-semibold">
-        <Icon name="person" size={20} className="text-[#1d7a46]" /> Customer{" "}
-        <span className="font-normal text-gray-500">(optional)</span>
-      </span>
+    <div className="space-y-1.5">
       <div className="grid grid-cols-2 gap-2">
         <div className="relative">
           <input
@@ -596,7 +610,7 @@ function CustomerPicker({
               setDraft(e.target.value, name);
             }}
             onKeyDown={onEnter}
-            placeholder="Phone"
+            placeholder="Customer phone (optional)"
             lang="en"
             inputMode="tel"
             aria-label="Customer phone"
@@ -625,7 +639,7 @@ function CustomerPicker({
             setDraft(term, e.target.value);
           }}
           onKeyDown={onEnter}
-          placeholder="Name"
+          placeholder="Customer name (optional)"
           aria-label="Customer name"
           className={field}
         />

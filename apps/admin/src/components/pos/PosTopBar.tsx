@@ -1,5 +1,6 @@
 "use client";
 
+import { promptDialog } from "@/components/PosConfirm";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@amader/admin-ui";
@@ -81,12 +82,17 @@ export function PosTopBar({
   const recent = usePosRecent(storeId);
   const ret = useReturnSale();
 
-  const onHold = () => {
+  const onHold = async () => {
     if (cart.length === 0) return toast.push("Cart is empty");
-    const label = window.prompt(
-      "Name this held sale (e.g. customer name):",
-      `Sale ${new Date().toLocaleTimeString()}`,
-    );
+    const label = await promptDialog({
+      title: "Hold this sale",
+      message:
+        "Give it a name so you can find it in Held (e.g. the customer's name).",
+      defaultValue: `Sale ${new Date().toLocaleTimeString()}`,
+      confirmLabel: "Hold sale",
+      icon: "pause_circle",
+      required: true,
+    });
     if (!label) return;
     hold.mutate(
       { storeId, label, cart: { lines: cart, customer } },
@@ -318,10 +324,15 @@ export function PosTopBar({
                     <button
                       className="rounded-lg border border-red-200 px-2 py-1.5 text-xs font-semibold text-red-600"
                       disabled={ret.isPending}
-                      onClick={() => {
-                        const reason = window.prompt(
-                          `Return ${s.orderNumber} (${taka(s.totalAmount)}) in full? Reason:`,
-                        );
+                      onClick={async () => {
+                        const reason = await promptDialog({
+                          title: `Return ${s.orderNumber}?`,
+                          message: `The whole sale (${taka(s.totalAmount)}) is refunded and the stock goes back.`,
+                          placeholder: "Reason (optional)",
+                          confirmLabel: "Return sale",
+                          tone: "danger",
+                          icon: "undo",
+                        });
                         if (reason === null) return;
                         ret.mutate(
                           { id: s.id, reason: reason || undefined },

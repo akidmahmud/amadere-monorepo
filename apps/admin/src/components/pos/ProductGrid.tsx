@@ -1,6 +1,10 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ToastProvider";
+import { proxyFetch } from "@/lib/api/proxy-client";
 import { Icon } from "@amader/admin-ui";
 import { usePosContext } from "./PosContext";
 import { EMPTY_STORE_PRODUCT, StoreProductForm } from "./StoreProductForm";
@@ -188,10 +192,71 @@ export function ProductGrid({
 }) {
   const toggle = (active: boolean) =>
     `grid h-10 w-10 place-items-center rounded-lg ${active ? "bg-[#1d7a46] text-white" : "text-gray-600 hover:bg-gray-100"}`;
-  const { can, store } = usePosContext();
+  const { can, store, storeId } = usePosContext();
+  const toast = useToast();
+  const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [pricing, setPricing] = useState<PosProduct | null>(null);
   const canPrice = can("pos.prices");
+  const canRemove = can("pos.store_products");
+  const remove = useMutation({
+    mutationFn: (p: PosProduct) =>
+      p.storeOnly
+        ? proxyFetch(`/admin/pos/products/${p.productId}?storeId=${storeId}`, {
+            method: "DELETE",
+          })
+        : proxyFetch(
+            `/admin/pos/products/${p.productId}/hide?storeId=${storeId}`,
+            { method: "POST" },
+          ),
+    onSuccess: (_r, p) => {
+      qc.invalidateQueries({ queryKey: ["pos-catalog"] });
+      qc.invalidateQueries({ queryKey: ["pos-products"] });
+      qc.invalidateQueries({ queryKey: ["pos-hidden"] });
+      qc.invalidateQueries({ queryKey: ["pos-products-deleted"] });
+      toast.push(
+        p.storeOnly
+          ? `${p.name} deleted`
+          : `${p.name} removed from ${store?.name} — put it back from POS › Products`,
+        "success",
+      );
+    },
+    onError: (e) => toast.push(e.message),
+  });
+  const trash = (p: PosProduct, cls: string) =>
+    canRemove && (
+      <button
+        onClick={() => {
+          void confirmDialog(
+            p.storeOnly
+              ? {
+                  title: `Delete "${p.name}"?`,
+                  message:
+                    "It is this store's own product. It goes to Products › Trash (restorable for 30 days); past sales are not affected.",
+                  confirmLabel: "Delete product",
+                  tone: "danger",
+                }
+              : {
+                  title: `Remove from ${store?.name}?`,
+                  message: `"${p.normalName ?? p.name}"${p.variantLabel ? " (all sizes)" : ""} — only this store stops selling it. The website and other stores keep it, and you can put it back from POS › Products.`,
+                  confirmLabel: "Remove from this store",
+                  tone: "danger",
+                  icon: "remove_shopping_cart",
+                },
+          ).then((ok) => ok && remove.mutate(p));
+        }}
+        disabled={remove.isPending}
+        className={`grid h-8 w-8 place-items-center rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 ${cls}`}
+        aria-label={`Remove ${p.name} from this store`}
+        title={
+          p.storeOnly
+            ? "Delete this store product"
+            : "Remove from this store only"
+        }
+      >
+        <Icon name="delete" size={17} />
+      </button>
+    );
   const pencil = (p: PosProduct, cls: string) =>
     canPrice && (
       <button
@@ -303,7 +368,10 @@ export function ProductGrid({
                     Store item
                   </span>
                 )}
-                {pencil(p, "absolute right-0 top-0 bg-white/90")}
+                <div className="absolute right-0 top-0 flex flex-col gap-1">
+                  {pencil(p, "bg-white/90")}
+                  {trash(p, "bg-white/90")}
+                </div>
               </div>
               <div className="line-clamp-2 text-sm font-semibold leading-snug">
                 {p.name}
@@ -359,6 +427,7 @@ export function ProductGrid({
                 <Price p={p} end />
               </div>
               {pencil(p, "shrink-0")}
+              {trash(p, "shrink-0")}
               <AddOrStepper
                 p={p}
                 qty={cartQty[lineKey(p)] ?? 0}

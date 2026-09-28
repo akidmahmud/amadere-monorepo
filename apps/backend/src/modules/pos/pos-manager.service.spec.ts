@@ -22,7 +22,7 @@ function make() {
       { status: 'RETURNED', _count: { _all: 1 } },
     ]),
   };
-  return { svc: new PosManagerService({ client: { order } } as never), order };
+  return { svc: new PosManagerService({ client: { order } } as never, { getTiers: async () => [], stats: async () => [] } as never), order };
 }
 
 describe('PosManagerService.orders', () => {
@@ -81,7 +81,7 @@ describe('PosManagerService.customers', () => {
         store: { findMany: jest.fn().mockResolvedValue([{ id: 4, name: 'Uttara' }, { id: 5, name: 'Mirpur' }]) },
       },
     };
-    const r = await new PosManagerService(prisma as never).customers(null, {});
+    const r = await new PosManagerService(prisma as never, { getTiers: async () => [], stats: async () => [] } as never).customers(null, {});
     expect(order.groupBy.mock.calls[0][0].where).toEqual(
       expect.objectContaining({ channel: 'POS', status: 'COMPLETED', customerId: { not: null } }),
     );

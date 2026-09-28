@@ -391,6 +391,7 @@ model Customer {
   campaignQueue CustomerCampaignQueue[]
 
   @@map("customers")
+  posSmsDeliveries PosSmsDelivery[]
 }
 
 enum CustomerPriority {
@@ -1583,6 +1584,9 @@ model Order {
   /// POS "VAT coupon": VAT charged then discounted back (the store bears it);
   /// part of discountAmount, while taxAmount still records the VAT owed.
   posVatDiscount    Decimal @default(0) @map("pos_vat_discount") @db.Decimal(10, 2)
+  /// POS: deleted while COMPLETED, so delete undid it (stock back, money
+  /// reversed). Restore re-applies the sale; purged 30 days after deletion.
+  posVoidedByDelete Boolean @default(false) @map("pos_voided_by_delete")
   store            Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
   items            OrderItem[]
   addresses        OrderAddress[]
@@ -3684,6 +3688,7 @@ model Store {
   invoiceTemplate PosInvoiceTemplate?
   coupons         Discount[]
   prices          StorePrice[]
+  smsCampaigns    PosSmsCampaign[]
 
   @@map("stores")
 }
@@ -3704,6 +3709,9 @@ model StorePrice {
   salePrice   Decimal? @map("sale_price") @db.Decimal(10, 2)
   /// This store's own name for the product (receipt + till); null = normal name.
   name        String?
+  /// Removed from this store only (product-level row, variantId null): not
+  /// listed or sold at this store; the website and other stores keep it.
+  hidden      Boolean  @default(false)
   updatedById Int?     @map("updated_by_id")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -3713,6 +3721,60 @@ model StorePrice {
 
   @@index([storeId])
   @@map("store_prices")
+}
+
+enum PosSmsCampaignType {
+  NOW // sent once, when saved / "Send now"
+  SCHEDULED // once, at sendAt
+  RECURRING // every day/week/month from nextRunAt
+  TIER_UPGRADE // to a customer the moment they reach a (the) tier at a store
+  WINBACK // to a customer with no purchase for winbackDays
+}
+
+// POS SMS automation (Customer Manager › SMS). Audience: that store's (or
+// every store's) till customers, all or one tier. Sent through the website's
+// SMS gateway (SmsService), so every message is also in the SMS log.
+model PosSmsCampaign {
+  id           Int                @id @default(autoincrement())
+  name         String
+  storeId      Int?               @map("store_id") // null = every store
+  /// null = every customer; else a tier key from the POS tier list.
+  tierKey      String?            @map("tier_key")
+  type         PosSmsCampaignType
+  message      String
+  sendAt       DateTime?          @map("send_at") // SCHEDULED
+  /// RECURRING: DAILY | WEEKLY | MONTHLY
+  repeat       String?
+  nextRunAt    DateTime?          @map("next_run_at") // SCHEDULED/RECURRING
+  winbackDays  Int?               @map("winback_days")
+  active       Boolean            @default(true)
+  lastRunAt    DateTime?          @map("last_run_at")
+  sentCount    Int                @default(0) @map("sent_count")
+  createdById  Int?               @map("created_by_id")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  store      Store?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  deliveries PosSmsDelivery[]
+
+  @@index([active, nextRunAt])
+  @@map("pos_sms_campaigns")
+}
+
+// One per (campaign, customer, key) for the automatic kinds, so a tier
+// upgrade is congratulated once and a win-back sent once per absence.
+model PosSmsDelivery {
+  id         Int      @id @default(autoincrement())
+  campaignId Int      @map("campaign_id")
+  customerId Int      @map("customer_id")
+  key        String
+  sentAt     DateTime @default(now()) @map("sent_at")
+
+  campaign PosSmsCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, customerId, key])
+  @@map("pos_sms_deliveries")
 }
 
 // Stock of one SKU at one non-online store. Written ONLY by StockService.move.

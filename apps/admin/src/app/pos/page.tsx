@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import {
@@ -91,10 +92,15 @@ export default function PosPage() {
           dispatch({ type: "clear" });
           setCustomer(null);
         }}
-        onResume={(h) => {
+        onResume={async (h) => {
           if (
             cart.length > 0 &&
-            !window.confirm("Replace the current cart with this held sale?")
+            !(await confirmDialog({
+              title: "Replace the current cart?",
+              message: `The items now in the cart are swapped for the held sale "${h.label}".`,
+              confirmLabel: "Replace cart",
+              icon: "shopping_cart",
+            }))
           )
             return;
           dispatch({ type: "load", lines: h.cart.lines });

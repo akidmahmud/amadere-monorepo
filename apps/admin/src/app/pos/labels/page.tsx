@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import JsBarcode from "jsbarcode";
 import { buildLabelSheet, printLabelSheet } from "@/lib/pos-labels";
 import { taka } from "@/lib/pos-cart";
@@ -152,12 +153,14 @@ export default function LabelsPage() {
               className="h-10 rounded-lg border border-amber-600 px-4 text-sm font-bold text-amber-700"
               disabled={generate.isPending}
               title="Old AMD… codes are long and can be hard to scan on small labels"
-              onClick={() =>
-                confirm(
-                  `Give ${legacy.length} product(s) a new, easier-to-scan barcode?
-
-Labels already printed with the old AMD… code will stop scanning — reprint them after this.`,
-                ) &&
+              onClick={async () =>
+                (await confirmDialog({
+                  title: `Give ${legacy.length} product(s) a new barcode?`,
+                  message:
+                    "The new codes are easier to scan. Labels already printed with the old AMD… code will stop scanning — reprint them after this.",
+                  confirmLabel: "Switch barcodes",
+                  icon: "barcode",
+                })) &&
                 generate.mutate(
                   {
                     productIds: [...new Set(legacy.map((r) => r.p.productId))],

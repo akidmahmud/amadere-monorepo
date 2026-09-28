@@ -56,6 +56,7 @@ export class PosStoresService {
           price: o.price,
           salePrice: o.salePrice,
           name: o.name,
+          hidden: o.hidden,
           updatedById: o.updatedById,
         })),
       });

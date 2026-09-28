@@ -51,6 +51,10 @@ describe('PosCatalogService.list', () => {
     expect(where.deletedAt).toBeNull();
     // A counter sells physical goods; ebooks/downloads stay online-only.
     expect(where.productType).toEqual({ not: 'DIGITAL' });
+    // Products removed from this store only are not offered here.
+    expect(where.storePrices).toEqual({
+      none: { storeId: 2, variantId: null, hidden: true },
+    });
   });
 
   it('maps simple and variant products with per-store stock', async () => {

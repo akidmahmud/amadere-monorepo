@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { QueryProvider } from "@/components/QueryProvider";
 import { ToastProvider } from "@/components/ToastProvider";
+import { ConfirmDialogHost } from "@/components/PosConfirm";
 import { ckeditorGoogleFontsUrl } from "@amader/shared";
 import "./globals.css";
 
@@ -11,7 +12,11 @@ export const metadata: Metadata = {
 // AppShell now lives in app/(shell)/layout.tsx instead of here — /login must
 // render without the sidebar/topbar chrome, so only the truly global stuff
 // (fonts, query client) stays at the root.
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <head>
@@ -33,11 +38,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             now force-overrides every inline font-family on the storefront
             via globals.css and no longer needs to load fonts for content
             it'll never actually render with them). */}
-        <link rel="stylesheet" href={ckeditorGoogleFontsUrl()} precedence="default" />
+        <link
+          rel="stylesheet"
+          href={ckeditorGoogleFontsUrl()}
+          precedence="default"
+        />
       </head>
       <body>
         <QueryProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            {children}
+            <ConfirmDialogHost />
+          </ToastProvider>
         </QueryProvider>
       </body>
     </html>

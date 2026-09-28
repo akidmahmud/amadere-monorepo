@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import {
@@ -145,8 +146,14 @@ export function PosCouponsTab() {
                     {c.usedCount === 0 && (
                       <button
                         className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600"
-                        onClick={() =>
-                          window.confirm(`Delete coupon ${c.code}?`) &&
+                        onClick={async () =>
+                          (await confirmDialog({
+                            title: `Delete coupon ${c.code}?`,
+                            message:
+                              "It stops working at the till straight away.",
+                            confirmLabel: "Delete coupon",
+                            tone: "danger",
+                          })) &&
                           del.mutate(c.id, {
                             onSuccess: () =>
                               toast.push("Coupon deleted", "success"),

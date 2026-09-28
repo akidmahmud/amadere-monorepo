@@ -1,6 +1,8 @@
 "use client";
 
+import { confirmDialog } from "@/components/PosConfirm";
 import { PosCouponsTab } from "@/components/pos/PosCouponsTab";
+import { PosSmsSettingsTab } from "@/components/pos/PosSmsSettingsTab";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import {
@@ -25,7 +27,7 @@ import {
 } from "@/components/pos/PosSubPage";
 
 export default function PosSettingsPage() {
-  const [tab, setTab] = useState<"vat" | "invoices" | "coupons">("vat");
+  const [tab, setTab] = useState<"vat" | "invoices" | "coupons" | "sms">("vat");
   const tabBtn = (t: typeof tab, label: string) => (
     <button
       onClick={() => setTab(t)}
@@ -40,13 +42,16 @@ export default function PosSettingsPage() {
         {tabBtn("vat", "VAT")}
         {tabBtn("invoices", "Invoices")}
         {tabBtn("coupons", "Coupons")}
+        {tabBtn("sms", "SMS")}
       </div>
       {tab === "vat" ? (
         <VatSettings />
       ) : tab === "invoices" ? (
         <InvoiceSettings />
-      ) : (
+      ) : tab === "coupons" ? (
         <PosCouponsTab />
+      ) : (
+        <PosSmsSettingsTab />
       )}
     </PosSubPage>
   );
@@ -303,12 +308,19 @@ function TemplateEditor({
             <button
               className="h-10 rounded-lg border border-red-200 px-4 text-sm font-semibold text-red-600 disabled:opacity-40"
               disabled={!hasOwn || save.isPending}
-              onClick={() =>
-                window.confirm(
-                  storeId === null
-                    ? "Delete the Default template? Stores will print the built-in receipt."
-                    : "Remove this store's template? It will print the Default.",
-                ) &&
+              onClick={async () =>
+                (await confirmDialog({
+                  title:
+                    storeId === null
+                      ? "Delete the Default template?"
+                      : "Remove this store's template?",
+                  message:
+                    storeId === null
+                      ? "Stores without their own template will print the built-in receipt."
+                      : "This store will print the Default template.",
+                  confirmLabel: "Delete template",
+                  tone: "danger",
+                })) &&
                 save.mutate(
                   { storeId, html: null },
                   {

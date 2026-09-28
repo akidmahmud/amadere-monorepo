@@ -97,6 +97,124 @@ export class PosProductsService {
     return this.products.update(id, this.fields(dto), actor);
   }
 
+  /**
+   * Moves one of this store's own products to the product Trash (restorable
+   * for 30 days from Products › Trash). Past sales keep their snapshots.
+   */
+  async remove(storeId: number, id: number) {
+    const p = await this.prisma.client.product.findUniqueOrThrow({
+      where: { id },
+      select: { storeId: true },
+    });
+    if (p.storeId !== storeId)
+      throw new ForbiddenException('This product does not belong to this store');
+    await this.products.delete(id);
+    return { deleted: true };
+  }
+
+  /**
+   * Removes a SHARED product from this store only: not listed or sold here,
+   * still on the website and at other stores. (A store's own product is
+   * deleted with remove() instead.)
+   */
+  async hide(storeId: number, productId: number, adminId: number) {
+    const c = this.prisma.client;
+    const p = await c.product.findFirst({
+      where: { id: productId, deletedAt: null },
+      select: { storeId: true },
+    });
+    if (!p) throw new BadRequestException('Product not found');
+    if (p.storeId !== null)
+      throw new BadRequestException(
+        "This is a store product — delete it instead",
+      );
+    const where = { storeId, productId, variantId: null };
+    const existing = await c.storePrice.findFirst({ where });
+    if (existing)
+      await c.storePrice.update({
+        where: { id: existing.id },
+        data: { hidden: true, updatedById: adminId },
+      });
+    else
+      await c.storePrice.create({
+        data: { ...where, hidden: true, updatedById: adminId },
+      });
+    return { hidden: true };
+  }
+
+  /** Puts a removed product back on this store's till. */
+  async unhide(storeId: number, productId: number) {
+    const c = this.prisma.client;
+    const where = { storeId, productId, variantId: null };
+    // A row that only existed to hide the product goes; one that also holds
+    // this store's name/price keeps them.
+    await c.storePrice.deleteMany({
+      where: { ...where, hidden: true, name: null, price: null },
+    });
+    await c.storePrice.updateMany({ where, data: { hidden: false } });
+    return { hidden: false };
+  }
+
+  /** Shared products removed from this store (to put back). */
+  async hiddenList(storeId: number) {
+    const rows = await this.prisma.client.storePrice.findMany({
+      where: { storeId, variantId: null, hidden: true },
+      select: {
+        productId: true,
+        updatedAt: true,
+        product: {
+          select: {
+            sku: true,
+            translations: { select: { locale: true, name: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return rows.map((r) => ({
+      productId: r.productId,
+      sku: r.product.sku,
+      name:
+        r.product.translations.find((t) => t.locale === 'EN')?.name ??
+        r.product.translations[0]?.name ??
+        '',
+      removedAt: r.updatedAt,
+    }));
+  }
+
+  /** This store's deleted own products (Products Trash keeps them 30 days). */
+  async deletedList(storeId: number) {
+    const rows = await this.prisma.client.product.findMany({
+      where: { storeId, deletedAt: { not: null } },
+      orderBy: { deletedAt: 'desc' },
+      select: {
+        id: true,
+        sku: true,
+        deletedAt: true,
+        translations: { select: { locale: true, name: true } },
+      },
+    });
+    return rows.map(({ translations, ...p }) => ({
+      ...p,
+      name:
+        translations.find((t) => t.locale === 'EN')?.name ??
+        translations[0]?.name ??
+        '',
+    }));
+  }
+
+  /** Back from the Trash, onto this store's till again. */
+  async restore(storeId: number, id: number) {
+    const p = await this.prisma.client.product.findUniqueOrThrow({
+      where: { id },
+      select: { storeId: true },
+    });
+    if (p.storeId !== storeId)
+      throw new ForbiddenException('This product does not belong to this store');
+    await this.products.restore(id);
+    return { restored: true };
+  }
+
   /** Copy of one of this store's own products (name "… (copy)", no stock). */
   async duplicate(storeId: number, id: number) {
     const p = await this.prisma.client.product.findUniqueOrThrow({
@@ -139,7 +257,12 @@ export class PosProductsService {
     if (salePrice !== null && price === null)
       throw new BadRequestException('Set a price before an offer price');
     if (name === null && price === null) {
-      await c.storePrice.deleteMany({ where });
+      // Keep a "removed from this store" row; clear only its name/price.
+      await c.storePrice.deleteMany({ where: { ...where, hidden: false } });
+      await c.storePrice.updateMany({
+        where,
+        data: { price: null, salePrice: null, name: null },
+      });
       return { reset: true };
     }
     if (salePrice !== null && price !== null && salePrice > price)
