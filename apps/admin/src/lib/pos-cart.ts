@@ -8,6 +8,8 @@ export interface PosProduct {
   price: string;
   salePrice: string | null;
   imageUrl?: string | null;
+  /** true = imageUrl is this store's own photo. */
+  storeImage?: boolean;
   categoryIds?: number[];
   stock: number;
   storeOnly?: boolean;

@@ -29,7 +29,7 @@ describe('PosReportsService.sales', () => {
         },
       ])
       .mockResolvedValueOnce([
-        { storeId: 2, _sum: { totalAmount: new Prisma.Decimal(50) } },
+        { storeId: 2, _sum: { posRefundedAmount: new Prisma.Decimal(50) } },
       ]);
     const prisma = {
       client: {
@@ -62,7 +62,7 @@ describe('PosReportsService.sales — returns only', () => {
       .fn()
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
-        { storeId: 3, _sum: { totalAmount: new Prisma.Decimal(80) } },
+        { storeId: 3, _sum: { posRefundedAmount: new Prisma.Decimal(80) } },
       ]);
     const prisma = {
       client: {
@@ -141,7 +141,7 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
         },
       ]) // sold
       .mockResolvedValueOnce([
-        { storeId: 2, _sum: { totalAmount: D(115), taxAmount: D(15) } },
+        { storeId: 2, _sum: { posRefundedAmount: D(115), posRefundedVat: D(15) } },
       ]); // returned
     const expenseGroup = jest
       .fn()
@@ -232,6 +232,7 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
     ) => ({
       customerId: id,
       totalAmount: D(total),
+      posRefundedAmount: D(0),
       status,
       createdAt: new Date(at),
       items: [{ quantity: qty }],

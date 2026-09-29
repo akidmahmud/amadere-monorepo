@@ -46,9 +46,14 @@ export interface PosSale {
   /** Parts of discountAmount (POS). */
   posManualDiscount?: string;
   posVatDiscount?: string;
+  /** Refunded so far by (partial) returns. */
+  posRefundedAmount?: string;
+  deletedAt?: string | null;
   createdAt: string;
   items: {
     id: number;
+    productId?: number | null;
+    variantId?: number | null;
     productNameSnapshot: string;
     variantLabel?: string | null;
     weightKg?: string | null;
@@ -56,6 +61,8 @@ export interface PosSale {
     /** The store set its own weight: print it even next to a size label. */
     storeWeight?: boolean;
     quantity: number;
+    /** How many of this line were returned already. */
+    restockedQuantity?: number;
     unitPrice: string;
   }[];
   payments: {
@@ -92,6 +99,9 @@ function invalidatePos(qc: ReturnType<typeof useQueryClient>) {
     "pos-recent",
     "pos-movements",
     "pos-transfers",
+    "pos-sale",
+    "pos-orders",
+    "pos-customer-list",
   ]) {
     qc.invalidateQueries({ queryKey: [key] });
   }
@@ -222,10 +232,15 @@ export const usePosSale = (id: number) =>
 export function useReturnSale() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (a: { id: number; reason?: string }) =>
+    mutationFn: (a: {
+      id: number;
+      reason?: string;
+      /** Omitted = everything not yet returned. */
+      items?: { itemId: number; qty: number }[];
+    }) =>
       proxyFetch<PosSale>(`/admin/pos/sales/${a.id}/return`, {
         method: "POST",
-        body: JSON.stringify({ reason: a.reason }),
+        body: JSON.stringify({ reason: a.reason, items: a.items }),
       }),
     onSuccess: () => invalidatePos(qc),
   });
@@ -469,4 +484,14 @@ export const useTillCoupons = (storeId: number | undefined, enabled: boolean) =>
         `/admin/pos/coupons/available${qs({ storeId })}`,
       ),
     enabled,
+  });
+
+/** Label printer paper size (POS Settings › Labels). */
+export const usePosLabelSize = () =>
+  useQuery({
+    queryKey: ["pos-label-size"],
+    queryFn: () =>
+      proxyFetch<{ widthMm: number; heightMm: number }>(
+        "/admin/pos/settings/label",
+      ),
   });

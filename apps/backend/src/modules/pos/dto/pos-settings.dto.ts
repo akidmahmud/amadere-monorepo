@@ -18,3 +18,8 @@ export class UpdatePosVatDto {
   @IsBoolean()
   vatDiscount?: boolean;
 }
+
+export class UpdatePosLabelDto {
+  @ApiProperty({ example: 38 }) @IsNumber() @Min(20) @Max(120) widthMm!: number;
+  @ApiProperty({ example: 25 }) @IsNumber() @Min(10) @Max(120) heightMm!: number;
+}

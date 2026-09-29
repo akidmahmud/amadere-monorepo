@@ -9,7 +9,11 @@ import { dhakaTimeRange } from './dhaka-range';
 import { PosTiersService } from './pos-tiers.service';
 import { tierFor } from './pos-tiers';
 
-export const POS_ORDER_STATUSES = ['COMPLETED', 'RETURNED'] as const;
+export const POS_ORDER_STATUSES = [
+  'COMPLETED',
+  'PARTIALLY_RETURNED',
+  'RETURNED',
+] as const;
 const TENDER: Record<'CASH' | 'CARD' | 'MOBILE', PaymentProvider> = {
   CASH: 'CASH',
   CARD: 'CARD',
@@ -28,6 +32,7 @@ export interface PosOrdersQuery extends TimeFilter {
   status?: (typeof POS_ORDER_STATUSES)[number];
   tender?: keyof typeof TENDER;
   q?: string;
+  customerId?: number;
   page?: number;
   pageSize?: number;
 }
@@ -76,6 +81,7 @@ export class PosManagerService {
         ? { payments: { some: { provider: TENDER[q.tender] } } }
         : {}),
       ...(range ? { createdAt: range } : {}),
+      ...(q.customerId ? { customerId: q.customerId } : {}),
       ...(term
         ? {
             OR: [
@@ -105,10 +111,17 @@ export class PosManagerService {
           discountAmount: true,
           taxAmount: true,
           totalAmount: true,
+          posRefundedAmount: true,
           store: { select: { id: true, name: true } },
           customer: { select: { firstName: true, lastName: true, phone: true } },
           assignedAdmin: { select: { firstName: true, lastName: true } },
-          items: { select: { quantity: true } },
+          items: {
+            select: {
+              productNameSnapshot: true,
+              quantity: true,
+              restockedQuantity: true,
+            },
+          },
           payments: {
             select: { provider: true },
             orderBy: { createdAt: 'desc' },
@@ -143,6 +156,11 @@ export class PosManagerService {
             ? `${assignedAdmin.firstName} ${assignedAdmin.lastName}`.trim()
             : null,
           itemCount: items.reduce((s, i) => s + i.quantity, 0),
+          items: items.map((i) => ({
+            name: i.productNameSnapshot,
+            qty: i.quantity,
+            returned: i.restockedQuantity,
+          })),
           tender: payments[0]?.provider ?? null,
         })),
         total,
@@ -152,6 +170,7 @@ export class PosManagerService {
       counts: {
         ALL: byStatus.reduce((s, g) => s + g._count._all, 0),
         COMPLETED: counts.COMPLETED ?? 0,
+        PARTIALLY_RETURNED: counts.PARTIALLY_RETURNED ?? 0,
         RETURNED: counts.RETURNED ?? 0,
       },
     };
@@ -174,11 +193,11 @@ export class PosManagerService {
           ),
         ]
       : null;
-    // Returned sales don't count as purchases.
+    // Fully returned sales don't count as purchases.
     const where: Prisma.OrderWhereInput = {
       channel: 'POS',
       deletedAt: null,
-      status: 'COMPLETED',
+      status: { in: ['COMPLETED', 'PARTIALLY_RETURNED'] },
       customerId: inTier ? { in: inTier } : { not: null },
       ...(storeId ? { storeId } : {}),
       ...(term ? { customer: customerSearch(term) } : {}),
@@ -190,7 +209,7 @@ export class PosManagerService {
         by: ['customerId'],
         where,
         _count: { _all: true },
-        _sum: { totalAmount: true },
+        _sum: { totalAmount: true, posRefundedAmount: true },
         _max: { createdAt: true },
         orderBy: { _max: { createdAt: 'desc' } },
         ...paginationArgs(page, pageSize),
@@ -238,7 +257,9 @@ export class PosManagerService {
           phone: c?.phone ?? null,
           email: c?.email ?? null,
           purchases: g._count._all,
-          spent: (g._sum.totalAmount ?? new Prisma.Decimal(0)).toFixed(2),
+          spent: (g._sum.totalAmount ?? new Prisma.Decimal(0))
+            .minus(g._sum.posRefundedAmount ?? 0)
+            .toFixed(2),
           lastPurchase: g._max.createdAt,
           stores: storePairs
             .filter((p) => p.customerId === g.customerId)

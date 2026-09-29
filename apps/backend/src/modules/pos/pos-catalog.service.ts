@@ -17,6 +17,8 @@ export interface PosProduct {
   price: string;
   salePrice: string | null;
   imageUrl: string | null;
+  /** true = imageUrl is this store's own photo. */
+  storeImage?: boolean;
   categoryIds: number[];
   /** Sellable at this store. Untracked products report 9999. */
   stock: number;
@@ -198,6 +200,7 @@ export class PosCatalogService {
     );
     const own = await this.prisma.client.storePrice.findMany({
       where: { storeId, productId: { in: rows.map((p) => p.id) } },
+      include: { media: { select: { url: true, cardUrl: true } } },
     });
     const ownBy = new Map(
       own.map((o) => [stockKey(o.productId, o.variantId), o]),
@@ -234,7 +237,15 @@ export class PosCatalogService {
       storePrice: !!ownPrice,
       normalPrice,
       normalSalePrice,
-      imageUrl: p.media[0]?.media.cardUrl ?? p.media[0]?.media.url ?? null,
+      // This store's own photo (set on the product-level row) wins.
+      ...(() => {
+        const mine = ownBy.get(stockKey(p.id, null))?.media;
+        const m = mine ?? p.media[0]?.media;
+        return {
+          imageUrl: m?.cardUrl ?? m?.url ?? null,
+          storeImage: !!mine,
+        };
+      })(),
       categoryIds: p.categories.map((c) => c.categoryId),
       stock: p.trackInventory
         ? (qty.get(stockKey(p.id, v?.id ?? null)) ?? 0)

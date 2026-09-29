@@ -148,7 +148,7 @@ export function renderPosInvoice(html: string, d: PosInvoiceData): string {
 
 /** Today's 80mm receipt, expressed as a template — also the "Load built-in" starting point. */
 export const BUILTIN_POS_INVOICE = `<style>
-  .r { width: 72mm; margin: 0 auto; font: 12px/1.35 monospace; color: #000; }
+  .r { width: 72mm; margin: 0 auto; font: 12px/1.35 Calibri, Carlito, "Segoe UI", Arial, sans-serif; color: #000; }
   .r h1 { font-size: 15px; margin: 0; text-align: center; }
   .r .c { text-align: center; }
   .r hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }

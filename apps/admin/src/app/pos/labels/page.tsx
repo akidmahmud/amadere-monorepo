@@ -1,13 +1,17 @@
 "use client";
 
 import { confirmDialog } from "@/components/PosConfirm";
-import JsBarcode from "jsbarcode";
-import { buildLabelSheet, printLabelSheet } from "@/lib/pos-labels";
-import { taka } from "@/lib/pos-cart";
+import { barcodeSvg } from "@/lib/pos-barcode";
+import {
+  DEFAULT_LABEL_SIZE,
+  buildLabelSheet,
+  printLabelSheet,
+} from "@/lib/pos-labels";
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
-import { posLookup, useStockPost } from "@/hooks/usePos";
+import { posLookup, usePosLabelSize, useStockPost } from "@/hooks/usePos";
 import type { PosProduct } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
 import { Label } from "@/components/pos/Label";
@@ -24,7 +28,8 @@ type Row = { p: PosProduct; copies: string };
 const key = (p: PosProduct) => `${p.productId}:${p.variantId ?? 0}`;
 
 export default function LabelsPage() {
-  const { storeId } = usePosContext();
+  const { storeId, can } = usePosContext();
+  const size = usePosLabelSize().data ?? DEFAULT_LABEL_SIZE;
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);
   const generate = useStockPost<
@@ -189,12 +194,8 @@ export default function LabelsPage() {
             onClick={() =>
               printLabelSheet(
                 buildLabelSheet(
-                  printable.map((p) => ({
-                    name: p.name,
-                    variant: p.variantLabel,
-                    price: taka(p.salePrice ?? p.price),
-                    barcodeSvg: barcodeSvg(p.barcode),
-                  })),
+                  printable.map((p) => ({ barcodeSvg: barcodeSvg(p.barcode) })),
+                  size,
                 ),
               )
             }
@@ -203,8 +204,22 @@ export default function LabelsPage() {
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          Each label prints as its own 40×30mm page. In the print dialog pick
-          the label printer; if it asks, choose paper 40×30mm and margins None.
+          Each label prints as its own {size.widthMm}×{size.heightMm}mm page
+          (barcode only). In the print dialog pick the label printer; if it
+          asks, choose paper {size.widthMm}×{size.heightMm}mm and margins None.
+          {can("pos.settings") && (
+            <>
+              {" "}
+              Change the size in{" "}
+              <Link
+                href="/pos/settings"
+                className="font-semibold text-[#1d7a46]"
+              >
+                Settings › Labels
+              </Link>
+              .
+            </>
+          )}
         </p>
       </div>
 
@@ -217,7 +232,7 @@ export default function LabelsPage() {
                 key={`${key(p)}-${i}`}
                 className="border border-dashed border-gray-300 print:border-0"
               >
-                <Label p={p} />
+                <Label p={p} size={size} />
               </div>
             ))}
           </div>
@@ -225,53 +240,4 @@ export default function LabelsPage() {
       )}
     </PosSubPage>
   );
-}
-
-/** Draws a barcode into a detached <svg> and returns its markup (null if none / invalid). */
-function barcodeSvg(code: string | null | undefined): string | null {
-  if (!code) return null;
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  const ean = /^\d{13}$/.test(code);
-  try {
-    JsBarcode(
-      svg,
-      code,
-      ean
-        ? // 1 unit per module and "flat" (no guard-bar overhang): exactly 95
-          // modules wide, so it can be printed at a whole number of dots.
-          {
-            format: "EAN13",
-            flat: true,
-            width: 1,
-            height: 38,
-            margin: 0,
-            fontSize: 8,
-            textMargin: 1,
-          }
-        : {
-            format: "CODE128",
-            height: 40,
-            width: 1.4,
-            margin: 0,
-            fontSize: 11,
-            textMargin: 0,
-            displayValue: true,
-          },
-    );
-  } catch {
-    return null;
-  }
-  // Scale to the label box instead of the fixed pixel size JsBarcode writes.
-  svg.setAttribute(
-    "viewBox",
-    `0 0 ${svg.getAttribute("width")?.replace("px", "")} ${svg.getAttribute("height")?.replace("px", "")}`,
-  );
-  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-  svg.removeAttribute("width");
-  svg.removeAttribute("height");
-  // EAN-13 at 0.375mm per module = exactly 3 whole dots on a 203 dpi label
-  // printer (35.6mm wide on a 40mm label). Tested: still decodes after heavy
-  // blur, where 2 dots/module (0.25mm) failed.
-  if (ean) svg.setAttribute("style", "width:35.625mm;height:auto");
-  return svg.outerHTML;
 }

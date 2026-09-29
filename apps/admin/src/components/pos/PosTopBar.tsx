@@ -1,5 +1,6 @@
 "use client";
 
+import { ReturnItemsDialog } from "./ReturnItemsDialog";
 import { promptDialog } from "@/components/PosConfirm";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import {
   useHoldSale,
   usePosHeld,
   usePosRecent,
-  useReturnSale,
   type HeldSale,
   type PosCustomer,
 } from "@/hooks/usePos";
@@ -80,7 +80,7 @@ export function PosTopBar({
   const held = usePosHeld(storeId);
   const drop = useDropHeld();
   const recent = usePosRecent(storeId);
-  const ret = useReturnSale();
+  const [returning, setReturning] = useState<number | null>(null);
 
   const onHold = async () => {
     if (cart.length === 0) return toast.push("Cart is empty");
@@ -137,6 +137,9 @@ export function PosTopBar({
 
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-5 py-3">
+      {returning && (
+        <ReturnItemsDialog id={returning} onClose={() => setReturning(null)} />
+      )}
       {camera && (
         <CameraScanner
           onClose={() => setCamera(false)}
@@ -309,6 +312,11 @@ export function PosTopBar({
                         Returned
                       </span>
                     )}
+                    {s.status === "PARTIALLY_RETURNED" && (
+                      <span className="ml-1 font-bold text-amber-700">
+                        Part returned
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -323,25 +331,9 @@ export function PosTopBar({
                   {can("pos.refund") && s.status !== "RETURNED" && (
                     <button
                       className="rounded-lg border border-red-200 px-2 py-1.5 text-xs font-semibold text-red-600"
-                      disabled={ret.isPending}
-                      onClick={async () => {
-                        const reason = await promptDialog({
-                          title: `Return ${s.orderNumber}?`,
-                          message: `The whole sale (${taka(s.totalAmount)}) is refunded and the stock goes back.`,
-                          placeholder: "Reason (optional)",
-                          confirmLabel: "Return sale",
-                          tone: "danger",
-                          icon: "undo",
-                        });
-                        if (reason === null) return;
-                        ret.mutate(
-                          { id: s.id, reason: reason || undefined },
-                          {
-                            onSuccess: () =>
-                              toast.push("Returned and refunded", "success"),
-                            onError: (e) => toast.push(e.message),
-                          },
-                        );
+                      onClick={() => {
+                        setReturning(s.id);
+                        close();
                       }}
                     >
                       Return

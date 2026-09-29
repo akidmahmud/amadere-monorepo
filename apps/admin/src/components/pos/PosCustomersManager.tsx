@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@amader/admin-ui";
@@ -17,6 +16,8 @@ import {
 } from "./PeriodFilter";
 import { PosTiersTab, TierBadge, usePosTiers } from "./PosTiersTab";
 import { PosSmsCampaignsTab } from "./PosSmsCampaignsTab";
+import { CustomerHistoryDialog } from "./CustomerHistoryDialog";
+import { daysAgo } from "@/lib/pos-days";
 
 type Row = {
   id: number;
@@ -62,6 +63,8 @@ function CustomersList({
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<Period>(NO_PERIOD);
   const [exporting, setExporting] = useState(false);
+  const [history, setHistory] = useState<Row | null>(null);
+  const [now] = useState(() => Date.now());
   const toast = useToast();
   const storeId = fixedStore ?? storeFilter;
   const filters = {
@@ -277,6 +280,9 @@ function CustomersList({
                   </td>
                   <td className="whitespace-nowrap px-4 text-gray-600">
                     {new Date(c.lastPurchase).toLocaleDateString("en-GB")}
+                    <div className="text-xs font-semibold text-[#1d7a46]">
+                      {daysAgo(c.lastPurchase, now)}
+                    </div>
                   </td>
                   <td className="px-4">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -303,14 +309,12 @@ function CustomersList({
                     </div>
                   </td>
                   <td className="px-4 text-right">
-                    {c.phone && (
-                      <Link
-                        href={ordersHref(c.phone)}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-[#1d7a46] hover:underline"
-                      >
-                        Orders <Icon name="arrow_forward" size={14} />
-                      </Link>
-                    )}
+                    <button
+                      onClick={() => setHistory(c)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-bold text-[#1d7a46] hover:bg-emerald-50"
+                    >
+                      Orders <Icon name="arrow_forward" size={14} />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -342,6 +346,14 @@ function CustomersList({
           </div>
         </div>
       </div>
+      {history && (
+        <CustomerHistoryDialog
+          customer={history}
+          storeId={storeId}
+          ordersHref={history.phone ? ordersHref(history.phone) : undefined}
+          onClose={() => setHistory(null)}
+        />
+      )}
     </div>
   );
 }

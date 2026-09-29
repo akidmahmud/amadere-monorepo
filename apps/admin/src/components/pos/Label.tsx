@@ -2,10 +2,17 @@
 
 import { useEffect, useRef } from "react";
 import JsBarcode from "jsbarcode";
-import { taka, type PosProduct } from "@/lib/pos-cart";
+import type { PosProduct } from "@/lib/pos-cart";
+import { DEFAULT_LABEL_SIZE, type LabelSize } from "@/lib/pos-labels";
 
-/** One 40×30mm shelf/pack label: name, pack size, price, barcode, Amader®. */
-export function Label({ p }: { p: PosProduct }) {
+/** Preview of one printed label: just the barcode and its number. */
+export function Label({
+  p,
+  size = DEFAULT_LABEL_SIZE,
+}: {
+  p: PosProduct;
+  size?: LabelSize;
+}) {
   const svg = useRef<SVGSVGElement>(null);
   const code = p.barcode ?? "";
   useEffect(() => {
@@ -26,30 +33,26 @@ export function Label({ p }: { p: PosProduct }) {
   }, [code]);
   return (
     <div
-      className="pos-label flex flex-col items-center justify-between overflow-hidden bg-white text-black"
+      className="pos-label flex items-center justify-center overflow-hidden bg-white text-black"
       style={{
-        width: "40mm",
-        height: "30mm",
+        width: `${size.widthMm}mm`,
+        height: `${size.heightMm}mm`,
         padding: "1mm",
-        breakAfter: "page",
         boxSizing: "border-box",
       }}
+      title={p.name}
     >
-      <div className="w-full truncate text-center text-[8pt] font-bold leading-tight">
-        {p.name}
-      </div>
-      <div className="flex w-full justify-between text-[7pt] leading-none">
-        <span className="truncate">{p.variantLabel ?? ""}</span>
-        <span className="shrink-0 font-bold">
-          {taka(p.salePrice ?? p.price)}
-        </span>
-      </div>
       {code ? (
-        <svg ref={svg} style={{ maxWidth: "38mm", height: "15mm" }} />
+        <svg
+          ref={svg}
+          style={{
+            maxWidth: `${size.widthMm - 2}mm`,
+            maxHeight: `${size.heightMm - 2}mm`,
+          }}
+        />
       ) : (
         <div className="text-[7pt] text-red-600">No barcode</div>
       )}
-      <div className="text-[6pt] leading-none">Amader®</div>
     </div>
   );
 }

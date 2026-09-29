@@ -115,3 +115,11 @@ export class DuplicateStoreDto {
   @Matches(/^[A-Z0-9]{2,10}$/, { message: 'Code: 2-10 capital letters/digits' })
   code!: string;
 }
+
+export class PosImageDto {
+  /** null = remove the photo. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  mediaId?: number | null;
+}

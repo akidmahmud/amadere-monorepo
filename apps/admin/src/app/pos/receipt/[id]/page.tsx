@@ -115,7 +115,14 @@ export default function ReceiptPage({
     <div className="bg-white">
       <style>{`@page { size: 80mm auto; margin: 0 } @media print { body { background: #fff } }`}</style>
       {/* Template HTML is sanitised on save; every value is escaped by renderPosInvoice. */}
-      <div className="pos-receipt" dangerouslySetInnerHTML={{ __html: html }} />
+      <div
+        className="pos-receipt"
+        // Calibri (Body) for every template; a template's own font still wins.
+        style={{
+          fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
+        }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </div>
   );
 }

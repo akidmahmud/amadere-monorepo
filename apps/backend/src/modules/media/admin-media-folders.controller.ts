@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGua
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
-import { RequirePermission } from '../../common/auth/permission.decorator';
+import { RequireAnyPermission, RequirePermission } from '../../common/auth/permission.decorator';
 import { AuditLogInterceptor } from '../../common/audit-log/audit-log.interceptor';
 import { MediaService } from './media.service';
 import { CreateMediaFolderDto } from './dto/create-media-folder.dto';
@@ -18,7 +18,7 @@ export class AdminMediaFoldersController {
   constructor(private readonly media: MediaService) {}
 
   @Get()
-  @RequirePermission('media.view')
+  @RequireAnyPermission('media.view', 'pos.store_products', 'pos.prices')
   @ApiOkResponse({ type: MediaFolderDto, isArray: true })
   list(): Promise<MediaFolderDto[]> {
     return this.media.listFolders();

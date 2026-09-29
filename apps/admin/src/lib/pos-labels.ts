@@ -1,51 +1,43 @@
 export interface LabelData {
-  name: string;
-  variant?: string | null;
-  price: string;
   /** Rendered barcode <svg> markup; null when the product has no barcode. */
   barcodeSvg: string | null;
 }
 
-const esc = (v: unknown) =>
-  String(v ?? "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ]!,
-  );
+/** Label printer paper, POS Settings › Labels. */
+export interface LabelSize {
+  widthMm: number;
+  heightMm: number;
+}
+export const DEFAULT_LABEL_SIZE: LabelSize = { widthMm: 38, heightMm: 25 };
 
 /**
- * A standalone print document: nothing but the labels, each exactly one
- * 40×30mm page. Printing the admin page itself (hiding everything else) left
- * the hidden content taking space — a tiny label on a letter-size sheet plus
- * blank pages — and the browser ignored the label page size.
+ * A standalone print document: nothing but the labels (the barcode and its
+ * number), each exactly one label-sized page. Printing the admin page itself
+ * (hiding everything else) left the hidden content taking space — a tiny
+ * label on a letter-size sheet plus blank pages — and the browser ignored
+ * the label page size.
  */
-export function buildLabelSheet(labels: LabelData[]): string {
+export function buildLabelSheet(
+  labels: LabelData[],
+  size: LabelSize = DEFAULT_LABEL_SIZE,
+): string {
+  const w = Number(size.widthMm) || DEFAULT_LABEL_SIZE.widthMm;
+  const h = Number(size.heightMm) || DEFAULT_LABEL_SIZE.heightMm;
   const body = labels
     .map(
-      (l) => `<div class="label">
-  <div class="name">${esc(l.name)}</div>
-  <div class="row"><span class="variant">${esc(l.variant)}</span><span class="price">${esc(l.price)}</span></div>
-  <div class="code">${l.barcodeSvg ?? '<span class="missing">No barcode</span>'}</div>
-  <div class="brand">Amader®</div>
-</div>`,
+      (l) =>
+        `<div class="label">${l.barcodeSvg ?? '<span class="missing">No barcode</span>'}</div>`,
     )
     .join("\n");
   return `<!doctype html><html><head><meta charset="utf-8"><title>Labels</title><style>
-@page { size: 40mm 30mm; margin: 0; }
+@page { size: ${w}mm ${h}mm; margin: 0; }
 html, body { margin: 0; padding: 0; }
 body { font-family: Arial, Helvetica, sans-serif; color: #000; }
-.label { width: 40mm; height: 30mm; box-sizing: border-box; padding: 1mm 1.5mm; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: space-between; break-after: page; page-break-after: always; }
+.label { width: ${w}mm; height: ${h}mm; box-sizing: border-box; padding: 1mm; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; break-after: page; page-break-after: always; }
 .label:last-child { break-after: auto; page-break-after: auto; }
-.name { font-size: 7.5pt; font-weight: bold; line-height: 1.1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row { display: flex; justify-content: space-between; font-size: 7pt; line-height: 1; }
-.price { font-weight: bold; }
-.code { text-align: center; line-height: 0; }
-.code svg { width: 37mm; height: 14mm; }
-.missing { font-size: 7pt; color: #c00; line-height: 1; }
-.brand { font-size: 6pt; text-align: center; line-height: 1; }
+.label svg { max-width: ${w - 2}mm; max-height: ${h - 2}mm; }
+.missing { font-size: 7pt; color: #c00; }
 </style></head><body>
 ${body}
 </body></html>`;

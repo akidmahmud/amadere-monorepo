@@ -147,6 +147,7 @@ model Media {
   createdAt DateTime  @default(now()) @map("created_at")
 
   productMedia ProductMedia[]
+  storePrices  StorePrice[]
   folder       MediaFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([folderId])
@@ -388,10 +389,10 @@ model Customer {
   pushSubscriptions PushSubscription[]
   assignedAdmin     AdminUser?           @relation("CustomerAssignedAdmin", fields: [assignedAdminId], references: [id])
 
-  campaignQueue CustomerCampaignQueue[]
+  campaignQueue    CustomerCampaignQueue[]
+  posSmsDeliveries PosSmsDelivery[]
 
   @@map("customers")
-  posSmsDeliveries PosSmsDelivery[]
 }
 
 enum CustomerPriority {
@@ -933,7 +934,7 @@ model Product {
   shippableWeight Decimal? @map("shippable_weight") @db.Decimal(10, 3)
   /// How the weight above is shown (receipt/till): g | kg | ml | l. For ml/l
   /// the number is litres (≈ kg for courier weight). null = g/kg by size.
-  weightUnit      String? @map("weight_unit")
+  weightUnit      String?  @map("weight_unit")
 
   minOrderQuantity Int  @default(1) @map("min_order_quantity")
   maxOrderQuantity Int? @map("max_order_quantity")
@@ -1574,38 +1575,42 @@ model Order {
   // does something else with it.
   deletedAt   DateTime? @map("deleted_at")
 
-  customer         Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  assignedAdmin    AdminUser?              @relation("OrderAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  customer          Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedAdmin     AdminUser?              @relation("OrderAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
   // Set for channel = POS: the store the sale happened at.
-  storeId          Int?                    @map("store_id")
+  storeId           Int?                    @map("store_id")
   // When the order became RETURNED (returns are reported on this day, not the sale's).
-  returnedAt       DateTime?               @map("returned_at")
+  returnedAt        DateTime?               @map("returned_at")
   // POS cash sales: what the customer handed over (change = this - total).
-  tenderedAmount   Decimal?                @map("tendered_amount") @db.Decimal(10, 2)
+  tenderedAmount    Decimal?                @map("tendered_amount") @db.Decimal(10, 2)
   /// POS: the cashier's typed discount (৳), part of discountAmount.
-  posManualDiscount Decimal @default(0) @map("pos_manual_discount") @db.Decimal(10, 2)
+  posManualDiscount Decimal                 @default(0) @map("pos_manual_discount") @db.Decimal(10, 2)
   /// POS "VAT coupon": VAT charged then discounted back (the store bears it);
   /// part of discountAmount, while taxAmount still records the VAT owed.
-  posVatDiscount    Decimal @default(0) @map("pos_vat_discount") @db.Decimal(10, 2)
+  posVatDiscount    Decimal                 @default(0) @map("pos_vat_discount") @db.Decimal(10, 2)
   /// POS: deleted while COMPLETED, so delete undid it (stock back, money
   /// reversed). Restore re-applies the sale; purged 30 days after deletion.
-  posVoidedByDelete Boolean @default(false) @map("pos_voided_by_delete")
-  store            Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
-  items            OrderItem[]
-  addresses        OrderAddress[]
-  statusHistory    OrderStatusHistory[]
-  reviews          Review[]
-  discountUses     DiscountRedemption[]
-  voucherUses      GiftVoucherRedemption[]
-  payments         Payment[]
-  shipments        Shipment[]
-  fraudSavings     FraudSaving[]
-  advancePayment   AdvancePayment?
-  manualPayments   ManualPayment[]
-  profit           OrderProfit?
-  digitalDownloads DigitalDownload[]
-  dues             Due[]
-  ledgerEntries    LedgerEntry[]
+  posVoidedByDelete Boolean                 @default(false) @map("pos_voided_by_delete")
+  /// POS: money refunded by (partial or full) returns, and the VAT in it.
+  /// Reports subtract these; a delete's undo is not counted here.
+  posRefundedAmount Decimal                 @default(0) @map("pos_refunded_amount") @db.Decimal(10, 2)
+  posRefundedVat    Decimal                 @default(0) @map("pos_refunded_vat") @db.Decimal(10, 2)
+  store             Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  items             OrderItem[]
+  addresses         OrderAddress[]
+  statusHistory     OrderStatusHistory[]
+  reviews           Review[]
+  discountUses      DiscountRedemption[]
+  voucherUses       GiftVoucherRedemption[]
+  payments          Payment[]
+  shipments         Shipment[]
+  fraudSavings      FraudSaving[]
+  advancePayment    AdvancePayment?
+  manualPayments    ManualPayment[]
+  profit            OrderProfit?
+  digitalDownloads  DigitalDownload[]
+  dues              Due[]
+  ledgerEntries     LedgerEntry[]
 
   @@index([status])
   @@index([deletedAt])
@@ -1634,6 +1639,7 @@ model OrderItem {
   quantity            Int
   taxAmount           Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
   optionsSnapshot     Json?       @map("options_snapshot")
+  /// POS: how many of this line were returned (per-item returns).
   restockedQuantity   Int         @default(0) @map("restocked_quantity")
   downloadedAt        DateTime?   @map("downloaded_at") // digital products
 
@@ -3719,12 +3725,15 @@ model StorePrice {
   /// Removed from this store only (product-level row, variantId null): not
   /// listed or sold at this store; the website and other stores keep it.
   hidden      Boolean  @default(false)
+  /// This store's own photo (product-level row); null = the product's photo.
+  mediaId     Int?     @map("media_id")
   updatedById Int?     @map("updated_by_id")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   store   Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  media   Media?          @relation(fields: [mediaId], references: [id], onDelete: SetNull)
 
   @@index([storeId])
   @@map("store_prices")
@@ -3742,26 +3751,26 @@ enum PosSmsCampaignType {
 // every store's) till customers, all or one tier. Sent through the website's
 // SMS gateway (SmsService), so every message is also in the SMS log.
 model PosSmsCampaign {
-  id           Int                @id @default(autoincrement())
-  name         String
-  storeId      Int?               @map("store_id") // null = every store
+  id          Int                @id @default(autoincrement())
+  name        String
+  storeId     Int?               @map("store_id") // null = every store
   /// null = every customer; else a tier key from the POS tier list.
-  tierKey      String?            @map("tier_key")
-  type         PosSmsCampaignType
-  message      String
-  sendAt       DateTime?          @map("send_at") // SCHEDULED
+  tierKey     String?            @map("tier_key")
+  type        PosSmsCampaignType
+  message     String
+  sendAt      DateTime?          @map("send_at") // SCHEDULED
   /// RECURRING: DAILY | WEEKLY | MONTHLY
-  repeat       String?
-  nextRunAt    DateTime?          @map("next_run_at") // SCHEDULED/RECURRING
-  winbackDays  Int?               @map("winback_days")
-  active       Boolean            @default(true)
-  lastRunAt    DateTime?          @map("last_run_at")
-  sentCount    Int                @default(0) @map("sent_count")
-  createdById  Int?               @map("created_by_id")
-  createdAt    DateTime           @default(now()) @map("created_at")
-  updatedAt    DateTime           @updatedAt @map("updated_at")
+  repeat      String?
+  nextRunAt   DateTime?          @map("next_run_at") // SCHEDULED/RECURRING
+  winbackDays Int?               @map("winback_days")
+  active      Boolean            @default(true)
+  lastRunAt   DateTime?          @map("last_run_at")
+  sentCount   Int                @default(0) @map("sent_count")
+  createdById Int?               @map("created_by_id")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
 
-  store      Store?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store      Store?           @relation(fields: [storeId], references: [id], onDelete: Cascade)
   deliveries PosSmsDelivery[]
 
   @@index([active, nextRunAt])

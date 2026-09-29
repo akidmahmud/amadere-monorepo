@@ -239,7 +239,7 @@ export class ProductsService {
   // a handful of products.
   async adminPickerList(): Promise<AdminProductPickerItemDto[]> {
     const products = await this.prisma.client.product.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, storeId: null },
       select: {
         id: true,
         slug: true,
@@ -352,7 +352,7 @@ export class ProductsService {
     outOfStock: number;
     lowStock: number;
   }> {
-    const base = { deletedAt: null } as const;
+    const base = { deletedAt: null, storeId: null } as const;
     const [total, active, draft, outOfStock, lowStock] = await Promise.all([
       this.prisma.client.product.count({ where: base }),
       this.prisma.client.product.count({
@@ -556,7 +556,8 @@ export class ProductsService {
 
   private buildAdminWhere(filters: AdminProductQueryDto) {
     return {
-      ...this.buildWhere(filters, { deletedAt: null }),
+      // A POS store's own products live on POS › Products, not here.
+      ...this.buildWhere(filters, { deletedAt: null, storeId: null }),
       ...(filters.productType !== undefined
         ? { productType: filters.productType }
         : {}),
@@ -1002,6 +1003,8 @@ export class ProductsService {
     const trimmed = q?.trim();
     const where = {
       deletedAt: { not: null },
+      // Store products are restored from POS › Products.
+      storeId: null,
       ...(trimmed
         ? {
             OR: [

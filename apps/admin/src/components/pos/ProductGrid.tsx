@@ -1,6 +1,6 @@
 "use client";
 
-import { confirmDialog } from "@/components/PosConfirm";
+import { confirmDialog, promptDialog } from "@/components/PosConfirm";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
@@ -10,6 +10,7 @@ import { usePosContext } from "./PosContext";
 import { EMPTY_STORE_PRODUCT, StoreProductForm } from "./StoreProductForm";
 import { StorePriceDialog } from "./StorePriceDialog";
 import { lineKey, taka, type PosProduct } from "@/lib/pos-cart";
+import { formatWeight } from "@/lib/pos-weight";
 
 export const LOW_STOCK = 10; // same threshold as the backend's POS_LOW_STOCK
 
@@ -128,8 +129,24 @@ export function StatCards({
   );
 }
 
+/** "1KG · 500 g": size label and weight (the store's own weight wins). */
+function sizeText(p: PosProduct) {
+  const kg = Number(p.storeWeightKg ?? p.normalWeightKg);
+  const w =
+    kg > 0
+      ? formatWeight(
+          kg,
+          p.storeWeightKg ? p.storeWeightUnit : p.normalWeightUnit,
+        )
+      : "";
+  // A size label already says the weight unless this store set its own.
+  return [p.variantLabel, p.variantLabel && !p.storeWeightKg ? "" : w]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function StockLine({ stock }: { stock: number }) {
-  if (stock <= 0) return <Line dot="bg-red-500" text="Out of Stock" />;
+  if (stock <= 0) return <Line dot="bg-red-500" text="Out of Stock (0)" />;
   if (stock >= 9999) return <Line dot="bg-emerald-500" text="In Stock" />;
   if (stock <= LOW_STOCK)
     return <Line dot="bg-orange-500" text={`Low Stock (${stock})`} />;
@@ -223,6 +240,43 @@ export function ProductGrid({
     },
     onError: (e) => toast.push(e.message),
   });
+  // Out of stock on the till: receive some right from the card.
+  const restock = async (p: PosProduct) => {
+    const qty = await promptDialog({
+      title: `Add stock — ${p.name}`,
+      message: `How many did ${store?.name ?? "the store"} receive?`,
+      placeholder: "Quantity",
+      confirmLabel: "Add stock",
+      icon: "add_box",
+      required: true,
+    });
+    const n = Number(qty);
+    if (!qty) return;
+    if (!Number.isInteger(n) || n <= 0)
+      return toast.push("Enter a whole number above 0");
+    try {
+      await proxyFetch("/admin/stock/stock-in", {
+        method: "POST",
+        body: JSON.stringify({
+          storeId,
+          note: "Added from the till",
+          lines: [
+            {
+              productId: p.productId,
+              variantId: p.variantId ?? undefined,
+              qty: n,
+            },
+          ],
+        }),
+      });
+      qc.invalidateQueries({ queryKey: ["pos-catalog"] });
+      qc.invalidateQueries({ queryKey: ["pos-stats"] });
+      toast.push(`${n} added — ${p.name} is in stock`, "success");
+    } catch (e) {
+      toast.push((e as Error).message);
+    }
+  };
+  const onRestock = can("pos.stock_in") ? restock : undefined;
   const duplicate = useMutation({
     mutationFn: (p: PosProduct) =>
       proxyFetch(
@@ -269,7 +323,7 @@ export function ProductGrid({
               ? {
                   title: `Delete "${p.name}"?`,
                   message:
-                    "It is this store's own product. It goes to Products › Trash (restorable for 30 days); past sales are not affected.",
+                    "It is this store's own product. Restore it from POS › Products › Deleted products within 30 days; past sales are not affected.",
                   confirmLabel: "Delete product",
                   tone: "danger",
                 }
@@ -415,7 +469,7 @@ export function ProductGrid({
                 {p.name}
               </div>
               <div className="mb-1 h-4 text-xs text-gray-500">
-                {p.variantLabel ?? ""}
+                {sizeText(p)}
               </div>
               <Price p={p} />
               <div className="mb-3 mt-1">
@@ -426,6 +480,7 @@ export function ProductGrid({
                 qty={cartQty[lineKey(p)] ?? 0}
                 onAdd={onAdd}
                 onQty={onQty}
+                onRestock={onRestock}
                 className="mt-auto w-full"
               />
             </div>
@@ -454,8 +509,8 @@ export function ProductGrid({
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">
                   {p.name}{" "}
-                  {p.variantLabel && (
-                    <span className="text-gray-500">· {p.variantLabel}</span>
+                  {sizeText(p) && (
+                    <span className="text-gray-500">· {sizeText(p)}</span>
                   )}
                 </div>
                 <div className="text-xs text-gray-500">{p.sku ?? ""}</div>
@@ -472,6 +527,7 @@ export function ProductGrid({
                 qty={cartQty[lineKey(p)] ?? 0}
                 onAdd={onAdd}
                 onQty={onQty}
+                onRestock={onRestock}
                 className="w-32 shrink-0"
               />
             </div>
@@ -488,14 +544,26 @@ function AddOrStepper({
   qty,
   onAdd,
   onQty,
+  onRestock,
   className,
 }: {
   p: PosProduct;
   qty: number;
   onAdd: (p: PosProduct) => void;
   onQty: (key: string, qty: number) => void;
+  /** Out of stock: offer "Add stock" instead of a dead Add button. */
+  onRestock?: (p: PosProduct) => void;
   className: string;
 }) {
+  if (qty === 0 && p.stock <= 0 && onRestock)
+    return (
+      <button
+        onClick={() => onRestock(p)}
+        className={`flex h-9 items-center justify-center gap-1 rounded-lg border border-dashed border-amber-400 bg-amber-50 text-sm font-bold text-amber-800 hover:bg-amber-100 ${className}`}
+      >
+        <Icon name="add_box" size={18} /> Add stock
+      </button>
+    );
   if (qty === 0)
     return (
       <button

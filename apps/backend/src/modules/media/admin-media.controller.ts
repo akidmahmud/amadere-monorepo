@@ -48,7 +48,8 @@ export class AdminMediaController {
   constructor(private readonly media: MediaService) {}
 
   @Get()
-  @RequirePermission('media.view')
+  // POS staff pick a product photo from the library too.
+  @RequireAnyPermission('media.view', 'pos.store_products', 'pos.prices')
   @ApiPaginatedResponse(MediaDto)
   list(@Query() query: MediaQueryDto): Promise<PaginatedResult<MediaDto>> {
     return this.media.list(query);
@@ -56,7 +57,7 @@ export class AdminMediaController {
 
   @Post()
   // Store staff add a product photo from the POS without full media rights.
-  @RequireAnyPermission('media.upload', 'pos.store_products')
+  @RequireAnyPermission('media.upload', 'pos.store_products', 'pos.prices')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOkResponse({ type: MediaDto })

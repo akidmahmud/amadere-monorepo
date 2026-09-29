@@ -364,7 +364,7 @@ export class PosSmsService {
 
   private async lastOrderId(customerId: number, storeId: number | null) {
     const o = await this.prisma.client.order.findFirst({
-      where: { channel: 'POS', status: 'COMPLETED', deletedAt: null, customerId, ...(storeId ? { storeId } : {}) },
+      where: { channel: 'POS', status: { in: ['COMPLETED', 'PARTIALLY_RETURNED'] }, deletedAt: null, customerId, ...(storeId ? { storeId } : {}) },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });

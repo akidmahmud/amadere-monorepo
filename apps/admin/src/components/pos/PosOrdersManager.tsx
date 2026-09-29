@@ -1,12 +1,14 @@
 "use client";
 
-import { confirmDialog, promptDialog } from "@/components/PosConfirm";
+import { confirmDialog } from "@/components/PosConfirm";
+import { ReturnItemsDialog } from "./ReturnItemsDialog";
+import { EditOrderDialog } from "./EditOrderDialog";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
-import { usePosSale, useReturnSale } from "@/hooks/usePos";
+import { usePosSale } from "@/hooks/usePos";
 import { taka } from "@/lib/pos-cart";
 import { exportAllPagesXlsx } from "@/lib/pos-export";
 import { reportTitle } from "@/lib/reportTitle";
@@ -23,6 +25,7 @@ type Row = {
   createdAt: string;
   status: string;
   totalAmount: string;
+  posRefundedAmount?: string;
   store: { id: number; name: string } | null;
   customer: { name: string; phone: string | null } | null;
   cashier: string | null;
@@ -32,7 +35,12 @@ type Row = {
 type Page = {
   items: Row[];
   total: number;
-  counts: { ALL: number; COMPLETED: number; RETURNED: number };
+  counts: {
+    ALL: number;
+    COMPLETED: number;
+    PARTIALLY_RETURNED: number;
+    RETURNED: number;
+  };
 };
 type TrashRow = {
   id: number;
@@ -93,7 +101,9 @@ export function PosOrdersManager({
   const toast = useToast();
   const qc = useQueryClient();
   const [storeFilter, setStoreFilter] = useState<number | null>(null);
-  const [tab, setTab] = useState<"" | "COMPLETED" | "RETURNED" | "TRASH">("");
+  const [tab, setTab] = useState<
+    "" | "COMPLETED" | "PARTIALLY_RETURNED" | "RETURNED" | "TRASH"
+  >("");
   const [tender, setTender] = useState("");
   const [period, setPeriod] = useState<Period>(NO_PERIOD);
   const [exporting, setExporting] = useState(false);
@@ -155,11 +165,12 @@ export function PosOrdersManager({
     orderNumber: string;
     status: string;
     totalAmount: string;
+    posRefundedAmount?: string;
     store?: { name: string } | null;
   }) => {
     const undo =
-      o.status === "COMPLETED"
-        ? `Stock goes back to ${o.store?.name ?? "the store"} and ${taka(Number(o.totalAmount))} is reversed in Accounts. `
+      o.status === "COMPLETED" || o.status === "PARTIALLY_RETURNED"
+        ? `Stock still sold goes back to ${o.store?.name ?? "the store"} and ${taka(Number(o.totalAmount) - Number(o.posRefundedAmount ?? 0))} is reversed in Accounts. `
         : "";
     void confirmDialog({
       title: `Delete ${o.orderNumber}?`,
@@ -207,7 +218,7 @@ export function PosOrdersManager({
             o.itemCount,
             o.tender ? (TENDER_LABEL[o.tender] ?? o.tender) : "",
             Number(o.totalAmount),
-            o.status === "RETURNED" ? "Returned" : "Completed",
+            STATUS_LABEL[o.status] ?? o.status,
             o.cashier ?? "",
           ];
         },
@@ -237,7 +248,12 @@ export function PosOrdersManager({
           [
             ["Total orders", data?.counts.ALL, "receipt_long"],
             ["Completed", data?.counts.COMPLETED, "check_circle"],
-            ["Returned", data?.counts.RETURNED, "undo"],
+            [
+              "Returned",
+              (data?.counts.RETURNED ?? 0) +
+                (data?.counts.PARTIALLY_RETURNED ?? 0) || undefined,
+              "undo",
+            ],
           ] as const
         ).map(([label, n, icon]) => (
           <div
@@ -264,6 +280,11 @@ export function PosOrdersManager({
             [
               ["", "All", data?.counts.ALL],
               ["COMPLETED", "Completed", data?.counts.COMPLETED],
+              [
+                "PARTIALLY_RETURNED",
+                "Part returned",
+                data?.counts.PARTIALLY_RETURNED,
+              ],
               ["RETURNED", "Returned", data?.counts.RETURNED],
               ["TRASH", "Trash", trashCount],
             ] as const
@@ -438,6 +459,11 @@ export function PosOrdersManager({
                       </td>
                       <td className="whitespace-nowrap px-4 text-base font-extrabold">
                         {taka(Number(o.totalAmount))}
+                        {Number(o.posRefundedAmount ?? 0) > 0 && (
+                          <div className="text-xs font-semibold text-red-600">
+                            −{taka(Number(o.posRefundedAmount))} refunded
+                          </div>
+                        )}
                       </td>
                       <td className="px-4">
                         <StatusPill status={o.status} />
@@ -503,16 +529,25 @@ export function PosOrdersManager({
   );
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  COMPLETED: "Completed",
+  PARTIALLY_RETURNED: "Part returned",
+  RETURNED: "Returned",
+};
+
 function StatusPill({ status }: { status: string }) {
-  const returned = status === "RETURNED";
+  const tone =
+    status === "RETURNED"
+      ? "bg-red-50 text-red-700"
+      : status === "PARTIALLY_RETURNED"
+        ? "bg-amber-50 text-amber-800"
+        : "bg-emerald-50 text-[#1d7a46]";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${returned ? "bg-red-50 text-red-700" : "bg-emerald-50 text-[#1d7a46]"}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${tone}`}
     >
-      <span
-        className={`h-2 w-2 rounded-full ${returned ? "bg-red-600" : "bg-[#1d7a46]"}`}
-      />
-      {returned ? "Returned" : "Completed"}
+      <span className="h-2 w-2 rounded-full bg-current" />
+      {STATUS_LABEL[status] ?? status}
     </span>
   );
 }
@@ -632,12 +667,13 @@ function OrderDetail({
     orderNumber: string;
     status: string;
     totalAmount: string;
+    posRefundedAmount?: string;
     store?: { name: string } | null;
   }) => void;
 }) {
-  const toast = useToast();
   const { data: s, isLoading } = usePosSale(id);
-  const ret = useReturnSale();
+  const [returning, setReturning] = useState(false);
+  const [editing, setEditing] = useState(false);
   const row = (label: string, value: string, strong = false) => (
     <div className={`flex justify-between ${strong ? "font-bold" : ""}`}>
       <span className={strong ? "" : "text-gray-600"}>{label}</span>
@@ -697,6 +733,11 @@ function OrderDetail({
                   <tr key={i.id} className="border-t border-gray-100">
                     <td className="py-2">
                       {i.productNameSnapshot}
+                      {(i.restockedQuantity ?? 0) > 0 && (
+                        <span className="ml-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700">
+                          {i.restockedQuantity} returned
+                        </span>
+                      )}
                       {i.variantLabel && (
                         <span className="text-gray-500">
                           {" "}
@@ -724,6 +765,8 @@ function OrderDetail({
               {Number(s.taxAmount) > 0 && row("VAT", taka(Number(s.taxAmount)))}
               {vatDiscount > 0 && row("VAT discount", `−${taka(vatDiscount)}`)}
               {row("Total", taka(Number(s.totalAmount)), true)}
+              {Number(s.posRefundedAmount ?? 0) > 0 &&
+                row("Refunded", `−${taka(Number(s.posRefundedAmount))}`)}
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -734,35 +777,28 @@ function OrderDetail({
               >
                 <Icon name="print" size={18} /> Reprint receipt
               </button>
-              {can("pos.refund") && s.status === "COMPLETED" && (
-                <button
-                  className="h-10 rounded-lg border border-red-200 px-4 text-sm font-bold text-red-700 disabled:opacity-50"
-                  disabled={ret.isPending}
-                  onClick={async () => {
-                    const reason = await promptDialog({
-                      title: `Return ${s.orderNumber}?`,
-                      message: `Stock goes back to ${s.store?.name} and ${taka(Number(s.totalAmount))} is refunded.`,
-                      placeholder: "Reason (optional)",
-                      confirmLabel: "Return sale",
-                      tone: "danger",
-                      icon: "undo",
-                    });
-                    if (reason === null) return;
-                    ret.mutate(
-                      { id: s.id, reason: reason || undefined },
-                      {
-                        onSuccess: () => {
-                          toast.push("Sale returned", "success");
-                          onClose();
-                        },
-                        onError: (e) => toast.push(e.message),
-                      },
-                    );
-                  }}
-                >
-                  Return sale
-                </button>
-              )}
+              {can("pos.refund") &&
+                !s.deletedAt &&
+                s.status === "COMPLETED" &&
+                !(Number(s.posRefundedAmount ?? 0) > 0) && (
+                  <button
+                    className="flex h-10 items-center gap-1 rounded-lg border border-emerald-300 px-4 text-sm font-bold text-[#1d7a46] hover:bg-emerald-50"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Icon name="edit" size={18} /> Edit order
+                  </button>
+                )}
+              {can("pos.refund") &&
+                !s.deletedAt &&
+                (s.status === "COMPLETED" ||
+                  s.status === "PARTIALLY_RETURNED") && (
+                  <button
+                    className="flex h-10 items-center gap-1 rounded-lg border border-red-200 px-4 text-sm font-bold text-red-700"
+                    onClick={() => setReturning(true)}
+                  >
+                    <Icon name="undo" size={18} /> Return items
+                  </button>
+                )}
               {can("pos.refund") && (
                 <button
                   className="flex h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm font-bold text-red-700"
@@ -781,6 +817,10 @@ function OrderDetail({
           </div>
         )}
       </div>
+      {returning && (
+        <ReturnItemsDialog id={id} onClose={() => setReturning(false)} />
+      )}
+      {editing && <EditOrderDialog id={id} onClose={() => setEditing(false)} />}
     </div>
   );
 }

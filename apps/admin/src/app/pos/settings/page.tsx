@@ -3,6 +3,7 @@
 import { confirmDialog } from "@/components/PosConfirm";
 import { PosCouponsTab } from "@/components/pos/PosCouponsTab";
 import { PosSmsSettingsTab } from "@/components/pos/PosSmsSettingsTab";
+import { PosLabelSettingsTab } from "@/components/pos/PosLabelSettingsTab";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 import {
@@ -27,7 +28,9 @@ import {
 } from "@/components/pos/PosSubPage";
 
 export default function PosSettingsPage() {
-  const [tab, setTab] = useState<"vat" | "invoices" | "coupons" | "sms">("vat");
+  const [tab, setTab] = useState<
+    "vat" | "invoices" | "coupons" | "sms" | "labels"
+  >("vat");
   const tabBtn = (t: typeof tab, label: string) => (
     <button
       onClick={() => setTab(t)}
@@ -43,6 +46,7 @@ export default function PosSettingsPage() {
         {tabBtn("invoices", "Invoices")}
         {tabBtn("coupons", "Coupons")}
         {tabBtn("sms", "SMS")}
+        {tabBtn("labels", "Labels")}
       </div>
       {tab === "vat" ? (
         <VatSettings />
@@ -50,6 +54,8 @@ export default function PosSettingsPage() {
         <InvoiceSettings />
       ) : tab === "coupons" ? (
         <PosCouponsTab />
+      ) : tab === "labels" ? (
+        <PosLabelSettingsTab />
       ) : (
         <PosSmsSettingsTab />
       )}

@@ -18,42 +18,75 @@ function make(order: Record<string, unknown>) {
     client: {
       $transaction: (f: (t: typeof tx) => Promise<unknown>) => f(tx),
       order: { findMany: jest.fn().mockResolvedValue([{ id: 5 }]), delete: jest.fn() },
+      payment: { update: jest.fn() },
     },
   };
+  const payments = { refund: jest.fn().mockResolvedValue({ id: 70 }) };
   const stock = { move: jest.fn() };
   const stores = { tenderAccountId: jest.fn().mockResolvedValue(11) };
   const salesPosting = { postPrepaidCapture: jest.fn() };
   const svc = new PosSaleService(
     prisma as never, stock as never, stores as never, {} as never,
-    salesPosting as never, {} as never, {} as never, {} as never,
+    salesPosting as never, {} as never, payments as never, {} as never,
   );
   jest.spyOn(svc, 'get').mockResolvedValue(order as never);
   const ret = jest.spyOn(svc, 'returnSale').mockResolvedValue({} as never);
-  return { svc, tx, prisma, stock, salesPosting, ret };
+  return { svc, tx, prisma, stock, salesPosting, ret, payments };
 }
 
 const sale = {
   id: 5, storeId: 4, status: 'COMPLETED', deletedAt: null, posVoidedByDelete: false,
   totalAmount: D(360),
-  items: [{ productId: 9, variantId: null, quantity: 2 }],
+  posRefundedAmount: D(0),
+  items: [{ productId: 9, variantId: null, quantity: 2, restockedQuantity: 0 }],
   payments: [{ provider: 'CASH', transactionRef: null }],
 };
 
 describe('POS order Trash', () => {
-  it('deleting a completed sale undoes it (return) and marks it for re-apply', async () => {
-    const { svc, tx, ret } = make(sale);
+  it('deleting a completed sale undoes it (stock back, money back) and marks it for re-apply', async () => {
+    const { svc, tx, stock, payments, prisma } = make(sale);
     expect(await svc.deleteSale(4, 5, 7)).toEqual({ deleted: true, undone: true });
-    expect(ret).toHaveBeenCalledWith(4, 5, 7, 'Deleted from Order Manager');
+    expect(tx.order.updateMany.mock.calls[0][0]).toEqual({
+      where: { id: 5, status: 'COMPLETED', deletedAt: null },
+      data: { status: 'RETURNED', returnedAt: expect.any(Date) },
+    });
+    expect(stock.move).toHaveBeenCalledWith(tx, expect.objectContaining({ type: 'RETURN', qty: 2 }));
+    expect(payments.refund).toHaveBeenCalledWith(5, D(360));
+    expect(prisma.client.payment.update.mock.calls[0][0].data).toEqual({ refundedAmount: D(360), status: 'REFUNDED' });
     expect(tx.order.update).toHaveBeenCalledWith({
       where: { id: 5 },
       data: { deletedAt: expect.any(Date), posVoidedByDelete: true },
     });
   });
 
-  it('deleting an already-returned sale just trashes it', async () => {
-    const { svc, tx, ret } = make({ ...sale, status: 'RETURNED' });
+  it('deleting a partly returned sale undoes only what is still sold', async () => {
+    const { svc, stock, payments } = make({
+      ...sale, status: 'PARTIALLY_RETURNED', posRefundedAmount: D(180),
+      items: [{ productId: 9, variantId: null, quantity: 2, restockedQuantity: 1 }],
+    });
     await svc.deleteSale(4, 5, 7);
-    expect(ret).not.toHaveBeenCalled();
+    expect(stock.move.mock.calls[0][1]).toMatchObject({ type: 'RETURN', qty: 1 });
+    expect(payments.refund).toHaveBeenCalledWith(5, D(180));
+  });
+
+  it('restoring a partly returned sale re-sells only what the delete undid', async () => {
+    const { svc, tx, stock, salesPosting } = make({
+      ...sale, status: 'RETURNED', deletedAt: new Date(), posVoidedByDelete: true,
+      posRefundedAmount: D(180), returnedAt: new Date('2026-09-29'),
+      items: [{ productId: 9, variantId: null, quantity: 2, restockedQuantity: 1 }],
+    });
+    await svc.restoreSale(4, 5, 7);
+    expect(tx.order.updateMany.mock.calls[0][0].data.status).toBe('PARTIALLY_RETURNED');
+    expect(stock.move.mock.calls[0][1]).toMatchObject({ type: 'SALE', qty: -1 });
+    expect(tx.payment.updateMany.mock.calls[0][0].data).toEqual({ status: 'PARTIALLY_REFUNDED', refundedAmount: D(180) });
+    expect(salesPosting.postPrepaidCapture.mock.calls[0][0].amount).toEqual(D(180));
+  });
+
+  it('deleting an already-returned sale just trashes it', async () => {
+    const { svc, tx, stock, payments } = make({ ...sale, status: 'RETURNED' });
+    await svc.deleteSale(4, 5, 7);
+    expect(stock.move).not.toHaveBeenCalled();
+    expect(payments.refund).not.toHaveBeenCalled();
     expect(tx.order.update.mock.calls[0][0].data.posVoidedByDelete).toBe(false);
   });
 

@@ -500,16 +500,26 @@ describe('PosSaleService.get — receipt data', () => {
 });
 
 describe('PosSaleService.returnSale', () => {
-  function setupReturn(claimed: number) {
+  // Sale: 2 × ৳50 + 1 × ৳20 = ৳120 subtotal, ৳12 off → ৳108 paid, ৳6 VAT in it.
+  function setupReturn(claimed: number, returned = [0, 0], refunded = 0) {
     const order = {
       id: 5,
-      status: 'COMPLETED',
+      status: returned.some(Boolean) ? 'PARTIALLY_RETURNED' : 'COMPLETED',
       storeId: 4,
-      totalAmount: D(92),
-      items: [{ productId: 10, variantId: null, quantity: 2 }],
+      subTotal: D(120),
+      totalAmount: D(108),
+      taxAmount: D(6),
+      posRefundedAmount: D(refunded),
+      posRefundedVat: D(0),
+      deletedAt: null,
+      items: [
+        { id: 1, productId: 10, variantId: null, quantity: 2, unitPrice: D(50), restockedQuantity: returned[0], productNameSnapshot: 'Oil' },
+        { id: 2, productId: 11, variantId: null, quantity: 1, unitPrice: D(20), restockedQuantity: returned[1], productNameSnapshot: 'Salt' },
+      ],
     };
     const tx = {
-      order: { updateMany: jest.fn().mockResolvedValue({ count: claimed }) },
+      orderItem: { updateMany: jest.fn().mockResolvedValue({ count: claimed }) },
+      order: { update: jest.fn() },
       orderStatusHistory: { create: jest.fn() },
     };
     const prisma = {
@@ -521,11 +531,12 @@ describe('PosSaleService.returnSale', () => {
             items: order.items.map((i) => ({ ...i, variant: null })),
           }),
         },
+        payment: { update: jest.fn() },
         $transaction: jest.fn((fn: (t: unknown) => unknown) => fn(tx)),
       },
     };
     const stock = { move: jest.fn() };
-    const payments = { refund: jest.fn() };
+    const payments = { refund: jest.fn().mockResolvedValue({ id: 77 }) };
     const events = { emit: jest.fn() };
     const svc = new PosSaleService(
       prisma as never,
@@ -537,11 +548,11 @@ describe('PosSaleService.returnSale', () => {
       payments as never,
       events as never,
     );
-    return { svc, tx, stock, payments, events };
+    return { svc, tx, prisma, stock, payments, events };
   }
 
-  it('claims the order first (COMPLETED → RETURNED + returnedAt), restocks the store, refunds once', async () => {
-    const { svc, tx, stock, payments, events } = setupReturn(1);
+  it('full return: claims every line, restocks the store, refunds what is left once', async () => {
+    const { svc, tx, prisma, stock, payments, events } = setupReturn(1);
     await svc.returnSale(4, 5, 7, 'damaged');
     // customer stats / profit / SMS listeners stay in sync
     expect(events.emit).toHaveBeenCalledWith('order.status_changed', {
@@ -549,21 +560,52 @@ describe('PosSaleService.returnSale', () => {
       from: 'COMPLETED',
       to: 'RETURNED',
     });
-    expect(tx.order.updateMany).toHaveBeenCalledWith({
-      where: { id: 5, status: 'COMPLETED' },
-      data: { status: 'RETURNED', returnedAt: expect.any(Date) },
+    expect(tx.orderItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, orderId: 5, restockedQuantity: { lte: 0 } },
+      data: { restockedQuantity: { increment: 2 } },
     });
     expect(stock.move).toHaveBeenCalledWith(
       tx,
-      expect.objectContaining({
-        storeId: 4,
-        productId: 10,
-        type: 'RETURN',
-        qty: 2,
-        orderId: 5,
-      }),
+      expect.objectContaining({ storeId: 4, productId: 10, type: 'RETURN', qty: 2, orderId: 5 }),
     );
+    expect(tx.order.update.mock.calls[0][0].data).toMatchObject({ status: 'RETURNED' });
     expect(payments.refund).toHaveBeenCalledTimes(1);
+    expect(payments.refund.mock.calls[0][1].toString()).toBe('108');
+    expect(prisma.client.payment.update).toHaveBeenCalledWith({
+      where: { id: 77 },
+      data: { refundedAmount: D(108), status: 'REFUNDED' },
+    });
+  });
+
+  it('one item: its share of what was paid (after discount), sale PARTIALLY_RETURNED', async () => {
+    const { svc, tx, prisma, stock, payments } = setupReturn(1);
+    await svc.returnSale(4, 5, 7, undefined, [{ itemId: 1, qty: 1 }]);
+    // ৳50 of ৳120 → 50/120 × 108 = ৳45; VAT 50/120 × 6 = ৳2.50
+    expect(payments.refund.mock.calls[0][1].toString()).toBe('45');
+    const data = tx.order.update.mock.calls[0][0].data;
+    expect(data.status).toBe('PARTIALLY_RETURNED');
+    expect(data.posRefundedAmount.increment.toString()).toBe('45');
+    expect(data.posRefundedVat.increment.toString()).toBe('2.5');
+    expect(stock.move).toHaveBeenCalledTimes(1);
+    expect(stock.move.mock.calls[0][1]).toMatchObject({ productId: 10, qty: 1 });
+    expect(prisma.client.payment.update.mock.calls[0][0].data.status).toBe(
+      'PARTIALLY_REFUNDED',
+    );
+  });
+
+  it('the last item back takes exactly what is left (no stranded paisa)', async () => {
+    const { svc, tx, payments } = setupReturn(1, [2, 0], 90);
+    await svc.returnSale(4, 5, 7, undefined, [{ itemId: 2, qty: 1 }]);
+    expect(payments.refund.mock.calls[0][1].toString()).toBe('18');
+    expect(tx.order.update.mock.calls[0][0].data.status).toBe('RETURNED');
+  });
+
+  it('refuses more than is left of a line', async () => {
+    const { svc, payments } = setupReturn(1, [1, 0], 45);
+    await expect(
+      svc.returnSale(4, 5, 7, undefined, [{ itemId: 1, qty: 2 }]),
+    ).rejects.toThrow(/Only 1 of "Oil"/);
+    expect(payments.refund).not.toHaveBeenCalled();
   });
 
   it('a second, concurrent return loses the claim: no restock, no refund', async () => {

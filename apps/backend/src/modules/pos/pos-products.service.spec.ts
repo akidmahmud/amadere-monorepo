@@ -95,9 +95,10 @@ describe('PosProductsService.setPrice', () => {
   it('price null resets to the normal price', async () => {
     const { svc, storePrice } = mk(simple);
     await svc.setPrice(4, { productId: 1, price: null }, 7);
-    // A "removed from this store" row survives a name/price reset.
+    // A "removed from this store" row (or one holding this store's photo)
+    // survives a name/price reset.
     expect(storePrice.deleteMany).toHaveBeenCalledWith({
-      where: { storeId: 4, productId: 1, variantId: null, hidden: false },
+      where: { storeId: 4, productId: 1, variantId: null, hidden: false, mediaId: null },
     });
   });
 
@@ -224,7 +225,7 @@ describe('PosProductsService — remove a shared product from one store', () => 
     const b = mk(null);
     await b.svc.unhide(4, 10);
     expect(b.storePrice.deleteMany).toHaveBeenCalledWith({
-      where: { storeId: 4, productId: 10, variantId: null, hidden: true, name: null, price: null, weightKg: null },
+      where: { storeId: 4, productId: 10, variantId: null, hidden: true, name: null, price: null, weightKg: null, mediaId: null },
     });
     expect(b.storePrice.updateMany).toHaveBeenCalledWith({
       where: { storeId: 4, productId: 10, variantId: null },

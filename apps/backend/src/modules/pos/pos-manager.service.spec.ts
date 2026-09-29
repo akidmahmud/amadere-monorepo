@@ -59,7 +59,7 @@ describe('PosManagerService.orders', () => {
         tender: 'BKASH',
       }),
     );
-    expect(r.counts).toEqual({ ALL: 4, COMPLETED: 3, RETURNED: 1 });
+    expect(r.counts).toEqual({ ALL: 4, COMPLETED: 3, PARTIALLY_RETURNED: 0, RETURNED: 1 });
   });
 });
 
@@ -83,7 +83,7 @@ describe('PosManagerService.customers', () => {
     };
     const r = await new PosManagerService(prisma as never, { getTiers: async () => [], stats: async () => [] } as never).customers(null, {});
     expect(order.groupBy.mock.calls[0][0].where).toEqual(
-      expect.objectContaining({ channel: 'POS', status: 'COMPLETED', customerId: { not: null } }),
+      expect.objectContaining({ channel: 'POS', status: { in: ['COMPLETED', 'PARTIALLY_RETURNED'] }, customerId: { not: null } }),
     );
     expect(r.items[0]).toEqual(
       expect.objectContaining({ name: 'Karim', purchases: 2, spent: '500.00', stores: ['Uttara', 'Mirpur'] }),

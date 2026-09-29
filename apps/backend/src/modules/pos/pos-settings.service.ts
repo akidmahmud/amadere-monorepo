@@ -23,6 +23,14 @@ export const POS_VAT_DEFAULT: PosVat = {
 };
 
 const VAT_KEY = 'pos.vat';
+const LABEL_KEY = 'pos.label';
+
+/** Barcode label paper size (the label printer's roll). */
+export interface PosLabelSize {
+  widthMm: number;
+  heightMm: number;
+}
+export const POS_LABEL_DEFAULT: PosLabelSize = { widthMm: 38, heightMm: 25 };
 
 /**
  * POS-wide settings (one for all stores). Deliberately separate from the
@@ -55,6 +63,26 @@ export class PosSettingsService {
       where: { key: VAT_KEY },
       create: { key: VAT_KEY, value: value },
       update: { value: value },
+    });
+    return value;
+  }
+
+  async getLabel(): Promise<PosLabelSize> {
+    const row = await this.prisma.client.setting.findUnique({
+      where: { key: LABEL_KEY },
+    });
+    return {
+      ...POS_LABEL_DEFAULT,
+      ...((row?.value as Partial<PosLabelSize> | undefined) ?? {}),
+    };
+  }
+
+  async setLabel(v: PosLabelSize): Promise<PosLabelSize> {
+    const value = { widthMm: v.widthMm, heightMm: v.heightMm };
+    await this.prisma.client.setting.upsert({
+      where: { key: LABEL_KEY },
+      create: { key: LABEL_KEY, value },
+      update: { value },
     });
     return value;
   }

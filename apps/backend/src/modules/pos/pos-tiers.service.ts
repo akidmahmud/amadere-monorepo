@@ -61,19 +61,19 @@ export class PosTiersService {
       where: {
         channel: 'POS',
         deletedAt: null,
-        status: 'COMPLETED',
+        status: { in: ['COMPLETED', 'PARTIALLY_RETURNED'] },
         customerId: opts.customerIds ? { in: opts.customerIds } : { not: null },
         ...(opts.storeId ? { storeId: opts.storeId } : { storeId: { not: null } }),
       },
       _count: { _all: true },
-      _sum: { totalAmount: true },
+      _sum: { totalAmount: true, posRefundedAmount: true },
       _max: { createdAt: true },
     });
     return groups.map((g) => ({
       customerId: g.customerId!,
       storeId: g.storeId!,
       orders: g._count._all,
-      spent: Number(g._sum.totalAmount ?? 0),
+      spent: Number(g._sum.totalAmount ?? 0) - Number(g._sum.posRefundedAmount ?? 0),
       last: g._max.createdAt!,
     }));
   }

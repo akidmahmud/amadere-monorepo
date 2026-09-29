@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Body,
   Controller,
   Delete,
@@ -20,6 +21,7 @@ import { PermissionGuard } from '../../common/auth/permission.guard';
 import {
   Can,
   type PermissionCheck,
+  RequireAnyPermission,
   RequirePermission,
 } from '../../common/auth/permission.decorator';
 import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
@@ -43,7 +45,8 @@ import {
   toCsv,
 } from './pos-reports.service';
 import { PosSettingsService } from './pos-settings.service';
-import { UpdatePosVatDto } from './dto/pos-settings.dto';
+import { UpdatePosLabelDto, UpdatePosVatDto } from './dto/pos-settings.dto';
+import { PosImageDto } from './dto/pos-product.dto';
 import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
@@ -74,6 +77,7 @@ import {
   PosQuoteDto,
   QuickCustomerDto,
   ReturnPosSaleDto,
+  EditPosSaleDto,
 } from './dto/create-pos-sale.dto';
 
 type Admin = { id: number };
@@ -114,6 +118,20 @@ export class AdminPosController {
   @UseInterceptors(AuditLogInterceptor)
   setVat(@Body() dto: UpdatePosVatDto) {
     return this.settings.setVat(dto);
+  }
+
+  // Label printer paper size (Barcode labels page reads it).
+  @Get('settings/label')
+  @RequirePermission('pos.access')
+  getLabel() {
+    return this.settings.getLabel();
+  }
+
+  @Put('settings/label')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  setLabel(@Body() dto: UpdatePosLabelDto) {
+    return this.settings.setLabel(dto);
   }
 
   // ---- POS coupons (POS Settings › Coupons) ----
@@ -473,13 +491,16 @@ export class AdminPosController {
   }
 
   // POS Order Manager: till sales of one store, or all (pos.all_stores).
+  // Customer Manager reads one customer's history with pos.customers alone.
   @Get('orders')
-  @RequirePermission('pos.orders')
+  @RequireAnyPermission('pos.orders', 'pos.customers')
   async orders(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
     @Query() q: PosOrdersQueryDto,
   ) {
+    if (!can('pos.orders') && !q.customerId)
+      throw new ForbiddenException('Missing permission: pos.orders');
     return this.manager.orders(await this.stores.scope(a.id, can, q.storeId), q);
   }
 
@@ -632,6 +653,45 @@ export class AdminPosController {
     return this.sales.get(await this.stores.scope(a.id, can), id);
   }
 
+  // Edit a completed sale (add / remove / change items); dryRun = preview.
+  @Post('sales/:id/edit')
+  @RequirePermission('pos.refund')
+  @UseInterceptors(AuditLogInterceptor)
+  async editSale(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: EditPosSaleDto,
+  ) {
+    return this.sales.editSale(
+      await this.stores.scope(a.id, can),
+      id,
+      a.id,
+      dto.items,
+      { reason: dto.reason, dryRun: dto.dryRun },
+    );
+  }
+
+  // The till photo: a store product's own photo, or this store's photo for
+  // a shared product (the website keeps its gallery).
+  @Put('products/:id/image')
+  @RequireAnyPermission('pos.prices', 'pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async setImage(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosImageDto,
+  ) {
+    return this.products.setImage(
+      await this.oneStore(a, can, q.storeId),
+      id,
+      dto.mediaId ?? null,
+      a.id,
+    );
+  }
+
   @Post('sales/:id/return')
   @RequirePermission('pos.refund')
   @UseInterceptors(AuditLogInterceptor)
@@ -646,6 +706,7 @@ export class AdminPosController {
       id,
       a.id,
       dto.reason,
+      dto.items,
     );
   }
 

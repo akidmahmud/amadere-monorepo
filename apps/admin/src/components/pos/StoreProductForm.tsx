@@ -1,14 +1,13 @@
 "use client";
 
 import { WeightField } from "./WeightField";
+import { PosImagePicker } from "./PosImagePicker";
 import { toBase, type WeightUnit } from "@/lib/pos-weight";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { usePosCategories } from "@/hooks/usePos";
-import { useUploadMedia } from "@/hooks/useMedia";
-import { Icon } from "@amader/admin-ui";
 import { usePosContext } from "./PosContext";
 import { input, primaryBtn } from "./PosSubPage";
 
@@ -66,7 +65,6 @@ export function StoreProductForm({
   const [f, setF] = useState(initial);
   const [opening, setOpening] = useState("");
   const [image, setImage] = useState(initialImage);
-  const upload = useUploadMedia();
   const set = (k: Exclude<keyof StoreProductFields, "weightUnit">, v: string) =>
     setF((x) => ({ ...x, [k]: v }));
   const withStock = id === null && can("pos.stock_in");
@@ -139,53 +137,8 @@ export function StoreProductForm({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="flex items-center gap-3 sm:col-span-2">
-        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image.url}
-              alt=""
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <Icon name="image" size={28} className="text-gray-300" />
-          )}
-        </div>
-        <div className="flex flex-col items-start gap-1">
-          <label className="cursor-pointer rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold hover:bg-gray-50">
-            {upload.isPending
-              ? "Uploading…"
-              : image
-                ? "Change photo"
-                : "Add photo (optional)"}
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              disabled={upload.isPending}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (!file) return;
-                upload.mutate(file, {
-                  onSuccess: (m) =>
-                    setImage({ mediaId: m.id, url: m.cardUrl ?? m.url }),
-                  onError: (err) => toast.push(err.message),
-                });
-              }}
-            />
-          </label>
-          {image && (
-            <button
-              type="button"
-              className="text-xs font-semibold text-gray-500 hover:text-red-600"
-              onClick={() => setImage(null)}
-            >
-              Remove photo
-            </button>
-          )}
-        </div>
+      <div className="sm:col-span-2">
+        <PosImagePicker url={image?.url} onChange={setImage} />
       </div>
       <label className={`${label} sm:col-span-2`}>
         <span className="text-xs font-bold">Name *</span>

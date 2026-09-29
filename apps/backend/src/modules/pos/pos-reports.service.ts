@@ -143,12 +143,14 @@ export class PosReportsService {
           returnedAt: range,
           status: { in: ['RETURNED', 'PARTIALLY_RETURNED'] },
         },
-        _sum: { totalAmount: true },
+        _sum: { posRefundedAmount: true },
       }),
       this.prisma.client.store.findMany({ select: { id: true, name: true } }),
     ]);
     const name = new Map(stores.map((s) => [s.id, s.name]));
-    const ret = new Map(returned.map((r) => [r.storeId, r._sum.totalAmount]));
+    const ret = new Map(
+      returned.map((r) => [r.storeId, r._sum.posRefundedAmount]),
+    );
     const soldBy = new Map(sold.map((r) => [r.storeId, r]));
     // Every store with sales OR returns in the period — a store whose only
     // activity was a return must still show that money going out.
@@ -196,7 +198,7 @@ export class PosReportsService {
           returnedAt: range,
           status: { in: ['RETURNED', 'PARTIALLY_RETURNED'] },
         },
-        _sum: { totalAmount: true, taxAmount: true },
+        _sum: { posRefundedAmount: true, posRefundedVat: true },
       }),
       this.prisma.client.expense.groupBy({
         by: ['costCentreId'],
@@ -224,9 +226,9 @@ export class PosReportsService {
     return stores
       .map((s) => {
         const gross = soldBy.get(s.id)?.totalAmount ?? ZERO;
-        const returns = retBy.get(s.id)?.totalAmount ?? ZERO;
+        const returns = retBy.get(s.id)?.posRefundedAmount ?? ZERO;
         const vat = (soldBy.get(s.id)?.taxAmount ?? ZERO).minus(
-          retBy.get(s.id)?.taxAmount ?? ZERO,
+          retBy.get(s.id)?.posRefundedVat ?? ZERO,
         );
         const netSales = gross.minus(returns).minus(vat);
         const exp =
@@ -344,6 +346,7 @@ export class PosReportsService {
       select: {
         customerId: true,
         totalAmount: true,
+        posRefundedAmount: true,
         status: true,
         createdAt: true,
         items: { select: { quantity: true } },
@@ -382,7 +385,7 @@ export class PosReportsService {
       };
       c.purchases += 1;
       c.items += o.items.reduce((s, i) => s + i.quantity, 0);
-      c.total = c.total.plus(o.totalAmount);
+      c.total = c.total.plus(o.totalAmount).minus(o.posRefundedAmount);
       c.last = o.createdAt;
       by.set(o.customerId, c);
     }

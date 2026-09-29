@@ -154,7 +154,14 @@ export class PosProductsService {
     // A row that only existed to hide the product goes; one that also holds
     // this store's name/price keeps them.
     await c.storePrice.deleteMany({
-      where: { ...where, hidden: true, name: null, price: null, weightKg: null },
+      where: {
+        ...where,
+        hidden: true,
+        name: null,
+        price: null,
+        weightKg: null,
+        mediaId: null,
+      },
     });
     await c.storePrice.updateMany({ where, data: { hidden: false } });
     return { hidden: false };
@@ -275,7 +282,9 @@ export class PosProductsService {
       throw new BadRequestException('Set a price before an offer price');
     if (name === null && price === null && weightKg === null) {
       // Keep a "removed from this store" row; clear only its name/price/weight.
-      await c.storePrice.deleteMany({ where: { ...where, hidden: false } });
+      await c.storePrice.deleteMany({
+        where: { ...where, hidden: false, mediaId: null },
+      });
       await c.storePrice.updateMany({
         where,
         data: {
@@ -306,6 +315,52 @@ export class PosProductsService {
     return existing
       ? c.storePrice.update({ where: { id: existing.id }, data })
       : c.storePrice.create({ data: { ...where, ...data } });
+  }
+
+  /**
+   * The photo on the till. A store's own product: its real photo. A shared
+   * product: this store's own photo only (the website keeps its gallery).
+   * mediaId null = remove (shared: back to the website photo).
+   */
+  async setImage(
+    storeId: number,
+    productId: number,
+    mediaId: number | null,
+    adminId: number,
+  ) {
+    const c = this.prisma.client;
+    const p = await c.product.findFirst({
+      where: { id: productId, deletedAt: null, OR: [{ storeId: null }, { storeId }] },
+      select: { storeId: true },
+    });
+    if (!p) throw new BadRequestException('Product is not sold at this store');
+    if (mediaId !== null && !(await c.media.findUnique({ where: { id: mediaId } })))
+      throw new BadRequestException('That image no longer exists');
+    if (p.storeId !== null) {
+      await c.$transaction([
+        c.productMedia.deleteMany({ where: { productId } }),
+        ...(mediaId
+          ? [
+              c.productMedia.create({
+                data: { productId, mediaId, sortOrder: 0, isPrimary: true },
+              }),
+            ]
+          : []),
+      ]);
+      return { mediaId, own: true };
+    }
+    const where = { storeId, productId, variantId: null };
+    const existing = await c.storePrice.findFirst({ where });
+    if (existing)
+      await c.storePrice.update({
+        where: { id: existing.id },
+        data: { mediaId, updatedById: adminId },
+      });
+    else if (mediaId)
+      await c.storePrice.create({
+        data: { ...where, mediaId, updatedById: adminId },
+      });
+    return { mediaId, own: false };
   }
 
   /** Display unit lives beside the weight (ProductsService doesn't know it). */

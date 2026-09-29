@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -96,8 +97,40 @@ export class CreateHeldSaleDto {
   @ApiProperty() @IsObject() cart!: Record<string, unknown>;
 }
 
+export class EditPosLineDto {
+  @ApiProperty() @IsInt() productId!: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() variantId?: number | null;
+  @ApiProperty() @IsInt() @Min(0) quantity!: number;
+}
+
+export class EditPosSaleDto {
+  /** The sale's full new item list. */
+  @ApiProperty({ type: [EditPosLineDto] })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => EditPosLineDto)
+  items!: EditPosLineDto[];
+  @ApiPropertyOptional() @IsOptional() @IsString() reason?: string;
+  /** true = preview the new totals only. */
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() dryRun?: boolean;
+}
+
+export class ReturnPosLineDto {
+  @ApiProperty() @IsInt() itemId!: number;
+  @ApiProperty() @IsInt() @IsPositive() qty!: number;
+}
+
 export class ReturnPosSaleDto {
   @ApiPropertyOptional() @IsOptional() @IsString() reason?: string;
+  /** Lines to return; omitted = everything not yet returned. */
+  @ApiPropertyOptional({ type: [ReturnPosLineDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => ReturnPosLineDto)
+  items?: ReturnPosLineDto[];
 }
 
 export class PosCustomerQueryDto {

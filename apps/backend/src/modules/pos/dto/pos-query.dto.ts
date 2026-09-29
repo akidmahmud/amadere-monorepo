@@ -42,10 +42,10 @@ export class PosRangeQueryDto extends StoreQueryDto {
 }
 
 export class PosOrdersQueryDto extends StoreQueryDto {
-  @ApiPropertyOptional({ enum: ['COMPLETED', 'RETURNED'] })
+  @ApiPropertyOptional({ enum: ['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'] })
   @IsOptional()
-  @IsIn(['COMPLETED', 'RETURNED'])
-  status?: 'COMPLETED' | 'RETURNED';
+  @IsIn(['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'])
+  status?: 'COMPLETED' | 'PARTIALLY_RETURNED' | 'RETURNED';
   @ApiPropertyOptional({ enum: ['CASH', 'CARD', 'MOBILE'] })
   @IsOptional()
   @IsIn(['CASH', 'CARD', 'MOBILE'])
@@ -67,6 +67,12 @@ export class PosOrdersQueryDto extends StoreQueryDto {
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   toTime?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
+  /** One customer's purchase history (Customer Manager). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  customerId?: number;
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

@@ -515,77 +515,464 @@ export class PosSaleService {
     };
   }
 
-  /** Full return: claim the order, stock back to its store, money back from the same account. */
+  /**
+   * Return some or all of a sale: stock back to its store, the lines' share
+   * of what was paid (after discounts, with VAT) back from the same account.
+   * `lines` omitted = everything not yet returned. The sale is RETURNED once
+   * every item is back, PARTIALLY_RETURNED until then.
+   */
   async returnSale(
     storeId: number | null,
     id: number,
     adminId: number,
     reason?: string,
+    lines?: { itemId: number; qty: number }[],
   ) {
     const o = await this.get(storeId, id);
-    if (o.status !== 'COMPLETED')
+    if (o.deletedAt) throw new BadRequestException('This sale is in the Trash');
+    if (o.status !== 'COMPLETED' && o.status !== 'PARTIALLY_RETURNED')
       throw new BadRequestException('Only a completed sale can be returned');
-    // ponytail: whole-sale return only; per-line partial returns need an
-    // OrderReturn table — add when a store asks for it.
+    const left = (i: (typeof o.items)[number]) =>
+      i.quantity - i.restockedQuantity;
+    const picked = (
+      lines ?? o.items.map((i) => ({ itemId: i.id, qty: left(i) }))
+    ).filter((l) => l.qty > 0);
+    if (!picked.length) throw new BadRequestException('Nothing left to return');
+    const byItem = new Map(o.items.map((i) => [i.id, i]));
+    for (const l of picked) {
+      const i = byItem.get(l.itemId);
+      if (!i) throw new BadRequestException('That item is not on this sale');
+      if (l.qty > left(i))
+        throw new BadRequestException(
+          `Only ${left(i)} of "${i.productNameSnapshot}" can still be returned`,
+        );
+    }
+    const all = o.items.every(
+      (i) =>
+        left(i) ===
+        picked
+          .filter((l) => l.itemId === i.id)
+          .reduce((n, l) => n + l.qty, 0),
+    );
+    // The line's share of the total paid (discounts and VAT included); the
+    // last return takes whatever is left, so rounding never strands paisa.
+    const gross = picked.reduce(
+      (s, l) => s.plus(byItem.get(l.itemId)!.unitPrice.times(l.qty)),
+      ZERO,
+    );
+    const share = (x: Prisma.Decimal) =>
+      o.subTotal.isZero()
+        ? ZERO
+        : x.times(gross).dividedBy(o.subTotal).toDecimalPlaces(2);
+    const moneyLeft = o.totalAmount.minus(o.posRefundedAmount);
+    const vatLeft = o.taxAmount.minus(o.posRefundedVat);
+    const amount = all ? moneyLeft : D.min(share(o.totalAmount), moneyLeft);
+    const vat = all ? vatLeft : D.min(share(o.taxAmount), vatLeft);
+    const to = all ? 'RETURNED' : 'PARTIALLY_RETURNED';
+    const what = picked
+      .map((l) => `${l.qty} × ${byItem.get(l.itemId)!.productNameSnapshot}`)
+      .join(', ');
+
     await this.prisma.client.$transaction(async (tx) => {
-      // Claim first: of two concurrent returns (two tabs, POS + Order
-      // Manager) exactly one flips the status; the other stops here before
-      // any stock or money moves.
-      const { count } = await tx.order.updateMany({
-        where: { id, status: 'COMPLETED' },
-        data: { status: 'RETURNED', returnedAt: new Date() },
-      });
-      if (count !== 1)
-        throw new ConflictException('This sale was already returned');
-      for (const i of o.items) {
+      // Claim each line first: of two concurrent returns only one can take
+      // the same units; the other fails here before stock or money moves.
+      for (const l of picked) {
+        const i = byItem.get(l.itemId)!;
+        const { count } = await tx.orderItem.updateMany({
+          where: {
+            id: i.id,
+            orderId: id,
+            restockedQuantity: { lte: i.quantity - l.qty },
+          },
+          data: { restockedQuantity: { increment: l.qty } },
+        });
+        if (count !== 1)
+          throw new ConflictException('This item was already returned');
         if (!i.productId || !o.storeId) continue;
         await this.stock.move(tx, {
           storeId: o.storeId,
           productId: i.productId,
           variantId: i.variantId,
           type: 'RETURN',
-          qty: i.quantity,
+          qty: l.qty,
           orderId: id,
           adminUserId: adminId,
         });
       }
+      await tx.order.update({
+        where: { id },
+        data: {
+          status: to,
+          returnedAt: new Date(),
+          posRefundedAmount: { increment: amount },
+          posRefundedVat: { increment: vat },
+        },
+      });
       await tx.orderStatusHistory.create({
         data: {
           orderId: id,
-          status: 'RETURNED',
-          note: reason ?? 'POS return',
+          status: to,
+          note: `Returned ${what} (৳${amount.toFixed(2)})${reason ? `: ${reason}` : ''}`,
           adminUserId: adminId,
         },
       });
     });
-    await this.payments.refund(id, o.totalAmount);
+    await this.refundMoney(id, amount, o.posRefundedAmount.plus(amount), all);
     this.events.emit(ORDER_STATUS_CHANGED_EVENT, {
       orderId: id,
-      from: 'COMPLETED',
-      to: 'RETURNED',
+      from: o.status,
+      to,
     } satisfies OrderStatusChangedEvent);
     return this.get(storeId, id);
   }
 
   /**
-   * Order Manager "Delete": a completed sale is first undone like a return
-   * (stock back, money reversed), then moved to the Trash. The books stay
-   * right whether it is later restored or purged.
+   * Edit a completed sale: add, remove or change items. Lines already on the
+   * sale keep the price they sold at; new lines take today's store price.
+   * The coupon/manual discount stays (capped at the new subtotal), VAT is
+   * worked out again, stock moves by the difference, and the money
+   * difference is refunded to / collected into the sale's till account.
+   * `dryRun` = preview only, nothing written.
+   */
+  async editSale(
+    storeId: number | null,
+    id: number,
+    adminId: number,
+    items: { productId: number; variantId?: number | null; quantity: number }[],
+    opts: { reason?: string; dryRun?: boolean } = {},
+  ) {
+    const o = await this.get(storeId, id);
+    if (o.deletedAt) throw new BadRequestException('This sale is in the Trash');
+    if (o.status !== 'COMPLETED')
+      throw new BadRequestException('Only a completed sale can be edited');
+    if (o.posRefundedAmount.greaterThan(0))
+      throw new BadRequestException(
+        'Items of this sale were returned — return more items instead of editing it',
+      );
+    if (!o.storeId) throw new BadRequestException('This sale has no store');
+    const saleStore = o.storeId;
+    const key = (p: number | null, v: number | null | undefined) =>
+      `${p}:${v ?? 0}`;
+    // One line per product/size; quantities of repeats add up.
+    const want = new Map<string, { productId: number; variantId: number | null; quantity: number }>();
+    for (const i of items) {
+      if (!Number.isInteger(i.quantity) || i.quantity < 0)
+        throw new BadRequestException('Quantities must be whole numbers');
+      const k = key(i.productId, i.variantId);
+      const prev = want.get(k);
+      want.set(k, {
+        productId: i.productId,
+        variantId: i.variantId ?? null,
+        quantity: (prev?.quantity ?? 0) + i.quantity,
+      });
+    }
+    for (const [k, w] of want) if (w.quantity === 0) want.delete(k);
+    if (!want.size)
+      throw new BadRequestException(
+        'A sale needs at least one item — delete it or return it instead',
+      );
+    const old = new Map(o.items.map((i) => [key(i.productId, i.variantId), i]));
+
+    // New lines: must be sold at this store, priced like a new sale.
+    const added = [...want.entries()].filter(([k]) => !old.has(k));
+    const products = await this.prisma.client.product.findMany({
+      where: { id: { in: [...want.values()].map((w) => w.productId) } },
+      include: {
+        translations: { where: { locale: Locale.EN }, take: 1 },
+        variants: { select: { id: true, sku: true } },
+      },
+    });
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const newPrice = new Map<string, Prisma.Decimal>();
+    if (added.length) {
+      const sellable = new Set(
+        (
+          await this.prisma.client.product.findMany({
+            where: {
+              id: { in: added.map(([, w]) => w.productId) },
+              OR: [{ storeId: null }, { storeId: saleStore }],
+              storePrices: {
+                none: { storeId: saleStore, variantId: null, hidden: true },
+              },
+              deletedAt: null,
+              status: { in: ['PUBLISHED', 'ADMIN_ONLY'] },
+              productType: { not: 'DIGITAL' },
+            },
+            select: { id: true },
+          })
+        ).map((p) => p.id),
+      );
+      for (const [, w] of added) {
+        const p = byId.get(w.productId);
+        if (!p || !sellable.has(w.productId))
+          throw new BadRequestException(
+            `Product #${w.productId} is not sold at this store`,
+          );
+        if (w.variantId && !p.variants.some((v) => v.id === w.variantId))
+          throw new BadRequestException(
+            `Variant #${w.variantId} does not belong to product #${w.productId}`,
+          );
+      }
+      const priced = await this.pricing.priceLines(
+        added.map(([, w]) => w),
+        saleStore,
+      );
+      added.forEach(([k, w], idx) => {
+        const price = new D(priced[idx].unitPrice);
+        if (!price.greaterThan(0))
+          throw new BadRequestException(
+            `${byId.get(w.productId)?.translations[0]?.name ?? `Product #${w.productId}`} has no price set`,
+          );
+        newPrice.set(k, price);
+      });
+    }
+    const lines = [...want.entries()].map(([k, w]) => ({
+      ...w,
+      key: k,
+      unitPrice: old.get(k)?.unitPrice ?? newPrice.get(k)!,
+    }));
+
+    const vat = await this.posSettings.getVat();
+    const storeRate = new D(vat.enabled ? vat.ratePercent : 0);
+    const keptDiscount = o.discountAmount.minus(o.posVatDiscount);
+    const subTotal = lines.reduce(
+      (s, l) => s.plus(l.unitPrice.times(l.quantity)),
+      ZERO,
+    );
+    const discount = D.min(keptDiscount, subTotal);
+    const totals = posTotals(
+      lines.map((l) => ({
+        unitPrice: l.unitPrice,
+        qty: l.quantity,
+        vatRate: vat.enabled
+          ? (byId.get(l.productId)?.vatRatePercent ?? storeRate)
+          : ZERO,
+      })),
+      discount,
+      !vat.pricesIncludeVat,
+    );
+    // A sale made with the VAT coupon keeps it.
+    const vatDiscount = o.posVatDiscount.greaterThan(0)
+      ? D.min(totals.vat, totals.total)
+      : ZERO;
+    const total = totals.total.minus(vatDiscount);
+    const diff = total.minus(o.totalAmount);
+    const changes = [
+      ...lines
+        .map((l) => ({ l, was: old.get(l.key)?.quantity ?? 0 }))
+        .filter(({ l, was }) => l.quantity !== was),
+      ...o.items
+        .filter((i) => !want.has(key(i.productId, i.variantId)))
+        .map((i) => ({
+          l: { ...i, key: key(i.productId, i.variantId), quantity: 0 },
+          was: i.quantity,
+        })),
+    ];
+    const preview = {
+      subTotal: totals.subTotal.toFixed(2),
+      discount: discount.toFixed(2),
+      vat: totals.vat.toFixed(2),
+      vatDiscount: vatDiscount.toFixed(2),
+      total: total.toFixed(2),
+      oldTotal: o.totalAmount.toFixed(2),
+      /** > 0 = collect from the customer, < 0 = refund. */
+      difference: diff.toFixed(2),
+    };
+    if (opts.dryRun) return preview;
+    if (!changes.length) throw new BadRequestException('Nothing was changed');
+
+    const storeNames = new Map(
+      (
+        await this.prisma.client.storePrice.findMany({
+          where: {
+            storeId: saleStore,
+            productId: { in: added.map(([, w]) => w.productId) },
+            name: { not: null },
+          },
+          select: { productId: true, variantId: true, name: true },
+        })
+      ).map((r) => [key(r.productId, r.variantId), r.name!]),
+    );
+    const name = (k: string, productId: number | null) =>
+      old.get(k)?.productNameSnapshot ??
+      byId.get(productId ?? 0)?.translations[0]?.name ??
+      `#${productId}`;
+    const what = changes
+      .map(({ l, was }) => `${name(l.key, l.productId)} ${was}→${l.quantity}`)
+      .join(', ');
+
+    await this.prisma.client.$transaction(async (tx) => {
+      // Claim: an edit, return or delete that got in first wins.
+      const { count } = await tx.order.updateMany({
+        where: {
+          id,
+          status: 'COMPLETED',
+          deletedAt: null,
+          updatedAt: o.updatedAt,
+        },
+        data: {
+          subTotal: totals.subTotal,
+          discountAmount: discount.plus(vatDiscount),
+          posManualDiscount: D.min(o.posManualDiscount, discount),
+          posVatDiscount: vatDiscount,
+          taxAmount: totals.vat,
+          totalAmount: total,
+          ...(o.tenderedAmount && o.tenderedAmount.lessThan(total)
+            ? { tenderedAmount: total }
+            : {}),
+        },
+      });
+      if (count !== 1)
+        throw new ConflictException('This sale just changed — reload it');
+      for (const { l, was } of changes) {
+        const line = old.get(l.key);
+        if (line && l.quantity === 0)
+          await tx.orderItem.delete({ where: { id: line.id } });
+        else if (line)
+          await tx.orderItem.update({
+            where: { id: line.id },
+            data: { quantity: l.quantity },
+          });
+        else {
+          const p = byId.get(l.productId!)!;
+          await tx.orderItem.create({
+            data: {
+              orderId: id,
+              productId: p.id,
+              variantId: l.variantId,
+              productNameSnapshot:
+                storeNames.get(l.key) ?? p.translations[0]?.name ?? p.slug,
+              skuSnapshot:
+                p.variants.find((v) => v.id === l.variantId)?.sku ?? p.sku,
+              productTypeSnapshot: p.productType,
+              unitPrice: l.unitPrice,
+              quantity: l.quantity,
+            },
+          });
+        }
+        if (!l.productId) continue;
+        // More sold → stock out (throws if the store hasn't got it); fewer → back in.
+        const delta = l.quantity - was;
+        await this.stock.move(tx, {
+          storeId: saleStore,
+          productId: l.productId,
+          variantId: l.variantId ?? null,
+          type: delta > 0 ? 'SALE' : 'RETURN',
+          qty: -delta,
+          orderId: id,
+          adminUserId: adminId,
+        });
+      }
+      await tx.payment.updateMany({
+        where: { orderId: id },
+        data: { amount: total },
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          status: 'COMPLETED',
+          note: `Edited: ${what} (total ৳${o.totalAmount.toFixed(2)} → ৳${total.toFixed(2)})${opts.reason ? `: ${opts.reason}` : ''}`,
+          adminUserId: adminId,
+        },
+      });
+    });
+
+    // Money: the difference in or out of the same till account.
+    const pay = o.payments[0];
+    const accountId = pay
+      ? await this.stores.tenderAccountId(saleStore, pay.provider)
+      : undefined;
+    if (diff.greaterThan(0))
+      await this.salesPosting.postPrepaidCapture({
+        orderId: id,
+        amount: diff,
+        capturedAt: new Date(),
+        reference: pay?.transactionRef ?? undefined,
+        accountId,
+      });
+    else if (diff.lessThan(0))
+      await this.salesPosting.postRefund({
+        orderId: id,
+        amount: diff.negated(),
+        refundedAt: new Date(),
+        accountId,
+      });
+    return { ...preview, sale: await this.get(storeId, id) };
+  }
+
+  /** Pays `amount` back and keeps the payment's running refunded total. */
+  private async refundMoney(
+    orderId: number,
+    amount: Prisma.Decimal,
+    refundedTotal: Prisma.Decimal,
+    full: boolean,
+  ) {
+    if (amount.lessThanOrEqualTo(0)) return;
+    const pay = await this.payments.refund(orderId, amount);
+    await this.prisma.client.payment.update({
+      where: { id: pay.id },
+      data: {
+        refundedAmount: refundedTotal,
+        status: full ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
+      },
+    });
+  }
+
+  /**
+   * Order Manager "Delete": a sale with items still sold is first undone
+   * (the rest of its stock back, the rest of its money reversed), then moved
+   * to the Trash. Earlier per-item returns stay as they were, so a restore
+   * re-applies exactly what the delete undid.
    */
   async deleteSale(storeId: number | null, id: number, adminId: number) {
     const o = await this.get(storeId, id);
     if (o.deletedAt) throw new BadRequestException('Already in the Trash');
-    const wasCompleted = o.status === 'COMPLETED';
-    if (wasCompleted)
-      await this.returnSale(storeId, id, adminId, 'Deleted from Order Manager');
+    const undo = o.status === 'COMPLETED' || o.status === 'PARTIALLY_RETURNED';
     await this.prisma.client.$transaction(async (tx) => {
+      if (undo) {
+        // Claim first so a concurrent return/delete can't undo it twice.
+        const { count } = await tx.order.updateMany({
+          where: { id, status: o.status, deletedAt: null },
+          data: { status: 'RETURNED', returnedAt: new Date() },
+        });
+        if (count !== 1)
+          throw new ConflictException('This sale just changed — reload');
+        for (const i of o.items) {
+          const qty = i.quantity - i.restockedQuantity;
+          if (!i.productId || !o.storeId || qty <= 0) continue;
+          await this.stock.move(tx, {
+            storeId: o.storeId,
+            productId: i.productId,
+            variantId: i.variantId,
+            type: 'RETURN',
+            qty,
+            orderId: id,
+            adminUserId: adminId,
+          });
+        }
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            status: 'RETURNED',
+            note: 'Deleted from Order Manager',
+            adminUserId: adminId,
+          },
+        });
+      }
       await tx.order.update({
         where: { id },
-        data: { deletedAt: new Date(), posVoidedByDelete: wasCompleted },
+        data: { deletedAt: new Date(), posVoidedByDelete: undo },
       });
       await releaseOrderCoupons(tx, id);
     });
-    return { deleted: true, undone: wasCompleted };
+    if (undo)
+      await this.refundMoney(
+        id,
+        o.totalAmount.minus(o.posRefundedAmount),
+        o.totalAmount,
+        true,
+      );
+    return { deleted: true, undone: undo };
   }
 
   /** Back from the Trash; a sale that delete undid is re-applied (stock out, money in). */
@@ -600,13 +987,16 @@ export class PosSaleService {
       return this.get(storeId, id);
     }
     const now = new Date();
+    // Items returned before the delete stay returned.
+    const partly = o.posRefundedAmount.greaterThan(0);
+    const status = partly ? 'PARTIALLY_RETURNED' : 'COMPLETED';
     await this.prisma.client.$transaction(async (tx) => {
       // Claim first so two restores can't sell the goods twice.
       const { count } = await tx.order.updateMany({
         where: { id, status: 'RETURNED', deletedAt: { not: null } },
         data: {
-          status: 'COMPLETED',
-          returnedAt: null,
+          status,
+          returnedAt: partly ? o.returnedAt : null,
           deletedAt: null,
           posVoidedByDelete: false,
         },
@@ -614,14 +1004,15 @@ export class PosSaleService {
       if (count !== 1)
         throw new ConflictException('This sale was already restored');
       for (const i of o.items) {
-        if (!i.productId || !o.storeId) continue;
+        const qty = i.quantity - i.restockedQuantity;
+        if (!i.productId || !o.storeId || qty <= 0) continue;
         // Throws if the store no longer has the stock — nothing is restored then.
         await this.stock.move(tx, {
           storeId: o.storeId,
           productId: i.productId,
           variantId: i.variantId,
           type: 'SALE',
-          qty: -i.quantity,
+          qty: -qty,
           orderId: id,
           adminUserId: adminId,
         });
@@ -629,21 +1020,23 @@ export class PosSaleService {
       await tx.orderStatusHistory.create({
         data: {
           orderId: id,
-          status: 'COMPLETED',
+          status,
           note: 'Restored from Trash',
           adminUserId: adminId,
         },
       });
       await tx.payment.updateMany({
         where: { orderId: id },
-        data: { status: 'CAPTURED', refundedAmount: null },
+        data: partly
+          ? { status: 'PARTIALLY_REFUNDED', refundedAmount: o.posRefundedAmount }
+          : { status: 'CAPTURED', refundedAmount: null },
       });
       await reclaimOrderCoupons(tx, id);
     });
     const pay = o.payments[0];
     await this.salesPosting.postPrepaidCapture({
       orderId: id,
-      amount: new D(o.totalAmount),
+      amount: o.totalAmount.minus(o.posRefundedAmount),
       capturedAt: now,
       reference: pay?.transactionRef ?? undefined,
       accountId: o.storeId && pay

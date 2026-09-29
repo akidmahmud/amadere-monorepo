@@ -1,6 +1,7 @@
 "use client";
 
 import { WeightField } from "./WeightField";
+import { PosImagePicker, type PickedImage } from "./PosImagePicker";
 import { fromBase, toBase, unitFor, type WeightUnit } from "@/lib/pos-weight";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,6 +38,8 @@ export function StorePriceDialog({
   );
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(startUnit);
   const [addQty, setAddQty] = useState("");
+  // undefined = photo unchanged; null = remove.
+  const [image, setImage] = useState<PickedImage | null | undefined>(undefined);
   // Untracked products (stock 9999) have no count to add to.
   const canAddStock = can("pos.stock_in") && p.stock < 9999;
 
@@ -50,6 +53,14 @@ export function StorePriceDialog({
       addQty?: number;
     }) => {
       const { addQty: qty, ...override } = body;
+      if (image !== undefined)
+        await proxyFetch(
+          `/admin/pos/products/${p.productId}/image?storeId=${storeId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ mediaId: image?.mediaId ?? null }),
+          },
+        );
       await proxyFetch(`/admin/pos/prices?storeId=${storeId}`, {
         method: "PUT",
         body: JSON.stringify({
@@ -80,7 +91,10 @@ export function StorePriceDialog({
       toast.push(
         body.addQty
           ? `Saved — ${body.addQty} added to stock`
-          : !body.name && body.price === null && body.weightKg === null
+          : !body.name &&
+              body.price === null &&
+              body.weightKg === null &&
+              image === undefined
             ? "Back to the normal name, price and weight"
             : "Saved for this store",
         "success",
@@ -115,6 +129,21 @@ export function StorePriceDialog({
           {p.variantLabel ? ` (${p.variantLabel})` : ""}
         </p>
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <span className="mb-1 block text-xs font-bold">Photo</span>
+            <PosImagePicker
+              url={image === undefined ? p.imageUrl : image?.url}
+              onChange={setImage}
+              removeLabel={
+                p.storeOnly ? "Remove photo" : "Use the website photo"
+              }
+              hint={
+                p.storeOnly
+                  ? undefined
+                  : "Shown at this store only; the website keeps its photo."
+              }
+            />
+          </div>
           <label className="col-span-2 flex flex-col gap-1">
             <span className="text-xs font-bold">Name at this store</span>
             <input

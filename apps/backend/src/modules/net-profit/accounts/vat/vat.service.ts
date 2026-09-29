@@ -213,13 +213,17 @@ export class VatService {
     });
     const posAgg = await this.prisma.client.order.aggregate({
       where: {
-        status: 'COMPLETED', // a returned POS sale is RETURNED, so its VAT drops out
+        // A fully returned POS sale is RETURNED, so its VAT drops out; a
+        // partly returned one keeps the VAT on what was kept.
+        status: { in: ['COMPLETED', 'PARTIALLY_RETURNED'] },
         channel: 'POS',
         ...(from || to ? { completedAt: this.dateRange(from, to) } : {}),
       },
-      _sum: { taxAmount: true },
+      _sum: { taxAmount: true, posRefundedVat: true },
     });
-    const posVat = posAgg._sum.taxAmount ?? ZERO;
+    const posVat = (posAgg._sum.taxAmount ?? ZERO).minus(
+      posAgg._sum.posRefundedVat ?? ZERO,
+    );
     const revenue = revenueAgg._sum.totalAmount ?? ZERO;
     const rate = new Decimal(vat.ratePercent);
 
