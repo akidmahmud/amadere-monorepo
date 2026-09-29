@@ -1,5 +1,6 @@
 "use client";
 
+import { fromBase, unitFor } from "@/lib/pos-weight";
 import { confirmDialog } from "@/components/PosConfirm";
 import Link from "next/link";
 import { useState } from "react";
@@ -29,6 +30,7 @@ type Row = {
   mediaId: number | null;
   imageUrl: string | null;
   weightKg: string | null;
+  weightUnit: string | null;
 };
 
 /** This store's own products — never on amadere.com, no website form needed. */
@@ -229,9 +231,19 @@ export default function PosProductsPage() {
                               categoryId: r.categoryId
                                 ? String(r.categoryId)
                                 : "",
-                              weightG: r.weightKg
-                                ? String(Math.round(Number(r.weightKg) * 1000))
-                                : "",
+                              ...(() => {
+                                const n = Number(r.weightKg);
+                                if (!r.weightKg || !(n > 0))
+                                  return {
+                                    weightValue: "",
+                                    weightUnit: "g" as const,
+                                  };
+                                const u = unitFor(n, r.weightUnit);
+                                return {
+                                  weightValue: String(fromBase(n, u)),
+                                  weightUnit: u,
+                                };
+                              })(),
                             },
                           })
                         }

@@ -2,10 +2,16 @@ import { ForbiddenException } from '@nestjs/common';
 import { PosProductsService, slugify } from './pos-products.service';
 
 function make(existing: object | null = null) {
-  const products = { create: jest.fn(), update: jest.fn() };
+  const products = {
+    create: jest.fn().mockResolvedValue({ id: 1 }),
+    update: jest.fn(),
+  };
   const prisma = {
     client: {
-      product: { findUniqueOrThrow: jest.fn().mockResolvedValue(existing) },
+      product: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue(existing),
+        update: jest.fn(),
+      },
     },
   };
   return {
@@ -76,13 +82,13 @@ describe('PosProductsService.setPrice', () => {
     const a = mk(simple);
     await a.svc.setPrice(4, { productId: 1, price: 250, salePrice: 240 }, 7);
     expect(a.storePrice.create).toHaveBeenCalledWith({
-      data: { storeId: 4, productId: 1, variantId: null, price: 250, salePrice: 240, name: null, updatedById: 7 },
+      data: { storeId: 4, productId: 1, variantId: null, price: 250, salePrice: 240, name: null, weightKg: null, weightUnit: null, updatedById: 7 },
     });
     const b = mk(simple, { id: 9 });
     await b.svc.setPrice(4, { productId: 1, price: 260 }, 7);
     expect(b.storePrice.update).toHaveBeenCalledWith({
       where: { id: 9 },
-      data: { price: 260, salePrice: null, name: null, updatedById: 7 },
+      data: { price: 260, salePrice: null, name: null, weightKg: null, weightUnit: null, updatedById: 7 },
     });
   });
 
@@ -111,28 +117,33 @@ describe('PosProductsService.setPrice', () => {
 
 describe('PosProductsService — weight & duplicate', () => {
   it('saves the weight (kg) as the product weight, and null clears it', async () => {
-    const products = { create: jest.fn(), update: jest.fn(), duplicate: jest.fn() };
+    const products = { create: jest.fn().mockResolvedValue({ id: 1 }), update: jest.fn(), duplicate: jest.fn() };
+    const productUpdate = jest.fn();
     const svc = new PosProductsService(
-      { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId: 4, hasVariants: false }) } } } as never,
+      { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId: 4, hasVariants: false }), update: productUpdate } } } as never,
       products as never,
     );
-    await svc.create(4, { name: 'Ghee', price: 900, weightKg: 0.5 }, { storeId: 4, can: () => true });
+    await svc.create(4, { name: 'Oil', price: 900, weightKg: 0.5, weightUnit: 'ml' }, { storeId: 4, can: () => true });
     expect(products.create.mock.calls[0][0].shippableWeight).toBe(0.5);
+    // 500 ml: stored as 0.5 (litres), shown in ml.
+    expect(productUpdate).toHaveBeenCalledWith({ where: { id: 1 }, data: { weightUnit: 'ml' } });
     await svc.update(4, 1, { name: 'Ghee', price: 900, weightKg: null }, { storeId: 4, can: () => true });
     expect(products.update.mock.calls[0][1].shippableWeight).toBeNull();
+    // No weight → no unit.
+    expect(productUpdate).toHaveBeenLastCalledWith({ where: { id: 1 }, data: { weightUnit: null } });
   });
 
-  it("duplicates only this store's own products", async () => {
+  it("duplicates this store's own products; never another store's", async () => {
     const products = { duplicate: jest.fn() };
     const mk = (storeId: number | null) =>
       new PosProductsService(
         { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
         products as never,
       );
+    products.duplicate.mockResolvedValue({ id: 8 });
     await mk(4).duplicate(4, 7);
     expect(products.duplicate).toHaveBeenCalledWith(7);
     await expect(mk(9).duplicate(4, 7)).rejects.toThrow(/does not belong/);
-    await expect(mk(null).duplicate(4, 7)).rejects.toThrow(/does not belong/);
   });
 });
 
@@ -213,7 +224,7 @@ describe('PosProductsService — remove a shared product from one store', () => 
     const b = mk(null);
     await b.svc.unhide(4, 10);
     expect(b.storePrice.deleteMany).toHaveBeenCalledWith({
-      where: { storeId: 4, productId: 10, variantId: null, hidden: true, name: null, price: null },
+      where: { storeId: 4, productId: 10, variantId: null, hidden: true, name: null, price: null, weightKg: null },
     });
     expect(b.storePrice.updateMany).toHaveBeenCalledWith({
       where: { storeId: 4, productId: 10, variantId: null },
@@ -237,5 +248,33 @@ describe('PosProductsService.restore', () => {
     await mk(4).restore(4, 7);
     expect(products.restore).toHaveBeenCalledWith(7);
     await expect(mk(9).restore(4, 7)).rejects.toThrow(/does not belong/);
+  });
+});
+
+describe('PosProductsService.setPrice — store weight', () => {
+  it('a weight-only change is kept (name/price stay normal)', async () => {
+    const storePrice = { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn(), updateMany: jest.fn() };
+    const svc = new PosProductsService(
+      { client: { product: { findFirst: jest.fn().mockResolvedValue({ id: 1, hasVariants: false, variants: [] }) }, storePrice } } as never,
+      {} as never,
+    );
+    await svc.setPrice(4, { productId: 1, weightKg: 0.5 }, 7);
+    expect(storePrice.create.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ weightKg: 0.5, price: null, name: null }),
+    );
+    expect(storePrice.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('PosProductsService.duplicate — shared product', () => {
+  it('a shared product is copied as this store own product (ADMIN_ONLY, not on the website)', async () => {
+    const update = jest.fn();
+    const products = { duplicate: jest.fn().mockResolvedValue({ id: 99 }) };
+    const svc = new PosProductsService(
+      { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId: null }), update } } } as never,
+      products as never,
+    );
+    expect(await svc.duplicate(4, 7)).toEqual({ id: 99 });
+    expect(update).toHaveBeenCalledWith({ where: { id: 99 }, data: { storeId: 4, status: 'ADMIN_ONLY' } });
   });
 });

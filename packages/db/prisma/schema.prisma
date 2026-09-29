@@ -931,6 +931,9 @@ model Product {
   // visibility, Shipping tab for completeness) but is one required field,
   // not two.
   shippableWeight Decimal? @map("shippable_weight") @db.Decimal(10, 3)
+  /// How the weight above is shown (receipt/till): g | kg | ml | l. For ml/l
+  /// the number is litres (≈ kg for courier weight). null = g/kg by size.
+  weightUnit      String? @map("weight_unit")
 
   minOrderQuantity Int  @default(1) @map("min_order_quantity")
   maxOrderQuantity Int? @map("max_order_quantity")
@@ -3709,6 +3712,10 @@ model StorePrice {
   salePrice   Decimal? @map("sale_price") @db.Decimal(10, 2)
   /// This store's own name for the product (receipt + till); null = normal name.
   name        String?
+  /// This store's own weight in kg (printed on its receipts); null = normal.
+  weightKg    Decimal? @map("weight_kg") @db.Decimal(10, 3)
+  /// Display unit for weightKg: g | kg | ml | l (ml/l = litres).
+  weightUnit  String?  @map("weight_unit")
   /// Removed from this store only (product-level row, variantId null): not
   /// listed or sold at this store; the website and other stores keep it.
   hidden      Boolean  @default(false)

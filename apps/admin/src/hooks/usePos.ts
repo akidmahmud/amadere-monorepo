@@ -52,6 +52,9 @@ export interface PosSale {
     productNameSnapshot: string;
     variantLabel?: string | null;
     weightKg?: string | null;
+    weightUnit?: string | null;
+    /** The store set its own weight: print it even next to a size label. */
+    storeWeight?: boolean;
     quantity: number;
     unitPrice: string;
   }[];

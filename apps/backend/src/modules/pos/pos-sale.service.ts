@@ -440,7 +440,7 @@ export class PosSaleService {
       include: {
         items: {
           include: {
-            product: { select: { shippableWeight: true } },
+            product: { select: { shippableWeight: true, weightUnit: true } },
             variant: {
               include: {
                 attributeValues: {
@@ -463,6 +463,30 @@ export class PosSaleService {
       },
     });
     if (!o) throw new NotFoundException('Sale not found');
+    // This store's own weights override the product's on its receipts.
+    const storeWeights = o.storeId
+      ? await this.prisma.client.storePrice.findMany({
+          where: {
+            storeId: o.storeId,
+            productId: { in: o.items.flatMap((i) => (i.productId ? [i.productId] : [])) },
+            weightKg: { not: null },
+          },
+          select: {
+            productId: true,
+            variantId: true,
+            weightKg: true,
+            weightUnit: true,
+          },
+        })
+      : [];
+    const storeRow = (productId: number | null, variantId: number | null) =>
+      storeWeights.find(
+        (w) =>
+          w.productId === productId &&
+          (w.variantId ?? null) === (variantId ?? null),
+      );
+    const storeWeight = (productId: number | null, variantId: number | null) =>
+      storeRow(productId, variantId)?.weightKg;
     // The receipt must tell a 1kg jar from a 500g one.
     return {
       ...o,
@@ -472,8 +496,16 @@ export class PosSaleService {
         // ponytail: not snapshotted per sale — a reprint after a weight
         // edit shows the new weight. Snapshot on order_items if that matters.
         weightKg:
-          (variant?.weightOverride ?? product?.shippableWeight)?.toString() ??
-          null,
+          (
+            storeWeight(i.productId, i.variantId) ??
+            variant?.weightOverride ??
+            product?.shippableWeight
+          )?.toString() ?? null,
+        weightUnit: storeWeight(i.productId, i.variantId)
+          ? (storeRow(i.productId, i.variantId)?.weightUnit ?? null)
+          : (product?.weightUnit ?? null),
+        /** Set for this store: printed even next to a variant label. */
+        storeWeight: storeWeight(i.productId, i.variantId) != null,
         variantLabel:
           variant?.attributeValues
             .map((a) => a.attributeValue.translations[0]?.value)

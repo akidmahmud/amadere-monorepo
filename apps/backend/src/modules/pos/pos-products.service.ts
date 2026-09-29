@@ -35,6 +35,7 @@ export class PosProductsService {
         costPerItem: true,
         hasVariants: true,
         shippableWeight: true,
+        weightUnit: true,
         translations: { select: { locale: true, name: true } },
         categories: { select: { categoryId: true } },
         media: {
@@ -57,7 +58,7 @@ export class PosProductsService {
     }));
   }
 
-  create(
+  async create(
     storeId: number,
     dto: PosProductDto,
     actor: { storeId: number | null; can: PermissionCheck },
@@ -65,7 +66,7 @@ export class PosProductsService {
     // ponytail: random suffix keeps slugs unique without a lookup loop; the
     // slug is never public (store-only products are ADMIN_ONLY).
     const slug = `${slugify(dto.name)}-${randomBytes(3).toString('hex')}`;
-    return this.products.create(
+    const created = await this.products.create(
       {
         ...this.fields(dto),
         slug,
@@ -76,6 +77,8 @@ export class PosProductsService {
       },
       actor,
     );
+    await this.setUnit(created.id, dto);
+    return created;
   }
 
   async update(
@@ -94,7 +97,9 @@ export class PosProductsService {
       throw new ForbiddenException(
         'Products with variants are edited from the main Products page',
       );
-    return this.products.update(id, this.fields(dto), actor);
+    const updated = await this.products.update(id, this.fields(dto), actor);
+    await this.setUnit(id, dto);
+    return updated;
   }
 
   /**
@@ -149,7 +154,7 @@ export class PosProductsService {
     // A row that only existed to hide the product goes; one that also holds
     // this store's name/price keeps them.
     await c.storePrice.deleteMany({
-      where: { ...where, hidden: true, name: null, price: null },
+      where: { ...where, hidden: true, name: null, price: null, weightKg: null },
     });
     await c.storePrice.updateMany({ where, data: { hidden: false } });
     return { hidden: false };
@@ -215,15 +220,25 @@ export class PosProductsService {
     return { restored: true };
   }
 
-  /** Copy of one of this store's own products (name "… (copy)", no stock). */
+  /**
+   * Copy a product as one of THIS store's own products (name "… (copy)", no
+   * stock, never on the website). Works for the store's own products and
+   * for shared catalogue products; another store's products are refused.
+   */
   async duplicate(storeId: number, id: number) {
     const p = await this.prisma.client.product.findUniqueOrThrow({
       where: { id },
       select: { storeId: true },
     });
-    if (p.storeId !== storeId)
+    if (p.storeId !== null && p.storeId !== storeId)
       throw new ForbiddenException('This product does not belong to this store');
-    return this.products.duplicate(id);
+    const dup = await this.products.duplicate(id);
+    if (p.storeId === null)
+      await this.prisma.client.product.update({
+        where: { id: dup.id },
+        data: { storeId, status: 'ADMIN_ONLY' },
+      });
+    return { id: dup.id };
   }
 
   /**
@@ -253,15 +268,23 @@ export class PosProductsService {
     const name = dto.name?.trim() || null;
     const price = dto.price ?? null;
     const salePrice = dto.salePrice ?? null;
+    const weightKg = dto.weightKg ?? null;
+    const weightUnit = weightKg === null ? null : (dto.weightUnit ?? null);
 
     if (salePrice !== null && price === null)
       throw new BadRequestException('Set a price before an offer price');
-    if (name === null && price === null) {
-      // Keep a "removed from this store" row; clear only its name/price.
+    if (name === null && price === null && weightKg === null) {
+      // Keep a "removed from this store" row; clear only its name/price/weight.
       await c.storePrice.deleteMany({ where: { ...where, hidden: false } });
       await c.storePrice.updateMany({
         where,
-        data: { price: null, salePrice: null, name: null },
+        data: {
+          price: null,
+          salePrice: null,
+          name: null,
+          weightKg: null,
+          weightUnit: null,
+        },
       });
       return { reset: true };
     }
@@ -269,13 +292,29 @@ export class PosProductsService {
       throw new BadRequestException(
         'Offer price must not be higher than the price',
       );
-    const data = { price, salePrice, name, updatedById: adminId };
+    const data = {
+      price,
+      salePrice,
+      name,
+      weightKg,
+      weightUnit,
+      updatedById: adminId,
+    };
     // ponytail: find-then-write; the unique expression index turns a rare
     // double-submit race into an error instead of a duplicate row.
     const existing = await c.storePrice.findFirst({ where });
     return existing
       ? c.storePrice.update({ where: { id: existing.id }, data })
       : c.storePrice.create({ data: { ...where, ...data } });
+  }
+
+  /** Display unit lives beside the weight (ProductsService doesn't know it). */
+  private async setUnit(id: number, dto: PosProductDto) {
+    if (dto.weightUnit === undefined && dto.weightKg === undefined) return;
+    await this.prisma.client.product.update({
+      where: { id },
+      data: { weightUnit: dto.weightKg == null ? null : (dto.weightUnit ?? null) },
+    });
   }
 
   private fields(dto: PosProductDto) {

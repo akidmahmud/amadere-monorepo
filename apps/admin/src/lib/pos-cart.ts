@@ -16,6 +16,11 @@ export interface PosProduct {
   /** true = `name` is this store's own name for it. */
   storeName?: boolean;
   normalName?: string;
+  /** kg: this store's own weight, and the product's normal one. */
+  storeWeightKg?: string | null;
+  normalWeightKg?: string | null;
+  storeWeightUnit?: string | null;
+  normalWeightUnit?: string | null;
   normalPrice?: string;
   normalSalePrice?: string | null;
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { WeightField } from "./WeightField";
+import { toBase, type WeightUnit } from "@/lib/pos-weight";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
@@ -18,8 +20,9 @@ export type StoreProductFields = {
   sku: string;
   barcode: string;
   categoryId: string;
-  /** Grams, as typed; stored as kg. Printed on the receipt. */
-  weightG: string;
+  /** Weight/volume as typed in `weightUnit`; printed on the receipt. */
+  weightValue: string;
+  weightUnit: WeightUnit;
 };
 
 export const EMPTY_STORE_PRODUCT: StoreProductFields = {
@@ -30,7 +33,8 @@ export const EMPTY_STORE_PRODUCT: StoreProductFields = {
   sku: "",
   barcode: "",
   categoryId: "",
-  weightG: "",
+  weightValue: "",
+  weightUnit: "g",
 };
 
 const num = (s: string) => (s.trim() === "" ? null : Number(s));
@@ -63,7 +67,7 @@ export function StoreProductForm({
   const [opening, setOpening] = useState("");
   const [image, setImage] = useState(initialImage);
   const upload = useUploadMedia();
-  const set = (k: keyof StoreProductFields, v: string) =>
+  const set = (k: Exclude<keyof StoreProductFields, "weightUnit">, v: string) =>
     setF((x) => ({ ...x, [k]: v }));
   const withStock = id === null && can("pos.stock_in");
   const openingOk =
@@ -83,7 +87,10 @@ export function StoreProductForm({
             costPerItem: num(f.costPerItem),
             sku: f.sku,
             barcode: f.barcode,
-            weightKg: f.weightG.trim() ? Number(f.weightG) / 1000 : null,
+            weightKg: f.weightValue.trim()
+              ? toBase(Number(f.weightValue), f.weightUnit)
+              : null,
+            weightUnit: f.weightValue.trim() ? f.weightUnit : null,
             categoryId: f.categoryId ? Number(f.categoryId) : null,
             // Create: only when a photo was added. Edit: always (null removes).
             mediaId: id === null ? image?.mediaId : (image?.mediaId ?? null),
@@ -124,7 +131,7 @@ export function StoreProductForm({
   });
 
   const valid =
-    (f.weightG.trim() === "" || Number(f.weightG) > 0) &&
+    (f.weightValue.trim() === "" || Number(f.weightValue) > 0) &&
     f.name.trim() !== "" &&
     f.price !== "" &&
     Number(f.price) >= 0 &&
@@ -241,14 +248,16 @@ export function StoreProductForm({
       </label>
       <label className={label}>
         <span className="text-xs font-bold">
-          Weight in grams (optional, shown on the receipt)
+          Weight / volume (optional, shown on the receipt)
         </span>
-        <input
-          className={input}
-          inputMode="decimal"
+        <WeightField
+          label="Weight"
+          value={f.weightValue}
+          unit={f.weightUnit}
           placeholder="e.g. 500"
-          value={f.weightG}
-          onChange={(e) => set("weightG", e.target.value)}
+          onChange={(v, u) =>
+            setF((x) => ({ ...x, weightValue: v, weightUnit: u }))
+          }
         />
       </label>
       {withStock && (

@@ -26,6 +26,12 @@ export interface PosProduct {
   /** This store's own name is in `name`; normalName is the catalogue one. */
   storeName: boolean;
   normalName: string;
+  /** kg: this store's own weight (null = none) and the product's. */
+  storeWeightKg: string | null;
+  normalWeightKg: string | null;
+  /** g | kg | ml | l, or null = g/kg by size. */
+  storeWeightUnit: string | null;
+  normalWeightUnit: string | null;
   normalPrice: string;
   normalSalePrice: string | null;
 }
@@ -205,6 +211,11 @@ export class PosCatalogService {
       return {
       productId: p.id,
       variantId: v?.id ?? null,
+      storeWeightKg: o?.weightKg?.toString() ?? null,
+      storeWeightUnit: o?.weightKg ? (o.weightUnit ?? null) : null,
+      normalWeightUnit: p.weightUnit ?? null,
+      normalWeightKg:
+        (v?.weightOverride ?? p.shippableWeight)?.toString() ?? null,
       name: o?.name ?? normalName,
       storeName: !!o?.name,
       normalName,

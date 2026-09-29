@@ -479,7 +479,10 @@ describe('PosSaleService.get — receipt data', () => {
       ],
     };
     const prisma = {
-      client: { order: { findFirst: jest.fn().mockResolvedValue(order) } },
+      client: {
+        order: { findFirst: jest.fn().mockResolvedValue(order) },
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+      },
     };
     const svc = new PosSaleService(
       prisma as never,
@@ -511,6 +514,7 @@ describe('PosSaleService.returnSale', () => {
     };
     const prisma = {
       client: {
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
         order: {
           findFirst: jest.fn().mockResolvedValue({
             ...order,

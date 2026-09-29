@@ -223,6 +223,43 @@ export function ProductGrid({
     },
     onError: (e) => toast.push(e.message),
   });
+  const duplicate = useMutation({
+    mutationFn: (p: PosProduct) =>
+      proxyFetch(
+        `/admin/pos/products/${p.productId}/duplicate?storeId=${storeId}`,
+        { method: "POST" },
+      ),
+    onSuccess: (_r, p) => {
+      qc.invalidateQueries({ queryKey: ["pos-catalog"] });
+      qc.invalidateQueries({ queryKey: ["pos-products"] });
+      toast.push(
+        `Copied — "${p.normalName ?? p.name} (copy)" is in POS › Products. Set its name, price and stock there.`,
+        "success",
+      );
+    },
+    onError: (e) => toast.push(e.message),
+  });
+  const copy = (p: PosProduct, cls: string) =>
+    canRemove && (
+      <button
+        onClick={async () =>
+          (await confirmDialog({
+            title: `Duplicate "${p.normalName ?? p.name}"?`,
+            message: p.storeOnly
+              ? "A copy of this store product is made, with no stock."
+              : `A copy is made as ${store?.name}'s own product${p.variantLabel ? " (with all its sizes)" : ""}: it starts with no stock and never appears on the website. The original is unchanged.`,
+            confirmLabel: "Duplicate",
+            icon: "content_copy",
+          })) && duplicate.mutate(p)
+        }
+        disabled={duplicate.isPending}
+        className={`grid h-8 w-8 place-items-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-[#1d7a46] disabled:opacity-40 ${cls}`}
+        aria-label={`Duplicate ${p.name}`}
+        title="Duplicate as this store's product"
+      >
+        <Icon name="content_copy" size={17} />
+      </button>
+    );
   const trash = (p: PosProduct, cls: string) =>
     canRemove && (
       <button
@@ -371,6 +408,7 @@ export function ProductGrid({
                 <div className="absolute right-0 top-0 flex flex-col gap-1">
                   {pencil(p, "bg-white/90")}
                   {trash(p, "bg-white/90")}
+                  {copy(p, "bg-white/90")}
                 </div>
               </div>
               <div className="line-clamp-2 text-sm font-semibold leading-snug">
@@ -427,6 +465,7 @@ export function ProductGrid({
                 <Price p={p} end />
               </div>
               {pencil(p, "shrink-0")}
+              {copy(p, "shrink-0")}
               {trash(p, "shrink-0")}
               <AddOrStepper
                 p={p}

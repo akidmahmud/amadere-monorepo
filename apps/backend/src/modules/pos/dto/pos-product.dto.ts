@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -52,6 +53,10 @@ export class PosProductDto {
   @IsNumber()
   @Min(0)
   weightKg?: number | null;
+  /** Display unit for the weight: g | kg | ml | l (ml/l stored as litres). */
+  @IsOptional()
+  @IsIn(['g', 'kg', 'ml', 'l'])
+  weightUnit?: 'g' | 'kg' | 'ml' | 'l' | null;
 
   /** Uploaded media id; null removes the photo, omitted leaves it. */
   @IsOptional()
@@ -76,6 +81,17 @@ export class StorePriceDto {
   @IsNumber()
   @Min(0.01)
   price?: number | null;
+
+  /** This store's own weight in kg (receipt); null = the normal weight. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.001)
+  weightKg?: number | null;
+  /** Display unit for the weight: g | kg | ml | l (ml/l stored as litres). */
+  @IsOptional()
+  @IsIn(['g', 'kg', 'ml', 'l'])
+  weightUnit?: 'g' | 'kg' | 'ml' | 'l' | null;
 
   /** This store's own name for it; null/blank = the normal name. */
   @IsOptional()

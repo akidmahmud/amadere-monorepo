@@ -1,5 +1,6 @@
 "use client";
 
+import { formatWeight } from "@/lib/pos-weight";
 import { use, useEffect, useMemo } from "react";
 import {
   usePosSale,
@@ -9,7 +10,6 @@ import {
 } from "@/hooks/usePos";
 import {
   BUILTIN_POS_INVOICE,
-  formatWeightKg,
   renderPosInvoice,
   type PosInvoiceData,
 } from "@/lib/pos-invoice";
@@ -53,8 +53,12 @@ function toInvoiceData(
     status: s.status,
     items: s.items.map((i) => ({
       name: i.productNameSnapshot,
-      variant: i.variantLabel,
-      weight: formatWeightKg(i.weightKg),
+      // A store's own weight also prints next to a size label (e.g. 1KG · 950 g).
+      variant:
+        i.storeWeight && i.variantLabel
+          ? `${i.variantLabel} · ${formatWeight(i.weightKg, i.weightUnit)}`
+          : i.variantLabel,
+      weight: formatWeight(i.weightKg, i.weightUnit),
       qty: i.quantity,
       unitPrice: Number(i.unitPrice),
       lineTotal: Number(i.unitPrice) * i.quantity,
