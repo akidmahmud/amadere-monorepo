@@ -8,6 +8,7 @@ import { barcodeSvg } from "@/lib/pos-barcode";
 import {
   DEFAULT_LABEL_SIZE,
   buildLabelSheet,
+  labelSizeText,
   printLabelSheet,
 } from "@/lib/pos-labels";
 import Link from "next/link";
@@ -261,6 +262,8 @@ export default function PosProductsPage() {
           items.flatMap((p) =>
             Array.from({ length: n }, () => ({
               barcodeSvg: barcodeSvg(p.barcode),
+              name: p.name,
+              size: labelSizeText(p),
             })),
           ),
           labelSize,

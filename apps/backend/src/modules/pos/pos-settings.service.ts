@@ -29,8 +29,16 @@ const LABEL_KEY = 'pos.label';
 export interface PosLabelSize {
   widthMm: number;
   heightMm: number;
+  /** Print the product name / size (pack size or weight) above the barcode. */
+  showName: boolean;
+  showSize: boolean;
 }
-export const POS_LABEL_DEFAULT: PosLabelSize = { widthMm: 38, heightMm: 25 };
+export const POS_LABEL_DEFAULT: PosLabelSize = {
+  widthMm: 38,
+  heightMm: 25,
+  showName: true,
+  showSize: true,
+};
 
 /**
  * POS-wide settings (one for all stores). Deliberately separate from the
@@ -77,8 +85,16 @@ export class PosSettingsService {
     };
   }
 
-  async setLabel(v: PosLabelSize): Promise<PosLabelSize> {
-    const value = { widthMm: v.widthMm, heightMm: v.heightMm };
+  async setLabel(
+    v: Pick<PosLabelSize, 'widthMm' | 'heightMm'> & Partial<PosLabelSize>,
+  ): Promise<PosLabelSize> {
+    const cur = await this.getLabel();
+    const value = {
+      widthMm: v.widthMm,
+      heightMm: v.heightMm,
+      showName: v.showName ?? cur.showName,
+      showSize: v.showSize ?? cur.showSize,
+    };
     await this.prisma.client.setting.upsert({
       where: { key: LABEL_KEY },
       create: { key: LABEL_KEY, value },

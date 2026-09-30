@@ -491,7 +491,10 @@ export const usePosLabelSize = () =>
   useQuery({
     queryKey: ["pos-label-size"],
     queryFn: () =>
-      proxyFetch<{ widthMm: number; heightMm: number }>(
-        "/admin/pos/settings/label",
-      ),
+      proxyFetch<{
+        widthMm: number;
+        heightMm: number;
+        showName?: boolean;
+        showSize?: boolean;
+      }>("/admin/pos/settings/label"),
   });

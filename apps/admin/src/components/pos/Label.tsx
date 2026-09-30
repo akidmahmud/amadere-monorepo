@@ -3,9 +3,13 @@
 import { useEffect, useRef } from "react";
 import JsBarcode from "jsbarcode";
 import type { PosProduct } from "@/lib/pos-cart";
-import { DEFAULT_LABEL_SIZE, type LabelSize } from "@/lib/pos-labels";
+import {
+  DEFAULT_LABEL_SIZE,
+  labelSizeText,
+  type LabelSize,
+} from "@/lib/pos-labels";
 
-/** Preview of one printed label: just the barcode and its number. */
+/** Preview of one printed label: name and size (if on), then the barcode. */
 export function Label({
   p,
   size = DEFAULT_LABEL_SIZE,
@@ -15,6 +19,9 @@ export function Label({
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const code = p.barcode ?? "";
+  const name = (size.showName ?? true) && p.name;
+  const sz = (size.showSize ?? true) && labelSizeText(p);
+  const textMm = (name ? 3.4 : 0) + (sz ? 3 : 0);
   useEffect(() => {
     if (!svg.current || !code) return;
     try {
@@ -33,7 +40,7 @@ export function Label({
   }, [code]);
   return (
     <div
-      className="pos-label flex items-center justify-center overflow-hidden bg-white text-black"
+      className="pos-label flex flex-col items-center justify-center overflow-hidden bg-white text-black"
       style={{
         width: `${size.widthMm}mm`,
         height: `${size.heightMm}mm`,
@@ -42,12 +49,18 @@ export function Label({
       }}
       title={p.name}
     >
+      {name && (
+        <div className="w-full truncate text-center text-[7.5pt] font-bold leading-tight">
+          {name}
+        </div>
+      )}
+      {sz && <div className="text-[7pt] leading-tight">{sz}</div>}
       {code ? (
         <svg
           ref={svg}
           style={{
             maxWidth: `${size.widthMm - 2}mm`,
-            maxHeight: `${size.heightMm - 2}mm`,
+            maxHeight: `${Math.max(6, size.heightMm - 2 - textMm)}mm`,
           }}
         />
       ) : (

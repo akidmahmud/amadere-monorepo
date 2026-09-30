@@ -5,6 +5,7 @@ import { barcodeSvg } from "@/lib/pos-barcode";
 import {
   DEFAULT_LABEL_SIZE,
   buildLabelSheet,
+  labelSizeText,
   printLabelSheet,
 } from "@/lib/pos-labels";
 import Link from "next/link";
@@ -194,7 +195,11 @@ export default function LabelsPage() {
             onClick={() =>
               printLabelSheet(
                 buildLabelSheet(
-                  printable.map((p) => ({ barcodeSvg: barcodeSvg(p.barcode) })),
+                  printable.map((p) => ({
+                    barcodeSvg: barcodeSvg(p.barcode),
+                    name: p.name,
+                    size: labelSizeText(p),
+                  })),
                   size,
                 ),
               )
@@ -204,9 +209,16 @@ export default function LabelsPage() {
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          Each label prints as its own {size.widthMm}×{size.heightMm}mm page
-          (barcode only). In the print dialog pick the label printer; if it
-          asks, choose paper {size.widthMm}×{size.heightMm}mm and margins None.
+          Each label prints as its own {size.widthMm}×{size.heightMm}mm page (
+          {[
+            (size.showName ?? true) ? "name" : "",
+            (size.showSize ?? true) ? "size" : "",
+            "barcode",
+          ]
+            .filter(Boolean)
+            .join(", ")}
+          ). In the print dialog pick the label printer; if it asks, choose
+          paper {size.widthMm}×{size.heightMm}mm and margins None.
           {can("pos.settings") && (
             <>
               {" "}
