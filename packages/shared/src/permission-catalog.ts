@@ -229,6 +229,9 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('net_profit_reports', 'view_own'),
   perm('net_profit_profit', 'view'),
   perm('net_profit_profit', 'manage'),
+  // Daily Report (spec 2026-10-01): view/export vs generate/delete/settings.
+  perm('net_profit_daily_report', 'view'),
+  perm('net_profit_daily_report', 'manage'),
   perm('net_profit_payments', 'verify'),
   perm('net_profit_settings', 'manage'),
   perm('net_profit_accounts', 'view'),

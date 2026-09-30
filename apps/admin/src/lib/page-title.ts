@@ -56,6 +56,7 @@ const SECTIONS: { base: string; label: string }[] = [
   { base: "/net-profit/sms", label: "SMS" },
   { base: "/net-profit/payments", label: "Payments" },
   { base: "/net-profit/recovery", label: "Recovery" },
+  { base: "/net-profit/daily-report", label: "Daily Report" },
   { base: "/net-profit/reports", label: "Sales Report" },
   { base: "/net-profit", label: "Net Profit" },
 ];
@@ -63,6 +64,7 @@ const SECTIONS: { base: string; label: string }[] = [
 export function pageTitleFor(pathname: string): string {
   if (pathname === "/") return "Overview";
   if (pathname.startsWith("/orders/")) return "Order Details"; // viewed/actioned, not "edited"
+  if (pathname.startsWith("/net-profit/daily-report/")) return "Daily Report"; // a saved report is read-only
   if (pathname === "/products/trash") return "Deleted Products";
 
   const section = SECTIONS.find(

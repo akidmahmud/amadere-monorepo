@@ -3301,6 +3301,36 @@ model DailyProfitCache {
   @@map("daily_profit_cache")
 }
 
+// Daily Report (spec 2026-10-01): a frozen per-source/per-product profit
+// sheet. `payload` is the DailyReportSnapshot (packages/shared) as generated;
+// later cost/order/settings edits never touch it. Kept 45 days.
+enum DailyReportKind {
+  AUTO
+  MANUAL
+}
+
+model DailyReport {
+  id            Int             @id @default(autoincrement())
+  name          String
+  kind          DailyReportKind
+  periodFrom    DateTime        @map("period_from") @db.Date
+  periodTo      DateTime        @map("period_to") @db.Date
+  payload       Json
+  totalSales    Decimal         @map("total_sales") @db.Decimal(12, 2)
+  netProfit     Decimal         @map("net_profit") @db.Decimal(12, 2)
+  // No FK: AdminUser is a spine table and stays untouched.
+  createdById   Int?            @map("created_by_id")
+  // Null = the nightly job.
+  createdByName String?         @map("created_by_name")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  // Plus a partial unique index (one AUTO per day) in the migration SQL —
+  // Prisma cannot express WHERE on an index.
+  @@index([periodFrom])
+  @@index([createdAt])
+  @@map("daily_reports")
+}
+
 // --- Net Profit: Accounts (§12 — expense/due/VAT/cash-flow) ---------------
 // VAT rate/BIN live in the generic Setting store via NetProfitSettingsService
 // (namespace "accounts", same pattern as every other Net Profit sub-feature)

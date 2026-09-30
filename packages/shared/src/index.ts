@@ -43,3 +43,4 @@ export interface PaginatedResult<T> {
   pageSize: number;
 }
 export * from './shipping-rules';
+export * from './daily-report';
