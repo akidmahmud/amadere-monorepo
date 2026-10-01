@@ -116,4 +116,28 @@ describe('DailyReportLoader', () => {
     });
     expect(o.lines[0]).toMatchObject({ kg: 3, sales: 600, cost: 300 });
   });
+  it('reads retail orders in the 8 PM → 8 PM business window', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const loader = new DailyReportLoader(
+      {
+        client: {
+          order: { findMany },
+          wholesaleOrder: { findMany: jest.fn().mockResolvedValue([]) },
+          productVariant: { findMany: jest.fn().mockResolvedValue([]) },
+        },
+      } as never,
+      {
+        loadResolver: jest.fn().mockResolvedValue({ resolve: () => null }),
+      } as never,
+      { getConfig: jest.fn().mockResolvedValue({ rules: [] }) } as never,
+    );
+    await loader.load('2026-10-02', '2026-10-02');
+    const [args] = findMany.mock.calls[0] as [
+      { where: { createdAt: unknown } },
+    ];
+    expect(args.where.createdAt).toEqual({
+      gte: new Date('2026-10-01T14:00:00Z'),
+      lt: new Date('2026-10-02T14:00:00Z'),
+    });
+  });
 });

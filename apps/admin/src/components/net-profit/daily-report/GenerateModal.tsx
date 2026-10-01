@@ -75,6 +75,7 @@ export function GenerateModal({
           </label>
         </div>
         <p className="text-xs text-muted">
+          Each day runs 8 PM to 8 PM (2 Oct = 1 Oct 8 PM to 2 Oct 8 PM).
           Choosing today gives the sales so far. A report can cover up to 92
           days.
         </p>

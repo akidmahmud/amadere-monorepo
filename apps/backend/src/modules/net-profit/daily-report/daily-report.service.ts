@@ -15,11 +15,15 @@ import type {
   DailyReportSnapshot,
 } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { dhakaDate } from '../../product-cost-history/dhaka-date';
 import { NetProfitSettingsService } from '../settings/net-profit-settings.service';
 import { buildSnapshot } from './build';
 import { DailyReportLoader } from './daily-report.loader';
-import { autoName, validateManual } from './period';
+import {
+  autoName,
+  currentBusinessDay,
+  lastClosedBusinessDay,
+  validateManual,
+} from './period';
 import {
   DEFAULT_SETTINGS,
   allSourceDefs,
@@ -105,7 +109,12 @@ export class DailyReportService {
   ): Promise<DailyReportListItem> {
     let name: string;
     try {
-      name = validateManual(dto.name, dto.from, dto.to, dhakaDate(new Date()));
+      name = validateManual(
+        dto.name,
+        dto.from,
+        dto.to,
+        currentBusinessDay(new Date()),
+      );
     } catch (e) {
       throw new BadRequestException((e as Error).message);
     }
@@ -192,10 +201,10 @@ export class DailyReportService {
     return toListItem(row);
   }
 
-  // 00:15 Dhaka, then retried hourly until 05:15: a restart or DB blip at
-  // midnight must not leave a day with no report. generateAuto is idempotent,
-  // so the retries are no-ops once the day exists.
-  @Cron('0 15 0-5 * * *', { timeZone: 'Asia/Dhaka' })
+  // 8:15 PM Dhaka, just after the 8 PM business-day close, then retried hourly
+  // until 11:15 PM: a restart or DB blip must not leave a day with no report.
+  // generateAuto is idempotent, so the retries are no-ops once the day exists.
+  @Cron('0 15 20-23 * * *', { timeZone: 'Asia/Dhaka' })
   async nightly(): Promise<void> {
     // Separate try: a failed purge must not stop the report.
     try {
@@ -214,9 +223,7 @@ export class DailyReportService {
           DEFAULT_SETTINGS,
         );
       if (!autoEnabled) return;
-      const made = await this.generateAuto(
-        dhakaDate(new Date(Date.now() - DAY_MS)),
-      );
+      const made = await this.generateAuto(lastClosedBusinessDay(new Date()));
       if (made) this.logger.log(`Generated ${made.name}`);
     } catch (e) {
       this.logger.error('Nightly daily report failed', e as Error);

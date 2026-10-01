@@ -12,7 +12,10 @@ function make() {
         store: { id: 4, name: 'Uttara' },
         customer: { firstName: 'Karim', lastName: null, phone: '01711111111' },
         assignedAdmin: { firstName: 'Rahim', lastName: 'U' },
-        items: [{ quantity: 2 }, { quantity: 1 }],
+        items: [
+          { productNameSnapshot: 'Oil', quantity: 2, unitPrice: D(40), restockedQuantity: 0 },
+          { productNameSnapshot: 'Salt', quantity: 1, unitPrice: D(35), restockedQuantity: 0 },
+        ],
         payments: [{ provider: 'BKASH' }],
       },
     ]),
@@ -56,6 +59,10 @@ describe('PosManagerService.orders', () => {
         customer: { name: 'Karim', phone: '01711111111' },
         cashier: 'Rahim U',
         itemCount: 3,
+        items: [
+          { name: 'Oil', qty: 2, price: '40.00', returned: 0 },
+          { name: 'Salt', qty: 1, price: '35.00', returned: 0 },
+        ],
         tender: 'BKASH',
       }),
     );

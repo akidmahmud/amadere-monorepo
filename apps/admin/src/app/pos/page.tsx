@@ -115,7 +115,7 @@ export default function PosPage() {
             value={categoryId}
             onChange={setCategoryId}
           />
-          <StatCards stats={stats} />
+          <StatCards kind="stock" stats={stats} />
           <ProductGrid
             items={catalog.data ?? []}
             loading={catalog.isLoading}

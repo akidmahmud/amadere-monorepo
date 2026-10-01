@@ -1,4 +1,12 @@
-import { autoName, daysInMonth, periodDays, validateManual } from './period';
+import {
+  autoName,
+  businessWindow,
+  currentBusinessDay,
+  daysInMonth,
+  lastClosedBusinessDay,
+  periodDays,
+  validateManual,
+} from './period';
 
 describe('period helpers', () => {
   it('periodDays is inclusive and crosses months', () => {
@@ -45,5 +53,28 @@ describe('validateManual', () => {
   });
   it('accepts exactly 92 days', () => {
     expect(validateManual('a', '2026-07-02', '2026-10-01', today)).toBe('a');
+  });
+});
+
+// Business day D = (D−1) 20:00 → D 20:00, Asia/Dhaka (UTC+6).
+describe('business day (8 PM to 8 PM)', () => {
+  it('window for one day starts 8 PM the day before, ends 8 PM (exclusive)', () => {
+    const w = businessWindow('2026-10-02', '2026-10-02');
+    expect(w.start.toISOString()).toBe('2026-10-01T14:00:00.000Z'); // 1 Oct 20:00 Dhaka
+    expect(w.end.toISOString()).toBe('2026-10-02T14:00:00.000Z'); // 2 Oct 20:00 Dhaka
+  });
+  it('window for a range spans first-day open to last-day close', () => {
+    const w = businessWindow('2026-09-01', '2026-09-30');
+    expect(w.start.toISOString()).toBe('2026-08-31T14:00:00.000Z');
+    expect(w.end.toISOString()).toBe('2026-09-30T14:00:00.000Z');
+  });
+  it.each([
+    ['2026-10-02T13:59:00Z', '2026-10-02', '2026-10-01'], // 7:59 PM: 2 Oct still open
+    ['2026-10-02T14:00:00Z', '2026-10-03', '2026-10-02'], // 8:00 PM: 2 Oct closes
+    ['2026-10-02T14:15:00Z', '2026-10-03', '2026-10-02'], // 8:15 PM cron
+    ['2026-10-02T18:30:00Z', '2026-10-03', '2026-10-02'], // 0:30 AM 3 Oct
+  ])('at %s current=%s lastClosed=%s', (now, current, closed) => {
+    expect(currentBusinessDay(new Date(now))).toBe(current);
+    expect(lastClosedBusinessDay(new Date(now))).toBe(closed);
   });
 });

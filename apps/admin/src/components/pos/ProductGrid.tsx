@@ -64,51 +64,68 @@ export function CategoryChips({
   );
 }
 
+/** "stock" = the till's catalogue cards; "sales" = today's takings (POS Orders). */
 export function StatCards({
   stats,
+  kind,
 }: {
+  kind: "stock" | "sales";
   stats?: {
     totalProducts: number;
     lowStock: number;
+    outOfStock: number;
     todaySales: string;
     todayOrders: number;
     todayItems: number;
   };
 }) {
-  const cards = [
+  const all = [
     {
+      kind: "stock",
       label: "Total Products",
       value: stats ? String(stats.totalProducts) : "—",
       icon: "deployed_code",
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
     {
+      kind: "stock",
       label: "Low Stock Items",
       value: stats ? String(stats.lowStock) : "—",
       icon: "warning",
+      tone: "bg-orange-50 text-orange-500",
+    },
+    {
+      kind: "stock",
+      label: "Out of Stock",
+      value: stats ? String(stats.outOfStock) : "—",
+      icon: "remove_shopping_cart",
       tone: "bg-red-50 text-red-500",
     },
     {
+      kind: "sales",
       label: "Today's Sales",
       value: stats ? taka(stats.todaySales) : "—",
       icon: "bar_chart",
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
     {
+      kind: "sales",
       label: "Today Orders",
       value: stats ? String(stats.todayOrders) : "—",
       icon: "receipt_long",
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
     {
+      kind: "sales",
       label: "Today Items Sold",
       value: stats ? String(stats.todayItems) : "—",
       icon: "shopping_bag",
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
   ];
+  const cards = all.filter((c) => c.kind === kind);
   return (
-    <div className="grid shrink-0 grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+    <div className="grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-3">
       {cards.map((c) => (
         <div
           key={c.label}

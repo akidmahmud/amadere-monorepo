@@ -75,7 +75,7 @@ export function SettingsPanel() {
         <ToggleSwitch
           checked={d.autoEnabled}
           onChange={(v) => setD({ ...d, autoEnabled: v })}
-          label="Create the previous day's report every night after 12 AM"
+          label="Create each day's report automatically at 8 PM (day = 8 PM to 8 PM)"
         />
       </Card>
 

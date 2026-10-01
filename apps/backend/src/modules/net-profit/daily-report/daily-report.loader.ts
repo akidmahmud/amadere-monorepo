@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { chargeableWeightKg, quoteShippingRule } from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import {
-  dhakaDate,
-  dhakaDayEnd,
-  dhakaDayStart,
-} from '../../product-cost-history/dhaka-date';
+import { dhakaDate } from '../../product-cost-history/dhaka-date';
 import { ProductCostHistoryService } from '../../product-cost-history/product-cost-history.service';
 import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
 import { spreadDiscount } from '../sales-report/report-mapping';
 import type { BuildOrder } from './build';
+import { businessWindow } from './period';
 import { retailSourceOf, wholesaleSourceOf } from './sources';
 
 const uniq = (xs: (number | null)[]) => [
@@ -32,12 +29,15 @@ export class DailyReportLoader {
 
   async load(from: string, to: string): Promise<BuildOrder[]> {
     const db = this.prisma.client;
+    // 8 PM → 8 PM business days. Wholesale stays on its placed_at DATE: it has
+    // no time of day (staff pick the sale date), so the cutoff can't apply.
+    const win = businessWindow(from, to);
     const [retail, wholesale, rules] = await Promise.all([
       db.order.findMany({
         where: {
           deletedAt: null,
           status: { not: 'CANCELED' },
-          createdAt: { gte: dhakaDayStart(from), lte: dhakaDayEnd(to) },
+          createdAt: { gte: win.start, lt: win.end },
         },
         select: {
           id: true,

@@ -135,8 +135,10 @@ export class PosCatalogService {
     // Exact barcode, then exact SKU — never the first fuzzy search hit, which
     // could put the wrong item in the cart on a partial scan.
     // Case-insensitive: a scanner that doesn't send Shift types "amd000…".
-    const same = (v?: string | null) => !!v && v.toLowerCase() === c.toLowerCase();
-    const hit = all.find((p) => same(p.barcode)) ?? all.find((p) => same(p.sku));
+    const same = (v?: string | null) =>
+      !!v && v.toLowerCase() === c.toLowerCase();
+    const hit =
+      all.find((p) => same(p.barcode)) ?? all.find((p) => same(p.sku));
     if (!hit) throw new NotFoundException(`No product with code "${c}"`);
     return hit;
   }
@@ -181,7 +183,10 @@ export class PosCatalogService {
     ]);
     return {
       totalProducts: items.length,
-      lowStock: items.filter((p) => p.stock <= POS_LOW_STOCK).length,
+      // Same split as the till's product cards: ≤ 0 is out, 1–10 is low.
+      outOfStock: items.filter((p) => p.stock <= 0).length,
+      lowStock: items.filter((p) => p.stock > 0 && p.stock <= POS_LOW_STOCK)
+        .length,
       todaySales: (sales._sum.totalAmount ?? new Prisma.Decimal(0)).toFixed(2),
       todayOrders: sales._count._all,
       todayItems: items_._sum.quantity ?? 0,
@@ -206,51 +211,56 @@ export class PosCatalogService {
       own.map((o) => [stockKey(o.productId, o.variantId), o]),
     );
     return lines.map(({ p, v }) => {
-      const normalPrice = (v?.price ?? p.price ?? new Prisma.Decimal(0)).toFixed(2);
-      const normalSalePrice = (v ? v.salePrice : p.salePrice)?.toFixed(2) ?? null;
+      const normalPrice = (
+        v?.price ??
+        p.price ??
+        new Prisma.Decimal(0)
+      ).toFixed(2);
+      const normalSalePrice =
+        (v ? v.salePrice : p.salePrice)?.toFixed(2) ?? null;
       const o = ownBy.get(stockKey(p.id, v?.id ?? null));
       const normalName = p.translations[0]?.name ?? p.slug;
       const ownPrice = o?.price ? o : undefined;
       return {
-      productId: p.id,
-      variantId: v?.id ?? null,
-      storeWeightKg: o?.weightKg?.toString() ?? null,
-      storeWeightUnit: o?.weightKg ? (o.weightUnit ?? null) : null,
-      normalWeightUnit: p.weightUnit ?? null,
-      normalWeightKg:
-        (v?.weightOverride ?? p.shippableWeight)?.toString() ?? null,
-      name: o?.name ?? normalName,
-      storeName: !!o?.name,
-      normalName,
-      variantLabel: v
-        ? v.attributeValues
-            .map((a) => a.attributeValue.translations[0]?.value)
-            .filter(Boolean)
-            .join(' / ') || null
-        : null,
-      sku: v?.sku ?? p.sku,
-      barcode: v ? v.barcode : p.barcode,
-      price: ownPrice ? ownPrice.price!.toFixed(2) : normalPrice,
-      salePrice: ownPrice
-        ? (ownPrice.salePrice?.toFixed(2) ?? null)
-        : normalSalePrice,
-      storePrice: !!ownPrice,
-      normalPrice,
-      normalSalePrice,
-      // This store's own photo (set on the product-level row) wins.
-      ...(() => {
-        const mine = ownBy.get(stockKey(p.id, null))?.media;
-        const m = mine ?? p.media[0]?.media;
-        return {
-          imageUrl: m?.cardUrl ?? m?.url ?? null,
-          storeImage: !!mine,
-        };
-      })(),
-      categoryIds: p.categories.map((c) => c.categoryId),
-      stock: p.trackInventory
-        ? (qty.get(stockKey(p.id, v?.id ?? null)) ?? 0)
-        : 9999,
-      storeOnly: p.storeId !== null,
+        productId: p.id,
+        variantId: v?.id ?? null,
+        storeWeightKg: o?.weightKg?.toString() ?? null,
+        storeWeightUnit: o?.weightKg ? (o.weightUnit ?? null) : null,
+        normalWeightUnit: p.weightUnit ?? null,
+        normalWeightKg:
+          (v?.weightOverride ?? p.shippableWeight)?.toString() ?? null,
+        name: o?.name ?? normalName,
+        storeName: !!o?.name,
+        normalName,
+        variantLabel: v
+          ? v.attributeValues
+              .map((a) => a.attributeValue.translations[0]?.value)
+              .filter(Boolean)
+              .join(' / ') || null
+          : null,
+        sku: v?.sku ?? p.sku,
+        barcode: v ? v.barcode : p.barcode,
+        price: ownPrice ? ownPrice.price!.toFixed(2) : normalPrice,
+        salePrice: ownPrice
+          ? (ownPrice.salePrice?.toFixed(2) ?? null)
+          : normalSalePrice,
+        storePrice: !!ownPrice,
+        normalPrice,
+        normalSalePrice,
+        // This store's own photo (set on the product-level row) wins.
+        ...(() => {
+          const mine = ownBy.get(stockKey(p.id, null))?.media;
+          const m = mine ?? p.media[0]?.media;
+          return {
+            imageUrl: m?.cardUrl ?? m?.url ?? null,
+            storeImage: !!mine,
+          };
+        })(),
+        categoryIds: p.categories.map((c) => c.categoryId),
+        stock: p.trackInventory
+          ? (qty.get(stockKey(p.id, v?.id ?? null)) ?? 0)
+          : 9999,
+        storeOnly: p.storeId !== null,
       };
     });
   }

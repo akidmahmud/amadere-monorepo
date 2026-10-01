@@ -83,3 +83,32 @@ describe('DailyReportService.nightly', () => {
     expect(create).not.toHaveBeenCalled();
   });
 });
+
+describe('DailyReportService business day', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('the 8:15 PM run builds the day that just closed (today)', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-02T14:15:00Z')); // 8:15 PM Dhaka
+    const { svc, create } = make();
+    await svc.nightly();
+    expect(create.mock.calls[0][0].data).toMatchObject({
+      kind: 'AUTO',
+      name: 'Daily – 2 Oct 2026',
+      periodFrom: new Date('2026-10-02T00:00:00Z'),
+    });
+  });
+
+  it('after 8 PM, the open business day is tomorrow, so it is not "future"', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-02T15:00:00Z')); // 9 PM Dhaka
+    const { svc, create } = make();
+    const prisma = (
+      svc as unknown as { prisma: { client: Record<string, unknown> } }
+    ).prisma;
+    prisma.client.adminUser = { findUnique: jest.fn().mockResolvedValue(null) };
+    await svc.generateManual(
+      { name: 'Tonight', from: '2026-10-03', to: '2026-10-03' },
+      1,
+    );
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});

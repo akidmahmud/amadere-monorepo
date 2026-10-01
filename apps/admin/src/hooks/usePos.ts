@@ -137,6 +137,7 @@ export const usePosStats = (storeId?: number) =>
       proxyFetch<{
         totalProducts: number;
         lowStock: number;
+        outOfStock: number;
         todaySales: string;
         todayOrders: number;
         todayItems: number;

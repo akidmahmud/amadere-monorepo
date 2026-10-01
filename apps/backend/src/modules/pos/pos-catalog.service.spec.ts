@@ -135,3 +135,29 @@ describe('PosCatalogService.lookup — exact only', () => {
     list.mockRestore();
   });
 });
+
+describe('PosCatalogService.stats', () => {
+  it('splits out-of-stock (≤ 0) from low stock (1–10), like the product cards', async () => {
+    const prisma = {
+      client: {
+        order: {
+          aggregate: jest.fn().mockResolvedValue({
+            _sum: { totalAmount: null },
+            _count: { _all: 0 },
+          }),
+        },
+        orderItem: {
+          aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: null } }),
+        },
+      },
+    };
+    const svc = new PosCatalogService(prisma as never, {} as never);
+    jest
+      .spyOn(svc, 'list')
+      .mockResolvedValue(
+        [0, -3, 5, 10, 11].map((stock) => ({ stock })) as never,
+      );
+    const s = await svc.stats(1);
+    expect(s).toMatchObject({ totalProducts: 5, outOfStock: 2, lowStock: 2 });
+  });
+});

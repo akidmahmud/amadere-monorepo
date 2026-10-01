@@ -30,6 +30,7 @@ type Row = {
   customer: { name: string; phone: string | null } | null;
   cashier: string | null;
   itemCount: number;
+  items?: { name: string; qty: number; price: string; returned: number }[];
   tender: string | null;
 };
 type Page = {
@@ -77,6 +78,14 @@ const when = (d: string) =>
     dateStyle: "short",
     timeStyle: "short",
   });
+/** "Oil × 2 @ ৳100; Salt × 1 @ ৳20" — one order's lines for the export. */
+const itemsText = (o: Row) =>
+  (o.items ?? [])
+    .map(
+      (i) =>
+        `${i.name} × ${i.qty} @ ৳${Number(i.price)}${i.returned ? ` (${i.returned} returned)` : ""}`,
+    )
+    .join("; ");
 const fieldBox =
   "flex h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm";
 
@@ -197,6 +206,7 @@ export function PosOrdersManager({
           "Store",
           "Customer",
           "Phone",
+          "Products (name × qty @ price)",
           "Items",
           "Payment",
           "Total (৳)",
@@ -215,6 +225,7 @@ export function PosOrdersManager({
             o.store?.name ?? "",
             o.customer?.name ?? "Walk-in",
             o.customer?.phone ?? "",
+            itemsText(o),
             o.itemCount,
             o.tender ? (TENDER_LABEL[o.tender] ?? o.tender) : "",
             Number(o.totalAmount),
@@ -391,6 +402,7 @@ export function PosOrdersManager({
                     <th className="px-4 font-bold">Date</th>
                     {showStore && <th className="px-4 font-bold">Store</th>}
                     <th className="px-4 font-bold">Customer</th>
+                    <th className="px-4 font-bold">Products</th>
                     <th className="px-4 text-center font-bold">Items</th>
                     <th className="px-4 font-bold">Payment</th>
                     <th className="px-4 font-bold">Total</th>
@@ -403,7 +415,7 @@ export function PosOrdersManager({
                   {(isLoading || error || data?.items.length === 0) && (
                     <tr>
                       <td
-                        colSpan={10}
+                        colSpan={11}
                         className="px-5 py-10 text-center text-gray-500"
                       >
                         {isLoading
@@ -452,6 +464,23 @@ export function PosOrdersManager({
                         ) : (
                           <span className="text-gray-400">Walk-in</span>
                         )}
+                      </td>
+                      <td className="max-w-[280px] px-4 py-2 text-xs">
+                        {(o.items ?? []).map((i, n) => (
+                          <div key={n} className="flex justify-between gap-2">
+                            <span className="truncate" title={i.name}>
+                              {i.name}
+                            </span>
+                            <span className="shrink-0 whitespace-nowrap text-gray-500">
+                              × {i.qty} @ {taka(Number(i.price))}
+                              {i.returned > 0 && (
+                                <span className="ml-1 font-bold text-red-600">
+                                  ({i.returned} ret.)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
                       </td>
                       <td className="px-4 text-center">{o.itemCount}</td>
                       <td className="px-4">

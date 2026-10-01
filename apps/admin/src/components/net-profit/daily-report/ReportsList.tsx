@@ -68,8 +68,8 @@ export function ReportsList({ canManage }: { canManage: boolean }) {
         )}
       </div>
       <p className="text-xs text-muted">
-        A report for the previous day is created automatically every night after
-        12 AM. Reports are kept for 45 days.
+        A day runs 8 PM to 8 PM: the report for 2 Oct covers 1 Oct 8 PM to 2 Oct
+        8 PM. It is created automatically at 8 PM. Reports are kept for 45 days.
       </p>
 
       <div className="overflow-x-auto">

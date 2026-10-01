@@ -119,6 +119,7 @@ export class PosManagerService {
             select: {
               productNameSnapshot: true,
               quantity: true,
+              unitPrice: true,
               restockedQuantity: true,
             },
           },
@@ -159,6 +160,7 @@ export class PosManagerService {
           items: items.map((i) => ({
             name: i.productNameSnapshot,
             qty: i.quantity,
+            price: i.unitPrice.toFixed(2),
             returned: i.restockedQuantity,
           })),
           tender: payments[0]?.provider ?? null,

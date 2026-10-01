@@ -25,6 +25,34 @@ const isDay = (day: string) =>
 
 export const MAX_RANGE_DAYS = 92;
 
+// The shop's business day closes at 8 PM Dhaka (owner, 2026-10-02): day D runs
+// (D−1) 20:00 → D 20:00 and carries the date it closes on. Dhaka is UTC+6 with
+// no DST, so fixed offsets are exact.
+const CLOSE_HOUR = 20;
+const HOUR_MS = 3_600_000;
+const DHAKA_MS = 6 * HOUR_MS;
+const OPEN_SHIFT_MS = (24 - CLOSE_HOUR) * HOUR_MS; // 4 h before midnight
+
+/** UTC instants: start inclusive, end exclusive. */
+export function businessWindow(
+  from: string,
+  to: string,
+): { start: Date; end: Date } {
+  const midnight = (day: string) => Date.parse(`${day}T00:00:00Z`) - DHAKA_MS;
+  return {
+    start: new Date(midnight(from) - OPEN_SHIFT_MS),
+    end: new Date(midnight(to) + CLOSE_HOUR * HOUR_MS),
+  };
+}
+
+/** The business day still open at `now` (what "today so far" means). */
+export const currentBusinessDay = (now: Date) =>
+  iso(new Date(now.getTime() + DHAKA_MS + OPEN_SHIFT_MS));
+
+/** The most recent business day that has closed at `now`. */
+export const lastClosedBusinessDay = (now: Date) =>
+  iso(new Date(now.getTime() + DHAKA_MS + OPEN_SHIFT_MS - DAY_MS));
+
 export function periodDays(from: string, to: string): string[] {
   const out: string[] = [];
   for (let t = utc(from).getTime(); t <= utc(to).getTime(); t += DAY_MS)
