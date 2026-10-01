@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { PosCatalogService } from './pos-catalog.service';
+import { POS_LOW_STOCK, PosCatalogService } from './pos-catalog.service';
 import { dhakaRange } from './dhaka-range';
 import { dhakaDate } from '../product-cost-history/dhaka-date';
 
@@ -77,7 +77,32 @@ export const PROFIT_COLUMNS = [
 ];
 
 /** Human column names for the Excel sheets. */
+/** Stock report columns, in order (CSV / Excel). */
+export const STOCK_COLUMNS = [
+  'name',
+  'sku',
+  'barcode',
+  'opening',
+  'stockIn',
+  'sold',
+  'returned',
+  'adjustment',
+  'transferIn',
+  'transferOut',
+  'closing',
+  'status',
+];
+
 export const SHEET_HEADERS: Record<string, string> = {
+  opening: 'Opening stock',
+  stockIn: 'Stock in',
+  sold: 'Sold qty',
+  returned: 'Return qty',
+  adjustment: 'Adjustment',
+  transferIn: 'Transfer in',
+  transferOut: 'Transfer out',
+  closing: 'Closing stock',
+  barcode: 'Barcode',
   date: 'Date',
   time: 'Time',
   receipt: 'Receipt no',
@@ -403,21 +428,67 @@ export class PosReportsService {
       }));
   }
 
-  async stock(storeId: number) {
-    const items = await this.catalog.list(
-      storeId,
-      undefined,
-      undefined,
-      'name',
-      10_000,
+  /**
+   * Stock movement per product/SKU at one store for [from, to] (Dhaka days):
+   * opening, stock in, sold, returned, adjustment, transfers, closing.
+   * Anchored on the real on-hand count: closing = now − moves after `to`,
+   * opening = closing − moves in the period, so the report always agrees
+   * with the till even where early history has no movement rows.
+   * Untracked products (no stock count) are left out.
+   */
+  async stock(storeId: number, from?: string, to?: string) {
+    const items = (
+      await this.catalog.list(storeId, undefined, undefined, 'name', 10_000)
+    ).filter((p) => p.stock < 9999);
+    const range = dhakaRange(from, to);
+    const [inRange, after] = await Promise.all([
+      this.prisma.client.stockMovement.groupBy({
+        by: ['productId', 'variantId', 'type'],
+        where: { storeId, createdAt: { gte: range.gte, lt: range.lt } },
+        _sum: { qty: true },
+      }),
+      this.prisma.client.stockMovement.groupBy({
+        by: ['productId', 'variantId'],
+        where: { storeId, createdAt: { gte: range.lt } },
+        _sum: { qty: true },
+      }),
+    ]);
+    const k = (p: number, v: number | null) => `${p}:${v ?? 0}`;
+    const moves = new Map<string, Partial<Record<string, number>>>();
+    for (const g of inRange) {
+      const m = moves.get(k(g.productId, g.variantId)) ?? {};
+      m[g.type] = (m[g.type] ?? 0) + (g._sum.qty ?? 0);
+      moves.set(k(g.productId, g.variantId), m);
+    }
+    const later = new Map(
+      after.map((g) => [k(g.productId, g.variantId), g._sum.qty ?? 0]),
     );
-    return items.map((p) => ({
-      productId: p.productId,
-      variantId: p.variantId,
-      name: p.variantLabel ? `${p.name} (${p.variantLabel})` : p.name,
-      sku: p.sku,
-      barcode: p.barcode,
-      quantity: p.stock,
-    }));
+    return items.map((p) => {
+      const m = moves.get(k(p.productId, p.variantId)) ?? {};
+      const n = (t: string) => m[t] ?? 0;
+      const net = Object.values(m).reduce<number>((t, q) => t + (q ?? 0), 0);
+      const closing = p.stock - (later.get(k(p.productId, p.variantId)) ?? 0);
+      return {
+        productId: p.productId,
+        variantId: p.variantId,
+        name: p.variantLabel ? `${p.name} (${p.variantLabel})` : p.name,
+        sku: p.sku ?? null,
+        barcode: p.barcode ?? null,
+        opening: closing - net,
+        stockIn: n('STOCK_IN') + n('OPENING'),
+        sold: -n('SALE'),
+        returned: n('RETURN'),
+        adjustment: n('ADJUSTMENT'),
+        transferIn: n('TRANSFER_IN'),
+        transferOut: -n('TRANSFER_OUT'),
+        closing,
+        status:
+          closing <= 0
+            ? 'Out of stock'
+            : closing <= POS_LOW_STOCK
+              ? 'Low stock'
+              : 'In stock',
+      };
+    });
   }
 }

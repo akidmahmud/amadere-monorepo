@@ -41,21 +41,26 @@ export class PosProductsService {
         media: {
           orderBy: { sortOrder: 'asc' },
           take: 1,
-          select: { mediaId: true, media: { select: { url: true, cardUrl: true } } },
+          select: {
+            mediaId: true,
+            media: { select: { url: true, cardUrl: true } },
+          },
         },
       },
     });
-    return rows.map(({ translations, categories, media, shippableWeight, ...p }) => ({
-      ...p,
-      weightKg: shippableWeight?.toString() ?? null,
-      name:
-        translations.find((t) => t.locale === 'EN')?.name ??
-        translations[0]?.name ??
-        '',
-      categoryId: categories[0]?.categoryId ?? null,
-      mediaId: media[0]?.mediaId ?? null,
-      imageUrl: media[0]?.media.cardUrl ?? media[0]?.media.url ?? null,
-    }));
+    return rows.map(
+      ({ translations, categories, media, shippableWeight, ...p }) => ({
+        ...p,
+        weightKg: shippableWeight?.toString() ?? null,
+        name:
+          translations.find((t) => t.locale === 'EN')?.name ??
+          translations[0]?.name ??
+          '',
+        categoryId: categories[0]?.categoryId ?? null,
+        mediaId: media[0]?.mediaId ?? null,
+        imageUrl: media[0]?.media.cardUrl ?? media[0]?.media.url ?? null,
+      }),
+    );
   }
 
   async create(
@@ -92,7 +97,9 @@ export class PosProductsService {
       select: { storeId: true, hasVariants: true },
     });
     if (p.storeId !== storeId)
-      throw new ForbiddenException('This product does not belong to this store');
+      throw new ForbiddenException(
+        'This product does not belong to this store',
+      );
     if (p.hasVariants)
       throw new ForbiddenException(
         'Products with variants are edited from the main Products page',
@@ -112,7 +119,9 @@ export class PosProductsService {
       select: { storeId: true },
     });
     if (p.storeId !== storeId)
-      throw new ForbiddenException('This product does not belong to this store');
+      throw new ForbiddenException(
+        'This product does not belong to this store',
+      );
     await this.products.delete(id);
     return { deleted: true };
   }
@@ -131,7 +140,7 @@ export class PosProductsService {
     if (!p) throw new BadRequestException('Product not found');
     if (p.storeId !== null)
       throw new BadRequestException(
-        "This is a store product — delete it instead",
+        'This is a store product — delete it instead',
       );
     const where = { storeId, productId, variantId: null };
     const existing = await c.storePrice.findFirst({ where });
@@ -222,7 +231,9 @@ export class PosProductsService {
       select: { storeId: true },
     });
     if (p.storeId !== storeId)
-      throw new ForbiddenException('This product does not belong to this store');
+      throw new ForbiddenException(
+        'This product does not belong to this store',
+      );
     await this.products.restore(id);
     return { restored: true };
   }
@@ -238,7 +249,9 @@ export class PosProductsService {
       select: { storeId: true },
     });
     if (p.storeId !== null && p.storeId !== storeId)
-      throw new ForbiddenException('This product does not belong to this store');
+      throw new ForbiddenException(
+        'This product does not belong to this store',
+      );
     const dup = await this.products.duplicate(id);
     if (p.storeId === null)
       await this.prisma.client.product.update({
@@ -330,11 +343,18 @@ export class PosProductsService {
   ) {
     const c = this.prisma.client;
     const p = await c.product.findFirst({
-      where: { id: productId, deletedAt: null, OR: [{ storeId: null }, { storeId }] },
+      where: {
+        id: productId,
+        deletedAt: null,
+        OR: [{ storeId: null }, { storeId }],
+      },
       select: { storeId: true },
     });
     if (!p) throw new BadRequestException('Product is not sold at this store');
-    if (mediaId !== null && !(await c.media.findUnique({ where: { id: mediaId } })))
+    if (
+      mediaId !== null &&
+      !(await c.media.findUnique({ where: { id: mediaId } }))
+    )
       throw new BadRequestException('That image no longer exists');
     if (p.storeId !== null) {
       await c.$transaction([
@@ -363,12 +383,78 @@ export class PosProductsService {
     return { mediaId, own: false };
   }
 
+  /**
+   * Change a product's (or size's) SKU from the till. A SKU is one code for
+   * the website and every store, so a shared product's SKU needs the website
+   * product permission; a store's own product only needs the POS one.
+   * ponytail: the ad-catalog feed picks a shared product's new SKU up on its
+   * 30-minute rebuild; invalidate it here if that lag ever matters.
+   */
+  async setSku(
+    storeId: number,
+    productId: number,
+    variantId: number | null,
+    sku: string,
+    can: PermissionCheck,
+  ) {
+    const c = this.prisma.client;
+    const p = await c.product.findFirst({
+      where: {
+        id: productId,
+        deletedAt: null,
+        OR: [{ storeId: null }, { storeId }],
+      },
+      select: {
+        storeId: true,
+        hasVariants: true,
+        variants: { select: { id: true } },
+      },
+    });
+    if (!p) throw new BadRequestException('Product is not sold at this store');
+    if (p.storeId === null && !can('product.update'))
+      throw new ForbiddenException(
+        "This product's SKU is shared with the website — ask someone who can edit website products",
+      );
+    if (p.hasVariants !== (variantId !== null))
+      throw new BadRequestException(
+        p.hasVariants ? 'Pick a size' : 'This product has no sizes',
+      );
+    if (variantId !== null && !p.variants.some((v) => v.id === variantId))
+      throw new BadRequestException(
+        'That size does not belong to this product',
+      );
+    const value = sku.trim() || null;
+    if (value && value.length > 64)
+      throw new BadRequestException('SKU is too long (64 characters max)');
+    try {
+      if (variantId !== null)
+        await c.productVariant.update({
+          where: { id: variantId },
+          data: { sku: value },
+        });
+      else
+        await c.product.update({
+          where: { id: productId },
+          data: { sku: value },
+        });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002')
+        throw new BadRequestException(
+          `SKU "${value}" is already used by another product`,
+        );
+      throw e;
+    }
+    return { sku: value };
+  }
+
   /** Display unit lives beside the weight (ProductsService doesn't know it). */
   private async setUnit(id: number, dto: PosProductDto) {
     if (dto.weightUnit === undefined && dto.weightKg === undefined) return;
     await this.prisma.client.product.update({
       where: { id },
-      data: { weightUnit: dto.weightKg == null ? null : (dto.weightUnit ?? null) },
+      data: {
+        weightUnit: dto.weightKg == null ? null : (dto.weightUnit ?? null),
+      },
     });
   }
 
@@ -384,7 +470,11 @@ export class PosProductsService {
       categoryIds: dto.categoryId ? [dto.categoryId] : [],
       shippableWeight: (dto.weightKg ?? null) as number,
       mediaIds:
-        dto.mediaId === undefined ? undefined : dto.mediaId ? [dto.mediaId] : [],
+        dto.mediaId === undefined
+          ? undefined
+          : dto.mediaId
+            ? [dto.mediaId]
+            : [],
     };
   }
 }

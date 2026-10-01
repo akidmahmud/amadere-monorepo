@@ -27,6 +27,11 @@ export function StorePriceDialog({
   const qc = useQueryClient();
   const normalName = p.normalName ?? p.name;
   const [name, setName] = useState(p.storeName ? p.name : "");
+  // One SKU for the website and every store: a shared product's needs the
+  // website product permission.
+  const [sku, setSku] = useState(p.sku ?? "");
+  const canSku = p.storeOnly || can("product.update");
+  const skuChanged = sku.trim() !== (p.sku ?? "");
   const [price, setPrice] = useState(p.storePrice ? p.price : "");
   const [sale, setSale] = useState(p.storePrice ? (p.salePrice ?? "") : "");
   const startUnit = unitFor(
@@ -53,6 +58,14 @@ export function StorePriceDialog({
       addQty?: number;
     }) => {
       const { addQty: qty, ...override } = body;
+      if (canSku && skuChanged)
+        await proxyFetch(
+          `/admin/pos/products/${p.productId}/sku?storeId=${storeId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ variantId: p.variantId, sku: sku.trim() }),
+          },
+        );
       if (image !== undefined)
         await proxyFetch(
           `/admin/pos/products/${p.productId}/image?storeId=${storeId}`,
@@ -94,7 +107,8 @@ export function StorePriceDialog({
           : !body.name &&
               body.price === null &&
               body.weightKg === null &&
-              image === undefined
+              image === undefined &&
+              !skuChanged
             ? "Back to the normal name, price and weight"
             : "Saved for this store",
         "success",
@@ -152,6 +166,30 @@ export function StorePriceDialog({
               placeholder={normalName}
               onChange={(e) => setName(e.target.value)}
               autoFocus
+            />
+          </label>
+          <label className="col-span-2 flex flex-col gap-1">
+            <span className="text-xs font-bold">
+              SKU{" "}
+              {!p.storeOnly && (
+                <span className="font-normal text-amber-700">
+                  — shared: changes it on the website and every store
+                </span>
+              )}
+            </span>
+            <input
+              className={`${input} font-mono ${canSku ? "" : "bg-gray-50 text-gray-500"}`}
+              value={sku}
+              placeholder="none"
+              maxLength={64}
+              disabled={!canSku}
+              title={
+                canSku
+                  ? undefined
+                  : "Only staff who can edit website products can change a shared SKU"
+              }
+              onChange={(e) => setSku(e.target.value)}
+              aria-label="SKU"
             />
           </label>
           <label className="flex flex-col gap-1">

@@ -10,6 +10,7 @@ import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { usePosSale } from "@/hooks/usePos";
 import { taka } from "@/lib/pos-cart";
+import { formatWeight } from "@/lib/pos-weight";
 import { exportAllPagesXlsx } from "@/lib/pos-export";
 import { reportTitle } from "@/lib/reportTitle";
 import {
@@ -33,7 +34,14 @@ type Row = {
   customer: { name: string; phone: string | null } | null;
   cashier: string | null;
   itemCount: number;
-  items?: { name: string; qty: number; price: string; returned: number }[];
+  items?: {
+    name: string;
+    qty: number;
+    price: string;
+    returned: number;
+    weightKg?: string | null;
+    weightUnit?: string | null;
+  }[];
   tender: string | null;
 };
 type Page = {
@@ -202,6 +210,7 @@ export function PosOrdersManager({
           "Customer",
           "Phone",
           "Product",
+          "Weight",
           "Qty",
           "Unit price (৳)",
           "Line total (৳)",
@@ -245,6 +254,7 @@ export function PosOrdersManager({
           return items.map((i, n) => [
             ...(n === 0 ? order : [o.orderNumber, "", "", "", "", ""]),
             i.name,
+            formatWeight(i.weightKg, i.weightUnit) ?? "",
             i.qty || null,
             i.name ? Number(i.price) : null,
             i.name ? Number(i.price) * i.qty : null,
@@ -489,6 +499,12 @@ export function PosOrdersManager({
                           <div key={n} className="flex justify-between gap-2">
                             <span className="truncate" title={i.name}>
                               {i.name}
+                              {formatWeight(i.weightKg, i.weightUnit) && (
+                                <span className="text-gray-500">
+                                  {" "}
+                                  · {formatWeight(i.weightKg, i.weightUnit)}
+                                </span>
+                              )}
                             </span>
                             <span className="shrink-0 whitespace-nowrap text-gray-500">
                               × {i.qty} @ {taka(Number(i.price))}

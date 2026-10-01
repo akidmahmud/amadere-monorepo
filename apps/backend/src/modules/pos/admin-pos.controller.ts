@@ -35,6 +35,7 @@ import {
   PosCatalogQueryDto,
   PosDateQueryDto,
   PosRangeQueryDto,
+  PosStockReportQueryDto,
 } from './dto/pos-query.dto';
 import {
   CUSTOMER_SHEET_COLUMNS,
@@ -42,11 +43,12 @@ import {
   PROFIT_COLUMNS,
   SALES_SHEET_COLUMNS,
   SHEET_HEADERS,
+  STOCK_COLUMNS,
   toCsv,
 } from './pos-reports.service';
 import { PosSettingsService } from './pos-settings.service';
 import { UpdatePosLabelDto, UpdatePosVatDto } from './dto/pos-settings.dto';
-import { PosImageDto } from './dto/pos-product.dto';
+import { PosImageDto, PosSkuDto } from './dto/pos-product.dto';
 import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
@@ -366,7 +368,11 @@ export class AdminPosController {
     @Query() q: StoreQueryDto,
     @Body() dto: StorePriceDto,
   ) {
-    return this.products.setPrice(await this.oneStore(a, can, q.storeId), dto, a.id);
+    return this.products.setPrice(
+      await this.oneStore(a, can, q.storeId),
+      dto,
+      a.id,
+    );
   }
 
   // ---- Customer tiers (one list; each customer's tier is per store) ----
@@ -424,7 +430,11 @@ export class AdminPosController {
     @Can() can: PermissionCheck,
     @Body() dto: PosSmsPreviewDto,
   ) {
-    const storeId = await this.stores.scope(a.id, can, dto.storeId ?? undefined);
+    const storeId = await this.stores.scope(
+      a.id,
+      can,
+      dto.storeId ?? undefined,
+    );
     return this.posSms.previewCount({ ...dto, storeId });
   }
 
@@ -436,7 +446,11 @@ export class AdminPosController {
     @Can() can: PermissionCheck,
     @Body() dto: PosSmsCampaignDto,
   ) {
-    const storeId = await this.stores.scope(a.id, can, dto.storeId ?? undefined);
+    const storeId = await this.stores.scope(
+      a.id,
+      can,
+      dto.storeId ?? undefined,
+    );
     return this.posSms.create({ ...dto, storeId }, a.id);
   }
 
@@ -450,7 +464,11 @@ export class AdminPosController {
     @Body() dto: PosSmsCampaignDto,
   ) {
     await this.assertCampaignInScope(id, a, can);
-    const storeId = await this.stores.scope(a.id, can, dto.storeId ?? undefined);
+    const storeId = await this.stores.scope(
+      a.id,
+      can,
+      dto.storeId ?? undefined,
+    );
     return this.posSms.update(id, { ...dto, storeId });
   }
 
@@ -501,7 +519,10 @@ export class AdminPosController {
   ) {
     if (!can('pos.orders') && !q.customerId)
       throw new ForbiddenException('Missing permission: pos.orders');
-    return this.manager.orders(await this.stores.scope(a.id, can, q.storeId), q);
+    return this.manager.orders(
+      await this.stores.scope(a.id, can, q.storeId),
+      q,
+    );
   }
 
   // Order Manager Trash: delete undoes a completed sale then trashes it;
@@ -692,6 +713,26 @@ export class AdminPosController {
     );
   }
 
+  // SKU from the pencil popup; a shared product's needs product.update too.
+  @Put('products/:id/sku')
+  @RequireAnyPermission('pos.prices', 'pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async setSku(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosSkuDto,
+  ) {
+    return this.products.setSku(
+      await this.oneStore(a, can, q.storeId),
+      id,
+      dto.variantId ?? null,
+      dto.sku,
+      can,
+    );
+  }
+
   @Post('sales/:id/return')
   @RequirePermission('pos.refund')
   @UseInterceptors(AuditLogInterceptor)
@@ -793,9 +834,13 @@ export class AdminPosController {
   async stockReport(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
-    @Query() q: StoreQueryDto,
+    @Query() q: PosStockReportQueryDto,
   ) {
-    return this.reports.stock(await this.oneStore(a, can, q.storeId));
+    return this.reports.stock(
+      await this.oneStore(a, can, q.storeId),
+      q.from,
+      q.to,
+    );
   }
 
   @Get('reports/stock.csv')
@@ -803,16 +848,18 @@ export class AdminPosController {
   async stockCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
-    @Query() q: StoreQueryDto,
+    @Query() q: PosStockReportQueryDto,
     @Res() res: Response,
   ) {
     const rows = await this.reports.stock(
       await this.oneStore(a, can, q.storeId),
+      q.from,
+      q.to,
     );
     sendCsv(
       res,
-      `stock-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCsv(rows),
+      `stock-${q.from ?? 'today'}-${q.to ?? 'today'}.csv`,
+      toCsv(rows, STOCK_COLUMNS, SHEET_HEADERS),
     );
   }
 

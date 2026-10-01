@@ -41,8 +41,22 @@ export class PosRangeQueryDto extends StoreQueryDto {
   to!: string;
 }
 
+/** Stock report period (Dhaka days); both omitted = today. */
+export class PosStockReportQueryDto extends StoreQueryDto {
+  @ApiPropertyOptional({ example: '2026-10-01' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  from?: string;
+  @ApiPropertyOptional({ example: '2026-10-02' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  to?: string;
+}
+
 export class PosOrdersQueryDto extends StoreQueryDto {
-  @ApiPropertyOptional({ enum: ['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'] })
+  @ApiPropertyOptional({
+    enum: ['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'],
+  })
   @IsOptional()
   @IsIn(['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'])
   status?: 'COMPLETED' | 'PARTIALLY_RETURNED' | 'RETURNED';
@@ -62,7 +76,10 @@ export class PosOrdersQueryDto extends StoreQueryDto {
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   fromTime?: string;
-  @ApiPropertyOptional({ example: '18:00', description: 'Dhaka time HH:MM (inclusive)' })
+  @ApiPropertyOptional({
+    example: '18:00',
+    description: 'Dhaka time HH:MM (inclusive)',
+  })
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   toTime?: string;
@@ -103,7 +120,10 @@ export class PosCustomersQueryDto extends StoreQueryDto {
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   fromTime?: string;
-  @ApiPropertyOptional({ example: '18:00', description: 'Dhaka time HH:MM (inclusive)' })
+  @ApiPropertyOptional({
+    example: '18:00',
+    description: 'Dhaka time HH:MM (inclusive)',
+  })
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
   toTime?: string;

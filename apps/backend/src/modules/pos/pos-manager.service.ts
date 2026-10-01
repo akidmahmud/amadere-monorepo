@@ -106,6 +106,7 @@ export class PosManagerService {
           id: true,
           orderNumber: true,
           createdAt: true,
+          storeId: true,
           status: true,
           subTotal: true,
           discountAmount: true,
@@ -113,14 +114,20 @@ export class PosManagerService {
           totalAmount: true,
           posRefundedAmount: true,
           store: { select: { id: true, name: true } },
-          customer: { select: { firstName: true, lastName: true, phone: true } },
+          customer: {
+            select: { firstName: true, lastName: true, phone: true },
+          },
           assignedAdmin: { select: { firstName: true, lastName: true } },
           items: {
             select: {
+              productId: true,
+              variantId: true,
               productNameSnapshot: true,
               quantity: true,
               unitPrice: true,
               restockedQuantity: true,
+              product: { select: { shippableWeight: true, weightUnit: true } },
+              variant: { select: { weightOverride: true } },
             },
           },
           payments: {
@@ -140,6 +147,47 @@ export class PosManagerService {
     const counts = Object.fromEntries(
       byStatus.map((g) => [g.status, g._count._all]),
     );
+    // A store's own weight for a product wins (same rule as the receipt).
+    // ponytail: current weight, not snapshotted per sale — as on the receipt.
+    const storeWeights = await this.prisma.client.storePrice.findMany({
+      where: {
+        storeId: {
+          in: [...new Set(rows.flatMap((r) => (r.storeId ? [r.storeId] : [])))],
+        },
+        productId: {
+          in: rows.flatMap((r) =>
+            r.items.flatMap((i) => (i.productId ? [i.productId] : [])),
+          ),
+        },
+        weightKg: { not: null },
+      },
+      select: {
+        storeId: true,
+        productId: true,
+        variantId: true,
+        weightKg: true,
+        weightUnit: true,
+      },
+    });
+    const weightOf = (
+      storeId: number | null,
+      i: (typeof rows)[number]['items'][number],
+    ) => {
+      const own = storeWeights.find(
+        (w) =>
+          w.storeId === storeId &&
+          w.productId === i.productId &&
+          (w.variantId ?? null) === (i.variantId ?? null),
+      );
+      const kg =
+        own?.weightKg ??
+        i.variant?.weightOverride ??
+        i.product?.shippableWeight;
+      return {
+        weightKg: kg?.toString() ?? null,
+        weightUnit: own ? own.weightUnit : (i.product?.weightUnit ?? null),
+      };
+    };
     return {
       ...toPaginatedResult(
         rows.map(({ customer, assignedAdmin, items, payments, ...o }) => ({
@@ -162,6 +210,7 @@ export class PosManagerService {
             qty: i.quantity,
             price: i.unitPrice.toFixed(2),
             returned: i.restockedQuantity,
+            ...weightOf(o.storeId, i),
           })),
           tender: payments[0]?.provider ?? null,
         })),
@@ -222,7 +271,13 @@ export class PosManagerService {
     const [people, storePairs] = await Promise.all([
       this.prisma.client.customer.findMany({
         where: { id: { in: ids } },
-        select: { id: true, firstName: true, lastName: true, phone: true, email: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          email: true,
+        },
       }),
       this.prisma.client.order.groupBy({
         by: ['customerId', 'storeId'],

@@ -13,8 +13,8 @@ function make() {
         customer: { firstName: 'Karim', lastName: null, phone: '01711111111' },
         assignedAdmin: { firstName: 'Rahim', lastName: 'U' },
         items: [
-          { productNameSnapshot: 'Oil', quantity: 2, unitPrice: D(40), restockedQuantity: 0 },
-          { productNameSnapshot: 'Salt', quantity: 1, unitPrice: D(35), restockedQuantity: 0 },
+          { productId: 1, variantId: null, productNameSnapshot: 'Oil', quantity: 2, unitPrice: D(40), restockedQuantity: 0, product: { shippableWeight: D(0.5), weightUnit: 'g' }, variant: null },
+          { productId: 2, variantId: null, productNameSnapshot: 'Salt', quantity: 1, unitPrice: D(35), restockedQuantity: 0, product: null, variant: null },
         ],
         payments: [{ provider: 'BKASH' }],
       },
@@ -25,7 +25,7 @@ function make() {
       { status: 'RETURNED', _count: { _all: 1 } },
     ]),
   };
-  return { svc: new PosManagerService({ client: { order } } as never, { getTiers: async () => [], stats: async () => [] } as never), order };
+  return { svc: new PosManagerService({ client: { order, storePrice: { findMany: jest.fn().mockResolvedValue([]) } } } as never, { getTiers: async () => [], stats: async () => [] } as never), order };
 }
 
 describe('PosManagerService.orders', () => {
@@ -60,8 +60,8 @@ describe('PosManagerService.orders', () => {
         cashier: 'Rahim U',
         itemCount: 3,
         items: [
-          { name: 'Oil', qty: 2, price: '40.00', returned: 0 },
-          { name: 'Salt', qty: 1, price: '35.00', returned: 0 },
+          { name: 'Oil', qty: 2, price: '40.00', returned: 0, weightKg: '0.5', weightUnit: 'g' },
+          { name: 'Salt', qty: 1, price: '35.00', returned: 0, weightKg: null, weightUnit: null },
         ],
         tender: 'BKASH',
       }),

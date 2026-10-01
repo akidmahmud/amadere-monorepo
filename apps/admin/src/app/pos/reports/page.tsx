@@ -9,6 +9,8 @@ import { downloadCsvAsXlsx, reportTitle } from "@/lib/reportExport";
 import { taka } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
 import { PosSubPage, card, input } from "@/components/pos/PosSubPage";
+import { Icon } from "@amader/admin-ui";
+import { Pager, toolbarInput, usePaged } from "@/components/pos/PosTableKit";
 
 interface SalesRow {
   storeId: number;
@@ -33,8 +35,28 @@ interface StockRow {
   variantId: number | null;
   name: string;
   sku: string | null;
-  quantity: number;
+  barcode: string | null;
+  opening: number;
+  stockIn: number;
+  sold: number;
+  returned: number;
+  adjustment: number;
+  transferIn: number;
+  transferOut: number;
+  closing: number;
+  status: "In stock" | "Low stock" | "Out of stock";
 }
+
+const STOCK_COLS = [
+  ["opening", "Opening stock"],
+  ["stockIn", "Stock in"],
+  ["sold", "Sold qty"],
+  ["returned", "Return qty"],
+  ["adjustment", "Adjustment"],
+  ["transferIn", "Transfer in"],
+  ["transferOut", "Transfer out"],
+  ["closing", "Closing stock"],
+] as const;
 
 // Dhaka calendar day — the server reports in Dhaka days too.
 const today = () =>
@@ -70,11 +92,27 @@ export default function PosReportsPage() {
     enabled: tab === "profit",
   });
   const stock = useQuery({
-    queryKey: ["pos-report-stock", storeId],
+    queryKey: ["pos-report-stock", storeId, from, to],
     queryFn: () =>
-      proxyFetch<StockRow[]>(`/admin/pos/reports/stock${qs({ storeId })}`),
+      proxyFetch<StockRow[]>(
+        `/admin/pos/reports/stock${qs({ storeId, from, to })}`,
+      ),
     enabled: tab === "stock",
   });
+  const [stockQ, setStockQ] = useState("");
+  const [stockStatus, setStockStatus] = useState("");
+  const term = stockQ.trim().toLowerCase();
+  const stockRows = (stock.data ?? []).filter(
+    (r) =>
+      (!stockStatus || r.status === stockStatus) &&
+      (!term ||
+        [r.name, r.sku, r.barcode].some((v) =>
+          v?.toLowerCase().includes(term),
+        )),
+  );
+  const stockPage = usePaged(stockRows);
+  const stockSum = (k: (typeof STOCK_COLS)[number][0]) =>
+    stockRows.reduce((t, r) => t + r[k], 0);
 
   const exportFile = (path: string, name: string, title: string) =>
     downloadCsvAsXlsx(`/api/backend${path}`, name, title).catch((e: Error) =>
@@ -122,11 +160,11 @@ export default function PosReportsPage() {
   );
 
   return (
-    <PosSubPage title="Reports" permission="pos.reports">
+    <PosSubPage title="Reports" permission="pos.reports" wide={tab === "stock"}>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tabBtn("sales", "Sales")}
         {tabBtn("profit", "Store profit")}
-        {tabBtn("stock", "Stock on hand")}
+        {tabBtn("stock", "Stock report")}
       </div>
 
       {/* Per-store Excel sheets — always for the one selected store. */}
@@ -271,47 +309,152 @@ export default function PosReportsPage() {
       )}
 
       {tab === "stock" && (
-        <div className={card}>
-          <div className="mb-4 flex items-center justify-between text-sm">
-            <span className="font-semibold">{store?.name}</span>
+        <div className={`${card} mx-auto max-w-7xl`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold">
+                Stock report — {store?.name}
+              </h2>
+              <p className="mb-3 text-xs text-gray-500">
+                Per product / SKU for the dates below. Closing = Opening + Stock
+                in − Sold + Return ± Adjustment + Transfer in − Transfer out.
+                Products without a stock count are not listed.
+              </p>
+            </div>
             <button
               className={exportBtn}
               onClick={() =>
                 exportFile(
-                  `/admin/pos/reports/stock.csv${qs({ storeId })}`,
-                  `stock-${store?.code ?? "store"}-${today()}`,
-                  `Stock on hand — ${store?.name ?? ""}`,
+                  `/admin/pos/reports/stock.csv${qs({ storeId, from, to })}`,
+                  `stock-report-${store?.code ?? "store"}-${from}-${to}`,
+                  reportTitle(`Stock Report — ${store?.name ?? ""}`, range),
                 )
               }
             >
-              Export
+              Export Excel
             </button>
           </div>
-          <table className="w-full text-sm">
-            <thead className="text-left text-gray-500">
-              <tr>
-                <th className="py-2">Product</th>
-                <th>SKU</th>
-                <th className="text-right">On hand</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stock.data?.map((r) => (
-                <tr
-                  key={`${r.productId}:${r.variantId ?? 0}`}
-                  className="border-t border-gray-100"
-                >
-                  <td className="py-2">{r.name}</td>
-                  <td className="font-mono text-xs">{r.sku ?? ""}</td>
-                  <td
-                    className={`text-right font-semibold ${r.quantity <= 0 ? "text-red-600" : r.quantity <= 10 ? "text-orange-600" : ""}`}
-                  >
-                    {r.quantity >= 9999 ? "untracked" : r.quantity}
-                  </td>
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className={input}
+              aria-label="From"
+            />
+            <span>to</span>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className={input}
+              aria-label="To"
+            />
+            <select
+              value={stockStatus}
+              onChange={(e) => {
+                setStockStatus(e.target.value);
+                stockPage.setPage(1);
+              }}
+              className={input}
+              aria-label="Stock status"
+            >
+              <option value="">All statuses</option>
+              <option>In stock</option>
+              <option>Low stock</option>
+              <option>Out of stock</option>
+            </select>
+            <label className={`${toolbarInput} min-w-[220px] flex-1`}>
+              <Icon name="search" size={18} className="text-gray-400" />
+              <input
+                value={stockQ}
+                onChange={(e) => {
+                  setStockQ(e.target.value);
+                  stockPage.setPage(1);
+                }}
+                placeholder="Search product, SKU or barcode"
+                className="flex-1 bg-transparent outline-none"
+              />
+            </label>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <table className="w-full text-sm">
+              <thead className="bg-[#1d7a46] text-left text-white">
+                <tr>
+                  <th className="px-3 py-3 font-bold">Product</th>
+                  <th className="px-3 font-bold">SKU</th>
+                  {STOCK_COLS.map(([, label]) => (
+                    <th
+                      key={label}
+                      className="whitespace-nowrap px-3 text-right font-bold"
+                    >
+                      {label}
+                    </th>
+                  ))}
+                  <th className="px-3 font-bold">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(stock.isLoading || stockRows.length === 0) && (
+                  <tr>
+                    <td
+                      colSpan={11}
+                      className="px-3 py-8 text-center text-gray-500"
+                    >
+                      {stock.isLoading
+                        ? "Loading…"
+                        : stock.error
+                          ? (stock.error as Error).message
+                          : "No products match."}
+                    </td>
+                  </tr>
+                )}
+                {stockPage.items.map((r) => (
+                  <tr
+                    key={`${r.productId}:${r.variantId ?? 0}`}
+                    className="border-t border-gray-100 hover:bg-emerald-50/40"
+                  >
+                    <td className="px-3 py-2 font-semibold">{r.name}</td>
+                    <td className="px-3 font-mono text-xs text-gray-600">
+                      {r.sku ?? "—"}
+                    </td>
+                    {STOCK_COLS.map(([k]) => (
+                      <td
+                        key={k}
+                        className={`px-3 text-right tabular-nums ${k === "closing" || k === "opening" ? "font-bold" : r[k] === 0 ? "text-gray-300" : ""}`}
+                      >
+                        {r[k]}
+                      </td>
+                    ))}
+                    <td className="px-3">
+                      <span
+                        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${r.status === "Out of stock" ? "bg-red-50 text-red-700" : r.status === "Low stock" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-[#1d7a46]"}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {r.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {stockRows.length > 0 && (
+                <tfoot className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+                  <tr>
+                    <td className="px-3 py-2" colSpan={2}>
+                      Total ({stockRows.length} products)
+                    </td>
+                    {STOCK_COLS.map(([k]) => (
+                      <td key={k} className="px-3 text-right tabular-nums">
+                        {stockSum(k)}
+                      </td>
+                    ))}
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+          <Pager {...stockPage} noun="products" />
         </div>
       )}
     </PosSubPage>

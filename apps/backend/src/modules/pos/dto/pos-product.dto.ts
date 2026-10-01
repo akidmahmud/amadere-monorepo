@@ -116,6 +116,17 @@ export class DuplicateStoreDto {
   code!: string;
 }
 
+export class PosSkuDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  variantId?: number | null;
+  /** Blank = remove the SKU. */
+  @IsString()
+  @MaxLength(64)
+  sku!: string;
+}
+
 export class PosImageDto {
   /** null = remove the photo. */
   @IsOptional()

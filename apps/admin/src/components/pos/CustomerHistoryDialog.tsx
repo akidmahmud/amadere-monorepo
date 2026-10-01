@@ -7,6 +7,7 @@ import { Icon } from "@amader/admin-ui";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { taka } from "@/lib/pos-cart";
 import { daysAgo } from "@/lib/pos-days";
+import { formatWeight } from "@/lib/pos-weight";
 
 type Order = {
   id: number;
@@ -16,7 +17,14 @@ type Order = {
   totalAmount: string;
   posRefundedAmount?: string;
   store: { name: string } | null;
-  items: { name: string; qty: number; returned: number }[];
+  items: {
+    name: string;
+    qty: number;
+    price: string;
+    returned: number;
+    weightKg?: string | null;
+    weightUnit?: string | null;
+  }[];
 };
 
 /** A customer's till purchases: what they bought and when. */
@@ -116,9 +124,19 @@ export function CustomerHistoryDialog({
                 <ul className="mt-2 space-y-0.5 text-sm">
                   {o.items.map((i, n) => (
                     <li key={n} className="flex justify-between gap-3">
-                      <span className="text-gray-800">{i.name}</span>
+                      <span className="text-gray-800">
+                        {i.name}
+                        {formatWeight(i.weightKg, i.weightUnit) && (
+                          <span className="ml-1 text-gray-500">
+                            · {formatWeight(i.weightKg, i.weightUnit)}
+                          </span>
+                        )}
+                      </span>
                       <span className="whitespace-nowrap text-gray-500">
-                        × {i.qty}
+                        × {i.qty} @ {taka(Number(i.price))}
+                        <b className="ml-2 text-gray-800">
+                          {taka(Number(i.price) * i.qty)}
+                        </b>
                         {i.returned > 0 && (
                           <span className="ml-1 font-bold text-red-600">
                             ({i.returned} returned)
