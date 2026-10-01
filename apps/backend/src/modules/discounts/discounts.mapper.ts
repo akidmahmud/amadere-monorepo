@@ -25,6 +25,7 @@ export class DiscountDto {
   valueType!: DiscountValueType;
   value!: string;
   minOrderAmount!: string | null;
+  maxDiscountAmount!: string | null;
   maxUsesTotal!: number | null;
   maxUsesPerCustomer!: number | null;
   usedCount!: number;
@@ -46,6 +47,7 @@ export function toDiscountDto(discount: DiscountWithScopes): DiscountDto {
     valueType: discount.valueType,
     value: discount.value.toString(),
     minOrderAmount: discount.minOrderAmount?.toString() ?? null,
+    maxDiscountAmount: discount.maxDiscountAmount?.toString() ?? null,
     maxUsesTotal: discount.maxUsesTotal,
     maxUsesPerCustomer: discount.maxUsesPerCustomer,
     usedCount: discount.usedCount,

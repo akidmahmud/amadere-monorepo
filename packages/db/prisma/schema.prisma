@@ -1866,6 +1866,8 @@ model Discount {
   valueType          DiscountValueType @map("value_type")
   value              Decimal           @db.Decimal(10, 2)
   minOrderAmount     Decimal?          @map("min_order_amount") @db.Decimal(10, 2)
+  /// Optional ceiling on what this coupon can take off, e.g. 5% but at most ৳200.
+  maxDiscountAmount  Decimal?          @map("max_discount_amount") @db.Decimal(10, 2)
   maxUsesTotal       Int?              @map("max_uses_total")
   maxUsesPerCustomer Int?              @map("max_uses_per_customer")
   usedCount          Int               @default(0) @map("used_count")

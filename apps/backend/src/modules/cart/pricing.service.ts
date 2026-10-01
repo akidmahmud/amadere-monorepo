@@ -340,20 +340,7 @@ export class PricingService {
   }
 
   private computeAmount(discount: Discount, base: DecimalValue): DecimalValue {
-    switch (discount.valueType) {
-      case 'PERCENTAGE':
-        // Money is always 2dp — round the discount up, in the customer's favour.
-        return base
-          .times(discount.value)
-          .dividedBy(100)
-          .toDecimalPlaces(2, Decimal.ROUND_UP);
-      case 'FIXED_AMOUNT':
-        return Decimal.min(discount.value, base);
-      case 'FREE_SHIPPING':
-        // Shipping isn't priced until checkout (B6) — amount 0 here, the
-        // freeShipping flag on AppliedDiscount is what checkout consumes.
-        return new Decimal(0);
-    }
+    return computeDiscountAmount(discount, base);
   }
 
   private isWithinWindow(discount: Discount): boolean {
@@ -483,4 +470,32 @@ export class PricingService {
         : null,
     };
   }
+}
+
+/** What a discount takes off `base`. Pure, so the money rules are testable. */
+export function computeDiscountAmount(
+  discount: Pick<Discount, 'valueType' | 'value' | 'maxDiscountAmount'>,
+  base: DecimalValue,
+): DecimalValue {
+  let amount: DecimalValue;
+  switch (discount.valueType) {
+    case 'PERCENTAGE':
+      // Money is always 2dp — round the discount up, in the customer's favour.
+      amount = base
+        .times(discount.value)
+        .dividedBy(100)
+        .toDecimalPlaces(2, Decimal.ROUND_UP);
+      break;
+    case 'FIXED_AMOUNT':
+      amount = Decimal.min(discount.value, base);
+      break;
+    case 'FREE_SHIPPING':
+      // Shipping isn't priced until checkout (B6) — amount 0 here, the
+      // freeShipping flag on AppliedDiscount is what checkout consumes.
+      return new Decimal(0);
+  }
+  // Optional ceiling (e.g. 5% but at most ৳200).
+  return discount.maxDiscountAmount != null
+    ? Decimal.min(amount, discount.maxDiscountAmount)
+    : amount;
 }

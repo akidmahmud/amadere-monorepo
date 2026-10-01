@@ -44,6 +44,16 @@ export class CreateDiscountDto {
   @Min(0)
   minOrderAmount?: number;
 
+  @ApiPropertyOptional({
+    description:
+      'Most this coupon can take off (৳), e.g. 5% but at most 200. Null/omitted = no cap.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  maxDiscountAmount?: number | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

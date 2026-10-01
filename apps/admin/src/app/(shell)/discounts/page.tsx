@@ -39,7 +39,10 @@ function discountSummary(discount: AdminDiscount): string {
     : "";
   if (discount.valueType === "FREE_SHIPPING")
     return `Free shipping for ${scope}${minOrder}`;
-  return `Discount ${valueLabel(discount)} for ${scope}${minOrder}`;
+  const cap = discount.maxDiscountAmount
+    ? ` (max ৳${discount.maxDiscountAmount})`
+    : "";
+  return `Discount ${valueLabel(discount)}${cap} for ${scope}${minOrder}`;
 }
 
 function isExpired(discount: AdminDiscount): boolean {

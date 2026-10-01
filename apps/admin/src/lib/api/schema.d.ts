@@ -9539,6 +9539,7 @@ export interface components {
       valueType: Record<string, never>;
       value: string;
       minOrderAmount: string | null;
+      maxDiscountAmount: string | null;
       maxUsesTotal: number | null;
       maxUsesPerCustomer: number | null;
       usedCount: number;
@@ -9564,6 +9565,8 @@ export interface components {
       /** @description Percentage (0-100) or fixed BDT amount; ignored for FREE_SHIPPING */
       value: number;
       minOrderAmount?: number;
+      /** @description Most this coupon can take off (৳), e.g. 5% but at most 200. Null/omitted = no cap. */
+      maxDiscountAmount?: number | null;
       maxUsesTotal?: number;
       maxUsesPerCustomer?: number;
       startsAt?: string;
@@ -9590,6 +9593,8 @@ export interface components {
       /** @description Percentage (0-100) or fixed BDT amount; ignored for FREE_SHIPPING */
       value?: number;
       minOrderAmount?: number;
+      /** @description Most this coupon can take off (৳), e.g. 5% but at most 200. Null/omitted = no cap. */
+      maxDiscountAmount?: number | null;
       maxUsesTotal?: number;
       maxUsesPerCustomer?: number;
       startsAt?: string;

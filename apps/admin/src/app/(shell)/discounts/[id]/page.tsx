@@ -28,6 +28,7 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
   const [valueType, setValueType] = useState<DiscountValueType>("PERCENTAGE");
   const [value, setValue] = useState("");
   const [minOrderAmount, setMinOrderAmount] = useState("");
+  const [maxDiscountAmount, setMaxDiscountAmount] = useState("");
   const [maxUsesTotal, setMaxUsesTotal] = useState("");
   const [maxUsesPerCustomer, setMaxUsesPerCustomer] = useState("");
   const [neverExpires, setNeverExpires] = useState(true);
@@ -44,6 +45,7 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
     setValueType(discount.valueType);
     setValue(discount.value);
     setMinOrderAmount(discount.minOrderAmount ?? "");
+    setMaxDiscountAmount(discount.maxDiscountAmount ?? "");
     setMaxUsesTotal(discount.maxUsesTotal != null ? String(discount.maxUsesTotal) : "");
     setMaxUsesPerCustomer(discount.maxUsesPerCustomer != null ? String(discount.maxUsesPerCustomer) : "");
     setNeverExpires(!discount.endsAt);
@@ -62,6 +64,8 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
       valueType,
       value: Number(value) || 0,
       minOrderAmount: minOrderAmount ? Number(minOrderAmount) : undefined,
+      // null clears a cap; only percentage coupons carry one.
+      maxDiscountAmount: valueType === "PERCENTAGE" && maxDiscountAmount ? Number(maxDiscountAmount) : null,
       maxUsesTotal: maxUsesTotal ? Number(maxUsesTotal) : undefined,
       maxUsesPerCustomer: maxUsesPerCustomer ? Number(maxUsesPerCustomer) : undefined,
       startsAt: startsAt || undefined,
@@ -132,6 +136,13 @@ export default function EditDiscountPage({ params }: { params: Promise<{ id: str
                   Value {valueType === "PERCENTAGE" ? "(%)" : "(৳)"}
                 </span>
                 <input type="number" required value={value} onChange={(e) => setValue(e.target.value)} className={`num ${inputClass}`} />
+              </label>
+            )}
+            {valueType === "PERCENTAGE" && (
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-secondary">Max discount (৳, optional)</span>
+                <input type="number" min={1} placeholder="No cap" value={maxDiscountAmount} onChange={(e) => setMaxDiscountAmount(e.target.value)} className={`num ${inputClass}`} />
+                <span className="text-xs text-muted">e.g. 5% of a ৳10,000 order is ৳500 — a ৳200 cap gives ৳200 off.</span>
               </label>
             )}
           </div>
