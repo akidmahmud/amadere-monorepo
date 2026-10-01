@@ -24,6 +24,9 @@ type Row = {
   orderNumber: string;
   createdAt: string;
   status: string;
+  subTotal?: string;
+  discountAmount?: string;
+  taxAmount?: string;
   totalAmount: string;
   posRefundedAmount?: string;
   store: { id: number; name: string } | null;
@@ -78,14 +81,6 @@ const when = (d: string) =>
     dateStyle: "short",
     timeStyle: "short",
   });
-/** "Oil × 2 @ ৳100; Salt × 1 @ ৳20" — one order's lines for the export. */
-const itemsText = (o: Row) =>
-  (o.items ?? [])
-    .map(
-      (i) =>
-        `${i.name} × ${i.qty} @ ৳${Number(i.price)}${i.returned ? ` (${i.returned} returned)` : ""}`,
-    )
-    .join("; ");
 const fieldBox =
   "flex h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm";
 
@@ -206,16 +201,24 @@ export function PosOrdersManager({
           "Store",
           "Customer",
           "Phone",
-          "Products (name × qty @ price)",
-          "Items",
+          "Product",
+          "Qty",
+          "Unit price (৳)",
+          "Line total (৳)",
+          "Returned",
           "Payment",
-          "Total (৳)",
+          "Subtotal (৳)",
+          "Discount (৳)",
+          "VAT (৳)",
+          "Order total (৳)",
           "Status",
           "Cashier",
         ],
+        // One row per product; the order's own details and total sit on its
+        // first row only, so the Order total column adds up per order.
         (o) => {
           const d = new Date(o.createdAt);
-          return [
+          const order = [
             o.orderNumber,
             d.toLocaleDateString("en-GB"),
             d.toLocaleTimeString("en-GB", {
@@ -225,13 +228,29 @@ export function PosOrdersManager({
             o.store?.name ?? "",
             o.customer?.name ?? "Walk-in",
             o.customer?.phone ?? "",
-            itemsText(o),
-            o.itemCount,
+          ];
+          const tail = [
             o.tender ? (TENDER_LABEL[o.tender] ?? o.tender) : "",
+            // Subtotal − discount + VAT (added on top) = order total.
+            Number(o.subTotal ?? 0),
+            Number(o.discountAmount ?? 0),
+            Number(o.taxAmount ?? 0),
             Number(o.totalAmount),
             STATUS_LABEL[o.status] ?? o.status,
             o.cashier ?? "",
           ];
+          const items = o.items?.length
+            ? o.items
+            : [{ name: "", qty: 0, price: "0", returned: 0 }];
+          return items.map((i, n) => [
+            ...(n === 0 ? order : [o.orderNumber, "", "", "", "", ""]),
+            i.name,
+            i.qty || null,
+            i.name ? Number(i.price) : null,
+            i.name ? Number(i.price) * i.qty : null,
+            i.returned || null,
+            ...(n === 0 ? tail : ["", null, null, null, null, "", ""]),
+          ]);
         },
         `pos-orders-${new Date().toISOString().slice(0, 10)}.xlsx`,
         reportTitle(`POS Orders — ${storeName}`, periodParams(period)),

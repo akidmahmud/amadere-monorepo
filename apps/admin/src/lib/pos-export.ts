@@ -6,11 +6,14 @@ import { downloadXlsx } from "@/components/net-profit/sales-report/exportXlsx";
  * fetched 100 at a time, as a titled .xlsx.
  * ponytail: sequential pages; add a server-side export if lists reach 10k+.
  */
+type Cell = string | number | null;
+
 export async function exportAllPagesXlsx<T>(
   path: string,
   params: Record<string, string | number | null | undefined>,
   headers: string[],
-  toRow: (item: T) => (string | number | null)[],
+  /** One row, or several (e.g. one per product of an order). */
+  toRow: (item: T) => Cell[] | Cell[][],
   fileName: string,
   title: string,
 ): Promise<number> {
@@ -26,7 +29,13 @@ export async function exportAllPagesXlsx<T>(
   }
   await downloadXlsx(
     fileName,
-    [headers, ...items.map(toRow)],
+    [
+      headers,
+      ...items.flatMap((x) => {
+        const r = toRow(x);
+        return Array.isArray(r[0]) ? (r as Cell[][]) : [r as Cell[]];
+      }),
+    ],
     { headerRows: 1 },
     title,
   );
