@@ -146,3 +146,47 @@ describe('fixedCostValue', () => {
     ).toBe(42);
   });
 });
+
+describe('buildSnapshot — arithmetic identities', () => {
+  const s = buildSnapshot(FIXTURE_INPUT);
+  const sum = (xs: number[]) => xs.reduce((a, x) => a + x, 0);
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+
+  it('each row: profit = sales − cost; avg = sales / kg; cost/kg = cost / kg', () => {
+    for (const b of s.sources)
+      for (const p of b.products) {
+        expect(p.profit).toBe(r2(p.sales - p.cost));
+        if (p.qty) {
+          expect(p.avg).toBe(r2(p.sales / p.qty));
+          expect(p.costPerKg).toBe(r2(p.cost / p.qty));
+        }
+      }
+  });
+
+  it('each source total is the sum of its rows; net = profit − delivery − its fixed costs', () => {
+    for (const b of s.sources) {
+      expect(b.subtotal.sales).toBe(r2(sum(b.products.map((p) => p.sales))));
+      expect(b.subtotal.cost).toBe(r2(sum(b.products.map((p) => p.cost))));
+      expect(b.subtotal.profit).toBe(r2(b.subtotal.sales - b.subtotal.cost));
+      expect(b.net).toBe(
+        r2(
+          b.subtotal.profit -
+            b.subtotal.delivery -
+            sum(b.fixedCosts.map((f) => f.value)),
+        ),
+      );
+    }
+  });
+
+  it('grand total = sum of sources; net profit = profit − delivery − ALL fixed costs', () => {
+    const g = s.grandTotal;
+    for (const k of ['sales', 'cost', 'delivery', 'profit'] as const)
+      expect(g[k]).toBe(r2(sum(s.sources.map((b) => b.subtotal[k]))));
+    const allFixed = sum(
+      [...s.sources.flatMap((b) => b.fixedCosts), ...s.reportFixedCosts].map(
+        (f) => f.value,
+      ),
+    );
+    expect(s.netProfit).toBe(r2(g.profit - g.delivery - allFixed));
+  });
+});

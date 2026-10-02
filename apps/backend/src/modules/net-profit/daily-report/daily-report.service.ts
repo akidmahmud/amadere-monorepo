@@ -75,16 +75,21 @@ export class DailyReportService {
   // ---- settings ----------------------------------------------------------
 
   async getSettings(): Promise<DailyReportSettingsView> {
-    const [stored, channels] = await Promise.all([
+    const [stored, channels, stores] = await Promise.all([
       this.settings.getNamespace<DailyReportSettings>(NS, DEFAULT_SETTINGS),
       this.prisma.client.wholesaleChannel.findMany({
         orderBy: { sortOrder: 'asc' },
         select: { id: true, name: true },
       }),
+      // All stores, active or not, so a closed shop's past sales keep its name.
+      this.prisma.client.store.findMany({
+        orderBy: { id: 'asc' },
+        select: { id: true, name: true },
+      }),
     ]);
     return {
       ...stored,
-      sources: resolveSources(stored.sources, allSourceDefs(channels)),
+      sources: resolveSources(stored.sources, allSourceDefs(channels, stores)),
     };
   }
 

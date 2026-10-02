@@ -35,11 +35,12 @@ const CHANNEL_SOURCE: Record<string, string> = {
   INSTAGRAM: 'INSTAGRAM',
   TIKTOK: 'TIKTOK',
   PHONE: 'TELESALE',
-  POS: 'SHOP',
 };
 
 export function retailSourceOf(o: {
   channel: string;
+  /** POS: the store the sale was made at. */
+  storeId?: number | null;
   utmSource: string | null;
   referrerDomain: string | null;
 }): string {
@@ -53,6 +54,8 @@ export function retailSourceOf(o: {
       if (words.some((w) => tokens.has(w))) return key;
     return 'WEB_DIRECT';
   }
+  // Each shop is its own source so the report names it.
+  if (o.channel === 'POS') return o.storeId ? `SHOP_${o.storeId}` : 'SHOP';
   return CHANNEL_SOURCE[o.channel] ?? 'OTHER';
 }
 

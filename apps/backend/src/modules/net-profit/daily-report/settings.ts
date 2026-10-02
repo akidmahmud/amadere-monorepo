@@ -12,13 +12,27 @@ export const DEFAULT_SETTINGS: DailyReportSettings = {
   fixedCosts: [],
 };
 
-/** Every wholesale channel, active or not — a deactivated channel's old
- *  orders must still land in their own source, not vanish. */
+/** Every wholesale channel and store, active or not — a deactivated one's old
+ *  orders must still land in their own source, not vanish. Each store is its
+ *  own "Shop – <name>" source, right after the generic shop. */
 export function allSourceDefs(
   channels: { id: number; name: string }[],
+  stores: { id: number; name: string }[] = [],
 ): SourceDef[] {
   return [
-    ...BASE_SOURCES.filter((s) => s.key !== 'OTHER'),
+    ...BASE_SOURCES.flatMap((s) =>
+      s.key === 'OTHER'
+        ? []
+        : s.key === 'SHOP'
+          ? [
+              s,
+              ...stores.map((t) => ({
+                key: `SHOP_${t.id}`,
+                label: `Shop – ${t.name}`,
+              })),
+            ]
+          : [s],
+    ),
     ...channels.map((c) => ({ key: `WCH_${c.id}`, label: c.name })),
     ...BASE_SOURCES.filter((s) => s.key === 'OTHER'),
   ];

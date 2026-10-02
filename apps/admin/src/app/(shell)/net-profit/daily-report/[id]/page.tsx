@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { dailyReportExportUrl, useDailyReport } from "@/hooks/useDailyReports";
 import { ReportSheet } from "@/components/net-profit/daily-report/ReportSheet";
+import { MissingCostNotice } from "@/components/net-profit/daily-report/MissingCostNotice";
 import { money } from "@/components/net-profit/daily-report/format";
 
 const Delta = ({ now, before }: { now: number; before: number }) => {
@@ -80,19 +81,14 @@ function DailyReportBody({ params }: { params: Promise<{ id: string }> }) {
         </a>
       </Card>
 
+      <MissingCostNotice s={s} />
+
       {r.changed.orders > 0 && (
         <div className="rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {r.changed.orders} order{r.changed.orders > 1 ? "s" : ""} (৳
           {money(r.changed.amount)}) were cancelled, returned or deleted after
           this report was generated. The report below is unchanged. Generate a
           new one to see current figures.
-        </div>
-      )}
-      {s.estimatedLines > 0 && (
-        <div className="rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {s.estimatedLines} line{s.estimatedLines > 1 ? "s have" : " has"} no
-          product cost on record and {s.estimatedLines > 1 ? "are" : "is"}{" "}
-          counted as ৳0 (marked “est.”).
         </div>
       )}
 

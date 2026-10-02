@@ -23,6 +23,7 @@ function make(
         create,
       },
       wholesaleChannel: { findMany: jest.fn().mockResolvedValue([]) },
+      store: { findMany: jest.fn().mockResolvedValue([]) },
       marketingCost: {
         aggregate: jest
           .fn()

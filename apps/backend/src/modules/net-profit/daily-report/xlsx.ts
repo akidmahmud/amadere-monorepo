@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { Cell, Worksheet } from 'exceljs';
+import { fixedCostLabel } from '@amader/shared';
 import type { DailyReportSnapshot, DailyReportTotals } from '@amader/shared';
 
 // The owner's sheet layout in the admin's green (same dark header as the
@@ -108,12 +109,28 @@ export function buildDailyReportWorkbook(
     });
     const fixed = b.fixedCosts.reduce((a, f) => a + f.value, 0);
     totalRow(ws, 'total', b.subtotal, fixed || null, b.net, false);
-    for (const f of b.fixedCosts) costRow(ws, `  ${f.name}`, f.value);
+    for (const f of b.fixedCosts)
+      costRow(ws, `Less: ${fixedCostLabel(f)}`, f.value);
     ws.addRow([]);
   });
 
-  totalRow(ws, 'GRAND TOTAL', s.grandTotal, null, null, true);
-  for (const f of s.reportFixedCosts) costRow(ws, f.name, f.value);
+  // Fixed costs / Net here are the sources' own; the whole-report costs
+  // below come off this net to give NET PROFIT.
+  const sourceFixed = s.sources.reduce(
+    (a, b) => a + b.fixedCosts.reduce((x, f) => x + f.value, 0),
+    0,
+  );
+  const sourceNet = s.sources.reduce((a, b) => a + b.net, 0);
+  totalRow(
+    ws,
+    'GRAND TOTAL',
+    s.grandTotal,
+    Math.round(sourceFixed * 100) / 100 || null,
+    Math.round(sourceNet * 100) / 100,
+    true,
+  );
+  for (const f of s.reportFixedCosts)
+    costRow(ws, `Less: ${fixedCostLabel(f)}`, f.value);
   const n = ws.addRow([
     'NET PROFIT',
     '',

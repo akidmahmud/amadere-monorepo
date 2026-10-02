@@ -111,3 +111,17 @@ export interface DailyReportDetail extends DailyReportListItem {
   /** AUTO only: the previous day's AUTO report, if still kept. */
   previous: { id: number; totalSales: number; netProfit: number } | null;
 }
+
+/** "VAT — 5% of sales": what a fixed cost is, for the report screen and Excel. */
+export function fixedCostLabel(
+  c: Pick<DailyReportAppliedCost, 'name' | 'type' | 'amount'>,
+): string {
+  const taka = `৳${c.amount.toLocaleString('en-US')}`;
+  const how: Record<FixedCostType, string> = {
+    PER_DAY: `${taka} per day`,
+    PER_MONTH: `${taka} per month (split by day)`,
+    PERCENT_OF_SALES: `${c.amount}% of sales`,
+    MARKETING_LEDGER: 'from Marketing Cost entries',
+  };
+  return `${c.name} — ${how[c.type]}`;
+}

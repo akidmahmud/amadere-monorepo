@@ -95,6 +95,7 @@ describe('DailyReportLoader', () => {
       type: 'WHOLESALE',
       channelId: null,
       placedAt: new Date('2026-09-30T00:00:00Z'),
+      createdAt: new Date('2026-09-30T08:00:00Z'), // 2 PM Dhaka
       discount: 0,
       deliveryCharge: 140,
       items: [
@@ -139,5 +140,54 @@ describe('DailyReportLoader', () => {
       gte: new Date('2026-10-01T14:00:00Z'),
       lt: new Date('2026-10-02T14:00:00Z'),
     });
+  });
+
+  it('wholesale entered at 9 PM belongs to the next business day', async () => {
+    const w = {
+      id: 44,
+      type: 'WHOLESALE',
+      channelId: null,
+      placedAt: new Date('2026-10-02T00:00:00Z'),
+      createdAt: new Date('2026-10-02T15:00:00Z'), // 9 PM Dhaka
+      discount: 0,
+      deliveryCharge: 0,
+      items: [
+        {
+          productId: 5,
+          variantId: null,
+          nameSnapshot: 'Atta',
+          quantity: 1,
+          lineTotal: 100,
+          product: { shippableWeight: 1 },
+        },
+      ],
+    };
+    const closed = await make([], [w]).load('2026-10-02', '2026-10-02');
+    const next = await make([], [w]).load('2026-10-03', '2026-10-03');
+    expect(closed.filter((o) => o.wholesale)).toEqual([]);
+    expect(next.map((o) => o.id)).toEqual([44]);
+  });
+
+  it('a POS sale is reported under its store', async () => {
+    const findMany = jest.fn().mockResolvedValue([order({ storeId: 4 })]);
+    const loader = new DailyReportLoader(
+      {
+        client: {
+          order: { findMany },
+          wholesaleOrder: { findMany: jest.fn().mockResolvedValue([]) },
+          productVariant: { findMany: jest.fn().mockResolvedValue([]) },
+        },
+      } as never,
+      {
+        loadResolver: jest.fn().mockResolvedValue({ resolve: () => null }),
+      } as never,
+      { getConfig: jest.fn().mockResolvedValue({ rules: [] }) } as never,
+    );
+    const [o] = await loader.load('2026-09-30', '2026-09-30');
+    const [args] = findMany.mock.calls[0] as [
+      { select: Record<string, unknown> },
+    ];
+    expect(args.select.storeId).toBe(true); // the real query must fetch it
+    expect(o.source).toBe('SHOP_4');
   });
 });

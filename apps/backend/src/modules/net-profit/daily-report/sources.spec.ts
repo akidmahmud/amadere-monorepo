@@ -58,3 +58,26 @@ describe('wholesaleSourceOf', () => {
     );
   });
 });
+
+describe('retailSourceOf — POS store', () => {
+  it('a POS sale is its store: SHOP_<storeId>', () => {
+    expect(
+      retailSourceOf({
+        channel: 'POS',
+        storeId: 4,
+        utmSource: null,
+        referrerDomain: null,
+      }),
+    ).toBe('SHOP_4');
+  });
+  it('a POS sale with no store stays SHOP', () => {
+    expect(
+      retailSourceOf({
+        channel: 'POS',
+        storeId: null,
+        utmSource: null,
+        referrerDomain: null,
+      }),
+    ).toBe('SHOP');
+  });
+});

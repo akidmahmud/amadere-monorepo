@@ -1,4 +1,9 @@
-import type { DailyReportSnapshot, DailyReportTotals } from "@amader/shared";
+import {
+  fixedCostLabel,
+  type DailyReportAppliedCost,
+  type DailyReportSnapshot,
+  type DailyReportTotals,
+} from "@amader/shared";
 import { money, qty } from "./format";
 
 const num = "px-2 py-1 text-right tabular-nums";
@@ -52,12 +57,14 @@ function TotalRow({
   );
 }
 
-const CostRow = ({ name, value }: { name: string; value: number }) => (
-  <tr className="text-muted">
+// Fixed costs are real deductions, so they read like the rows they reduce:
+// dark text, labelled with what they are ("VAT — 5% of sales").
+const CostRow = ({ c }: { c: DailyReportAppliedCost }) => (
+  <tr className="border-b border-border bg-amber-50/60 font-medium text-text">
     <td />
-    <td className="px-2 py-1">{name}</td>
+    <td className="px-2 py-1.5">Less: {fixedCostLabel(c)}</td>
     <td colSpan={7} />
-    <td className={num}>{money(value)}</td>
+    <td className={`${num} font-semibold text-danger`}>−{money(c.value)}</td>
     <td />
   </tr>
 );
@@ -90,13 +97,26 @@ export function ReportSheet({ s }: { s: DailyReportSnapshot }) {
               </td>
             </tr>
           )}
-          <TotalRow label="GRAND TOTAL" t={s.grandTotal} strong />
+          {/* Fixed costs / Net here are the sources' own; the whole-report
+              costs below come off this net to give NET PROFIT. */}
+          <TotalRow
+            label="GRAND TOTAL"
+            t={s.grandTotal}
+            fixed={s.sources.reduce(
+              (a, b) => a + b.fixedCosts.reduce((x, f) => x + f.value, 0),
+              0,
+            )}
+            net={s.sources.reduce((a, b) => a + b.net, 0)}
+            strong
+          />
           {s.reportFixedCosts.map((c) => (
-            <CostRow key={c.id} name={c.name} value={c.value} />
+            <CostRow key={c.id} c={c} />
           ))}
           <tr className="text-base font-bold">
             <td className="px-2 py-2">NET PROFIT</td>
-            <td colSpan={9} />
+            <td colSpan={9} className="px-2 text-xs font-normal text-muted">
+              = Product profit − Delivery − all fixed costs
+            </td>
             <td className={`${num} ${s.netProfit < 0 ? "text-danger" : ""}`}>
               {money(s.netProfit)}
             </td>
@@ -158,7 +178,7 @@ function FragmentBlock({
       ))}
       <TotalRow label="total" t={b.subtotal} fixed={fixed} net={b.net} />
       {b.fixedCosts.map((c) => (
-        <CostRow key={c.id} name={c.name} value={c.value} />
+        <CostRow key={c.id} c={c} />
       ))}
       <tr>
         <td colSpan={11} className="h-3" />

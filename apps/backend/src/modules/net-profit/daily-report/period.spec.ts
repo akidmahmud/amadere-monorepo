@@ -6,6 +6,7 @@ import {
   lastClosedBusinessDay,
   periodDays,
   validateManual,
+  wholesaleBusinessDay,
 } from './period';
 
 describe('period helpers', () => {
@@ -76,5 +77,21 @@ describe('business day (8 PM to 8 PM)', () => {
   ])('at %s current=%s lastClosed=%s', (now, current, closed) => {
     expect(currentBusinessDay(new Date(now))).toBe(current);
     expect(lastClosedBusinessDay(new Date(now))).toBe(closed);
+  });
+});
+
+describe('wholesaleBusinessDay', () => {
+  const at = (iso: string) => new Date(iso);
+  it.each([
+    // [placedAt (DATE), createdAt (UTC instant), expected business day]
+    ['2026-10-02', '2026-10-02T08:00:00Z', '2026-10-02'], // 2 PM Dhaka, same day
+    ['2026-10-02', '2026-10-02T15:00:00Z', '2026-10-03'], // 9 PM Dhaka → next business day
+    ['2026-09-16', '2026-09-16T18:03:00Z', '2026-09-17'], // 00:03 Dhaka, stamped with the UTC date
+    ['2026-09-17', '2026-09-16T18:03:00Z', '2026-09-17'], // same, stamped with the Dhaka date
+    ['2026-09-01', '2026-10-02T08:00:00Z', '2026-09-01'], // deliberately backdated: keep it
+  ])('placed %s, entered %s → %s', (placed, created, want) => {
+    expect(wholesaleBusinessDay(at(`${placed}T00:00:00Z`), at(created))).toBe(
+      want,
+    );
   });
 });

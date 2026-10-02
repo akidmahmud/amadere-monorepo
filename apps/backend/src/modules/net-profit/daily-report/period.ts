@@ -89,3 +89,18 @@ export function validateManual(
     throw new Error(`A report can cover at most ${MAX_RANGE_DAYS} days.`);
   return n;
 }
+
+/**
+ * The business day a wholesale order belongs to. `placedAt` is a bare DATE, and
+ * the wholesale form never sends one, so the server stamps the UTC date of entry
+ * (yesterday, between midnight and 6 AM Dhaka). When it matches the entry time's
+ * UTC or Dhaka date it carries no extra meaning, so the real entry time decides
+ * (with the 8 PM close, like retail). Any other date was chosen on purpose.
+ */
+export function wholesaleBusinessDay(placedAt: Date, createdAt: Date): string {
+  const placed = iso(placedAt);
+  const dhakaDay = iso(new Date(createdAt.getTime() + DHAKA_MS));
+  return placed === iso(createdAt) || placed === dhakaDay
+    ? currentBusinessDay(createdAt)
+    : placed;
+}

@@ -11,6 +11,24 @@ describe('allSourceDefs', () => {
   });
 });
 
+describe('allSourceDefs — stores', () => {
+  it('one "Shop – <name>" source per store, right after the generic shop', () => {
+    const defs = allSourceDefs(
+      [],
+      [
+        { id: 2, name: 'Banani' },
+        { id: 5, name: 'Mirpur' },
+      ],
+    );
+    const i = defs.findIndex((d) => d.key === 'SHOP');
+    expect(defs.slice(i, i + 3)).toEqual([
+      { key: 'SHOP', label: 'Shop sale' },
+      { key: 'SHOP_2', label: 'Shop – Banani' },
+      { key: 'SHOP_5', label: 'Shop – Mirpur' },
+    ]);
+  });
+});
+
 describe('resolveSources', () => {
   const defs = [
     { key: 'A', label: 'Alpha' },

@@ -51,6 +51,21 @@ describe('buildDailyReportWorkbook', () => {
     expect(argb(find(ws, 'total').getCell(1))).toBe('FFE2EFDA');
   });
 
+  it('grand total shows source fixed costs and net before report costs', () => {
+    const g = find(ws, 'GRAND TOTAL');
+    expect(g.getCell(10).value).toBe(1100); // 100 call staff + 1000 shop rent
+    expect(g.getCell(11).value).toBe(-450); // 230 − 80 + 400 − 1000
+  });
+
+  it('fixed-cost rows say what the cost is', () => {
+    const labels: unknown[] = [];
+    ws.eachRow((r) => labels.push(r.getCell(2).value));
+    expect(labels).toContain('Less: VAT — 5% of sales');
+    expect(labels).toContain(
+      'Less: Marketing & Inhouse — from Marketing Cost entries',
+    );
+  });
+
   it('serialises to a real xlsx buffer', async () => {
     const buf = await wb.xlsx.writeBuffer();
     expect(buf.byteLength).toBeGreaterThan(1000);

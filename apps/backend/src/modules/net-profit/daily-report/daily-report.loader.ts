@@ -6,7 +6,7 @@ import { ProductCostHistoryService } from '../../product-cost-history/product-co
 import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
 import { spreadDiscount } from '../sales-report/report-mapping';
 import type { BuildOrder } from './build';
-import { businessWindow } from './period';
+import { businessWindow, wholesaleBusinessDay } from './period';
 import { retailSourceOf, wholesaleSourceOf } from './sources';
 
 const uniq = (xs: (number | null)[]) => [
@@ -42,6 +42,7 @@ export class DailyReportLoader {
         select: {
           id: true,
           channel: true,
+          storeId: true,
           utmSource: true,
           referrerDomain: true,
           createdAt: true,
@@ -76,16 +77,24 @@ export class DailyReportLoader {
         where: {
           status: { not: 'CANCELLED' },
           cancelledAt: null,
-          placedAt: {
-            gte: new Date(`${from}T00:00:00Z`),
-            lte: new Date(`${to}T00:00:00Z`),
-          },
+          // Candidates by entry time or by placed date (±1 day for the UTC
+          // stamp); wholesaleBusinessDay() below decides which day each is.
+          OR: [
+            { createdAt: { gte: win.start, lt: win.end } },
+            {
+              placedAt: {
+                gte: new Date(Date.parse(`${from}T00:00:00Z`) - 86_400_000),
+                lte: new Date(Date.parse(`${to}T00:00:00Z`) + 86_400_000),
+              },
+            },
+          ],
         },
         select: {
           id: true,
           type: true,
           channelId: true,
           placedAt: true,
+          createdAt: true,
           discount: true,
           deliveryCharge: true,
           items: {
@@ -171,7 +180,11 @@ export class DailyReportLoader {
       };
     });
 
-    const wholesaleOrders: BuildOrder[] = wholesale.map((w) => {
+    const inPeriod = wholesale.filter((w) => {
+      const day = wholesaleBusinessDay(w.placedAt, w.createdAt);
+      return day >= from && day <= to;
+    });
+    const wholesaleOrders: BuildOrder[] = inPeriod.map((w) => {
       const grosses = w.items.map((i) => Number(i.lineTotal));
       const discs = spreadDiscount(grosses, Number(w.discount));
       const date = w.placedAt.toISOString().slice(0, 10);
