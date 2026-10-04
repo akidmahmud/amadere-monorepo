@@ -338,6 +338,9 @@ model Customer {
   phoneVerifiedAt     DateTime?      @map("phone_verified_at")
   legacyId            Int?           @unique @map("legacy_id") // ec_customers.id, for B12 ETL matching
   completedOrderCount Int            @default(0) @map("completed_order_count")
+  /// Created at a POS shop (walk-in). Kept out of the website Customer
+  /// Manager — unless they also order on the website or sign up there.
+  posOnly             Boolean        @default(false) @map("pos_only")
   tierId              Int?           @map("tier_id")
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")

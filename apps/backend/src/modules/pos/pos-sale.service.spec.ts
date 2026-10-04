@@ -283,7 +283,7 @@ describe('PosSaleService customers', () => {
       phone: '01711111111',
     });
     expect(create).toHaveBeenCalledWith({
-      data: { phone: '01711111111', firstName: 'Rahim' },
+      data: { phone: '01711111111', posOnly: true, firstName: 'Rahim' },
     });
   });
 });
@@ -703,7 +703,7 @@ describe('PosSaleService — till context and quick customer', () => {
       7,
     );
     expect(prisma.client.customer.create).toHaveBeenCalledWith({
-      data: { phone: '01712345678' },
+      data: { phone: '01712345678', posOnly: true },
     });
     expect(tx.order.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ customerId: 55 }),

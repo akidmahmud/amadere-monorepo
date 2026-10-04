@@ -5,8 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EXCLUDE_POS_ONLY } from './pos-only';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CUSTOMER_CREATED_EVENT, CustomerCreatedEvent } from './customers.events';
+import {
+  CUSTOMER_CREATED_EVENT,
+  CustomerCreatedEvent,
+} from './customers.events';
 import { SuccessResponseDto } from '../../common/dto/success-response.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hashPassword, verifyPassword } from '../../common/auth/password.util';
@@ -28,7 +32,10 @@ import {
   divisionForDistrict,
   EXCLUDE_SEEDED_REVIEWERS,
 } from '@amader/shared';
-import { paginationArgs, toPaginatedResult } from '../../common/pagination.util';
+import {
+  paginationArgs,
+  toPaginatedResult,
+} from '../../common/pagination.util';
 import { toE164Bd } from '../../common/phone.util';
 import { CALL_PROVIDER } from './providers/call-provider.interface';
 import type { CallProvider } from './providers/call-provider.interface';
@@ -38,7 +45,16 @@ import { CreateCustomerNoteDto } from './dto/create-customer-note.dto';
 import { CreateCustomerCallLogDto } from './dto/create-customer-call-log.dto';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
 import { CustomerImportResultDto } from './dto/customer-import-result.dto';
-import { dedupeByPhone, fillEmptyCrm, ImportWarnings, importNote, parseImportRows, readSheet, staffLookup, type ImportRow } from './customer-import';
+import {
+  dedupeByPhone,
+  fillEmptyCrm,
+  ImportWarnings,
+  importNote,
+  parseImportRows,
+  readSheet,
+  staffLookup,
+  type ImportRow,
+} from './customer-import';
 import { BulkCustomerActionDto } from './dto/bulk-customer-action.dto';
 import {
   ADMIN_CUSTOMER_LIST_INCLUDE,
@@ -79,7 +95,17 @@ function csvCell(value: unknown): string {
   return `"${String(value).replace(/"/g, '""')}"`;
 }
 
-const EMPTY_EXTRAS: AdminCustomerListExtras = { address: null, division: null, district: null, area: null, lastOrderDate: null, lastOrderStatus: null, topProduct: null, topProductSku: null, lifetimeSpend: 0 };
+const EMPTY_EXTRAS: AdminCustomerListExtras = {
+  address: null,
+  division: null,
+  district: null,
+  area: null,
+  lastOrderDate: null,
+  lastOrderStatus: null,
+  topProduct: null,
+  topProductSku: null,
+  lifetimeSpend: 0,
+};
 
 /** "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm[:ss]" as a Dhaka (UTC+6) wall-clock instant. */
 function dhakaInstant(v: string): Date {
@@ -306,7 +332,10 @@ export class CustomersService {
   // "Import Test" is never a substring of firstName="Import" alone or
   // lastName="Test One" alone; it only shows up once the two are
   // concatenated, which nothing here does.
-  private async buildAdminWhere(query: AdminCustomerQueryDto, deletedOnly = false): Promise<Prisma.CustomerWhereInput> {
+  private async buildAdminWhere(
+    query: AdminCustomerQueryDto,
+    deletedOnly = false,
+  ): Promise<Prisma.CustomerWhereInput> {
     let birthdayIds: number[] | undefined;
     if (query.birthdayToday) {
       // Bangladesh is a fixed UTC+6, no DST — "today" for this feature means
@@ -328,12 +357,23 @@ export class CustomersService {
       // not appear in the CRM list or its CSV export, which shares this
       // where clause.
       ...EXCLUDE_SEEDED_REVIEWERS,
+      ...EXCLUDE_POS_ONLY,
       ...(query.tierId ? { tierId: query.tierId } : {}),
       ...(birthdayIds ? { id: { in: birthdayIds } } : {}),
       ...(query.priority ? { priority: query.priority } : {}),
       ...(query.crmStatus ? { crmStatus: query.crmStatus } : {}),
-      ...(query.assignedAdminId ? { assignedAdminId: query.assignedAdminId } : {}),
-      ...(query.district ? { addresses: { some: { district: { equals: query.district, mode: 'insensitive' } } } } : {}),
+      ...(query.assignedAdminId
+        ? { assignedAdminId: query.assignedAdminId }
+        : {}),
+      ...(query.district
+        ? {
+            addresses: {
+              some: {
+                district: { equals: query.district, mode: 'insensitive' },
+              },
+            },
+          }
+        : {}),
       ...(query.createdFrom || query.createdTo
         ? {
             createdAt: {
@@ -342,7 +382,9 @@ export class CustomersService {
               // that's the timezone the Start Date column is shown in.
               // Either bound may carry a time ("2026-08-11T14:30", from the
               // admin's datetime-local inputs), also read as Dhaka time.
-              ...(query.createdFrom ? { gte: dhakaInstant(query.createdFrom) } : {}),
+              ...(query.createdFrom
+                ? { gte: dhakaInstant(query.createdFrom) }
+                : {}),
               // Exclusive upper bound one step past createdTo so the selected
               // end is included: the whole day for a bare date, the whole
               // minute for a date + time.
@@ -350,7 +392,9 @@ export class CustomersService {
                 ? {
                     lt: new Date(
                       dhakaInstant(query.createdTo).getTime() +
-                        (query.createdTo.includes('T') ? 60 * 1000 : 24 * 60 * 60 * 1000),
+                        (query.createdTo.includes('T')
+                          ? 60 * 1000
+                          : 24 * 60 * 60 * 1000),
                     ),
                   }
                 : {}),
@@ -364,8 +408,12 @@ export class CustomersService {
               .split(/\s+/)
               .map((word) => ({
                 OR: [
-                  { firstName: { contains: word, mode: 'insensitive' as const } },
-                  { lastName: { contains: word, mode: 'insensitive' as const } },
+                  {
+                    firstName: { contains: word, mode: 'insensitive' as const },
+                  },
+                  {
+                    lastName: { contains: word, mode: 'insensitive' as const },
+                  },
                   // Searches every stored phone format, not just whichever
                   // one the admin happened to type — phoneLookupCandidates
                   // falls back to [word] unchanged for a non-phone-shaped
@@ -374,10 +422,19 @@ export class CustomersService {
                   // customer's live phone/email are null (freed up for
                   // reuse, see adminBulkAction), so the Deleted Customers
                   // tab's own search would otherwise never match anything.
-                  ...phoneLookupCandidates(word).map((c) => ({ phone: { contains: c } })),
-                  ...phoneLookupCandidates(word).map((c) => ({ deletedPhone: { contains: c } })),
+                  ...phoneLookupCandidates(word).map((c) => ({
+                    phone: { contains: c },
+                  })),
+                  ...phoneLookupCandidates(word).map((c) => ({
+                    deletedPhone: { contains: c },
+                  })),
                   { email: { contains: word, mode: 'insensitive' as const } },
-                  { deletedEmail: { contains: word, mode: 'insensitive' as const } },
+                  {
+                    deletedEmail: {
+                      contains: word,
+                      mode: 'insensitive' as const,
+                    },
+                  },
                 ],
               })),
           }
@@ -385,7 +442,10 @@ export class CustomersService {
     };
   }
 
-  async adminList(query: AdminCustomerQueryDto, deletedOnly = false): Promise<PaginatedResult<AdminCustomerListItemDto>> {
+  async adminList(
+    query: AdminCustomerQueryDto,
+    deletedOnly = false,
+  ): Promise<PaginatedResult<AdminCustomerListItemDto>> {
     const where = await this.buildAdminWhere(query, deletedOnly);
     const [items, total] = await Promise.all([
       this.prisma.client.customer.findMany({
@@ -398,7 +458,9 @@ export class CustomersService {
     ]);
     const extras = await this.loadListExtras(items.map((c) => c.id));
     return toPaginatedResult(
-      items.map((c) => toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS)),
+      items.map((c) =>
+        toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS),
+      ),
       total,
       query.page,
       query.pageSize,
@@ -407,11 +469,16 @@ export class CustomersService {
 
   // "Deleted Customers" tab — soft-deleted customers only, same filters/
   // shape as the main list.
-  adminListDeleted(query: AdminCustomerQueryDto): Promise<PaginatedResult<AdminCustomerListItemDto>> {
+  adminListDeleted(
+    query: AdminCustomerQueryDto,
+  ): Promise<PaginatedResult<AdminCustomerListItemDto>> {
     return this.adminList(query, true);
   }
 
-  async adminBulkAction(dto: BulkCustomerActionDto): Promise<{ succeeded: number[]; failed: { customerId: number; error: string }[] }> {
+  async adminBulkAction(dto: BulkCustomerActionDto): Promise<{
+    succeeded: number[];
+    failed: { customerId: number; error: string }[];
+  }> {
     const succeeded: number[] = [];
     const failed: { customerId: number; error: string }[] = [];
     for (const customerId of dto.customerIds) {
@@ -435,7 +502,9 @@ export class CustomersService {
         // legitimately conflict if someone else registered that exact
         // phone/email in the meantime — that surfaces as a real P2002 below
         // instead of silently overwriting the other customer's row.
-        const customer = await this.prisma.client.customer.findUniqueOrThrow({ where: { id: customerId } });
+        const customer = await this.prisma.client.customer.findUniqueOrThrow({
+          where: { id: customerId },
+        });
 
         if (dto.action === 'purge') {
           // Only ever reachable from the Deleted Customers tab. Requiring
@@ -443,7 +512,10 @@ export class CustomersService {
           // destroyed by a mistyped id — a purge has no undo, unlike every
           // other action here.
           if (customer.deletedAt === null) {
-            failed.push({ customerId, error: 'Only a deleted customer can be permanently removed' });
+            failed.push({
+              customerId,
+              error: 'Only a deleted customer can be permanently removed',
+            });
             continue;
           }
           // Order.customerId is onDelete: SetNull (as are DiscountRedemption
@@ -452,7 +524,9 @@ export class CustomersService {
           // rows are financial records, not personal data. What does cascade
           // away is everything customer-owned: notes, call logs, addresses,
           // social accounts, cart, wishlist, discount assignments, reviews.
-          await this.prisma.client.customer.delete({ where: { id: customerId } });
+          await this.prisma.client.customer.delete({
+            where: { id: customerId },
+          });
           succeeded.push(customerId);
           continue;
         }
@@ -461,13 +535,26 @@ export class CustomersService {
           where: { id: customerId },
           data:
             dto.action === 'delete'
-              ? { deletedAt: new Date(), deletedPhone: customer.phone, deletedEmail: customer.email, phone: null, email: null }
-              : { deletedAt: null, phone: customer.deletedPhone, email: customer.deletedEmail, deletedPhone: null, deletedEmail: null },
+              ? {
+                  deletedAt: new Date(),
+                  deletedPhone: customer.phone,
+                  deletedEmail: customer.email,
+                  phone: null,
+                  email: null,
+                }
+              : {
+                  deletedAt: null,
+                  phone: customer.deletedPhone,
+                  email: customer.deletedEmail,
+                  deletedPhone: null,
+                  deletedEmail: null,
+                },
         });
         succeeded.push(customerId);
       } catch (err) {
         const message =
-          err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
             ? `${dto.action === 'restore' ? 'Restore' : 'Delete'} failed: that phone number or email is now in use by another customer`
             : 'Customer not found';
         failed.push({ customerId, error: message });
@@ -479,7 +566,9 @@ export class CustomersService {
   // Default address, last order date, lifetime spend, and top-purchased
   // product for the given customer IDs — computed via a few grouped queries
   // over just this page's rows, not per-row (N+1) queries.
-  private async loadListExtras(customerIds: number[]): Promise<Map<number, AdminCustomerListExtras>> {
+  private async loadListExtras(
+    customerIds: number[],
+  ): Promise<Map<number, AdminCustomerListExtras>> {
     const extras = new Map<number, AdminCustomerListExtras>();
     if (customerIds.length === 0) return extras;
 
@@ -518,7 +607,8 @@ export class CustomersService {
 
     const addressByCustomer = new Map<number, (typeof addresses)[number]>();
     for (const a of addresses) {
-      if (!addressByCustomer.has(a.customerId)) addressByCustomer.set(a.customerId, a);
+      if (!addressByCustomer.has(a.customerId))
+        addressByCustomer.set(a.customerId, a);
     }
 
     const latestOrderByCustomer = new Map<number, (typeof orders)[number]>();
@@ -527,20 +617,29 @@ export class CustomersService {
     for (const o of orders) {
       if (o.customerId === null) continue;
       const latest = latestOrderByCustomer.get(o.customerId);
-      if (!latest || o.createdAt > latest.createdAt) latestOrderByCustomer.set(o.customerId, o);
+      if (!latest || o.createdAt > latest.createdAt)
+        latestOrderByCustomer.set(o.customerId, o);
       let perProduct = quantityByCustomerProduct.get(o.customerId);
       if (!perProduct) {
         perProduct = new Map();
         quantityByCustomerProduct.set(o.customerId, perProduct);
       }
       for (const item of o.items) {
-        perProduct.set(item.productNameSnapshot, (perProduct.get(item.productNameSnapshot) ?? 0) + item.quantity);
+        perProduct.set(
+          item.productNameSnapshot,
+          (perProduct.get(item.productNameSnapshot) ?? 0) + item.quantity,
+        );
         const sku = item.skuSnapshot || item.variant?.sku || item.product?.sku;
-        if (sku && !skuByName.has(item.productNameSnapshot)) skuByName.set(item.productNameSnapshot, sku);
+        if (sku && !skuByName.has(item.productNameSnapshot))
+          skuByName.set(item.productNameSnapshot, sku);
       }
     }
 
-    const aggByCustomer = new Map(orderAggregates.filter((a) => a.customerId !== null).map((a) => [a.customerId as number, a]));
+    const aggByCustomer = new Map(
+      orderAggregates
+        .filter((a) => a.customerId !== null)
+        .map((a) => [a.customerId as number, a]),
+    );
 
     for (const id of customerIds) {
       const address = addressByCustomer.get(id);
@@ -605,25 +704,72 @@ export class CustomersService {
     ] = await Promise.all([
       // ...EXCLUDE_SEEDED_REVIEWERS on every count: seeded review authors would
       // otherwise inflate the total and the month-on-month trend percentages.
-      this.prisma.client.customer.count({ where: { deletedAt: null, ...EXCLUDE_SEEDED_REVIEWERS } }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { lt: startOfThisMonth }, ...EXCLUDE_SEEDED_REVIEWERS } }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, createdAt: { gte: startOfThisMonth }, ...EXCLUDE_SEEDED_REVIEWERS } }),
       this.prisma.client.customer.count({
-        where: { deletedAt: null, createdAt: { gte: startOfLastMonth, lt: startOfThisMonth }, ...EXCLUDE_SEEDED_REVIEWERS },
+        where: {
+          deletedAt: null,
+          ...EXCLUDE_SEEDED_REVIEWERS,
+          ...EXCLUDE_POS_ONLY,
+        },
       }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, status: 'ACTIVE', ...EXCLUDE_SEEDED_REVIEWERS } }),
-      this.prisma.client.customer.count({ where: { deletedAt: null, completedOrderCount: { gte: 2 }, ...EXCLUDE_SEEDED_REVIEWERS } }),
+      this.prisma.client.customer.count({
+        where: {
+          deletedAt: null,
+          createdAt: { lt: startOfThisMonth },
+          ...EXCLUDE_SEEDED_REVIEWERS,
+          ...EXCLUDE_POS_ONLY,
+        },
+      }),
+      this.prisma.client.customer.count({
+        where: {
+          deletedAt: null,
+          createdAt: { gte: startOfThisMonth },
+          ...EXCLUDE_SEEDED_REVIEWERS,
+          ...EXCLUDE_POS_ONLY,
+        },
+      }),
+      this.prisma.client.customer.count({
+        where: {
+          deletedAt: null,
+          createdAt: { gte: startOfLastMonth, lt: startOfThisMonth },
+          ...EXCLUDE_SEEDED_REVIEWERS,
+          ...EXCLUDE_POS_ONLY,
+        },
+      }),
+      this.prisma.client.customer.count({
+        where: {
+          deletedAt: null,
+          status: 'ACTIVE',
+          ...EXCLUDE_SEEDED_REVIEWERS,
+          ...EXCLUDE_POS_ONLY,
+        },
+      }),
+      this.prisma.client.customer.count({
+        where: {
+          deletedAt: null,
+          completedOrderCount: { gte: 2 },
+          ...EXCLUDE_SEEDED_REVIEWERS,
+          ...EXCLUDE_POS_ONLY,
+        },
+      }),
       this.prisma.client.order.aggregate({ _avg: { totalAmount: true } }),
     ]);
 
     return {
       totalCustomers,
-      totalCustomersTrendPct: totalAsOfLastMonth > 0 ? ((totalCustomers - totalAsOfLastMonth) / totalAsOfLastMonth) * 100 : null,
+      totalCustomersTrendPct:
+        totalAsOfLastMonth > 0
+          ? ((totalCustomers - totalAsOfLastMonth) / totalAsOfLastMonth) * 100
+          : null,
       newCustomersThisMonth: newThisMonth,
-      newCustomersTrendPct: newLastMonth > 0 ? ((newThisMonth - newLastMonth) / newLastMonth) * 100 : null,
+      newCustomersTrendPct:
+        newLastMonth > 0
+          ? ((newThisMonth - newLastMonth) / newLastMonth) * 100
+          : null,
       activeCustomers,
       repeatCustomers,
-      averageOrderValue: aovAgg._avg.totalAmount ? Number(aovAgg._avg.totalAmount) : 0,
+      averageOrderValue: aovAgg._avg.totalAmount
+        ? Number(aovAgg._avg.totalAmount)
+        : 0,
     };
   }
 
@@ -643,14 +789,18 @@ export class CustomersService {
       take: 10_000,
     });
     const extras = await this.loadListExtras(items.map((c) => c.id));
-    const rows = items.map((c) => toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS));
+    const rows = items.map((c) =>
+      toAdminCustomerListItemDto(c, extras.get(c.id) ?? EMPTY_EXTRAS),
+    );
     // Most recent logged call per customer — the export's "Call Date".
     const lastCalls = await this.prisma.client.customerCallLog.groupBy({
       by: ['customerId'],
       where: { customerId: { in: items.map((c) => c.id) } },
       _max: { createdAt: true },
     });
-    const lastCallAt = new Map(lastCalls.map((r) => [r.customerId, r._max.createdAt]));
+    const lastCallAt = new Map(
+      lastCalls.map((r) => [r.customerId, r._max.createdAt]),
+    );
 
     // One list, so the header and the cells can never drift apart.
     const columns: [string, (r: AdminCustomerListItemDto) => unknown][] = [
@@ -688,7 +838,10 @@ export class CustomersService {
       orderBy: { firstName: 'asc' },
       select: { id: true, firstName: true, lastName: true },
     });
-    return staff.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}`.trim() }));
+    return staff.map((s) => ({
+      id: s.id,
+      name: `${s.firstName} ${s.lastName}`.trim(),
+    }));
   }
 
   async adminGet(id: number): Promise<AdminCustomerDto> {
@@ -700,12 +853,17 @@ export class CustomersService {
     return toAdminCustomerDto(customer);
   }
 
-  async createCustomer(dto: CreateCustomerDto, createdByAdminId?: number): Promise<AdminCustomerDto> {
+  async createCustomer(
+    dto: CreateCustomerDto,
+    createdByAdminId?: number,
+  ): Promise<AdminCustomerDto> {
     const existing = await this.prisma.client.customer.findFirst({
       where: { phone: { in: phoneLookupCandidates(dto.phone) } },
     });
     if (existing) {
-      throw new ConflictException(`A customer with phone "${dto.phone}" already exists`);
+      throw new ConflictException(
+        `A customer with phone "${dto.phone}" already exists`,
+      );
     }
     const customer = await this.prisma.client.customer.create({
       data: {
@@ -722,14 +880,20 @@ export class CustomersService {
     });
 
     if (dto.addressLine) {
-      const recipientName = dto.recipientName || `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() || 'Customer';
+      const recipientName =
+        dto.recipientName ||
+        `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() ||
+        'Customer';
       // division isn't collected from staff anymore (see CreateCustomerModal
       // — every BD district belongs to exactly one), so derive it from
       // district the same way toOrderAddressCreate does for orders.
       // `||`, not `??` — same class of bug as toOrderAddressCreate's own
       // fix: an empty-string division must fall through to derivation too,
       // not just null/undefined.
-      const division = dto.division || (dto.district ? divisionForDistrict(dto.district) : null) || '';
+      const division =
+        dto.division ||
+        (dto.district ? divisionForDistrict(dto.district) : null) ||
+        '';
       await this.prisma.client.customerAddress.create({
         data: {
           customerId: customer.id,
@@ -757,23 +921,36 @@ export class CustomersService {
     return this.adminGet(customer.id);
   }
 
-  async adminUpdate(id: number, dto: UpdateCustomerDto): Promise<AdminCustomerDto> {
-    const existing = await this.prisma.client.customer.findUnique({ where: { id } });
+  async adminUpdate(
+    id: number,
+    dto: UpdateCustomerDto,
+  ): Promise<AdminCustomerDto> {
+    const existing = await this.prisma.client.customer.findUnique({
+      where: { id },
+    });
     if (!existing) throw new NotFoundException('Customer not found');
 
     // Same conflict-check pattern as createCustomer() — a raw Prisma update
     // would otherwise throw an uncaught unique-constraint error (P2002)
     // instead of a friendly message.
     if (dto.phone !== undefined && dto.phone !== existing.phone) {
-      const conflict = await this.prisma.client.customer.findFirst({ where: { phone: { in: phoneLookupCandidates(dto.phone) } } });
+      const conflict = await this.prisma.client.customer.findFirst({
+        where: { phone: { in: phoneLookupCandidates(dto.phone) } },
+      });
       if (conflict && conflict.id !== id) {
-        throw new ConflictException(`A customer with phone "${dto.phone}" already exists`);
+        throw new ConflictException(
+          `A customer with phone "${dto.phone}" already exists`,
+        );
       }
     }
     if (dto.email !== undefined && dto.email !== existing.email) {
-      const conflict = await this.prisma.client.customer.findUnique({ where: { email: dto.email } });
+      const conflict = await this.prisma.client.customer.findUnique({
+        where: { email: dto.email },
+      });
       if (conflict && conflict.id !== id) {
-        throw new ConflictException(`A customer with email "${dto.email}" already exists`);
+        throw new ConflictException(
+          `A customer with email "${dto.email}" already exists`,
+        );
       }
     }
 
@@ -784,13 +961,28 @@ export class CustomersService {
         lastName: dto.lastName,
         phone: dto.phone,
         email: dto.email,
-        dob: dto.dob === undefined ? undefined : dto.dob ? new Date(dto.dob) : null,
+        dob:
+          dto.dob === undefined
+            ? undefined
+            : dto.dob
+              ? new Date(dto.dob)
+              : null,
         isFavorite: dto.isFavorite,
         assignedAdminId: dto.assignedAdminId,
-        nextCallTarget: dto.nextCallTarget === undefined ? undefined : dto.nextCallTarget ? new Date(dto.nextCallTarget) : null,
+        nextCallTarget:
+          dto.nextCallTarget === undefined
+            ? undefined
+            : dto.nextCallTarget
+              ? new Date(dto.nextCallTarget)
+              : null,
         followUpCadenceDays: dto.followUpCadenceDays,
         hasNewOrder: dto.hasNewOrder,
-        newOrderAt: dto.newOrderAt === undefined ? undefined : dto.newOrderAt ? new Date(dto.newOrderAt) : null,
+        newOrderAt:
+          dto.newOrderAt === undefined
+            ? undefined
+            : dto.newOrderAt
+              ? new Date(dto.newOrderAt)
+              : null,
         priority: dto.priority,
         crmStatus: dto.crmStatus,
         behaviour: dto.behaviour,
@@ -833,15 +1025,23 @@ export class CustomersService {
           // `dto` wholesale would blank the other three every time one of
           // them was edited.
           data: {
-            ...(dto.addressLine !== undefined ? { addressLine: dto.addressLine } : {}),
+            ...(dto.addressLine !== undefined
+              ? { addressLine: dto.addressLine }
+              : {}),
             ...(dto.division !== undefined ? { division: dto.division } : {}),
             ...(dto.district !== undefined ? { district: dto.district } : {}),
             ...(dto.area !== undefined ? { area: dto.area || null } : {}),
             ...(dto.recipientName ? { recipientName: dto.recipientName } : {}),
             ...(dto.addressPhone ? { phone: dto.addressPhone } : {}),
-            ...(dto.alternativePhone !== undefined ? { alternativePhone: dto.alternativePhone || null } : {}),
-            ...(dto.landmark !== undefined ? { landmark: dto.landmark || null } : {}),
-            ...(dto.postCode !== undefined ? { postCode: dto.postCode || null } : {}),
+            ...(dto.alternativePhone !== undefined
+              ? { alternativePhone: dto.alternativePhone || null }
+              : {}),
+            ...(dto.landmark !== undefined
+              ? { landmark: dto.landmark || null }
+              : {}),
+            ...(dto.postCode !== undefined
+              ? { postCode: dto.postCode || null }
+              : {}),
           },
         });
       } else {
@@ -874,11 +1074,21 @@ export class CustomersService {
     return this.adminGet(id);
   }
 
-  async addNote(customerId: number, dto: CreateCustomerNoteDto, authorAdminId: number): Promise<AdminCustomerNoteDto> {
+  async addNote(
+    customerId: number,
+    dto: CreateCustomerNoteDto,
+    authorAdminId: number,
+  ): Promise<AdminCustomerNoteDto> {
     const note = await this.prisma.client.customerNote.create({
       data: { customerId, type: dto.type, body: dto.body, authorAdminId },
     });
-    return { id: note.id, type: note.type, body: note.body, authorAdminId: note.authorAdminId, createdAt: note.createdAt };
+    return {
+      id: note.id,
+      type: note.type,
+      body: note.body,
+      authorAdminId: note.authorAdminId,
+      createdAt: note.createdAt,
+    };
   }
 
   async listNotes(customerId: number): Promise<AdminCustomerNoteDto[]> {
@@ -886,11 +1096,23 @@ export class CustomersService {
       where: { customerId },
       orderBy: { createdAt: 'desc' },
     });
-    return notes.map((n) => ({ id: n.id, type: n.type, body: n.body, authorAdminId: n.authorAdminId, createdAt: n.createdAt }));
+    return notes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      body: n.body,
+      authorAdminId: n.authorAdminId,
+      createdAt: n.createdAt,
+    }));
   }
 
-  async logCall(customerId: number, dto: CreateCustomerCallLogDto, authorAdminId: number): Promise<AdminCustomerCallLogDto> {
-    const customer = await this.prisma.client.customer.findUniqueOrThrow({ where: { id: customerId } });
+  async logCall(
+    customerId: number,
+    dto: CreateCustomerCallLogDto,
+    authorAdminId: number,
+  ): Promise<AdminCustomerCallLogDto> {
+    const customer = await this.prisma.client.customer.findUniqueOrThrow({
+      where: { id: customerId },
+    });
     const call = await this.prisma.client.customerCallLog.create({
       data: {
         customerId,
@@ -926,9 +1148,14 @@ export class CustomersService {
   }
 
   async dial(customerId: number): Promise<{ providerCallId: string }> {
-    const customer = await this.prisma.client.customer.findUniqueOrThrow({ where: { id: customerId } });
+    const customer = await this.prisma.client.customer.findUniqueOrThrow({
+      where: { id: customerId },
+    });
     const e164 = customer.phone ? toE164Bd(customer.phone) : null;
-    if (!e164) throw new BadRequestException('Customer has no valid phone number to call');
+    if (!e164)
+      throw new BadRequestException(
+        'Customer has no valid phone number to call',
+      );
     return this.callProvider.dial(e164, customerId);
   }
 
@@ -947,14 +1174,20 @@ export class CustomersService {
    * new-customer campaign, and thousands of long-standing customers must not
    * get a "welcome" message because a spreadsheet was uploaded.
    */
-  async importCustomers(buffer: Buffer, adminId: number, dryRun: boolean): Promise<CustomerImportResultDto> {
+  async importCustomers(
+    buffer: Buffer,
+    adminId: number,
+    dryRun: boolean,
+  ): Promise<CustomerImportResultDto> {
     const rows = parseImportRows(await readSheet(buffer));
     const { unique, skippedRows } = dedupeByPhone(rows);
     const warnings = new ImportWarnings();
 
     // ponytail: whole file held in memory; fine for tens of thousands of rows, stream + batch if files ever grow past that.
     const existingByPhone = new Map<string, ExistingImportCustomer>();
-    const candidates = [...new Set(unique.flatMap((r) => phoneLookupCandidates(r.phone!)))];
+    const candidates = [
+      ...new Set(unique.flatMap((r) => phoneLookupCandidates(r.phone!))),
+    ];
     for (let i = 0; i < candidates.length; i += 5000) {
       const found = await this.prisma.client.customer.findMany({
         where: { phone: { in: candidates.slice(i, i + 5000) } },
@@ -968,10 +1201,15 @@ export class CustomersService {
 
     const staffIdFor = staffLookup(await this.listAssignableStaff());
 
-    const emails = [...new Set(unique.map((r) => r.email).filter((e): e is string => !!e))];
+    const emails = [
+      ...new Set(unique.map((r) => r.email).filter((e): e is string => !!e)),
+    ];
     const emailOwner = new Map<string, number>();
     if (emails.length) {
-      const owners = await this.prisma.client.customer.findMany({ where: { email: { in: emails } }, select: { id: true, email: true } });
+      const owners = await this.prisma.client.customer.findMany({
+        where: { email: { in: emails } },
+        select: { id: true, email: true },
+      });
       for (const o of owners) emailOwner.set(o.email!, o.id);
     }
 
@@ -980,7 +1218,10 @@ export class CustomersService {
     let nameDifferences = 0;
     let unchanged = 0;
     const toCreate: { row: ImportRow; staffId: number | undefined }[] = [];
-    const toUpdate: { id: number; data: Prisma.CustomerUncheckedUpdateInput }[] = [];
+    const toUpdate: {
+      id: number;
+      data: Prisma.CustomerUncheckedUpdateInput;
+    }[] = [];
 
     for (const r of unique) {
       const existing = existingByPhone.get(r.phone!);
@@ -991,7 +1232,10 @@ export class CustomersService {
       // row) would hit the unique index, so the row goes in without it.
       if (r.email) {
         const owner = emailOwner.get(r.email);
-        if ((owner !== undefined && owner !== existing?.id) || claimedEmails.has(r.email)) {
+        if (
+          (owner !== undefined && owner !== existing?.id) ||
+          claimedEmails.has(r.email)
+        ) {
           r.email = undefined;
           emailConflicts++;
         } else {
@@ -1000,11 +1244,20 @@ export class CustomersService {
       }
 
       if (existing) {
-        const sheetName = [r.firstName, r.lastName].filter(Boolean).join(' ').toLowerCase();
-        const dbName = [existing.firstName, existing.lastName].filter(Boolean).join(' ').toLowerCase();
+        const sheetName = [r.firstName, r.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        const dbName = [existing.firstName, existing.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
         if (sheetName && dbName && sheetName !== dbName) nameDifferences++;
         // Name as a pair: never half-replace a name that's already there.
-        const name = !existing.firstName && !existing.lastName && r.firstName ? { firstName: r.firstName, lastName: r.lastName } : {};
+        const name =
+          !existing.firstName && !existing.lastName && r.firstName
+            ? { firstName: r.firstName, lastName: r.lastName }
+            : {};
         const data = { ...name, ...fillEmptyCrm(existing, r, staffId) };
         if (Object.keys(data).length) toUpdate.push({ id: existing.id, data });
         else unchanged++;
@@ -1050,7 +1303,16 @@ export class CustomersService {
           const rowByPhone = new Map(chunk.map(({ row }) => [row.phone!, row]));
           const notes = inserted.flatMap((c) => {
             const body = importNote(rowByPhone.get(c.phone!)!);
-            return body ? [{ customerId: c.id, type: 'INTERNAL_NOTE' as const, body, authorAdminId: adminId }] : [];
+            return body
+              ? [
+                  {
+                    customerId: c.id,
+                    type: 'INTERNAL_NOTE' as const,
+                    body,
+                    authorAdminId: adminId,
+                  },
+                ]
+              : [];
           });
           if (notes.length) await tx.customerNote.createMany({ data: notes });
           return inserted.length;
@@ -1058,14 +1320,24 @@ export class CustomersService {
       }
       for (let i = 0; i < toUpdate.length; i += 200) {
         await this.prisma.client.$transaction(
-          toUpdate.slice(i, i + 200).map((u) => this.prisma.client.customer.update({ where: { id: u.id }, data: u.data })),
+          toUpdate.slice(i, i + 200).map((u) =>
+            this.prisma.client.customer.update({
+              where: { id: u.id },
+              data: u.data,
+            }),
+          ),
         );
       }
     }
 
-    if (emailConflicts) warnings.add(`${emailConflicts} rows: email already belongs to another customer, imported without email.`);
+    if (emailConflicts)
+      warnings.add(
+        `${emailConflicts} rows: email already belongs to another customer, imported without email.`,
+      );
     if (nameDifferences) {
-      warnings.add(`${nameDifferences} existing customers have a different name in the file: the name already in the system was kept.`);
+      warnings.add(
+        `${nameDifferences} existing customers have a different name in the file: the name already in the system was kept.`,
+      );
     }
 
     return {
@@ -1082,10 +1354,27 @@ export class CustomersService {
 }
 
 const EXISTING_IMPORT_SELECT = {
-  id: true, phone: true, firstName: true, lastName: true, email: true, dob: true, assignedAdminId: true,
-  nextCallTarget: true, hasNewOrder: true, newOrderAt: true, priority: true, crmStatus: true, behaviour: true,
-  customerFeedback: true, amaderFeedback: true, familyDetails: true, purchaseReason: true,
-  facebookProfileUrl: true, isFavorite: true,
+  id: true,
+  phone: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  dob: true,
+  assignedAdminId: true,
+  nextCallTarget: true,
+  hasNewOrder: true,
+  newOrderAt: true,
+  priority: true,
+  crmStatus: true,
+  behaviour: true,
+  customerFeedback: true,
+  amaderFeedback: true,
+  familyDetails: true,
+  purchaseReason: true,
+  facebookProfileUrl: true,
+  isFavorite: true,
 } satisfies Prisma.CustomerSelect;
 
-type ExistingImportCustomer = Prisma.CustomerGetPayload<{ select: typeof EXISTING_IMPORT_SELECT }>;
+type ExistingImportCustomer = Prisma.CustomerGetPayload<{
+  select: typeof EXISTING_IMPORT_SELECT;
+}>;

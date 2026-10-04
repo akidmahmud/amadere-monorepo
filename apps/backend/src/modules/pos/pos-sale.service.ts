@@ -221,7 +221,9 @@ export class PosSaleService {
     );
 
     // VAT coupon: VAT stays on the receipt (and owed), then comes off the total.
-    const vatDiscount = vat.vatDiscount ? D.min(totals.vat, totals.total) : ZERO;
+    const vatDiscount = vat.vatDiscount
+      ? D.min(totals.vat, totals.total)
+      : ZERO;
     return {
       byId,
       priced,
@@ -341,10 +343,10 @@ export class PosSaleService {
                 productId: p.id,
                 variantId: i.variantId ?? null,
                 // This store's own name for it, if it has one.
-              productNameSnapshot:
-                storeNames.get(`${p.id}:${i.variantId ?? 0}`) ??
-                p.translations[0]?.name ??
-                p.slug,
+                productNameSnapshot:
+                  storeNames.get(`${p.id}:${i.variantId ?? 0}`) ??
+                  p.translations[0]?.name ??
+                  p.slug,
                 skuSnapshot: v?.sku ?? p.sku,
                 productTypeSnapshot: p.productType,
                 unitPrice: priced[idx].unitPrice,
@@ -468,7 +470,9 @@ export class PosSaleService {
       ? await this.prisma.client.storePrice.findMany({
           where: {
             storeId: o.storeId,
-            productId: { in: o.items.flatMap((i) => (i.productId ? [i.productId] : [])) },
+            productId: {
+              in: o.items.flatMap((i) => (i.productId ? [i.productId] : [])),
+            },
             weightKg: { not: null },
           },
           select: {
@@ -550,9 +554,7 @@ export class PosSaleService {
     const all = o.items.every(
       (i) =>
         left(i) ===
-        picked
-          .filter((l) => l.itemId === i.id)
-          .reduce((n, l) => n + l.qty, 0),
+        picked.filter((l) => l.itemId === i.id).reduce((n, l) => n + l.qty, 0),
     );
     // The line's share of the total paid (discounts and VAT included); the
     // last return takes whatever is left, so rounding never strands paisa.
@@ -654,7 +656,10 @@ export class PosSaleService {
     const key = (p: number | null, v: number | null | undefined) =>
       `${p}:${v ?? 0}`;
     // One line per product/size; quantities of repeats add up.
-    const want = new Map<string, { productId: number; variantId: number | null; quantity: number }>();
+    const want = new Map<
+      string,
+      { productId: number; variantId: number | null; quantity: number }
+    >();
     for (const i of items) {
       if (!Number.isInteger(i.quantity) || i.quantity < 0)
         throw new BadRequestException('Quantities must be whole numbers');
@@ -1028,7 +1033,10 @@ export class PosSaleService {
       await tx.payment.updateMany({
         where: { orderId: id },
         data: partly
-          ? { status: 'PARTIALLY_REFUNDED', refundedAmount: o.posRefundedAmount }
+          ? {
+              status: 'PARTIALLY_REFUNDED',
+              refundedAmount: o.posRefundedAmount,
+            }
           : { status: 'CAPTURED', refundedAmount: null },
       });
       await reclaimOrderCoupons(tx, id);
@@ -1039,9 +1047,10 @@ export class PosSaleService {
       amount: o.totalAmount.minus(o.posRefundedAmount),
       capturedAt: now,
       reference: pay?.transactionRef ?? undefined,
-      accountId: o.storeId && pay
-        ? await this.stores.tenderAccountId(o.storeId, pay.provider)
-        : undefined,
+      accountId:
+        o.storeId && pay
+          ? await this.stores.tenderAccountId(o.storeId, pay.provider)
+          : undefined,
     });
     return this.get(storeId, id);
   }
@@ -1079,7 +1088,9 @@ export class PosSaleService {
     const old = await this.prisma.client.order.findMany({
       where: {
         channel: 'POS',
-        deletedAt: { lt: new Date(now.getTime() - POS_TRASH_DAYS * 86_400_000) },
+        deletedAt: {
+          lt: new Date(now.getTime() - POS_TRASH_DAYS * 86_400_000),
+        },
         status: { not: 'COMPLETED' },
       },
       select: { id: true },
@@ -1123,7 +1134,12 @@ export class PosSaleService {
     });
     if (existing) return toPosCustomer(existing);
     const created = await this.prisma.client.customer.create({
-      data: { phone, ...(name?.trim() ? { firstName: name.trim() } : {}) },
+      // A walk-in made at the till: not shown in the website Customer Manager.
+      data: {
+        phone,
+        posOnly: true,
+        ...(name?.trim() ? { firstName: name.trim() } : {}),
+      },
     });
     return toPosCustomer(created);
   }

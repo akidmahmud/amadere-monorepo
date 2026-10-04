@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EXCLUDE_POS_ONLY } from '../customers/pos-only';
 import { EXCLUDE_SEEDED_REVIEWERS } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DashboardOverviewDto } from './dashboard.dto';
@@ -54,7 +55,9 @@ export class DashboardService {
     // ponytail: fixed 90 days. Make it a query param if anyone wants to change
     // the window from the UI.
     const TOP_CUSTOMERS_DAYS = 90;
-    const topCustomersSince = new Date(Date.now() - TOP_CUSTOMERS_DAYS * 86_400_000);
+    const topCustomersSince = new Date(
+      Date.now() - TOP_CUSTOMERS_DAYS * 86_400_000,
+    );
 
     const [
       revenueAgg,
@@ -82,13 +85,15 @@ export class DashboardService {
       // below needs no such guard -- it is derived from order spend, and
       // a seeded author has no orders.
       this.prisma.client.customer.count({
-        where: { ...LIVE, ...EXCLUDE_SEEDED_REVIEWERS },
+        where: { ...LIVE, ...EXCLUDE_SEEDED_REVIEWERS, ...EXCLUDE_POS_ONLY },
       }),
       // Every product the Products page lists (any status), trash excluded —
       // it counted trashed products too, so the card read higher than the
       // "N products" total on that page.
       this.prisma.client.product.count({ where: LIVE }),
-      this.prisma.client.order.count({ where: { status: 'COMPLETED', ...LIVE_ORDERS } }),
+      this.prisma.client.order.count({
+        where: { status: 'COMPLETED', ...LIVE_ORDERS },
+      }),
       this.prisma.client.order.aggregate({
         where: { status: 'COMPLETED', ...LIVE_ORDERS },
         _sum: { totalAmount: true },
@@ -125,7 +130,11 @@ export class DashboardService {
           status: true,
           createdAt: true,
           customer: { select: { firstName: true, lastName: true } },
-          payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { provider: true } },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { provider: true },
+          },
         },
       }),
       this.prisma.client.order.findMany({
@@ -174,15 +183,21 @@ export class DashboardService {
     const monthBuckets = new Map<string, number>();
     for (const o of revenueOrders) {
       const key = `${o.createdAt.getFullYear()}-${String(o.createdAt.getMonth() + 1).padStart(2, '0')}`;
-      monthBuckets.set(key, (monthBuckets.get(key) ?? 0) + Number(o.totalAmount));
+      monthBuckets.set(
+        key,
+        (monthBuckets.get(key) ?? 0) + Number(o.totalAmount),
+      );
     }
     const sortedMonths = [...monthBuckets.keys()].sort();
     const monthlyRevenue = sortedMonths.slice(-12).map((key, i, arr) => {
       const [year, month] = key.split('-');
-      const label = new Date(Number(year), Number(month) - 1, 1).toLocaleString('en', {
-        month: 'short',
-        year: '2-digit',
-      });
+      const label = new Date(Number(year), Number(month) - 1, 1).toLocaleString(
+        'en',
+        {
+          month: 'short',
+          year: '2-digit',
+        },
+      );
       const prevKey = sortedMonths[sortedMonths.indexOf(arr[i]) - 1];
       return {
         label,
@@ -232,7 +247,10 @@ export class DashboardService {
         })
       : [];
     const customerNameById = new Map(
-      customers.map((c) => [c.id, [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Customer']),
+      customers.map((c) => [
+        c.id,
+        [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Customer',
+      ]),
     );
     const topCustomers = customerSpendRaw.map((c) => ({
       id: c.customerId!,
@@ -250,7 +268,10 @@ export class DashboardService {
       totalCustomers,
       totalProducts,
       completedOrderRate: totalOrders > 0 ? completedOrders / totalOrders : 0,
-      avgOrderValue: totalOrders > 0 ? (Number(totalRevenue) / totalOrders).toFixed(2) : '0.00',
+      avgOrderValue:
+        totalOrders > 0
+          ? (Number(totalRevenue) / totalOrders).toFixed(2)
+          : '0.00',
       today: {
         orders: todayAgg._count._all,
         revenue: (todayAgg._sum.totalAmount ?? 0).toString(),
@@ -263,18 +284,29 @@ export class DashboardService {
         orders: pendingAgg._count._all,
         revenue: (pendingAgg._sum.totalAmount ?? 0).toString(),
       },
-      statusBreakdown: statusGroups.map((g) => ({ status: g.status, count: g._count._all })),
-      ordersByChannel: channelGroups.map((g) => ({ channel: g.channel, count: g._count._all })),
+      statusBreakdown: statusGroups.map((g) => ({
+        status: g.status,
+        count: g._count._all,
+      })),
+      ordersByChannel: channelGroups.map((g) => ({
+        channel: g.channel,
+        count: g._count._all,
+      })),
       recentOrders: recentOrdersRaw.map((o) => ({
         id: o.id,
         orderNumber: o.orderNumber,
         customerName: o.customer
-          ? [o.customer.firstName, o.customer.lastName].filter(Boolean).join(' ') || 'Customer'
+          ? [o.customer.firstName, o.customer.lastName]
+              .filter(Boolean)
+              .join(' ') || 'Customer'
           : 'Guest',
         total: o.totalAmount.toString(),
         status: o.status,
         createdAt: o.createdAt.toISOString(),
-        paymentMethod: o.payments[0]?.provider && o.payments[0].provider !== 'COD' ? 'PAID' : 'COD',
+        paymentMethod:
+          o.payments[0]?.provider && o.payments[0].provider !== 'COD'
+            ? 'PAID'
+            : 'COD',
       })),
       topCustomers,
       topCustomersWindowDays: TOP_CUSTOMERS_DAYS,
@@ -288,13 +320,29 @@ export class DashboardService {
   private async staffOverview(adminId: number): Promise<DashboardOverviewDto> {
     const startOfToday = startOfDhakaToday();
 
-    const [ordersTotal, ordersToday, statusGroups, customersTotal, recentOrdersRaw] = await Promise.all([
+    const [
+      ordersTotal,
+      ordersToday,
+      statusGroups,
+      customersTotal,
+      recentOrdersRaw,
+    ] = await Promise.all([
       this.prisma.client.order.count({ where: { assignedAdminId: adminId } }),
       this.prisma.client.order.count({
-        where: { assignedAdminId: adminId, createdAt: { gte: startOfToday }, ...LIVE_ORDERS },
+        where: {
+          assignedAdminId: adminId,
+          createdAt: { gte: startOfToday },
+          ...LIVE_ORDERS,
+        },
       }),
-      this.prisma.client.order.groupBy({ by: ['status'], where: { assignedAdminId: adminId }, _count: { _all: true } }),
-      this.prisma.client.customer.count({ where: { assignedAdminId: adminId } }),
+      this.prisma.client.order.groupBy({
+        by: ['status'],
+        where: { assignedAdminId: adminId },
+        _count: { _all: true },
+      }),
+      this.prisma.client.customer.count({
+        where: { assignedAdminId: adminId },
+      }),
       this.prisma.client.order.findMany({
         where: { assignedAdminId: adminId },
         orderBy: { createdAt: 'desc' },
@@ -306,7 +354,11 @@ export class DashboardService {
           status: true,
           createdAt: true,
           customer: { select: { firstName: true, lastName: true } },
-          payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { provider: true } },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { provider: true },
+          },
         },
       }),
     ]);
@@ -317,16 +369,24 @@ export class DashboardService {
         id: o.id,
         orderNumber: o.orderNumber,
         customerName: o.customer
-          ? [o.customer.firstName, o.customer.lastName].filter(Boolean).join(' ') || 'Customer'
+          ? [o.customer.firstName, o.customer.lastName]
+              .filter(Boolean)
+              .join(' ') || 'Customer'
           : 'Guest',
         total: o.totalAmount.toString(),
         status: o.status,
         createdAt: o.createdAt.toISOString(),
-        paymentMethod: o.payments[0]?.provider && o.payments[0].provider !== 'COD' ? 'PAID' : 'COD',
+        paymentMethod:
+          o.payments[0]?.provider && o.payments[0].provider !== 'COD'
+            ? 'PAID'
+            : 'COD',
       })),
       myAssignedOrdersTotal: ordersTotal,
       myAssignedOrdersToday: ordersToday,
-      myAssignedOrdersByStatus: statusGroups.map((g) => ({ status: g.status, count: g._count._all })),
+      myAssignedOrdersByStatus: statusGroups.map((g) => ({
+        status: g.status,
+        count: g._count._all,
+      })),
       myAssignedCustomersTotal: customersTotal,
     };
   }

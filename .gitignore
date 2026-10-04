@@ -14,3 +14,6 @@ storybook-static/
 
 # Internal docs (specs, plans, notes) — keep local, never push
 docs/
+
+# LinkedIn post drafts + screenshots — local only, never push
+linkedin/
