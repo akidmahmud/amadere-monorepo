@@ -122,7 +122,11 @@ export function WholesaleInvoiceDocument({
           <p className="text-xs font-semibold uppercase text-neutral-500">
             Delivery
           </p>
-          <p className="text-neutral-700">{courierLabel(order.courier)}</p>
+          <p className="text-neutral-700">
+            {order.courier === "OTHER" && order.courierName
+              ? order.courierName
+              : courierLabel(order.courier)}
+          </p>
           {order.consignmentId && (
             <p className="text-neutral-700">
               Consignment: {order.consignmentId}

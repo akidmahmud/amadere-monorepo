@@ -80,6 +80,13 @@ export class AdminWholesaleController {
   // Without this, staff who manage only wholesale would open the order form to
   // an empty product dropdown and a 403 they cannot explain — the picker would
   // demand product.view, a permission this role has no other reason to hold.
+  // Courier names typed under "Other" before, for the courier dropdown.
+  @Get('couriers/custom')
+  @RequirePermission('wholesale.view')
+  customCouriers(): Promise<string[]> {
+    return this.wholesale.customCouriers();
+  }
+
   @Get('products')
   @RequirePermission('wholesale.view')
   @ApiOkResponse({ type: [AdminProductPickerItemDto] })

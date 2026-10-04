@@ -4181,6 +4181,8 @@ model WholesaleOrder {
 
   /// Nullable now: a cash sale never touches a courier.
   courier       WholesaleCourier?
+  /// The courier's name when `courier` is OTHER (one not in our list).
+  courierName   String?           @map("courier_name")
   /// The ID the courier gives us for the parcel. Optional: a wholesale order
   /// is often created before it is handed to the courier, and the number only
   /// exists after that.

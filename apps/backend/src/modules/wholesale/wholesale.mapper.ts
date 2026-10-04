@@ -141,6 +141,8 @@ export class WholesaleOrderDto {
   transactionId!: string | null;
   /** Null on a channel without delivery (Cash Sale) — nothing is couriered. */
   courier!: WholesaleCourier | null;
+  /** The courier's name when courier is OTHER. */
+  courierName!: string | null;
   consignmentId!: string | null;
   delivery!: WholesaleDeliveryDto;
   subtotal!: string;
@@ -201,6 +203,7 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
     paymentStatus: row.paymentStatus,
     transactionId: row.transactionId,
     courier: row.courier,
+    courierName: row.courierName,
     consignmentId: row.consignmentId,
     delivery: {
       recipientName: row.recipientName,

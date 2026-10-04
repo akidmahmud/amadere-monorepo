@@ -7,7 +7,12 @@ import {
 } from '../../product-cost-history/dhaka-date';
 import { ProductCostHistoryService } from '../../product-cost-history/product-cost-history.service';
 import { ReportSettingsService } from './report-settings.service';
-import { LOADER_INCLUDE, toReportOrder } from './report-mapping';
+import {
+  LOADER_INCLUDE,
+  toReportOrder,
+  toWholesaleReportOrder,
+  WHOLESALE_LOADER_INCLUDE,
+} from './report-mapping';
 import type { Basis } from './engine/rows';
 import type { ReportOrder } from './engine/types';
 
@@ -56,35 +61,90 @@ export class ReportLoaderService {
     }
     // ponytail: one read of every matching order; Exceptions (ignoreDate) reads all
     // orders ever — fine at ~100 orders/day, add a status/age bound if it slows.
-    const rows = await this.prisma.client.order.findMany({
-      where,
-      include: LOADER_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
-    if (rows.length === 0) return [];
+    const [rows, wholesale] = await Promise.all([
+      this.prisma.client.order.findMany({
+        where,
+        include: LOADER_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.loadWholesale(opts),
+    ]);
+    if (rows.length === 0 && wholesale.length === 0) return [];
 
+    const allItems = [
+      ...rows.flatMap((r) => r.items),
+      ...wholesale.flatMap((r) => r.items),
+    ];
     const productIds = [
       ...new Set(
-        rows
-          .flatMap((r) => r.items.map((i) => i.productId))
-          .filter((x): x is number => x !== null),
+        allItems.map((i) => i.productId).filter((x): x is number => x !== null),
       ),
     ];
     const variantIds = [
       ...new Set(
-        rows
-          .flatMap((r) => r.items.map((i) => i.variantId))
-          .filter((x): x is number => x !== null),
+        allItems.map((i) => i.variantId).filter((x): x is number => x !== null),
       ),
     ];
-    const [resolver, zones, firstOrderAt] = await Promise.all([
-      this.costs.loadResolver(productIds, variantIds),
-      this.settings.zoneConfig(),
-      this.firstOrders(rows),
-    ]);
-    return rows.map((row) =>
-      toReportOrder(row, { resolver, zones, firstOrderAt }),
+    const [resolver, zones, firstOrderAt, firstWholesaleAt] = await Promise.all(
+      [
+        this.costs.loadResolver(productIds, variantIds),
+        this.settings.zoneConfig(),
+        this.firstOrders(rows),
+        this.firstWholesale(wholesale.map((w) => w.partyId)),
+      ],
     );
+    return [
+      ...rows.map((row) =>
+        toReportOrder(row, { resolver, zones, firstOrderAt }),
+      ),
+      ...wholesale.map((row) =>
+        toWholesaleReportOrder(row, { resolver, zones, firstWholesaleAt }),
+      ),
+    ];
+  }
+
+  /**
+   * Wholesale & channel orders in the same period: by the day they were
+   * placed, or (delivered basis) delivered orders last updated in it.
+   * ponytail: no status history on wholesale orders, so "delivered on" is
+   * the last update of a DELIVERED order; log a delivered date if it drifts.
+   */
+  private loadWholesale(opts: LoadOptions) {
+    const where: Prisma.WholesaleOrderWhereInput = {};
+    if (opts.agentId !== undefined) where.createdBy = opts.agentId;
+    if (!opts.ignoreDate && opts.from && opts.to) {
+      if (opts.basis === 'order')
+        where.placedAt = {
+          gte: new Date(`${opts.from}T00:00:00Z`),
+          lte: new Date(`${opts.to}T00:00:00Z`),
+        };
+      else {
+        where.status = 'DELIVERED';
+        where.updatedAt = {
+          gte: dhakaDayStart(opts.from),
+          lte: dhakaDayEnd(opts.to),
+        };
+      }
+    }
+    return this.prisma.client.wholesaleOrder.findMany({
+      where,
+      include: WHOLESALE_LOADER_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Each wholesale customer's first order (New vs Repeat). */
+  private async firstWholesale(partyIds: number[]): Promise<Map<number, Date>> {
+    if (partyIds.length === 0) return new Map();
+    const rows = await this.prisma.client.wholesaleOrder.groupBy({
+      by: ['partyId'],
+      where: {
+        partyId: { in: [...new Set(partyIds)] },
+        status: { not: 'CANCELLED' },
+      },
+      _min: { createdAt: true },
+    });
+    return new Map(rows.map((r) => [r.partyId, r._min.createdAt!]));
   }
 
   /** Earliest non-cancelled order per customer (account, else shipping phone). */

@@ -1,5 +1,6 @@
 "use client";
 
+import { courierText } from "@/hooks/useWholesale";
 import { useMemo, useState } from "react";
 import { Button, Card, Icon, StatCard } from "@amader/admin-ui";
 import {
@@ -182,7 +183,9 @@ export function OrderCell({ order }: { order: WholesaleOrder }) {
         {labelOf(ORDER_CHANNELS, order.channel)}
       </span>
       {cancelled ? (
-        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${TONE.rose}`}>
+        <span
+          className={`inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${TONE.rose}`}
+        >
           Cancelled
         </span>
       ) : (
@@ -307,7 +310,9 @@ export function OrdersDashboard({
         // A selection ignores the filters, so it is dated the day of export.
         title: reportTitle(
           "Wholesale Orders",
-          ids?.length ? {} : presetTitleRange(dateRange, dateFrom, dateTo, resolvedRange),
+          ids?.length
+            ? {}
+            : presetTitleRange(dateRange, dateFrom, dateTo, resolvedRange),
         ),
       });
     } catch (e) {
@@ -509,7 +514,9 @@ export function OrdersDashboard({
                   onClick={() => exportCsv([...selected])}
                 >
                   <Icon name="download" size={18} />
-                  {exporting ? "Exporting…" : `Export Selected (${selected.size})`}
+                  {exporting
+                    ? "Exporting…"
+                    : `Export Selected (${selected.size})`}
                 </Button>
                 <Button variant="ghost" onClick={() => setSelected(new Set())}>
                   Clear selection
@@ -613,7 +620,7 @@ export function OrdersDashboard({
                       </td>
                       <td className="px-3 py-3">
                         <span className="block text-text">
-                          {labelOf(COURIERS, o.courier) || "N/A"}
+                          {courierText(o) || "N/A"}
                         </span>
                         {o.consignmentId && (
                           <span className="text-muted">{o.consignmentId}</span>

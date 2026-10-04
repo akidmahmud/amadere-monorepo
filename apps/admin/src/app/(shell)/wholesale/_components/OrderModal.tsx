@@ -1,5 +1,6 @@
 "use client";
 
+import { CourierSelect } from "./CourierSelect";
 import { useMemo, useState } from "react";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
@@ -16,7 +17,12 @@ import {
   type WholesaleOrder,
   type WholesaleOrderStatus,
 } from "@/hooks/useWholesale";
-import { ChannelFieldInputs, missingChannelFields, toChannelValues, type ChannelValues } from "./ChannelFieldInputs";
+import {
+  ChannelFieldInputs,
+  missingChannelFields,
+  toChannelValues,
+  type ChannelValues,
+} from "./ChannelFieldInputs";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text transition-all duration-200 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:text-muted";
@@ -100,12 +106,19 @@ export function OrderModal({
   // inputs are hidden rather than sent — and the channel's own fields to edit.
   const channels = useWholesaleChannels();
   const isChannel = editing?.type === "CHANNEL";
-  const salesChannel = isChannel ? channels.data?.find((c) => c.id === editing?.channelId) : undefined;
+  const salesChannel = isChannel
+    ? channels.data?.find((c) => c.id === editing?.channelId)
+    : undefined;
   const noDelivery = isChannel && !salesChannel?.hasDelivery;
-  const [channelValues, setChannelValues] = useState<ChannelValues>(toChannelValues(editing?.channelData));
+  const [channelValues, setChannelValues] = useState<ChannelValues>(
+    toChannelValues(editing?.channelData),
+  );
   const [missing, setMissing] = useState<string[]>([]);
   const [courier, setCourier] = useState<WholesaleCourier>(
     editing?.courier ?? (isChannel ? "CHANNEL_DELIVERY" : "SUNDARBAN"),
+  );
+  const [courierName, setCourierName] = useState<string | null>(
+    editing?.courierName ?? null,
   );
   const [consignmentId, setConsignmentId] = useState(
     editing?.consignmentId ?? "",
@@ -216,7 +229,9 @@ export function OrderModal({
       quantity: l.quantity,
       discount: l.discount || "0",
     }));
-    const gaps = salesChannel ? missingChannelFields(salesChannel.fields, channelValues) : [];
+    const gaps = salesChannel
+      ? missingChannelFields(salesChannel.fields, channelValues)
+      : [];
     setMissing(gaps);
     if (gaps.length) return;
     try {
@@ -227,6 +242,7 @@ export function OrderModal({
         await update.mutateAsync({
           id: editing.id,
           courier: noDelivery ? undefined : courier,
+          courierName: noDelivery ? undefined : courierName,
           consignmentId: consignmentId.trim(),
           status,
           items,
@@ -239,6 +255,7 @@ export function OrderModal({
         await create.mutateAsync({
           partyId: Number(partyId),
           courier,
+          courierName,
           consignmentId: consignmentId.trim() || undefined,
           status,
           items,
@@ -350,19 +367,16 @@ export function OrderModal({
 
             {!noDelivery && (
               <ModalField label="Courier Partner" required>
-                <select
+                <CourierSelect
                   className={inputClass}
-                  value={courier}
-                  onChange={(e) =>
-                    setCourier(e.target.value as WholesaleCourier)
-                  }
-                >
-                  {(isChannel ? CHANNEL_COURIERS : WHOLESALE_COURIERS).map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                  options={isChannel ? CHANNEL_COURIERS : WHOLESALE_COURIERS}
+                  courier={courier}
+                  courierName={courierName}
+                  onChange={(c, n) => {
+                    if (c) setCourier(c);
+                    setCourierName(n);
+                  }}
+                />
               </ModalField>
             )}
 
@@ -533,7 +547,11 @@ export function OrderModal({
                 ) : (
                   lines.map((line, i) => (
                     <tr
-                      key={line.variantId ? `v${line.variantId}` : `p${line.productId}-${i}`}
+                      key={
+                        line.variantId
+                          ? `v${line.variantId}`
+                          : `p${line.productId}-${i}`
+                      }
                       className="hover:bg-surface-2/60 transition-colors"
                     >
                       <td className="px-4 py-3 font-semibold text-text">
@@ -651,10 +669,18 @@ export function OrderModal({
 
         {salesChannel && salesChannel.fields.length > 0 && (
           <div className="space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">{salesChannel.name} details</h4>
-            <ChannelFieldInputs fields={salesChannel.fields} values={channelValues} onChange={setChannelValues} />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
+              {salesChannel.name} details
+            </h4>
+            <ChannelFieldInputs
+              fields={salesChannel.fields}
+              values={channelValues}
+              onChange={setChannelValues}
+            />
             {missing.length > 0 && (
-              <p className="text-xs font-semibold text-rose-600">{missing.map((m) => `${m} is required.`).join(" ")}</p>
+              <p className="text-xs font-semibold text-rose-600">
+                {missing.map((m) => `${m} is required.`).join(" ")}
+              </p>
             )}
           </div>
         )}

@@ -17,7 +17,10 @@ import {
   csvTime,
   toOrderCsv,
 } from '../net-profit/order-manager/order-csv';
-import { WHOLESALE_ORDER_CREATED_EVENT, type WholesaleOrderCreatedEvent } from './wholesale.events';
+import {
+  WHOLESALE_ORDER_CREATED_EVENT,
+  type WholesaleOrderCreatedEvent,
+} from './wholesale.events';
 import {
   paginationArgs,
   toPaginatedResult,
@@ -225,6 +228,14 @@ function stockDeltas(
  * Stock is the third crossing: goods sold wholesale left the same warehouse
  * the storefront sells from, so lines decrement the same `stock` columns.
  */
+/** A typed courier name is kept only for "Other" (trimmed; blank = none). */
+export function courierNameFor(
+  courier: string | null | undefined,
+  name: string | null | undefined,
+): string | null {
+  return courier === 'OTHER' ? name?.trim() || null : null;
+}
+
 @Injectable()
 export class WholesaleService {
   constructor(
@@ -258,7 +269,11 @@ export class WholesaleService {
       if (!staff) throw new BadRequestException('Staff member not found');
     }
     const { count } = await this.prisma.client.party.updateMany({
-      where: { id: { in: customerIds }, roles: { has: 'WHOLESALE' }, deletedAt: null },
+      where: {
+        id: { in: customerIds },
+        roles: { has: 'WHOLESALE' },
+        deletedAt: null,
+      },
       data: { assignedAdminId },
     });
     return { updated: count };
@@ -313,7 +328,9 @@ export class WholesaleService {
       where: { partyId: { in: customers.map((c) => c.id) } },
       _max: { createdAt: true },
     });
-    const lastCallAt = new Map(lastCalls.map((r) => [r.partyId, r._max.createdAt]));
+    const lastCallAt = new Map(
+      lastCalls.map((r) => [r.partyId, r._max.createdAt]),
+    );
     const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
     const label = (v: string | null) =>
@@ -454,7 +471,8 @@ export class WholesaleService {
     const skuByName = new Map<string, string>();
     for (const item of items) {
       const sku = item.skuSnapshot || item.variant?.sku || item.product?.sku;
-      if (sku && !skuByName.has(item.nameSnapshot)) skuByName.set(item.nameSnapshot, sku);
+      if (sku && !skuByName.has(item.nameSnapshot))
+        skuByName.set(item.nameSnapshot, sku);
       const perProduct =
         qtyByParty.get(item.order.partyId) ?? new Map<string, number>();
       perProduct.set(
@@ -636,7 +654,8 @@ export class WholesaleService {
       where: { id, roles: { has: 'WHOLESALE' }, deletedAt: null },
       select: { id: true, phone: true },
     });
-    if (!party) throw new NotFoundException(`Wholesale customer ${id} not found`);
+    if (!party)
+      throw new NotFoundException(`Wholesale customer ${id} not found`);
     return party;
   }
 
@@ -693,11 +712,16 @@ export class WholesaleService {
     for (const o of orders) {
       if (o.status === 'CANCELLED') continue;
       for (const item of o.items) {
-        const key = item.productId !== null ? `id:${item.productId}` : `name:${item.nameSnapshot}`;
+        const key =
+          item.productId !== null
+            ? `id:${item.productId}`
+            : `name:${item.nameSnapshot}`;
         const row = byProduct.get(key);
         if (row) {
           row.totalQuantity += item.quantity;
-          row.totalSpent = new Prisma.Decimal(row.totalSpent).plus(item.lineTotal).toFixed(2);
+          row.totalSpent = new Prisma.Decimal(row.totalSpent)
+            .plus(item.lineTotal)
+            .toFixed(2);
           row.orderIds.add(o.id);
         } else {
           // orders are newest first, so the first sighting is the latest purchase.
@@ -764,7 +788,11 @@ export class WholesaleService {
     };
   }
 
-  async addCustomerNote(id: number, dto: CreateCustomerNoteDto, authorAdminId: number): Promise<{ id: number }> {
+  async addCustomerNote(
+    id: number,
+    dto: CreateCustomerNoteDto,
+    authorAdminId: number,
+  ): Promise<{ id: number }> {
     await this.assertCustomer(id);
     const note = await this.prisma.client.partyNote.create({
       data: { partyId: id, type: dto.type, body: dto.body, authorAdminId },
@@ -772,7 +800,11 @@ export class WholesaleService {
     return { id: note.id };
   }
 
-  async logCustomerCall(id: number, dto: CreateCustomerCallLogDto, authorAdminId: number): Promise<{ id: number }> {
+  async logCustomerCall(
+    id: number,
+    dto: CreateCustomerCallLogDto,
+    authorAdminId: number,
+  ): Promise<{ id: number }> {
     const party = await this.assertCustomer(id);
     const call = await this.prisma.client.partyCallLog.create({
       data: {
@@ -1306,6 +1338,7 @@ export class WholesaleService {
             OR: [
               { orderNumber: { contains: search, mode: 'insensitive' } },
               { consignmentId: { contains: search, mode: 'insensitive' } },
+              { courierName: { contains: search, mode: 'insensitive' } },
               { channelSearch: { contains: search, mode: 'insensitive' } },
               { transactionId: { contains: search, mode: 'insensitive' } },
               { recipientName: { contains: search, mode: 'insensitive' } },
@@ -1427,7 +1460,11 @@ export class WholesaleService {
       ]),
     );
     const creatorIds = [
-      ...new Set(orders.map((o) => o.createdBy).filter((id): id is number => id !== null)),
+      ...new Set(
+        orders
+          .map((o) => o.createdBy)
+          .filter((id): id is number => id !== null),
+      ),
     ];
     const creators = new Map(
       (
@@ -1440,11 +1477,18 @@ export class WholesaleService {
 
     const rows: string[][] = [];
     for (const o of orders) {
-      const details = Object.entries((o.channelData as Record<string, unknown> | null) ?? {})
-        .map(([k, v]) => `${labels.get(o.channelId!)?.get(k) ?? k}: ${String(v)}`)
+      const details = Object.entries(
+        (o.channelData as Record<string, unknown> | null) ?? {},
+      )
+        .map(
+          ([k, v]) => `${labels.get(o.channelId!)?.get(k) ?? k}: ${String(v)}`,
+        )
         .join('; ');
       const source = o.salesChannel?.name ?? 'Wholesale';
-      const lineDiscounts = o.items.reduce((sum, i) => sum + Number(i.discount), 0);
+      const lineDiscounts = o.items.reduce(
+        (sum, i) => sum + Number(i.discount),
+        0,
+      );
 
       const shared = [
         csvDate(o.placedAt),
@@ -1471,7 +1515,8 @@ export class WholesaleService {
       ];
 
       const items = o.items.length > 0 ? o.items : [null];
-      for (const item of items) rows.push([...shared, ...csvLineCells(item), ...tail]);
+      for (const item of items)
+        rows.push([...shared, ...csvLineCells(item), ...tail]);
     }
     return toOrderCsv(rows);
   }
@@ -1608,6 +1653,7 @@ export class WholesaleService {
               : 'PARTIALLY_PAID',
           transactionId: dto.transactionId?.trim() || null,
           courier: dto.courier ?? null,
+          courierName: courierNameFor(dto.courier, dto.courierName),
           consignmentId: dto.consignmentId?.trim() || null,
           // Cash sales store no delivery snapshot at all — there is no
           // delivery. Spreading the object regardless would write empty
@@ -1765,7 +1811,12 @@ export class WholesaleService {
           }
         : {}),
       ...(dto.status === undefined ? {} : { status: dto.status }),
-      ...(dto.courier === undefined ? {} : { courier: dto.courier }),
+      ...(dto.courier === undefined
+        ? {}
+        : {
+            courier: dto.courier,
+            courierName: courierNameFor(dto.courier, dto.courierName),
+          }),
       ...(dto.consignmentId === undefined
         ? {}
         : { consignmentId: dto.consignmentId.trim() || null }),
@@ -2228,5 +2279,17 @@ export class WholesaleService {
         });
       }
     }
+  }
+
+  /** Courier names typed under "Other" before, newest first (dropdown). */
+  async customCouriers(): Promise<string[]> {
+    const rows = await this.prisma.client.wholesaleOrder.groupBy({
+      by: ['courierName'],
+      where: { courier: 'OTHER', courierName: { not: null } },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: 'desc' } },
+      take: 50,
+    });
+    return rows.map((r) => r.courierName!);
   }
 }

@@ -33,7 +33,8 @@ export function flagsOf(
     else if (c.contribution < S.th.low) f.push('low');
   }
   if (c.overcharge != null && c.overcharge > S.th.over) f.push('over');
-  if (SHIPPED_STATUSES.includes(o.status) && !o.courier) f.push('nocourier');
+  if (!o.counter && SHIPPED_STATUSES.includes(o.status) && !o.courier)
+    f.push('nocourier');
   if (
     (o.status === 'Pending' || o.status === 'Confirmed') &&
     diffDays(o.date, today) > S.th.pending
@@ -41,6 +42,7 @@ export function flagsOf(
     f.push('stuck');
   if (
     o.status === 'Delivered' &&
+    !o.counter &&
     o.actual == null &&
     o.hist.delivered &&
     diffDays(o.hist.delivered, today) > S.th.bill

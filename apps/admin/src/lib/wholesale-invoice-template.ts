@@ -83,7 +83,7 @@ export function buildWholesaleInvoiceMergeTags(
   // renders once someone has actually entered one.
   const courierBoxHtml = order.consignmentId
     ? `<div style="margin-bottom:20px;padding:15px 20px;border:1px solid #dbdfea;border-radius:6px;">
-      <h3 style="margin:0 0 10px;color:#111;">For ${escapeHtml(courierLabel(order.courier))}</h3>
+      <h3 style="margin:0 0 10px;color:#111;">For ${escapeHtml(order.courier === "OTHER" && order.courierName ? order.courierName : courierLabel(order.courier))}</h3>
       <hr style="margin:0;border:none;border-top:1px solid #dbdfea;">
       <div style="margin-top:10px;display:flex;justify-content:space-between;gap:20px;">
         <h5 style="margin:0;color:#111;">Consignment ID: #${escapeHtml(order.consignmentId)}</h5>

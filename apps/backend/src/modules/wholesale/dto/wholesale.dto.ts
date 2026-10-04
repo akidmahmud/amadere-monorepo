@@ -292,7 +292,8 @@ export class WholesaleCustomerQueryDto extends WholesaleDateRangeQueryDto {
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Staff the customer is assigned to; 0 for unassigned. Omit for anyone.',
+    description:
+      'Staff the customer is assigned to; 0 for unassigned. Omit for anyone.',
   })
   @IsOptional()
   @IsInt()
@@ -309,7 +310,10 @@ export class BulkAssignWholesaleCustomersDto {
   @IsInt({ each: true })
   customerIds!: number[];
 
-  @ApiProperty({ nullable: true, description: 'Staff user ID, or null to unassign' })
+  @ApiProperty({
+    nullable: true,
+    description: 'Staff user ID, or null to unassign',
+  })
   @ValidateIf((o: { assignedAdminId: unknown }) => o.assignedAdminId !== null)
   @IsInt()
   assignedAdminId!: number | null;
@@ -460,6 +464,13 @@ export class CreateWholesaleOrderDto {
   @IsEnum(WholesaleCourier)
   courier?: WholesaleCourier;
 
+  /** The courier's name when courier is OTHER (one not in our list). */
+  @ApiPropertyOptional({ maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  courierName?: string | null;
+
   @ApiPropertyOptional({ type: WholesaleDeliveryInputDto })
   @IsOptional()
   @ValidateNested()
@@ -548,6 +559,13 @@ export class UpdateWholesaleOrderDto {
   @IsOptional()
   @IsEnum(WholesaleCourier)
   courier?: WholesaleCourier;
+
+  /** The courier's name when courier is OTHER (one not in our list). */
+  @ApiPropertyOptional({ maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  courierName?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

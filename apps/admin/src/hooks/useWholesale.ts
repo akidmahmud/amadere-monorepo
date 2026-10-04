@@ -143,6 +143,16 @@ export function labelOf<T extends string>(
   return table.find((x) => x.value === value)?.label ?? value;
 }
 
+/** The courier as staff know it: a typed name for "Other", else the label. */
+export function courierText(o: {
+  courier: WholesaleCourier | null;
+  courierName?: string | null;
+}): string {
+  return o.courier === "OTHER" && o.courierName
+    ? o.courierName
+    : labelOf(COURIERS, o.courier);
+}
+
 export const ORDER_STATUSES: { value: WholesaleOrderStatus; label: string }[] =
   [
     { value: "PENDING", label: "Pending" },
@@ -294,6 +304,8 @@ export interface WholesaleOrder {
   transactionId: string | null;
   /** Null on a channel without delivery (Cash Sale). */
   courier: WholesaleCourier | null;
+  /** The courier's name when courier is OTHER (one not in our list). */
+  courierName?: string | null;
   consignmentId: string | null;
   delivery: WholesaleDelivery;
   subtotal: string;
@@ -330,6 +342,7 @@ export interface CustomerInput {
 export interface OrderEditInput {
   status?: WholesaleOrderStatus;
   courier?: WholesaleCourier;
+  courierName?: string | null;
   consignmentId?: string;
   note?: string;
   channelData?: Record<string, string>;
@@ -354,6 +367,7 @@ export interface OrderInput {
   transactionId?: string;
   /** Required for WHOLESALE and channels with delivery. */
   courier?: WholesaleCourier;
+  courierName?: string | null;
   consignmentId?: string;
   delivery?: {
     recipientName?: string;
@@ -620,11 +634,17 @@ export function useWholesaleStaff() {
 export function useBulkAssignWholesaleCustomers() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { customerIds: number[]; assignedAdminId: number | null }) =>
-      proxyFetch<{ updated: number }>("/admin/wholesale/customers/bulk-assign", {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
+    mutationFn: (input: {
+      customerIds: number[];
+      assignedAdminId: number | null;
+    }) =>
+      proxyFetch<{ updated: number }>(
+        "/admin/wholesale/customers/bulk-assign",
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: CUSTOMERS_KEY }),
   });
 }
@@ -959,7 +979,13 @@ export interface WholesaleCustomerCrm {
     totalSpent: string;
     lastPurchasedAt: string;
   }[];
-  notes: { id: number; type: string; body: string; authorName: string; createdAt: string }[];
+  notes: {
+    id: number;
+    type: string;
+    body: string;
+    authorName: string;
+    createdAt: string;
+  }[];
   calls: {
     id: number;
     outcome: string;
@@ -968,7 +994,11 @@ export interface WholesaleCustomerCrm {
     authorName: string;
     createdAt: string;
   }[];
-  activity: { type: "ORDER" | "NOTE" | "CALL"; text: string; occurredAt: string }[];
+  activity: {
+    type: "ORDER" | "NOTE" | "CALL";
+    text: string;
+    occurredAt: string;
+  }[];
 }
 
 // Under CUSTOMERS_KEY so useInvalidateAll (order writes) refreshes it too.
@@ -977,7 +1007,8 @@ const crmKey = (id: number) => [...CUSTOMERS_KEY, id, "crm"];
 export function useWholesaleCustomerCrm(id: number) {
   return useQuery({
     queryKey: crmKey(id),
-    queryFn: () => proxyFetch<WholesaleCustomerCrm>(`/admin/wholesale/customers/${id}/crm`),
+    queryFn: () =>
+      proxyFetch<WholesaleCustomerCrm>(`/admin/wholesale/customers/${id}/crm`),
   });
 }
 

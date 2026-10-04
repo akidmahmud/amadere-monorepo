@@ -1,5 +1,6 @@
 "use client";
 
+import { courierText } from "@/hooks/useWholesale";
 import { Modal } from "@amader/admin-ui";
 import {
   COURIERS,
@@ -68,10 +69,18 @@ export function OrderDetailModal({
       <div className="space-y-5 p-1">
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <Item label="Order ID" value={order.orderNumber} />
-          <Item label="Order type" value={wholesale ? "Wholesale" : (order.channelName ?? "Channel")} />
+          <Item
+            label="Order type"
+            value={wholesale ? "Wholesale" : (order.channelName ?? "Channel")}
+          />
           <Item label="Customer" value={order.customerName} />
           <Item label="Customer phone" value={order.customerPhone ?? ""} />
-          {wholesale && <Item label="Source" value={labelOf(ORDER_CHANNELS, order.channel)} />}
+          {wholesale && (
+            <Item
+              label="Source"
+              value={labelOf(ORDER_CHANNELS, order.channel)}
+            />
+          )}
           {/* Every value the channel stores, not just the table columns. */}
           {channelDetails(order, channels.data, true).map((f) => (
             <Item key={f.label} label={f.label} value={f.value} />
@@ -85,7 +94,7 @@ export function OrderDetailModal({
             label="Payment status"
             value={labelOf(PAYMENT_STATUSES, order.paymentStatus)}
           />
-          <Item label="Courier" value={labelOf(COURIERS, order.courier)} />
+          <Item label="Courier" value={courierText(order)} />
           <Item label="Consignment ID" value={order.consignmentId ?? ""} />
           <Item label="Invoice" value={order.invoiceDocNo ?? ""} />
           {/* Shown for a cash sale too — only the courier above is
@@ -108,7 +117,9 @@ export function OrderDetailModal({
                 <tr className="bg-surface-2 text-[9px] uppercase tracking-wide text-muted">
                   <th className="px-3 py-2.5 text-left font-bold">Product</th>
                   <th className="px-3 py-2.5 text-left font-bold">Qty</th>
-                  <th className="px-3 py-2.5 text-left font-bold">Unit price</th>
+                  <th className="px-3 py-2.5 text-left font-bold">
+                    Unit price
+                  </th>
                   <th className="px-3 py-2.5 text-left font-bold">Discount</th>
                   <th className="px-3 py-2.5 text-right font-bold">Total</th>
                 </tr>
@@ -158,7 +169,9 @@ export function OrderDetailModal({
           {wholesale && (
             <div className="flex justify-between">
               <span className="text-secondary">Delivery charge</span>
-              <strong className="text-text">{money(order.deliveryCharge)}</strong>
+              <strong className="text-text">
+                {money(order.deliveryCharge)}
+              </strong>
             </div>
           )}
           <div className="flex justify-between border-t border-border pt-2.5">

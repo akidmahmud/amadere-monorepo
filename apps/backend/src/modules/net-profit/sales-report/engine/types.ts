@@ -77,6 +77,11 @@ export interface ReportOrder {
   /** What the courier billed, from the statement import; null = no bill yet. */
   actual: number | null;
   hist: ReportHistory;
+  /**
+   * No courier leg we pay for: a shop counter sale (POS) or a wholesale /
+   * channel order. No courier charge, packaging, or courier flags.
+   */
+  counter?: boolean;
 }
 
 export interface ZoneRate {

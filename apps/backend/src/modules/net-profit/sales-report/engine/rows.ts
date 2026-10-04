@@ -114,7 +114,15 @@ export interface ProductRow {
  */
 export function productRows(set: OrderCalc[]): ProductRow[] {
   const acc = new Map<string, ProductRow>();
-  const get = ({ key, name, sku }: { key: string; name: string; sku?: string | null }) => {
+  const get = ({
+    key,
+    name,
+    sku,
+  }: {
+    key: string;
+    name: string;
+    sku?: string | null;
+  }) => {
     let r = acc.get(key);
     if (!r) {
       r = {
@@ -190,7 +198,8 @@ export interface CourierRow {
 
 export function courierRows(set: OrderCalc[], S: ReportSettings): CourierRow[] {
   const closed = set.filter(
-    (c) => c.o.status === 'Delivered' || c.o.status === 'Returned',
+    (c) =>
+      !c.o.counter && (c.o.status === 'Delivered' || c.o.status === 'Returned'),
   );
   const keys = [
     ...new Set(

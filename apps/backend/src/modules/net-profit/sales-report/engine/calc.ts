@@ -54,7 +54,8 @@ export function calcOrder(o: ReportOrder, S: ReportSettings): OrderCalc {
       : isRet
         ? r2((rate * rc.returnPct) / 100)
         : r2(rate + cod);
-  const shipped = SHIPPED_STATUSES.includes(o.status);
+  // A counter sale never goes through our courier: nothing to charge.
+  const shipped = !o.counter && SHIPPED_STATUSES.includes(o.status);
   const courierCharge = shipped ? (o.actual ?? expected) : 0;
   const estimated = shipped && o.actual == null;
   const overcharge =

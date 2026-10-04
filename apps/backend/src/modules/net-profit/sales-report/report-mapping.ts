@@ -106,6 +106,7 @@ export const LOADER_INCLUDE = {
     select: { provider: true },
   },
   advancePayment: { select: { paid: true } },
+  store: { select: { name: true } },
 } satisfies Prisma.OrderInclude;
 
 export type LoaderRow = Prisma.OrderGetPayload<{
@@ -141,7 +142,11 @@ export function toReportOrder(
     orderNumber: row.orderNumber,
     date,
     status: toReportStatus(row.status),
-    channel: channelLabel(row.channel),
+    // A shop's till sales show as the shop ("Amader Shimultoli"), not "POS".
+    channel:
+      row.channel === 'POS' && row.store
+        ? row.store.name
+        : channelLabel(row.channel),
     agentId: row.assignedAdmin?.id ?? null,
     agentName,
     customer: addr?.recipientName ?? '',
@@ -185,5 +190,119 @@ export function toReportOrder(
     actual:
       shipment?.billedCharge != null ? Number(shipment.billedCharge) : null,
     hist: historyDates(row.statusHistory, row.confirmedAt),
+    counter: row.channel === 'POS',
+  };
+}
+
+// ---- Wholesale & channel orders (Daraz, Cash Sale...) ----
+
+export const WHOLESALE_LOADER_INCLUDE = {
+  party: { select: { name: true, phone: true } },
+  salesChannel: { select: { name: true } },
+  items: {
+    orderBy: { id: 'asc' as const },
+    select: {
+      productId: true,
+      variantId: true,
+      nameSnapshot: true,
+      skuSnapshot: true,
+      unitPrice: true,
+      quantity: true,
+      discount: true,
+      variant: { select: { weightOverride: true, sku: true } },
+      product: { select: { shippableWeight: true, sku: true } },
+    },
+  },
+} satisfies Prisma.WholesaleOrderInclude;
+
+export type WholesaleLoaderRow = Prisma.WholesaleOrderGetPayload<{
+  include: typeof WHOLESALE_LOADER_INCLUDE;
+}>;
+
+const WHOLESALE_STATUS: Record<string, ReportStatus> = {
+  PENDING: 'Pending',
+  PROCESSING: 'Shipped',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+};
+
+/** "Wholesale", or the sales channel marked as wholesale: "Daraz (Wholesale)". */
+export const wholesaleChannelLabel = (row: {
+  type: string;
+  salesChannel: { name: string } | null;
+}) =>
+  row.type === 'CHANNEL' && row.salesChannel
+    ? `${row.salesChannel.name} (Wholesale)`
+    : 'Wholesale';
+
+/**
+ * A wholesale order as a report row. Its id is negated so it can never
+ * collide with a retail order's. The delivery charge is passed on to the
+ * courier, so it is not counted as income, and there is no courier leg of
+ * ours to cost (counter).
+ */
+export function toWholesaleReportOrder(
+  row: WholesaleLoaderRow,
+  ctx: {
+    resolver: CostResolver;
+    zones: ShippingZonesConfig;
+    firstWholesaleAt: Map<number, Date>;
+  },
+): ReportOrder {
+  const date = dhakaDate(row.placedAt);
+  // Line discounts, plus the order discount spread across lines by value.
+  const grosses = row.items.map((i) => Number(i.unitPrice) * i.quantity);
+  const discs = spreadDiscount(grosses, Number(row.discount));
+  const first = ctx.firstWholesaleAt.get(row.partyId);
+  return {
+    id: -row.id,
+    orderNumber: row.orderNumber,
+    date,
+    status: WHOLESALE_STATUS[row.status] ?? 'Pending',
+    channel: wholesaleChannelLabel(row),
+    agentId: row.createdBy,
+    agentName: null,
+    customer: row.party?.name ?? row.recipientName ?? '',
+    phone: row.recipientPhone ?? row.party?.phone ?? '',
+    ctype:
+      !first || row.createdAt.getTime() <= first.getTime() ? 'New' : 'Repeat',
+    district: row.district ?? '',
+    zone: zoneOf(ctx.zones, row.district ?? undefined),
+    lines: row.items.map((i, idx) => {
+      const unitWeight = Number(
+        i.variant?.weightOverride ?? i.product?.shippableWeight ?? 0,
+      );
+      const cost = ctx.resolver.resolve(
+        {
+          productId: i.productId,
+          variantId: i.variantId,
+          unitWeightKg: unitWeight,
+        },
+        date,
+      );
+      return {
+        key: i.variantId
+          ? `v${i.variantId}`
+          : i.productId
+            ? `p${i.productId}`
+            : `n:${i.nameSnapshot}`,
+        name: i.nameSnapshot,
+        sku: i.skuSnapshot || i.variant?.sku || i.product?.sku || null,
+        qty: i.quantity,
+        price: Number(i.unitPrice),
+        disc: Number(i.discount) + discs[idx],
+        unitWeight,
+        unitCost: cost ? cost.unitCost : null,
+        costOk: cost ? cost.ok : false,
+      };
+    }),
+    delivery: 0,
+    payment: row.paymentMethod ?? 'CASH',
+    advance: 0,
+    courier: null,
+    actual: null,
+    hist:
+      row.status === 'DELIVERED' ? { delivered: dhakaDate(row.updatedAt) } : {},
+    counter: true,
   };
 }
