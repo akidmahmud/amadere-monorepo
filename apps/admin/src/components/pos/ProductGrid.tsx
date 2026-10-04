@@ -77,6 +77,8 @@ export function StatCards({
     todaySales: string;
     todayOrders: number;
     todayItems: number;
+    expired?: number;
+    expiringSoon?: number;
   };
 }) {
   const all = [
@@ -102,6 +104,16 @@ export function StatCards({
       tone: "bg-red-50 text-red-500",
     },
     {
+      kind: "stock",
+      label: `Expiry Alert (≤${EXPIRY_ALERT_DAYS} days)`,
+      value: stats
+        ? String((stats.expired ?? 0) + (stats.expiringSoon ?? 0))
+        : "—",
+      note: stats?.expired ? `${stats.expired} expired` : undefined,
+      icon: "event_busy",
+      tone: "bg-amber-50 text-amber-600",
+    },
+    {
       kind: "sales",
       label: "Today's Sales",
       value: stats ? taka(stats.todaySales) : "—",
@@ -125,7 +137,9 @@ export function StatCards({
   ];
   const cards = all.filter((c) => c.kind === kind);
   return (
-    <div className="grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-3">
+    <div
+      className={`grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-3 ${cards.length > 3 ? "sm:grid-cols-2 xl:grid-cols-4" : ""}`}
+    >
       {cards.map((c) => (
         <div
           key={c.label}
@@ -134,6 +148,9 @@ export function StatCards({
           <div>
             <div className="text-sm text-gray-600">{c.label}</div>
             <div className="mt-2 text-2xl font-extrabold">{c.value}</div>
+            {"note" in c && c.note && (
+              <div className="text-xs font-bold text-red-600">{c.note}</div>
+            )}
           </div>
           <span
             className={`grid h-12 w-12 place-items-center rounded-full ${c.tone}`}
@@ -160,6 +177,28 @@ function sizeText(p: PosProduct) {
   return [p.variantLabel, p.variantLabel && !p.storeWeightKg ? "" : w]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** Days before expiry that the till starts warning (matches the server). */
+export const EXPIRY_ALERT_DAYS = 15;
+
+/** Red "Expired" / amber "Expires in N days" when the shelf holds such units. */
+function ExpiryTag({ days }: { days?: number | null }) {
+  if (days == null || days > EXPIRY_ALERT_DAYS) return null;
+  const expired = days < 0;
+  return (
+    <div
+      className={`mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${expired ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}
+      title="Units on the shelf (oldest sold first) include this expiry"
+    >
+      <span aria-hidden>⏳</span>
+      {expired
+        ? "Expired"
+        : days === 0
+          ? "Expires today"
+          : `Expires in ${days} day${days === 1 ? "" : "s"}`}
+    </div>
+  );
 }
 
 function StockLine({ stock }: { stock: number }) {
@@ -491,6 +530,7 @@ export function ProductGrid({
               <Price p={p} />
               <div className="mb-3 mt-1">
                 <StockLine stock={p.stock} />
+                <ExpiryTag days={p.expiryDays} />
               </div>
               <AddOrStepper
                 p={p}
@@ -533,6 +573,7 @@ export function ProductGrid({
                 <div className="text-xs text-gray-500">{p.sku ?? ""}</div>
               </div>
               <StockLine stock={p.stock} />
+              <ExpiryTag days={p.expiryDays} />
               <div className="w-36 shrink-0">
                 <Price p={p} end />
               </div>

@@ -24,6 +24,8 @@ interface Line {
   p: PosProduct;
   qty: string;
   cost: string;
+  /** YYYY-MM-DD from the date picker; "" = none. */
+  expiry: string;
 }
 
 type Filter = "all" | "low" | "out" | "picked";
@@ -51,6 +53,7 @@ export default function StockInPage() {
   const [ticked, setTicked] = useState<Set<string>>(new Set());
   const [bulkQty, setBulkQty] = useState("");
   const [bulkCost, setBulkCost] = useState("");
+  const [bulkExpiry, setBulkExpiry] = useState("");
   const { data = [], isFetching } = usePosCatalog(
     storeId,
     q.trim(),
@@ -81,7 +84,7 @@ export default function StockInPage() {
   const set = (p: PosProduct, patch: Partial<Line>) =>
     setLines((ls) => {
       const k = keyOf(p);
-      const prev = ls[k] ?? { p, qty: "", cost: "" };
+      const prev = ls[k] ?? { p, qty: "", cost: "", expiry: "" };
       return { ...ls, [k]: { ...prev, ...patch } };
     });
 
@@ -114,11 +117,12 @@ export default function StockInPage() {
       for (const k of ticked) {
         const p = byKey.get(k) ?? ls[k]?.p;
         if (!p) continue;
-        const prev = next[k] ?? { p, qty: "", cost: "" };
+        const prev = next[k] ?? { p, qty: "", cost: "", expiry: "" };
         next[k] = {
           ...prev,
           qty: bulkQty,
           cost: bulkCost.trim() ? bulkCost : prev.cost,
+          expiry: bulkExpiry || prev.expiry,
         };
       }
       return next;
@@ -127,6 +131,7 @@ export default function StockInPage() {
     setTicked(new Set());
     setBulkQty("");
     setBulkCost("");
+    setBulkExpiry("");
   };
   const pick = (f: Filter) => {
     setFilter(f);
@@ -205,6 +210,16 @@ export default function StockInPage() {
                 aria-label="Unit cost for each selected product"
                 className={`${cell} w-40`}
               />
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+                Expiry
+                <input
+                  type="date"
+                  value={bulkExpiry}
+                  onChange={(e) => setBulkExpiry(e.target.value)}
+                  aria-label="Expiry date for each selected product"
+                  className={`${cell} w-40`}
+                />
+              </label>
               <button
                 className={primaryBtn}
                 disabled={!qtyOk(bulkQty)}
@@ -237,13 +252,14 @@ export default function StockInPage() {
                   <th className={th}>In stock</th>
                   <th className={th}>Qty received</th>
                   <th className={th}>Unit cost (৳)</th>
+                  <th className={th}>Expiry date</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-5 py-10 text-center text-gray-500"
                     >
                       {isFetching ? "Loading…" : "No products"}
@@ -305,6 +321,15 @@ export default function StockInPage() {
                           className={`${cell} w-28`}
                         />
                       </td>
+                      <td className="px-4">
+                        <input
+                          type="date"
+                          value={l?.expiry ?? ""}
+                          onChange={(e) => set(p, { expiry: e.target.value })}
+                          aria-label={`Expiry date for ${productLabel(p)}`}
+                          className={`${cell} w-40`}
+                        />
+                      </td>
                     </tr>
                   );
                 })}
@@ -343,6 +368,7 @@ export default function StockInPage() {
                       variantId: l.p.variantId ?? undefined,
                       qty: Number(l.qty),
                       unitCost: l.cost ? Number(l.cost) : undefined,
+                      expiryDate: l.expiry || undefined,
                     })),
                   },
                   {

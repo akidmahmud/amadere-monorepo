@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { daysLeft, expiryStatus, type ExpiryStatus } from './pos-expiry';
 import { Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { POS_LOW_STOCK, PosCatalogService } from './pos-catalog.service';
@@ -80,6 +81,17 @@ export const PROFIT_COLUMNS = [
 ];
 
 /** Human column names for the Excel sheets. */
+/** Expiry report columns (CSV / Excel). */
+export const EXPIRY_COLUMNS = [
+  'name',
+  'sku',
+  'entryDate',
+  'expiryDate',
+  'qtyLeft',
+  'daysLeft',
+  'status',
+];
+
 /** Stock report columns, in order (CSV / Excel). */
 export const STOCK_COLUMNS = [
   'name',
@@ -97,6 +109,10 @@ export const STOCK_COLUMNS = [
 ];
 
 export const SHEET_HEADERS: Record<string, string> = {
+  entryDate: 'Entry date',
+  expiryDate: 'Expiry date',
+  qtyLeft: 'Qty left',
+  daysLeft: 'Days left',
   opening: 'Opening stock',
   stockIn: 'Stock in',
   sold: 'Sold qty',
@@ -443,6 +459,52 @@ export class PosReportsService {
         firstPurchase: dhakaDate(c.first),
         lastPurchase: dhakaDate(c.last),
       }));
+  }
+
+  /**
+   * What is on the shelf at one store, per delivery: entry date, expiry date,
+   * qty left (FIFO: the units on hand are the newest deliveries), days left
+   * and status. Soonest expiry first; products with nothing on hand left out.
+   */
+  async expiry(storeId: number) {
+    const items = (
+      await this.catalog.list(storeId, undefined, undefined, 'name', 10_000)
+    ).filter((p) => p.stock > 0 && p.stock < 9999);
+    const shelf = await this.catalog.shelf(
+      storeId,
+      items.map((p) => ({
+        productId: p.productId,
+        variantId: p.variantId,
+        onHand: p.stock,
+      })),
+    );
+    const today = dhakaDate(new Date());
+    const rank: Record<ExpiryStatus, number> = {
+      Expired: 0,
+      'Expiring soon': 1,
+      OK: 2,
+      'No expiry': 3,
+    };
+    return items
+      .flatMap((p) =>
+        (shelf.get(`${p.productId}:${p.variantId ?? 0}`) ?? []).map((b) => ({
+          productId: p.productId,
+          variantId: p.variantId,
+          name: p.variantLabel ? `${p.name} (${p.variantLabel})` : p.name,
+          sku: p.sku ?? null,
+          entryDate: b.entryDate ? dhakaDate(b.entryDate) : null,
+          expiryDate: b.expiry,
+          qtyLeft: b.qty,
+          daysLeft: b.expiry ? daysLeft(b.expiry, today) : null,
+          status: expiryStatus(b.expiry, today),
+        })),
+      )
+      .sort(
+        (a, b) =>
+          rank[a.status] - rank[b.status] ||
+          (a.expiryDate ?? '9999').localeCompare(b.expiryDate ?? '9999') ||
+          a.name.localeCompare(b.name),
+      );
   }
 
   /**

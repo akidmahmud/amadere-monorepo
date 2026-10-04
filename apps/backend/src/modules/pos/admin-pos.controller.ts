@@ -44,10 +44,16 @@ import {
   SALES_SHEET_COLUMNS,
   SHEET_HEADERS,
   STOCK_COLUMNS,
+  EXPIRY_COLUMNS,
   toCsv,
 } from './pos-reports.service';
 import { PosSettingsService } from './pos-settings.service';
-import { UpdatePosLabelDto, UpdatePosVatDto } from './dto/pos-settings.dto';
+import {
+  PosExpenseDto,
+  UpdatePosLabelDto,
+  UpdatePosVatDto,
+} from './dto/pos-settings.dto';
+import { PosExpensesService } from './pos-expenses.service';
 import { PosCostDto, PosImageDto, PosSkuDto } from './dto/pos-product.dto';
 import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
@@ -102,6 +108,7 @@ export class AdminPosController {
     private readonly manager: PosManagerService,
     private readonly tiers: PosTiersService,
     private readonly posSms: PosSmsService,
+    private readonly posExpenses: PosExpensesService,
   ) {}
 
   private async oneStore(a: Admin, can: PermissionCheck, requested?: number) {
@@ -120,6 +127,47 @@ export class AdminPosController {
   @UseInterceptors(AuditLogInterceptor)
   setVat(@Body() dto: UpdatePosVatDto) {
     return this.settings.setVat(dto);
+  }
+
+  // ---- Store expenses (booked in Accounts against the store's cost centre) ----
+  @Get('expenses/options')
+  @RequirePermission('pos.expenses')
+  async expenseOptions(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.posExpenses.options(await this.oneStore(a, can, q.storeId));
+  }
+
+  @Get('expenses')
+  @RequireAnyPermission('pos.expenses', 'pos.reports')
+  async expenseList(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosRangeQueryDto,
+  ) {
+    return this.posExpenses.list(
+      await this.oneStore(a, can, q.storeId),
+      q.from,
+      q.to,
+    );
+  }
+
+  @Post('expenses')
+  @RequirePermission('pos.expenses')
+  @UseInterceptors(AuditLogInterceptor)
+  async addExpense(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosExpenseDto,
+  ) {
+    return this.posExpenses.create(
+      await this.oneStore(a, can, q.storeId),
+      dto,
+      a.id,
+    );
   }
 
   // Label printer paper size (Barcode labels page reads it).
@@ -860,6 +908,35 @@ export class AdminPosController {
       await this.oneStore(a, can, q.storeId),
       q.from,
       q.to,
+    );
+  }
+
+  // What is on the shelf per delivery: entry/expiry date, qty left, status.
+  @Get('reports/expiry')
+  @RequirePermission('pos.reports')
+  async expiryReport(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.reports.expiry(await this.oneStore(a, can, q.storeId));
+  }
+
+  @Get('reports/expiry.csv')
+  @RequirePermission('pos.reports')
+  async expiryCsv(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+    @Res() res: Response,
+  ) {
+    const rows = await this.reports.expiry(
+      await this.oneStore(a, can, q.storeId),
+    );
+    sendCsv(
+      res,
+      `expiry-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCsv(rows, EXPIRY_COLUMNS, SHEET_HEADERS),
     );
   }
 

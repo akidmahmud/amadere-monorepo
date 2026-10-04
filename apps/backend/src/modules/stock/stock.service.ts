@@ -17,6 +17,8 @@ export interface StockMoveInput {
   transferId?: number;
   stockInId?: number;
   unitCost?: Prisma.Decimal;
+  /** Stock in: expiry of these units, YYYY-MM-DD. */
+  expiryDate?: string;
 }
 
 export function stockKey(productId: number, variantId: number | null): string {
@@ -129,6 +131,9 @@ export class StockService {
         transferId: input.transferId,
         stockInId: input.stockInId,
         unitCost: input.unitCost,
+        expiryDate: input.expiryDate
+          ? new Date(`${input.expiryDate}T00:00:00Z`)
+          : undefined,
         adminUserId: input.adminUserId,
       },
     });

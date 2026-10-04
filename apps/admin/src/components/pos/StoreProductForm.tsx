@@ -64,6 +64,7 @@ export function StoreProductForm({
   const { data: cats = [] } = usePosCategories();
   const [f, setF] = useState(initial);
   const [opening, setOpening] = useState("");
+  const [openingExpiry, setOpeningExpiry] = useState("");
   const [image, setImage] = useState(initialImage);
   const set = (k: Exclude<keyof StoreProductFields, "weightUnit">, v: string) =>
     setF((x) => ({ ...x, [k]: v }));
@@ -106,6 +107,7 @@ export function StoreProductForm({
                 productId: p.id,
                 qty: Number(opening),
                 unitCost: num(f.costPerItem) ?? undefined,
+                expiryDate: openingExpiry || undefined,
               },
             ],
           }),
@@ -222,6 +224,18 @@ export function StoreProductForm({
             placeholder="0"
             value={opening}
             onChange={(e) => setOpening(e.target.value)}
+          />
+        </label>
+      )}
+      {withStock && (
+        <label className={label}>
+          <span className="text-xs font-bold">Expiry date (optional)</span>
+          <input
+            type="date"
+            className={input}
+            value={openingExpiry}
+            onChange={(e) => setOpeningExpiry(e.target.value)}
+            aria-label="Opening stock expiry date"
           />
         </label>
       )}

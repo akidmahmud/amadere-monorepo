@@ -271,6 +271,7 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('pos', 'orders'),
   perm('pos', 'customers'),
   perm('pos', 'sms'),
+  perm('pos', 'expenses'),
   perm('pos', 'all_stores'),
   perm('pos', 'reports'),
   perm('pos', 'settings'),

@@ -60,6 +60,7 @@ export class StockDocsService {
             l.unitCost !== undefined
               ? new Prisma.Decimal(l.unitCost)
               : undefined,
+          expiryDate: l.expiryDate,
           adminUserId: adminId,
         });
       }

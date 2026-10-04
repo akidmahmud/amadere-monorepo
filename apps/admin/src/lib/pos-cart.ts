@@ -10,6 +10,9 @@ export interface PosProduct {
   imageUrl?: string | null;
   /** true = imageUrl is this store's own photo. */
   storeImage?: boolean;
+  /** Soonest expiry among the units on the shelf, and days left to it. */
+  expiry?: string | null;
+  expiryDays?: number | null;
   categoryIds?: number[];
   stock: number;
   storeOnly?: boolean;

@@ -3877,6 +3877,8 @@ model StockMovement {
   transferId  Int?              @map("transfer_id")
   stockInId   Int?              @map("stock_in_id")
   unitCost    Decimal?          @map("unit_cost") @db.Decimal(12, 2)
+  /// Stock in: the expiry date of the units received (null = none given).
+  expiryDate  DateTime?         @map("expiry_date") @db.Date
   adminUserId Int?              @map("admin_user_id")
   createdAt   DateTime          @default(now()) @map("created_at")
 

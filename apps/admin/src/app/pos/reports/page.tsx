@@ -8,7 +8,13 @@ import { qs } from "@/hooks/usePos";
 import { downloadCsvAsXlsx, reportTitle } from "@/lib/reportExport";
 import { taka } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
-import { PosSubPage, card, input } from "@/components/pos/PosSubPage";
+import {
+  PosSubPage,
+  card,
+  input,
+  primaryBtn,
+} from "@/components/pos/PosSubPage";
+import { PosExpenseDialog } from "@/components/pos/PosExpenseDialog";
 import { Icon } from "@amader/admin-ui";
 import { Pager, toolbarInput, usePaged } from "@/components/pos/PosTableKit";
 
@@ -47,6 +53,26 @@ interface StockRow {
   status: "In stock" | "Low stock" | "Out of stock";
 }
 
+interface ExpiryRow {
+  productId: number;
+  variantId: number | null;
+  name: string;
+  sku: string | null;
+  entryDate: string | null;
+  expiryDate: string | null;
+  qtyLeft: number;
+  daysLeft: number | null;
+  status: "Expired" | "Expiring soon" | "OK" | "No expiry";
+}
+const EXPIRY_TONE: Record<ExpiryRow["status"], string> = {
+  Expired: "bg-red-50 text-red-700",
+  "Expiring soon": "bg-amber-50 text-amber-800",
+  OK: "bg-emerald-50 text-[#1d7a46]",
+  "No expiry": "bg-gray-100 text-gray-600",
+};
+const dmy = (d: string | null) =>
+  d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB") : "—";
+
 const STOCK_COLS = [
   ["opening", "Opening stock"],
   ["stockIn", "Stock in"],
@@ -65,9 +91,12 @@ const exportBtn =
   "h-10 rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold hover:bg-gray-50";
 
 export default function PosReportsPage() {
-  const { storeId, allStores, store } = usePosContext();
+  const { storeId, allStores, store, can } = usePosContext();
+  const [addingExpense, setAddingExpense] = useState(false);
   const toast = useToast();
-  const [tab, setTab] = useState<"sales" | "profit" | "stock">("sales");
+  const [tab, setTab] = useState<"sales" | "profit" | "stock" | "expiry">(
+    "sales",
+  );
   const [from, setFrom] = useState(today());
   const [to, setTo] = useState(today());
   const [everyStore, setEveryStore] = useState(false);
@@ -91,6 +120,23 @@ export default function PosReportsPage() {
       ),
     enabled: tab === "profit",
   });
+  // This store's expenses for the period (under Store profit).
+  const storeExpenses = useQuery({
+    queryKey: ["pos-expenses", storeId, from, to],
+    queryFn: () =>
+      proxyFetch<
+        {
+          id: number;
+          voucherNo: string;
+          date: string;
+          category: string;
+          paidTo: string;
+          amount: string;
+          note: string | null;
+        }[]
+      >(`/admin/pos/expenses${qs({ storeId, from, to })}`),
+    enabled: tab === "profit" && !!storeId,
+  });
   const stock = useQuery({
     queryKey: ["pos-report-stock", storeId, from, to],
     queryFn: () =>
@@ -99,6 +145,28 @@ export default function PosReportsPage() {
       ),
     enabled: tab === "stock",
   });
+  const expiry = useQuery({
+    queryKey: ["pos-report-expiry", storeId],
+    queryFn: () =>
+      proxyFetch<ExpiryRow[]>(`/admin/pos/reports/expiry${qs({ storeId })}`),
+    enabled: tab === "expiry",
+  });
+  const [expQ, setExpQ] = useState("");
+  const [expStatus, setExpStatus] = useState("alert");
+  const expTerm = expQ.trim().toLowerCase();
+  const expRows = (expiry.data ?? []).filter(
+    (r) =>
+      (expStatus === ""
+        ? true
+        : expStatus === "alert"
+          ? r.status === "Expired" || r.status === "Expiring soon"
+          : r.status === expStatus) &&
+      (!expTerm ||
+        [r.name, r.sku].some((v) => v?.toLowerCase().includes(expTerm))),
+  );
+  const expPage = usePaged(expRows);
+  const expCount = (st: ExpiryRow["status"]) =>
+    (expiry.data ?? []).filter((r) => r.status === st).length;
   const [stockQ, setStockQ] = useState("");
   const [stockStatus, setStockStatus] = useState("");
   const term = stockQ.trim().toLowerCase();
@@ -160,11 +228,16 @@ export default function PosReportsPage() {
   );
 
   return (
-    <PosSubPage title="Reports" permission="pos.reports" wide={tab === "stock"}>
+    <PosSubPage
+      title="Reports"
+      permission="pos.reports"
+      wide={tab === "stock" || tab === "expiry"}
+    >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tabBtn("sales", "Sales")}
         {tabBtn("profit", "Store profit")}
         {tabBtn("stock", "Stock report")}
+        {tabBtn("expiry", "Expiry")}
       </div>
 
       {/* Per-store Excel sheets — always for the one selected store. */}
@@ -252,18 +325,28 @@ export default function PosReportsPage() {
         <div className={card}>
           <div className="flex items-start justify-between gap-3">
             {rangeBar}
-            <button
-              className={exportBtn}
-              onClick={() =>
-                exportFile(
-                  `/admin/pos/reports/profit.csv${qs({ storeId: scopeId, from, to })}`,
-                  `store-profit-${from}-${to}`,
-                  reportTitle(`Store Profit — ${storeLabel}`, range),
-                )
-              }
-            >
-              Export
-            </button>
+            <div className="flex shrink-0 gap-2">
+              {can("pos.expenses") && (
+                <button
+                  className={`${primaryBtn} flex items-center gap-1`}
+                  onClick={() => setAddingExpense(true)}
+                >
+                  <Icon name="add" size={18} /> Add expense
+                </button>
+              )}
+              <button
+                className={exportBtn}
+                onClick={() =>
+                  exportFile(
+                    `/admin/pos/reports/profit.csv${qs({ storeId: scopeId, from, to })}`,
+                    `store-profit-${from}-${to}`,
+                    reportTitle(`Store Profit — ${storeLabel}`, range),
+                  )
+                }
+              >
+                Export
+              </button>
+            </div>
           </div>
           <p className="mb-3 text-xs text-gray-500">
             Net sales = gross − returns − VAT. Expenses are those booked in
@@ -305,7 +388,71 @@ export default function PosReportsPage() {
               Nothing in this period.
             </div>
           )}
+          <div className="mt-6 border-t border-gray-100 pt-4">
+            <h3 className="mb-2 font-bold">
+              Expenses — {store?.name}{" "}
+              <span className="text-sm font-normal text-gray-500">
+                (
+                {taka(
+                  (storeExpenses.data ?? []).reduce(
+                    (t, e) => t + Number(e.amount),
+                    0,
+                  ),
+                )}
+                )
+              </span>
+            </h3>
+            {storeExpenses.error ? (
+              <p className="text-sm text-amber-700">
+                {(storeExpenses.error as Error).message}
+              </p>
+            ) : (storeExpenses.data ?? []).length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No expenses in this period.
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-left text-gray-500">
+                  <tr>
+                    <th className="py-2">Date</th>
+                    <th>Category</th>
+                    <th>Paid to</th>
+                    <th>Note</th>
+                    <th>Voucher</th>
+                    <th className="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {storeExpenses.data?.map((e) => (
+                    <tr key={e.id} className="border-t border-gray-100">
+                      <td className="py-2">
+                        {new Date(`${e.date}T00:00:00`).toLocaleDateString(
+                          "en-GB",
+                        )}
+                      </td>
+                      <td className="font-semibold">{e.category}</td>
+                      <td>{e.paidTo}</td>
+                      <td className="text-gray-600">{e.note ?? ""}</td>
+                      <td className="font-mono text-xs text-gray-500">
+                        {e.voucherNo}
+                      </td>
+                      <td className="text-right font-bold">
+                        {taka(Number(e.amount))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
+      )}
+      {addingExpense && storeId && (
+        <PosExpenseDialog
+          storeId={storeId}
+          storeName={store?.name ?? ""}
+          onClose={() => setAddingExpense(false)}
+        />
       )}
 
       {tab === "stock" && (
@@ -455,6 +602,149 @@ export default function PosReportsPage() {
             </table>
           </div>
           <Pager {...stockPage} noun="products" />
+        </div>
+      )}
+      {tab === "expiry" && (
+        <div className={`${card} mx-auto max-w-7xl`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold">Expiry — {store?.name}</h2>
+              <p className="mb-3 text-xs text-gray-500">
+                What is on the shelf now, per delivery (entry date from Stock
+                in). Counted oldest-sold-first: the units left are the newest
+                deliveries. Alert = expired or expiring within 15 days.
+              </p>
+            </div>
+            <button
+              className={exportBtn}
+              onClick={() =>
+                exportFile(
+                  `/admin/pos/reports/expiry.csv${qs({ storeId })}`,
+                  `expiry-${store?.code ?? "store"}-${today()}`,
+                  `Expiry — ${store?.name ?? ""} — ${today()}`,
+                )
+              }
+            >
+              Export Excel
+            </button>
+          </div>
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+            {(
+              [
+                [
+                  "alert",
+                  "Alerts",
+                  expCount("Expired") + expCount("Expiring soon"),
+                ],
+                ["Expired", "Expired", expCount("Expired")],
+                [
+                  "Expiring soon",
+                  "Expiring ≤15 days",
+                  expCount("Expiring soon"),
+                ],
+                ["OK", "OK", expCount("OK")],
+                ["No expiry", "No expiry date", expCount("No expiry")],
+                ["", "All", expiry.data?.length ?? 0],
+              ] as const
+            ).map(([v, label, n]) => (
+              <button
+                key={v || "all"}
+                onClick={() => {
+                  setExpStatus(v);
+                  expPage.setPage(1);
+                }}
+                className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 font-semibold ${expStatus === v ? "border-[#1d7a46] bg-emerald-50 text-[#1d7a46]" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+              >
+                {label}
+                <span
+                  className={`rounded-full px-1.5 text-xs ${expStatus === v ? "bg-[#1d7a46] text-white" : "bg-gray-100"}`}
+                >
+                  {n}
+                </span>
+              </button>
+            ))}
+            <label className={`${toolbarInput} ml-auto min-w-[220px]`}>
+              <Icon name="search" size={18} className="text-gray-400" />
+              <input
+                value={expQ}
+                onChange={(e) => {
+                  setExpQ(e.target.value);
+                  expPage.setPage(1);
+                }}
+                placeholder="Search product or SKU"
+                className="flex-1 bg-transparent outline-none"
+              />
+            </label>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <table className="w-full text-sm">
+              <thead className="bg-[#1d7a46] text-left text-white">
+                <tr>
+                  <th className="px-3 py-3 font-bold">Product</th>
+                  <th className="px-3 font-bold">SKU</th>
+                  <th className="px-3 font-bold">Entry date</th>
+                  <th className="px-3 font-bold">Expiry date</th>
+                  <th className="px-3 text-right font-bold">Qty left</th>
+                  <th className="px-3 text-right font-bold">Days left</th>
+                  <th className="px-3 font-bold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(expiry.isLoading || expRows.length === 0) && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-3 py-8 text-center text-gray-500"
+                    >
+                      {expiry.isLoading
+                        ? "Loading…"
+                        : expiry.error
+                          ? (expiry.error as Error).message
+                          : expStatus === "alert"
+                            ? "Nothing expired or expiring in the next 15 days."
+                            : "Nothing here."}
+                    </td>
+                  </tr>
+                )}
+                {expPage.items.map((r, i) => (
+                  <tr
+                    key={`${r.productId}:${r.variantId ?? 0}:${r.entryDate}:${i}`}
+                    className="border-t border-gray-100 hover:bg-emerald-50/40"
+                  >
+                    <td className="px-3 py-2 font-semibold">{r.name}</td>
+                    <td className="px-3 font-mono text-xs text-gray-600">
+                      {r.sku ?? "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 text-gray-600">
+                      {r.entryDate ? dmy(r.entryDate) : "older stock"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 font-semibold">
+                      {dmy(r.expiryDate)}
+                    </td>
+                    <td className="px-3 text-right font-bold tabular-nums">
+                      {r.qtyLeft}
+                    </td>
+                    <td className="px-3 text-right tabular-nums">
+                      {r.daysLeft == null
+                        ? "—"
+                        : r.daysLeft < 0
+                          ? `${-r.daysLeft} ago`
+                          : r.daysLeft}
+                    </td>
+                    <td className="px-3">
+                      <span
+                        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${EXPIRY_TONE[r.status]}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {r.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pager {...expPage} noun="batches" />
         </div>
       )}
     </PosSubPage>

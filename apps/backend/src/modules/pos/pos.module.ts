@@ -18,6 +18,7 @@ import { PosReportsService } from './pos-reports.service';
 import { CartModule } from '../cart/cart.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AccountsModule } from '../net-profit/accounts/accounts.module';
+import { PosExpensesService } from './pos-expenses.service';
 import { ProductCostHistoryModule } from '../product-cost-history/product-cost-history.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { ProductCostHistoryModule } from '../product-cost-history/product-cost-h
     PosManagerService,
     PosTiersService,
     PosSmsService,
+    PosExpensesService,
   ],
 })
 export class PosModule {}

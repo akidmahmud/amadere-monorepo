@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Matches,
   Min,
   NotEquals,
   ValidateNested,
@@ -22,6 +23,11 @@ export class StockInLineDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() variantId?: number;
   @ApiProperty() @IsInt() @IsPositive() qty!: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) unitCost?: number;
+  /** Expiry date of the units received (YYYY-MM-DD). */
+  @ApiPropertyOptional({ example: '2027-03-31' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Expiry date: YYYY-MM-DD' })
+  expiryDate?: string;
 }
 
 export class CreateStockInDto {

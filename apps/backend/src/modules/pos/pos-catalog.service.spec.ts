@@ -28,6 +28,7 @@ describe('PosCatalogService.list', () => {
     client: {
       product: { findMany },
       storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+      stockMovement: { findMany: jest.fn().mockResolvedValue([]) },
     },
   };
   const stock = {
@@ -108,6 +109,7 @@ describe('PosCatalogService.lookup — exact only', () => {
       client: {
         product: { findMany: jest.fn().mockResolvedValue([]) },
         storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+        stockMovement: { findMany: jest.fn().mockResolvedValue([]) },
       },
     };
     const stock = { quantities: jest.fn().mockResolvedValue(new Map()) };

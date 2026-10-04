@@ -1,4 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { dhakaDate } from '../product-cost-history/dhaka-date';
+import {
+  daysLeft,
+  EXPIRY_ALERT_DAYS,
+  shelfBatches,
+  soonestExpiry,
+  type Delivery,
+  type ShelfBatch,
+} from './pos-expiry';
 import { Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { StockService, stockKey } from '../stock/stock.service';
@@ -8,6 +17,9 @@ import { dhakaRange } from './dhaka-range';
 export const POS_LOW_STOCK = 10;
 
 export interface PosProduct {
+  /** Soonest expiry (YYYY-MM-DD) among the units on the shelf, and days to it. */
+  expiry?: string | null;
+  expiryDays?: number | null;
   productId: number;
   variantId: number | null;
   name: string;
@@ -155,6 +167,52 @@ export class PosCatalogService {
     }));
   }
 
+  /**
+   * The deliveries still on the shelf per SKU (FIFO), keyed by stockKey().
+   * ponytail: reads every delivery of these SKUs at the store; bound it by
+   * date if stores build up years of stock-ins.
+   */
+  async shelf(
+    storeId: number,
+    skus: { productId: number; variantId: number | null; onHand: number }[],
+  ): Promise<Map<string, ShelfBatch[]>> {
+    const held = skus.filter((s) => s.onHand > 0);
+    if (held.length === 0) return new Map();
+    const moves = await this.prisma.client.stockMovement.findMany({
+      where: {
+        storeId,
+        productId: { in: [...new Set(held.map((s) => s.productId))] },
+        type: { in: ['STOCK_IN', 'OPENING', 'TRANSFER_IN'] },
+        qty: { gt: 0 },
+      },
+      select: {
+        productId: true,
+        variantId: true,
+        qty: true,
+        createdAt: true,
+        expiryDate: true,
+      },
+    });
+    const by = new Map<string, Delivery[]>();
+    for (const m of moves) {
+      const k = stockKey(m.productId, m.variantId);
+      by.set(k, [
+        ...(by.get(k) ?? []),
+        {
+          at: m.createdAt,
+          qty: m.qty,
+          expiry: m.expiryDate ? m.expiryDate.toISOString().slice(0, 10) : null,
+        },
+      ]);
+    }
+    return new Map(
+      held.map((s) => {
+        const k = stockKey(s.productId, s.variantId);
+        return [k, shelfBatches(s.onHand, by.get(k) ?? [])];
+      }),
+    );
+  }
+
   async stats(storeId: number) {
     const items = await this.list(
       storeId,
@@ -187,6 +245,15 @@ export class PosCatalogService {
       outOfStock: items.filter((p) => p.stock <= 0).length,
       lowStock: items.filter((p) => p.stock > 0 && p.stock <= POS_LOW_STOCK)
         .length,
+      // Products whose units on the shelf include expired / soon-to-expire ones.
+      expired: items.filter((p) => p.expiryDays != null && p.expiryDays < 0)
+        .length,
+      expiringSoon: items.filter(
+        (p) =>
+          p.expiryDays != null &&
+          p.expiryDays >= 0 &&
+          p.expiryDays <= EXPIRY_ALERT_DAYS,
+      ).length,
       todaySales: (sales._sum.totalAmount ?? new Prisma.Decimal(0)).toFixed(2),
       todayOrders: sales._count._all,
       todayItems: items_._sum.quantity ?? 0,
@@ -210,6 +277,15 @@ export class PosCatalogService {
     const ownBy = new Map(
       own.map((o) => [stockKey(o.productId, o.variantId), o]),
     );
+    const shelf = await this.shelf(
+      storeId,
+      lines.map(({ p, v }) => ({
+        productId: p.id,
+        variantId: v?.id ?? null,
+        onHand: qty.get(stockKey(p.id, v?.id ?? null)) ?? 0,
+      })),
+    );
+    const today = dhakaDate(new Date());
     return lines.map(({ p, v }) => {
       const normalPrice = (
         v?.price ??
@@ -261,6 +337,15 @@ export class PosCatalogService {
           ? (qty.get(stockKey(p.id, v?.id ?? null)) ?? 0)
           : 9999,
         storeOnly: p.storeId !== null,
+        // Soonest expiry among the units on the shelf (FIFO), for the card tag.
+        ...(() => {
+          const e = soonestExpiry(
+            shelf.get(stockKey(p.id, v?.id ?? null)) ?? [],
+          );
+          return e
+            ? { expiry: e, expiryDays: daysLeft(e, today) }
+            : { expiry: null, expiryDays: null };
+        })(),
       };
     });
   }
