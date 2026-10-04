@@ -307,7 +307,11 @@ export class ProductsService {
           sku: v.sku,
           price: v.price?.toString() ?? null,
           salePrice: v.salePrice?.toString() ?? null,
-          wholesalePrice: v.wholesalePrice?.toString() ?? null,
+          // The product form sets ONE bulk rate on the product; a size
+          // without its own rate uses it (otherwise every pack size row
+          // fell back to the retail price on the wholesale order form).
+          wholesalePrice:
+            (v.wholesalePrice ?? p.wholesalePrice)?.toString() ?? null,
           stockStatus: v.stockStatus,
           isAdminOnly: v.isAdminOnly,
         })),
@@ -1388,7 +1392,7 @@ export class ProductsService {
   async updateVariantPrice(
     productId: number,
     variantId: number,
-    dto: { price?: number; salePrice?: number },
+    dto: { price?: number; salePrice?: number; wholesalePrice?: number | null },
   ): Promise<void> {
     const variant = await this.prisma.client.productVariant.findFirst({
       where: { id: variantId, productId },
@@ -1399,6 +1403,9 @@ export class ProductsService {
       data: {
         ...(dto.price !== undefined ? { price: dto.price } : {}),
         ...(dto.salePrice !== undefined ? { salePrice: dto.salePrice } : {}),
+        ...(dto.wholesalePrice !== undefined
+          ? { wholesalePrice: dto.wholesalePrice }
+          : {}),
       },
     });
   }

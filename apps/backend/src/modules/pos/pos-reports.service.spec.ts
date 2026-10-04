@@ -1,6 +1,9 @@
 import { Prisma } from '@amader/db';
 import { PosReportsService, toCsv } from './pos-reports.service';
 
+// No cost history: lines fall back to the product's current cost.
+const costs = { loadResolver: async () => ({ resolve: () => null }) };
+
 describe('toCsv', () => {
   it('quotes commas, quotes and newlines; header from first row', () => {
     expect(
@@ -39,7 +42,7 @@ describe('PosReportsService.sales', () => {
         },
       },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    const svc = new PosReportsService(prisma as never, {} as never, costs as never);
     expect(await svc.sales(2, '2026-09-01', '2026-09-25')).toEqual([
       {
         storeId: 2,
@@ -72,7 +75,7 @@ describe('PosReportsService.sales — returns only', () => {
         },
       },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    const svc = new PosReportsService(prisma as never, {} as never, costs as never);
     expect(await svc.sales(3, '2026-09-01', '2026-09-25')).toEqual([
       {
         storeId: 3,
@@ -95,7 +98,7 @@ describe('PosReportsService.sales — dates', () => {
         store: { findMany: jest.fn().mockResolvedValue([]) },
       },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    const svc = new PosReportsService(prisma as never, {} as never, costs as never);
     await svc.sales(2, '2026-09-25', '2026-09-25');
     const [soldArgs, returnedArgs] = groupBy.mock.calls.map((c) => c[0].where);
     expect(soldArgs.createdAt.gte.toISOString()).toBe(
@@ -157,7 +160,7 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
         },
       },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    const svc = new PosReportsService(prisma as never, {} as never, costs as never);
     expect(await svc.profit(2, '2026-09-01', '2026-09-25')).toEqual([
       {
         storeId: 2,
@@ -188,15 +191,29 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
         payments: [{ provider: 'CASH', transactionRef: null }],
         items: [
           {
+            productId: 5,
+            variantId: 9,
             productNameSnapshot: 'Honey',
             skuSnapshot: 'H1',
             quantity: 2,
             unitPrice: D(999),
+            product: { shippableWeight: D(1), costPerItem: D(500), costPriceUnit: null },
             variant: {
+              costPerItem: D(600),
               attributeValues: [
                 { attributeValue: { translations: [{ value: '1KG' }] } },
               ],
             },
+          },
+          {
+            productId: 6,
+            variantId: null,
+            productNameSnapshot: 'Salt',
+            skuSnapshot: 'S1',
+            quantity: 1,
+            unitPrice: D(45),
+            product: { shippableWeight: null, costPerItem: D(30), costPriceUnit: null },
+            variant: null,
           },
         ],
       },
@@ -204,7 +221,16 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
     const prisma = {
       client: { order: { findMany: jest.fn().mockResolvedValue(orders) } },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    // Honey's size has a cost on the sale day (৳720); Salt has no history.
+    const history = {
+      loadResolver: async () => ({
+        resolve: (l: { variantId: number | null }, date: string) =>
+          l.variantId === 9 && date === '2026-09-25'
+            ? { unitCost: 720, ok: true }
+            : null,
+      }),
+    };
+    const svc = new PosReportsService(prisma as never, {} as never, history as never);
     const rows = await svc.salesLines(2, '2026-09-25', '2026-09-25');
     expect(rows).toEqual([
       expect.objectContaining({
@@ -216,9 +242,12 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
         variant: '1KG',
         qty: 2,
         unitPrice: '999.00',
+        unitCost: '720.00',
         lineTotal: '1998.00',
         payment: 'Cash',
       }),
+      // no history → the product's current cost
+      expect.objectContaining({ product: 'Salt', unitPrice: '45.00', unitCost: '30.00' }),
     ]);
   });
 
@@ -254,7 +283,7 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
         },
       },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    const svc = new PosReportsService(prisma as never, {} as never, costs as never);
     expect(await svc.customers(2, '2026-09-01', '2026-09-30')).toEqual([
       {
         name: 'C1',
@@ -295,7 +324,7 @@ describe('PosReportsService — only orders still returned count as returns', ()
         },
       },
     };
-    const svc = new PosReportsService(prisma as never, {} as never);
+    const svc = new PosReportsService(prisma as never, {} as never, costs as never);
     await svc.sales(2, '2026-09-25', '2026-09-25');
     await svc.profit(2, '2026-09-25', '2026-09-25');
     const returnQueries = groupBy.mock.calls

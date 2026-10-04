@@ -18,6 +18,7 @@ import { PosReportsService } from './pos-reports.service';
 import { CartModule } from '../cart/cart.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AccountsModule } from '../net-profit/accounts/accounts.module';
+import { ProductCostHistoryModule } from '../product-cost-history/product-cost-history.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AccountsModule } from '../net-profit/accounts/accounts.module';
     AccountsModule,
     ProductsModule,
     SmsModule,
+    ProductCostHistoryModule,
   ],
   controllers: [AdminPosController],
   providers: [

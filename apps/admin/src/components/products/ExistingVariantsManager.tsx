@@ -34,6 +34,8 @@ export interface ExistingVariantsManagerProps {
   costPerItem?: number;
   /** When set, costPerItem is a rate scaled by each variant's own Weight (kg) instead of a flat cost. */
   costPriceUnit?: CostPriceUnit | null;
+  /** The product's Wholesale Price — what a size without its own uses. */
+  productWholesale?: string;
 }
 
 function labelFor(
@@ -72,6 +74,7 @@ function VariantEditRow({
   removePending,
   costPerItem,
   costPriceUnit,
+  productWholesale,
 }: {
   productId: number;
   variant: AdminProductVariant;
@@ -80,6 +83,7 @@ function VariantEditRow({
   removePending: boolean;
   costPerItem?: number;
   costPriceUnit?: CostPriceUnit | null;
+  productWholesale?: string;
 }) {
   const qc = useQueryClient();
   const updatePrice = useUpdateVariantPrice(productId);
@@ -92,6 +96,12 @@ function VariantEditRow({
   const [salePrice, setSalePrice] = useState(
     variant.salePrice != null ? String(variant.salePrice) : "",
   );
+  const savedWholesale =
+    variant.wholesalePrice != null
+      ? String(Number(variant.wholesalePrice))
+      : "";
+  // This size's own wholesale rate; blank = the product's Wholesale Price.
+  const [wholesale, setWholesale] = useState(savedWholesale);
   const [stock, setStock] = useState(String(variant.stock));
   const [sku, setSku] = useState(variant.sku ?? "");
   const [weight, setWeight] = useState(variant.weightOverride ?? "");
@@ -112,6 +122,7 @@ function VariantEditRow({
     price !== String(variant.price) ||
     salePrice !==
       (variant.salePrice != null ? String(variant.salePrice) : "") ||
+    wholesale !== savedWholesale ||
     stock !== String(variant.stock) ||
     sku !== (variant.sku ?? "") ||
     weight !== (variant.weightOverride ?? "");
@@ -126,13 +137,18 @@ function VariantEditRow({
     const invalidate = () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY });
     if (
       price !== String(variant.price) ||
-      salePrice !== (variant.salePrice != null ? String(variant.salePrice) : "")
+      salePrice !==
+        (variant.salePrice != null ? String(variant.salePrice) : "") ||
+      wholesale !== savedWholesale
     ) {
       updatePrice.mutate(
         {
           variantId: variant.id,
           price: Number(price),
           salePrice: salePrice ? Number(salePrice) : undefined,
+          ...(wholesale !== savedWholesale
+            ? { wholesalePrice: wholesale ? Number(wholesale) : null }
+            : {}),
         },
         { onSuccess: invalidate },
       );
@@ -204,6 +220,22 @@ function VariantEditRow({
           type="number"
           value={salePrice}
           onChange={(e) => setSalePrice(e.target.value)}
+          className="num h-8 w-20 rounded-lg border border-emerald-800/20 bg-white px-2.5 text-xs font-semibold text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-amber-400/30"
+        />
+      </label>
+      <label
+        className="flex flex-col gap-1"
+        title="This size's wholesale price. Leave blank to use the product's Wholesale Price."
+      >
+        <span className="text-[11px] font-bold text-emerald-900/80">
+          Wholesale
+        </span>
+        <input
+          type="number"
+          value={wholesale}
+          placeholder={productWholesale ?? "—"}
+          onChange={(e) => setWholesale(e.target.value)}
+          aria-label="Wholesale price"
           className="num h-8 w-20 rounded-lg border border-emerald-800/20 bg-white px-2.5 text-xs font-semibold text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:ring-1 focus:ring-amber-400/30"
         />
       </label>
@@ -373,6 +405,7 @@ export function ExistingVariantsManager({
   variants,
   costPerItem,
   costPriceUnit,
+  productWholesale,
 }: ExistingVariantsManagerProps) {
   const toast = useToast();
   const addVariant = useAddVariant(productId);
@@ -444,6 +477,7 @@ export function ExistingVariantsManager({
             }
             costPerItem={costPerItem}
             costPriceUnit={costPriceUnit}
+            productWholesale={productWholesale}
           />
         ))}
         {variants.length === 0 && (

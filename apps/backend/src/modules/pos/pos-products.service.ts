@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { PermissionCheck } from '../../common/auth/permission.decorator';
 import { ProductsService } from '../products/products.service';
+import { ProductCostHistoryService } from '../product-cost-history/product-cost-history.service';
 import { PosProductDto, StorePriceDto } from './dto/pos-product.dto';
 
 /**
@@ -20,6 +21,7 @@ export class PosProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly products: ProductsService,
+    private readonly costs: ProductCostHistoryService,
   ) {}
 
   async list(storeId: number) {
@@ -445,6 +447,43 @@ export class PosProductsService {
       throw e;
     }
     return { sku: value };
+  }
+
+  /**
+   * The shop's own cost for one of ITS products (shared products keep the
+   * website's cost). Recorded in the cost history like a product-form edit:
+   * the first cost covers earlier sales too, a change applies from today.
+   */
+  async setCost(
+    storeId: number,
+    productId: number,
+    variantId: number | null,
+    cost: number,
+    adminId: number,
+  ) {
+    const p = await this.prisma.client.product.findFirst({
+      where: { id: productId, deletedAt: null },
+      select: {
+        storeId: true,
+        hasVariants: true,
+        variants: { select: { id: true } },
+      },
+    });
+    if (!p) throw new BadRequestException('Product not found');
+    if (p.storeId !== storeId)
+      throw new ForbiddenException(
+        "Only this store's own products take a store cost — shared products use the website cost",
+      );
+    if (p.hasVariants !== (variantId !== null))
+      throw new BadRequestException(
+        p.hasVariants ? 'Pick a size' : 'This product has no sizes',
+      );
+    if (variantId !== null && !p.variants.some((v) => v.id === variantId))
+      throw new BadRequestException(
+        'That size does not belong to this product',
+      );
+    await this.costs.recordIfChanged({ productId, variantId, cost }, adminId);
+    return { cost: cost.toFixed(2) };
   }
 
   /** Display unit lives beside the weight (ProductsService doesn't know it). */

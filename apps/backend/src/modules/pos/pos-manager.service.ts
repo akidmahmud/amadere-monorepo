@@ -8,6 +8,13 @@ import {
 import { dhakaTimeRange } from './dhaka-range';
 import { PosTiersService } from './pos-tiers.service';
 import { tierFor } from './pos-tiers';
+import { ProductCostHistoryService } from '../product-cost-history/product-cost-history.service';
+import { dhakaDate } from '../product-cost-history/dhaka-date';
+import {
+  COST_PRODUCT_SELECT,
+  COST_VARIANT_SELECT,
+  lineCoster,
+} from './pos-line-cost';
 
 export const POS_ORDER_STATUSES = [
   'COMPLETED',
@@ -63,6 +70,7 @@ export class PosManagerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tiers: PosTiersService,
+    private readonly costs: ProductCostHistoryService,
   ) {}
 
   private orderWhere(
@@ -126,8 +134,10 @@ export class PosManagerService {
               quantity: true,
               unitPrice: true,
               restockedQuantity: true,
-              product: { select: { shippableWeight: true, weightUnit: true } },
-              variant: { select: { weightOverride: true } },
+              product: {
+                select: { ...COST_PRODUCT_SELECT, weightUnit: true },
+              },
+              variant: { select: COST_VARIANT_SELECT },
             },
           },
           payments: {
@@ -169,6 +179,11 @@ export class PosManagerService {
         weightUnit: true,
       },
     });
+    // Cost on each sale's day (export's Unit cost column).
+    const unitCost = await lineCoster(
+      this.costs,
+      rows.flatMap((r) => r.items),
+    );
     const weightOf = (
       storeId: number | null,
       i: (typeof rows)[number]['items'][number],
@@ -211,6 +226,7 @@ export class PosManagerService {
             price: i.unitPrice.toFixed(2),
             returned: i.restockedQuantity,
             ...weightOf(o.storeId, i),
+            unitCost: unitCost(i, dhakaDate(o.createdAt)),
           })),
           tender: payments[0]?.provider ?? null,
         })),

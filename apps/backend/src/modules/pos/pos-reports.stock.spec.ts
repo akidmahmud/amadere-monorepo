@@ -26,6 +26,7 @@ describe('PosReportsService.stock', () => {
     const svc = new PosReportsService(
       { client: { stockMovement: { groupBy } } } as never,
       catalog as never,
+      {} as never,
     );
     const rows = await svc.stock(4, '2026-10-01', '2026-10-02');
     expect(rows).toHaveLength(2); // untracked left out

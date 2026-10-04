@@ -64,6 +64,8 @@ export class AdminProductVariantDto {
   barcode!: string | null;
   price!: string | null;
   salePrice!: string | null;
+  /** This size's own wholesale rate; null = the product's rate. */
+  wholesalePrice!: string | null;
   stock!: number;
   // reservedStock is held by in-progress orders — reserveStock() (order
   // creation/item-add) enforces stock - reservedStock >= quantity, but

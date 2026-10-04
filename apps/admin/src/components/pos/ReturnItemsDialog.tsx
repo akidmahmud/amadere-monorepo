@@ -1,5 +1,6 @@
 "use client";
 
+import { lineSize } from "@/lib/pos-weight";
 import { useState } from "react";
 import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
@@ -96,10 +97,10 @@ export function ReturnItemsDialog({
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold">
                       {l.productNameSnapshot}
-                      {l.variantLabel && (
+                      {lineSize(l) && (
                         <span className="font-normal text-gray-500">
                           {" "}
-                          · {l.variantLabel}
+                          · {lineSize(l)}
                         </span>
                       )}
                     </div>

@@ -78,8 +78,21 @@ describe('ProductsService.adminPickerList — every variant, not just the defaul
       sku: 'Amader Fiber Mix 1kg',
       price: '1800',
       salePrice: '1550',
-      wholesalePrice: null,
+      // No rate of its own: the product's wholesale price (the product form's
+      // one box), not a fall back to retail on the wholesale order form.
+      wholesalePrice: '700',
     });
+  });
+
+  it("a size's own wholesale price wins over the product's", async () => {
+    findMany.mockResolvedValue([
+      {
+        ...row,
+        variants: [{ ...row.variants[1], wholesalePrice: decimal('1300') }],
+      },
+    ]);
+    const [item] = await service.adminPickerList();
+    expect(item.variants[0].wholesalePrice).toBe('1300');
   });
 
   it('includes the admin-only variant, flagged', async () => {

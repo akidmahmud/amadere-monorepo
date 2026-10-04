@@ -4,6 +4,8 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { POS_LOW_STOCK, PosCatalogService } from './pos-catalog.service';
 import { dhakaRange } from './dhaka-range';
 import { dhakaDate } from '../product-cost-history/dhaka-date';
+import { ProductCostHistoryService } from '../product-cost-history/product-cost-history.service';
+import { lineCoster } from './pos-line-cost';
 
 // A leading = + - @ (or tab/CR) makes Excel run the cell as a formula; a
 // customer named "=HYPERLINK(...)" must stay text. Real numbers are left alone.
@@ -49,6 +51,7 @@ export const SALES_SHEET_COLUMNS = [
   'sku',
   'qty',
   'unitPrice',
+  'unitCost',
   'lineTotal',
   'saleTotal',
   'payment',
@@ -115,6 +118,7 @@ export const SHEET_HEADERS: Record<string, string> = {
   sku: 'SKU',
   qty: 'Qty',
   unitPrice: 'Unit price',
+  unitCost: 'Unit cost',
   lineTotal: 'Line total',
   saleTotal: 'Sale total',
   payment: 'Payment',
@@ -142,6 +146,7 @@ export class PosReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly catalog: PosCatalogService,
+    private readonly costs: ProductCostHistoryService,
   ) {}
 
   /** POS sales per store for [from, to] inclusive. scope null = every store. */
@@ -299,6 +304,13 @@ export class PosReportsService {
         },
         items: {
           include: {
+            product: {
+              select: {
+                shippableWeight: true,
+                costPerItem: true,
+                costPriceUnit: true,
+              },
+            },
             variant: {
               include: {
                 attributeValues: {
@@ -316,6 +328,10 @@ export class PosReportsService {
         },
       },
     });
+    const unitCost = await lineCoster(
+      this.costs,
+      orders.flatMap((o) => o.items),
+    );
     return orders.flatMap((o) =>
       o.items.map((i) => ({
         date: dhakaDate(o.createdAt),
@@ -344,6 +360,7 @@ export class PosReportsService {
         sku: i.skuSnapshot ?? '',
         qty: i.quantity,
         unitPrice: new Prisma.Decimal(i.unitPrice).toFixed(2),
+        unitCost: unitCost(i, dhakaDate(o.createdAt)),
         lineTotal: new Prisma.Decimal(i.unitPrice).times(i.quantity).toFixed(2),
         saleTotal: new Prisma.Decimal(o.totalAmount).toFixed(2),
         payment:

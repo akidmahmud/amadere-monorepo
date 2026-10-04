@@ -191,7 +191,8 @@ export function ProductPricingCard({ form }: { form: ProductFormState }) {
           What a shop pays per unit. Only the price a wholesale order line
           starts at — staff can still change it on the order, and the rate that
           actually billed is kept on the invoice. Leave empty to start wholesale
-          lines at the retail price.
+          lines at the retail price. Used by every size that has no wholesale
+          price of its own — set a different one per size in the Variants tab.
         </span>
       </label>
 

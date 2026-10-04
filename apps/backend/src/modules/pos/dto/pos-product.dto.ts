@@ -116,6 +116,17 @@ export class DuplicateStoreDto {
   code!: string;
 }
 
+export class PosCostDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  variantId?: number | null;
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  cost!: number;
+}
+
 export class PosSkuDto {
   @IsOptional()
   @Type(() => Number)

@@ -708,6 +708,7 @@ export function ProductFormFields({
                   variants={variants}
                   costPerItem={variantCostPerItem}
                   costPriceUnit={form.costPriceUnit}
+                  productWholesale={form.wholesalePrice || undefined}
                 />
               ) : (
                 <NewVariantsBuilder

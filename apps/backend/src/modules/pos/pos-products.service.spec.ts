@@ -1,6 +1,8 @@
 import { ForbiddenException } from '@nestjs/common';
 import { PosProductsService, slugify } from './pos-products.service';
 
+const costs = { recordIfChanged: jest.fn() };
+
 function make(existing: object | null = null) {
   const products = {
     create: jest.fn().mockResolvedValue({ id: 1 }),
@@ -15,7 +17,7 @@ function make(existing: object | null = null) {
     },
   };
   return {
-    svc: new PosProductsService(prisma as never, products as never),
+    svc: new PosProductsService(prisma as never, products as never, costs as never),
     products,
   };
 }
@@ -74,7 +76,7 @@ describe('PosProductsService.setPrice', () => {
     const prisma = {
       client: { product: { findFirst: jest.fn().mockResolvedValue(product) }, storePrice },
     };
-    return { svc: new PosProductsService(prisma as never, {} as never), storePrice };
+    return { svc: new PosProductsService(prisma as never, {} as never, costs as never), storePrice };
   }
   const simple = { id: 1, hasVariants: false, variants: [] };
 
@@ -122,8 +124,7 @@ describe('PosProductsService — weight & duplicate', () => {
     const productUpdate = jest.fn();
     const svc = new PosProductsService(
       { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId: 4, hasVariants: false }), update: productUpdate } } } as never,
-      products as never,
-    );
+      products as never, costs as never);
     await svc.create(4, { name: 'Oil', price: 900, weightKg: 0.5, weightUnit: 'ml' }, { storeId: 4, can: () => true });
     expect(products.create.mock.calls[0][0].shippableWeight).toBe(0.5);
     // 500 ml: stored as 0.5 (litres), shown in ml.
@@ -139,8 +140,7 @@ describe('PosProductsService — weight & duplicate', () => {
     const mk = (storeId: number | null) =>
       new PosProductsService(
         { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
-        products as never,
-      );
+        products as never, costs as never);
     products.duplicate.mockResolvedValue({ id: 8 });
     await mk(4).duplicate(4, 7);
     expect(products.duplicate).toHaveBeenCalledWith(7);
@@ -163,7 +163,7 @@ describe('PosProductsService.setPrice — store name', () => {
         storePrice,
       },
     };
-    return { svc: new PosProductsService(prisma as never, {} as never), storePrice };
+    return { svc: new PosProductsService(prisma as never, {} as never, costs as never), storePrice };
   };
 
   it('a name-only change keeps the normal price (price stays null)', async () => {
@@ -188,8 +188,7 @@ describe('PosProductsService.remove', () => {
     const mk = (storeId: number | null) =>
       new PosProductsService(
         { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
-        products as never,
-      );
+        products as never, costs as never);
     await mk(4).remove(4, 7);
     expect(products.delete).toHaveBeenCalledWith(7);
     await expect(mk(9).remove(4, 7)).rejects.toThrow(/does not belong/);
@@ -207,7 +206,7 @@ describe('PosProductsService — remove a shared product from one store', () => 
       updateMany: jest.fn(),
     };
     const prisma = { client: { product: { findFirst: jest.fn().mockResolvedValue(product) }, storePrice } };
-    return { svc: new PosProductsService(prisma as never, {} as never), storePrice };
+    return { svc: new PosProductsService(prisma as never, {} as never, costs as never), storePrice };
   };
 
   it('hides a shared product at this store only (product-level row)', async () => {
@@ -244,8 +243,7 @@ describe('PosProductsService.restore', () => {
     const mk = (storeId: number | null) =>
       new PosProductsService(
         { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId }) } } } as never,
-        products as never,
-      );
+        products as never, costs as never);
     await mk(4).restore(4, 7);
     expect(products.restore).toHaveBeenCalledWith(7);
     await expect(mk(9).restore(4, 7)).rejects.toThrow(/does not belong/);
@@ -257,8 +255,7 @@ describe('PosProductsService.setPrice — store weight', () => {
     const storePrice = { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn(), update: jest.fn(), deleteMany: jest.fn(), updateMany: jest.fn() };
     const svc = new PosProductsService(
       { client: { product: { findFirst: jest.fn().mockResolvedValue({ id: 1, hasVariants: false, variants: [] }) }, storePrice } } as never,
-      {} as never,
-    );
+      {} as never, costs as never);
     await svc.setPrice(4, { productId: 1, weightKg: 0.5 }, 7);
     expect(storePrice.create.mock.calls[0][0].data).toEqual(
       expect.objectContaining({ weightKg: 0.5, price: null, name: null }),
@@ -273,8 +270,7 @@ describe('PosProductsService.duplicate — shared product', () => {
     const products = { duplicate: jest.fn().mockResolvedValue({ id: 99 }) };
     const svc = new PosProductsService(
       { client: { product: { findUniqueOrThrow: jest.fn().mockResolvedValue({ storeId: null }), update } } } as never,
-      products as never,
-    );
+      products as never, costs as never);
     expect(await svc.duplicate(4, 7)).toEqual({ id: 99 });
     expect(update).toHaveBeenCalledWith({ where: { id: 99 }, data: { storeId: 4, status: 'ADMIN_ONLY' } });
   });

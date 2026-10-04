@@ -16,4 +16,12 @@ export class UpdateVariantPriceDto {
   @IsNumber()
   @Min(0)
   salePrice?: number;
+
+  /** This size's own wholesale rate; null = use the product's rate. */
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  wholesalePrice?: number | null;
 }

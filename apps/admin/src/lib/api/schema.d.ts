@@ -9111,6 +9111,8 @@ export interface components {
       barcode: string | null;
       price: string | null;
       salePrice: string | null;
+      /** @description This size's own wholesale rate; null = the product's rate. */
+      wholesalePrice: string | null;
       stock: number;
       reservedStock: number;
       stockStatus: Record<string, never>;

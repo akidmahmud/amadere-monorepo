@@ -106,6 +106,8 @@ export function toAdminProductDto(
       barcode: v.barcode,
       price: decimalToString(v.price),
       salePrice: decimalToString(v.salePrice),
+      // This size's own wholesale rate; null = the product's rate.
+      wholesalePrice: decimalToString(v.wholesalePrice),
       stock: v.stock,
       reservedStock: v.reservedStock,
       stockStatus: v.stockStatus,
@@ -134,7 +136,8 @@ export function toAdminProductDto(
 export function toAdminProductListItemDto(
   product: ProductListItemWithRelations,
 ): Omit<AdminProductListItemDto, 'createdAt' | 'seoScore'> {
-  const primaryMedia = product.media.find((m) => m.isPrimary) ?? product.media[0];
+  const primaryMedia =
+    product.media.find((m) => m.isPrimary) ?? product.media[0];
   return {
     id: product.id,
     slug: product.slug,
@@ -259,23 +262,23 @@ export function toPublicProductDto(
     variants: product.variants
       .filter((v) => !v.isAdminOnly)
       .map((v) => ({
-      id: v.id,
-      sku: v.sku,
-      price: decimalToString(v.price),
-      salePrice: decimalToString(v.salePrice),
-      stock: v.stock,
-      stockStatus: v.stockStatus,
-      isDefault: v.isDefault,
-      attributeValues: v.attributeValues.map((av) => {
-        const t = resolveTranslation(av.attributeValue.translations, locale);
-        return {
-          attributeId: av.attributeValue.attributeId,
-          attributeValueId: av.attributeValueId,
-          value: t?.value ?? '',
-          colorHex: av.attributeValue.colorHex,
-        };
-      }),
-    })),
+        id: v.id,
+        sku: v.sku,
+        price: decimalToString(v.price),
+        salePrice: decimalToString(v.salePrice),
+        stock: v.stock,
+        stockStatus: v.stockStatus,
+        isDefault: v.isDefault,
+        attributeValues: v.attributeValues.map((av) => {
+          const t = resolveTranslation(av.attributeValue.translations, locale);
+          return {
+            attributeId: av.attributeValue.attributeId,
+            attributeValueId: av.attributeValueId,
+            value: t?.value ?? '',
+            colorHex: av.attributeValue.colorHex,
+          };
+        }),
+      })),
   };
 }
 

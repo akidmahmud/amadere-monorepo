@@ -39,3 +39,21 @@ export function formatWeight(
   const u = unitFor(n, unit);
   return `${fromBase(n, u)} ${u === "l" ? "L" : u}`;
 }
+
+/**
+ * "1KG", "500 g" or "1KG · 1.5 L" for a sold line: its size label, plus the
+ * weight when there is no size label or this store set its own weight
+ * (same rule as the receipt).
+ */
+export function lineSize(i: {
+  variantLabel?: string | null;
+  weightKg?: string | null;
+  weightUnit?: string | null;
+  storeWeight?: boolean;
+}): string {
+  const w =
+    !i.variantLabel || i.storeWeight
+      ? formatWeight(i.weightKg, i.weightUnit)
+      : null;
+  return [i.variantLabel, w].filter(Boolean).join(" · ");
+}

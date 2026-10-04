@@ -4,7 +4,7 @@ import { WeightField } from "./WeightField";
 import { PosImagePicker, type PickedImage } from "./PosImagePicker";
 import { fromBase, toBase, unitFor, type WeightUnit } from "@/lib/pos-weight";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { taka, type PosProduct } from "@/lib/pos-cart";
@@ -32,6 +32,28 @@ export function StorePriceDialog({
   const [sku, setSku] = useState(p.sku ?? "");
   const canSku = p.storeOnly || can("product.update");
   const skuChanged = sku.trim() !== (p.sku ?? "");
+  // A store's own product carries the shop's cost (shared ones keep the
+  // website cost). Loaded from the store products list; undefined = untouched.
+  const canCost = !!p.storeOnly && can("pos.store_products");
+  const { data: ownRows } = useQuery({
+    queryKey: ["pos-products", storeId],
+    queryFn: () =>
+      proxyFetch<{ id: number; costPerItem: string | null }[]>(
+        `/admin/pos/products?storeId=${storeId}`,
+      ),
+    enabled: canCost,
+  });
+  const savedCost =
+    ownRows?.find((r) => r.id === p.productId)?.costPerItem ?? null;
+  const [costInput, setCostInput] = useState<string | undefined>(undefined);
+  const costText =
+    costInput ?? (savedCost !== null ? String(Number(savedCost)) : "");
+  const c = costText.trim() === "" ? null : Number(costText);
+  const costChanged =
+    canCost &&
+    costInput !== undefined &&
+    c !== null &&
+    c !== (savedCost === null ? null : Number(savedCost));
   const [price, setPrice] = useState(p.storePrice ? p.price : "");
   const [sale, setSale] = useState(p.storePrice ? (p.salePrice ?? "") : "");
   const startUnit = unitFor(
@@ -58,6 +80,14 @@ export function StorePriceDialog({
       addQty?: number;
     }) => {
       const { addQty: qty, ...override } = body;
+      if (costChanged)
+        await proxyFetch(
+          `/admin/pos/products/${p.productId}/cost?storeId=${storeId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ variantId: p.variantId, cost: c }),
+          },
+        );
       if (canSku && skuChanged)
         await proxyFetch(
           `/admin/pos/products/${p.productId}/sku?storeId=${storeId}`,
@@ -101,6 +131,7 @@ export function StorePriceDialog({
     onSuccess: (_r, body) => {
       qc.invalidateQueries({ queryKey: ["pos-catalog"] });
       qc.invalidateQueries({ queryKey: ["pos-stats"] });
+      qc.invalidateQueries({ queryKey: ["pos-products"] });
       toast.push(
         body.addQty
           ? `Saved — ${body.addQty} added to stock`
@@ -108,7 +139,8 @@ export function StorePriceDialog({
               body.price === null &&
               body.weightKg === null &&
               image === undefined &&
-              !skuChanged
+              !skuChanged &&
+              !costChanged
             ? "Back to the normal name, price and weight"
             : "Saved for this store",
         "success",
@@ -127,7 +159,8 @@ export function StorePriceDialog({
     (s === null || (n !== null && s > 0 && s <= n)) &&
     (w === null || w > 0) &&
     Number.isInteger(q) &&
-    q >= 0;
+    q >= 0 &&
+    (c === null || (Number.isFinite(c) && c >= 0));
 
   return (
     <div
@@ -168,7 +201,9 @@ export function StorePriceDialog({
               autoFocus
             />
           </label>
-          <label className="col-span-2 flex flex-col gap-1">
+          <label
+            className={`${canCost ? "" : "col-span-2"} flex flex-col gap-1`}
+          >
             <span className="text-xs font-bold">
               SKU{" "}
               {!p.storeOnly && (
@@ -192,6 +227,22 @@ export function StorePriceDialog({
               aria-label="SKU"
             />
           </label>
+          {canCost && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold">
+                Cost (৳){" "}
+                <span className="font-normal text-gray-500">for profit</span>
+              </span>
+              <input
+                className={`${input} ${c !== null && !(c >= 0) ? "border-red-400" : ""}`}
+                inputMode="decimal"
+                value={costText}
+                placeholder="not set"
+                onChange={(e) => setCostInput(e.target.value)}
+                aria-label="Cost"
+              />
+            </label>
+          )}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-bold">Price (৳)</span>
             <input

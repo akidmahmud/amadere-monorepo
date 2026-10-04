@@ -10,7 +10,7 @@ import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { usePosSale } from "@/hooks/usePos";
 import { taka } from "@/lib/pos-cart";
-import { formatWeight } from "@/lib/pos-weight";
+import { formatWeight, lineSize } from "@/lib/pos-weight";
 import { exportAllPagesXlsx } from "@/lib/pos-export";
 import { reportTitle } from "@/lib/reportTitle";
 import {
@@ -41,6 +41,8 @@ type Row = {
     returned: number;
     weightKg?: string | null;
     weightUnit?: string | null;
+    /** Cost on the sale day; "" when no cost is set. */
+    unitCost?: string;
   }[];
   tender: string | null;
 };
@@ -213,6 +215,7 @@ export function PosOrdersManager({
           "Weight",
           "Qty",
           "Unit price (৳)",
+          "Unit cost (৳)",
           "Line total (৳)",
           "Returned",
           "Payment",
@@ -257,6 +260,7 @@ export function PosOrdersManager({
             formatWeight(i.weightKg, i.weightUnit) ?? "",
             i.qty || null,
             i.name ? Number(i.price) : null,
+            i.unitCost ? Number(i.unitCost) : null,
             i.name ? Number(i.price) * i.qty : null,
             i.returned || null,
             ...(n === 0 ? tail : ["", null, null, null, null, "", ""]),
@@ -802,11 +806,8 @@ function OrderDetail({
                           {i.restockedQuantity} returned
                         </span>
                       )}
-                      {i.variantLabel && (
-                        <span className="text-gray-500">
-                          {" "}
-                          · {i.variantLabel}
-                        </span>
+                      {lineSize(i) && (
+                        <span className="text-gray-500"> · {lineSize(i)}</span>
                       )}
                     </td>
                     <td className="text-right text-gray-600">

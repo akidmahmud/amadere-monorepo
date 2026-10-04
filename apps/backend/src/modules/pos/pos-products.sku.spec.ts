@@ -1,5 +1,7 @@
 import { PosProductsService } from './pos-products.service';
 
+const costs = { recordIfChanged: jest.fn() };
+
 function make(product: Record<string, unknown> | null, updateError?: unknown) {
   const update = updateError
     ? jest.fn().mockRejectedValue(updateError)
@@ -10,7 +12,7 @@ function make(product: Record<string, unknown> | null, updateError?: unknown) {
       productVariant: { update: jest.fn().mockResolvedValue({}) },
     },
   };
-  return { svc: new PosProductsService(prisma as never, {} as never), prisma };
+  return { svc: new PosProductsService(prisma as never, {} as never, costs as never), prisma };
 }
 const own = { storeId: 4, hasVariants: false, variants: [] };
 const shared = { storeId: null, hasVariants: true, variants: [{ id: 9 }] };
@@ -41,5 +43,21 @@ describe('PosProductsService.setSku', () => {
     await svc.setSku(4, 1, null, '  ', yes);
     expect(prisma.client.product.update.mock.calls[0][0].data).toEqual({ sku: null });
     await expect(make(shared).svc.setSku(4, 1, 7, 'X', yes)).rejects.toThrow(/does not belong/);
+  });
+});
+
+describe('PosProductsService.setCost', () => {
+  it("records the shop's cost for its own product in the cost history", async () => {
+    costs.recordIfChanged.mockClear();
+    const { svc } = make(own);
+    await expect(svc.setCost(4, 1, null, 85.5, 7)).resolves.toEqual({ cost: '85.50' });
+    expect(costs.recordIfChanged).toHaveBeenCalledWith({ productId: 1, variantId: null, cost: 85.5 }, 7);
+  });
+
+  it('refuses shared products and other stores’ products', async () => {
+    costs.recordIfChanged.mockClear();
+    await expect(make(shared).svc.setCost(4, 1, 9, 10, 7)).rejects.toThrow(/website cost/);
+    await expect(make({ ...own, storeId: 5 }).svc.setCost(4, 1, null, 10, 7)).rejects.toThrow(/website cost/);
+    expect(costs.recordIfChanged).not.toHaveBeenCalled();
   });
 });

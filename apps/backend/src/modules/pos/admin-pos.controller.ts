@@ -48,7 +48,7 @@ import {
 } from './pos-reports.service';
 import { PosSettingsService } from './pos-settings.service';
 import { UpdatePosLabelDto, UpdatePosVatDto } from './dto/pos-settings.dto';
-import { PosImageDto, PosSkuDto } from './dto/pos-product.dto';
+import { PosCostDto, PosImageDto, PosSkuDto } from './dto/pos-product.dto';
 import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
@@ -709,6 +709,26 @@ export class AdminPosController {
       await this.oneStore(a, can, q.storeId),
       id,
       dto.mediaId ?? null,
+      a.id,
+    );
+  }
+
+  // The shop's cost for its own product (pencil popup).
+  @Put('products/:id/cost')
+  @RequirePermission('pos.store_products')
+  @UseInterceptors(AuditLogInterceptor)
+  async setCost(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosCostDto,
+  ) {
+    return this.products.setCost(
+      await this.oneStore(a, can, q.storeId),
+      id,
+      dto.variantId ?? null,
+      dto.cost,
       a.id,
     );
   }
