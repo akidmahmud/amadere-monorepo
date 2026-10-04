@@ -49,6 +49,8 @@ type Row = {
 type Page = {
   items: Row[];
   total: number;
+  /** Sales for the current filters; today's when no period is chosen. */
+  sales?: { amount: string; orders: number; today: boolean };
   counts: {
     ALL: number;
     COMPLETED: number;
@@ -287,7 +289,32 @@ export function PosOrdersManager({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#1d7a46] text-white">
+            <Icon name="bar_chart" size={26} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm text-gray-600">
+              {data?.sales?.today === false ? "Sales" : "Today's sales"}
+              <span className="ml-1 font-semibold text-[#1d7a46]">
+                ·{" "}
+                {tender
+                  ? (TENDER_LABEL[tender === "MOBILE" ? "BKASH" : tender] ??
+                    tender)
+                  : "All payments"}
+              </span>
+            </div>
+            <div className="text-3xl font-extrabold">
+              {data?.sales ? taka(Number(data.sales.amount)) : "—"}
+            </div>
+            <div className="text-xs text-gray-500">
+              {data?.sales
+                ? `${data.sales.orders} order${data.sales.orders === 1 ? "" : "s"}${data.sales.today ? " today" : " in the period"}`
+                : ""}
+            </div>
+          </div>
+        </div>
         {(
           [
             ["Total orders", data?.counts.ALL, "receipt_long"],

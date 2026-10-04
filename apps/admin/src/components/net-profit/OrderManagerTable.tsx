@@ -20,7 +20,11 @@ import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { ORDER_SOURCES, canonicalFacebookSource } from "@amader/shared";
 import { Button, Icon } from "@amader/admin-ui";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
-import { useAssignOrder, useUpdateOrderNote, type OrderManagerRow } from "@/hooks/useOrderManager";
+import {
+  useAssignOrder,
+  useUpdateOrderNote,
+  type OrderManagerRow,
+} from "@/hooks/useOrderManager";
 import type { AssignableStaff } from "@/hooks/useCustomers";
 import { useOrderStatusConfigs } from "@/hooks/useOrderStatuses";
 import {
@@ -59,7 +63,13 @@ const COURIER_STATUS_COLOR: Record<string, string> = {
   FAILED: "#e5484d",
 };
 
-const OPTIONAL_COLUMNS = ["payment", "paymentStatus", "division", "internalNote", "source"] as const;
+const OPTIONAL_COLUMNS = [
+  "payment",
+  "paymentStatus",
+  "division",
+  "internalNote",
+  "source",
+] as const;
 export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number];
 
 // Single source of truth for the table's columns: the header and every row
@@ -96,18 +106,28 @@ export const ORDER_COLUMNS = [
   { key: "risk", label: "Risk" },
   { key: "courierSend", label: "Courier Send" },
   { key: "courierStatus", label: "Courier Status" },
-] as const satisfies readonly { key: string; label: string; pinned?: boolean; optional?: boolean; minWidth?: number }[];
+] as const satisfies readonly {
+  key: string;
+  label: string;
+  pinned?: boolean;
+  optional?: boolean;
+  minWidth?: number;
+}[];
 
 export type ColumnKey = (typeof ORDER_COLUMNS)[number]["key"];
 
-export const DEFAULT_COLUMN_ORDER: ColumnKey[] = ORDER_COLUMNS.map((c) => c.key);
+export const DEFAULT_COLUMN_ORDER: ColumnKey[] = ORDER_COLUMNS.map(
+  (c) => c.key,
+);
 
 // Reconciles a saved order against the current registry. Unknown keys (a
 // column removed since the arrangement was saved) are dropped, and columns
 // the user has never seen are appended — without this, a saved order would
 // permanently hide any column added in a later release, which would surface
 // months later looking like a bug.
-export function reconcileColumnOrder(saved: string[] | null | undefined): ColumnKey[] {
+export function reconcileColumnOrder(
+  saved: string[] | null | undefined,
+): ColumnKey[] {
   const known = new Set<string>(DEFAULT_COLUMN_ORDER);
   const kept = (saved ?? []).filter((k): k is ColumnKey => known.has(k));
   const missing = DEFAULT_COLUMN_ORDER.filter((k) => !kept.includes(k));
@@ -119,7 +139,15 @@ export function reconcileColumnOrder(saved: string[] | null | undefined): Column
   return [...pinned, ...merged.filter((k) => !pinned.includes(k))];
 }
 
-const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELED"];
+const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = [
+  "PENDING",
+  "AUTHORIZED",
+  "CAPTURED",
+  "FAILED",
+  "REFUNDED",
+  "PARTIALLY_REFUNDED",
+  "CANCELED",
+];
 // "CAPTURED" is the Prisma enum's own gateway-jargon name for "money is
 // actually in hand" — shown to staff as "Paid" everywhere, same relabeling
 // NewOrderForm.tsx and InvoiceDocument.tsx already do; the stored value is
@@ -148,13 +176,23 @@ export interface OrderManagerFiltersLike {
   pageSize?: number;
 }
 
-const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1 | 2; style?: React.CSSProperties }) => (
+const TH = ({
+  children,
+  sticky,
+  style,
+}: {
+  children: React.ReactNode;
+  sticky?: 1 | 2;
+  style?: React.CSSProperties;
+}) => (
   <th
     className="sticky top-0 z-[5] px-3 py-3 text-left text-[0.72rem] font-bold whitespace-nowrap text-white"
     style={{
       background: GREEN_HEADER,
       borderRight: "1px solid rgba(255,255,255,.13)",
-      ...(sticky === 1 ? { position: "sticky", left: 0, zIndex: 7, width: 42, minWidth: 42 } : {}),
+      ...(sticky === 1
+        ? { position: "sticky", left: 0, zIndex: 7, width: 42, minWidth: 42 }
+        : {}),
       ...(sticky === 2 ? { position: "sticky", left: 42, zIndex: 7 } : {}),
       ...style,
     }}
@@ -165,9 +203,23 @@ const TH = ({ children, sticky, style }: { children: React.ReactNode; sticky?: 1
 
 // A draggable header cell. The whole <th> is the drag handle — a header has
 // no other click behaviour, so a separate grip would be noise.
-const SortableTH = ({ id, label, style }: { id: string; label: string; style?: React.CSSProperties }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+const SortableTH = ({
+  id,
+  label,
+  style,
+}: {
+  id: string;
+  label: string;
+  style?: React.CSSProperties;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   return (
     <th
       ref={setNodeRef}
@@ -191,13 +243,22 @@ const SortableTH = ({ id, label, style }: { id: string; label: string; style?: R
 
 function CourierBadge({ letter, color }: { letter: string; color: string }) {
   return (
-    <span className="grid h-6 w-6 place-items-center rounded-[7px] text-[11px] font-bold text-white" style={{ background: color }}>
+    <span
+      className="grid h-6 w-6 place-items-center rounded-[7px] text-[11px] font-bold text-white"
+      style={{ background: color }}
+    >
       {letter}
     </span>
   );
 }
 
-function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKey: Map<string, { labelEn: string; color: string }> }) {
+function StatusCell({
+  order,
+  statusByKey,
+}: {
+  order: OrderManagerRow;
+  statusByKey: Map<string, { labelEn: string; color: string }>;
+}) {
   const updateStatus = useUpdateOrderStatus(order.id);
   const config = statusByKey.get(order.status);
   const color = config?.color ?? "#9ca3af";
@@ -207,7 +268,9 @@ function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKe
       value={order.status}
       disabled={updateStatus.isPending}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => updateStatus.mutate({ status: e.target.value as OrderStatus })}
+      onChange={(e) =>
+        updateStatus.mutate({ status: e.target.value as OrderStatus })
+      }
       // Was a pale ~10%-opacity tint with colored text — too low-contrast
       // to scan a full page of rows at a glance (reported: staff couldn't
       // tell a fresh/new order apart from an already-actioned one). Solid
@@ -220,7 +283,12 @@ function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKe
         // above is only meant for the closed/badge state; native <option>
         // rows render against the browser's own (light) dropdown background,
         // and would otherwise inherit that same white and go invisible.
-        <option key={s} value={s} className="text-text" style={{ backgroundColor: "#fff", color: "#1e2b22" }}>
+        <option
+          key={s}
+          value={s}
+          className="text-text"
+          style={{ backgroundColor: "#fff", color: "#1e2b22" }}
+        >
           {statusByKey.get(s)?.labelEn ?? s}
         </option>
       ))}
@@ -230,36 +298,76 @@ function StatusCell({ order, statusByKey }: { order: OrderManagerRow; statusByKe
 
 function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
   const updatePayment = useUpdateOrderPayment(order.id);
-  const color = order.paymentStatus ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? "#9ca3af") : "#9ca3af";
+  const color = order.paymentStatus
+    ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? "#9ca3af")
+    : "#9ca3af";
+  // Returned (or refused, paying only the delivery charge): "PAID" alone
+  // would read as the full total.
+  const returned =
+    order.returnedPaid != null ? Number(order.returnedPaid) : null;
   return (
-    <select
-      value={order.paymentStatus ?? ""}
-      disabled={updatePayment.isPending}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => updatePayment.mutate({ status: e.target.value as ManualOrderPaymentStatus })}
-      className="rounded-pill border-0 px-3 py-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-white shadow-[0_1px_3px_rgba(0,0,0,.18)] outline-none"
-      style={{ backgroundColor: color }}
-    >
-      {!order.paymentStatus && (
-        <option value="" style={{ backgroundColor: "#fff", color: "#1e2b22" }}>—</option>
+    <div className="flex flex-col items-start gap-1">
+      <select
+        value={order.paymentStatus ?? ""}
+        disabled={updatePayment.isPending}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) =>
+          updatePayment.mutate({
+            status: e.target.value as ManualOrderPaymentStatus,
+          })
+        }
+        className="rounded-pill border-0 px-3 py-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-white shadow-[0_1px_3px_rgba(0,0,0,.18)] outline-none"
+        style={{ backgroundColor: color }}
+      >
+        {!order.paymentStatus && (
+          <option
+            value=""
+            style={{ backgroundColor: "#fff", color: "#1e2b22" }}
+          >
+            —
+          </option>
+        )}
+        {PAYMENT_STATUSES.map((s) => (
+          <option
+            key={s}
+            value={s}
+            style={{ backgroundColor: "#fff", color: "#1e2b22" }}
+          >
+            {PAYMENT_STATUS_LABELS[s]}
+          </option>
+        ))}
+      </select>
+      {returned !== null && (
+        <span
+          className="whitespace-nowrap rounded-pill px-2 py-0.5 text-[0.68rem] font-bold"
+          style={{ backgroundColor: "#fff4e5", color: "#9a5b00" }}
+          title="The order came back; this is what the customer actually paid"
+        >
+          {returned > 0
+            ? `Returned · ৳${returned.toLocaleString("en-BD")} of ৳${Number(order.totalAmount).toLocaleString("en-BD")} paid`
+            : "Returned · unpaid"}
+        </span>
       )}
-      {PAYMENT_STATUSES.map((s) => (
-        <option key={s} value={s} style={{ backgroundColor: "#fff", color: "#1e2b22" }}>
-          {PAYMENT_STATUS_LABELS[s]}
-        </option>
-      ))}
-    </select>
+    </div>
   );
 }
 
-function AssignCell({ order, staff }: { order: OrderManagerRow; staff: AssignableStaff[] | undefined }) {
+function AssignCell({
+  order,
+  staff,
+}: {
+  order: OrderManagerRow;
+  staff: AssignableStaff[] | undefined;
+}) {
   const assign = useAssignOrder(order.id);
   return (
     <select
       value={order.assignedAdminId ?? ""}
       disabled={assign.isPending}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => assign.mutate(e.target.value === "" ? null : Number(e.target.value))}
+      onChange={(e) =>
+        assign.mutate(e.target.value === "" ? null : Number(e.target.value))
+      }
       className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
       style={{ borderColor: "transparent" }}
       onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
@@ -274,22 +382,37 @@ function AssignCell({ order, staff }: { order: OrderManagerRow; staff: Assignabl
   );
 }
 
-const SEND_PROVIDERS: { provider: "STEADFAST" | "REDX"; label: string; letter: string }[] = [
+const SEND_PROVIDERS: {
+  provider: "STEADFAST" | "REDX";
+  label: string;
+  letter: string;
+}[] = [
   { provider: "STEADFAST", label: "Steadfast", letter: "S" },
   { provider: "REDX", label: "RedX", letter: "R" },
 ];
 
-function InternalNoteCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
+function InternalNoteCell({
+  order,
+  editing,
+}: {
+  order: OrderManagerRow;
+  editing: boolean;
+}) {
   const [value, setValue] = useState(order.staffNote ?? "");
   const updateNote = useUpdateOrderNote(order.id);
 
-  if (!editing) return <ReadOnlyCell value={value} placeholder="Add a note..." width={160} />;
+  if (!editing)
+    return (
+      <ReadOnlyCell value={value} placeholder="Add a note..." width={160} />
+    );
 
   return (
     <input
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={() => value !== (order.staffNote ?? "") && updateNote.mutate(value)}
+      onBlur={() =>
+        value !== (order.staffNote ?? "") && updateNote.mutate(value)
+      }
       onClick={(e) => e.stopPropagation()}
       placeholder="Add a note..."
       className="h-9 w-40 rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
@@ -304,15 +427,33 @@ function InternalNoteCell({ order, editing }: { order: OrderManagerRow; editing:
 // the table were too easy to fat-finger while just scrolling/browsing.
 // Dropdown cells (Status/Payment/Division) have no equivalent risk and stay
 // directly editable at all times.
-function ReadOnlyCell({ value, placeholder, width }: { value: string; placeholder?: string; width?: number }) {
+function ReadOnlyCell({
+  value,
+  placeholder,
+  width,
+}: {
+  value: string;
+  placeholder?: string;
+  width?: number;
+}) {
   return (
-    <span className="inline-block truncate px-2.5 align-middle text-[0.72rem] font-semibold" style={{ width, color: value ? TEXT : FAINT }} title={value || undefined}>
+    <span
+      className="inline-block truncate px-2.5 align-middle text-[0.72rem] font-semibold"
+      style={{ width, color: value ? TEXT : FAINT }}
+      title={value || undefined}
+    >
       {value || placeholder || "—"}
     </span>
   );
 }
 
-function PhoneCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
+function PhoneCell({
+  order,
+  editing,
+}: {
+  order: OrderManagerRow;
+  editing: boolean;
+}) {
   const [value, setValue] = useState(order.shippingPhone ?? "");
   const [error, setError] = useState(false);
   const updateDetails = useUpdateOrderDetails(order.id);
@@ -327,7 +468,8 @@ function PhoneCell({ order, editing }: { order: OrderManagerRow; editing: boolea
     updateDetails.mutate({ phone: value });
   }
 
-  if (!editing) return <ReadOnlyCell value={value} placeholder="Phone" width={128} />;
+  if (!editing)
+    return <ReadOnlyCell value={value} placeholder="Phone" width={128} />;
 
   return (
     <input
@@ -339,7 +481,11 @@ function PhoneCell({ order, editing }: { order: OrderManagerRow; editing: boolea
       onBlur={commit}
       onClick={(e) => e.stopPropagation()}
       placeholder="Phone"
-      title={error ? "Enter a valid Bangladeshi mobile number, e.g. 01712345678" : undefined}
+      title={
+        error
+          ? "Enter a valid Bangladeshi mobile number, e.g. 01712345678"
+          : undefined
+      }
       className="h-9 w-32 rounded-[8px] border bg-transparent px-2.5 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
       style={{ borderColor: error ? "#e5484d" : "transparent" }}
       onFocus={(e) => !error && (e.currentTarget.style.borderColor = GREEN)}
@@ -347,18 +493,33 @@ function PhoneCell({ order, editing }: { order: OrderManagerRow; editing: boolea
   );
 }
 
-function AddressCell({ order, editing }: { order: OrderManagerRow; editing: boolean }) {
+function AddressCell({
+  order,
+  editing,
+}: {
+  order: OrderManagerRow;
+  editing: boolean;
+}) {
   const [value, setValue] = useState(order.addressLine ?? "");
   const updateDetails = useUpdateOrderDetails(order.id);
-  const title = [order.district, order.division, order.postCode].filter(Boolean).join(", ") || undefined;
+  const title =
+    [order.district, order.division, order.postCode]
+      .filter(Boolean)
+      .join(", ") || undefined;
 
-  if (!editing) return <ReadOnlyCell value={value} placeholder="Address line" width={200} />;
+  if (!editing)
+    return (
+      <ReadOnlyCell value={value} placeholder="Address line" width={200} />
+    );
 
   return (
     <input
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={() => value !== (order.addressLine ?? "") && updateDetails.mutate({ addressLine: value })}
+      onBlur={() =>
+        value !== (order.addressLine ?? "") &&
+        updateDetails.mutate({ addressLine: value })
+      }
       onClick={(e) => e.stopPropagation()}
       placeholder="Address line"
       title={title}
@@ -377,7 +538,9 @@ function SourceCell({ order }: { order: OrderManagerRow }) {
   // cell rendered blank and the real UTM was invisible — and one careless click
   // overwrote it. Carry it as its own option instead.
   const extra =
-    shown && !(ORDER_SOURCES as readonly string[]).includes(shown) ? shown : null;
+    shown && !(ORDER_SOURCES as readonly string[]).includes(shown)
+      ? shown
+      : null;
 
   return (
     <select
@@ -393,7 +556,9 @@ function SourceCell({ order }: { order: OrderManagerRow }) {
       {!stored && <option value="">—</option>}
       {extra && <option value={extra}>{extra}</option>}
       {ORDER_SOURCES.map((s) => (
-        <option key={s} value={s}>{s}</option>
+        <option key={s} value={s}>
+          {s}
+        </option>
       ))}
     </select>
   );
@@ -406,14 +571,20 @@ function PaymentCell({ order }: { order: OrderManagerRow }) {
       value={(order.paymentProvider as PaymentProviderType) ?? ""}
       disabled={updatePayment.isPending}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => updatePayment.mutate({ provider: e.target.value as PaymentProviderType })}
+      onChange={(e) =>
+        updatePayment.mutate({
+          provider: e.target.value as PaymentProviderType,
+        })
+      }
       className="h-9 rounded-[8px] border bg-transparent px-2 text-[0.72rem] font-semibold outline-none hover:bg-white focus:bg-white"
       style={{ borderColor: "transparent" }}
       onFocus={(e) => (e.currentTarget.style.borderColor = GREEN)}
     >
       {!order.paymentProvider && <option value="">—</option>}
       {PAYMENT_PROVIDER_TYPES.map((p) => (
-        <option key={p} value={p}>{p}</option>
+        <option key={p} value={p}>
+          {p}
+        </option>
       ))}
     </select>
   );
@@ -433,7 +604,9 @@ function DivisionCell({ order }: { order: OrderManagerRow }) {
     >
       {!order.division && <option value="">—</option>}
       {BD_DIVISIONS.map((d) => (
-        <option key={d} value={d}>{d}</option>
+        <option key={d} value={d}>
+          {d}
+        </option>
       ))}
     </select>
   );
@@ -443,9 +616,20 @@ function DivisionCell({ order }: { order: OrderManagerRow }) {
 // there's nothing live left to ship (or, for HOLD, shipping is explicitly
 // what staff paused). Disabled rather than hidden so the row's layout stays
 // stable and it's visible *why* dispatch isn't available here.
-const COURIER_SEND_DISABLED_STATUSES = new Set(["CANCELED", "RETURNED", "PARTIALLY_RETURNED", "HOLD"]);
+const COURIER_SEND_DISABLED_STATUSES = new Set([
+  "CANCELED",
+  "RETURNED",
+  "PARTIALLY_RETURNED",
+  "HOLD",
+]);
 
-function CourierSendCell({ order, onConsign }: { order: OrderManagerRow; onConsign: (provider: "STEADFAST" | "REDX") => void }) {
+function CourierSendCell({
+  order,
+  onConsign,
+}: {
+  order: OrderManagerRow;
+  onConsign: (provider: "STEADFAST" | "REDX") => void;
+}) {
   const disabled = COURIER_SEND_DISABLED_STATUSES.has(order.status);
   return (
     <div className="flex flex-col gap-1">
@@ -454,7 +638,11 @@ function CourierSendCell({ order, onConsign }: { order: OrderManagerRow; onConsi
           key={sp.provider}
           type="button"
           disabled={disabled}
-          title={disabled ? `Can't dispatch — order is ${order.status.replace(/_/g, " ").toLowerCase()}` : undefined}
+          title={
+            disabled
+              ? `Can't dispatch — order is ${order.status.replace(/_/g, " ").toLowerCase()}`
+              : undefined
+          }
           onClick={() => onConsign(sp.provider)}
           className="rounded-[7px] border px-2 py-1 text-[0.68rem] font-bold disabled:cursor-not-allowed disabled:opacity-40"
           style={{ borderColor: LINE, color: TEXT }}
@@ -470,10 +658,19 @@ function CourierStatusCell({ order }: { order: OrderManagerRow }) {
   return (
     <div className="flex flex-col gap-1">
       {SEND_PROVIDERS.map((sp) => {
-        const attempt = order.courierAttempts.find((a) => a.provider === sp.provider);
+        const attempt = order.courierAttempts.find(
+          (a) => a.provider === sp.provider,
+        );
         return (
           <div key={sp.provider} className="flex items-center gap-1.5">
-            <CourierBadge letter={sp.letter} color={attempt ? (COURIER_STATUS_COLOR[attempt.status] ?? "#9ca3af") : "#d8d0e4"} />
+            <CourierBadge
+              letter={sp.letter}
+              color={
+                attempt
+                  ? (COURIER_STATUS_COLOR[attempt.status] ?? "#9ca3af")
+                  : "#d8d0e4"
+              }
+            />
             <span className="text-[10px]" style={{ color: MUTED }}>
               {attempt ? attempt.status : "—"}
             </span>
@@ -487,30 +684,70 @@ function CourierStatusCell({ order }: { order: OrderManagerRow }) {
 function formatDate(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   return {
-    date: d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    date: d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
     time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
   };
 }
 
 const deleteIcon = (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M3 6h18" />
     <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
   </svg>
 );
 const editIcon = (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
   </svg>
 );
 const checkIcon = (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 const restoreIcon = (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M3 12a9 9 0 1 0 3-6.7" />
     <path d="M3 4v5h5" />
   </svg>
@@ -590,11 +827,19 @@ export function OrderManagerTable({
     const pinned = columnOrder.filter((k) => !draggableKeys.includes(k));
     onColumnOrderChange([...pinned, ...arrayMove(draggableKeys, from, to)]);
   }
-  const td = "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
-  const tdStyle = { color: TEXT, borderColor: "#eef3ef", background: "#fff" } as const;
+  const td =
+    "px-3 py-[11px] text-[0.76rem] font-semibold whitespace-nowrap align-middle border-b";
+  const tdStyle = {
+    color: TEXT,
+    borderColor: "#eef3ef",
+    background: "#fff",
+  } as const;
 
   return (
-    <div className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]" style={{ background: "#fff", borderColor: LINE }}>
+    <div
+      className="overflow-hidden rounded-card border shadow-[0_1px_2px_rgba(20,40,25,.05)]"
+      style={{ background: "#fff", borderColor: LINE }}
+    >
       {/* Bounded height with its own scroll (not just overflow-x-auto) — a
           plain horizontal-only scrollbar sits at the bottom of however tall
           the rendered rows happen to be, so on a full page of rows the user
@@ -606,9 +851,13 @@ export function OrderManagerTable({
           cannot read, since the pinned first column eats a third of the width
           and every figure worth seeing is off to the right. */}
       <div className="flex flex-col gap-2.5 p-2.5 md:hidden">
-        {isLoading && <p className="p-4 text-center text-sm text-muted">Loading…</p>}
+        {isLoading && (
+          <p className="p-4 text-center text-sm text-muted">Loading…</p>
+        )}
         {!isLoading && orders.length === 0 && (
-          <p className="p-4 text-center text-sm text-muted">No orders match these filters.</p>
+          <p className="p-4 text-center text-sm text-muted">
+            No orders match these filters.
+          </p>
         )}
         {orders.map((o) => {
           const cfg = statusByKey.get(o.status);
@@ -627,7 +876,10 @@ export function OrderManagerTable({
                 </span>
               }
               fields={[
-                { label: "Total", value: `৳${Number(o.totalAmount).toLocaleString()}` },
+                {
+                  label: "Total",
+                  value: `৳${Number(o.totalAmount).toLocaleString()}`,
+                },
                 {
                   label: "Date",
                   value: new Date(o.createdAt).toLocaleDateString("en-GB", {
@@ -636,7 +888,11 @@ export function OrderManagerTable({
                   }),
                 },
                 { label: "Items", value: o.items.length },
-                { label: "Origin", value: ORDER_CHANNEL_LABELS[o.origin as OrderChannel] ?? o.origin },
+                {
+                  label: "Origin",
+                  value:
+                    ORDER_CHANNEL_LABELS[o.origin as OrderChannel] ?? o.origin,
+                },
                 { label: "Payment", value: o.paymentProvider ?? "—" },
                 { label: "District", value: o.district ?? "—" },
                 { label: "Courier", value: o.courierStatus ?? "" },
@@ -658,100 +914,124 @@ export function OrderManagerTable({
       </div>
 
       <div className="hidden md:block">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleColumnDragEnd}
-      >
-      <div className="overflow-auto" style={{ maxHeight: "62vh" }}>
-        <table className="border-separate border-spacing-0" style={{ minWidth: 1600, width: "100%" }}>
-          <thead>
-            <tr>
-              <SortableContext items={draggableKeys} strategy={horizontalListSortingStrategy}>
-              {columnOrder.map((key) => {
-                const col = ORDER_COLUMNS.find((c) => c.key === key)!;
-                const optional = "optional" in col && col.optional;
-                if (optional && !columns.has(key as OptionalColumn)) return null;
-                const pinned = "pinned" in col && col.pinned;
-                const minWidth = "minWidth" in col ? col.minWidth : undefined;
-                if (pinned) {
-                  return (
-                    <TH
-                      key={key}
-                      sticky={key === "select" ? 1 : 2}
-                      style={minWidth ? { minWidth } : undefined}
-                    >
-                      {key === "select" ? (
-                        <input
-                          type="checkbox"
-                          checked={orders.length > 0 && selected.size === orders.length}
-                          onChange={onToggleAll}
-                          className="h-[15px] w-[15px]"
-                          style={{ accentColor: GREEN }}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleColumnDragEnd}
+        >
+          <div className="overflow-auto" style={{ maxHeight: "62vh" }}>
+            <table
+              className="border-separate border-spacing-0"
+              style={{ minWidth: 1600, width: "100%" }}
+            >
+              <thead>
+                <tr>
+                  <SortableContext
+                    items={draggableKeys}
+                    strategy={horizontalListSortingStrategy}
+                  >
+                    {columnOrder.map((key) => {
+                      const col = ORDER_COLUMNS.find((c) => c.key === key)!;
+                      const optional = "optional" in col && col.optional;
+                      if (optional && !columns.has(key as OptionalColumn))
+                        return null;
+                      const pinned = "pinned" in col && col.pinned;
+                      const minWidth =
+                        "minWidth" in col ? col.minWidth : undefined;
+                      if (pinned) {
+                        return (
+                          <TH
+                            key={key}
+                            sticky={key === "select" ? 1 : 2}
+                            style={minWidth ? { minWidth } : undefined}
+                          >
+                            {key === "select" ? (
+                              <input
+                                type="checkbox"
+                                checked={
+                                  orders.length > 0 &&
+                                  selected.size === orders.length
+                                }
+                                onChange={onToggleAll}
+                                className="h-[15px] w-[15px]"
+                                style={{ accentColor: GREEN }}
+                              />
+                            ) : (
+                              col.label
+                            )}
+                          </TH>
+                        );
+                      }
+                      return (
+                        <SortableTH
+                          key={key}
+                          id={key}
+                          label={col.label}
+                          style={minWidth ? { minWidth } : undefined}
                         />
-                      ) : (
-                        col.label
-                      )}
-                    </TH>
-                  );
-                }
-                return (
-                  <SortableTH
-                    key={key}
-                    id={key}
-                    label={col.label}
-                    style={minWidth ? { minWidth } : undefined}
+                      );
+                    })}
+                  </SortableContext>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td
+                      colSpan={colCount}
+                      className="px-3 py-8 text-center text-sm"
+                      style={{ color: FAINT }}
+                    >
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {!isLoading && orders.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={colCount}
+                      className="px-3 py-8 text-center text-sm"
+                      style={{ color: FAINT }}
+                    >
+                      No orders match these filters.
+                    </td>
+                  </tr>
+                )}
+                {orders.map((o) => (
+                  <OrderRow
+                    columnOrder={columnOrder}
+                    key={o.id}
+                    order={o}
+                    statusByKey={statusByKey}
+                    columns={columns}
+                    selected={selected.has(o.id)}
+                    onToggle={() => onToggle(o.id)}
+                    onView={onView}
+                    onConsign={onConsign}
+                    onCheckRisk={onCheckRisk}
+                    onDelete={onDelete}
+                    onRestore={onRestore}
+                    restoringId={restoringId}
+                    td={td}
+                    tdStyle={tdStyle}
+                    staff={staff}
+                    highlightQuery={highlightQuery}
                   />
-                );
-              })}
-              </SortableContext>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={colCount} className="px-3 py-8 text-center text-sm" style={{ color: FAINT }}>
-                  Loading…
-                </td>
-              </tr>
-            )}
-            {!isLoading && orders.length === 0 && (
-              <tr>
-                <td colSpan={colCount} className="px-3 py-8 text-center text-sm" style={{ color: FAINT }}>
-                  No orders match these filters.
-                </td>
-              </tr>
-            )}
-            {orders.map((o) => (
-              <OrderRow
-                columnOrder={columnOrder}
-                key={o.id}
-                order={o}
-                statusByKey={statusByKey}
-                columns={columns}
-                selected={selected.has(o.id)}
-                onToggle={() => onToggle(o.id)}
-                onView={onView}
-                onConsign={onConsign}
-                onCheckRisk={onCheckRisk}
-                onDelete={onDelete}
-                onRestore={onRestore}
-                restoringId={restoringId}
-                td={td}
-                tdStyle={tdStyle}
-                staff={staff}
-                highlightQuery={highlightQuery}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-      </DndContext>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DndContext>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3.5 border-t p-[13px_18px]" style={{ borderColor: LINE }}>
+      <div
+        className="flex flex-wrap items-center justify-between gap-3.5 border-t p-[13px_18px]"
+        style={{ borderColor: LINE }}
+      >
         <div className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
-          {total === 0 ? "No orders" : `Showing ${start} to ${end} of ${total} orders`}
+          {total === 0
+            ? "No orders"
+            : `Showing ${start} to ${end} of ${total} orders`}
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -761,12 +1041,23 @@ export function OrderManagerTable({
             className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border disabled:opacity-40"
             style={{ borderColor: LINE, color: TEXT }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+            .filter(
+              (n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1,
+            )
             .reduce<number[]>((acc, n) => {
               if (acc.length && n - acc[acc.length - 1] > 1) acc.push(-1);
               acc.push(n);
@@ -774,7 +1065,11 @@ export function OrderManagerTable({
             }, [])
             .map((n, i) =>
               n === -1 ? (
-                <span key={`dots-${i}`} className="px-1 text-[0.74rem]" style={{ color: FAINT }}>
+                <span
+                  key={`dots-${i}`}
+                  className="px-1 text-[0.74rem]"
+                  style={{ color: FAINT }}
+                >
                   …
                 </span>
               ) : (
@@ -783,7 +1078,11 @@ export function OrderManagerTable({
                   type="button"
                   onClick={() => onFiltersChange({ ...filters, page: n })}
                   className="h-[30px] min-w-[30px] rounded-[8px] border px-2 text-[0.74rem] font-bold"
-                  style={n === page ? { background: GREEN, borderColor: GREEN, color: "#fff" } : { borderColor: LINE, color: TEXT }}
+                  style={
+                    n === page
+                      ? { background: GREEN, borderColor: GREEN, color: "#fff" }
+                      : { borderColor: LINE, color: TEXT }
+                  }
                 >
                   {n}
                 </button>
@@ -796,13 +1095,28 @@ export function OrderManagerTable({
             className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border disabled:opacity-40"
             style={{ borderColor: LINE, color: TEXT }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
           <select
             value={pageSize}
-            onChange={(e) => onFiltersChange({ ...filters, pageSize: Number(e.target.value), page: 1 })}
+            onChange={(e) =>
+              onFiltersChange({
+                ...filters,
+                pageSize: Number(e.target.value),
+                page: 1,
+              })
+            }
             className="h-[30px] rounded-[8px] border bg-white px-2 text-[0.72rem] font-semibold outline-none"
             style={{ borderColor: LINE, color: MUTED }}
           >
@@ -860,9 +1174,9 @@ function OrderRow({
   const cleanQuery = highlightQuery?.trim().toLowerCase();
   const isHighlighted = Boolean(
     cleanQuery &&
-      cleanQuery.length > 0 &&
-      (o.orderNumber.toLowerCase().includes(cleanQuery) ||
-        String(o.id) === cleanQuery)
+    cleanQuery.length > 0 &&
+    (o.orderNumber.toLowerCase().includes(cleanQuery) ||
+      String(o.id) === cleanQuery),
   );
 
   const rowBg = isHighlighted ? "#eaf6ec" : "#fff";
@@ -871,13 +1185,43 @@ function OrderRow({
 
   const cells: Partial<Record<ColumnKey, React.ReactNode>> = {
     select: (
-      <td className={td} style={{ ...tdStyle, position: "sticky", left: 0, zIndex: 6, background: rowBg }} onClick={(e) => e.stopPropagation()}>
-        <input type="checkbox" checked={selected} onChange={onToggle} className="h-[15px] w-[15px]" style={{ accentColor: GREEN }} />
+      <td
+        className={td}
+        style={{
+          ...tdStyle,
+          position: "sticky",
+          left: 0,
+          zIndex: 6,
+          background: rowBg,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          className="h-[15px] w-[15px]"
+          style={{ accentColor: GREEN }}
+        />
       </td>
     ),
     order: (
-      <td className={td} style={{ ...tdStyle, position: "sticky", left: 42, zIndex: 6, background: rowBg, boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)" }}>
-        <button type="button" className="group block text-left" onClick={() => onView(o)}>
+      <td
+        className={td}
+        style={{
+          ...tdStyle,
+          position: "sticky",
+          left: 42,
+          zIndex: 6,
+          background: rowBg,
+          boxShadow: "6px 0 8px -6px rgba(20,40,25,.14)",
+        }}
+      >
+        <button
+          type="button"
+          className="group block text-left"
+          onClick={() => onView(o)}
+        >
           <span className="flex items-center gap-1.5 font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
             #{o.id} · {o.orderNumber}
             {isHighlighted && (
@@ -910,7 +1254,11 @@ function OrderRow({
             aria-label={editing ? "Done editing" : "Edit"}
             title={editing ? "Done editing" : "Edit"}
             className="grid h-[29px] w-[29px] place-items-center rounded-[8px] border"
-            style={editing ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" } : { color: FAINT, borderColor: "transparent" }}
+            style={
+              editing
+                ? { color: GREEN, borderColor: GREEN, background: "#e3f4e6" }
+                : { color: FAINT, borderColor: "transparent" }
+            }
           >
             {editing ? checkIcon : editIcon}
           </button>
@@ -947,9 +1295,9 @@ function OrderRow({
       </td>
     ),
     paymentStatus: columns.has("paymentStatus") ? (
-        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-          <PaymentStatusCell order={o} />
-        </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <PaymentStatusCell order={o} />
+      </td>
     ) : null,
     assign: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
@@ -967,7 +1315,10 @@ function OrderRow({
         ) : (
           <div className="flex flex-col gap-0.5">
             {o.items.slice(0, 3).map((it, i) => (
-              <div key={i} className="flex items-baseline gap-1.5 leading-tight">
+              <div
+                key={i}
+                className="flex items-baseline gap-1.5 leading-tight"
+              >
                 <span className="shrink-0 font-bold" style={{ color: GREEN }}>
                   {it.quantity}&times;
                 </span>
@@ -1020,24 +1371,24 @@ function OrderRow({
       </td>
     ),
     payment: columns.has("payment") ? (
-        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-          <PaymentCell order={o} />
-        </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <PaymentCell order={o} />
+      </td>
     ) : null,
     division: columns.has("division") ? (
-        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-          <DivisionCell order={o} />
-        </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <DivisionCell order={o} />
+      </td>
     ) : null,
     internalNote: columns.has("internalNote") ? (
-        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-          <InternalNoteCell order={o} editing={editing} />
-        </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <InternalNoteCell order={o} editing={editing} />
+      </td>
     ) : null,
     source: columns.has("source") ? (
-        <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-          <SourceCell order={o} />
-        </td>
+      <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
+        <SourceCell order={o} />
+      </td>
     ) : null,
     // What the CUSTOMER paid for delivery. Not what the courier costs us —
     // that is the next column, and the two are routinely far apart because a
@@ -1054,16 +1405,28 @@ function OrderRow({
             title={
               o.deliverySettled
                 ? `Courier settled ৳${o.settledCodAmount} COD${
-                    o.codAmount !== o.settledCodAmount ? ` (we asked for ৳${o.codAmount})` : ""
+                    o.codAmount !== o.settledCodAmount
+                      ? ` (we asked for ৳${o.codAmount})`
+                      : ""
                   } — this is the delivery portion, the rest is goods`
                 : `Courier is collecting ৳${o.codAmount} COD, of which this is the delivery portion. Not yet confirmed by a payout.`
             }
-            style={{ color: Number(o.deliveryCollected) < 0 ? "#d0555f" : TEXT }}
+            style={{
+              color: Number(o.deliveryCollected) < 0 ? "#d0555f" : TEXT,
+            }}
           >
-            ৳{Number(o.deliveryCollected).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
+            ৳
+            {Number(o.deliveryCollected).toLocaleString("en-BD", {
+              maximumFractionDigits: 2,
+            })}
             {/* A settled figure is a fact; an unsettled one is still a
                 request that the courier may not honour in full. */}
-            {!o.deliverySettled && <span style={{ color: FAINT }} title="Not yet settled"> ~</span>}
+            {!o.deliverySettled && (
+              <span style={{ color: FAINT }} title="Not yet settled">
+                {" "}
+                ~
+              </span>
+            )}
           </span>
         )}
       </td>
@@ -1078,7 +1441,10 @@ function OrderRow({
             title="What the courier bills us for this parcel, from Shipping Rules (district + weight, plus the 1kg they add above a kilo)"
             style={{ color: TEXT }}
           >
-            ৳{Number(o.courierCharge).toLocaleString("en-BD", { maximumFractionDigits: 2 })}
+            ৳
+            {Number(o.courierCharge).toLocaleString("en-BD", {
+              maximumFractionDigits: 2,
+            })}
           </span>
         )}
       </td>
@@ -1092,7 +1458,16 @@ function OrderRow({
           className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border px-2.5 text-[0.7rem] font-bold"
           style={{ borderColor: LINE, color: TEXT }}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M6 9V2h12v7" />
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
             <rect x="6" y="14" width="12" height="8" />
@@ -1113,11 +1488,19 @@ function OrderRow({
               title="High risk — poor courier delivery history"
               className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill bg-rose-500/15 px-2 py-0.5 text-[0.68rem] font-bold text-rose-700 dark:text-rose-400"
             >
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full bg-rose-600"
+              />
               High risk
             </span>
           )}
-          <Button type="button" variant="ghost" disabled={!o.shippingPhone} onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!o.shippingPhone}
+            onClick={() => o.shippingPhone && onCheckRisk(o.shippingPhone)}
+          >
             Check
           </Button>
         </div>
@@ -1125,7 +1508,10 @@ function OrderRow({
     ),
     courierSend: (
       <td className={td} style={tdStyle} onClick={(e) => e.stopPropagation()}>
-        <CourierSendCell order={o} onConsign={(provider) => onConsign(o, provider)} />
+        <CourierSendCell
+          order={o}
+          onConsign={(provider) => onConsign(o, provider)}
+        />
       </td>
     ),
     courierStatus: (
@@ -1142,7 +1528,6 @@ function OrderRow({
       ))}
     </tr>
   );
-
 }
 
 export { OPTIONAL_COLUMNS };

@@ -44,6 +44,10 @@ function make() {
       },
     ]),
     count: jest.fn().mockResolvedValue(1),
+    aggregate: jest.fn().mockResolvedValue({
+      _sum: { totalAmount: D(1000), posRefundedAmount: D(115) },
+      _count: { _all: 9 },
+    }),
     groupBy: jest.fn().mockResolvedValue([
       { status: 'COMPLETED', _count: { _all: 3 } },
       { status: 'RETURNED', _count: { _all: 1 } },
@@ -198,5 +202,22 @@ describe('PosManagerService.customers', () => {
       }),
     );
     expect(r.total).toBe(1);
+  });
+});
+
+describe('PosManagerService.orders — sales card', () => {
+  it('sums the same filters (payment…), net of refunds; today when no period', async () => {
+    const { svc, order } = make();
+    const r = await svc.orders(4, { tender: 'CASH' });
+    expect(r.sales).toEqual({ amount: '885.00', orders: 9, today: true });
+    const where = order.aggregate.mock.calls[0][0].where;
+    expect(where.payments).toEqual({ some: { provider: 'CASH' } });
+    expect(where.createdAt.gte).toBeInstanceOf(Date);
+  });
+
+  it('uses the chosen period instead of today', async () => {
+    const { svc } = make();
+    const r = await svc.orders(4, { from: '2026-09-01', to: '2026-09-30' });
+    expect(r.sales.today).toBe(false);
   });
 });

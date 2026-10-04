@@ -82,6 +82,12 @@ export interface ReportOrder {
    * channel order. No courier charge, packaging, or courier flags.
    */
   counter?: boolean;
+  /**
+   * Returned / partly delivered: what the courier still collected from the
+   * customer (e.g. only the ৳80 delivery charge). Income against the courier
+   * charge of a returned parcel. 0 when nothing was paid.
+   */
+  returnCollected?: number;
 }
 
 export interface ZoneRate {

@@ -28,10 +28,15 @@ interface BatchShipment {
   provider: CourierProviderName;
   cost: Prisma.Decimal | null;
   codAmount: Prisma.Decimal | null;
+  collectedCodAmount: Prisma.Decimal | null;
+  settledCodAmount: Prisma.Decimal | null;
 }
 
 function sum(values: (Prisma.Decimal | null)[]): Prisma.Decimal {
-  return values.reduce<Prisma.Decimal>((acc, v) => acc.plus(v ?? ZERO), new Decimal(0));
+  return values.reduce<Prisma.Decimal>(
+    (acc, v) => acc.plus(v ?? ZERO),
+    new Decimal(0),
+  );
 }
 
 /**
@@ -48,6 +53,17 @@ function sum(values: (Prisma.Decimal | null)[]): Prisma.Decimal {
  * One expense voucher per parcel would mean thousands of vouchers a month and
  * per-parcel VAT challans that do not exist.
  */
+/**
+ * What the courier really collected for a parcel: its live report or its
+ * statement when we have one (a partial delivery collects less than asked),
+ * else what we asked it to collect.
+ */
+const codOf = (s: {
+  codAmount: Prisma.Decimal | null;
+  collectedCodAmount: Prisma.Decimal | null;
+  settledCodAmount: Prisma.Decimal | null;
+}) => s.collectedCodAmount ?? s.settledCodAmount ?? s.codAmount;
+
 @Injectable()
 export class CodSettlementService {
   constructor(
@@ -70,7 +86,15 @@ export class CodSettlementService {
         codAmount: { gt: 0 },
         ...(shipmentIds ? { id: { in: shipmentIds } } : {}),
       },
-      select: { id: true, orderId: true, provider: true, cost: true, codAmount: true },
+      select: {
+        id: true,
+        orderId: true,
+        provider: true,
+        cost: true,
+        codAmount: true,
+        collectedCodAmount: true,
+        settledCodAmount: true,
+      },
     });
   }
 
@@ -87,7 +111,7 @@ export class CodSettlementService {
 
     const batches: PendingCodBatch[] = [];
     for (const [name, list] of byProvider) {
-      const codCollected = sum(list.map((s) => s.codAmount));
+      const codCollected = sum(list.map(codOf));
       const courierCharges = sum(list.map((s) => s.cost));
       // A missing courier party is reported rather than thrown: the overview
       // should still render, with the gap visible.
@@ -129,14 +153,17 @@ export class CodSettlementService {
     const courier = await this.parties.resolveCourierParty(dto.provider);
     const categoryId = await this.courierCategoryId();
 
-    const shipments = await this.unsettledShipments(dto.provider, dto.shipmentIds);
+    const shipments = await this.unsettledShipments(
+      dto.provider,
+      dto.shipmentIds,
+    );
     if (shipments.length === 0) {
       throw new BadRequestException(
         `No unsettled delivered COD shipments for ${dto.provider}`,
       );
     }
 
-    const codCollected = sum(shipments.map((s) => s.codAmount));
+    const codCollected = sum(shipments.map(codOf));
     const courierCharges = sum(shipments.map((s) => s.cost));
     const netPayout = new Decimal(dto.netPayout);
     // Where courier disputes hide. Surfaced on the settlement, never absorbed
@@ -181,12 +208,13 @@ export class CodSettlementService {
       });
       for (const due of openDues) {
         const shipment = shipments.find((s) => s.orderId === due.orderId);
-        if (!shipment?.codAmount) continue;
+        const amount = shipment ? codOf(shipment) : null;
+        if (!amount || amount.lessThanOrEqualTo(0)) continue;
         await this.ledger.post(
           {
             entryDate: settlementDate,
             direction: 'IN',
-            amount: shipment.codAmount,
+            amount,
             accountId: dto.accountId,
             partyId: courier.id,
             source: 'COD_REMITTANCE',

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CourierProviderName,
   OrderChannel,
@@ -9,9 +13,16 @@ import {
   RiskLevel,
   ShipmentStatus,
 } from '@amader/db';
-import { FB_PAID_SOURCES, PaginatedResult, phoneLookupCandidates } from '@amader/shared';
+import {
+  FB_PAID_SOURCES,
+  PaginatedResult,
+  phoneLookupCandidates,
+} from '@amader/shared';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { paginationArgs, toPaginatedResult } from '../../../common/pagination.util';
+import {
+  paginationArgs,
+  toPaginatedResult,
+} from '../../../common/pagination.util';
 import { OrdersService } from '../../orders/orders.service';
 import { chargeableWeightKg, quoteShippingRule } from '@amader/shared';
 import { ShippingRulesService } from '../../shipping-rules/shipping-rules.service';
@@ -27,8 +38,15 @@ import {
 } from './order-csv';
 import { OrderManagerQueryDto } from './dto/order-manager-query.dto';
 import { BulkOrderActionDto } from './dto/bulk-order-action.dto';
-import { OrderManagerLineDto, OrderManagerCourierAttempt, OrderManagerRowDto } from './order-manager.mapper';
-import { reclaimOrderCoupons, releaseOrderCoupons } from '../../discounts/coupon-redemption';
+import {
+  OrderManagerLineDto,
+  OrderManagerCourierAttempt,
+  OrderManagerRowDto,
+} from './order-manager.mapper';
+import {
+  reclaimOrderCoupons,
+  releaseOrderCoupons,
+} from '../../discounts/coupon-redemption';
 
 /**
  * Filter on utm_source the way the Source COLUMN reads it, not the raw string.
@@ -40,8 +58,10 @@ import { reclaimOrderCoupons, releaseOrderCoupons } from '../../discounts/coupon
  */
 function utmSourceCondition(value: string): Prisma.Sql {
   const v = value.trim().toLowerCase();
-  if (v === 'none') return Prisma.sql`(o.utm_source IS NULL OR o.utm_source = '')`;
-  if (v === 'fbads') return Prisma.sql`LOWER(TRIM(o.utm_source)) IN (${Prisma.join(FB_PAID_SOURCES)})`;
+  if (v === 'none')
+    return Prisma.sql`(o.utm_source IS NULL OR o.utm_source = '')`;
+  if (v === 'fbads')
+    return Prisma.sql`LOWER(TRIM(o.utm_source)) IN (${Prisma.join(FB_PAID_SOURCES)})`;
   if (v === 'facebook') {
     return Prisma.sql`(
       (LOWER(TRIM(o.utm_source)) = 'fb' OR LOWER(o.utm_source) LIKE '%facebook%')
@@ -58,6 +78,8 @@ interface RawOrderManagerRow {
   channel: OrderChannel;
   cod_amount: Prisma.Decimal | null;
   settled_cod_amount: Prisma.Decimal | null;
+  collected_cod_amount: Prisma.Decimal | null;
+  billed_charge: Prisma.Decimal | null;
   sub_total: Prisma.Decimal;
   discount_amount: Prisma.Decimal;
   parcel_weight_kg: Prisma.Decimal | null;
@@ -115,19 +137,37 @@ export class OrderManagerService {
   // Shared by list() and statusCounts() — every filter except `status`
   // itself, so the counts reflect "how many would show for each status tab
   // given the other active filters" rather than an unfiltered global count.
-  private buildConditions(query: OrderManagerQueryDto, includeStatus: boolean, deletedOnly = false): Prisma.Sql[] {
+  private buildConditions(
+    query: OrderManagerQueryDto,
+    includeStatus: boolean,
+    deletedOnly = false,
+  ): Prisma.Sql[] {
     const conditions: Prisma.Sql[] = [
-      deletedOnly ? Prisma.sql`o.deleted_at IS NOT NULL` : Prisma.sql`o.deleted_at IS NULL`,
+      deletedOnly
+        ? Prisma.sql`o.deleted_at IS NOT NULL`
+        : Prisma.sql`o.deleted_at IS NULL`,
       // Till sales live in the POS Order Manager, not here.
       Prisma.sql`o.channel <> 'POS'::"OrderChannel"`,
     ];
-    if (includeStatus && query.status) conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
-    if (query.paymentProvider) conditions.push(Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`);
-    if (query.courierProvider) conditions.push(Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`);
-    if (query.division) conditions.push(Prisma.sql`oa.division = ${query.division}`);
-    if (query.channel) conditions.push(Prisma.sql`o.channel = ${query.channel}::"OrderChannel"`);
+    if (includeStatus && query.status)
+      conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
+    if (query.paymentProvider)
+      conditions.push(
+        Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`,
+      );
+    if (query.courierProvider)
+      conditions.push(
+        Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`,
+      );
+    if (query.division)
+      conditions.push(Prisma.sql`oa.division = ${query.division}`);
+    if (query.channel)
+      conditions.push(Prisma.sql`o.channel = ${query.channel}::"OrderChannel"`);
     if (query.utmSource) conditions.push(utmSourceCondition(query.utmSource));
-    if (query.risk) conditions.push(Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`);
+    if (query.risk)
+      conditions.push(
+        Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`,
+      );
     // "none" rather than an empty/absent value for unassigned: absent already
     // means "don't filter at all", so there would otherwise be no way to ask
     // for the pile nobody has picked up -- which is the main thing a manager
@@ -136,7 +176,8 @@ export class OrderManagerService {
       conditions.push(Prisma.sql`o.assigned_admin_id IS NULL`);
     } else if (query.assignedAdminId) {
       const id = Number(query.assignedAdminId);
-      if (Number.isInteger(id)) conditions.push(Prisma.sql`o.assigned_admin_id = ${id}`);
+      if (Number.isInteger(id))
+        conditions.push(Prisma.sql`o.assigned_admin_id = ${id}`);
     }
     if (query.q) {
       const like = `%${query.q}%`;
@@ -163,8 +204,10 @@ export class OrderManagerService {
         )
       )`);
     }
-    if (query.from) conditions.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
-    if (query.to) conditions.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
+    if (query.from)
+      conditions.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
+    if (query.to)
+      conditions.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
     return conditions;
   }
 
@@ -182,7 +225,10 @@ export class OrderManagerService {
     query: OrderManagerQueryDto,
   ): Promise<{ counts: Record<string, number>; totalValue: string }> {
     const conditions = this.buildConditions(query, false, false);
-    const where = conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` : Prisma.empty;
+    const where =
+      conditions.length > 0
+        ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+        : Prisma.empty;
 
     const rows = await this.prisma.client.$queryRaw<
       { status: OrderStatus; count: bigint; value: Prisma.Decimal | null }[]
@@ -204,20 +250,26 @@ export class OrderManagerService {
     let totalValue = new Prisma.Decimal(0);
     for (const r of rows) {
       counts[r.status] = Number(r.count);
-      if (r.value && r.status !== 'CANCELED') totalValue = totalValue.plus(r.value);
+      if (r.value && r.status !== 'CANCELED')
+        totalValue = totalValue.plus(r.value);
     }
     // String, not number: Decimal through JSON.parse loses money at the
     // scale this shop already trades at.
     return { counts, totalValue: totalValue.toFixed(2) };
   }
 
-  async list(query: OrderManagerQueryDto, deletedOnly = false): Promise<PaginatedResult<OrderManagerRowDto>> {
+  async list(
+    query: OrderManagerQueryDto,
+    deletedOnly = false,
+  ): Promise<PaginatedResult<OrderManagerRowDto>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
     const conditions = this.buildConditions(query, true, deletedOnly);
     const where = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
-    const orderBy = deletedOnly ? Prisma.sql`o.deleted_at DESC` : Prisma.sql`o.created_at DESC`;
+    const orderBy = deletedOnly
+      ? Prisma.sql`o.deleted_at DESC`
+      : Prisma.sql`o.created_at DESC`;
 
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
       SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
@@ -245,6 +297,8 @@ export class OrderManagerService {
              -- minus what the customer paid for goods.
              s.cod_amount AS cod_amount,
              s.settled_cod_amount AS settled_cod_amount,
+             s.collected_cod_amount AS collected_cod_amount,
+             s.billed_charge AS billed_charge,
              o.sub_total AS sub_total,
              o.discount_amount AS discount_amount,
              -- Billable parcel weight, for pricing the courier's own charge
@@ -262,7 +316,7 @@ export class OrderManagerService {
         SELECT provider, status FROM payments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) p ON true
       LEFT JOIN LATERAL (
-        SELECT id, provider, status, cod_amount, settled_cod_amount
+        SELECT id, provider, status, cod_amount, settled_cod_amount, collected_cod_amount, billed_charge
         FROM shipments WHERE order_id = o.id ORDER BY created_at DESC LIMIT 1
       ) s ON true
       LEFT JOIN LATERAL (
@@ -366,11 +420,29 @@ export class OrderManagerService {
       // Those differ in practice, and the settled figure is the only one that
       // reflects money that really moved.
       deliveryCollected: (() => {
+        // A partly delivered parcel: the customer refused the goods and paid
+        // only (part of) the delivery — all of what was collected is that.
+        if (r.courier_status === 'PARTIALLY_DELIVERED') {
+          const got = r.settled_cod_amount ?? r.collected_cod_amount;
+          return got === null ? null : got.toString();
+        }
         const collected = r.settled_cod_amount ?? r.cod_amount;
         return collected === null
           ? null
           : collected.minus(r.sub_total).plus(r.discount_amount).toString();
       })(),
+      // Returned / partly delivered: how much the customer actually paid,
+      // so "PAID" is never read as the full order total.
+      returnedPaid:
+        r.status === 'RETURNED' || r.status === 'PARTIALLY_RETURNED'
+          ? ((
+              r.settled_cod_amount ??
+              r.collected_cod_amount ??
+              (r.courier_status === 'PARTIALLY_DELIVERED'
+                ? null
+                : new Prisma.Decimal(0))
+            )?.toString() ?? null)
+          : null,
       // True once the courier's payout has confirmed the figure above, so the
       // column can distinguish "this is what they collected" from "this is
       // what we asked for and nobody has confirmed yet".
@@ -381,6 +453,8 @@ export class OrderManagerService {
       // which is 0 on every free-delivery order while the courier still bills
       // us — measured at ৳20/parcel against a real ৳157.
       courierCharge: (() => {
+        // What the courier actually billed, once its statement / bill says.
+        if (r.billed_charge !== null) return r.billed_charge.toString();
         const quote = quoteShippingRule(rulesConfig, {
           district: r.district,
           weightKg: chargeableWeightKg(
@@ -404,24 +478,41 @@ export class OrderManagerService {
       assignedAdminId: r.assigned_admin_id,
       assignedAdminName: r.assigned_admin_name,
       // json_agg returns NULL, not [], for an order with no lines.
-      items: (r.items ?? []).map((i) => ({ ...i, unitPrice: String(i.unitPrice) })),
+      items: (r.items ?? []).map((i) => ({
+        ...i,
+        unitPrice: String(i.unitPrice),
+      })),
       deletedAt: r.deleted_at,
     }));
 
-    return toPaginatedResult(items, Number(countRows[0]?.count ?? 0), page, pageSize);
+    return toPaginatedResult(
+      items,
+      Number(countRows[0]?.count ?? 0),
+      page,
+      pageSize,
+    );
   }
 
   // Order Manager's "Deleted Orders" tab — same shape/filters as list(),
   // just flipped to the soft-deleted set (see buildConditions' deletedOnly).
-  listDeleted(query: OrderManagerQueryDto): Promise<PaginatedResult<OrderManagerRowDto>> {
+  listDeleted(
+    query: OrderManagerQueryDto,
+  ): Promise<PaginatedResult<OrderManagerRowDto>> {
     return this.list(query, true);
   }
 
   async restore(orderId: number): Promise<void> {
-    const order = await this.prisma.client.order.findUnique({ where: { id: orderId }, select: { deletedAt: true, status: true } });
-    if (!order || order.deletedAt === null) throw new NotFoundException('Order not found in Deleted Orders');
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: orderId },
+      select: { deletedAt: true, status: true },
+    });
+    if (!order || order.deletedAt === null)
+      throw new NotFoundException('Order not found in Deleted Orders');
     await this.prisma.client.$transaction(async (tx) => {
-      await tx.order.update({ where: { id: orderId }, data: { deletedAt: null } });
+      await tx.order.update({
+        where: { id: orderId },
+        data: { deletedAt: null },
+      });
       // Back in the books, so its coupon use counts again (unless it is also cancelled).
       if (order.status !== 'CANCELED') await reclaimOrderCoupons(tx, orderId);
     });
@@ -444,7 +535,11 @@ export class OrderManagerService {
   async bulkAction(
     dto: BulkOrderActionDto,
     adminUserId: number,
-  ): Promise<{ succeeded: number[]; failed: { orderId: number; error: string }[]; csv?: string }> {
+  ): Promise<{
+    succeeded: number[];
+    failed: { orderId: number; error: string }[];
+    csv?: string;
+  }> {
     const succeeded: number[] = [];
     const failed: { orderId: number; error: string }[] = [];
 
@@ -456,21 +551,42 @@ export class OrderManagerService {
     for (const orderId of dto.orderIds) {
       try {
         if (dto.action === 'consign') {
-          if (!dto.courierProvider) throw new BadRequestException('courierProvider is required for consign');
-          await this.shipments.dispatch({ orderId, provider: dto.courierProvider }, adminUserId);
+          if (!dto.courierProvider)
+            throw new BadRequestException(
+              'courierProvider is required for consign',
+            );
+          await this.shipments.dispatch(
+            { orderId, provider: dto.courierProvider },
+            adminUserId,
+          );
         } else if (dto.action === 'hold') {
-          await this.orders.updateStatus(orderId, { status: 'HOLD', note: 'Held via Order Manager' }, adminUserId);
+          await this.orders.updateStatus(
+            orderId,
+            { status: 'HOLD', note: 'Held via Order Manager' },
+            adminUserId,
+          );
         } else if (dto.action === 'block') {
           const order = await this.prisma.client.order.findUnique({
             where: { id: orderId },
             include: { addresses: { where: { type: 'SHIPPING' } } },
           });
           const phone = order?.addresses[0]?.phone;
-          if (!phone) throw new NotFoundException('Order has no shipping phone to block');
-          await this.blocker.create({ type: 'PHONE', value: phone, reason: `Blocked from order #${orderId}` }, adminUserId);
+          if (!phone)
+            throw new NotFoundException('Order has no shipping phone to block');
+          await this.blocker.create(
+            {
+              type: 'PHONE',
+              value: phone,
+              reason: `Blocked from order #${orderId}`,
+            },
+            adminUserId,
+          );
         } else if (dto.action === 'delete') {
           await this.prisma.client.$transaction(async (tx) => {
-            await tx.order.update({ where: { id: orderId }, data: { deletedAt: new Date() } });
+            await tx.order.update({
+              where: { id: orderId },
+              data: { deletedAt: new Date() },
+            });
             // A deleted order's coupon use is given back, like a cancelled one's.
             await releaseOrderCoupons(tx, orderId);
           });
@@ -481,7 +597,10 @@ export class OrderManagerService {
         }
         succeeded.push(orderId);
       } catch (err) {
-        failed.push({ orderId, error: err instanceof Error ? err.message : String(err) });
+        failed.push({
+          orderId,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
@@ -527,7 +646,11 @@ export class OrderManagerService {
       const payment = o.payments[0];
       const shipment = o.shipments[0];
       const assignee = o.assignedAdmin
-        ? (String(o.assignedAdmin.firstName ?? '') + ' ' + String(o.assignedAdmin.lastName ?? '')).trim()
+        ? (
+            String(o.assignedAdmin.firstName ?? '') +
+            ' ' +
+            String(o.assignedAdmin.lastName ?? '')
+          ).trim()
         : '';
 
       const shared = [
@@ -557,7 +680,8 @@ export class OrderManagerService {
       // An order with no lines still gets one row, so it cannot vanish from
       // an export the staff are reconciling against.
       const items = o.items.length > 0 ? o.items : [null];
-      for (const item of items) rows.push([...shared, ...csvLineCells(item), ...tail]);
+      for (const item of items)
+        rows.push([...shared, ...csvLineCells(item), ...tail]);
     }
 
     return toOrderCsv(rows);

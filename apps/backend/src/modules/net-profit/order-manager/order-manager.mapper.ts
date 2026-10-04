@@ -39,6 +39,11 @@ export class OrderManagerRowDto {
   /** True when the figure above came from the courier's payout rather than
    *  from what we asked them to collect. */
   deliverySettled!: boolean;
+  /**
+   * Set on a returned / partly returned order: what the customer actually
+   * paid (e.g. only the delivery charge). Null = not returned, or not known.
+   */
+  returnedPaid!: string | null;
   /** What the COURIER charges US, priced off the Shipping Rules card at the
    *  billed weight (raw weight + 1kg above a kilo). */
   courierCharge!: string | null;

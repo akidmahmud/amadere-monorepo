@@ -78,8 +78,11 @@ export function calcOrder(o: ReportOrder, S: ReportSettings): OrderCalc {
     receivable = r2(collect - courierCharge);
   }
   if (isRet && courierCharge != null) {
-    contribution = r2(-courierCharge - packaging - fee);
-    receivable = r2(-courierCharge);
+    // A refused parcel can still bring in its delivery charge (Steadfast
+    // "partial delivery": COD changed 780 → 80).
+    const kept = o.returnCollected ?? 0;
+    contribution = r2(kept - courierCharge - packaging - fee);
+    receivable = r2(kept - courierCharge);
   }
   const unconfirmed = lines.some((l) => l.unitCost != null && !l.costOk);
 

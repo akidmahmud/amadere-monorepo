@@ -35,6 +35,9 @@ export interface OrderManagerRow {
   /** Delivery the CUSTOMER paid (collected minus goods), from the courier's
    *  settled figure once their payout confirms it. */
   deliveryCollected: string | null;
+  /** Returned / partly returned: what the customer actually paid (e.g. only
+   *  the delivery charge). Null = not returned, or not known yet. */
+  returnedPaid?: string | null;
   deliverySettled: boolean;
   /** What the COURIER bills us, priced off the Shipping Rules card at the
    *  billed weight (raw weight + 1kg above a kilo). */

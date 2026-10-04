@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import { CourierProviderName, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ShipmentsService } from './shipments.service';
@@ -21,6 +22,7 @@ interface SteadfastPayoutSummary {
 interface SteadfastConsignmentLine {
   consignment_id?: number | string;
   cod_amount?: number;
+  delivery_charge?: number;
   status?: string;
 }
 
@@ -65,6 +67,7 @@ export class SettlementSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shipments: ShipmentsService,
+    private readonly salesPosting: SalesPostingService,
   ) {}
 
   /**
@@ -133,8 +136,11 @@ export class SettlementSyncService {
 
   /** Doubling probe then binary search — the API exposes no page count, and
    *  walking from page 1 would read the whole history to find the end. */
-  private async findLastPage(provider: CourierProviderName): Promise<number | null> {
-    const has = async (page: number) => (await this.fetchPage(provider, page)).length > 0;
+  private async findLastPage(
+    provider: CourierProviderName,
+  ): Promise<number | null> {
+    const has = async (page: number) =>
+      (await this.fetchPage(provider, page)).length > 0;
 
     if (!(await has(1))) return null;
 
@@ -160,7 +166,9 @@ export class SettlementSyncService {
     const res = await this.shipments.getPayments(provider, { page });
     if (res.unavailable) return [];
     const body = res.raw as { payments?: unknown } | null;
-    return Array.isArray(body?.payments) ? (body.payments as SteadfastPayoutSummary[]) : [];
+    return Array.isArray(body?.payments)
+      ? (body.payments as SteadfastPayoutSummary[])
+      : [];
   }
 
   /** Returns how many shipment rows this payout actually changed. */
@@ -169,7 +177,9 @@ export class SettlementSyncService {
     payout: SteadfastPayoutSummary,
     result: SettlementSyncResult,
   ): Promise<number> {
-    const detail = await this.shipments.getPayments(provider, { id: payout.payment_id });
+    const detail = await this.shipments.getPayments(provider, {
+      id: payout.payment_id,
+    });
     if (detail.unavailable) return 0;
 
     const body = detail.raw as { payment?: { consignments?: unknown } } | null;
@@ -188,7 +198,16 @@ export class SettlementSyncService {
       const consignmentId = String(cid);
       const shipment = await this.prisma.client.shipment.findFirst({
         where: { consignmentId },
-        select: { id: true, orderId: true, codAmount: true, settledCodAmount: true },
+        select: {
+          id: true,
+          orderId: true,
+          codAmount: true,
+          settledCodAmount: true,
+          billedCharge: true,
+          status: true,
+          provider: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: 'desc' },
       });
       if (!shipment) {
@@ -211,20 +230,42 @@ export class SettlementSyncService {
       }
 
       const unchanged =
-        shipment.settledCodAmount !== null && shipment.settledCodAmount.equals(collected);
+        shipment.settledCodAmount !== null &&
+        shipment.settledCodAmount.equals(collected);
       if (unchanged) continue;
 
       await this.prisma.client.shipment.update({
         where: { id: shipment.id },
         data: {
           settledCodAmount: collected,
+          // The statement's own charge for the parcel, until a bill import says otherwise.
+          ...(shipment.billedCharge === null &&
+          asNumber(line.delivery_charge) !== null
+            ? {
+                billedCharge: new Decimal(asNumber(line.delivery_charge)!),
+                billedAt: settledDate ?? new Date(),
+              }
+            : {}),
           settlementReference: payout.payment_id ?? null,
           settlementStatus: line.status ?? null,
-          settledAt: settledDate && !Number.isNaN(settledDate.getTime()) ? settledDate : null,
+          settledAt:
+            settledDate && !Number.isNaN(settledDate.getTime())
+              ? settledDate
+              : null,
         },
       });
       updated += 1;
       result.shipmentsUpdated += 1;
+      // Partly delivered: the statement is the confirmed collected amount;
+      // the COD receivable shrinks to it (no-op if already resized).
+      if (shipment.status === 'PARTIALLY_DELIVERED')
+        await this.salesPosting.resizeCodReceivable({
+          orderId: shipment.orderId,
+          shipmentId: shipment.id,
+          provider: shipment.provider,
+          codAmount: collected,
+          dispatchedAt: shipment.createdAt,
+        });
     }
 
     return updated;

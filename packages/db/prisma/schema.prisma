@@ -1803,6 +1803,10 @@ model Shipment {
   // an accounting record staff create deliberately. These are the courier's
   // raw reported facts.
   settledCodAmount    Decimal?  @map("settled_cod_amount") @db.Decimal(10, 2)
+  /// What the courier says it collected, from its live status updates (e.g.
+  /// a partial delivery where only the delivery charge was paid: 780 → 80).
+  /// Known before the payout statement confirms it as settledCodAmount.
+  collectedCodAmount  Decimal?  @map("collected_cod_amount") @db.Decimal(10, 2)
   settlementReference String?   @map("settlement_reference")
   settlementStatus    String?   @map("settlement_status")
   settledAt           DateTime? @map("settled_at")

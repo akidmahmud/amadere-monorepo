@@ -94,6 +94,36 @@ export class SalesPostingService {
   }
 
   /**
+   * The courier will pay less than the COD receivable opened at dispatch: a
+   * partial delivery (only the delivery charge collected) or a return
+   * (nothing). The open receivable is voided and, when something was
+   * collected, re-opened at that amount. Left alone once any of it was paid
+   * (a settlement already happened). Best-effort, like every posting here.
+   */
+  async resizeCodReceivable(input: OpenCodReceivableInput): Promise<void> {
+    try {
+      const due = await this.prisma.client.due.findFirst({
+        where: {
+          orderId: input.orderId,
+          source: 'COD_IN_TRANSIT',
+          voidedAt: null,
+        },
+      });
+      if (!due || due.amount.equals(input.codAmount)) return;
+      const paid = await this.prisma.client.ledgerEntry.count({
+        where: { dueId: due.id, reversalOfId: null },
+      });
+      if (paid > 0) return;
+      await this.dues.void(due.id, null);
+      if (input.codAmount.greaterThan(0)) await this.openCodReceivable(input);
+    } catch (err) {
+      this.logger.error(
+        `Order ${input.orderId}: failed to resize COD receivable — ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
    * A dispatched COD order becomes a receivable against the courier, not cash.
    * It is cleared by the settlement that actually pays us (see
    * CodSettlementService).
@@ -106,7 +136,11 @@ export class SalesPostingService {
       // COD_IN_TRANSIT receivable for the same order would double the "with
       // courier" figure and never clear.
       const existing = await this.prisma.client.due.findFirst({
-        where: { orderId: input.orderId, source: 'COD_IN_TRANSIT', voidedAt: null },
+        where: {
+          orderId: input.orderId,
+          source: 'COD_IN_TRANSIT',
+          voidedAt: null,
+        },
       });
       if (existing) return;
 

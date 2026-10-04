@@ -21,7 +21,9 @@ export default function PosOrdersPage() {
     <PosSubPage title="Order Manager" permission="pos.orders" wide>
       {storeId && (
         <div className="mb-5">
-          <StatCards kind="sales" stats={stats} />
+          {/* Today's sales lives in the Order Manager's own card, which
+              follows the payment / date filters. */}
+          <StatCards kind="sales" stats={stats} omit={["Today's Sales"]} />
         </div>
       )}
       {storeId && (

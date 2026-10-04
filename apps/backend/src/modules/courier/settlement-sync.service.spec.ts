@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import { Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ShipmentsService } from './shipments.service';
@@ -69,6 +70,7 @@ describe('SettlementSyncService', () => {
         SettlementSyncService,
         { provide: PrismaService, useValue: prisma },
         { provide: ShipmentsService, useValue: shipments },
+        { provide: SalesPostingService, useValue: { resizeCodReceivable: jest.fn() } },
       ],
     }).compile();
 
@@ -120,6 +122,7 @@ describe('SettlementSyncService', () => {
       providers: [
         SettlementSyncService,
         { provide: PrismaService, useValue: { client: {} } },
+        { provide: SalesPostingService, useValue: { resizeCodReceivable: jest.fn() } },
         {
           provide: ShipmentsService,
           useValue: { getPayments: jest.fn(() => Promise.resolve({ unavailable: true, reason: 'no api' })) },

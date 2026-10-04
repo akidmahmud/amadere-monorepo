@@ -98,7 +98,13 @@ export const LOADER_INCLUDE = {
   shipments: {
     orderBy: { createdAt: 'desc' as const },
     take: 1,
-    select: { provider: true, billedCharge: true },
+    select: {
+      provider: true,
+      billedCharge: true,
+      status: true,
+      collectedCodAmount: true,
+      settledCodAmount: true,
+    },
   },
   payments: {
     orderBy: { createdAt: 'desc' as const },
@@ -191,6 +197,11 @@ export function toReportOrder(
       shipment?.billedCharge != null ? Number(shipment.billedCharge) : null,
     hist: historyDates(row.statusHistory, row.confirmedAt),
     counter: row.channel === 'POS',
+    // Partly delivered parcel: what the courier still collected.
+    returnCollected:
+      shipment?.status === 'PARTIALLY_DELIVERED'
+        ? Number(shipment.collectedCodAmount ?? shipment.settledCodAmount ?? 0)
+        : 0,
   };
 }
 

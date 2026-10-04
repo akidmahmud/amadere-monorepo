@@ -4,10 +4,17 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
-import { CourierProviderName, OrderStatus, Prisma, ShipmentStatus } from '@amader/db';
+import {
+  CourierProviderName,
+  OrderStatus,
+  Prisma,
+  ShipmentStatus,
+} from '@amader/db';
 import { mapRawCourierStatus, phoneLookupCandidates } from '@amader/shared';
 import { PaginatedResult } from '@amader/shared';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import {
@@ -16,7 +23,11 @@ import {
 } from '../../common/pagination.util';
 import { OrdersService } from '../orders/orders.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
-import { BalanceOutcome, CourierProvider, PaymentsOutcome } from './courier-provider.interface';
+import {
+  BalanceOutcome,
+  CourierProvider,
+  PaymentsOutcome,
+} from './courier-provider.interface';
 import { SteadfastCourierProvider } from './providers/steadfast-courier.provider';
 import { PathaoCourierProvider } from './providers/pathao-courier.provider';
 import { RedxCourierProvider } from './providers/redx-courier.provider';
@@ -47,7 +58,12 @@ const ACTIVE_STATUSES = new Set<ShipmentStatus>([
 // reservation." A courier-status webhook should only auto-update orders
 // still in one of these; anything already CANCELED/RETURNED/COMPLETED is
 // left to whatever an admin already decided.
-const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HOLD']);
+const ACTIVE_ORDER_STATUSES = new Set([
+  'PENDING',
+  'CONFIRMED',
+  'PROCESSING',
+  'HOLD',
+]);
 
 // What a courier-reported shipment status should do to the parent Order.
 // DELIVERED was the only one wired originally — RETURNED/CANCELED left the
@@ -59,11 +75,24 @@ const ACTIVE_ORDER_STATUSES = new Set(['PENDING', 'CONFIRMED', 'PROCESSING', 'HO
 // IN_TRANSIT/DISPATCHED/PENDING deliberately have no entry — none of them
 // map cleanly onto a terminal Order status the way "the courier confirms
 // it's fully delivered/returned/canceled" does.
-const ORDER_STATUS_ON_SHIPMENT_STATUS: Partial<Record<ShipmentStatus, OrderStatus>> = {
+const ORDER_STATUS_ON_SHIPMENT_STATUS: Partial<
+  Record<ShipmentStatus, OrderStatus>
+> = {
   DELIVERED: 'COMPLETED',
   RETURNED: 'RETURNED',
   CANCELED: 'CANCELED',
+  // Steadfast "partial delivery": the customer refused (some of) the goods
+  // and paid less — often only the delivery charge. The goods come back.
+  // Staff confirm which items returned (the note says so).
+  PARTIALLY_DELIVERED: 'PARTIALLY_RETURNED',
 };
+
+/** A courier payload's number field (Steadfast sends cod_amount, delivery_charge). */
+function payloadNumber(payload: unknown, key: string): number | null {
+  const v = (payload as Record<string, unknown> | null)?.[key];
+  const n = typeof v === 'string' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+}
 
 // Shared with the B12 migration script (packages/db/scripts/migrate/orders.ts)
 // so the legacy-status mapping is defined once, not duplicated.
@@ -89,6 +118,8 @@ export function rawCourierStatus(rawResponse: unknown): string | null {
 @Injectable()
 export class ShipmentsService {
   private readonly providers: Record<CourierProviderName, CourierProvider>;
+
+  private readonly logger = new Logger(ShipmentsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -199,7 +230,8 @@ export class ShipmentsService {
     let pathaoOptions = dto.pathao;
     if (dto.provider === 'PATHAO' && !pathaoOptions?.storeId) {
       const pathaoConfig = await this.courierSettings.getPathaoConfig();
-      if (pathaoConfig.storeId) pathaoOptions = { ...pathaoOptions, storeId: pathaoConfig.storeId };
+      if (pathaoConfig.storeId)
+        pathaoOptions = { ...pathaoOptions, storeId: pathaoConfig.storeId };
     }
 
     const result = await this.providers[dto.provider].createConsignment({
@@ -259,7 +291,11 @@ export class ShipmentsService {
           adminUserId,
         );
       }
-      await this.orderEmails.sendOrderShipped(order.id, shipment.trackingCode, adminUserId);
+      await this.orderEmails.sendOrderShipped(
+        order.id,
+        shipment.trackingCode,
+        adminUserId,
+      );
 
       // A dispatched COD order is a receivable against the courier, not cash:
       // the money sits in their merchant balance until they settle, minus
@@ -352,17 +388,26 @@ export class ShipmentsService {
   // Manual override — distinct from track() (pulls from the courier's own
   // API) and the webhook handler (courier-pushed). Staff sometimes learn a
   // real status update by phone/portal before either of those catches up.
-  async updateStatus(id: number, dto: UpdateShipmentStatusDto): Promise<ShipmentDto> {
-    const shipment = await this.prisma.client.shipment.findUnique({ where: { id } });
+  async updateStatus(
+    id: number,
+    dto: UpdateShipmentStatusDto,
+  ): Promise<ShipmentDto> {
+    const shipment = await this.prisma.client.shipment.findUnique({
+      where: { id },
+    });
     if (!shipment) throw new NotFoundException('Shipment not found');
 
     const updated = await this.prisma.client.shipment.update({
       where: { id },
       data: {
         status: dto.status,
-        deliveredAt: dto.status === 'DELIVERED' ? new Date() : shipment.deliveredAt,
+        deliveredAt:
+          dto.status === 'DELIVERED' ? new Date() : shipment.deliveredAt,
         events: {
-          create: { status: dto.status, note: dto.note ?? 'Manually updated by staff' },
+          create: {
+            status: dto.status,
+            note: dto.note ?? 'Manually updated by staff',
+          },
         },
       },
       include: SHIPMENT_INCLUDE,
@@ -403,7 +448,11 @@ export class ShipmentsService {
   // they track already-dispatched ones. Deliberately a separate query from
   // adminList() above (which is shipment-record-centric) rather than a
   // shared helper — the two return fundamentally different row shapes.
-  async adminQueue(page: number, pageSize: number, search?: string): Promise<PaginatedResult<ShipmentQueueRowDto>> {
+  async adminQueue(
+    page: number,
+    pageSize: number,
+    search?: string,
+  ): Promise<PaginatedResult<ShipmentQueueRowDto>> {
     // Soft-deleted orders (Order Manager / this page's own "Deleted Orders"
     // tab, both writing/clearing Order.deletedAt) previously still showed up
     // here — this queue's own `where` never excluded them, unlike Order
@@ -425,8 +474,15 @@ export class ShipmentsService {
                   some: {
                     type: 'SHIPPING',
                     OR: [
-                      ...phoneLookupCandidates(search).map((c) => ({ phone: { contains: c } })),
-                      { recipientName: { contains: search, mode: 'insensitive' as const } },
+                      ...phoneLookupCandidates(search).map((c) => ({
+                        phone: { contains: c },
+                      })),
+                      {
+                        recipientName: {
+                          contains: search,
+                          mode: 'insensitive' as const,
+                        },
+                      },
                     ],
                   },
                 },
@@ -454,7 +510,8 @@ export class ShipmentsService {
       const shippingAddress = o.addresses[0];
       const latestPayment = o.payments[0];
       const latestShipment = o.shipments[0];
-      const pendingCod = latestPayment?.provider === 'COD' && latestPayment.status === 'PENDING';
+      const pendingCod =
+        latestPayment?.provider === 'COD' && latestPayment.status === 'PENDING';
       return {
         id: o.id,
         orderNumber: o.orderNumber,
@@ -508,7 +565,10 @@ export class ShipmentsService {
     orderIds: number[],
     provider: CourierProviderName,
     adminUserId: number,
-  ): Promise<{ succeeded: number[]; failed: { orderId: number; error: string }[] }> {
+  ): Promise<{
+    succeeded: number[];
+    failed: { orderId: number; error: string }[];
+  }> {
     const succeeded: number[] = [];
     const failed: { orderId: number; error: string }[] = [];
     for (const orderId of orderIds) {
@@ -516,7 +576,10 @@ export class ShipmentsService {
         await this.dispatch({ orderId, provider }, adminUserId);
         succeeded.push(orderId);
       } catch (err) {
-        failed.push({ orderId, error: err instanceof Error ? err.message : String(err) });
+        failed.push({
+          orderId,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
     return { succeeded, failed };
@@ -582,9 +645,15 @@ export class ShipmentsService {
     status?: string;
     updated_at?: string;
   }) {
-    const rawId = payload.consignment_id ?? payload.tracking_code ?? payload.invoice;
+    const rawId =
+      payload.consignment_id ?? payload.tracking_code ?? payload.invoice;
     if (!rawId || !payload.status) return;
-    return this.handleCourierWebhook('STEADFAST', String(rawId), payload.status, payload);
+    return this.handleCourierWebhook(
+      'STEADFAST',
+      String(rawId),
+      payload.status,
+      payload,
+    );
   }
 
   // ADDENDUM §F — generic inbound-webhook handler shared by Steadfast
@@ -614,16 +683,31 @@ export class ShipmentsService {
     }
 
     const status = mapRawStatus(rawStatus);
+    // What the courier says it collected, and its real charge, when it sends them.
+    const cod = payloadNumber(rawPayload, 'cod_amount');
+    const charge = payloadNumber(rawPayload, 'delivery_charge');
+    const collected =
+      cod !== null &&
+      (status === 'PARTIALLY_DELIVERED' || status === 'DELIVERED')
+        ? new Prisma.Decimal(cod)
+        : null;
     await this.prisma.client.shipment.update({
       where: { id: shipment.id },
       data: {
         status,
+        ...(collected !== null ? { collectedCodAmount: collected } : {}),
+        ...(charge !== null && shipment.billedCharge === null
+          ? { billedCharge: new Prisma.Decimal(charge), billedAt: new Date() }
+          : {}),
         // Keep `rawResponse` current, same as track() does. Without this a
         // webhook-driven shipment kept its original create payload forever,
         // so the queue's courier-status label had no live value to read and
         // the row went permanently blank despite the courier having told us
         // exactly where the parcel is.
-        rawResponse: { delivery_status: rawStatus, payload: rawPayload } as object,
+        rawResponse: {
+          delivery_status: rawStatus,
+          payload: rawPayload,
+        } as object,
         deliveredAt: status === 'DELIVERED' ? new Date() : shipment.deliveredAt,
         events: {
           create: {
@@ -654,10 +738,41 @@ export class ShipmentsService {
       if (order && ACTIVE_ORDER_STATUSES.has(order.status)) {
         await this.orders.updateStatus(
           order.id,
-          { status: orderStatus, note: `Auto-updated — ${provider} reported ${rawStatus}` },
+          {
+            status: orderStatus,
+            note:
+              status === 'PARTIALLY_DELIVERED'
+                ? `Auto-updated — ${provider} reported partial delivery${collected !== null ? ` (৳${collected.toFixed(0)} collected)` : ''}. Check which items came back.`
+                : `Auto-updated — ${provider} reported ${rawStatus}`,
+          },
           null,
         );
       }
+    }
+
+    // The courier will pay us less than the COD receivable opened at
+    // dispatch: what it collected on a partial delivery, nothing on a
+    // return / cancellation.
+    // Steadfast "cancelled" = not delivered, the parcel comes back: same as a return.
+    if (
+      status === 'PARTIALLY_DELIVERED' ||
+      status === 'RETURNED' ||
+      status === 'CANCELED'
+    ) {
+      const amount =
+        status !== 'PARTIALLY_DELIVERED'
+          ? new Prisma.Decimal(0)
+          : (collected ??
+            shipment.collectedCodAmount ??
+            shipment.settledCodAmount);
+      if (amount !== null)
+        await this.salesPosting.resizeCodReceivable({
+          orderId: shipment.orderId,
+          shipmentId: shipment.id,
+          provider,
+          codAmount: amount,
+          dispatchedAt: shipment.createdAt,
+        });
     }
 
     // Steadfast's own status glossary describes DELIVERED/PARTIALLY_DELIVERED
@@ -680,7 +795,11 @@ export class ShipmentsService {
         where: { orderId: shipment.orderId },
         orderBy: { createdAt: 'desc' },
       });
-      if (payment && payment.provider === 'COD' && payment.status === 'PENDING') {
+      if (
+        payment &&
+        payment.provider === 'COD' &&
+        payment.status === 'PENDING'
+      ) {
         await this.prisma.client.payment.update({
           where: { id: payment.id },
           data: { status: 'CAPTURED' },
@@ -719,5 +838,60 @@ export class ShipmentsService {
       }
     }
     return total;
+  }
+
+  /**
+   * Orders whose parcel the courier reported as partially delivered but which
+   * are still open (reported before this was wired, or a missed webhook):
+   * move them to Partially returned and shrink the COD receivable to what was
+   * collected. Idempotent; runs at start-up and every 6 hours.
+   */
+  @Cron('0 15 */6 * * *')
+  async reconcilePartialDeliveries(): Promise<number> {
+    const rows = await this.prisma.client.shipment.findMany({
+      where: {
+        status: 'PARTIALLY_DELIVERED',
+        order: { status: { in: [...ACTIVE_ORDER_STATUSES] as OrderStatus[] } },
+      },
+      select: {
+        id: true,
+        orderId: true,
+        provider: true,
+        createdAt: true,
+        collectedCodAmount: true,
+        settledCodAmount: true,
+      },
+    });
+    for (const s of rows) {
+      const collected = s.collectedCodAmount ?? s.settledCodAmount;
+      await this.orders.updateStatus(
+        s.orderId,
+        {
+          status: 'PARTIALLY_RETURNED',
+          note: `Auto-updated — ${s.provider} reported partial delivery${collected ? ` (৳${collected.toFixed(0)} collected)` : ''}. Check which items came back.`,
+        },
+        null,
+      );
+      if (collected)
+        await this.salesPosting.resizeCodReceivable({
+          orderId: s.orderId,
+          shipmentId: s.id,
+          provider: s.provider,
+          codAmount: collected,
+          dispatchedAt: s.createdAt,
+        });
+    }
+    if (rows.length)
+      this.logger.log(`Partial deliveries reconciled: ${rows.length} order(s)`);
+    return rows.length;
+  }
+
+  onApplicationBootstrap() {
+    // Off the start-up path: a slow DB must not delay the API coming up.
+    setTimeout(() => {
+      this.reconcilePartialDeliveries().catch((e: Error) =>
+        this.logger.error(`Partial-delivery reconcile failed — ${e.message}`),
+      );
+    }, 10_000);
   }
 }

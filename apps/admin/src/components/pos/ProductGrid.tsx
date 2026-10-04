@@ -68,8 +68,11 @@ export function CategoryChips({
 export function StatCards({
   stats,
   kind,
+  omit = [],
 }: {
   kind: "stock" | "sales";
+  /** Card labels to leave out. */
+  omit?: string[];
   stats?: {
     totalProducts: number;
     lowStock: number;
@@ -135,7 +138,7 @@ export function StatCards({
       tone: "bg-emerald-50 text-[#1d7a46]",
     },
   ];
-  const cards = all.filter((c) => c.kind === kind);
+  const cards = all.filter((c) => c.kind === kind && !omit.includes(c.label));
   return (
     <div
       className={`grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-3 ${cards.length > 3 ? "sm:grid-cols-2 xl:grid-cols-4" : ""}`}

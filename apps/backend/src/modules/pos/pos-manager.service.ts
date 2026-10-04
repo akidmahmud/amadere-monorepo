@@ -5,7 +5,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
-import { dhakaTimeRange } from './dhaka-range';
+import { dhakaRange, dhakaTimeRange } from './dhaka-range';
 import { PosTiersService } from './pos-tiers.service';
 import { tierFor } from './pos-tiers';
 import { ProductCostHistoryService } from '../product-cost-history/product-cost-history.service';
@@ -157,6 +157,24 @@ export class PosManagerService {
     const counts = Object.fromEntries(
       byStatus.map((g) => [g.status, g._count._all]),
     );
+    // Sales for the same filters (payment, store, status, search, period);
+    // with no period chosen, today's. Net of refunds.
+    const salesWhere: Prisma.OrderWhereInput = dhakaTimeRange(q)
+      ? where
+      : { ...where, createdAt: dhakaRange() };
+    const salesAgg = await this.prisma.client.order.aggregate({
+      where: salesWhere,
+      _sum: { totalAmount: true, posRefundedAmount: true },
+      _count: { _all: true },
+    });
+    const sales = {
+      amount: (salesAgg._sum.totalAmount ?? new Prisma.Decimal(0))
+        .minus(salesAgg._sum.posRefundedAmount ?? 0)
+        .toFixed(2),
+      orders: salesAgg._count._all,
+      /** true = no period was chosen, so this is today's. */
+      today: !dhakaTimeRange(q),
+    };
     // A store's own weight for a product wins (same rule as the receipt).
     // ponytail: current weight, not snapshotted per sale — as on the receipt.
     const storeWeights = await this.prisma.client.storePrice.findMany({
@@ -234,6 +252,7 @@ export class PosManagerService {
         page,
         pageSize,
       ),
+      sales,
       counts: {
         ALL: byStatus.reduce((s, g) => s + g._count._all, 0),
         COMPLETED: counts.COMPLETED ?? 0,
