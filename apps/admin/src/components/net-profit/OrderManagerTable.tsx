@@ -341,10 +341,14 @@ function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
         <span
           className="whitespace-nowrap rounded-pill px-2 py-0.5 text-[0.68rem] font-bold"
           style={{ backgroundColor: "#fff4e5", color: "#9a5b00" }}
-          title="The order came back; this is what the customer actually paid"
+          title={
+            order.returnedPaidEstimated
+              ? "The order came back. ~ = the delivery charge we asked for; the courier has not confirmed what it collected yet"
+              : "The order came back; this is what the customer actually paid"
+          }
         >
           {returned > 0
-            ? `Returned · ৳${returned.toLocaleString("en-BD")} of ৳${Number(order.totalAmount).toLocaleString("en-BD")} paid`
+            ? `Returned · ${order.returnedPaidEstimated ? "~" : ""}৳${returned.toLocaleString("en-BD")} of ৳${Number(order.totalAmount).toLocaleString("en-BD")} paid`
             : "Returned · unpaid"}
         </span>
       )}

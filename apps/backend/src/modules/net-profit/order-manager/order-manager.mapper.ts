@@ -44,6 +44,8 @@ export class OrderManagerRowDto {
    * paid (e.g. only the delivery charge). Null = not returned, or not known.
    */
   returnedPaid!: string | null;
+  /** True while returnedPaid is only the delivery charge we asked for. */
+  returnedPaidEstimated!: boolean;
   /** What the COURIER charges US, priced off the Shipping Rules card at the
    *  billed weight (raw weight + 1kg above a kilo). */
   courierCharge!: string | null;

@@ -200,7 +200,11 @@ export function toReportOrder(
     // Partly delivered parcel: what the courier still collected.
     returnCollected:
       shipment?.status === 'PARTIALLY_DELIVERED'
-        ? Number(shipment.collectedCodAmount ?? shipment.settledCodAmount ?? 0)
+        ? Number(
+            shipment.collectedCodAmount ??
+              shipment.settledCodAmount ??
+              row.shippingAmount,
+          )
         : 0,
   };
 }

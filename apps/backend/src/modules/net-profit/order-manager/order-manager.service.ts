@@ -79,6 +79,7 @@ interface RawOrderManagerRow {
   cod_amount: Prisma.Decimal | null;
   settled_cod_amount: Prisma.Decimal | null;
   collected_cod_amount: Prisma.Decimal | null;
+  shipping_amount: Prisma.Decimal;
   billed_charge: Prisma.Decimal | null;
   sub_total: Prisma.Decimal;
   discount_amount: Prisma.Decimal;
@@ -298,6 +299,7 @@ export class OrderManagerService {
              s.cod_amount AS cod_amount,
              s.settled_cod_amount AS settled_cod_amount,
              s.collected_cod_amount AS collected_cod_amount,
+             o.shipping_amount AS shipping_amount,
              s.billed_charge AS billed_charge,
              o.sub_total AS sub_total,
              o.discount_amount AS discount_amount,
@@ -422,9 +424,12 @@ export class OrderManagerService {
       deliveryCollected: (() => {
         // A partly delivered parcel: the customer refused the goods and paid
         // only (part of) the delivery — all of what was collected is that.
+        // Until the courier confirms the figure, assume the customer paid the
+        // delivery charge they were asked for (shown with "~", not settled).
         if (r.courier_status === 'PARTIALLY_DELIVERED') {
-          const got = r.settled_cod_amount ?? r.collected_cod_amount;
-          return got === null ? null : got.toString();
+          const got =
+            r.settled_cod_amount ?? r.collected_cod_amount ?? r.shipping_amount;
+          return got.toString();
         }
         const collected = r.settled_cod_amount ?? r.cod_amount;
         return collected === null
@@ -439,7 +444,7 @@ export class OrderManagerService {
               r.settled_cod_amount ??
               r.collected_cod_amount ??
               (r.courier_status === 'PARTIALLY_DELIVERED'
-                ? null
+                ? r.shipping_amount
                 : new Prisma.Decimal(0))
             )?.toString() ?? null)
           : null,
@@ -447,6 +452,12 @@ export class OrderManagerService {
       // column can distinguish "this is what they collected" from "this is
       // what we asked for and nobody has confirmed yet".
       deliverySettled: r.settled_cod_amount !== null,
+      /** The returnedPaid figure is an estimate (delivery charge), not yet
+       *  confirmed by the courier. */
+      returnedPaidEstimated:
+        r.courier_status === 'PARTIALLY_DELIVERED' &&
+        r.settled_cod_amount === null &&
+        r.collected_cod_amount === null,
       // What the COURIER charges US for this parcel, priced off the Shipping
       // Rules rate card. Deliberately not derived from the COD math above:
       // that only ever recovers what the CUSTOMER was charged for delivery,

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import { CourierProviderName, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -269,5 +270,26 @@ export class SettlementSyncService {
     }
 
     return updated;
+  }
+
+  /**
+   * Read Steadfast's payout statements a few times a day so the collected
+   * amount of every settled parcel (and a partial delivery's real ৳80) lands
+   * without anyone pressing anything. Read-only. Live site only: a dev copy
+   * must not poll the real courier account.
+   */
+  @Cron('0 20 */4 * * *')
+  async scheduledSync(): Promise<void> {
+    if (process.env.NODE_ENV !== 'production') return;
+    try {
+      const r = await this.sync('STEADFAST', { maxPages: 3 });
+      this.logger.log(
+        `Steadfast statements: ${r.shipmentsUpdated} parcel(s) updated, ${r.discrepancies.length} collected less than asked`,
+      );
+    } catch (e) {
+      this.logger.error(
+        `Steadfast statement sync failed — ${(e as Error).message}`,
+      );
+    }
   }
 }

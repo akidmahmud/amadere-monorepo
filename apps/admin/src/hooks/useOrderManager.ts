@@ -38,6 +38,8 @@ export interface OrderManagerRow {
   /** Returned / partly returned: what the customer actually paid (e.g. only
    *  the delivery charge). Null = not returned, or not known yet. */
   returnedPaid?: string | null;
+  /** returnedPaid is only the delivery charge asked for, not yet confirmed. */
+  returnedPaidEstimated?: boolean;
   deliverySettled: boolean;
   /** What the COURIER bills us, priced off the Shipping Rules card at the
    *  billed weight (raw weight + 1kg above a kilo). */
