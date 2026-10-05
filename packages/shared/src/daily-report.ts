@@ -80,6 +80,9 @@ export interface DailyReportSourceBlock {
 export interface DailyReportSnapshot {
   from: string;
   to: string;
+  /** Exact span (ISO, end exclusive). Missing on reports made before it existed. */
+  windowStart?: string;
+  windowEnd?: string;
   generatedAt: string;
   sources: DailyReportSourceBlock[];
   grandTotal: DailyReportTotals;
@@ -98,6 +101,9 @@ export interface DailyReportListItem {
   kind: DailyReportKind;
   from: string;
   to: string;
+  /** Exact span covered (ISO, end exclusive). */
+  windowStart: string;
+  windowEnd: string;
   totalSales: number;
   netProfit: number;
   createdByName: string | null;
@@ -124,4 +130,22 @@ export function fixedCostLabel(
     MARKETING_LEDGER: 'from Marketing Cost entries',
   };
   return `${c.name} — ${how[c.type]}`;
+}
+
+/**
+ * "4 Oct 2026, 12:00 am → 4 Oct 2026, 11:59 pm" in Dhaka time. `end` is
+ * exclusive, so the last minute shown is the one before it.
+ */
+export function reportWindowLabel(start: string, end: string): string {
+  const f = (ms: number) =>
+    new Date(ms).toLocaleString('en-GB', {
+      timeZone: 'Asia/Dhaka',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  return `${f(Date.parse(start))} → ${f(Date.parse(end) - 60_000)}`;
 }

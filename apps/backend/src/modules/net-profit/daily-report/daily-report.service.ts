@@ -23,6 +23,8 @@ import {
   currentBusinessDay,
   lastClosedBusinessDay,
   validateManual,
+  businessWindow,
+  exactWindow,
 } from './period';
 import {
   DEFAULT_SETTINGS,
@@ -43,6 +45,8 @@ const LIST_SELECT = {
   kind: true,
   periodFrom: true,
   periodTo: true,
+  windowStart: true,
+  windowEnd: true,
   totalSales: true,
   netProfit: true,
   createdByName: true,
@@ -56,6 +60,12 @@ const toListItem = (r: ListRow): DailyReportListItem => ({
   kind: r.kind,
   from: day(r.periodFrom),
   to: day(r.periodTo),
+  windowStart: (
+    r.windowStart ?? businessWindow(day(r.periodFrom), day(r.periodTo)).start
+  ).toISOString(),
+  windowEnd: (
+    r.windowEnd ?? businessWindow(day(r.periodFrom), day(r.periodTo)).end
+  ).toISOString(),
   totalSales: Number(r.totalSales),
   netProfit: Number(r.netProfit),
   createdByName: r.createdByName,
@@ -109,10 +119,17 @@ export class DailyReportService {
   // ---- generation --------------------------------------------------------
 
   async generateManual(
-    dto: { name: string; from: string; to: string },
+    dto: {
+      name: string;
+      from: string;
+      to: string;
+      fromTime?: string;
+      toTime?: string;
+    },
     adminId: number,
   ): Promise<DailyReportListItem> {
     let name: string;
+    let window: { start: Date; end: Date } | undefined;
     try {
       name = validateManual(
         dto.name,
@@ -120,6 +137,7 @@ export class DailyReportService {
         dto.to,
         currentBusinessDay(new Date()),
       );
+      window = exactWindow(dto.from, dto.to, dto.fromTime, dto.toTime);
     } catch (e) {
       throw new BadRequestException((e as Error).message);
     }
@@ -134,6 +152,7 @@ export class DailyReportService {
       name,
       from: dto.from,
       to: dto.to,
+      window,
       kind: 'MANUAL',
       createdById: adminId,
       createdByName: who,
@@ -167,20 +186,23 @@ export class DailyReportService {
     name: string;
     from: string;
     to: string;
+    /** Exact times; default = 8 PM business days. */
+    window?: { start: Date; end: Date };
     kind: DailyReportKind;
     createdById: number | null;
     createdByName: string | null;
   }): Promise<DailyReportListItem> {
     const db = this.prisma.client;
+    const win = p.window ?? businessWindow(p.from, p.to);
     const [settings, orders, mk] = await Promise.all([
       this.getSettings(),
-      this.loader.load(p.from, p.to),
+      this.loader.load(p.from, p.to, p.window),
       db.marketingCost.aggregate({
         where: { costDate: { gte: utc(p.from), lte: utc(p.to) } },
         _sum: { adsCost: true, otherCost: true },
       }),
     ]);
-    const snapshot = buildSnapshot({
+    const built = buildSnapshot({
       from: p.from,
       to: p.to,
       generatedAt: new Date().toISOString(),
@@ -189,12 +211,19 @@ export class DailyReportService {
       fixedCosts: settings.fixedCosts,
       marketing: Number(mk._sum.adsCost ?? 0) + Number(mk._sum.otherCost ?? 0),
     });
+    const snapshot = {
+      ...built,
+      windowStart: win.start.toISOString(),
+      windowEnd: win.end.toISOString(),
+    };
     const row = await db.dailyReport.create({
       data: {
         name: p.name,
         kind: p.kind,
         periodFrom: utc(p.from),
         periodTo: utc(p.to),
+        windowStart: win.start,
+        windowEnd: win.end,
         payload: snapshot as unknown as Prisma.InputJsonValue,
         totalSales: snapshot.grandTotal.sales,
         netProfit: snapshot.netProfit,

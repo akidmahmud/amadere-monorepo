@@ -7,7 +7,11 @@ import { ShippingRulesService } from '../../shipping-rules/shipping-rules.servic
 import { spreadDiscount } from '../sales-report/report-mapping';
 import type { BuildOrder } from './build';
 import { businessWindow, wholesaleBusinessDay } from './period';
-import { retailSourceOf, wholesaleSourceOf } from './sources';
+import {
+  isRecoveredOrder,
+  retailSourceOf,
+  wholesaleSourceOf,
+} from './sources';
 
 const uniq = (xs: (number | null)[]) => [
   ...new Set(xs.filter((x): x is number => x !== null)),
@@ -27,11 +31,16 @@ export class DailyReportLoader {
     private readonly shippingRules: ShippingRulesService,
   ) {}
 
-  async load(from: string, to: string): Promise<BuildOrder[]> {
+  /** `exact`: a manual report's own times instead of 8 PM business days. */
+  async load(
+    from: string,
+    to: string,
+    exact?: { start: Date; end: Date },
+  ): Promise<BuildOrder[]> {
     const db = this.prisma.client;
     // 8 PM → 8 PM business days. Wholesale stays on its placed_at DATE: it has
     // no time of day (staff pick the sale date), so the cutoff can't apply.
-    const win = businessWindow(from, to);
+    const win = exact ?? businessWindow(from, to);
     const [retail, wholesale, rules] = await Promise.all([
       db.order.findMany({
         where: {
@@ -41,6 +50,7 @@ export class DailyReportLoader {
         },
         select: {
           id: true,
+          orderNumber: true,
           channel: true,
           storeId: true,
           utmSource: true,
@@ -133,7 +143,8 @@ export class DailyReportLoader {
       const grosses = r.items.map((i) => Number(i.unitPrice) * i.quantity);
       const discs = spreadDiscount(grosses, Number(r.discountAmount));
       const date = dhakaDate(r.createdAt);
-      const isPos = r.channel === 'POS';
+      const recovered = isRecoveredOrder(r.orderNumber);
+      const isPos = r.channel === 'POS' && !recovered;
       let parcelKg = 0;
       const lines = r.items.flatMap((i, idx) => {
         const w = Number(
@@ -174,13 +185,15 @@ export class DailyReportLoader {
       return {
         id: r.id,
         wholesale: false,
-        source: retailSourceOf(r),
+        source: recovered ? 'WEB_DIRECT' : retailSourceOf(r),
         delivery,
         lines,
       };
     });
 
     const inPeriod = wholesale.filter((w) => {
+      // Exact times: by when the order was entered (placedAt has no time).
+      if (exact) return w.createdAt >= exact.start && w.createdAt < exact.end;
       const day = wholesaleBusinessDay(w.placedAt, w.createdAt);
       return day >= from && day <= to;
     });

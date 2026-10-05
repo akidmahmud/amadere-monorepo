@@ -11,6 +11,7 @@ import { proxyFetch } from "@/lib/api/proxy-client";
 import { usePosSale } from "@/hooks/usePos";
 import { taka } from "@/lib/pos-cart";
 import { formatWeight, lineSize } from "@/lib/pos-weight";
+import { afterDiscount } from "@/lib/pos-discount";
 import { exportAllPagesXlsx } from "@/lib/pos-export";
 import { reportTitle } from "@/lib/reportTitle";
 import {
@@ -215,7 +216,7 @@ export function PosOrdersManager({
           "Customer",
           "Phone",
           "Product",
-          "Weight",
+          "Weight (kg)",
           "Qty",
           "Unit price (৳)",
           "Unit cost (৳)",
@@ -224,6 +225,7 @@ export function PosOrdersManager({
           "Payment",
           "Subtotal (৳)",
           "Discount (৳)",
+          "After discount (৳)",
           "VAT (৳)",
           "Order total (৳)",
           "Status",
@@ -244,11 +246,13 @@ export function PosOrdersManager({
             o.customer?.name ?? "Walk-in",
             o.customer?.phone ?? "",
           ];
-          const tail = [
+          const money = [
             o.tender ? (TENDER_LABEL[o.tender] ?? o.tender) : "",
             // Subtotal − discount + VAT (added on top) = order total.
             Number(o.subTotal ?? 0),
             Number(o.discountAmount ?? 0),
+          ];
+          const tail = [
             Number(o.taxAmount ?? 0),
             Number(o.totalAmount),
             STATUS_LABEL[o.status] ?? o.status,
@@ -257,20 +261,46 @@ export function PosOrdersManager({
           const items = o.items?.length
             ? o.items
             : [{ name: "", qty: 0, price: "0", returned: 0 }];
+          // Each product's line total less its share of the order discount.
+          const net = afterDiscount(
+            items.map((i) => Number(i.price) * i.qty),
+            Number(o.discountAmount ?? 0),
+          );
           return items.map((i, n) => [
             ...(n === 0 ? order : [o.orderNumber, "", "", "", "", ""]),
             i.name,
-            formatWeight(i.weightKg, i.weightUnit) ?? "",
+            // Stored in kg (g/kg) or litres (ml/L); a litre counts as a kg:
+            // 250 g → 0.25, 500 ml → 0.5, 5 L → 5.
+            Number(i.weightKg) > 0 ? Number(i.weightKg) : null,
             i.qty || null,
             i.name ? Number(i.price) : null,
             i.unitCost ? Number(i.unitCost) : null,
             i.name ? Number(i.price) * i.qty : null,
             i.returned || null,
-            ...(n === 0 ? tail : ["", null, null, null, null, "", ""]),
+            ...(n === 0 ? money : ["", null, null]),
+            i.name ? net[n] : null,
+            ...(n === 0 ? tail : [null, null, "", ""]),
           ]);
         },
         `pos-orders-${new Date().toISOString().slice(0, 10)}.xlsx`,
         reportTitle(`POS Orders — ${storeName}`, periodParams(period)),
+        (rows) => {
+          const sum = (f: (r: (typeof rows)[number]) => number) =>
+            Number(rows.reduce((t, r) => t + f(r), 0).toFixed(3));
+          const col = (c: number) => sum((r) => Number(r[c]) || 0);
+          return [
+            "TOTAL", "", "", "", "", "", "",
+            // Weight: kg sold (each unit's weight × qty), not a sum of sizes.
+            sum((r) => (Number(r[7]) || 0) * (Number(r[8]) || 0)),
+            col(8), // Qty
+            null, null, // unit price / unit cost: not additive
+            col(11), // Line total
+            col(12), // Returned
+            "",
+            col(14), col(15), col(16), col(17), col(18), // Subtotal, Discount, After discount, VAT, Order total
+            "", "",
+          ];
+        },
       );
       toast.push(`Exported ${n} order${n === 1 ? "" : "s"}`, "success");
     } catch (e) {

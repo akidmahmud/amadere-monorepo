@@ -1494,7 +1494,10 @@ enum OrderStatus {
 
 enum OrderChannel {
   WEBSITE
+  /// Shown as "WhatsApp Official" (the business number).
   WHATSAPP
+  /// Staff's personal WhatsApp.
+  WHATSAPP_PERSONAL
   PHONE
   MARKETPLACE
   POS
@@ -3324,6 +3327,10 @@ model DailyReport {
   kind          DailyReportKind
   periodFrom    DateTime        @map("period_from") @db.Date
   periodTo      DateTime        @map("period_to") @db.Date
+  /// The exact time span covered (start inclusive, end exclusive). Business
+  /// days run 8 PM -> 8 PM; a manual report may set its own times.
+  windowStart   DateTime?       @map("window_start")
+  windowEnd     DateTime?       @map("window_end")
   payload       Json
   totalSales    Decimal         @map("total_sales") @db.Decimal(12, 2)
   netProfit     Decimal         @map("net_profit") @db.Decimal(12, 2)

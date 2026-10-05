@@ -17,6 +17,10 @@ export function GenerateModal({
   const [name, setName] = useState("");
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
+  // Off = 8 PM business days; on = the exact times below.
+  const [timed, setTimed] = useState(false);
+  const [fromTime, setFromTime] = useState("00:00");
+  const [toTime, setToTime] = useState("23:59");
   const [error, setError] = useState<string | null>(null);
   const gen = useGenerateDailyReport();
   const router = useRouter();
@@ -25,7 +29,12 @@ export function GenerateModal({
     e.preventDefault();
     setError(null);
     try {
-      const r = await gen.mutateAsync({ name: name.trim(), from, to });
+      const r = await gen.mutateAsync({
+        name: name.trim(),
+        from,
+        to,
+        ...(timed ? { fromTime, toTime } : {}),
+      });
       onClose();
       router.push(`/net-profit/daily-report/${r.id}`);
     } catch (err) {
@@ -74,8 +83,42 @@ export function GenerateModal({
             />
           </label>
         </div>
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={timed}
+            onChange={(e) => setTimed(e.target.checked)}
+          />
+          Set exact times
+        </label>
+        {timed && (
+          <div className="flex gap-3">
+            <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
+              From time
+              <input
+                type="time"
+                className={inputClass}
+                value={fromTime}
+                onChange={(e) => setFromTime(e.target.value)}
+                required
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-sm font-semibold">
+              To time (included)
+              <input
+                type="time"
+                className={inputClass}
+                value={toTime}
+                onChange={(e) => setToTime(e.target.value)}
+                required
+              />
+            </label>
+          </div>
+        )}
         <p className="text-xs text-muted">
-          Each day runs 8 PM to 8 PM (2 Oct = 1 Oct 8 PM to 2 Oct 8 PM).
+          {timed
+            ? "The report covers exactly From date + time up to To date + time (Dhaka time)."
+            : "Each day runs 8 PM to 8 PM (2 Oct = 1 Oct 8 PM to 2 Oct 8 PM)."}{" "}
           Choosing today gives the sales so far. A report can cover up to 92
           days.
         </p>

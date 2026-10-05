@@ -99,7 +99,7 @@ describe('toReportOrder', () => {
       orderNumber: 'AM-5',
       date: '2026-08-01',
       status: 'Delivered',
-      channel: 'Facebook',
+      channel: 'Messenger',
       agentId: 3,
       agentName: 'Jami',
       customer: 'Limon',

@@ -43,13 +43,14 @@ const PAYMENT_PROVIDER_CONFIG: Record<
 // WEBSITE and APP are deliberately absent: those are set by the storefront
 // itself, and this form only ever creates orders staff took by hand.
 const CHANNELS = [
-  "WHATSAPP", "PHONE", "FACEBOOK", "INSTAGRAM",
+  "WHATSAPP", "WHATSAPP_PERSONAL", "PHONE", "FACEBOOK", "INSTAGRAM",
   "TIKTOK", "YOUTUBE", "X", "MARKETPLACE", "POS",
 ] as const;
 const CHANNEL_CONFIG: Record<(typeof CHANNELS)[number], { label: string; icon: string }> = {
-  WHATSAPP: { label: "WhatsApp", icon: "chat" },
+  WHATSAPP: { label: "WhatsApp Official", icon: "chat" },
+  WHATSAPP_PERSONAL: { label: "WhatsApp Personal", icon: "chat" },
   PHONE: { label: "Telemarketing", icon: "call" },
-  FACEBOOK: { label: "Facebook", icon: "thumb_up" },
+  FACEBOOK: { label: "Messenger", icon: "forum" },
   INSTAGRAM: { label: "Instagram", icon: "photo_camera" },
   TIKTOK: { label: "TikTok", icon: "music_note" },
   YOUTUBE: { label: "YouTube", icon: "play_circle" },

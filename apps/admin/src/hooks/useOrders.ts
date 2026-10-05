@@ -25,6 +25,7 @@ export const ORDER_STATUSES: OrderStatus[] = [
 export type OrderChannel =
   | "WEBSITE"
   | "WHATSAPP"
+  | "WHATSAPP_PERSONAL"
   | "PHONE"
   | "MARKETPLACE"
   | "POS"
@@ -49,6 +50,7 @@ export type OrderChannel =
 export const ORDER_CHANNELS: OrderChannel[] = [
   "WEBSITE",
   "WHATSAPP",
+  "WHATSAPP_PERSONAL",
   "PHONE",
   "FACEBOOK",
   "INSTAGRAM",
@@ -63,9 +65,11 @@ export const ORDER_CHANNELS: OrderChannel[] = [
 /** Display names — the raw enum leaks into the Origin dropdown otherwise. */
 export const ORDER_CHANNEL_LABELS: Record<OrderChannel, string> = {
   WEBSITE: "Website",
-  WHATSAPP: "WhatsApp",
+  WHATSAPP: "WhatsApp Official",
+  WHATSAPP_PERSONAL: "WhatsApp Personal",
   PHONE: "Telemarketing",
-  FACEBOOK: "Facebook",
+  // Staff take these orders in Messenger; the stored value stays FACEBOOK.
+  FACEBOOK: "Messenger",
   INSTAGRAM: "Instagram",
   TIKTOK: "TikTok",
   YOUTUBE: "YouTube",
@@ -207,6 +211,7 @@ export interface CreateManualOrderInput {
   customerId?: number;
   channel:
     | "WHATSAPP"
+    | "WHATSAPP_PERSONAL"
     | "PHONE"
     | "MARKETPLACE"
     | "POS"

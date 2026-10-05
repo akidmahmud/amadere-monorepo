@@ -1,4 +1,5 @@
 import { OrderStatus, Prisma } from '@amader/db';
+import { isRecoveredOrder } from '../daily-report/sources';
 import { dhakaDate } from '../../product-cost-history/dhaka-date';
 import type { CostResolver } from '../../product-cost-history/product-cost-history.service';
 import type { ShippingZonesConfig } from '../../shipping-zones/shipping-zones.types';
@@ -26,12 +27,13 @@ export function toReportStatus(s: OrderStatus): ReportStatus {
 
 export const CHANNEL_LABEL: Record<string, string> = {
   WEBSITE: 'Website',
-  WHATSAPP: 'WhatsApp',
+  WHATSAPP: 'WhatsApp Official',
+  WHATSAPP_PERSONAL: 'WhatsApp Personal',
   PHONE: 'Call',
   MARKETPLACE: 'Marketplace',
   POS: 'POS',
   APP: 'App',
-  FACEBOOK: 'Facebook',
+  FACEBOOK: 'Messenger',
   INSTAGRAM: 'Instagram',
   TIKTOK: 'TikTok',
 };
@@ -149,8 +151,10 @@ export function toReportOrder(
     date,
     status: toReportStatus(row.status),
     // A shop's till sales show as the shop ("Amader Shimultoli"), not "POS".
-    channel:
-      row.channel === 'POS' && row.store
+    // A recovered cart is always a Website sale, whatever its Origin says.
+    channel: isRecoveredOrder(row.orderNumber)
+      ? channelLabel('WEBSITE')
+      : row.channel === 'POS' && row.store
         ? row.store.name
         : channelLabel(row.channel),
     agentId: row.assignedAdmin?.id ?? null,
@@ -196,7 +200,7 @@ export function toReportOrder(
     actual:
       shipment?.billedCharge != null ? Number(shipment.billedCharge) : null,
     hist: historyDates(row.statusHistory, row.confirmedAt),
-    counter: row.channel === 'POS',
+    counter: row.channel === 'POS' && !isRecoveredOrder(row.orderNumber),
     // Partly delivered parcel: what the courier still collected.
     returnCollected:
       shipment?.status === 'PARTIALLY_DELIVERED'

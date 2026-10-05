@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { reportWindowLabel } from "@amader/shared";
 import Link from "next/link";
 import { Button, Card } from "@amader/admin-ui";
 import { dailyReportExportUrl, useDailyReport } from "@/hooks/useDailyReports";
@@ -52,7 +53,7 @@ function DailyReportBody({ params }: { params: Promise<{ id: string }> }) {
           </Link>
           <h2 className="mt-1 text-lg font-bold">{r.name}</h2>
           <p className="text-sm text-muted">
-            {r.from === r.to ? r.from : `${r.from} → ${r.to}`} ·{" "}
+            {reportWindowLabel(r.windowStart, r.windowEnd)} ·{" "}
             {r.kind === "AUTO"
               ? "Automatic"
               : `Manual, by ${r.createdByName ?? "—"}`}{" "}

@@ -16,6 +16,7 @@ Chart.register(DoughnutController, ArcElement, ChartJsTooltip);
 const CHANNEL_COLORS: Record<string, string> = {
   WEBSITE: "#2570eb",
   WHATSAPP: "#2fbfa8",
+  WHATSAPP_PERSONAL: "#25d366",
   PHONE: "#8b5cf6",
   MARKETPLACE: "#3a4356",
   POS: "#f7941d",
@@ -29,12 +30,13 @@ const CHANNEL_COLORS: Record<string, string> = {
 
 const CHANNEL_LABELS: Record<string, string> = {
   WEBSITE: "Website",
-  WHATSAPP: "WhatsApp",
+  WHATSAPP: "WhatsApp Official",
+  WHATSAPP_PERSONAL: "WhatsApp Personal",
   PHONE: "Phone",
   MARKETPLACE: "Marketplace",
   POS: "POS",
   APP: "App",
-  FACEBOOK: "Facebook",
+  FACEBOOK: "Messenger",
   INSTAGRAM: "Instagram",
   TIKTOK: "TikTok",
   YOUTUBE: "YouTube",

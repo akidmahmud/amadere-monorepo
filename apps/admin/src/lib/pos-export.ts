@@ -16,6 +16,8 @@ export async function exportAllPagesXlsx<T>(
   toRow: (item: T) => Cell[] | Cell[][],
   fileName: string,
   title: string,
+  /** Optional last row, built from all the data rows (e.g. totals). */
+  totalRow?: (rows: Cell[][]) => Cell[],
 ): Promise<number> {
   const items: T[] = [];
   for (let page = 1; ; page++) {
@@ -27,15 +29,13 @@ export async function exportAllPagesXlsx<T>(
     items.push(...r.items);
     if (items.length >= r.total || r.items.length === 0) break;
   }
+  const rows = items.flatMap((x) => {
+    const r = toRow(x);
+    return Array.isArray(r[0]) ? (r as Cell[][]) : [r as Cell[]];
+  });
   await downloadXlsx(
     fileName,
-    [
-      headers,
-      ...items.flatMap((x) => {
-        const r = toRow(x);
-        return Array.isArray(r[0]) ? (r as Cell[][]) : [r as Cell[]];
-      }),
-    ],
+    [headers, ...rows, ...(totalRow && rows.length ? [totalRow(rows)] : [])],
     { headerRows: 1 },
     title,
   );

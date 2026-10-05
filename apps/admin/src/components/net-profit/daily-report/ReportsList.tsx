@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { reportWindowLabel } from "@amader/shared";
 import { Button, Card } from "@amader/admin-ui";
 import {
   dailyReportExportUrl,
@@ -98,7 +99,7 @@ export function ReportsList({ canManage }: { canManage: boolean }) {
                   </Link>
                 </td>
                 <td className="pr-3">
-                  {r.from === r.to ? r.from : `${r.from} → ${r.to}`}
+                  {reportWindowLabel(r.windowStart, r.windowEnd)}
                 </td>
                 <td className="pr-3">
                   {r.kind === "AUTO" ? "Auto" : "Manual"}

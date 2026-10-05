@@ -54,6 +54,7 @@ const PAYMENT_PROVIDER_LABELS: Record<(typeof PAYMENT_PROVIDERS)[number], string
 
 const CHANNELS = [
   "WHATSAPP",
+  "WHATSAPP_PERSONAL",
   "PHONE",
   "FACEBOOK",
   "INSTAGRAM",
@@ -64,9 +65,10 @@ const CHANNELS = [
   "POS",
 ] as const;
 const CHANNEL_LABELS: Record<(typeof CHANNELS)[number], string> = {
-  WHATSAPP: "WhatsApp",
+  WHATSAPP: "WhatsApp Official",
+  WHATSAPP_PERSONAL: "WhatsApp Personal",
   PHONE: "Phone (Telemarketing)",
-  FACEBOOK: "Facebook",
+  FACEBOOK: "Messenger",
   INSTAGRAM: "Instagram",
   TIKTOK: "TikTok",
   YOUTUBE: "YouTube",

@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export class GenerateDailyReportDto {
   // Trimming/emptiness is checked in period.validateManual so the message is friendly.
@@ -21,6 +22,17 @@ export class GenerateDailyReportDto {
   @ApiProperty({ description: 'YYYY-MM-DD, Asia/Dhaka' })
   @Matches(DAY)
   to!: string;
+  /** Optional exact times (HH:MM, Dhaka). Set -> the report covers from-date
+   *  fromTime up to and including the to-date toTime minute, instead of
+   *  8 PM business days. */
+  @ApiPropertyOptional({ description: 'HH:MM, Asia/Dhaka' })
+  @IsOptional()
+  @Matches(TIME)
+  fromTime?: string;
+  @ApiPropertyOptional({ description: 'HH:MM, Asia/Dhaka (inclusive minute)' })
+  @IsOptional()
+  @Matches(TIME)
+  toTime?: string;
 }
 
 export class ListDailyReportsDto {

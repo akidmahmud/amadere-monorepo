@@ -1,30 +1,24 @@
-import { retailSourceOf, wholesaleSourceOf } from './sources';
+import { isRecoveredOrder, retailSourceOf, wholesaleSourceOf } from './sources';
 
 const web = (utmSource: string | null, referrerDomain: string | null = null) =>
   retailSourceOf({ channel: 'WEBSITE', utmSource, referrerDomain });
 
 describe('retailSourceOf', () => {
   it.each([
-    ['fb', null, 'WEB_FACEBOOK'],
-    ['facebook_ads', null, 'WEB_FACEBOOK'],
-    [null, 'l.facebook.com', 'WEB_FACEBOOK'],
-    [null, 'm.facebook.com', 'WEB_FACEBOOK'],
-    ['ig', null, 'WEB_INSTAGRAM'],
-    [null, 'instagram.com', 'WEB_INSTAGRAM'],
-    ['TikTok', null, 'WEB_TIKTOK'],
-    [null, 'www.google.com', 'WEB_DIRECT'],
-    // Token match, not substring: "digital" contains "ig", "fbx" contains "fb".
-    ['digital', null, 'WEB_DIRECT'],
-    ['fbx', null, 'WEB_DIRECT'],
-    [null, null, 'WEB_DIRECT'],
-  ])('website utm=%s ref=%s → %s', (utm, ref, want) => {
-    expect(web(utm, ref)).toBe(want);
+    ['fb', null],
+    [null, 'l.facebook.com'],
+    ['ig', null],
+    ['TikTok', null],
+    [null, 'www.google.com'],
+    [null, null],
+  ])('website utm=%s ref=%s → one Website block', (utm, ref) => {
+    expect(web(utm, ref)).toBe('WEB_DIRECT');
   });
 
   it('APP is treated as website', () => {
     expect(
       retailSourceOf({ channel: 'APP', utmSource: 'ig', referrerDomain: null }),
-    ).toBe('WEB_INSTAGRAM');
+    ).toBe('WEB_DIRECT');
   });
 
   it.each([
@@ -79,5 +73,13 @@ describe('retailSourceOf — POS store', () => {
         referrerDomain: null,
       }),
     ).toBe('SHOP');
+  });
+});
+
+describe('isRecoveredOrder', () => {
+  it('REC- orders are recovered carts; others are not', () => {
+    expect(isRecoveredOrder('REC-MUS4RN6Z')).toBe(true);
+    expect(isRecoveredOrder('ORD-20260911-0DEB04')).toBe(false);
+    expect(isRecoveredOrder(null)).toBe(false);
   });
 });

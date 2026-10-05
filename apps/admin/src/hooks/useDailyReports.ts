@@ -43,7 +43,14 @@ export const useDailyReport = (id: number) =>
 export function useGenerateDailyReport() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (b: { name: string; from: string; to: string }) =>
+    mutationFn: (b: {
+      name: string;
+      from: string;
+      to: string;
+      /** HH:MM (Dhaka); set both for exact times instead of 8 PM days. */
+      fromTime?: string;
+      toTime?: string;
+    }) =>
       proxyFetch<DailyReportListItem>(BASE, {
         method: "POST",
         body: JSON.stringify(b),

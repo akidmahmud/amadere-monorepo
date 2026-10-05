@@ -1,6 +1,7 @@
 import {
   autoName,
   businessWindow,
+  exactWindow,
   currentBusinessDay,
   daysInMonth,
   lastClosedBusinessDay,
@@ -93,5 +94,19 @@ describe('wholesaleBusinessDay', () => {
     expect(wholesaleBusinessDay(at(`${placed}T00:00:00Z`), at(created))).toBe(
       want,
     );
+  });
+});
+
+describe('exactWindow (manual report with its own times)', () => {
+  it('no times → business days (undefined)', () => {
+    expect(exactWindow('2026-10-04', '2026-10-04')).toBeUndefined();
+  });
+  it('00:00 → 23:59 covers the whole calendar day in Dhaka', () => {
+    const w = exactWindow('2026-10-04', '2026-10-04', '00:00', '23:59')!;
+    expect(w.start.toISOString()).toBe('2026-10-03T18:00:00.000Z');
+    expect(w.end.toISOString()).toBe('2026-10-04T18:00:00.000Z');
+  });
+  it('rejects an end before the start', () => {
+    expect(() => exactWindow('2026-10-04', '2026-10-04', '18:00', '09:00')).toThrow();
   });
 });

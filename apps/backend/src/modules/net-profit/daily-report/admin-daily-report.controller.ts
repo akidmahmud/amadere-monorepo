@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { reportWindowLabel } from '@amader/shared';
 import type { Response } from 'express';
 import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../../common/auth/permission.guard';
@@ -76,11 +77,11 @@ export class AdminDailyReportController {
     @Res() res: Response,
   ): Promise<void> {
     const { name, kind, snapshot } = await this.reports.snapshotFor(id);
-    const title = reportTitle(
-      kind === 'AUTO' ? 'Daily Report' : name,
-      snapshot.from,
-      snapshot.to,
-    );
+    const label = kind === 'AUTO' ? 'Daily Report' : name;
+    const title =
+      snapshot.windowStart && snapshot.windowEnd
+        ? `Amader eBuy Limited - ${reportWindowLabel(snapshot.windowStart, snapshot.windowEnd)} - ${label}`
+        : reportTitle(label, snapshot.from, snapshot.to);
     const buf = await buildDailyReportWorkbook(
       snapshot,
       title,

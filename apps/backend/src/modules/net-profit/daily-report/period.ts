@@ -104,3 +104,21 @@ export function wholesaleBusinessDay(placedAt: Date, createdAt: Date): string {
     ? currentBusinessDay(createdAt)
     : placed;
 }
+
+/**
+ * A manual report's own times (HH:MM, Dhaka): from-date fromTime up to and
+ * including the to-date toTime minute. undefined = use business days.
+ */
+export function exactWindow(
+  from: string,
+  to: string,
+  fromTime?: string,
+  toTime?: string,
+): { start: Date; end: Date } | undefined {
+  if (!fromTime && !toTime) return undefined;
+  const at = (d: string, t: string) => Date.parse(`${d}T${t}:00+06:00`);
+  const start = at(from, fromTime ?? '00:00');
+  const end = at(to, toTime ?? '23:59') + 60_000;
+  if (!(end > start)) throw new Error('"To" time must be after "From" time.');
+  return { start: new Date(start), end: new Date(end) };
+}
