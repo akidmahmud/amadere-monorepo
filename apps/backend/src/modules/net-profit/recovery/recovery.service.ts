@@ -1080,7 +1080,9 @@ export class RecoveryService {
         referrerDomain: incomplete.referrerDomain,
         subTotal,
         totalAmount: subTotal,
-        customerNote: 'Recreated from an abandoned cart by staff.',
+        // Private (staff) note: the customer note is printed for the courier
+        // and sent to Steadfast, and this is internal.
+        staffNote: 'Recreated from an abandoned cart by staff.',
         items: {
           create: items.map((i) => ({
             productId: i.productId,
