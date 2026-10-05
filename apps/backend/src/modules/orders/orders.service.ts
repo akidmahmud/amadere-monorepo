@@ -613,6 +613,7 @@ export class OrdersService {
         dto.district !== undefined ||
         dto.area !== undefined ||
         dto.phone !== undefined ||
+        dto.email !== undefined ||
         dto.addressLine !== undefined ||
         dto.recipientName !== undefined
       ) {
@@ -632,6 +633,9 @@ export class OrdersService {
             ...(dto.district !== undefined ? { district: dto.district } : {}),
             ...(dto.area !== undefined ? { area: dto.area || null } : {}),
             ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+            ...(dto.email !== undefined
+              ? { email: dto.email.trim() || null }
+              : {}),
             ...(dto.addressLine !== undefined
               ? { addressLine: dto.addressLine }
               : {}),

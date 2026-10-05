@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderChannel } from '@amader/db';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 import { IsBdPhone, NormalizeBdPhone } from '../../../common/validators/is-bd-phone.decorator';
 
 // The list-view fields (Origin/Phone/Address/Division/Source) that have real
@@ -26,6 +26,14 @@ export class UpdateOrderDetailsDto {
   @NormalizeBdPhone()
   @IsBdPhone()
   phone?: string;
+
+  // A guest checkout's email lives only on this snapshot — a typo here had
+  // no fix at all. '' clears it.
+  @ApiPropertyOptional({ description: "Shipping address's email ('' clears it)" })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== '')
+  @IsEmail()
+  email?: string;
 
   @ApiPropertyOptional({ description: "Shipping address's address line" })
   @IsOptional()

@@ -22,6 +22,8 @@ interface SteadfastConsignment {
 interface SteadfastResponse {
   status?: number;
   message?: string;
+  /** Validation failures, e.g. { invoice: ["The invoice has already been taken."] }. */
+  errors?: Record<string, string[] | string>;
   consignment?: SteadfastConsignment;
   delivery_status?: string;
 }
@@ -85,7 +87,9 @@ export class SteadfastCourierProvider implements CourierProvider {
       // being sent 13-digit, which Steadfast's real API rejects/mishandles).
       recipient_phone: toLocalPhone(input.recipientPhone),
       alternative_phone: input.alternativePhone ? toLocalPhone(input.alternativePhone) : '',
-      recipient_email: input.recipientEmail ?? '',
+      // ponytail: never sent — the courier doesn't need it, and Steadfast
+      // rejects the whole booking over a typo like "gmail.vom".
+      recipient_email: '',
       // Steadfast's documented 250-char cap on recipient_address — truncate
       // rather than let a long address get rejected outright.
       recipient_address: input.recipientAddress.slice(0, 250),
@@ -113,7 +117,12 @@ export class SteadfastCourierProvider implements CourierProvider {
       rawStatus: consignment?.status,
       errorMessage: success
         ? undefined
-        : (response.body?.message ?? `HTTP ${response.httpStatus}`),
+        : ([
+            response.body?.message,
+            ...Object.values(response.body?.errors ?? {}).flat(),
+          ]
+            .filter(Boolean)
+            .join(' · ') || `HTTP ${response.httpStatus}`),
       requestPayload: payload,
       rawResponse: response.body,
     };

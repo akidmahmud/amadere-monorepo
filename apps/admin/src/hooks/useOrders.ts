@@ -329,6 +329,7 @@ export function useUpdateOrderDetails(id: number) {
       channel?: OrderChannel;
       recipientName?: string;
       phone?: string;
+      email?: string;
       addressLine?: string;
       division?: string;
       // Hand-written rather than generated from schema.d.ts, so it has to be

@@ -5,7 +5,7 @@ import {
   paginationArgs,
   toPaginatedResult,
 } from '../../common/pagination.util';
-import { dhakaRange, dhakaTimeRange } from './dhaka-range';
+import { dhakaTimeRange } from './dhaka-range';
 import { PosTiersService } from './pos-tiers.service';
 import { tierFor } from './pos-tiers';
 import { ProductCostHistoryService } from '../product-cost-history/product-cost-history.service';
@@ -157,13 +157,10 @@ export class PosManagerService {
     const counts = Object.fromEntries(
       byStatus.map((g) => [g.status, g._count._all]),
     );
-    // Sales for the same filters (payment, store, status, search, period);
-    // with no period chosen, today's. Net of refunds.
-    const salesWhere: Prisma.OrderWhereInput = dhakaTimeRange(q)
-      ? where
-      : { ...where, createdAt: dhakaRange() };
+    // Sales for exactly the orders listed (payment, store, status, search,
+    // dates), net of refunds — the card always agrees with the table.
     const salesAgg = await this.prisma.client.order.aggregate({
-      where: salesWhere,
+      where,
       _sum: { totalAmount: true, posRefundedAmount: true },
       _count: { _all: true },
     });
@@ -172,8 +169,8 @@ export class PosManagerService {
         .minus(salesAgg._sum.posRefundedAmount ?? 0)
         .toFixed(2),
       orders: salesAgg._count._all,
-      /** true = no period was chosen, so this is today's. */
-      today: !dhakaTimeRange(q),
+      /** true = no dates chosen, so this covers every date. */
+      allDates: !dhakaTimeRange(q),
     };
     // A store's own weight for a product wins (same rule as the receipt).
     // ponytail: current weight, not snapshotted per sale — as on the receipt.

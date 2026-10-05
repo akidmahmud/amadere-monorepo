@@ -50,7 +50,8 @@ type Page = {
   items: Row[];
   total: number;
   /** Sales for the current filters; today's when no period is chosen. */
-  sales?: { amount: string; orders: number; today: boolean };
+  /** Sales of exactly the listed orders; allDates = no dates chosen. */
+  sales?: { amount: string; orders: number; allDates: boolean };
   counts: {
     ALL: number;
     COMPLETED: number;
@@ -296,7 +297,7 @@ export function PosOrdersManager({
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-sm text-gray-600">
-              {data?.sales?.today === false ? "Sales" : "Today's sales"}
+              Sales
               <span className="ml-1 font-semibold text-[#1d7a46]">
                 ·{" "}
                 {tender
@@ -310,7 +311,7 @@ export function PosOrdersManager({
             </div>
             <div className="text-xs text-gray-500">
               {data?.sales
-                ? `${data.sales.orders} order${data.sales.orders === 1 ? "" : "s"}${data.sales.today ? " today" : " in the period"}`
+                ? `${data.sales.orders} order${data.sales.orders === 1 ? "" : "s"}${data.sales.allDates ? " · all dates" : " · selected dates"}`
                 : ""}
             </div>
           </div>

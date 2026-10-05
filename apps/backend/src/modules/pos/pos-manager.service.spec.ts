@@ -206,18 +206,21 @@ describe('PosManagerService.customers', () => {
 });
 
 describe('PosManagerService.orders — sales card', () => {
-  it('sums the same filters (payment…), net of refunds; today when no period', async () => {
+  it('sums exactly the listed orders (payment…), net of refunds; all dates when none chosen', async () => {
     const { svc, order } = make();
     const r = await svc.orders(4, { tender: 'CASH' });
-    expect(r.sales).toEqual({ amount: '885.00', orders: 9, today: true });
+    expect(r.sales).toEqual({ amount: '885.00', orders: 9, allDates: true });
     const where = order.aggregate.mock.calls[0][0].where;
     expect(where.payments).toEqual({ some: { provider: 'CASH' } });
-    expect(where.createdAt.gte).toBeInstanceOf(Date);
+    expect(where.createdAt).toBeUndefined();
+    // same filter as the table
+    expect(where).toEqual(order.count.mock.calls[0][0].where);
   });
 
-  it('uses the chosen period instead of today', async () => {
-    const { svc } = make();
+  it('uses the chosen dates', async () => {
+    const { svc, order } = make();
     const r = await svc.orders(4, { from: '2026-09-01', to: '2026-09-30' });
-    expect(r.sales.today).toBe(false);
+    expect(r.sales.allDates).toBe(false);
+    expect(order.aggregate.mock.calls[0][0].where.createdAt.gte).toBeInstanceOf(Date);
   });
 });

@@ -161,6 +161,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const [shipDraft, setShipDraft] = useState({
     recipientName: "",
     phone: "",
+    email: "",
     addressLine: "",
     district: "",
     area: "",
@@ -805,6 +806,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                         setShipDraft({
                           recipientName: shippingAddress?.recipientName ?? "",
                           phone: shippingAddress?.phone ?? "",
+                          email: shippingAddress?.email ?? "",
                           addressLine: shippingAddress?.addressLine ?? "",
                           district: shippingAddress?.district ?? "",
                           area: shippingAddress?.area ?? "",
@@ -838,6 +840,15 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                       <input
                         value={shipDraft.phone}
                         onChange={(e) => setShipDraft({ ...shipDraft, phone: e.target.value })}
+                        className={editInput}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-muted">Email</span>
+                      <input
+                        type="email"
+                        value={shipDraft.email}
+                        onChange={(e) => setShipDraft({ ...shipDraft, email: e.target.value })}
                         className={editInput}
                       />
                     </label>
@@ -902,6 +913,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                             {
                               recipientName: shipDraft.recipientName.trim(),
                               phone: shipDraft.phone.trim(),
+                              email: shipDraft.email.trim(),
                               addressLine: shipDraft.addressLine.trim(),
                               district: shipDraft.district.trim(),
                               area: shipDraft.area.trim(),
