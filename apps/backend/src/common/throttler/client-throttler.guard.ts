@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import type { ThrottlerRequest } from '@nestjs/throttler';
 
 // Replaces the plain @nestjs/throttler ThrottlerGuard as the global
 // APP_GUARD (see app.module.ts) — PERF-BRIEF.md §7.
@@ -31,8 +32,37 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 // (`/api/v1/admin/auth/...`) controllers.
 const AUTH_ROUTE = /^\/api\/v1\/(admin\/)?auth\//;
 
+/** Default (customer-sized) limit per minute; see app.module.ts. */
+const DEFAULT_LIMIT = 120;
+/**
+ * Signed-in staff on the admin API. One login is shared by every open admin
+ * tab, and the POS till, order lists and dashboards each refresh on their own
+ * timers, so 120/min ran out with a few tabs open ("Too Many Requests").
+ * ponytail: one flat number; tune if staff still hit it.
+ */
+export const ADMIN_LIMIT = 1200;
+const ADMIN_API = /^\/api\/v1\/admin\//;
+
 @Injectable()
 export class ClientThrottlerGuard extends ThrottlerGuard {
+  protected async handleRequest(r: ThrottlerRequest): Promise<boolean> {
+    const req = r.context.switchToHttp().getRequest<{
+      url?: string;
+      headers?: Record<string, unknown>;
+    }>();
+    const url = String(req?.url ?? '');
+    // Only the default limit is raised: routes with their own tighter
+    // @Throttle (logins, OTP) keep it, and auth routes never qualify.
+    if (
+      r.limit === DEFAULT_LIMIT &&
+      ADMIN_API.test(url) &&
+      !AUTH_ROUTE.test(url) &&
+      typeof req?.headers?.['authorization'] === 'string'
+    )
+      return super.handleRequest({ ...r, limit: ADMIN_LIMIT });
+    return super.handleRequest(r);
+  }
+
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
     const headers = (req as { headers?: Record<string, unknown> }).headers ?? {};
 

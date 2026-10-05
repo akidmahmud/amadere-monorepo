@@ -9,7 +9,7 @@ test("title: single day, range, times, and no range", () => {
   );
   assert.equal(
     reportTitle("Sales Report", { from: "2026-08-18", to: "2026-08-18", fromTime: "09:00", toTime: "12:00" }),
-    "Amader eBuy Limited - Aug 18, 2026 09:00 to 12:00 - Sales Report",
+    "Amader eBuy Limited - Aug 18, 2026 9:00 am to 12:00 pm - Sales Report",
   );
   assert.equal(
     reportTitle("Retail Orders", { from: "2026-08-12", to: "2026-08-18" }),
@@ -18,7 +18,7 @@ test("title: single day, range, times, and no range", () => {
   // The customers filter sends datetime-local values.
   assert.equal(
     reportTitle("Retail Customers", { from: "2026-08-12T10:30", to: "2026-08-18T18:00" }),
-    "Amader eBuy Limited - Aug 12, 2026 10:30 to Aug 18, 2026 18:00 - Retail Customers",
+    "Amader eBuy Limited - Aug 12, 2026 10:30 am to Aug 18, 2026 6:00 pm - Retail Customers",
   );
   assert.equal(
     reportTitle("Wholesale Customers", {}, new Date("2026-09-18T20:00:00Z")),

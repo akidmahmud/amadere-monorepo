@@ -41,6 +41,13 @@ export interface TitleRange {
  * With no range at all it is dated the day of export, so a printed sheet
  * still says when it was pulled.
  */
+/** "09:00" → "9:00 am", "12:59" → "12:59 pm": 24-hour titles read 12:59 as
+ *  ambiguous next to the admin's am/pm time boxes. */
+const ampm = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
+};
+
 export function reportTitle(
   name: string,
   range: TitleRange = {},
@@ -57,10 +64,12 @@ export function reportTitle(
     );
   } else if (start === end) {
     const times =
-      a.time || b.time ? ` ${a.time ?? "00:00"} to ${b.time ?? "23:59"}` : "";
+      a.time || b.time
+        ? ` ${ampm(a.time ?? "00:00")} to ${ampm(b.time ?? "23:59")}`
+        : "";
     when = `${fmtDay(start)}${times}`;
   } else {
-    when = `${fmtDay(start)}${a.time ? ` ${a.time}` : ""} to ${fmtDay(end)}${b.time ? ` ${b.time}` : ""}`;
+    when = `${fmtDay(start)}${a.time ? ` ${ampm(a.time)}` : ""} to ${fmtDay(end)}${b.time ? ` ${ampm(b.time)}` : ""}`;
   }
   return `${COMPANY} - ${when} - ${name}`;
 }

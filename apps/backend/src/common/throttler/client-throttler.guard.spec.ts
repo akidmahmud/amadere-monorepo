@@ -1,4 +1,5 @@
-import { ClientThrottlerGuard } from './client-throttler.guard';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { ADMIN_LIMIT, ClientThrottlerGuard } from './client-throttler.guard';
 
 // getTracker is protected; this exposes it for the test without changing
 // the production surface.
@@ -89,5 +90,29 @@ describe('ClientThrottlerGuard.getTracker', () => {
       expect(await guard.track(req({ headers: { 'x-device-id': 'd' } }))).toBe('device:d');
       expect(await guard.track(req())).toBe('1.1.1.1');
     });
+  });
+});
+
+describe('ClientThrottlerGuard.handleRequest limits', () => {
+  const run = async (url: string, headers: Record<string, unknown>, limit = 120) => {
+    const spy = jest
+      .spyOn(ThrottlerGuard.prototype as any, 'handleRequest')
+      .mockResolvedValue(true);
+    const context = { switchToHttp: () => ({ getRequest: () => ({ url, headers }) }) };
+    await (guard as any).handleRequest({ context, limit, ttl: 60000 });
+    const used = (spy.mock.calls[0][0] as { limit: number }).limit;
+    spy.mockRestore();
+    return used;
+  };
+  const bearer = { authorization: 'Bearer x' };
+
+  it('signed-in admin API gets the staff limit', async () => {
+    expect(await run('/api/v1/admin/pos/orders', bearer)).toBe(ADMIN_LIMIT);
+  });
+  it('customers, anonymous admin calls and logins keep theirs', async () => {
+    expect(await run('/api/v1/products', bearer)).toBe(120);
+    expect(await run('/api/v1/admin/pos/orders', {})).toBe(120);
+    expect(await run('/api/v1/admin/auth/login', bearer, 5)).toBe(5);
+    expect(await run('/api/v1/admin/auth/refresh', bearer)).toBe(120);
   });
 });
