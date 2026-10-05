@@ -238,7 +238,8 @@ function OrderManagerPageInner() {
 
   useEffect(() => {
     const savedSize = Number(localStorage.getItem(PAGE_SIZE_KEY));
-    if (savedSize) setPageSizeState(savedSize);
+    // "All" is not remembered: it would load every order on every visit.
+    if (savedSize && savedSize <= 500) setPageSizeState(savedSize);
     // reconcileColumnOrder drops keys that no longer exist and appends ones
     // added since this was saved — otherwise a stale arrangement would hide a
     // newly-shipped column forever.

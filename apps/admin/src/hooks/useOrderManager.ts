@@ -114,7 +114,10 @@ export function useOrderManagerList(filters: OrderManagerFilters) {
       proxyFetch<Paginated<OrderManagerRow>>(
         `/admin/net-profit/orders${toQueryString(filters)}`,
       ),
-    refetchInterval: LIST_REFETCH_INTERVAL_MS,
+    // "All" is thousands of rows: reloading that every 15s would load the
+    // server for nothing. Big pages refresh on demand (window focus) only.
+    refetchInterval:
+      (filters.pageSize ?? 20) > 500 ? false : LIST_REFETCH_INTERVAL_MS,
   });
 }
 

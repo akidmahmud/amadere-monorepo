@@ -361,11 +361,13 @@ export function CustomersTable({
             className="h-[30px] rounded-[8px] border bg-white px-2 text-[0.72rem] font-semibold outline-none"
             style={{ borderColor: LINE, color: MUTED }}
           >
-            {[6, 10, 25, 50].map((s) => (
+            {[6, 10, 25, 50, 100, 200, 500].map((s) => (
               <option key={s} value={s}>
                 {s} / page
               </option>
             ))}
+            {/* The customers API has no page-size cap; 20000 = everyone. */}
+            <option value={20000}>All</option>
           </select>
         </div>
       </div>

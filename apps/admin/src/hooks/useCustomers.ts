@@ -86,7 +86,9 @@ export function useCustomers(filters: CustomerListFilters = {}) {
     queryFn: () =>
       proxyFetch<{ items: AdminCustomerListItem[]; total: number }>(`/admin/customers${toQueryString(filters)}`),
     placeholderData: keepPreviousData,
-    refetchInterval: LIST_REFETCH_INTERVAL_MS,
+    // No 15s auto-reload on "All" (thousands of rows) — see useOrderManager.
+    refetchInterval:
+      (filters.pageSize ?? 20) > 500 ? false : LIST_REFETCH_INTERVAL_MS,
   });
 }
 

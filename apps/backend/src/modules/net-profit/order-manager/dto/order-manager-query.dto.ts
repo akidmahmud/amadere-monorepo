@@ -1,9 +1,22 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CourierProviderName, OrderChannel, OrderStatus, PaymentProvider, RiskLevel } from '@amader/db';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto';
 
+export const ORDER_MANAGER_MAX_PAGE_SIZE = 20000;
+
 export class OrderManagerQueryDto extends PaginationQueryDto {
+  // Larger than the site-wide 100 so staff can pick "All" on one page.
+  // ponytail: one capped query; switch to virtual scrolling if All gets slow.
+  @ApiPropertyOptional({ default: 20, maximum: ORDER_MANAGER_MAX_PAGE_SIZE })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(ORDER_MANAGER_MAX_PAGE_SIZE)
+  declare pageSize?: number;
+
   @ApiPropertyOptional({ enum: OrderStatus })
   @IsOptional()
   @IsEnum(OrderStatus)

@@ -1124,11 +1124,13 @@ export function OrderManagerTable({
             className="h-[30px] rounded-[8px] border bg-white px-2 text-[0.72rem] font-semibold outline-none"
             style={{ borderColor: LINE, color: MUTED }}
           >
-            {[20, 50, 100].map((s) => (
+            {[20, 50, 100, 200, 500].map((s) => (
               <option key={s} value={s}>
                 {s} / page
               </option>
             ))}
+            {/* Matches ORDER_MANAGER_MAX_PAGE_SIZE on the backend. */}
+            <option value={20000}>All</option>
           </select>
         </div>
       </div>
