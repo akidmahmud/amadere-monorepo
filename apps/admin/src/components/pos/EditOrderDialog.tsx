@@ -7,12 +7,16 @@ import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { usePosCatalog, usePosSale } from "@/hooks/usePos";
 import { lineKey, taka, type PosProduct } from "@/lib/pos-cart";
+import { lineSize } from "@/lib/pos-weight";
+import { sizeText } from "@/components/pos/ProductGrid";
 
 type Line = {
   productId: number;
   variantId: number | null;
   name: string;
   variantLabel?: string | null;
+  /** "500 g", "1KG · 1.5 L": size label and/or weight. */
+  size?: string;
   /** Price it sold at; null = a new line (today's store price). */
   soldAt: string | null;
   todayPrice?: string;
@@ -90,12 +94,20 @@ function Editor({
       variantId: i.variantId ?? null,
       name: i.productNameSnapshot,
       variantLabel: i.variantLabel,
+      size: lineSize(i),
       soldAt: i.unitPrice,
       quantity: i.quantity,
     })),
   );
   const [q, setQ] = useState("");
   const [reason, setReason] = useState("");
+  // Cashier discount: "" = keep the sale's own; a number replaces it.
+  const [disc, setDisc] = useState("");
+  const [discType, setDiscType] = useState<"AMOUNT" | "PERCENT">("AMOUNT");
+  const discount =
+    disc.trim() === "" || !(Number(disc) >= 0)
+      ? {}
+      : { manualDiscount: Number(disc), manualDiscountType: discType };
   const { data: found = [], isFetching } = usePosCatalog(
     sale.storeId ?? undefined,
     q.trim(),
@@ -110,11 +122,11 @@ function Editor({
       quantity: l.quantity,
     }));
   const preview = useQuery({
-    queryKey: ["pos-edit-preview", sale.id, body],
+    queryKey: ["pos-edit-preview", sale.id, body, discount],
     queryFn: () =>
       proxyFetch<Preview>(`/admin/pos/sales/${sale.id}/edit`, {
         method: "POST",
-        body: JSON.stringify({ items: body, dryRun: true }),
+        body: JSON.stringify({ items: body, ...discount, dryRun: true }),
       }),
     enabled: body.length > 0,
     placeholderData: (prev) => prev,
@@ -126,6 +138,7 @@ function Editor({
         method: "POST",
         body: JSON.stringify({
           items: body,
+          ...discount,
           reason: reason.trim() || undefined,
         }),
       }),
@@ -172,6 +185,7 @@ function Editor({
               variantId: p.variantId,
               name: p.name,
               variantLabel: p.variantLabel,
+              size: sizeText(p),
               soldAt: null,
               todayPrice: p.salePrice ?? p.price,
               quantity: 1,
@@ -180,13 +194,20 @@ function Editor({
     );
     setQ("");
   };
-  const changed = lines.some((l) => {
+  const itemsChanged = lines.some((l) => {
     const was = sale.items.find(
       (i) =>
         i.productId === l.productId && (i.variantId ?? null) === l.variantId,
     );
     return (was?.quantity ?? 0) !== l.quantity;
   });
+  const p0 = preview.data;
+  const changed =
+    itemsChanged ||
+    ("manualDiscount" in discount &&
+      !!p0 &&
+      Number(p0.discount) !==
+        Number(sale.discountAmount) - Number(sale.posVatDiscount ?? 0));
   const p = preview.data;
   const diff = Number(p?.difference ?? 0);
 
@@ -199,8 +220,8 @@ function Editor({
         <div className="flex-1">
           <h2 className="text-lg font-bold">Edit {sale.orderNumber}</h2>
           <p className="text-sm text-gray-500">
-            Change quantities, remove items or add products. Items already on
-            the sale keep the price they sold at.
+            Change quantities, remove items, add products or change the
+            discount. Items already on the sale keep the price they sold at.
           </p>
         </div>
         <button
@@ -240,8 +261,8 @@ function Editor({
                 >
                   <span>
                     {f.name}
-                    {f.variantLabel && (
-                      <span className="text-gray-500"> · {f.variantLabel}</span>
+                    {sizeText(f) && (
+                      <span className="text-gray-500"> · {sizeText(f)}</span>
                     )}
                   </span>
                   <span className="whitespace-nowrap text-xs text-gray-500">
@@ -268,10 +289,10 @@ function Editor({
                     className={`truncate font-semibold ${l.quantity === 0 ? "text-gray-400 line-through" : ""}`}
                   >
                     {l.name}
-                    {l.variantLabel && (
+                    {(l.size || l.variantLabel) && (
                       <span className="font-normal text-gray-500">
                         {" "}
-                        · {l.variantLabel}
+                        · {l.size || l.variantLabel}
                       </span>
                     )}
                   </div>
@@ -324,6 +345,34 @@ function Editor({
               </div>
             );
           })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="flex h-11 flex-1 items-center gap-2 rounded-xl border border-gray-200 px-3 focus-within:border-[#1d7a46]">
+            <Icon name="sell" size={18} className="text-gray-400" />
+            <input
+              value={disc}
+              onChange={(e) => setDisc(e.target.value.replace(/[^\d.]/g, ""))}
+              inputMode="decimal"
+              placeholder={`Discount — now ${taka(Number(sale.posManualDiscount ?? 0))}; type a new one to change it`}
+              className="flex-1 bg-transparent text-sm outline-none"
+              aria-label="Discount"
+            />
+          </label>
+          <div className="flex overflow-hidden rounded-xl border border-gray-200 text-sm font-bold">
+            {(["AMOUNT", "PERCENT"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setDiscType(t)}
+                className={`h-11 w-11 ${discType === t ? "bg-[#1d7a46] text-white" : "hover:bg-gray-50"}`}
+                aria-pressed={discType === t}
+                aria-label={t === "AMOUNT" ? "Discount in taka" : "Discount in percent"}
+              >
+                {t === "AMOUNT" ? "৳" : "%"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <input

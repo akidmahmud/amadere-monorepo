@@ -112,6 +112,16 @@ export class EditPosSaleDto {
   @Type(() => EditPosLineDto)
   items!: EditPosLineDto[];
   @ApiPropertyOptional() @IsOptional() @IsString() reason?: string;
+  /** New cashier discount (replaces the sale's own); omitted = keep it. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  manualDiscount?: number;
+  @ApiPropertyOptional({ enum: ['AMOUNT', 'PERCENT'] })
+  @IsOptional()
+  @IsIn(['AMOUNT', 'PERCENT'])
+  manualDiscountType?: 'AMOUNT' | 'PERCENT';
   /** true = preview the new totals only. */
   @ApiPropertyOptional() @IsOptional() @IsBoolean() dryRun?: boolean;
 }

@@ -130,9 +130,10 @@ export const usePosCategories = () =>
     staleTime: 5 * 60_000,
   });
 
-export const usePosStats = (storeId?: number) =>
+/** `tender`: today's cards for one payment method (CASH / CARD / MOBILE). */
+export const usePosStats = (storeId?: number, tender?: string) =>
   useQuery({
-    queryKey: ["pos-stats", storeId],
+    queryKey: ["pos-stats", storeId, tender ?? ""],
     queryFn: () =>
       proxyFetch<{
         totalProducts: number;

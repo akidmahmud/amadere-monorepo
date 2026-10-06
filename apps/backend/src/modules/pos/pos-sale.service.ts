@@ -641,7 +641,13 @@ export class PosSaleService {
     id: number,
     adminId: number,
     items: { productId: number; variantId?: number | null; quantity: number }[],
-    opts: { reason?: string; dryRun?: boolean } = {},
+    opts: {
+      reason?: string;
+      dryRun?: boolean;
+      /** New cashier discount, replacing the sale's own; undefined = keep. */
+      manualDiscount?: number;
+      manualDiscountType?: 'AMOUNT' | 'PERCENT';
+    } = {},
   ) {
     const o = await this.get(storeId, id);
     if (o.deletedAt) throw new BadRequestException('This sale is in the Trash');
@@ -744,7 +750,19 @@ export class PosSaleService {
       (s, l) => s.plus(l.unitPrice.times(l.quantity)),
       ZERO,
     );
-    const discount = D.min(keptDiscount, subTotal);
+    // Coupon / upsell part stays; the cashier's own part can be changed.
+    const otherDiscount = D.max(keptDiscount.minus(o.posManualDiscount), ZERO);
+    const manual =
+      opts.manualDiscount === undefined
+        ? o.posManualDiscount
+        : manualDiscountAmount(
+            D.max(subTotal.minus(otherDiscount), ZERO),
+            opts.manualDiscount,
+            opts.manualDiscountType,
+          );
+    const discount = D.min(otherDiscount.plus(manual), subTotal);
+    const newManual = D.min(manual, discount);
+    const discountChanged = !newManual.equals(o.posManualDiscount);
     const totals = posTotals(
       lines.map((l) => ({
         unitPrice: l.unitPrice,
@@ -784,7 +802,8 @@ export class PosSaleService {
       difference: diff.toFixed(2),
     };
     if (opts.dryRun) return preview;
-    if (!changes.length) throw new BadRequestException('Nothing was changed');
+    if (!changes.length && !discountChanged)
+      throw new BadRequestException('Nothing was changed');
 
     const storeNames = new Map(
       (
@@ -802,9 +821,16 @@ export class PosSaleService {
       old.get(k)?.productNameSnapshot ??
       byId.get(productId ?? 0)?.translations[0]?.name ??
       `#${productId}`;
-    const what = changes
-      .map(({ l, was }) => `${name(l.key, l.productId)} ${was}→${l.quantity}`)
-      .join(', ');
+    const what = [
+      ...changes.map(
+        ({ l, was }) => `${name(l.key, l.productId)} ${was}→${l.quantity}`,
+      ),
+      ...(discountChanged
+        ? [
+            `discount ৳${o.posManualDiscount.toFixed(2)}→৳${newManual.toFixed(2)}`,
+          ]
+        : []),
+    ].join(', ');
 
     await this.prisma.client.$transaction(async (tx) => {
       // Claim: an edit, return or delete that got in first wins.
@@ -818,7 +844,7 @@ export class PosSaleService {
         data: {
           subTotal: totals.subTotal,
           discountAmount: discount.plus(vatDiscount),
-          posManualDiscount: D.min(o.posManualDiscount, discount),
+          posManualDiscount: newManual,
           posVatDiscount: vatDiscount,
           taxAmount: totals.vat,
           totalAmount: total,

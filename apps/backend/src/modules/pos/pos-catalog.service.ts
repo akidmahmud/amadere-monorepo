@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { TENDER } from './pos-manager.service';
 import { dhakaDate } from '../product-cost-history/dhaka-date';
 import {
   daysLeft,
@@ -213,7 +214,8 @@ export class PosCatalogService {
     );
   }
 
-  async stats(storeId: number) {
+  /** `tender`: today's figures for one payment method only. */
+  async stats(storeId: number, tender?: keyof typeof TENDER) {
     const items = await this.list(
       storeId,
       undefined,
@@ -227,6 +229,7 @@ export class PosCatalogService {
       deletedAt: null,
       createdAt: dhakaRange(),
       status: { notIn: ['CANCELED' as const, 'RETURNED' as const] },
+      ...(tender ? { payments: { some: { provider: TENDER[tender] } } } : {}),
     };
     const [sales, items_] = await Promise.all([
       this.prisma.client.order.aggregate({

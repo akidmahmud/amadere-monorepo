@@ -4,6 +4,7 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -48,4 +49,12 @@ export class StoreQueryDto {
   @Type(() => Number)
   @IsInt()
   storeId?: number;
+}
+
+/** POS stats: optionally today's figures for one payment method. */
+export class PosStatsQueryDto extends StoreQueryDto {
+  @ApiPropertyOptional({ enum: ['CASH', 'CARD', 'MOBILE'] })
+  @IsOptional()
+  @IsIn(['CASH', 'CARD', 'MOBILE'])
+  tender?: 'CASH' | 'CARD' | 'MOBILE';
 }

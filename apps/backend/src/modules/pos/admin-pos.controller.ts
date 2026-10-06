@@ -26,7 +26,7 @@ import {
 } from '../../common/auth/permission.decorator';
 import { CurrentAdmin } from '../../common/auth/current-admin.decorator';
 import { StoresService } from '../stores/stores.service';
-import { StoreQueryDto } from '../stores/dto/store.dto';
+import { PosStatsQueryDto, StoreQueryDto } from '../stores/dto/store.dto';
 import { requireOneStore } from '../stores/store-scope';
 import { PosCatalogService } from './pos-catalog.service';
 import {
@@ -670,9 +670,12 @@ export class AdminPosController {
   async stats(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
-    @Query() q: StoreQueryDto,
+    @Query() q: PosStatsQueryDto,
   ) {
-    return this.catalog.stats(await this.oneStore(a, can, q.storeId));
+    return this.catalog.stats(
+      await this.oneStore(a, can, q.storeId),
+      q.tender,
+    );
   }
 
   @Post('quote')
@@ -737,7 +740,12 @@ export class AdminPosController {
       id,
       a.id,
       dto.items,
-      { reason: dto.reason, dryRun: dto.dryRun },
+      {
+        reason: dto.reason,
+        dryRun: dto.dryRun,
+        manualDiscount: dto.manualDiscount,
+        manualDiscountType: dto.manualDiscountType,
+      },
     );
   }
 

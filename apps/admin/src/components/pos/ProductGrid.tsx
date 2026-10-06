@@ -167,7 +167,7 @@ export function StatCards({
 }
 
 /** "1KG · 500 g": size label and weight (the store's own weight wins). */
-function sizeText(p: PosProduct) {
+export function sizeText(p: PosProduct) {
   const kg = Number(p.storeWeightKg ?? p.normalWeightKg);
   const w =
     kg > 0

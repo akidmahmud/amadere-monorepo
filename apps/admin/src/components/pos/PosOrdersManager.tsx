@@ -108,7 +108,10 @@ export function PosOrdersManager({
   stores,
   can,
   initialQuery = "",
+  onTenderChange,
 }: {
+  /** Tells the page which payment method is picked (its Today cards). */
+  onTenderChange?: (tender: string) => void;
   storeId?: number;
   /** Name of the fixed store (export title). */
   storeName?: string;
@@ -122,7 +125,11 @@ export function PosOrdersManager({
   const [tab, setTab] = useState<
     "" | "COMPLETED" | "PARTIALLY_RETURNED" | "RETURNED" | "TRASH"
   >("");
-  const [tender, setTender] = useState("");
+  const [tender, setTenderState] = useState("");
+  const setTender = (t: string) => {
+    setTenderState(t);
+    onTenderChange?.(t);
+  };
   const [period, setPeriod] = useState<Period>(NO_PERIOD);
   const [exporting, setExporting] = useState(false);
   const [q, setQ] = useState(initialQuery);

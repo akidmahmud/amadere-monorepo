@@ -21,7 +21,7 @@ export const POS_ORDER_STATUSES = [
   'PARTIALLY_RETURNED',
   'RETURNED',
 ] as const;
-const TENDER: Record<'CASH' | 'CARD' | 'MOBILE', PaymentProvider> = {
+export const TENDER: Record<'CASH' | 'CARD' | 'MOBILE', PaymentProvider> = {
   CASH: 'CASH',
   CARD: 'CARD',
   MOBILE: 'BKASH',

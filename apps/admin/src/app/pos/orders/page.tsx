@@ -10,7 +10,9 @@ import { usePosStats } from "@/hooks/usePos";
 /** This shop's orders only; every store's are under Point of Sale › Order Manager. */
 export default function PosOrdersPage() {
   const { storeId, can, store } = usePosContext();
-  const { data: stats } = usePosStats(storeId);
+  // Today's cards follow the payment method picked in the list below.
+  const [tender, setTender] = useState("");
+  const { data: stats } = usePosStats(storeId, tender || undefined);
   // "Orders" from the Customer Manager arrives with ?q=<phone>.
   const [initialQuery] = useState(() =>
     typeof window === "undefined"
@@ -33,6 +35,7 @@ export default function PosOrdersPage() {
           storeName={store?.name}
           can={can}
           initialQuery={initialQuery}
+          onTenderChange={setTender}
         />
       )}
     </PosSubPage>
