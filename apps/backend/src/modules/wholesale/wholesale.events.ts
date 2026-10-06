@@ -9,4 +9,7 @@ export interface WholesaleOrderCreatedEvent {
   customerPhone: string | null;
   total: string;
   due: string;
+  /** A sales channel other than Wholesale / Cash Sale (e.g. "Daraz"): the
+   *  buyer gets the channel_order_placed text naming it. null = wholesale. */
+  channel: string | null;
 }

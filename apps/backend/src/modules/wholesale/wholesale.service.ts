@@ -1740,6 +1740,9 @@ export class WholesaleService {
       customerPhone: result.customerPhone,
       total: result.total,
       due: result.due,
+      // Cash Sale is the built-in (system) channel and texts like Wholesale.
+      channel:
+        salesChannel && !salesChannel.isSystem ? salesChannel.name : null,
     } satisfies WholesaleOrderCreatedEvent);
     return result;
   }

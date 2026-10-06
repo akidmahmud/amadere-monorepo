@@ -50,6 +50,8 @@ const DEFAULT_TEMPLATES: { key: string; bodyEn: string; bodyBn: string }[] = [
   // Wholesale & Channels: texted to the buyer's number the moment staff
   // create their order (SmsEventListener.onWholesaleOrderCreated).
   { key: 'wholesale_order_placed', bodyEn: 'Dear {{name}}, your order {{orderNumber}} has been created. Total: ৳{{amount}}, due: ৳{{due}}. Thank you for choosing Amader!', bodyBn: 'প্রিয় {{name}}, আপনার অর্ডার {{orderNumber}} তৈরি করা হয়েছে। মোট: ৳{{amount}}, বাকি: ৳{{due}}। আমাদের সাথে থাকার জন্য ধন্যবাদ!' },
+  // Same moment, for a channel order (Daraz, Cartup...): names the channel.
+  { key: 'channel_order_placed', bodyEn: 'Dear {{name}}, we have received your order {{orderNumber}} from {{channel}}. Total: ৳{{amount}}. We will send it to you soon. Thank you for choosing Amader!', bodyBn: 'প্রিয় {{name}}, {{channel}} থেকে আপনার অর্ডার {{orderNumber}} আমরা পেয়েছি। মোট: ৳{{amount}}। শীঘ্রই আমরা এটি আপনার কাছে পাঠিয়ে দেব। আমাদের সাথে থাকার জন্য ধন্যবাদ!' },
   { key: 'advance_request', bodyEn: 'Please pay ৳{{amount}} in advance to confirm order {{orderNumber}}: {{payUrl}}', bodyBn: 'অর্ডার {{orderNumber}} নিশ্চিত করতে অনুগ্রহ করে ৳{{amount}} অগ্রিম পরিশোধ করুন: {{payUrl}}' },
 ];
 

@@ -51,12 +51,20 @@ export class SmsEventListener {
   @OnEvent(WHOLESALE_ORDER_CREATED_EVENT)
   async onWholesaleOrderCreated(event: WholesaleOrderCreatedEvent): Promise<void> {
     if (!event.customerPhone) return;
-    await this.sms.sendTemplate('wholesale_order_placed', event.customerPhone, 'EN', {
-      name: event.customerName,
-      orderNumber: event.orderNumber,
-      amount: event.total,
-      due: event.due,
-    });
+    // Wholesale and Cash Sale: wholesale_order_placed. Any other channel
+    // (Daraz, Cartup...): channel_order_placed, which names the channel.
+    await this.sms.sendTemplate(
+      event.channel ? 'channel_order_placed' : 'wholesale_order_placed',
+      event.customerPhone,
+      'EN',
+      {
+        name: event.customerName,
+        orderNumber: event.orderNumber,
+        amount: event.total,
+        due: event.due,
+        channel: event.channel ?? '',
+      },
+    );
   }
 
   @OnEvent(ORDER_STATUS_CHANGED_EVENT)
