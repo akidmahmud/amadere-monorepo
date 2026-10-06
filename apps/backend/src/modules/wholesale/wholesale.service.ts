@@ -72,6 +72,7 @@ import {
   channelFieldsOf,
   normalizeChannelFields,
   validateChannelValues,
+  channelOrderRef,
 } from './wholesale-channel-fields';
 
 const Decimal = Prisma.Decimal;
@@ -1735,7 +1736,16 @@ export class WholesaleService {
     // After the commit, so a rolled-back order never texts the customer.
     this.events.emit(WHOLESALE_ORDER_CREATED_EVENT, {
       orderId: result.id,
-      orderNumber: result.orderNumber,
+      // A channel order is texted with the channel's own order ID when it
+      // has one (Daraz "Order ID"), else ours.
+      orderNumber:
+        (salesChannel &&
+          !salesChannel.isSystem &&
+          channelOrderRef(
+            channelFieldsOf(salesChannel.fields),
+            channelValues?.values,
+          )) ||
+        result.orderNumber,
       customerName: result.customerName,
       customerPhone: result.customerPhone,
       total: result.total,

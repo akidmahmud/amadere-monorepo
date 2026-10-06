@@ -102,3 +102,22 @@ export function channelFieldsOf(json: unknown): ChannelField[] {
 function slug(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'field';
 }
+
+/**
+ * The channel's own order number (Daraz "Order ID", a "Reference"...) from an
+ * order's channel values, for the customer SMS. Picks the first field whose
+ * label or key reads like an order ID / reference; null when there is none.
+ */
+export function channelOrderRef(
+  fields: ChannelField[],
+  values: ChannelValues | null | undefined,
+): string | null {
+  const looksLikeRef = (s: string) =>
+    /order[\s_-]*(id|no|number)|\bref(erence)?\b|^id$/i.test(s);
+  for (const f of fields) {
+    const v = values?.[f.key];
+    if (v !== undefined && v !== '' && (looksLikeRef(f.label) || looksLikeRef(f.key)))
+      return String(v);
+  }
+  return null;
+}

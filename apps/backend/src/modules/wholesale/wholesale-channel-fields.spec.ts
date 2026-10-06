@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
-import { channelFieldsOf, normalizeChannelFields, validateChannelValues } from './wholesale-channel-fields';
+import { channelFieldsOf, normalizeChannelFields, validateChannelValues,
+  channelOrderRef,
+} from './wholesale-channel-fields';
 
 describe('wholesale channel fields', () => {
   it('gives every field a stable key and keeps existing ones', () => {
@@ -47,5 +49,21 @@ describe('wholesale channel fields', () => {
   it('reads the JSON column defensively', () => {
     expect(channelFieldsOf(null)).toEqual([]);
     expect(channelFieldsOf([{ key: 'a', label: 'A' }, null, 3])).toHaveLength(1);
+  });
+});
+
+describe('channelOrderRef (the channel order ID for the customer SMS)', () => {
+  const f = (key: string, label: string) =>
+    ({ key, label, type: 'text', required: false, showInTable: false }) as const;
+  it('picks the field that reads like an order ID / reference', () => {
+    const fields = [f('gp', 'GP Number'), f('order_id', 'Order ID')];
+    expect(channelOrderRef(fields, { gp: '017', order_id: '688460881453541' })).toBe('688460881453541');
+    expect(channelOrderRef([f('ref', 'Reference')], { ref: 'R-9' })).toBe('R-9');
+    expect(channelOrderRef([f('daraz_no', 'Daraz Order No')], { daraz_no: 55 })).toBe('55');
+  });
+  it('null when there is no such field or it is empty', () => {
+    expect(channelOrderRef([f('gp', 'GP Number')], { gp: '017' })).toBeNull();
+    expect(channelOrderRef([f('order_id', 'Order ID')], {})).toBeNull();
+    expect(channelOrderRef([f('order_id', 'Order ID')], null)).toBeNull();
   });
 });
