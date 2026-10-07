@@ -999,6 +999,91 @@ export class ProductsService {
   // Trash listing — soft-deleted products still within the retention window
   // (the nightly purge job below removes anything older, so `deletedAt: not
   // null` alone is equivalent to "within 30 days" in practice).
+  /**
+   * Deleted products (Trash, website or shop) that still hold a SKU or
+   * barcode. Those values stay unique while held, so a new product cannot
+   * reuse them until they are freed with freeCodes().
+   */
+  async deletedCodes(q?: string) {
+    const t = q?.trim();
+    const rows = await this.prisma.client.product.findMany({
+      where: {
+        deletedAt: { not: null },
+        OR: [
+          { sku: { not: null } },
+          { barcode: { not: null } },
+          { variants: { some: { OR: [{ sku: { not: null } }, { barcode: { not: null } }] } } },
+        ],
+        ...(t
+          ? {
+              AND: [
+                {
+                  OR: [
+                    { sku: { contains: t, mode: 'insensitive' as const } },
+                    { barcode: { contains: t, mode: 'insensitive' as const } },
+                    { variants: { some: { sku: { contains: t, mode: 'insensitive' as const } } } },
+                    { variants: { some: { barcode: { contains: t, mode: 'insensitive' as const } } } },
+                    { translations: { some: { name: { contains: t, mode: 'insensitive' as const } } } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { deletedAt: 'desc' },
+      take: 500,
+      select: {
+        id: true,
+        sku: true,
+        barcode: true,
+        deletedAt: true,
+        store: { select: { name: true } },
+        translations: { select: { name: true }, take: 1 },
+        variants: {
+          where: { OR: [{ sku: { not: null } }, { barcode: { not: null } }] },
+          select: { id: true, sku: true, barcode: true },
+        },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.translations[0]?.name ?? `#${r.id}`,
+      store: r.store?.name ?? null,
+      deletedAt: r.deletedAt!.toISOString(),
+      sku: r.sku,
+      barcode: r.barcode,
+      variants: r.variants,
+    }));
+  }
+
+  /**
+   * Frees a deleted product's SKU and barcode (and its variants') so another
+   * product can use them. The product stays in the Trash; restoring it later
+   * just means giving it a code again.
+   */
+  async freeCodes(id: number) {
+    const p = await this.prisma.client.product.findUnique({
+      where: { id },
+      select: { deletedAt: true },
+    });
+    if (!p) throw new NotFoundException('Product not found');
+    if (!p.deletedAt)
+      throw new BadRequestException(
+        'Only a deleted product\'s SKU / barcode can be freed',
+      );
+    await this.prisma.client.$transaction([
+      this.prisma.client.product.update({
+        where: { id },
+        data: { sku: null, barcode: null },
+      }),
+      this.prisma.client.productVariant.updateMany({
+        where: { productId: id },
+        data: { sku: null, barcode: null },
+      }),
+    ]);
+    return { freed: true };
+  }
+
   async listDeleted(
     page = 1,
     pageSize = 20,

@@ -54,7 +54,12 @@ import {
   UpdatePosVatDto,
 } from './dto/pos-settings.dto';
 import { PosExpensesService } from './pos-expenses.service';
-import { PosCostDto, PosImageDto, PosSkuDto } from './dto/pos-product.dto';
+import {
+  PosCostDto,
+  PosExpiryDto,
+  PosImageDto,
+  PosSkuDto,
+} from './dto/pos-product.dto';
 import { PosInvoiceService } from './pos-invoice.service';
 import { PosCouponsService } from './pos-coupons.service';
 import { PosCouponDto } from './dto/pos-coupon.dto';
@@ -168,6 +173,21 @@ export class AdminPosController {
       dto,
       a.id,
     );
+  }
+
+  // SKUs / barcodes still held by deleted products, and freeing them so a
+  // new product can reuse them.
+  @Get('settings/deleted-codes')
+  @RequirePermission('pos.settings')
+  deletedCodes(@Query('q') q?: string) {
+    return this.products.deletedCodes(q);
+  }
+
+  @Post('settings/deleted-codes/:id/free')
+  @RequirePermission('pos.settings')
+  @UseInterceptors(AuditLogInterceptor)
+  freeCodes(@Param('id', ParseIntPipe) id: number) {
+    return this.products.freeCodes(id);
   }
 
   // Label printer paper size (Barcode labels page reads it).
@@ -766,6 +786,25 @@ export class AdminPosController {
       id,
       dto.mediaId ?? null,
       a.id,
+    );
+  }
+
+  // Expiry date of this product's stock in the store (pencil popup).
+  @Put('products/:id/expiry')
+  @RequirePermission('pos.stock_in')
+  @UseInterceptors(AuditLogInterceptor)
+  async setExpiry(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() q: StoreQueryDto,
+    @Body() dto: PosExpiryDto,
+  ) {
+    return this.products.setExpiry(
+      await this.oneStore(a, can, q.storeId),
+      id,
+      dto.variantId ?? null,
+      dto.expiryDate ?? null,
     );
   }
 

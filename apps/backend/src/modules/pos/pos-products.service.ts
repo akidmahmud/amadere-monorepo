@@ -65,6 +65,15 @@ export class PosProductsService {
     );
   }
 
+  /** POS Settings › Deleted SKUs & barcodes (all deleted products). */
+  deletedCodes(q?: string) {
+    return this.products.deletedCodes(q);
+  }
+
+  freeCodes(productId: number) {
+    return this.products.freeCodes(productId);
+  }
+
   async create(
     storeId: number,
     dto: PosProductDto,
@@ -454,6 +463,38 @@ export class PosProductsService {
    * website's cost). Recorded in the cost history like a product-form edit:
    * the first cost covers earlier sales too, a change applies from today.
    */
+  /**
+   * Corrects the expiry date of this product's stock in this store (pencil
+   * popup). Sets it on every delivery here (stock in, opening, transfer in);
+   * the shelf / expiry report only read the deliveries still on the shelf.
+   * ponytail: one date for the whole shelf; per-batch editing if shops ever
+   * hold two batches with different dates.
+   */
+  async setExpiry(
+    storeId: number,
+    productId: number,
+    variantId: number | null,
+    expiryDate: string | null,
+  ) {
+    const { count } = await this.prisma.client.stockMovement.updateMany({
+      where: {
+        storeId,
+        productId,
+        variantId,
+        type: { in: ['STOCK_IN', 'OPENING', 'TRANSFER_IN'] },
+        qty: { gt: 0 },
+      },
+      data: {
+        expiryDate: expiryDate ? new Date(`${expiryDate}T00:00:00Z`) : null,
+      },
+    });
+    if (count === 0)
+      throw new BadRequestException(
+        'No stock has been received for this product in this store yet — set the expiry when you add stock',
+      );
+    return { expiryDate, deliveries: count };
+  }
+
   async setCost(
     storeId: number,
     productId: number,

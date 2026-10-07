@@ -65,6 +65,10 @@ export function StorePriceDialog({
   );
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(startUnit);
   const [addQty, setAddQty] = useState("");
+  // Expiry of this product's stock here; "" = none. Saved only when changed.
+  const canExpiry = can("pos.stock_in") && p.stock < 9999;
+  const [expiry, setExpiry] = useState(p.expiry ?? "");
+  const expiryChanged = canExpiry && expiry !== (p.expiry ?? "");
   // undefined = photo unchanged; null = remove.
   const [image, setImage] = useState<PickedImage | null | undefined>(undefined);
   // Untracked products (stock 9999) have no count to add to.
@@ -123,10 +127,22 @@ export function StorePriceDialog({
                 productId: p.productId,
                 variantId: p.variantId ?? undefined,
                 qty,
+                expiryDate: expiry || undefined,
               },
             ],
           }),
         });
+      if (expiryChanged)
+        await proxyFetch(
+          `/admin/pos/products/${p.productId}/expiry?storeId=${storeId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              variantId: p.variantId ?? undefined,
+              expiryDate: expiry || null,
+            }),
+          },
+        );
     },
     onSuccess: (_r, body) => {
       qc.invalidateQueries({ queryKey: ["pos-catalog"] });
@@ -140,7 +156,8 @@ export function StorePriceDialog({
               body.weightKg === null &&
               image === undefined &&
               !skuChanged &&
-              !costChanged
+              !costChanged &&
+              !expiryChanged
             ? "Back to the normal name, price and weight"
             : "Saved for this store",
         "success",
@@ -240,6 +257,21 @@ export function StorePriceDialog({
                 placeholder="not set"
                 onChange={(e) => setCostInput(e.target.value)}
                 aria-label="Cost"
+              />
+            </label>
+          )}
+          {canExpiry && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold">
+                Expiry date{" "}
+                <span className="font-normal text-gray-500">of the stock here</span>
+              </span>
+              <input
+                type="date"
+                className={input}
+                value={expiry}
+                onChange={(e) => setExpiry(e.target.value)}
+                aria-label="Expiry date"
               />
             </label>
           )}

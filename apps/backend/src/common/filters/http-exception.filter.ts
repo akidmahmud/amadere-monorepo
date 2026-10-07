@@ -17,6 +17,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
+    // A unique-value clash (Prisma P2002) is the user's input, not a crash:
+    // say which value is taken instead of "Internal server error".
+    const dup = duplicateMessage(exception);
+    if (dup) {
+      response.status(HttpStatus.CONFLICT).json({
+        success: false,
+        error: { code: 'CONFLICT', message: dup },
+      } satisfies ApiErrorResponse);
+      return;
+    }
+
     const isHttp = exception instanceof HttpException;
     // Some framework-level errors carry a real HTTP status without being an
     // HttpException instance — body-parser's PayloadTooLargeError (413) is
@@ -90,4 +101,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     response.status(status).json(body);
   }
+}
+
+/** Friendly text for a Prisma unique-constraint error (P2002), else null. */
+export function duplicateMessage(e: unknown): string | null {
+  if (!e || typeof e !== 'object' || (e as { code?: unknown }).code !== 'P2002')
+    return null;
+  const where = JSON.stringify((e as { meta?: unknown }).meta ?? '').toLowerCase();
+  const field = where.includes('barcode')
+    ? 'barcode'
+    : where.includes('sku')
+      ? 'SKU'
+      : where.includes('slug')
+        ? 'URL slug'
+        : where.includes('phone')
+          ? 'phone number'
+          : where.includes('email')
+            ? 'email'
+            : null;
+  if (field === 'SKU' || field === 'barcode')
+    return `This ${field} already exists on another product (it may be a deleted one in the Trash). Use a different ${field}, or free it in POS Settings › Deleted SKUs & barcodes.`;
+  return field
+    ? `This ${field} is already in use. Use a different one.`
+    : 'This value already exists. Use a different one.';
 }

@@ -1,5 +1,5 @@
 import { ArgumentsHost, NotFoundException } from '@nestjs/common';
-import { HttpExceptionFilter } from './http-exception.filter';
+import { duplicateMessage, HttpExceptionFilter } from './http-exception.filter';
 
 // Fake ArgumentsHost that captures the JSON body the filter writes.
 function hostFor(): { host: ArgumentsHost; sent: () => any } {
@@ -32,5 +32,16 @@ describe('HttpExceptionFilter 404 sanitization', () => {
     const { host, sent } = hostFor();
     filter.catch(new NotFoundException('Product not found'), host);
     expect(sent().error.message).toBe('Product not found');
+  });
+});
+
+describe('duplicateMessage (Prisma P2002 → clear 409 text)', () => {
+  it('names the SKU / barcode that is taken', () => {
+    expect(duplicateMessage({ code: 'P2002', meta: { target: ['sku'] } })).toMatch(/This SKU already exists/);
+    expect(duplicateMessage({ code: 'P2002', meta: { target: 'products_barcode_key' } })).toMatch(/This barcode already exists/);
+  });
+  it('ignores other errors', () => {
+    expect(duplicateMessage(new Error('boom'))).toBeNull();
+    expect(duplicateMessage({ code: 'P2025' })).toBeNull();
   });
 });

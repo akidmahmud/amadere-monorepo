@@ -145,3 +145,11 @@ export class PosImageDto {
   @IsInt()
   mediaId?: number | null;
 }
+
+export class PosExpiryDto {
+  @IsOptional() @IsInt() variantId?: number;
+  /** YYYY-MM-DD; null clears it. */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  expiryDate?: string | null;
+}
