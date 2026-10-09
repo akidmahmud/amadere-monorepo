@@ -71,3 +71,18 @@ describe('buildDailyReportWorkbook', () => {
     expect(buf.byteLength).toBeGreaterThan(1000);
   });
 });
+
+describe('buildDailyReportWorkbook — SKU column', () => {
+  it('shows the SKU in place of the product name, name when no SKU', () => {
+    const snap = buildSnapshot(FIXTURE_INPUT);
+    snap.sources[0].products[0].sku = 'ATTA-01'; // Jober Atta
+    const ws = buildDailyReportWorkbook(snap, 'T').getWorksheet(
+      'Daily Report',
+    )!;
+    expect(ws.getRow(2).getCell(2).value).toBe('SKU');
+    expect(find(ws, 'Website').getCell(2).value).toBe('ATTA-01');
+    const col: unknown[] = [];
+    ws.eachRow((r) => col.push(r.getCell(2).value));
+    expect(col).toContain('Pink Salt (est.)'); // no SKU → name
+  });
+});

@@ -7,11 +7,7 @@ import { ShippingRulesService } from '../../shipping-rules/shipping-rules.servic
 import { spreadDiscount } from '../sales-report/report-mapping';
 import type { BuildOrder } from './build';
 import { businessWindow, wholesaleBusinessDay } from './period';
-import {
-  isRecoveredOrder,
-  retailSourceOf,
-  wholesaleSourceOf,
-} from './sources';
+import { isRecoveredOrder, retailSourceOf, wholesaleSourceOf } from './sources';
 
 const uniq = (xs: (number | null)[]) => [
   ...new Set(xs.filter((x): x is number => x !== null)),
@@ -73,11 +69,12 @@ export class DailyReportLoader {
               productId: true,
               variantId: true,
               productNameSnapshot: true,
+              skuSnapshot: true,
               unitPrice: true,
               quantity: true,
               restockedQuantity: true,
               variant: { select: { weightOverride: true } },
-              product: { select: { shippableWeight: true } },
+              product: { select: { shippableWeight: true, sku: true } },
             },
           },
         },
@@ -113,9 +110,10 @@ export class DailyReportLoader {
               productId: true,
               variantId: true,
               nameSnapshot: true,
+              skuSnapshot: true,
               quantity: true,
               lineTotal: true,
-              product: { select: { shippableWeight: true } },
+              product: { select: { shippableWeight: true, sku: true } },
             },
           },
         },
@@ -167,6 +165,8 @@ export class DailyReportLoader {
           {
             key: keyOf(i.productId, name),
             name,
+            // Rows are per product, so the product's own SKU; else what was sold.
+            sku: i.product?.sku || i.skuSnapshot || null,
             kg: kgOf(w, qty),
             sales: (grosses[idx] - discs[idx]) * share,
             cost: c ? c.unitCost * qty : null,
@@ -215,6 +215,7 @@ export class DailyReportLoader {
         return {
           key: keyOf(i.productId, name),
           name,
+          sku: i.product?.sku || i.skuSnapshot || null,
           kg: kgOf(wt, i.quantity),
           sales: grosses[idx] - discs[idx],
           cost: c ? c.unitCost * i.quantity : null,

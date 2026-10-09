@@ -22,6 +22,7 @@ describe('buildSnapshot', () => {
       {
         key: 'p1',
         name: 'Jober Atta',
+        sku: null,
         qty: 3,
         sales: 610,
         avg: 203.33,
@@ -33,6 +34,7 @@ describe('buildSnapshot', () => {
       {
         key: 'p2',
         name: 'Pink Salt',
+        sku: null,
         qty: 0.5,
         sales: 200,
         avg: 400,
@@ -188,5 +190,52 @@ describe('buildSnapshot — arithmetic identities', () => {
       ),
     );
     expect(s.netProfit).toBe(r2(g.profit - g.delivery - allFixed));
+  });
+});
+
+describe('buildSnapshot — SKU', () => {
+  it('a product row carries its SKU (first one seen)', () => {
+    const s = buildSnapshot({
+      ...FIXTURE_INPUT,
+      fixedCosts: [],
+      orders: [
+        {
+          id: 1,
+          wholesale: false,
+          source: 'WEB_DIRECT',
+          delivery: 0,
+          lines: [
+            {
+              key: 'p1',
+              name: 'Jober Atta',
+              sku: 'ATTA-01',
+              kg: 1,
+              sales: 100,
+              cost: 50,
+            },
+          ],
+        },
+        {
+          id: 2,
+          wholesale: false,
+          source: 'WEB_DIRECT',
+          delivery: 0,
+          lines: [
+            {
+              key: 'p1',
+              name: 'Jober Atta',
+              sku: null,
+              kg: 1,
+              sales: 100,
+              cost: 50,
+            },
+            { key: 'p2', name: 'Pink Salt', kg: 1, sales: 80, cost: 40 },
+          ],
+        },
+      ],
+    });
+    const rows = s.sources[0].products;
+    expect(rows.find((r) => r.key === 'p1')?.sku).toBe('ATTA-01');
+    expect(rows.find((r) => r.key === 'p2')?.sku).toBeNull();
   });
 });

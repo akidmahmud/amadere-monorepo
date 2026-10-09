@@ -60,7 +60,7 @@ describe('DailyReportLoader', () => {
       }),
     ]).load('2026-09-30', '2026-09-30');
     expect(o.lines).toEqual([
-      { key: 'p5', name: 'Atta', kg: 1, sales: 200, cost: 100 },
+      { key: 'p5', name: 'Atta', sku: null, kg: 1, sales: 200, cost: 100 },
     ]);
     expect(o.delivery).toBe(0);
   });
@@ -189,5 +189,47 @@ describe('DailyReportLoader', () => {
     ];
     expect(args.select.storeId).toBe(true); // the real query must fetch it
     expect(o.source).toBe('SHOP_4');
+  });
+
+  it('lines carry the product SKU (falling back to the SKU sold)', async () => {
+    const findMany = jest.fn().mockResolvedValue([
+      order({
+        channel: 'WEBSITE',
+        items: [
+          item({
+            product: { shippableWeight: 1, sku: 'ATTA-01' },
+            skuSnapshot: 'ATTA-01-1KG',
+          }),
+          item({
+            productId: 6,
+            product: { shippableWeight: 1, sku: null },
+            skuSnapshot: 'SALT-500',
+          }),
+        ],
+      }),
+    ]);
+    const loader = new DailyReportLoader(
+      {
+        client: {
+          order: { findMany },
+          wholesaleOrder: { findMany: jest.fn().mockResolvedValue([]) },
+          productVariant: { findMany: jest.fn().mockResolvedValue([]) },
+        },
+      } as never,
+      {
+        loadResolver: jest.fn().mockResolvedValue({ resolve: () => null }),
+      } as never,
+      { getConfig: jest.fn().mockResolvedValue({ rules: [] }) } as never,
+    );
+    const [o] = await loader.load('2026-09-30', '2026-09-30');
+    expect(o.lines.map((l) => l.sku)).toEqual(['ATTA-01', 'SALT-500']);
+    const [args] = findMany.mock.calls[0] as [
+      { select: { items: { select: Record<string, unknown> } } },
+    ];
+    const sel = args.select.items.select;
+    expect(sel.skuSnapshot).toBe(true);
+    expect(sel.product).toEqual({
+      select: { shippableWeight: true, sku: true },
+    });
   });
 });

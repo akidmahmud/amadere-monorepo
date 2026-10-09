@@ -9,7 +9,9 @@ import type { DailyReportSnapshot } from "@amader/shared";
 export function MissingCostNotice({ s }: { s: DailyReportSnapshot }) {
   const missing = new Map<string, string>();
   for (const b of s.sources)
-    for (const p of b.products) if (p.estimated > 0) missing.set(p.key, p.name);
+    for (const p of b.products)
+      if (p.estimated > 0)
+        missing.set(p.key, p.sku ? `${p.sku} — ${p.name}` : p.name);
   if (missing.size === 0) return null;
 
   return (

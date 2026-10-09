@@ -107,6 +107,8 @@ describe('exactWindow (manual report with its own times)', () => {
     expect(w.end.toISOString()).toBe('2026-10-04T18:00:00.000Z');
   });
   it('rejects an end before the start', () => {
-    expect(() => exactWindow('2026-10-04', '2026-10-04', '18:00', '09:00')).toThrow();
+    expect(() =>
+      exactWindow('2026-10-04', '2026-10-04', '18:00', '09:00'),
+    ).toThrow();
   });
 });

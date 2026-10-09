@@ -9,7 +9,7 @@ import { money, qty } from "./format";
 const num = "px-2 py-1 text-right tabular-nums";
 const HEAD = [
   "Source",
-  "Product",
+  "SKU",
   "Qty (kg)",
   "Sales",
   "Avg",
@@ -155,8 +155,10 @@ function FragmentBlock({
           >
             {i === 0 ? b.label : ""}
           </td>
-          <td className="px-2 py-1">
-            {p.name}
+          {/* SKU in place of the name (owner); the name on hover. Reports
+              saved before SKUs were recorded fall back to the name. */}
+          <td className="px-2 py-1" title={p.name}>
+            {p.sku || p.name}
             {p.estimated > 0 && (
               <span
                 className="ml-1 rounded bg-amber-100 px-1 text-xs text-amber-800"

@@ -49,6 +49,8 @@ export interface DailyReportTotals {
 export interface DailyReportProductRow {
   key: string;
   name: string;
+  /** Shown in place of the name; null/absent (older reports) → show the name. */
+  sku?: string | null;
   qty: number;
   sales: number;
   avg: number;

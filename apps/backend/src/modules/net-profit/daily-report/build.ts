@@ -11,6 +11,8 @@ import { daysInMonth, periodDays } from './period';
 export interface BuildLine {
   key: string;
   name: string;
+  /** The product's SKU; null when none is set. */
+  sku?: string | null;
   kg: number;
   sales: number;
   /** Whole-line cost (unit cost × quantity); null = no cost on record. */
@@ -107,6 +109,7 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
       string,
       {
         name: string;
+        sku: string | null;
         qty: number;
         sales: number;
         cost: number;
@@ -120,11 +123,13 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
       for (const l of o.lines) {
         const row = byKey.get(l.key) ?? {
           name: l.name,
+          sku: l.sku ?? null,
           qty: 0,
           sales: 0,
           cost: 0,
           estimated: 0,
         };
+        row.sku ??= l.sku ?? null; // first SKU seen wins
         row.qty += l.kg;
         row.sales += l.sales;
         row.cost += l.cost ?? 0;
@@ -144,6 +149,7 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
         return {
           key,
           name: v.name,
+          sku: v.sku,
           qty,
           sales,
           avg: div(sales, qty),

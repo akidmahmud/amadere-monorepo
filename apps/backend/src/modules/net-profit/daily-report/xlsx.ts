@@ -15,7 +15,7 @@ const FILL = {
 };
 const HEAD = [
   'source',
-  'product name',
+  'SKU',
   'Sum of Qty (kg)',
   'Total sales value',
   'avg value',
@@ -94,7 +94,7 @@ export function buildDailyReportWorkbook(
     b.products.forEach((p, i) => {
       const r = ws.addRow([
         i === 0 ? b.label : '',
-        p.estimated ? `${p.name} (est.)` : p.name,
+        p.estimated ? `${p.sku || p.name} (est.)` : p.sku || p.name,
         p.qty,
         p.sales,
         p.avg,
