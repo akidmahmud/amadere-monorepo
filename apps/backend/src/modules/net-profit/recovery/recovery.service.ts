@@ -534,6 +534,10 @@ export class RecoveryService {
       );
       const snapshot: CartSnapshotItem[] = cart.items.map((i) => ({
         productId: i.productId,
+        // Without this, a checkout-stage capture overwrote the cart.updated
+        // snapshot and dropped the pack choice, so a recreated order fell
+        // back to the product's default variant (250 g chosen -> 1 kg sent).
+        variantId: i.variantId,
         name: i.product.translations[0]?.name ?? i.product.slug,
         slug: i.product.slug,
         quantity: i.quantity,
