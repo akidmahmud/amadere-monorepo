@@ -341,6 +341,9 @@ model Customer {
   /// Created at a POS shop (walk-in). Kept out of the website Customer
   /// Manager — unless they also order on the website or sign up there.
   posOnly             Boolean        @default(false) @map("pos_only")
+  /// Store whose customer list they were imported into. Lists them there
+  /// (and in its SMS audience) before their first purchase.
+  posStoreId          Int?           @map("pos_store_id")
   tierId              Int?           @map("tier_id")
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")
@@ -394,7 +397,9 @@ model Customer {
 
   campaignQueue    CustomerCampaignQueue[]
   posSmsDeliveries PosSmsDelivery[]
+  posStore         Store?           @relation(fields: [posStoreId], references: [id], onDelete: SetNull)
 
+  @@index([posStoreId])
   @@map("customers")
 }
 
@@ -3744,6 +3749,7 @@ model Store {
   coupons         Discount[]
   prices          StorePrice[]
   smsCampaigns    PosSmsCampaign[]
+  importedCustomers Customer[]
 
   @@map("stores")
 }

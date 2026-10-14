@@ -5,17 +5,22 @@ import {
   Controller,
   Delete,
   Get,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   ParseIntPipe,
   Post,
   Put,
   Query,
   Res,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../common/auth/permission.guard';
 import {
@@ -648,6 +653,31 @@ export class AdminPosController {
     return this.manager.customers(
       await this.stores.scope(a.id, can, q.storeId),
       q,
+    );
+  }
+
+  // Excel/CSV customer sheet into one store's Customer Manager. Preview
+  // (dryRun) unless told otherwise, like the website import.
+  @Post('customers/import')
+  @RequirePermission('pos.customers')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async importCustomers(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new MaxFileSizeValidator({ maxSize: 15 * 1024 * 1024 })],
+      }),
+    )
+    file: Express.Multer.File,
+    @Query() q: StoreQueryDto,
+    @Query('dryRun') dryRun?: string,
+  ) {
+    return this.manager.importCustomers(
+      await this.oneStore(a, can, q.storeId),
+      file.buffer,
+      dryRun !== 'false',
     );
   }
 

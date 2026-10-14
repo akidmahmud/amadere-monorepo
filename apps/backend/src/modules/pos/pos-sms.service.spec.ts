@@ -30,8 +30,9 @@ function make(opts: {
       },
       posSmsDelivery: { create: jest.fn() },
       customer: {
-        findMany: jest.fn(({ where }: { where: { id: { in: number[] } } }) =>
-          Promise.resolve(where.id.in.map((id) => ({ id, firstName: `C${id}`, lastName: null, phone: `0181000000${id}` }))),
+        // The imported-customer query (id notIn) finds nobody here.
+        findMany: jest.fn(({ where }: { where: { id: { in?: number[] } } }) =>
+          Promise.resolve((where.id.in ?? []).map((id) => ({ id, firstName: `C${id}`, lastName: null, phone: `0181000000${id}` }))),
         ),
       },
       store: { findMany: jest.fn().mockResolvedValue([{ id: 4, name: 'Uttara' }]) },

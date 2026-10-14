@@ -139,6 +139,49 @@ describe('PosManagerService.orders', () => {
 });
 
 describe('PosManagerService.customers', () => {
+  it('lists imported customers with no purchase after the buyers', async () => {
+    const findMany = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 7, firstName: 'Karim', lastName: null, phone: '017', email: null },
+      ])
+      .mockResolvedValueOnce([
+        { id: 9, firstName: 'Abul', lastName: null, phone: '018', email: null, posStore: { name: 'Uttara' } },
+      ]);
+    const prisma = {
+      client: {
+        order: {
+          groupBy: jest
+            .fn()
+            .mockResolvedValueOnce([
+              { customerId: 7, _count: { _all: 1 }, _sum: { totalAmount: D(100) }, _max: { createdAt: new Date() } },
+            ])
+            .mockResolvedValueOnce([{ customerId: 7 }])
+            .mockResolvedValueOnce([{ customerId: 7, storeId: 4 }]),
+        },
+        customer: { findMany, count: jest.fn().mockResolvedValue(5) },
+        store: { findMany: jest.fn().mockResolvedValue([{ id: 4, name: 'Uttara' }]) },
+      },
+    };
+    const r = await new PosManagerService(
+      prisma as never,
+      { getTiers: async () => [], stats: async () => [] } as never,
+      { loadResolver: async () => ({ resolve: () => null }) } as never,
+    ).customers(4, { page: 1, pageSize: 2 });
+    // 1 buyer fills one slot, the other slot is the first imported customer.
+    expect(findMany.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ skip: 0, take: 1 }),
+    );
+    expect(findMany.mock.calls[1][0].where).toEqual(
+      expect.objectContaining({ posStoreId: 4, id: { notIn: [7] } }),
+    );
+    expect(r.total).toBe(6);
+    expect(r.items.map((i) => [i.id, i.purchases, i.lastPurchase])).toEqual([
+      [7, 1, expect.any(Date)],
+      [9, 0, null],
+    ]);
+  });
+
   it('counts completed till purchases only and lists the stores', async () => {
     const order = {
       groupBy: jest
@@ -163,7 +206,7 @@ describe('PosManagerService.customers', () => {
         customer: {
           findMany: jest
             .fn()
-            .mockResolvedValue([
+            .mockResolvedValueOnce([
               {
                 id: 7,
                 firstName: 'Karim',
@@ -171,7 +214,9 @@ describe('PosManagerService.customers', () => {
                 phone: '017',
                 email: null,
               },
-            ]),
+            ])
+            .mockResolvedValue([]),
+          count: jest.fn().mockResolvedValue(0),
         },
         store: {
           findMany: jest.fn().mockResolvedValue([

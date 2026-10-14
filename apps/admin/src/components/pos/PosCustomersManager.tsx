@@ -17,6 +17,7 @@ import {
 import { PosTiersTab, TierBadge, usePosTiers } from "./PosTiersTab";
 import { PosSmsCampaignsTab } from "./PosSmsCampaignsTab";
 import { CustomerHistoryDialog } from "./CustomerHistoryDialog";
+import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 import { daysAgo } from "@/lib/pos-days";
 
 type Row = {
@@ -25,7 +26,8 @@ type Row = {
   phone: string | null;
   purchases: number;
   spent: string;
-  lastPurchase: string;
+  /** null = imported, hasn't bought yet. */
+  lastPurchase: string | null;
   stores: string[];
   tiers: {
     store: string;
@@ -63,6 +65,7 @@ function CustomersList({
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<Period>(NO_PERIOD);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [history, setHistory] = useState<Row | null>(null);
   const [now] = useState(() => Date.now());
   const toast = useToast();
@@ -102,7 +105,9 @@ function CustomersList({
           c.phone ?? "",
           c.purchases,
           Number(c.spent),
-          new Date(c.lastPurchase).toLocaleDateString("en-GB"),
+          c.lastPurchase
+            ? new Date(c.lastPurchase).toLocaleDateString("en-GB")
+            : "",
           c.stores.join(", "),
         ],
         `pos-customers-${new Date().toISOString().slice(0, 10)}.xlsx`,
@@ -222,6 +227,15 @@ function CustomersList({
             }}
           />
           <button
+            onClick={() => setImporting(true)}
+            disabled={!storeId}
+            title={storeId ? undefined : "Choose a store first"}
+            className="flex h-11 items-center gap-2 rounded-xl border border-[#1d7a46] px-4 text-sm font-bold text-[#1d7a46] hover:bg-emerald-50 disabled:opacity-50"
+          >
+            <Icon name="upload" size={20} />
+            Import Excel
+          </button>
+          <button
             onClick={exportExcel}
             disabled={exporting || !data?.total}
             className="flex h-11 items-center gap-2 rounded-xl bg-[#1d7a46] px-4 text-sm font-bold text-white hover:bg-[#186a3c] disabled:opacity-50"
@@ -279,10 +293,16 @@ function CustomersList({
                     {taka(Number(c.spent))}
                   </td>
                   <td className="whitespace-nowrap px-4 text-gray-600">
-                    {new Date(c.lastPurchase).toLocaleDateString("en-GB")}
-                    <div className="text-xs font-semibold text-[#1d7a46]">
-                      {daysAgo(c.lastPurchase, now)}
-                    </div>
+                    {c.lastPurchase ? (
+                      <>
+                        {new Date(c.lastPurchase).toLocaleDateString("en-GB")}
+                        <div className="text-xs font-semibold text-[#1d7a46]">
+                          {daysAgo(c.lastPurchase, now)}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-gray-400">Not yet</span>
+                    )}
                   </td>
                   <td className="px-4">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -346,6 +366,15 @@ function CustomersList({
           </div>
         </div>
       </div>
+      {importing && storeId && (
+        <CustomerImportModal
+          title={`Import customers — ${fixedStoreName ?? stores?.find((x) => x.id === storeId)?.name ?? "store"}`}
+          endpoint={`/api/backend/admin/pos/customers/import?storeId=${storeId}`}
+          queryKey={["pos-customer-list"]}
+          intro="Upload an .xlsx or .csv with a Name column and a phone column (Phone, Number or Contact number). Customers are added to this store and matched by phone, so nobody is duplicated. They appear in this list and in SMS campaigns before their first purchase. Nothing is saved until you press Import."
+          onClose={() => setImporting(false)}
+        />
+      )}
       {history && (
         <CustomerHistoryDialog
           customer={history}

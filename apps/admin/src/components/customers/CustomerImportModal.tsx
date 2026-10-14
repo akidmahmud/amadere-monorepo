@@ -29,12 +29,15 @@ export function CustomerImportModal({
   endpoint = "/api/backend/admin/customers/import",
   queryKey = ["customers"],
   title = "Import Customers",
+  intro,
 }: {
   onClose: () => void;
   endpoint?: string;
   /** List to refresh after a real import. */
   queryKey?: string[];
   title?: string;
+  /** Replaces the default explanation above the file picker. */
+  intro?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
@@ -49,7 +52,7 @@ export function CustomerImportModal({
     try {
       const form = new FormData();
       form.append("file", f);
-      const res = await fetch(`${endpoint}?dryRun=${dryRun}`, { method: "POST", body: form });
+      const res = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}dryRun=${dryRun}`, { method: "POST", body: form });
       const body = await res.json();
       if (!body.success) throw new Error(body.error?.message ?? "Import failed");
       setResult(body.data);
@@ -69,9 +72,8 @@ export function CustomerImportModal({
     <Modal open onClose={onClose} title={title}>
       <div className="flex flex-col gap-4">
         <p className="text-[0.8rem] font-medium" style={{ color: MUTED }}>
-          Upload the customer spreadsheet (.xlsx) as it is, or a .csv. Columns are matched by their header (Name, Number,
-          Assign to, Priority, Status…). Customers are matched by phone: nobody is duplicated, and existing customers only
-          get fields that are still empty. Nothing is saved until you press Import.
+          {intro ??
+            "Upload the customer spreadsheet (.xlsx) as it is, or a .csv. Columns are matched by their header (Name, Number, Assign to, Priority, Status…). Customers are matched by phone: nobody is duplicated, and existing customers only get fields that are still empty. Nothing is saved until you press Import."}
         </p>
 
         <input

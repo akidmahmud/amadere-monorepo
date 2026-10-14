@@ -27,6 +27,7 @@ const HEADER_ALIASES: Record<string, Field> = {
   name: 'name', customername: 'name',
   location: 'address', address: 'address',
   number: 'phone', phone: 'phone', mobile: 'phone', phonenumber: 'phone', mobilenumber: 'phone',
+  contactnumber: 'phone', contact: 'phone',
   email: 'email',
   ordercount: 'orderCount',
   product: 'products', products: 'products', productdetails: 'products',

@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { OrderStatus, PaymentProvider, Prisma } from '@amader/db';
+import { phoneLookupCandidates, toBdCompact } from '@amader/shared';
+import {
+  dedupeByPhone,
+  parseImportRows,
+  readSheet,
+} from '../customers/customer-import';
+import type { CustomerImportResultDto } from '../customers/dto/customer-import-result.dto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   paginationArgs,
@@ -336,8 +343,21 @@ export class PosManagerService {
         })
       ).map((s) => [s.id, s.name]),
     );
+    // Imported customers with no purchase in scope yet, listed after the
+    // buyers. Not for a period or tier filter: those are about purchases.
+    const buyers = all.length;
+    const idle =
+      !range && !q.tier
+        ? await this.idleImported(
+            storeId,
+            term,
+            all.map((g) => g.customerId!),
+            Math.max(0, (page - 1) * pageSize - buyers),
+            pageSize - groups.length,
+          )
+        : { rows: [], total: 0 };
     return toPaginatedResult(
-      groups.map((g) => {
+      [...groups.map((g) => {
         const c = byId.get(g.customerId!);
         return {
           id: g.customerId!,
@@ -366,10 +386,145 @@ export class PosManagerService {
               };
             }),
         };
-      }),
-      all.length,
+      }), ...idle.rows],
+      buyers + idle.total,
       page,
       pageSize,
     );
+  }
+
+  /** Customers imported into the store(s) who haven't bought there yet. */
+  private async idleImported(
+    storeId: number | null,
+    term: string | undefined,
+    buyerIds: number[],
+    skip: number,
+    take: number,
+  ) {
+    const where: Prisma.CustomerWhereInput = {
+      deletedAt: null,
+      posStoreId: storeId ?? { not: null },
+      // ponytail: buyer ids inlined in NOT IN; fine for thousands of buyers.
+      ...(buyerIds.length ? { id: { notIn: buyerIds } } : {}),
+      ...(term ? customerSearch(term) : {}),
+    };
+    const [total, people] = await Promise.all([
+      this.prisma.client.customer.count({ where }),
+      this.prisma.client.customer.findMany({
+        where,
+        orderBy: { id: 'asc' },
+        skip,
+        take,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          email: true,
+          posStore: { select: { name: true } },
+        },
+      }),
+    ]);
+    return {
+      total,
+      rows: people.map((c) => ({
+        id: c.id,
+        name:
+          [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Customer',
+        phone: c.phone,
+        email: c.email,
+        purchases: 0,
+        spent: '0.00',
+        lastPurchase: null,
+        stores: c.posStore ? [c.posStore.name] : [],
+        tiers: [],
+      })),
+    };
+  }
+
+  /**
+   * Import a customer sheet (Name + phone columns) into one store's
+   * Customer Manager. Matched by phone: an existing customer keeps their
+   * name and only gets this store as home if they had none. New ones are
+   * POS-only, so they never show in the website Customer Manager.
+   */
+  async importCustomers(
+    storeId: number,
+    buffer: Buffer,
+    dryRun: boolean,
+  ): Promise<CustomerImportResultDto> {
+    const rows = parseImportRows(await readSheet(buffer));
+    const { unique, skippedRows } = dedupeByPhone(rows);
+
+    const existing = new Map<
+      string,
+      { id: number; firstName: string | null; posStoreId: number | null }
+    >();
+    const candidates = [
+      ...new Set(unique.flatMap((r) => phoneLookupCandidates(r.phone!))),
+    ];
+    for (let i = 0; i < candidates.length; i += 5000) {
+      const found = await this.prisma.client.customer.findMany({
+        where: { phone: { in: candidates.slice(i, i + 5000) } },
+        select: { id: true, phone: true, firstName: true, posStoreId: true },
+      });
+      for (const c of found) {
+        const key = c.phone && toBdCompact(c.phone);
+        if (key) existing.set(key, c);
+      }
+    }
+
+    const toCreate: Prisma.CustomerCreateManyInput[] = [];
+    const toUpdate: { id: number; data: Prisma.CustomerUncheckedUpdateInput }[] =
+      [];
+    let unchanged = 0;
+    for (const r of unique) {
+      const c = existing.get(r.phone!);
+      if (!c) {
+        toCreate.push({
+          phone: r.phone,
+          firstName: r.firstName,
+          lastName: r.lastName,
+          posOnly: true,
+          posStoreId: storeId,
+        });
+        continue;
+      }
+      const data = {
+        ...(c.posStoreId === null ? { posStoreId: storeId } : {}),
+        ...(!c.firstName && r.firstName
+          ? { firstName: r.firstName, lastName: r.lastName }
+          : {}),
+      };
+      if (Object.keys(data).length) toUpdate.push({ id: c.id, data });
+      else unchanged++;
+    }
+
+    if (!dryRun) {
+      for (let i = 0; i < toCreate.length; i += 500)
+        await this.prisma.client.customer.createMany({
+          data: toCreate.slice(i, i + 500),
+          skipDuplicates: true,
+        });
+      for (let i = 0; i < toUpdate.length; i += 200)
+        await this.prisma.client.$transaction(
+          toUpdate.slice(i, i + 200).map((u) =>
+            this.prisma.client.customer.update({
+              where: { id: u.id },
+              data: u.data,
+            }),
+          ),
+        );
+    }
+    return {
+      dryRun,
+      totalRows: rows.length,
+      created: toCreate.length,
+      updated: toUpdate.length,
+      unchanged,
+      skipped: skippedRows.length,
+      skippedRows: skippedRows.slice(0, 100),
+      warnings: [],
+    };
   }
 }

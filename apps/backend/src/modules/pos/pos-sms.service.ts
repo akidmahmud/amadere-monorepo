@@ -256,10 +256,31 @@ export class PosSmsService {
   }
 
   // ---------- audience ----------
-  /** Customers with a phone who bought at the store (or any store), optionally in one tier there. */
+  /** Customers with a phone who bought at the store (or any store), optionally in one tier there.
+   *  With no tier, customers imported into the store who haven't bought yet are included too. */
   async audience(storeId: number | null, tierKey: string | null): Promise<Recipient[]> {
     const [tiers, stats] = await Promise.all([this.tiers.getTiers(), this.tiers.stats({ storeId })]);
-    return this.toRecipients(stats, tiers, tierKey);
+    const buyers = await this.toRecipients(stats, tiers, tierKey);
+    if (tierKey) return buyers;
+    const imported = await this.prisma.client.customer.findMany({
+      where: {
+        deletedAt: null,
+        phone: { not: null },
+        posStoreId: storeId ?? { not: null },
+        id: { notIn: buyers.map((b) => b.customerId) },
+      },
+      select: { id: true, firstName: true, lastName: true, phone: true, posStore: { select: { name: true } } },
+    });
+    return [
+      ...buyers,
+      ...imported.map((p) => ({
+        customerId: p.id,
+        phone: p.phone!,
+        name: displayName(p),
+        storeName: p.posStore?.name ?? '',
+        tier: null,
+      })),
+    ];
   }
 
   private async winbackAudience(c: { storeId: number | null; tierKey: string | null; winbackDays: number | null }) {
