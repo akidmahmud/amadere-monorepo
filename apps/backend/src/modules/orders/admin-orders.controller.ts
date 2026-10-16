@@ -1,3 +1,4 @@
+import { CreateExchangeDto } from './dto/create-exchange.dto';
 import {
   Body,
   Controller,
@@ -188,5 +189,17 @@ export class AdminOrdersController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<OrderDto> {
     return this.orderCreation.reorder(id, admin.id);
+  }
+
+  /** A ৳0 replacement order for damaged items, linked to this one. */
+  @Post(':id/exchange')
+  @RequirePermission('order.create')
+  @ApiOkResponse({ type: OrderDto })
+  exchange(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateExchangeDto,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<OrderDto> {
+    return this.orderCreation.exchange(id, dto, admin.id);
   }
 }

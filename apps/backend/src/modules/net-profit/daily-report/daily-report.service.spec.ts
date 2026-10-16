@@ -31,7 +31,10 @@ function make(
       },
     },
   };
-  const loader = { load: jest.fn().mockResolvedValue([]) };
+  const loader = {
+    load: jest.fn().mockResolvedValue([]),
+    loadWriteOffs: jest.fn().mockResolvedValue(undefined),
+  };
   const settings = {
     getNamespace: jest.fn().mockResolvedValue(DEFAULT_SETTINGS),
     set: jest.fn(),

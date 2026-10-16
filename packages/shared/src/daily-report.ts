@@ -93,6 +93,12 @@ export interface DailyReportSnapshot {
   estimatedLines: number;
   orderIds: number[];
   wholesaleOrderIds: number[];
+  /** Free replacements sent (Exchange orders). Their cost is already in the
+   *  profit above; shown so it's visible. Missing = none / older report. */
+  exchange?: { orders: number; items: number; cost: number };
+  /** Returned items written off as damaged. Information only: their cost
+   *  was counted when they were sold. Missing = none / older report. */
+  writeOffs?: { items: number; cost: number };
 }
 
 export type DailyReportKind = 'AUTO' | 'MANUAL';

@@ -148,6 +148,7 @@ export function toReportOrder(
   return {
     id: row.id,
     orderNumber: row.orderNumber,
+    exchange: row.exchangeOfOrderId != null,
     date,
     status: toReportStatus(row.status),
     // A shop's till sales show as the shop ("Amader Shimultoli"), not "POS".

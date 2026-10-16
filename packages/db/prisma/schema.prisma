@@ -1543,6 +1543,10 @@ model Order {
   shippingMethod String? @map("shipping_method")
   customerNote   String? @map("customer_note")
   staffNote      String? @map("staff_note")
+  /// Set on an Exchange order: the order whose items it replaces (৳0 replacement).
+  exchangeOfOrderId Int?    @map("exchange_of_order_id")
+  exchangeOf        Order?  @relation("OrderExchange", fields: [exchangeOfOrderId], references: [id], onDelete: SetNull)
+  exchanges         Order[] @relation("OrderExchange")
   cancelReason   String? @map("cancel_reason")
 
   // Captured at checkout time — Blocker Manager's ip_tracker/device rules
@@ -1628,6 +1632,7 @@ model Order {
   @@index([deletedAt, createdAt])
   @@index([status, deletedAt, createdAt])
   @@index([storeId, createdAt])
+  @@index([exchangeOfOrderId])
   @@map("orders")
 }
 
@@ -1652,6 +1657,8 @@ model OrderItem {
   optionsSnapshot     Json?       @map("options_snapshot")
   /// POS: how many of this line were returned (per-item returns).
   restockedQuantity   Int         @default(0) @map("restocked_quantity")
+  /// Returned but damaged: written off, never put back into stock.
+  writtenOffQuantity  Int         @default(0) @map("written_off_quantity")
   downloadedAt        DateTime?   @map("downloaded_at") // digital products
 
   order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
