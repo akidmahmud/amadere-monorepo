@@ -14,6 +14,8 @@ import {
 } from "@/hooks/usePos";
 import {
   cartCount,
+  cartSubtotal,
+  linePrice,
   taka,
   unitPrice,
   parseQtyInput,
@@ -56,6 +58,7 @@ function useQuote(
     productId: l.productId,
     variantId: l.variantId ?? undefined,
     quantity: l.qty,
+    weighedKg: l.weighedKg,
   }));
   return useQuery({
     queryKey: [
@@ -90,6 +93,7 @@ export function CartPanel({
   customer,
   onCustomer,
   heldSaleId,
+  onWeigh,
   onDone,
 }: {
   cart: CartLine[];
@@ -98,6 +102,8 @@ export function CartPanel({
   customer: PosCustomer | null;
   onCustomer: (c: PosCustomer | null) => void;
   heldSaleId?: number;
+  /** Re-weigh a sold-by-weight line. */
+  onWeigh: (line: CartLine) => void;
   onDone: () => void;
 }) {
   const toast = useToast();
@@ -143,6 +149,7 @@ export function CartPanel({
             productId: l.productId,
             variantId: l.variantId ?? undefined,
             quantity: l.qty,
+            weighedKg: l.weighedKg,
           })),
           customerId: customer?.id,
           couponCode: code,
@@ -156,10 +163,8 @@ export function CartPanel({
     }
   };
 
-  const subtotal = useMemo(
-    () => cart.reduce((s, l) => s + unitPrice(l) * l.qty, 0),
-    [cart],
-  );
+  // Weighed lines count their weighed price, not price/kg × 1.
+  const subtotal = useMemo(() => cartSubtotal(cart), [cart]);
   const q = cart.length ? quote.data : undefined;
   const total = Number(q?.total ?? 0);
   const change = tender === "CASH" && cashIn ? Number(cashIn) - total : 0;
@@ -178,6 +183,7 @@ export function CartPanel({
           productId: l.productId,
           variantId: l.variantId ?? undefined,
           quantity: l.qty,
+          weighedKg: l.weighedKg,
         })),
         customerId: customer?.id,
         // Typed a phone but didn't pick anyone: the sale finds or creates them.
@@ -263,35 +269,49 @@ export function CartPanel({
                 {l.name}
                 {l.variantLabel ? ` ${l.variantLabel}` : ""}
               </div>
-              <div className="text-sm font-bold">{taka(unitPrice(l))}</div>
+              <div className="text-sm font-bold">
+                {l.weighedKg != null
+                  ? `${l.weighedKg} kg × ${taka(unitPrice(l))}/kg`
+                  : taka(unitPrice(l))}
+              </div>
             </div>
-            <div className="flex items-center rounded-lg border border-gray-200">
+            {l.weighedKg != null ? (
               <button
-                className="grid h-9 w-9 place-items-center"
-                onClick={() =>
-                  dispatch({ type: "setQty", key: l.key, qty: l.qty - 1 })
-                }
-                aria-label="Less"
+                className="h-9 rounded-lg border border-gray-200 px-3 text-sm font-bold hover:border-[#1d7a46]"
+                onClick={() => onWeigh(l)}
+                aria-label={`Change weight of ${l.name}`}
               >
-                <Icon name="remove" size={18} />
+                {l.weighedKg} kg
               </button>
-              <QtyInput
-                qty={l.qty}
-                onQty={(qty) => dispatch({ type: "setQty", key: l.key, qty })}
-              />
-              <button
-                className="grid h-9 w-9 place-items-center disabled:opacity-30"
-                disabled={l.qty >= l.stock}
-                onClick={() =>
-                  dispatch({ type: "setQty", key: l.key, qty: l.qty + 1 })
-                }
-                aria-label="More"
-              >
-                <Icon name="add" size={18} />
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center rounded-lg border border-gray-200">
+                <button
+                  className="grid h-9 w-9 place-items-center"
+                  onClick={() =>
+                    dispatch({ type: "setQty", key: l.key, qty: l.qty - 1 })
+                  }
+                  aria-label="Less"
+                >
+                  <Icon name="remove" size={18} />
+                </button>
+                <QtyInput
+                  qty={l.qty}
+                  onQty={(qty) => dispatch({ type: "setQty", key: l.key, qty })}
+                />
+                <button
+                  className="grid h-9 w-9 place-items-center disabled:opacity-30"
+                  disabled={l.qty >= l.stock}
+                  onClick={() =>
+                    dispatch({ type: "setQty", key: l.key, qty: l.qty + 1 })
+                  }
+                  aria-label="More"
+                >
+                  <Icon name="add" size={18} />
+                </button>
+              </div>
+            )}
             <div className="w-16 text-right text-sm font-bold">
-              {taka(unitPrice(l) * l.qty)}
+              {taka(linePrice(l))}
             </div>
             <button
               className="text-gray-400 hover:text-red-500"

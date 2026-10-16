@@ -61,3 +61,15 @@ test("VAT coupon prints VAT, then a VAT discount row; nothing when off", () => {
   assert.match(on, /VAT 15%[\s\S]*VAT discount[\s\S]*-৳?\s?15/);
   assert.equal(renderPosInvoice("{{vatDiscountRow}}", { ...SAMPLE_POS_INVOICE, vatDiscount: 0 }), "");
 });
+
+test("a weighed line prints weight × price per kg, not 1 × price", () => {
+  const d = {
+    ...SAMPLE_POS_INVOICE,
+    items: [{ name: "Frozen Chicken", weight: "1.25 kg", perKg: 300, qty: 1, unitPrice: 375, lineTotal: 375 }],
+  };
+  const out = renderPosInvoice("{{itemsRows}}", d);
+  assert.match(out, /1\.25 kg × 300\.00\/kg/);
+  assert.doesNotMatch(out, /1 × 375/);
+  // The weight is not repeated next to the name.
+  assert.equal(out.match(/1\.25 kg/g).length, 1);
+});

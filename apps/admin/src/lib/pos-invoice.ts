@@ -19,6 +19,8 @@ export interface PosInvoiceData {
     variant?: string | null;
     /** e.g. "500 g" — shown when the line has no variant label. */
     weight?: string | null;
+    /** Sold by weight: price per kg (the line is weight × this). */
+    perKg?: number | null;
     qty: number;
     unitPrice: number;
     lineTotal: number;
@@ -113,8 +115,8 @@ export function renderPosInvoice(html: string, d: PosInvoiceData): string {
     itemsRows: d.items
       .map(
         (i) =>
-          `<tr><td colspan="2">${esc(i.name)}${i.variant ? ` <span class="variant">${esc(i.variant)}</span>` : i.weight ? ` <span class="variant">· ${esc(i.weight)}</span>` : ""}</td></tr>` +
-          `<tr><td>${i.qty} × ${money(i.unitPrice)}</td><td style="text-align:right">${money(i.lineTotal)}</td></tr>`,
+          `<tr><td colspan="2">${esc(i.name)}${i.variant ? ` <span class="variant">${esc(i.variant)}</span>` : i.weight && i.perKg == null ? ` <span class="variant">· ${esc(i.weight)}</span>` : ""}</td></tr>` +
+          `<tr><td>${i.perKg != null && i.weight ? `${esc(i.weight)} × ${money(i.perKg)}/kg` : `${i.qty} × ${money(i.unitPrice)}`}</td><td style="text-align:right">${money(i.lineTotal)}</td></tr>`,
       )
       .join(""),
     itemCount: String(d.items.reduce((s, i) => s + i.qty, 0)),

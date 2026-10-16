@@ -943,6 +943,9 @@ model Product {
   /// How the weight above is shown (receipt/till): g | kg | ml | l. For ml/l
   /// the number is litres (≈ kg for courier weight). null = g/kg by size.
   weightUnit      String?  @map("weight_unit")
+  /// POS store products only: price/salePrice are per kg, the till asks
+  /// for each item's weight, and costPerItem is per kg (costPriceUnit PER_KG).
+  soldByWeight    Boolean        @default(false) @map("sold_by_weight")
 
   minOrderQuantity Int  @default(1) @map("min_order_quantity")
   maxOrderQuantity Int? @map("max_order_quantity")
@@ -1652,6 +1655,12 @@ model OrderItem {
   optionsSnapshot     Json?       @map("options_snapshot")
   /// POS: how many of this line were returned (per-item returns).
   restockedQuantity   Int         @default(0) @map("restocked_quantity")
+  /// Weight sold on this line (kg, sold-by-weight products only). The line
+  /// is quantity 1 and unitPrice is its weighed price.
+  weighedKg           Decimal?    @map("weighed_kg") @db.Decimal(10, 3)
+  /// Sold by weight: price per kg the line was priced at (unitPrice is
+  /// this × weighedKg, rounded — so it can't be derived back exactly).
+  pricePerKg          Decimal?    @map("price_per_kg") @db.Decimal(10, 2)
   downloadedAt        DateTime?   @map("downloaded_at") // digital products
 
   order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)

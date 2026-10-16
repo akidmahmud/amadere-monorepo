@@ -73,6 +73,7 @@ export class DailyReportLoader {
               unitPrice: true,
               quantity: true,
               restockedQuantity: true,
+              weighedKg: true,
               variant: { select: { weightOverride: true } },
               product: { select: { shippableWeight: true, sku: true } },
             },
@@ -145,8 +146,12 @@ export class DailyReportLoader {
       const isPos = r.channel === 'POS' && !recovered;
       let parcelKg = 0;
       const lines = r.items.flatMap((i, idx) => {
+        // A sold-by-weight POS line weighs what was typed at the till.
         const w = Number(
-          i.variant?.weightOverride ?? i.product?.shippableWeight ?? 0,
+          i.weighedKg ??
+            i.variant?.weightOverride ??
+            i.product?.shippableWeight ??
+            0,
         );
         parcelKg += w * i.quantity;
         // POS returns put goods back on the shelf: only the kept quantity is a

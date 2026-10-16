@@ -92,6 +92,7 @@ export const LOADER_INCLUDE = {
       skuSnapshot: true,
       unitPrice: true,
       quantity: true,
+      weighedKg: true,
       variant: { select: { weightOverride: true, sku: true } },
       product: { select: { shippableWeight: true, sku: true } },
     },
@@ -166,8 +167,12 @@ export function toReportOrder(
     district: addr?.district ?? '',
     zone: zoneOf(ctx.zones, addr?.district),
     lines: row.items.map((i, idx) => {
+      // A sold-by-weight POS line weighs what was typed at the till.
       const unitWeight = Number(
-        i.variant?.weightOverride ?? i.product?.shippableWeight ?? 0,
+        i.weighedKg ??
+          i.variant?.weightOverride ??
+          i.product?.shippableWeight ??
+          0,
       );
       const cost = ctx.resolver.resolve(
         {

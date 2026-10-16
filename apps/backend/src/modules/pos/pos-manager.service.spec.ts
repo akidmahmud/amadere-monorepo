@@ -269,3 +269,68 @@ describe('PosManagerService.orders — sales card', () => {
     expect(order.aggregate.mock.calls[0][0].where.createdAt.gte).toBeInstanceOf(Date);
   });
 });
+
+describe('PosManagerService.orders — sold by weight', () => {
+  it('a weighed line shows its own weight and costs cost/kg × that weight', async () => {
+    const order = {
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: 1,
+          storeId: 4,
+          orderNumber: 'ORD-1',
+          createdAt: new Date('2026-10-16T06:00:00Z'),
+          status: 'COMPLETED',
+          subTotal: D(375),
+          discountAmount: D(0),
+          taxAmount: D(0),
+          totalAmount: D(375),
+          store: { id: 4, name: 'Uttara' },
+          customer: null,
+          assignedAdmin: null,
+          items: [
+            {
+              productId: 9,
+              variantId: null,
+              productNameSnapshot: 'Frozen Chicken',
+              quantity: 1,
+              unitPrice: D(375),
+              restockedQuantity: 0,
+              weighedKg: new Prisma.Decimal('1.25'),
+              product: {
+                shippableWeight: null,
+                costPerItem: D(250),
+                costPriceUnit: 'PER_KG',
+                weightUnit: null,
+              },
+              variant: null,
+            },
+          ],
+          payments: [{ provider: 'CASH' }],
+        },
+      ]),
+      count: jest.fn().mockResolvedValue(1),
+      aggregate: jest.fn().mockResolvedValue({
+        _sum: { totalAmount: D(375), posRefundedAmount: D(0) },
+        _count: { _all: 1 },
+      }),
+      groupBy: jest.fn().mockResolvedValue([]),
+    };
+    const svc = new PosManagerService(
+      {
+        client: {
+          order,
+          storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+        },
+      } as never,
+      { getTiers: async () => [], stats: async () => [] } as never,
+      { loadResolver: async () => ({ resolve: () => null }) } as never,
+    );
+    const r = await svc.orders(4, {});
+    expect(order.findMany.mock.calls[0][0].select.items.select.weighedKg).toBe(true);
+    expect(r.items[0].items[0]).toMatchObject({
+      weightKg: '1.25',
+      weightUnit: 'kg',
+      unitCost: '312.50',
+    });
+  });
+});

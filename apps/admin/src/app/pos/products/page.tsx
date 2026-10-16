@@ -47,6 +47,7 @@ type Row = {
   imageUrl: string | null;
   weightKg: string | null;
   weightUnit: string | null;
+  soldByWeight?: boolean;
 };
 
 const th = "px-4 py-3 text-xs font-bold uppercase tracking-wide text-gray-500";
@@ -62,6 +63,7 @@ const editFields = (r: Row): StoreProductFields => {
     sku: r.sku ?? "",
     barcode: r.barcode ?? "",
     categoryId: r.categoryId ? String(r.categoryId) : "",
+    soldByWeight: r.soldByWeight ?? false,
     ...(r.weightKg && n > 0
       ? { weightValue: String(fromBase(n, u)), weightUnit: u }
       : { weightValue: "", weightUnit: "g" as const }),
@@ -464,7 +466,11 @@ export default function PosProductsPage() {
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 text-gray-600">
-                            {kg > 0 ? formatWeight(kg, unit) : "—"}
+                            {p.soldByWeight
+                              ? "Sold by weight"
+                              : kg > 0
+                                ? formatWeight(kg, unit)
+                                : "—"}
                           </td>
                           <td className="whitespace-nowrap px-4">
                             {p.salePrice ? (
@@ -476,6 +482,9 @@ export default function PosProductsPage() {
                               </>
                             ) : (
                               <b>{taka(Number(p.price))}</b>
+                            )}
+                            {p.soldByWeight && (
+                              <span className="text-xs text-gray-500">/kg</span>
                             )}
                           </td>
                           <td className="whitespace-nowrap px-4 text-gray-700">

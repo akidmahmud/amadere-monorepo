@@ -226,6 +226,9 @@ function Price({ p, end }: { p: PosProduct; end?: boolean }) {
     >
       <span className="text-base font-extrabold">
         {taka(p.salePrice ?? p.price)}
+        {p.soldByWeight && (
+          <span className="text-xs font-semibold text-gray-500">/kg</span>
+        )}
       </span>
       {p.salePrice && (
         <span className="text-xs text-gray-400 line-through">

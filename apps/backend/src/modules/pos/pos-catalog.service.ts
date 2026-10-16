@@ -36,6 +36,8 @@ export interface PosProduct {
   /** Sellable at this store. Untracked products report 9999. */
   stock: number;
   storeOnly: boolean;
+  /** Price is per kg; the till asks for each item's weight. */
+  soldByWeight: boolean;
   /** true = price/salePrice are this store's own; normal* are the product's. */
   storePrice: boolean;
   /** This store's own name is in `name`; normalName is the catalogue one. */
@@ -340,6 +342,7 @@ export class PosCatalogService {
           ? (qty.get(stockKey(p.id, v?.id ?? null)) ?? 0)
           : 9999,
         storeOnly: p.storeId !== null,
+        soldByWeight: p.soldByWeight === true,
         // Soonest expiry among the units on the shelf (FIFO), for the card tag.
         ...(() => {
           const e = soonestExpiry(

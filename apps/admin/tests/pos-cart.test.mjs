@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cartReducer, cartSubtotal, cartCount } from "../src/lib/pos-cart.ts";
+import { cartReducer, cartSubtotal, cartCount, weighedPrice, linePrice } from "../src/lib/pos-cart.ts";
 
 const coke = { productId: 1, variantId: null, name: "Coca-Cola", price: "40.00", salePrice: null, stock: 3 };
 
@@ -72,4 +72,41 @@ test("unsellableLines finds the cart lines a quote error names", async () => {
     ["7:70"],
   );
   assert.deepEqual(unsellableLines("Cash received is less than the total", cart), []);
+});
+
+
+const chicken = { productId: 9, variantId: null, name: "Frozen Chicken", price: "300.00", salePrice: null, stock: 10, soldByWeight: true };
+
+test("weighedPrice rounds half up in integer maths", () => {
+  assert.equal(weighedPrice(300, 1.25), 375);
+  assert.equal(weighedPrice(300, 1.225), 368); // 1.225*300 is 367.4999… in floats
+  assert.equal(weighedPrice(299.99, 0.5), 150);
+});
+
+test("each weighed item is its own line; plain add is ignored", () => {
+  let c = cartReducer([], { type: "add", product: chicken });
+  assert.equal(c.length, 0);
+  c = cartReducer(c, { type: "addWeighed", product: chicken, weighedKg: 1.25 });
+  c = cartReducer(c, { type: "addWeighed", product: chicken, weighedKg: 1.1 });
+  assert.equal(c.length, 2);
+  assert.notEqual(c[0].key, c[1].key);
+  assert.deepEqual(c.map((l) => l.qty), [1, 1]);
+  assert.equal(cartSubtotal(c), 375 + 330);
+});
+
+test("setWeight changes one line; load keeps weights", () => {
+  let c = cartReducer([], { type: "addWeighed", product: chicken, weighedKg: 1.25 });
+  c = cartReducer(c, { type: "setWeight", key: c[0].key, weighedKg: 1.5 });
+  assert.equal(linePrice(c[0]), 450);
+  const resumed = cartReducer([], { type: "load", lines: JSON.parse(JSON.stringify(c)) });
+  assert.equal(resumed[0].weighedKg, 1.5);
+  assert.equal(linePrice(resumed[0]), 450);
+});
+
+test("can't weigh more items into the cart than are in stock", () => {
+  const two = { ...chicken, stock: 2 };
+  let c = cartReducer([], { type: "addWeighed", product: two, weighedKg: 1 });
+  c = cartReducer(c, { type: "addWeighed", product: two, weighedKg: 1.2 });
+  c = cartReducer(c, { type: "addWeighed", product: two, weighedKg: 1.3 });
+  assert.equal(c.length, 2);
 });

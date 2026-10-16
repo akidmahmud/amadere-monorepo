@@ -206,7 +206,7 @@ export default function StockInPage() {
                 value={bulkCost}
                 onChange={(e) => setBulkCost(e.target.value)}
                 inputMode="decimal"
-                placeholder="Unit cost (optional)"
+                placeholder="Unit cost / per kg (optional)"
                 aria-label="Unit cost for each selected product"
                 className={`${cell} w-40`}
               />
@@ -251,7 +251,9 @@ export default function StockInPage() {
                   <th className={`${th} pl-2`}>Product</th>
                   <th className={th}>In stock</th>
                   <th className={th}>Qty received</th>
-                  <th className={th}>Unit cost (৳)</th>
+                  <th className={th}>
+                    Unit cost (৳, per kg if sold by weight)
+                  </th>
                   <th className={th}>Expiry date</th>
                 </tr>
               </thead>

@@ -36,6 +36,7 @@ export class PosProductsService {
         salePrice: true,
         costPerItem: true,
         hasVariants: true,
+        soldByWeight: true,
         shippableWeight: true,
         weightUnit: true,
         translations: { select: { locale: true, name: true } },
@@ -94,6 +95,7 @@ export class PosProductsService {
       actor,
     );
     await this.setUnit(created.id, dto);
+    await this.setSoldByWeight(created.id, dto);
     return created;
   }
 
@@ -117,6 +119,7 @@ export class PosProductsService {
       );
     const updated = await this.products.update(id, this.fields(dto), actor);
     await this.setUnit(id, dto);
+    await this.setSoldByWeight(id, dto);
     return updated;
   }
 
@@ -257,7 +260,7 @@ export class PosProductsService {
   async duplicate(storeId: number, id: number) {
     const p = await this.prisma.client.product.findUniqueOrThrow({
       where: { id },
-      select: { storeId: true },
+      select: { storeId: true, soldByWeight: true },
     });
     if (p.storeId !== null && p.storeId !== storeId)
       throw new ForbiddenException(
@@ -268,6 +271,12 @@ export class PosProductsService {
       await this.prisma.client.product.update({
         where: { id: dup.id },
         data: { storeId, status: 'ADMIN_ONLY' },
+      });
+    // The shared duplicate copies the per-kg cost but not this POS flag.
+    if (p.soldByWeight)
+      await this.prisma.client.product.update({
+        where: { id: dup.id },
+        data: { soldByWeight: true },
       });
     return { id: dup.id };
   }
@@ -507,6 +516,7 @@ export class PosProductsService {
       select: {
         storeId: true,
         hasVariants: true,
+        costPriceUnit: true,
         variants: { select: { id: true } },
       },
     });
@@ -523,7 +533,16 @@ export class PosProductsService {
       throw new BadRequestException(
         'That size does not belong to this product',
       );
-    await this.costs.recordIfChanged({ productId, variantId, cost }, adminId);
+    await this.costs.recordIfChanged(
+      {
+        productId,
+        variantId,
+        cost,
+        // Keep the unit (sold by weight = per kg): a new cost isn't a new unit.
+        costPriceUnit: variantId === null ? p.costPriceUnit : null,
+      },
+      adminId,
+    );
     return { cost: cost.toFixed(2) };
   }
 
@@ -538,6 +557,14 @@ export class PosProductsService {
     });
   }
 
+  private async setSoldByWeight(id: number, dto: PosProductDto) {
+    if (dto.soldByWeight === undefined) return;
+    await this.prisma.client.product.update({
+      where: { id },
+      data: { soldByWeight: dto.soldByWeight },
+    });
+  }
+
   private fields(dto: PosProductDto) {
     return {
       translations: [{ locale: 'EN' as const, name: dto.name.trim() }],
@@ -547,8 +574,13 @@ export class PosProductsService {
       // null (not undefined) so clearing the box on edit clears the value.
       salePrice: (dto.salePrice ?? null) as number,
       costPerItem: (dto.costPerItem ?? null) as number,
+      // Per-kg cost so profit scales with each line's weight (lineCoster).
+      costPriceUnit: dto.soldByWeight ? ('PER_KG' as const) : null,
       categoryIds: dto.categoryId ? [dto.categoryId] : [],
-      shippableWeight: (dto.weightKg ?? null) as number,
+      // A weighed item has no fixed pack weight.
+      shippableWeight: (dto.soldByWeight
+        ? null
+        : (dto.weightKg ?? null)) as number,
       mediaIds:
         dto.mediaId === undefined
           ? undefined
