@@ -121,6 +121,8 @@ export type AdminOrder = Omit<
   /** Delivered, but its stock is back on the shelf (returned, not completed
    *  again): marking it Returned now only writes off damage. */
   stockBackOnShelf?: boolean;
+  /** This order came from Recovery (an abandoned cart). */
+  fromRecovery?: boolean;
 };
 
 export type ReturnLineInput = {
@@ -200,6 +202,21 @@ export function useSetReturnStock(id: number) {
         body: JSON.stringify({ lines }),
       }),
     onSuccess: () => invalidateOrder(qc),
+  });
+}
+
+/** Cancelled order from Recovery: its cart goes back to the Recovery list. */
+export function useBackToRecovery(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      proxyFetch<{ reopened: number }>(`/admin/net-profit/recovery/from-order/${id}/reopen`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      invalidateOrder(qc);
+      void qc.invalidateQueries({ queryKey: ["net-profit-recovery"] });
+    },
   });
 }
 

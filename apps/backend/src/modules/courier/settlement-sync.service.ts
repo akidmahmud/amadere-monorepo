@@ -38,7 +38,7 @@ export interface SettlementSyncResult {
   parcelsUnknown: number;
   discrepancies: {
     consignmentId: string;
-    orderId: number;
+    orderId: number | null;
     asked: string;
     collected: string;
   }[];
@@ -259,7 +259,7 @@ export class SettlementSyncService {
       result.shipmentsUpdated += 1;
       // Partly delivered: the statement is the confirmed collected amount;
       // the COD receivable shrinks to it (no-op if already resized).
-      if (shipment.status === 'PARTIALLY_DELIVERED')
+      if (shipment.status === 'PARTIALLY_DELIVERED' && shipment.orderId)
         await this.salesPosting.resizeCodReceivable({
           orderId: shipment.orderId,
           shipmentId: shipment.id,

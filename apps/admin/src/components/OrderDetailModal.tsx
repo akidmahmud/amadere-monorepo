@@ -24,6 +24,7 @@ import {
   type ManualOrderPaymentStatus,
   type OrderChannel,
   type PaymentProviderType,
+  useBackToRecovery,
 } from "@/hooks/useOrders";
 import { useAssignOrder, useUpdateOrderNote } from "@/hooks/useOrderManager";
 import { useAssignableStaff } from "@/hooks/useCustomers";
@@ -133,6 +134,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const updateNote = useUpdateOrderNote(row.id);
   const resendConfirmation = useResendOrderConfirmation(row.id);
   const reorder = useReorderOrder(row.id);
+  const backToRecovery = useBackToRecovery(row.id);
   // Exchange: the ৳0 replacement dialog, and a linked order opened on top.
   const [exchanging, setExchanging] = useState(false);
   const [linked, setLinked] = useState<{ id: number; orderNumber: string } | null>(null);
@@ -1140,11 +1142,22 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   Exchange
                 </button>
               )}
+              {order.status === "CANCELED" && order.fromRecovery ? (
+                <button type="button" disabled={backToRecovery.isPending} className={`${outlineBtn} flex-1 justify-center`}
+                  title="Put this cart back in the Recovery list to follow up again"
+                  onClick={() => backToRecovery.mutate(undefined, { onSuccess: () => onClose() })}>
+                  {backToRecovery.isPending ? "Moving…" : "Back to Recovery"}
+                </button>
+              ) : (
               <button type="button" disabled={updateStatus.isPending} className={`${outlineBtn} flex-1 justify-center`}
                 onClick={() => updateStatus.mutate({ status: "CANCELED", note: "Canceled by staff" })}>
                 Cancel
               </button>
+              )}
             </div>
+            {backToRecovery.isError && (
+              <p className="mt-1 text-xs font-semibold text-danger">{(backToRecovery.error as Error).message}</p>
+            )}
           </div>
         </div>
       )}

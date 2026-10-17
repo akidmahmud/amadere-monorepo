@@ -13,6 +13,7 @@ import {
   type WholesaleOrder,
 } from "@/hooks/useWholesale";
 import { Thumb } from "./Thumb";
+import { SteadfastBooking } from "./SteadfastBooking";
 
 const money = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", {
@@ -96,6 +97,7 @@ export function OrderDetailModal({
           />
           <Item label="Courier" value={courierText(order)} />
           <Item label="Consignment ID" value={order.consignmentId ?? ""} />
+          {order.courier === "STEADFAST" && <SteadfastBooking orderId={order.id} />}
           <Item label="Invoice" value={order.invoiceDocNo ?? ""} />
           {/* Shown for a cash sale too — only the courier above is
               wholesale-only, and a counter sale still went to someone. */}

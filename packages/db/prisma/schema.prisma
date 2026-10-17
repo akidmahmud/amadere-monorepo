@@ -397,7 +397,7 @@ model Customer {
 
   campaignQueue    CustomerCampaignQueue[]
   posSmsDeliveries PosSmsDelivery[]
-  posStore         Store?           @relation(fields: [posStoreId], references: [id], onDelete: SetNull)
+  posStore         Store?                  @relation(fields: [posStoreId], references: [id], onDelete: SetNull)
 
   @@index([posStoreId])
   @@map("customers")
@@ -945,7 +945,7 @@ model Product {
   weightUnit      String?  @map("weight_unit")
   /// POS store products only: price/salePrice are per kg, the till asks
   /// for each item's weight, and costPerItem is per kg (costPriceUnit PER_KG).
-  soldByWeight    Boolean        @default(false) @map("sold_by_weight")
+  soldByWeight    Boolean  @default(false) @map("sold_by_weight")
 
   minOrderQuantity Int  @default(1) @map("min_order_quantity")
   maxOrderQuantity Int? @map("max_order_quantity")
@@ -1543,14 +1543,14 @@ model Order {
   currency       String  @default("BDT")
   couponCode     String? @map("coupon_code")
 
-  shippingMethod String? @map("shipping_method")
-  customerNote   String? @map("customer_note")
-  staffNote      String? @map("staff_note")
+  shippingMethod    String? @map("shipping_method")
+  customerNote      String? @map("customer_note")
+  staffNote         String? @map("staff_note")
   /// Set on an Exchange order: the order whose items it replaces (৳0 replacement).
   exchangeOfOrderId Int?    @map("exchange_of_order_id")
   exchangeOf        Order?  @relation("OrderExchange", fields: [exchangeOfOrderId], references: [id], onDelete: SetNull)
   exchanges         Order[] @relation("OrderExchange")
-  cancelReason   String? @map("cancel_reason")
+  cancelReason      String? @map("cancel_reason")
 
   // Captured at checkout time — Blocker Manager's ip_tracker/device rules
   // need a durable per-order IP/device, not just the live request (mirrors
@@ -1802,23 +1802,26 @@ enum ShipmentStatus {
 }
 
 model Shipment {
-  id             Int                 @id @default(autoincrement())
-  orderId        Int                 @map("order_id")
-  provider       CourierProviderName
-  status         ShipmentStatus      @default(PENDING)
-  consignmentId  String?             @map("consignment_id")
-  trackingCode   String?             @map("tracking_code")
-  cost           Decimal?            @db.Decimal(10, 2)
-  weight         Decimal?            @db.Decimal(10, 3)
-  codAmount      Decimal?            @map("cod_amount") @db.Decimal(10, 2)
-  returnReason   String?             @map("return_reason")
-  errorMessage   String?             @map("error_message")
-  requestPayload Json?               @map("request_payload")
-  rawResponse    Json?               @map("raw_response")
-  dispatchedAt   DateTime?           @map("dispatched_at")
-  deliveredAt    DateTime?           @map("delivered_at")
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
+  id               Int                 @id @default(autoincrement())
+  /// Exactly one of orderId / wholesaleOrderId is set (DB check constraint):
+  /// a retail order's parcel, or a wholesale order booked with Steadfast.
+  orderId          Int?                @map("order_id")
+  wholesaleOrderId Int?                @map("wholesale_order_id")
+  provider         CourierProviderName
+  status           ShipmentStatus      @default(PENDING)
+  consignmentId    String?             @map("consignment_id")
+  trackingCode     String?             @map("tracking_code")
+  cost             Decimal?            @db.Decimal(10, 2)
+  weight           Decimal?            @db.Decimal(10, 3)
+  codAmount        Decimal?            @map("cod_amount") @db.Decimal(10, 2)
+  returnReason     String?             @map("return_reason")
+  errorMessage     String?             @map("error_message")
+  requestPayload   Json?               @map("request_payload")
+  rawResponse      Json?               @map("raw_response")
+  dispatchedAt     DateTime?           @map("dispatched_at")
+  deliveredAt      DateTime?           @map("delivered_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
 
   codSettlementId Int? @map("cod_settlement_id")
 
@@ -1844,12 +1847,14 @@ model Shipment {
   billedAt      DateTime? @map("billed_at")
   billImportRef String?   @map("bill_import_ref")
 
-  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  events        ShipmentEvent[]
-  codSettlement CodSettlement?  @relation(fields: [codSettlementId], references: [id], onDelete: SetNull)
+  order          Order?          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  wholesaleOrder WholesaleOrder? @relation(fields: [wholesaleOrderId], references: [id], onDelete: Cascade)
+  events         ShipmentEvent[]
+  codSettlement  CodSettlement?  @relation(fields: [codSettlementId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([orderId, createdAt])
+  @@index([wholesaleOrderId])
   @@index([consignmentId])
   @@map("shipments")
 }
@@ -3751,20 +3756,20 @@ model Store {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  costCentre      CostCentre?         @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
-  staff           AdminUser[]
-  products        Product[]
-  orders          Order[]
-  stock           StoreStock[]
-  movements       StockMovement[]
-  stockIns        StockIn[]
-  transfersOut    StockTransfer[]     @relation("TransferFrom")
-  transfersIn     StockTransfer[]     @relation("TransferTo")
-  heldSales       PosHeldSale[]
-  invoiceTemplate PosInvoiceTemplate?
-  coupons         Discount[]
-  prices          StorePrice[]
-  smsCampaigns    PosSmsCampaign[]
+  costCentre        CostCentre?         @relation(fields: [costCentreId], references: [id], onDelete: SetNull)
+  staff             AdminUser[]
+  products          Product[]
+  orders            Order[]
+  stock             StoreStock[]
+  movements         StockMovement[]
+  stockIns          StockIn[]
+  transfersOut      StockTransfer[]     @relation("TransferFrom")
+  transfersIn       StockTransfer[]     @relation("TransferTo")
+  heldSales         PosHeldSale[]
+  invoiceTemplate   PosInvoiceTemplate?
+  coupons           Discount[]
+  prices            StorePrice[]
+  smsCampaigns      PosSmsCampaign[]
   importedCustomers Customer[]
 
   @@map("stores")
@@ -4180,7 +4185,7 @@ enum WholesaleCourier {
   OTHER
   /// Channel orders: delivered by us or by the marketplace itself.
   CHANNEL_DELIVERY
-  /// Channel orders: a label only, no Steadfast API booking.
+  /// Booked through the Steadfast API (a Shipment row), like retail.
   STEADFAST
 }
 
@@ -4251,6 +4256,8 @@ model WholesaleOrder {
   // Deliberately a list, not a single due: the invoice is one row today, but
   // a part-shipped order raising a second one must not require a schema change.
   dues         Due[]
+  /// Steadfast bookings (courier STEADFAST), shown in Shipments tagged Wholesale.
+  shipments    Shipment[]
 
   @@index([partyId])
   @@index([status])

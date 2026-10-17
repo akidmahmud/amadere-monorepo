@@ -42,6 +42,8 @@ export type WholesalePaymentStatus = "UNPAID" | "PARTIALLY_PAID" | "PAID";
 /** The wholesale courier dropdown. */
 export const WHOLESALE_COURIERS: { value: WholesaleCourier; label: string }[] =
   [
+    // Booked through the Steadfast API; the parcel shows in Shipments.
+    { value: "STEADFAST", label: "Steadfast" },
     { value: "SUNDARBAN", label: "সুন্দরবন Courier" },
     { value: "AJR", label: "AJR Courier" },
     { value: "SA_PARIBAHAN", label: "S.A. Paribahan" },
@@ -51,11 +53,9 @@ export const WHOLESALE_COURIERS: { value: WholesaleCourier; label: string }[] =
   ];
 
 /** The courier dropdown on channel orders (Daraz, Cartup...): the channel's
- *  own delivery and Steadfast, then every wholesale courier (which ends with
- *  "Other"). Steadfast is a label only — nothing is booked through its API. */
+ *  own delivery, then every wholesale courier (Steadfast first, "Other" last). */
 export const CHANNEL_COURIERS: { value: WholesaleCourier; label: string }[] = [
   { value: "CHANNEL_DELIVERY", label: "By Own / Channel" },
-  { value: "STEADFAST", label: "Steadfast" },
   ...WHOLESALE_COURIERS,
 ];
 
@@ -318,6 +318,13 @@ export interface WholesaleOrder {
   note: string | null;
   placedAt: string;
   items: WholesaleOrderItem[];
+  /** Latest Steadfast booking (courier STEADFAST); null = not booked. */
+  shipment?: {
+    id: number;
+    status: string;
+    trackingCode: string | null;
+    errorMessage: string | null;
+  } | null;
 }
 
 export interface CustomerInput {
@@ -811,6 +818,16 @@ export function useCancelWholesaleOrder() {
       proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/cancel`, {
         method: "POST",
       }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Book a Steadfast-courier order with Steadfast (retry, or after fixing the address). */
+export function useBookWholesaleSteadfast() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch(`/admin/shipments/dispatch-wholesale/${id}`, { method: "POST" }),
     onSuccess: invalidate,
   });
 }

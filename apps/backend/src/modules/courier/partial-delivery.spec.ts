@@ -50,6 +50,7 @@ function makeShipments(orderStatus = 'CONFIRMED') {
     {} as never,
     {} as never,
     {} as never,
+    {} as never,
   );
   return { svc, prisma, orders, salesPosting, shipment };
 }

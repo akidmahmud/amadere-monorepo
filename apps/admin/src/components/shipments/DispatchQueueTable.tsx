@@ -172,6 +172,10 @@ function getDeliveryStatusKey(row: ShipmentQueueRow): string {
 // staff need to chase it rather than wait. Everything else renders muted.
 const NEEDS_COURIER_ATTENTION = new Set(["in_review", "hold", "unknown"]);
 
+/** Set on a wholesale order's Steadfast parcel (not in the generated schema yet). */
+const wholesaleOf = (r: ShipmentQueueRow) =>
+  (r as ShipmentQueueRow & { wholesale?: { channel: string | null } | null }).wholesale ?? null;
+
 export function DispatchQueueTable() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
@@ -262,7 +266,8 @@ export function DispatchQueueTable() {
     setSelected(next);
   }
   function toggleAll() {
-    setSelected(selected.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)));
+    const own = rows.filter((r) => !wholesaleOf(r));
+    setSelected(selected.size === own.length ? new Set() : new Set(own.map((r) => r.id)));
   }
 
   function sendOne(row: ShipmentQueueRow) {
@@ -538,12 +543,20 @@ export function DispatchQueueTable() {
                 </td>
               </tr>
             )}
-            {rows.map((row) => (
-              <tr key={row.id} className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]">
+            {rows.map((row) => {
+              // A wholesale order's Steadfast parcel: its id is the wholesale
+              // order's, so the retail-order actions (select, open, print,
+              // delete) don't apply. Track/Cancel work by shipment id.
+              const ws = wholesaleOf(row);
+              return (
+              <tr key={ws ? `w${row.id}` : row.id} className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]">
                 <td className="px-2.5 py-3 align-middle">
-                  <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleOne(row.id)} className="h-4 w-4 accent-brand-500" />
+                  {!ws && <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleOne(row.id)} className="h-4 w-4 accent-brand-500" />}
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
+                  {ws ? (
+                    <a href="/wholesale" className="font-bold text-brand-500 hover:underline">{row.orderNumber}</a>
+                  ) : (
                   <button
                     type="button"
                     onClick={() =>
@@ -553,6 +566,12 @@ export function DispatchQueueTable() {
                   >
                     {row.orderNumber}
                   </button>
+                  )}
+                  {ws && (
+                    <Pill className="ml-1.5 bg-[#efe9fd] text-[#6d3fd6]">
+                      {ws.channel ? `Wholesale · ${ws.channel}` : "Wholesale"}
+                    </Pill>
+                  )}
                   {row.recipientName && <div className="text-[0.7rem] text-muted">{row.recipientName}</div>}
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap text-[0.78rem] text-text">
@@ -616,9 +635,13 @@ export function DispatchQueueTable() {
                   )}
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
+                  {ws ? (
+                    <span className="text-muted">—</span>
+                  ) : (
                   <a href={`/print/orders/${row.id}/invoice`} target="_blank" rel="noreferrer" className="font-bold text-brand-500 hover:underline">
                     Print
                   </a>
+                  )}
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap text-[0.78rem] text-text">
                   {row.shipment?.consignmentId ?? row.shipment?.trackingCode ?? "—"}
@@ -652,6 +675,7 @@ export function DispatchQueueTable() {
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap font-bold text-text">৳{row.totalAmount}</td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
+                  {!ws && (
                   <button
                     type="button"
                     title="Delete order"
@@ -664,9 +688,11 @@ export function DispatchQueueTable() {
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                     </svg>
                   </button>
+                  )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

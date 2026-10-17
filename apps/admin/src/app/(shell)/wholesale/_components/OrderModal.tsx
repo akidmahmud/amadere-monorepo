@@ -1,6 +1,7 @@
 "use client";
 
 import { CourierSelect } from "./CourierSelect";
+import { SteadfastBooking } from "./SteadfastBooking";
 import { useMemo, useState } from "react";
 import { Button, Icon, Modal } from "@amader/admin-ui";
 import {
@@ -393,6 +394,11 @@ export function OrderModal({
                 />
               </ModalField>
             </div>
+            {editing && courier === "STEADFAST" && editing.courier === "STEADFAST" && (
+              <div className="sm:col-span-4">
+                <SteadfastBooking orderId={editing.id} onBooked={setConsignmentId} />
+              </div>
+            )}
           </div>
 
           {selected && (

@@ -22,7 +22,9 @@ export class ShipmentEventDto {
 
 export class ShipmentDto {
   id!: number;
-  orderId!: number;
+  /** One of these two: a retail order's parcel, or a wholesale order's. */
+  orderId!: number | null;
+  wholesaleOrderId!: number | null;
   provider!: CourierProviderName;
   status!: ShipmentStatus;
   consignmentId!: string | null;
@@ -44,6 +46,7 @@ export function toShipmentDto(shipment: ShipmentWithEvents): ShipmentDto {
   return {
     id: shipment.id,
     orderId: shipment.orderId,
+    wholesaleOrderId: shipment.wholesaleOrderId,
     provider: shipment.provider,
     status: shipment.status,
     consignmentId: shipment.consignmentId,
@@ -99,6 +102,9 @@ export class ShipmentQueueRowDto {
   // ShipmentsService.dispatch()'s own codAmount = 0 fallback.
   pendingCodAmount!: string | null;
   shipment!: ShipmentQueueShipmentDto | null;
+  /** Set on a wholesale order's Steadfast parcel (then `id` is the wholesale
+   *  order's id): the tag shows "Wholesale", or "Wholesale · <channel>". */
+  wholesale?: { channel: string | null } | null;
 }
 
 export class ShipmentPerformanceDto {

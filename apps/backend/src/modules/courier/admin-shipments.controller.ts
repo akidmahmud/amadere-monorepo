@@ -141,6 +141,17 @@ export class AdminShipmentsController {
     return this.shipments.dispatch(dto, admin.id);
   }
 
+  // Book a wholesale order (courier Steadfast) with Steadfast.
+  @Post('dispatch-wholesale/:wholesaleOrderId')
+  @RequirePermission('shipment.dispatch')
+  @ApiOkResponse({ type: ShipmentDto })
+  dispatchWholesale(
+    @Param('wholesaleOrderId', ParseIntPipe) wholesaleOrderId: number,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<ShipmentDto> {
+    return this.shipments.dispatchWholesale(wholesaleOrderId, admin.id);
+  }
+
   @Post('dispatch-bulk')
   @RequirePermission('shipment.dispatch')
   dispatchBulk(

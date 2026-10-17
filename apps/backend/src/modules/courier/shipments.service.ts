@@ -15,6 +15,12 @@ import {
 import { mapRawCourierStatus, phoneLookupCandidates } from '@amader/shared';
 import { PaginatedResult } from '@amader/shared';
 import { Cron } from '@nestjs/schedule';
+import { OnEvent } from '@nestjs/event-emitter';
+import { WholesaleService } from '../wholesale/wholesale.service';
+import {
+  WHOLESALE_ORDER_CREATED_EVENT,
+  type WholesaleOrderCreatedEvent,
+} from '../wholesale/wholesale.events';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import {
@@ -133,6 +139,7 @@ export class ShipmentsService {
     steadfast: SteadfastCourierProvider,
     pathao: PathaoCourierProvider,
     redx: RedxCourierProvider,
+    private readonly wholesale: WholesaleService,
   ) {
     this.providers = {
       STEADFAST: steadfast,
@@ -324,6 +331,104 @@ export class ShipmentsService {
     );
   }
 
+  /**
+   * Book a wholesale order whose courier is Steadfast through the Steadfast
+   * API. The parcel is a Shipment row (wholesaleOrderId) so it shows in
+   * Shipments, tagged Wholesale, and the courier's webhooks update it.
+   * COD = what the shop still owes on the order.
+   */
+  async dispatchWholesale(
+    wholesaleOrderId: number,
+    adminUserId: number | null,
+  ): Promise<ShipmentDto> {
+    const o = await this.wholesale.findOrder(wholesaleOrderId);
+    if (o.courier !== 'STEADFAST')
+      throw new BadRequestException("This order's courier is not Steadfast");
+    if (o.status === 'CANCELLED')
+      throw new BadRequestException('This order is cancelled');
+    const active = await this.prisma.client.shipment.findFirst({
+      where: { wholesaleOrderId, status: { in: [...ACTIVE_STATUSES] } },
+    });
+    if (active)
+      throw new ConflictException('This order is already booked with Steadfast');
+    const d = o.delivery;
+    const phone = d.recipientPhone ?? o.customerPhone;
+    if (!phone || !d.addressLine)
+      throw new BadRequestException(
+        'Add the recipient phone and address before booking',
+      );
+
+    const weight = await this.computeOrderWeight(o.items);
+    const codAmount = new Decimal(o.due);
+    const result = await this.providers.STEADFAST.createConsignment({
+      invoiceNumber: o.orderNumber,
+      recipientName: d.recipientName ?? o.customerName,
+      recipientPhone: phone,
+      alternativePhone: d.alternativePhone ?? undefined,
+      recipientEmail: d.recipientEmail ?? undefined,
+      recipientAddress: [d.addressLine, d.thana, d.landmark, d.district, d.postCode]
+        .filter(Boolean)
+        .join(', '),
+      codAmount,
+      weightKg: weight,
+      note: o.note ?? undefined,
+      itemDescription: o.items
+        .map((i) => `${i.sku ?? i.name} x${i.quantity}`)
+        .join(', '),
+      deliveryType: 0,
+    });
+
+    const shipment = await this.prisma.client.shipment.create({
+      data: {
+        wholesaleOrderId,
+        provider: 'STEADFAST',
+        status: result.success ? 'DISPATCHED' : 'FAILED',
+        consignmentId: result.consignmentId,
+        trackingCode: result.trackingCode,
+        weight,
+        codAmount,
+        errorMessage: result.errorMessage,
+        requestPayload: result.requestPayload as object,
+        rawResponse: result.rawResponse as object,
+        dispatchedAt: result.success ? new Date() : undefined,
+        events: {
+          create: {
+            status: result.success ? 'DISPATCHED' : 'FAILED',
+            note: result.success ? 'Consignment created' : result.errorMessage,
+          },
+        },
+      },
+      include: SHIPMENT_INCLUDE,
+    });
+    if (result.success)
+      await this.prisma.client.wholesaleOrder.update({
+        where: { id: wholesaleOrderId },
+        data: {
+          consignmentId: result.trackingCode ?? result.consignmentId,
+          ...(o.status === 'PENDING' ? { status: 'PROCESSING' as const } : {}),
+        },
+      });
+    this.logger.log(
+      `Wholesale ${o.orderNumber} → Steadfast: ${result.success ? 'booked' : `failed — ${result.errorMessage}`}${adminUserId ? ` (admin ${adminUserId})` : ''}`,
+    );
+    return toShipmentDto(shipment);
+  }
+
+  /** A new wholesale order with Steadfast as its courier is booked straight away. */
+  @OnEvent(WHOLESALE_ORDER_CREATED_EVENT, { async: true })
+  async onWholesaleOrderCreated(e: WholesaleOrderCreatedEvent): Promise<void> {
+    const o = await this.prisma.client.wholesaleOrder.findUnique({
+      where: { id: e.orderId },
+      select: { courier: true },
+    });
+    if (o?.courier !== 'STEADFAST') return;
+    // Validation problems (no address...) just leave it unbooked; staff book
+    // it from the order once fixed. An API failure is a FAILED shipment row.
+    await this.dispatchWholesale(e.orderId, null).catch((err: Error) =>
+      this.logger.warn(`Wholesale #${e.orderId} not booked — ${err.message}`),
+    );
+  }
+
   async track(id: number): Promise<ShipmentDto> {
     const shipment = await this.prisma.client.shipment.findUnique({
       where: { id },
@@ -494,7 +599,26 @@ export class ShipmentsService {
         : {}),
     };
 
-    const [orders, total] = await Promise.all([
+    // Wholesale orders booked with Steadfast share this list, newest first.
+    // ponytail: both lists are read up to this page and merged in memory —
+    // O(page × pageSize); fine for a dispatch queue, a SQL UNION if deep
+    // paging ever matters.
+    const wholesaleWhere: Prisma.WholesaleOrderWhereInput = {
+      shipments: { some: {} },
+      ...(search
+        ? {
+            OR: [
+              { orderNumber: { contains: search, mode: 'insensitive' } },
+              { recipientName: { contains: search, mode: 'insensitive' } },
+              ...phoneLookupCandidates(search).map((c) => ({
+                recipientPhone: { contains: c },
+              })),
+            ],
+          }
+        : {}),
+    };
+    const upTo = page * pageSize;
+    const [orders, total, wholesaleOrders, wholesaleTotal] = await Promise.all([
       this.prisma.client.order.findMany({
         where,
         include: {
@@ -503,9 +627,20 @@ export class ShipmentsService {
           shipments: { orderBy: { createdAt: 'desc' }, take: 1 },
         },
         orderBy: { createdAt: 'desc' },
-        ...paginationArgs(page, pageSize),
+        take: upTo,
       }),
       this.prisma.client.order.count({ where }),
+      this.prisma.client.wholesaleOrder.findMany({
+        where: wholesaleWhere,
+        include: {
+          party: { select: { name: true, phone: true } },
+          salesChannel: { select: { name: true } },
+          shipments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: upTo,
+      }),
+      this.prisma.client.wholesaleOrder.count({ where: wholesaleWhere }),
     ]);
 
     const rows: ShipmentQueueRowDto[] = orders.map((o) => {
@@ -536,7 +671,38 @@ export class ShipmentsService {
       };
     });
 
-    return toPaginatedResult(rows, total, page, pageSize);
+    const wholesaleRows: ShipmentQueueRowDto[] = wholesaleOrders.map((w) => {
+      const sh = w.shipments[0];
+      return {
+        id: w.id,
+        orderNumber: w.orderNumber,
+        createdAt: w.createdAt,
+        // The retail column; a wholesale order's own status is in its panel.
+        status: (w.status === 'CANCELLED'
+          ? 'CANCELED'
+          : w.status === 'DELIVERED'
+            ? 'COMPLETED'
+            : w.status) as OrderStatus,
+        recipientName: w.recipientName ?? w.party.name,
+        shippingPhone: w.recipientPhone ?? w.party.phone,
+        totalAmount: w.total.toString(),
+        pendingCodAmount: sh.codAmount?.toString() ?? null,
+        shipment: {
+          id: sh.id,
+          provider: sh.provider,
+          status: sh.status,
+          consignmentId: sh.consignmentId,
+          trackingCode: sh.trackingCode,
+          courierStatus: rawCourierStatus(sh.rawResponse),
+        },
+        wholesale: { channel: w.salesChannel?.name ?? null },
+      };
+    });
+    const merged = [...rows, ...wholesaleRows]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice((page - 1) * pageSize, upTo);
+
+    return toPaginatedResult(merged, total + wholesaleTotal, page, pageSize);
   }
 
   async getBalance(provider: CourierProviderName): Promise<BalanceOutcome> {
@@ -677,6 +843,7 @@ export class ShipmentsService {
           { consignmentId },
           { trackingCode: consignmentId },
           { order: { orderNumber: consignmentId } },
+          { wholesaleOrder: { orderNumber: consignmentId } },
         ],
       },
     });
@@ -731,12 +898,29 @@ export class ShipmentsService {
     // already moved to CANCELED/RETURNED/COMPLETED themselves is left
     // alone, same guard OrdersService.updateStatus itself uses to decide
     // whether a live reservation still exists to commit/release.
+    // A wholesale parcel: its money is a due against the shop in the wholesale
+    // panel, so none of the retail order / receivable / payment sync below
+    // applies. Delivered marks the wholesale order delivered; a return is left
+    // to staff (cancelling there restocks and voids the invoice).
+    if (shipment.wholesaleOrderId) {
+      if (status === 'DELIVERED')
+        await this.prisma.client.wholesaleOrder.updateMany({
+          where: {
+            id: shipment.wholesaleOrderId,
+            status: { in: ['PENDING', 'PROCESSING'] },
+          },
+          data: { status: 'DELIVERED' },
+        });
+      return;
+    }
+    const orderId = shipment.orderId!;
+
     const orderStatus = ORDER_STATUS_ON_SHIPMENT_STATUS[status];
     // Staff cancelled this parcel themselves (cancelOrReturn): the courier's
     // echo is not a return.
     if (orderStatus && !(status === 'CANCELED' && shipment.status === 'CANCELED')) {
       const order = await this.prisma.client.order.findUnique({
-        where: { id: shipment.orderId },
+        where: { id: orderId },
         select: { id: true, status: true, items: { select: { id: true, quantity: true } } },
       });
       if (order && ACTIVE_ORDER_STATUSES.has(order.status)) {
@@ -782,7 +966,7 @@ export class ShipmentsService {
             shipment.settledCodAmount);
       if (amount !== null)
         await this.salesPosting.resizeCodReceivable({
-          orderId: shipment.orderId,
+          orderId,
           shipmentId: shipment.id,
           provider,
           codAmount: amount,
@@ -807,7 +991,7 @@ export class ShipmentsService {
     // this by booking cash here — that is the bug the ledger redesign removed.
     if (status === 'DELIVERED' || status === 'PARTIALLY_DELIVERED') {
       const payment = await this.prisma.client.payment.findFirst({
-        where: { orderId: shipment.orderId },
+        where: { orderId },
         orderBy: { createdAt: 'desc' },
       });
       if (
@@ -879,8 +1063,10 @@ export class ShipmentsService {
     });
     for (const s of rows) {
       const collected = s.collectedCodAmount ?? s.settledCodAmount;
+      // `order: {...}` in the filter means every row has one.
+      const orderId = s.orderId!;
       await this.orders.updateStatus(
-        s.orderId,
+        orderId,
         {
           status: 'PARTIALLY_RETURNED',
           note: `Auto-updated — ${s.provider} reported partial delivery${collected ? ` (৳${collected.toFixed(0)} collected)` : ''}. Check which items came back.`,
@@ -889,7 +1075,7 @@ export class ShipmentsService {
       );
       if (collected)
         await this.salesPosting.resizeCodReceivable({
-          orderId: s.orderId,
+          orderId,
           shipmentId: s.id,
           provider: s.provider,
           codAmount: collected,

@@ -200,6 +200,13 @@ export class AdminRecoveryController {
     return this.recovery.sendRecoveryEmail(id, dto);
   }
 
+  // A cancelled order that came from Recovery: its cart back to the open list.
+  @Post('from-order/:orderId/reopen')
+  @RequirePermission('net_profit_recovery.manage')
+  reopenFromOrder(@Param('orderId', ParseIntPipe) orderId: number) {
+    return this.recovery.reopenFromOrder(orderId);
+  }
+
   @Post(':id/cancel')
   @RequirePermission('net_profit_recovery.manage')
   cancel(@Param('id', ParseIntPipe) id: number, @Body() dto: CancelIncompleteOrderDto) {

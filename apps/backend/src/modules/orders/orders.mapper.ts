@@ -172,6 +172,8 @@ export class OrderDto {
    * for exactly the shoppers staff most want to recognise.
    */
   customerOrderCount?: number;
+  /** Admin detail only: this order came from Recovery (an abandoned cart). */
+  fromRecovery?: boolean;
   /**
    * The customer ACCOUNT's own name/phone/email, for the order modal's
    * Customer card — never the shipping address, so editing where one parcel

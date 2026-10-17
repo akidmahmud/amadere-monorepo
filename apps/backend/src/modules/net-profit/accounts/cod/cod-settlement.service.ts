@@ -77,13 +77,16 @@ export class CodSettlementService {
     provider?: CourierProviderName,
     shipmentIds?: number[],
   ): Promise<BatchShipment[]> {
-    return this.prisma.client.shipment.findMany({
+    const rows = await this.prisma.client.shipment.findMany({
       where: {
         ...(provider ? { provider } : {}),
         // Never settle the same shipment twice.
         codSettlementId: null,
         status: { in: ['DELIVERED', 'PARTIALLY_DELIVERED'] },
         codAmount: { gt: 0 },
+        // Retail parcels only: a wholesale Steadfast parcel's money is the
+        // shop's due, recorded as a payment in the wholesale panel.
+        orderId: { not: null },
         ...(shipmentIds ? { id: { in: shipmentIds } } : {}),
       },
       select: {
@@ -96,6 +99,7 @@ export class CodSettlementService {
         settledCodAmount: true,
       },
     });
+    return rows.map((r) => ({ ...r, orderId: r.orderId! }));
   }
 
   /** What each courier currently owes us, grouped for the settlement screen. */

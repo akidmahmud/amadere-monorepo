@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { IncompleteOrder, Prisma } from '@amader/db';
@@ -1150,6 +1150,27 @@ export class RecoveryService {
     });
     await this.campaigns.skipRemaining(id);
     return toIncompleteOrderDto(row);
+  }
+
+  /**
+   * A recovered order was cancelled: its cart goes back to the open Recovery
+   * list so staff can chase it again. Win-back campaigns are not restarted.
+   */
+  async reopenFromOrder(orderId: number): Promise<{ reopened: number }> {
+    const order = await this.prisma.client.order.findUnique({
+      where: { id: orderId },
+      select: { status: true },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== 'CANCELED')
+      throw new BadRequestException('Cancel the order first');
+    const { count } = await this.prisma.client.incompleteOrder.updateMany({
+      where: { recoveredOrderId: orderId },
+      data: { recovered: false, recoveredOrderId: null },
+    });
+    if (!count)
+      throw new NotFoundException('This order did not come from Recovery');
+    return { reopened: count };
   }
 
   async recoveryRate(): Promise<{ total: number; recovered: number; ratePercent: number; recoveredValue: string }> {

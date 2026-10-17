@@ -158,11 +158,21 @@ export class WholesaleOrderDto {
   note!: string | null;
   placedAt!: Date;
   items!: WholesaleOrderItemDto[];
+  /** Latest Steadfast booking; null = not booked. */
+  shipment!: {
+    id: number;
+    status: string;
+    trackingCode: string | null;
+    errorMessage: string | null;
+  } | null;
 }
 
 type OrderRow = Prisma.WholesaleOrderGetPayload<{
   include: {
     party: { select: { id: true; name: true; phone: true } };
+    shipments: {
+      select: { id: true; status: true; trackingCode: true; errorMessage: true };
+    };
     salesChannel: { select: { id: true; name: true } };
     items: {
       include: {
@@ -205,6 +215,7 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
     courier: row.courier,
     courierName: row.courierName,
     consignmentId: row.consignmentId,
+    shipment: row.shipments?.[0] ?? null,
     delivery: {
       recipientName: row.recipientName,
       recipientPhone: row.recipientPhone,

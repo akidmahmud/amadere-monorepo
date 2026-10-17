@@ -90,6 +90,12 @@ const dateOrNull = (v: string | null) => (v ? new Date(v) : null);
 
 const ORDER_INCLUDE = {
   party: { select: { id: true, name: true, phone: true } },
+  // The latest Steadfast booking (courier STEADFAST), if any.
+  shipments: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 1,
+    select: { id: true, status: true, trackingCode: true, errorMessage: true },
+  },
   salesChannel: { select: { id: true, name: true } },
   // The line's picture is resolved from the product rather than snapshotted
   // beside the name and price. The snapshots exist because those are

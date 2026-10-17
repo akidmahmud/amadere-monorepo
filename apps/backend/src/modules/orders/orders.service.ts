@@ -135,6 +135,10 @@ export class OrdersService {
       customerOrderCount: await this.countOrdersForPhone(
         order.addresses.find((a) => a.type === 'SHIPPING')?.phone,
       ),
+      fromRecovery:
+        (await this.prisma.client.incompleteOrder.count({
+          where: { recoveredOrderId: id },
+        })) > 0,
       customer: cu
         ? {
             name:
