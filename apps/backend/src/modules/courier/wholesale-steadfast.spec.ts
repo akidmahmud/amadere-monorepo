@@ -35,6 +35,7 @@ function make(order: Record<string, unknown> = {}) {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn((a: { data: Record<string, unknown> }) => Promise.resolve({ id: 50, ...a.data, events: [] })),
         update: jest.fn(),
+        deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
       wholesaleOrder: { update: jest.fn(), updateMany: jest.fn() },
       product: { findUnique: jest.fn().mockResolvedValue({ shippableWeight: D(1) }) },
@@ -141,5 +142,13 @@ describe('Shipments queue with wholesale parcels', () => {
       wholesale: { channel: 'Daraz' },
       shipment: { id: 50, trackingCode: 'SF777' },
     });
+  });
+});
+
+describe('Removing wholesale parcels from Shipments', () => {
+  it('deletes only those wholesale orders\' shipment rows', async () => {
+    const { svc, prisma } = make();
+    expect(await svc.removeWholesaleShipments([3, 4])).toEqual({ removed: 2 });
+    expect(prisma.client.shipment.deleteMany).toHaveBeenCalledWith({ where: { wholesaleOrderId: { in: [3, 4] } } });
   });
 });

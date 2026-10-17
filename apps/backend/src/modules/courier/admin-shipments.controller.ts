@@ -26,6 +26,7 @@ import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
 import { DispatchBulkShipmentDto } from './dto/dispatch-bulk-shipment.dto';
 import { CancelShipmentDto } from './dto/cancel-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import { RemoveWholesaleShipmentsDto } from './dto/remove-wholesale-shipments.dto';
 import { ShipmentDto, ShipmentPerformanceDto, ShipmentQueueRowDto } from './shipments.mapper';
 import { BalanceOutcome, PaymentsOutcome } from './courier-provider.interface';
 
@@ -150,6 +151,16 @@ export class AdminShipmentsController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<ShipmentDto> {
     return this.shipments.dispatchWholesale(wholesaleOrderId, admin.id);
+  }
+
+  // Take wholesale orders' Steadfast parcels off the Shipments list. The
+  // wholesale orders themselves stay in the Wholesale panel.
+  @Post('wholesale/remove')
+  @RequirePermission('shipment.manage')
+  removeWholesale(
+    @Body() dto: RemoveWholesaleShipmentsDto,
+  ): Promise<{ removed: number }> {
+    return this.shipments.removeWholesaleShipments(dto.wholesaleOrderIds);
   }
 
   @Post('dispatch-bulk')

@@ -414,6 +414,20 @@ export class ShipmentsService {
     return toShipmentDto(shipment);
   }
 
+  /**
+   * Remove wholesale orders' Steadfast parcel records from Shipments. Nothing
+   * is sent to Steadfast (Cancel does that) and the wholesale order is left
+   * as it is; it can be booked again from its edit form.
+   */
+  async removeWholesaleShipments(
+    wholesaleOrderIds: number[],
+  ): Promise<{ removed: number }> {
+    const { count } = await this.prisma.client.shipment.deleteMany({
+      where: { wholesaleOrderId: { in: wholesaleOrderIds } },
+    });
+    return { removed: count };
+  }
+
   /** A new wholesale order with Steadfast as its courier is booked straight away. */
   @OnEvent(WHOLESALE_ORDER_CREATED_EVENT, { async: true })
   async onWholesaleOrderCreated(e: WholesaleOrderCreatedEvent): Promise<void> {

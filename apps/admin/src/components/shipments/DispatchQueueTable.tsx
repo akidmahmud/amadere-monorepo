@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { proxyFetch } from "@/lib/api/proxy-client";
 import {
   useCancelShipment,
   useCourierBalance,
@@ -182,6 +183,9 @@ export function DispatchQueueTable() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Wholesale rows' ids are wholesale order ids, so they get their own set.
+  const [wsSelected, setWsSelected] = useState<Set<number>>(new Set());
+  const selectedCount = selected.size + wsSelected.size;
   const [amountOverrides, setAmountOverrides] = useState<Record<number, string>>({});
   const [balanceProvider] = useState<ShipmentProvider>("STEADFAST");
   const [bulkProvider, setBulkProvider] = useState<ShipmentProvider>("STEADFAST");
@@ -202,6 +206,14 @@ export function DispatchQueueTable() {
   const track = useTrackShipment();
   const cancel = useCancelShipment();
   const bulkOrderAction = useBulkOrderAction();
+  // Wholesale parcels: removed from this list only; the order stays in Wholesale.
+  const removeWholesale = useMutation({
+    mutationFn: (wholesaleOrderIds: number[]) =>
+      proxyFetch("/admin/shipments/wholesale/remove", {
+        method: "POST",
+        body: JSON.stringify({ wholesaleOrderIds }),
+      }),
+  });
 
   const rawRows = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -265,9 +277,19 @@ export function DispatchQueueTable() {
     next.has(id) ? next.delete(id) : next.add(id);
     setSelected(next);
   }
+  function toggleWs(id: number) {
+    const next = new Set(wsSelected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setWsSelected(next);
+  }
   function toggleAll() {
-    const own = rows.filter((r) => !wholesaleOf(r));
-    setSelected(selected.size === own.length ? new Set() : new Set(own.map((r) => r.id)));
+    if (selectedCount === rows.length) {
+      setSelected(new Set());
+      setWsSelected(new Set());
+      return;
+    }
+    setSelected(new Set(rows.filter((r) => !wholesaleOf(r)).map((r) => r.id)));
+    setWsSelected(new Set(rows.filter((r) => wholesaleOf(r)).map((r) => r.id)));
   }
 
   function sendOne(row: ShipmentQueueRow) {
@@ -298,19 +320,22 @@ export function DispatchQueueTable() {
     window.open(`${path}?ids=${[...selected].join(",")}`, "_blank");
   }
 
-  function confirmDelete() {
-    const orderIds = deleteTarget === "bulk" ? [...selected] : deleteTarget ? [deleteTarget.id] : [];
-    if (orderIds.length === 0) return;
-    bulkOrderAction.mutate(
-      { orderIds, action: "delete" },
-      {
-        onSuccess: () => {
-          qc.invalidateQueries({ queryKey: ["admin-shipments"] });
-          setSelected(new Set());
-          setDeleteTarget(null);
-        },
-      },
-    );
+  async function confirmDelete() {
+    const single = deleteTarget !== "bulk" ? deleteTarget : null;
+    const orderIds =
+      deleteTarget === "bulk" ? [...selected] : single && !wholesaleOf(single) ? [single.id] : [];
+    const wsIds =
+      deleteTarget === "bulk" ? [...wsSelected] : single && wholesaleOf(single) ? [single.id] : [];
+    if (orderIds.length === 0 && wsIds.length === 0) return;
+    try {
+      if (orderIds.length) await bulkOrderAction.mutateAsync({ orderIds, action: "delete" });
+      if (wsIds.length) await removeWholesale.mutateAsync(wsIds);
+    } finally {
+      qc.invalidateQueries({ queryKey: ["admin-shipments"] });
+      setSelected(new Set());
+      setWsSelected(new Set());
+      setDeleteTarget(null);
+    }
   }
 
   return (
@@ -476,7 +501,7 @@ export function DispatchQueueTable() {
         </button>
         <button
           type="button"
-          disabled={selected.size === 0}
+          disabled={selectedCount === 0}
           onClick={() => setDeleteTarget("bulk")}
           className="h-[38px] rounded-inner border border-danger/30 bg-danger/5 px-3 text-[0.76rem] font-bold text-danger hover:bg-danger/10 disabled:opacity-40"
         >
@@ -489,7 +514,7 @@ export function DispatchQueueTable() {
           <thead>
             <tr>
               <th className="w-[34px] rounded-l-[8px] bg-[#f7f9fc] px-2.5 py-[11px]">
-                <input type="checkbox" checked={rows.length > 0 && selected.size === rows.length} onChange={toggleAll} className="h-4 w-4 accent-brand-500" />
+                <input type="checkbox" checked={rows.length > 0 && selectedCount === rows.length} onChange={toggleAll} className="h-4 w-4 accent-brand-500" />
               </th>
               <th
                 onClick={() => handleSort("orderNumber")}
@@ -551,7 +576,12 @@ export function DispatchQueueTable() {
               return (
               <tr key={ws ? `w${row.id}` : row.id} className="border-b border-[#f1f5fa] last:border-b-0 hover:bg-[#fafcfe]">
                 <td className="px-2.5 py-3 align-middle">
-                  {!ws && <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleOne(row.id)} className="h-4 w-4 accent-brand-500" />}
+                  <input
+                    type="checkbox"
+                    checked={ws ? wsSelected.has(row.id) : selected.has(row.id)}
+                    onChange={() => (ws ? toggleWs(row.id) : toggleOne(row.id))}
+                    className="h-4 w-4 accent-brand-500"
+                  />
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
                   {ws ? (
@@ -675,10 +705,10 @@ export function DispatchQueueTable() {
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap font-bold text-text">৳{row.totalAmount}</td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
-                  {!ws && (
+                  {(
                   <button
                     type="button"
-                    title="Delete order"
+                    title={ws ? "Remove from Shipments" : "Delete order"}
                     onClick={() => setDeleteTarget(row)}
                     className="grid h-8 w-8 place-items-center rounded-inner border border-danger/30 text-danger hover:bg-danger/10"
                   >
@@ -747,9 +777,15 @@ export function DispatchQueueTable() {
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
-        pending={bulkOrderAction.isPending}
-        title={deleteTarget === "bulk" ? `Delete ${selected.size} order(s)?` : `Delete order #${deleteTarget?.orderNumber}?`}
-        description="This moves the order to Deleted Orders, not a permanent delete — it can be restored from there at any time."
+        pending={bulkOrderAction.isPending || removeWholesale.isPending}
+        title={deleteTarget === "bulk" ? `Delete ${selectedCount} order(s)?` : `Delete order #${deleteTarget?.orderNumber}?`}
+        description={
+          (deleteTarget === "bulk" ? selected.size > 0 : !!deleteTarget && !wholesaleOf(deleteTarget))
+            ? `This moves the order to Deleted Orders, not a permanent delete — it can be restored from there at any time.${
+                deleteTarget === "bulk" && wsSelected.size ? " Wholesale parcels are only removed from this list; their orders stay in Wholesale." : ""
+              }`
+            : "This removes the parcel from Shipments. The wholesale order stays in Wholesale and can be booked again there. Nothing is cancelled at Steadfast (use Cancel for that)."
+        }
       />
     </div>
   );
