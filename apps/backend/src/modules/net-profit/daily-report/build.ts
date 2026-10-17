@@ -14,8 +14,6 @@ export interface BuildLine {
   /** The product's SKU; null when none is set. */
   sku?: string | null;
   kg: number;
-  /** Units on the line (kg is weight, not count). */
-  units?: number;
   sales: number;
   /** Whole-line cost (unit cost × quantity); null = no cost on record. */
   cost: number | null;
@@ -27,8 +25,6 @@ export interface BuildOrder {
   source: string;
   delivery: number;
   lines: BuildLine[];
-  /** A ৳0 replacement order (Exchange). */
-  exchange?: boolean;
 }
 
 export interface BuildInput {
@@ -40,8 +36,6 @@ export interface BuildInput {
   fixedCosts: DailyReportFixedCost[];
   /** Σ MarketingCost (ads + other) over the period. */
   marketing: number;
-  /** Returned items written off as damaged in the period. */
-  writeOffs?: { items: number; cost: number };
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -208,26 +202,5 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
     estimatedLines,
     orderIds,
     wholesaleOrderIds,
-    ...exchangeTotals(input),
-    ...(input.writeOffs ? { writeOffs: input.writeOffs } : {}),
-  };
-}
-
-/** Exchange orders in reported sources: count, units and cost. */
-function exchangeTotals(
-  input: BuildInput,
-): { exchange?: { orders: number; items: number; cost: number } } {
-  const shown = new Set(
-    input.sources.filter((s) => s.enabled).map((s) => s.key),
-  );
-  const ex = input.orders.filter((o) => o.exchange && shown.has(o.source));
-  if (!ex.length) return {};
-  const lines = ex.flatMap((o) => o.lines);
-  return {
-    exchange: {
-      orders: ex.length,
-      items: sum(lines.map((l) => l.units ?? 0)),
-      cost: r2(sum(lines.map((l) => l.cost ?? 0))),
-    },
   };
 }

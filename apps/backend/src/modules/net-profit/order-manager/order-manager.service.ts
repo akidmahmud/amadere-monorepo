@@ -75,7 +75,6 @@ interface RawOrderManagerRow {
   id: number;
   order_number: string;
   status: OrderStatus;
-  is_exchange: boolean;
   channel: OrderChannel;
   cod_amount: Prisma.Decimal | null;
   settled_cod_amount: Prisma.Decimal | null;
@@ -153,8 +152,6 @@ export class OrderManagerService {
     ];
     if (includeStatus && query.status)
       conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
-    if (query.exchange)
-      conditions.push(Prisma.sql`o.exchange_of_order_id IS NOT NULL`);
     if (query.paymentProvider)
       conditions.push(
         Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`,
@@ -227,12 +224,7 @@ export class OrderManagerService {
    */
   async statusCounts(
     query: OrderManagerQueryDto,
-  ): Promise<{
-    counts: Record<string, number>;
-    totalValue: string;
-    /** Exchange orders among those counted (any status). */
-    exchangeCount: number;
-  }> {
+  ): Promise<{ counts: Record<string, number>; totalValue: string }> {
     const conditions = this.buildConditions(query, false, false);
     const where =
       conditions.length > 0
@@ -240,15 +232,9 @@ export class OrderManagerService {
         : Prisma.empty;
 
     const rows = await this.prisma.client.$queryRaw<
-      {
-        status: OrderStatus;
-        count: bigint;
-        value: Prisma.Decimal | null;
-        exchange_count?: bigint;
-      }[]
+      { status: OrderStatus; count: bigint; value: Prisma.Decimal | null }[]
     >`
-      SELECT o.status, count(*)::bigint AS count, sum(o.total_amount) AS value,
-             count(*) FILTER (WHERE o.exchange_of_order_id IS NOT NULL)::bigint AS exchange_count
+      SELECT o.status, count(*)::bigint AS count, sum(o.total_amount) AS value
       FROM orders o
       LEFT JOIN order_addresses oa ON oa.order_id = o.id AND oa.type = 'SHIPPING'
       LEFT JOIN LATERAL (
@@ -263,22 +249,14 @@ export class OrderManagerService {
     `;
     const counts: Record<string, number> = {};
     let totalValue = new Prisma.Decimal(0);
-    let exchanges = 0;
     for (const r of rows) {
       counts[r.status] = Number(r.count);
-      exchanges += Number(r.exchange_count ?? 0);
       if (r.value && r.status !== 'CANCELED')
         totalValue = totalValue.plus(r.value);
     }
     // String, not number: Decimal through JSON.parse loses money at the
     // scale this shop already trades at.
-    // Exchange is a filter, not a status: its count spans every status, so
-    // it is kept out of `counts` (screens add those up for the total).
-    return {
-      counts,
-      totalValue: totalValue.toFixed(2),
-      exchangeCount: exchanges,
-    };
+    return { counts, totalValue: totalValue.toFixed(2) };
   }
 
   async list(
@@ -296,7 +274,6 @@ export class OrderManagerService {
 
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
       SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
-             o.exchange_of_order_id IS NOT NULL AS is_exchange,
              o.utm_source, o.utm_campaign, o.deleted_at, o.channel,
              o.assigned_admin_id,
              NULLIF(TRIM(CONCAT(au.first_name, ' ', au.last_name)), '') AS assigned_admin_name,
@@ -411,7 +388,6 @@ export class OrderManagerService {
     const items: OrderManagerRowDto[] = rows.map((r) => ({
       id: r.id,
       orderNumber: r.order_number,
-      isExchange: r.is_exchange === true,
       status: r.status,
       totalAmount: r.total_amount.toString(),
       createdAt: r.created_at,

@@ -121,24 +121,6 @@ export function ReportSheet({ s }: { s: DailyReportSnapshot }) {
               {money(s.netProfit)}
             </td>
           </tr>
-          {s.exchange && (
-            <tr className="text-sm text-muted">
-              <td className="px-2 py-1" colSpan={10}>
-                Exchanges: {s.exchange.orders} orders, {s.exchange.items} items
-                sent free (cost included above)
-              </td>
-              <td className={num}>{money(s.exchange.cost)}</td>
-            </tr>
-          )}
-          {s.writeOffs && (
-            <tr className="text-sm text-muted">
-              <td className="px-2 py-1" colSpan={10}>
-                Damaged write-offs: {s.writeOffs.items} items returned and not
-                restocked (already counted when sold)
-              </td>
-              <td className={num}>{money(s.writeOffs.cost)}</td>
-            </tr>
-          )}
         </tbody>
       </table>
     </div>

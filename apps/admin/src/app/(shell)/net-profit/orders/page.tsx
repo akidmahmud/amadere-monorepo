@@ -309,7 +309,6 @@ function OrderManagerPageInner() {
   const filters: OrderManagerFilters = {
     q: uiFilters.q || undefined,
     status: uiFilters.status,
-    exchange: uiFilters.exchange,
     paymentProvider: uiFilters.paymentProvider,
     courierProvider: uiFilters.courierProvider,
     risk: uiFilters.risk,

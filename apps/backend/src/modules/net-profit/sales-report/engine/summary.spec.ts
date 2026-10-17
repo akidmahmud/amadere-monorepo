@@ -106,15 +106,3 @@ describe('diffDays', () => {
     expect(diffDays('2026-08-01', '2026-08-07')).toBe(6);
   });
 });
-
-describe('summarize — exchanges', () => {
-  it('counts delivered exchange orders and their product cost (already in cogs)', () => {
-    const delivered = DEMO_EXCEL_DAY.find((o) => o.status === 'Delivered')!;
-    const plain = calcOrder(delivered, S);
-    const ex = calcOrder({ ...delivered, id: 999, exchange: true }, S);
-    const s = summarize([plain, ex], S);
-    expect(s.exN).toBe(1);
-    expect(s.exCost).toBe(ex.cogs ?? 0);
-    expect(s.cogs).toBeCloseTo((plain.cogs ?? 0) + (ex.cogs ?? 0));
-  });
-});

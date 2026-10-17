@@ -75,29 +75,3 @@ describe('OrderManagerService.statusCounts', () => {
     expect(result.totalValue).toBe('0.00');
   });
 });
-
-describe('OrderManagerService — Exchange filter', () => {
-  it('counts exchange orders across statuses', async () => {
-    const service = serviceReturning([
-      { ...row('CONFIRMED', 3, '0'), exchange_count: BigInt(2) },
-      { ...row('COMPLETED', 4, '900'), exchange_count: BigInt(1) },
-    ]);
-    const result = await service.statusCounts({});
-    // Its own field: screens add up \`counts\` for the total.
-    expect(result.exchangeCount).toBe(3);
-    expect(result.counts).toEqual({ CONFIRMED: 3, COMPLETED: 4 });
-  });
-
-  it('the exchange filter keeps only orders linked to an original', () => {
-    const service = serviceReturning([]);
-    const sql = (
-      service as unknown as {
-        buildConditions: (q: object, s: boolean) => Prisma.Sql[];
-      }
-    )
-      .buildConditions({ exchange: true }, true)
-      .map((c) => c.sql)
-      .join(' AND ');
-    expect(sql).toContain('o.exchange_of_order_id IS NOT NULL');
-  });
-});

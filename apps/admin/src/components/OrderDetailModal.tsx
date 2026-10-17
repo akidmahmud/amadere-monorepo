@@ -1,6 +1,5 @@
 "use client";
 
-import { ExchangeDialog } from "@/components/orders/ExchangeDialog";
 import { useState } from "react";
 import Link from "next/link";
 import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
@@ -132,11 +131,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const updateNote = useUpdateOrderNote(row.id);
   const resendConfirmation = useResendOrderConfirmation(row.id);
   const reorder = useReorderOrder(row.id);
-  // Exchange: the ৳0 replacement dialog, and a linked order opened on top.
-  const [exchanging, setExchanging] = useState(false);
-  const [linked, setLinked] = useState<{ id: number; orderNumber: string } | null>(null);
-  // Line price pencil: which line is being edited, and the typed price.
-  const [priceEdit, setPriceEdit] = useState<{ itemId: number; value: string } | null>(null);
   const statusByKey = new Map((statusConfigs ?? []).map((s) => [s.status, s]));
 
   const [showConsign, setShowConsign] = useState(false);
@@ -201,40 +195,11 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
             {/* Order information card */}
             <div className="rounded-card border border-border bg-surface p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold text-text">
-                  Order information {order.orderNumber}
-                  {order.exchangeOf && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-800">
-                      Exchange
-                    </span>
-                  )}
-                </h3>
+                <h3 className="text-base font-semibold text-text">Order information {order.orderNumber}</h3>
                 <StatusPill color={statusByKey.get(order.status)?.color ?? "#9ca3af"}>
                   {statusByKey.get(order.status)?.labelEn ?? order.status}
                 </StatusPill>
               </div>
-
-              {(order.exchangeOf || (order.exchanges?.length ?? 0) > 0) && (
-                <p className="mb-3 flex flex-wrap items-center gap-1 text-sm text-muted">
-                  {order.exchangeOf ? (
-                    <>
-                      Exchange for
-                      <button type="button" className="font-semibold text-[#2e7d43] underline" onClick={() => setLinked(order.exchangeOf!)}>
-                        #{order.exchangeOf.orderNumber}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      Exchanged →
-                      {order.exchanges!.map((x) => (
-                        <button key={x.id} type="button" className="font-semibold text-[#2e7d43] underline" onClick={() => setLinked(x)}>
-                          #{x.orderNumber}
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </p>
-              )}
 
               {itemsEditable && (
                 <div className="relative mb-3">
@@ -318,42 +283,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                       {item.name} {item.sku && <span className="text-muted">(SKU: {item.sku})</span>}
                       {item.weight && <span className="text-muted"> · {item.weight} kg</span>}
                     </span>
-                    {priceEdit?.itemId === item.id ? (
-                      <span className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min={0}
-                          autoFocus
-                          value={priceEdit.value}
-                          onChange={(e) => setPriceEdit({ itemId: item.id, value: e.target.value })}
-                          className="num h-8 w-20 rounded-sm border border-border bg-surface px-1.5 text-right text-sm text-text"
-                          aria-label={`Price of ${item.name}`}
-                        />
-                        <button
-                          type="button"
-                          disabled={updateItem.isPending || priceEdit.value.trim() === "" || Number(priceEdit.value) < 0}
-                          className="text-xs font-bold text-[#2e7d43] disabled:opacity-40"
-                          onClick={() =>
-                            updateItem.mutate(
-                              { itemId: item.id, unitPrice: Number(priceEdit.value) },
-                              { onSuccess: () => setPriceEdit(null) },
-                            )
-                          }
-                        >
-                          Save
-                        </button>
-                        <button type="button" className="text-xs text-muted" onClick={() => setPriceEdit(null)}>
-                          Cancel
-                        </button>
-                      </span>
-                    ) : (
-                      <span className="num flex w-24 items-center justify-end gap-1 text-right text-muted">
-                        ৳{item.unitPrice}
-                        {itemsEditable && (
-                          <PencilButton onClick={() => setPriceEdit({ itemId: item.id, value: String(Number(item.unitPrice)) })} />
-                        )}
-                      </span>
-                    )}
+                    <span className="num w-20 text-right text-muted">৳{item.unitPrice}</span>
                     <span className="text-muted">x</span>
                     {itemsEditable ? (
                       <input
@@ -1129,12 +1059,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                 onClick={() => reorder.mutate(undefined, { onSuccess: () => onClose() })}>
                 {reorder.isPending ? "Creating…" : "Reorder"}
               </button>
-              {["COMPLETED", "PARTIALLY_RETURNED", "RETURNED"].includes(order.status) && (
-                <button type="button" className={`${outlineBtn} flex-1 justify-center`} onClick={() => setExchanging(true)}
-                  title="Send a free replacement for damaged items">
-                  Exchange
-                </button>
-              )}
               <button type="button" disabled={updateStatus.isPending} className={`${outlineBtn} flex-1 justify-center`}
                 onClick={() => updateStatus.mutate({ status: "CANCELED", note: "Canceled by staff" })}>
                 Cancel
@@ -1146,22 +1070,6 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
 
       {showConsign && <ConsignModal order={row} onClose={() => setShowConsign(false)} />}
       {showRisk && row.shippingPhone && <FraudDetailModal phone={row.shippingPhone} onClose={() => setShowRisk(false)} />}
-      {exchanging && order && (
-        <ExchangeDialog
-          order={order}
-          onClose={() => setExchanging(false)}
-          onCreated={(id) => {
-            setExchanging(false);
-            setLinked({ id, orderNumber: "" });
-          }}
-        />
-      )}
-      {linked && (
-        <OrderDetailModal
-          row={{ id: linked.id, orderNumber: linked.orderNumber, shipmentId: null, shippingPhone: null }}
-          onClose={() => setLinked(null)}
-        />
-      )}
     </Modal>
   );
 }

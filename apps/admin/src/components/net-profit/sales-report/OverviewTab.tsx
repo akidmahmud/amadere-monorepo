@@ -388,12 +388,6 @@ export function OverviewTab({ f, money, onExport }: TabProps) {
         <Funnel s={s} basis={f.basis} />
       </div>
       {money && <MetricStrip s={s} />}
-      {money && (s.exN ?? 0) > 0 && (
-        <p className="text-sm text-muted">
-          Exchanges: {s.exN} delivered · {tk(s.exCost ?? 0)} product cost
-          (included in Product cost)
-        </p>
-      )}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Panel
           title="By day"

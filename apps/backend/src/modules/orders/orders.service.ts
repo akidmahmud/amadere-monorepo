@@ -231,14 +231,7 @@ export class OrdersService {
         !RELEASE_ON_CANCEL.has(cur.status)
       ) {
         if (wasEverCompleted && !stockOut) {
-          // Already restocked by an earlier CANCELED/RETURNED — nothing to put
-          // back. Units staff now mark damaged are on the shelf, though, so
-          // they come off it as a write-off.
-          if (
-            dto.returnLines?.length &&
-            !(await this.posStoreId(tx, cur.storeId))
-          )
-            await this.writeOffFromShelf(tx, cur.items, dto.returnLines);
+          // Already restocked by an earlier CANCELED/RETURNED — nothing to put back.
         } else if (wasEverCompleted) {
           // Stock was already committed (decremented for real) at some
           // point in this order's history — the physical items are coming
@@ -259,37 +252,11 @@ export class OrdersService {
               });
             }
           } else {
-            await this.applyReturnLines(
-              tx,
-              cur.items,
-              dto.status,
-              dto.returnLines,
-            );
+            await this.restockReturnedItems(tx, cur.items);
           }
         } else {
           await this.releaseReservations(tx, cur.items);
         }
-      }
-      // A partial return followed by the rest coming back. The release block
-      // above skips release-to-release moves, so finish the return here,
-      // from what the partial return recorded.
-      const partialCounted = cur.items.some(
-        (i) => i.restockedQuantity > 0 || i.writtenOffQuantity > 0,
-      );
-      if (
-        cur.status === 'PARTIALLY_RETURNED' &&
-        dto.status === 'RETURNED' &&
-        wasEverCompleted &&
-        partialCounted &&
-        !(await this.posStoreId(tx, cur.storeId))
-      ) {
-        await this.applyReturnLines(
-          tx,
-          cur.items,
-          dto.status,
-          dto.returnLines,
-          true,
-        );
       }
       if (COMMIT_ON_COMPLETE.has(dto.status)) {
         if (wasEverCompleted && stockOut) {
@@ -317,24 +284,7 @@ export class OrdersService {
               });
             }
           } else {
-            // Take back only what the return put on the shelf. Returns from
-            // before per-line counts existed restocked everything (both
-            // counts 0), so they take back the full quantity.
-            const counted = cur.items.some(
-              (i) => i.restockedQuantity > 0 || i.writtenOffQuantity > 0,
-            );
-            await this.decrementStockOnly(
-              tx,
-              cur.items.map((i) => ({
-                ...i,
-                quantity: counted ? i.restockedQuantity : i.quantity,
-              })),
-            );
-            if (counted)
-              await tx.orderItem.updateMany({
-                where: { orderId: id },
-                data: { restockedQuantity: 0, writtenOffQuantity: 0 },
-              });
+            await this.decrementStockOnly(tx, cur.items);
           }
         } else {
           // Genuinely the first completion — a live reservation still
@@ -499,21 +449,19 @@ export class OrdersService {
   // deliberately held fixed across item edits (ponytail: re-validating
   // coupon eligibility, e.g. minOrderAmount, on every quantity tweak is a
   // materially bigger feature; revisit if staff report stale discounts).
-  /**
-   * Moves the order's subtotal (and total) by exactly what the lines
-   * changed. Recomputing the subtotal from the line prices was wrong for a
-   * manual order made with a below-catalog price: its subtotal is the
-   * catalog price and the difference sits in discountAmount, so a fresh
-   * line sum minus that discount took the override off twice.
-   */
   private async recomputeTotals(
     tx: Prisma.TransactionClient,
     orderId: number,
-    lineDelta: Prisma.Decimal,
   ): Promise<void> {
     await lockOrderRow(tx, orderId);
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
-    const subTotal = order.subTotal.plus(lineDelta);
+    const [order, items] = await Promise.all([
+      tx.order.findUniqueOrThrow({ where: { id: orderId } }),
+      tx.orderItem.findMany({ where: { orderId } }),
+    ]);
+    const subTotal = items.reduce(
+      (sum, i) => sum.plus(i.unitPrice.times(i.quantity)),
+      new Decimal(0),
+    );
     const totalAmount = Decimal.max(
       subTotal
         .minus(order.discountAmount)
@@ -583,11 +531,7 @@ export class OrdersService {
           quantity: dto.quantity,
         },
       });
-      await this.recomputeTotals(
-        tx,
-        orderId,
-        new Decimal(unitPrice).times(dto.quantity),
-      );
+      await this.recomputeTotals(tx, orderId);
     });
 
     return this.reload(orderId);
@@ -598,8 +542,6 @@ export class OrdersService {
     itemId: number,
     dto: UpdateOrderItemDto,
   ): Promise<OrderDto> {
-    if (dto.quantity === undefined && dto.unitPrice === undefined)
-      throw new BadRequestException('Send a quantity or price');
     await this.assertItemsEditable(orderId);
     const item = await this.prisma.client.orderItem.findUnique({
       where: { id: itemId },
@@ -607,8 +549,7 @@ export class OrdersService {
     if (!item || item.orderId !== orderId)
       throw new NotFoundException('Order item not found');
 
-    const quantity = dto.quantity ?? item.quantity;
-    const delta = quantity - item.quantity;
+    const delta = dto.quantity - item.quantity;
     await this.prisma.client.$transaction(async (tx) => {
       // productId is only null for a line whose product was later deleted
       // (schema's onDelete: SetNull) — nothing left to reserve against.
@@ -619,22 +560,11 @@ export class OrdersService {
           await releaseStock(tx, item.productId, item.variantId, -delta);
         }
       }
-      const newPrice =
-        dto.unitPrice !== undefined
-          ? new Decimal(dto.unitPrice)
-          : item.unitPrice;
       await tx.orderItem.update({
         where: { id: itemId },
-        data: {
-          quantity,
-          ...(dto.unitPrice !== undefined ? { unitPrice: newPrice } : {}),
-        },
+        data: { quantity: dto.quantity },
       });
-      await this.recomputeTotals(
-        tx,
-        orderId,
-        newPrice.times(quantity).minus(item.unitPrice.times(item.quantity)),
-      );
+      await this.recomputeTotals(tx, orderId);
     });
 
     return this.reload(orderId);
@@ -656,11 +586,7 @@ export class OrdersService {
         await releaseStock(tx, item.productId, item.variantId, item.quantity);
       }
       await tx.orderItem.delete({ where: { id: itemId } });
-      await this.recomputeTotals(
-        tx,
-        orderId,
-        item.unitPrice.times(item.quantity).negated(),
-      );
+      await this.recomputeTotals(tx, orderId);
     });
 
     return this.reload(orderId);
@@ -1015,122 +941,6 @@ export class OrdersService {
   // Counterpart to commitReservations — a return after COMPLETED puts
   // physical stock back on the shelf (reservedStock is already 0 for these
   // items; commitReservations zeroed it when the sale completed).
-  /**
-   * A delivered order coming back. Per line: how many go back on the shelf,
-   * how many are damaged and written off (never restocked). No choice sent
-   * (e.g. a courier webhook) = everything back, as before.
-   */
-  private async applyReturnLines(
-    tx: Prisma.TransactionClient,
-    items: {
-      id: number;
-      productId: number | null;
-      variantId: number | null;
-      quantity: number;
-      productTypeSnapshot: string;
-      productNameSnapshot: string;
-      restockedQuantity: number;
-      writtenOffQuantity: number;
-    }[],
-    status: string,
-    lines: { itemId: number; restock: number; writeOff: number }[] | undefined,
-    // true = finishing an earlier partial return: counts already recorded
-    // on the lines are what came back before; only the difference moves.
-    fromPartial = false,
-  ): Promise<void> {
-    const seen = new Set<number>();
-    for (const l of lines ?? []) {
-      if (!items.some((i) => i.id === l.itemId) || seen.has(l.itemId))
-        throw new BadRequestException(`Line #${l.itemId} is not on this order`);
-      seen.add(l.itemId);
-    }
-    const plan = items.map((item) => {
-      const prevRestock = fromPartial ? item.restockedQuantity : 0;
-      const prevWriteOff = fromPartial ? item.writtenOffQuantity : 0;
-      const l = lines?.find((x) => x.itemId === item.id);
-      // No choice sent (e.g. a courier webhook): everything not yet written
-      // off goes back on the shelf.
-      const restock = l ? l.restock : item.quantity - prevWriteOff;
-      const writeOff = l ? l.writeOff : prevWriteOff;
-      if (restock < prevRestock || writeOff < prevWriteOff)
-        throw new BadRequestException(
-          `${item.productNameSnapshot}: ${prevRestock} already back in stock and ${prevWriteOff} already written off`,
-        );
-      return { item, restock, writeOff, prevRestock };
-    });
-    if (
-      status === 'PARTIALLY_RETURNED' &&
-      plan.every((p) => p.restock + p.writeOff === 0)
-    )
-      throw new BadRequestException(
-        'Nothing came back: enter what was returned, or keep the order as it is',
-      );
-    for (const { item, restock, writeOff, prevRestock } of plan) {
-      if (restock + writeOff > item.quantity)
-        throw new BadRequestException(
-          `${item.productNameSnapshot}: more than ${item.quantity} returned`,
-        );
-      if (status === 'RETURNED' && restock + writeOff !== item.quantity)
-        throw new BadRequestException(
-          `${item.productNameSnapshot}: a full return must account for all ${item.quantity}`,
-        );
-      await this.restockReturnedItems(tx, [
-        { ...item, quantity: restock - prevRestock },
-      ]);
-      await tx.orderItem.update({
-        where: { id: item.id },
-        data: { restockedQuantity: restock, writtenOffQuantity: writeOff },
-      });
-    }
-  }
-
-  /**
-   * Returned again after the stock was already put back (e.g. returned →
-   * processing → returned): the units now marked damaged are taken off the
-   * shelf. Orders returned before counts existed had everything put back.
-   */
-  private async writeOffFromShelf(
-    tx: Prisma.TransactionClient,
-    items: {
-      id: number;
-      productId: number | null;
-      variantId: number | null;
-      quantity: number;
-      productTypeSnapshot: string;
-      productNameSnapshot: string;
-      restockedQuantity: number;
-      writtenOffQuantity: number;
-    }[],
-    lines: { itemId: number; restock: number; writeOff: number }[],
-  ): Promise<void> {
-    const counted = items.some(
-      (i) => i.restockedQuantity > 0 || i.writtenOffQuantity > 0,
-    );
-    const seen = new Set<number>();
-    for (const l of lines) {
-      const item = items.find((i) => i.id === l.itemId);
-      if (!item || seen.has(l.itemId))
-        throw new BadRequestException(`Line #${l.itemId} is not on this order`);
-      seen.add(l.itemId);
-      const onShelf = counted ? item.restockedQuantity : item.quantity;
-      const prevOff = counted ? item.writtenOffQuantity : 0;
-      const more = l.writeOff - prevOff;
-      if (more <= 0) continue;
-      if (more > onShelf)
-        throw new BadRequestException(
-          `${item.productNameSnapshot}: only ${onShelf} back in stock to write off`,
-        );
-      await this.decrementStockOnly(tx, [{ ...item, quantity: more }]);
-      await tx.orderItem.update({
-        where: { id: item.id },
-        data: {
-          restockedQuantity: onShelf - more,
-          writtenOffQuantity: l.writeOff,
-        },
-      });
-    }
-  }
-
   private async restockReturnedItems(
     tx: Prisma.TransactionClient,
     items: {

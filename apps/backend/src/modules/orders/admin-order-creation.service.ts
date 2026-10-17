@@ -4,7 +4,6 @@ import { Locale, OrderAddressType, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppliedDiscount, PricingService } from '../cart/pricing.service';
 import { PaymentsService } from '../payments/payments.service';
-import { CreateExchangeDto } from './dto/create-exchange.dto';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { PreviewCouponDto, PreviewCouponResultDto } from './dto/preview-coupon.dto';
 import { generateOrderNumber } from './order-number.util';
@@ -77,13 +76,7 @@ export class AdminOrderCreationService {
     return { couponAmount, appliedAmount: Decimal.max(couponAmount, upsellAmount) };
   }
 
-  async create(
-    dto: CreateManualOrderDto,
-    adminId: number,
-    // Exchange orders: linked, noted, and priced as typed (৳0) with no
-    // "catalog minus override" discount, so later line edits total correctly.
-    opts: { exchangeOfOrderId?: number; staffNote?: string } = {},
-  ): Promise<OrderDto> {
+  async create(dto: CreateManualOrderDto, adminId: number): Promise<OrderDto> {
     const products = await this.prisma.client.product.findMany({
       where: { id: { in: dto.items.map((i) => i.productId) } },
       include: {
@@ -125,11 +118,7 @@ export class AdminOrderCreationService {
     // explicit "discount"/"promotion" fields — all three roll into the one
     // stored Order.discountAmount, same as the real checkout's own subTotal
     // vs. totalAmount relationship.
-    const isExchange = opts.exchangeOfOrderId !== undefined;
-    const subTotalStored = isExchange ? lineItemsTotal : subTotal;
-    const lineDiscount = isExchange
-      ? new Decimal(0)
-      : Decimal.max(subTotal.minus(lineItemsTotal), new Decimal(0));
+    const lineDiscount = Decimal.max(subTotal.minus(lineItemsTotal), new Decimal(0));
     const explicitDiscount = dto.discountAmount != null ? new Decimal(dto.discountAmount) : new Decimal(0);
     const explicitPromotion = dto.promotionAmount != null ? new Decimal(dto.promotionAmount) : new Decimal(0);
     const taxAmount = dto.taxAmount != null ? new Decimal(dto.taxAmount) : new Decimal(0);
@@ -196,7 +185,7 @@ export class AdminOrderCreationService {
           channel: dto.channel,
           customerId: dto.customerId ?? null,
           assignedAdminId: adminId,
-          subTotal: subTotalStored,
+          subTotal,
           discountAmount,
           taxAmount,
           codFee,
@@ -204,8 +193,6 @@ export class AdminOrderCreationService {
           totalAmount,
           couponCode: couponAmount.greaterThan(0) ? dto.couponCode : undefined,
           customerNote: dto.customerNote,
-          exchangeOfOrderId: opts.exchangeOfOrderId,
-          staffNote: opts.staffNote,
           items: {
             create: dto.items.map((item, idx) => {
               const product = productsById.get(item.productId)!;
@@ -380,77 +367,6 @@ export class AdminOrderCreationService {
         customerNote: order.customerNote ?? undefined,
       },
       adminId,
-    );
-  }
-
-  /** A ৳0 replacement for damaged items, linked to the delivered original. */
-  async exchange(
-    orderId: number,
-    dto: CreateExchangeDto,
-    adminId: number,
-  ): Promise<OrderDto> {
-    const order = await this.prisma.client.order.findUnique({
-      where: { id: orderId },
-      include: { items: true, addresses: true },
-    });
-    if (!order) throw new BadRequestException('Order not found');
-    if (order.deletedAt)
-      throw new BadRequestException('This order is in the Trash');
-    if (order.channel === 'POS')
-      throw new BadRequestException('POS sales use POS returns, not exchanges');
-    if (!['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'].includes(order.status))
-      throw new BadRequestException('Only a delivered order can be exchanged');
-    const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
-    if (!shipping)
-      throw new BadRequestException('Order has no shipping address');
-
-    // The same line sent twice counts once, with its quantities added.
-    const wanted = new Map<number, number>();
-    for (const l of dto.items)
-      wanted.set(l.itemId, (wanted.get(l.itemId) ?? 0) + l.quantity);
-    const items = [...wanted].map(([itemId, quantity]) => {
-      const l = { itemId, quantity };
-      const line = order.items.find((i) => i.id === l.itemId);
-      if (!line || !line.productId)
-        throw new BadRequestException(`Line #${l.itemId} is not on this order`);
-      if (l.quantity > line.quantity)
-        throw new BadRequestException(
-          `${line.productNameSnapshot}: at most ${line.quantity} can be exchanged`,
-        );
-      return {
-        productId: line.productId,
-        variantId: line.variantId ?? undefined,
-        quantity: l.quantity,
-        unitPrice: 0,
-      };
-    });
-    const address = {
-      recipientName: shipping.recipientName,
-      phone: shipping.phone,
-      alternativePhone: shipping.alternativePhone ?? undefined,
-      email: shipping.email ?? undefined,
-      division: shipping.division,
-      district: shipping.district,
-      area: shipping.area ?? '',
-      landmark: shipping.landmark ?? undefined,
-      addressLine: shipping.addressLine,
-      postCode: shipping.postCode ?? undefined,
-    };
-    const note = [`Exchange for #${order.orderNumber}`, dto.reason?.trim()]
-      .filter(Boolean)
-      .join(' — ');
-    return this.create(
-      {
-        customerId: order.customerId ?? undefined,
-        channel: order.channel,
-        shippingAddress: address,
-        billingAddress: address,
-        items,
-        paymentProvider: 'COD',
-        shippingAmount: 0,
-      } as CreateManualOrderDto,
-      adminId,
-      { exchangeOfOrderId: order.id, staffNote: note },
     );
   }
 }

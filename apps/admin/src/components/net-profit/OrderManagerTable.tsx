@@ -20,7 +20,6 @@ import { BD_DIVISIONS, isValidBdPhone } from "@amader/shared";
 import { ORDER_SOURCES, canonicalFacebookSource } from "@amader/shared";
 import { Button, Icon } from "@amader/admin-ui";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
-import { ReturnLinesDialog } from "@/components/orders/ReturnLinesDialog";
 import {
   useAssignOrder,
   useUpdateOrderNote,
@@ -263,53 +262,37 @@ function StatusCell({
   const updateStatus = useUpdateOrderStatus(order.id);
   const config = statusByKey.get(order.status);
   const color = config?.color ?? "#9ca3af";
-  // Returned / Partially Returned asks what comes back to stock first.
-  const [returning, setReturning] = useState<
-    "RETURNED" | "PARTIALLY_RETURNED" | null
-  >(null);
 
   return (
-    <>
-      {returning && (
-        <ReturnLinesDialog
-          orderId={order.id}
-          status={returning}
-          onClose={() => setReturning(null)}
-        />
-      )}
-      <select
-        value={order.status}
-        disabled={updateStatus.isPending}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          const status = e.target.value as OrderStatus;
-          if (status === "RETURNED" || status === "PARTIALLY_RETURNED")
-            setReturning(status);
-          else updateStatus.mutate({ status });
-        }}
-        // Was a pale ~10%-opacity tint with colored text — too low-contrast
-        // to scan a full page of rows at a glance (reported: staff couldn't
-        // tell a fresh/new order apart from an already-actioned one). Solid
-        // fill + white text reads as a real, unmissable status badge instead.
-        className="rounded-pill border-0 px-3 py-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-white shadow-[0_1px_3px_rgba(0,0,0,.18)] outline-none"
-        style={{ backgroundColor: color }}
-      >
-        {ORDER_STATUSES.map((s) => (
-          // Options need their own dark text — the select's white text color
-          // above is only meant for the closed/badge state; native <option>
-          // rows render against the browser's own (light) dropdown background,
-          // and would otherwise inherit that same white and go invisible.
-          <option
-            key={s}
-            value={s}
-            className="text-text"
-            style={{ backgroundColor: "#fff", color: "#1e2b22" }}
-          >
-            {statusByKey.get(s)?.labelEn ?? s}
-          </option>
-        ))}
-      </select>
-    </>
+    <select
+      value={order.status}
+      disabled={updateStatus.isPending}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) =>
+        updateStatus.mutate({ status: e.target.value as OrderStatus })
+      }
+      // Was a pale ~10%-opacity tint with colored text — too low-contrast
+      // to scan a full page of rows at a glance (reported: staff couldn't
+      // tell a fresh/new order apart from an already-actioned one). Solid
+      // fill + white text reads as a real, unmissable status badge instead.
+      className="rounded-pill border-0 px-3 py-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-white shadow-[0_1px_3px_rgba(0,0,0,.18)] outline-none"
+      style={{ backgroundColor: color }}
+    >
+      {ORDER_STATUSES.map((s) => (
+        // Options need their own dark text — the select's white text color
+        // above is only meant for the closed/badge state; native <option>
+        // rows render against the browser's own (light) dropdown background,
+        // and would otherwise inherit that same white and go invisible.
+        <option
+          key={s}
+          value={s}
+          className="text-text"
+          style={{ backgroundColor: "#fff", color: "#1e2b22" }}
+        >
+          {statusByKey.get(s)?.labelEn ?? s}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -886,9 +869,7 @@ export function OrderManagerTable({
             <MobileRecordCard
               key={o.id}
               onClick={() => onView(o)}
-              title={
-                o.isExchange ? `${o.orderNumber} · Exchange` : o.orderNumber
-              }
+              title={o.orderNumber}
               subtitle={o.recipientName ?? "—"}
               badge={
                 <span
@@ -1249,11 +1230,6 @@ function OrderRow({
         >
           <span className="flex items-center gap-1.5 font-bold text-[#2e7d43] transition-colors duration-150 group-hover:text-[#1d5230]">
             #{o.id} · {o.orderNumber}
-            {o.isExchange && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
-                Exchange
-              </span>
-            )}
             {isHighlighted && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[#2e7d43] px-2 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />

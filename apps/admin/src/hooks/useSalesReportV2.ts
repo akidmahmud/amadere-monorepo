@@ -52,9 +52,6 @@ export interface Summary {
   packaging?: number;
   fee?: number;
   retLoss?: number;
-  /** Delivered Exchange orders and their product cost (inside cogs). */
-  exN?: number;
-  exCost?: number;
   contrib?: number;
   subsidy?: number;
   overPos?: number;

@@ -15,23 +15,13 @@ export const ORDER_INCLUDE = {
       product: {
         select: {
           shippableWeight: true,
-          media: {
-            where: { isPrimary: true },
-            take: 1,
-            select: { media: { select: { url: true } } },
-          },
+          media: { where: { isPrimary: true }, take: 1, select: { media: { select: { url: true } } } },
         },
       },
       variant: { select: { weightOverride: true } },
     },
   },
   addresses: true,
-  // Exchange links: the original this replaces, and replacements made for it.
-  exchangeOf: { select: { id: true, orderNumber: true } },
-  exchanges: {
-    select: { id: true, orderNumber: true },
-    orderBy: { createdAt: 'asc' as const },
-  },
   statusHistory: {
     orderBy: { createdAt: 'asc' as const },
     include: { adminUser: { select: { firstName: true, lastName: true } } },
@@ -62,13 +52,6 @@ function decimalToString(
   return value ? value.toString() : null;
 }
 
-/** A link to another order (exchange ↔ original). A named class: Swagger
- *  can't describe an inline object type on OrderDto and stops the app. */
-export class OrderLinkDto {
-  id!: number;
-  orderNumber!: string;
-}
-
 export class OrderItemDto {
   id!: number;
   productId!: number | null;
@@ -77,10 +60,6 @@ export class OrderItemDto {
   sku!: string | null;
   unitPrice!: string;
   quantity!: number;
-  /** Returned and put back on the shelf. */
-  restockedQuantity!: number;
-  /** Returned damaged: written off, not restocked. */
-  writtenOffQuantity!: number;
   taxAmount!: string;
   // Variant weightOverride falls back to the product's shippableWeight —
   // same precedence as ShipmentsService.computeOrderWeight (courier
@@ -178,11 +157,7 @@ export class OrderDto {
    * goes does not look like it renamed the customer. adminGet only: the
    * public phone-matched order lookup must not hand out account details.
    */
-  customer?: {
-    name: string;
-    phone: string | null;
-    email: string | null;
-  } | null;
+  customer?: { name: string; phone: string | null; email: string | null } | null;
   status!: OrderStatus;
   channel!: OrderChannel;
   assignedAdminId!: number | null;
@@ -202,13 +177,6 @@ export class OrderDto {
   codVerifiedAt!: Date | null;
   confirmedAt!: Date | null;
   completedAt!: Date | null;
-  /** Set on an Exchange order: the original it replaces. */
-  exchangeOf!: OrderLinkDto | null;
-  /** Exchange orders made for this one. */
-  exchanges!: OrderLinkDto[];
-  /** Delivered once, but its stock is back on the shelf (returned and not
-   *  completed again). Marking it Returned now only writes off damage. */
-  stockBackOnShelf!: boolean;
   canceledAt!: Date | null;
   createdAt!: Date;
   // Attribution — captured at checkout time (see checkout.service.ts /
@@ -234,29 +202,6 @@ export class OrderDto {
   shipment!: OrderShipmentDto | null;
 }
 
-// Same rule as OrdersService.stockIsOut: the latest stock-moving status in
-// the history decides whether a delivered order's goods are out or back.
-const STOCK_STATUSES = new Set([
-  'COMPLETED',
-  'CANCELED',
-  'RETURNED',
-  'PARTIALLY_RETURNED',
-]);
-function stockBackOnShelf(order: {
-  status: string;
-  completedAt: Date | null;
-  statusHistory?: { status: string }[];
-}): boolean {
-  if (!order.completedAt) return false;
-  const last = [...(order.statusHistory ?? [])]
-    .reverse()
-    .find((h) => STOCK_STATUSES.has(h.status));
-  // No history (old orders): the current status decides, as on the server.
-  if (!last)
-    return STOCK_STATUSES.has(order.status) && order.status !== 'COMPLETED';
-  return last.status !== 'COMPLETED';
-}
-
 export function toOrderDto(order: OrderWithRelations): OrderDto {
   const shipment = order.shipments[0];
   return {
@@ -266,9 +211,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     status: order.status,
     channel: order.channel,
     assignedAdminId: order.assignedAdminId,
-    assignedAdminName: order.assignedAdmin
-      ? `${order.assignedAdmin.firstName} ${order.assignedAdmin.lastName}`.trim()
-      : null,
+    assignedAdminName: order.assignedAdmin ? `${order.assignedAdmin.firstName} ${order.assignedAdmin.lastName}`.trim() : null,
     subTotal: order.subTotal.toString(),
     discountAmount: order.discountAmount.toString(),
     taxAmount: order.taxAmount.toString(),
@@ -284,9 +227,6 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     codVerifiedAt: order.codVerifiedAt,
     confirmedAt: order.confirmedAt,
     completedAt: order.completedAt,
-    exchangeOf: order.exchangeOf ?? null,
-    exchanges: order.exchanges ?? [],
-    stockBackOnShelf: stockBackOnShelf(order),
     canceledAt: order.canceledAt,
     createdAt: order.createdAt,
     ipAddress: order.ipAddress,
@@ -305,12 +245,8 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       sku: i.skuSnapshot,
       unitPrice: i.unitPrice.toString(),
       quantity: i.quantity,
-      restockedQuantity: i.restockedQuantity,
-      writtenOffQuantity: i.writtenOffQuantity,
       taxAmount: i.taxAmount.toString(),
-      weight: decimalToString(
-        i.variant?.weightOverride ?? i.product?.shippableWeight,
-      ),
+      weight: decimalToString(i.variant?.weightOverride ?? i.product?.shippableWeight),
       imageUrl: i.product?.media[0]?.media.url ?? null,
     })),
     totalWeight: order.items
@@ -335,9 +271,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
     statusHistory: order.statusHistory.map((h) => ({
       status: h.status,
       note: h.note,
-      adminName: h.adminUser
-        ? `${h.adminUser.firstName} ${h.adminUser.lastName}`.trim()
-        : null,
+      adminName: h.adminUser ? `${h.adminUser.firstName} ${h.adminUser.lastName}`.trim() : null,
       createdAt: h.createdAt,
     })),
     payments: order.payments.map((p) => ({

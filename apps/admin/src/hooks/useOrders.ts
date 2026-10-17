@@ -105,28 +105,10 @@ export const PAYMENT_PROVIDER_TYPES: PaymentProviderType[] = [
 // never set by this app, so a full re-type isn't needed for those).
 export type AdminOrder = Omit<
   components["schemas"]["OrderDto"],
-  "status" | "channel" | "items"
+  "status" | "channel"
 > & {
   status: OrderStatus;
   channel: OrderChannel;
-  // Added by hand until schema.d.ts is regenerated (npm run typegen).
-  items: (components["schemas"]["OrderDto"]["items"][number] & {
-    restockedQuantity?: number;
-    writtenOffQuantity?: number;
-  })[];
-  /** Exchange order: the original it replaces. */
-  exchangeOf?: { id: number; orderNumber: string } | null;
-  /** Exchange orders made for this one. */
-  exchanges?: { id: number; orderNumber: string }[];
-  /** Delivered, but its stock is back on the shelf (returned, not completed
-   *  again): marking it Returned now only writes off damage. */
-  stockBackOnShelf?: boolean;
-};
-
-export type ReturnLineInput = {
-  itemId: number;
-  restock: number;
-  writeOff: number;
 };
 
 export const ADMIN_ORDERS_KEY = ["admin-orders"];
@@ -176,12 +158,7 @@ export function useOrder(id: number | null) {
 export function useUpdateOrderStatus(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      status: OrderStatus;
-      note?: string;
-      /** Delivered order returned: back to stock / written off per line. */
-      returnLines?: ReturnLineInput[];
-    }) =>
+    mutationFn: (input: { status: OrderStatus; note?: string }) =>
       proxyFetch<AdminOrder>(`/admin/orders/${id}/status`, {
         method: "PATCH",
         body: JSON.stringify(input),
@@ -330,19 +307,10 @@ export function useAddOrderItem(id: number) {
 export function useUpdateOrderItem(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      itemId,
-      quantity,
-      unitPrice,
-    }: {
-      itemId: number;
-      quantity?: number;
-      /** Line price in ৳ (0 = free). */
-      unitPrice?: number;
-    }) =>
+    mutationFn: ({ itemId, quantity }: { itemId: number; quantity: number }) =>
       proxyFetch<AdminOrder>(`/admin/orders/${id}/items/${itemId}`, {
         method: "PATCH",
-        body: JSON.stringify({ quantity, unitPrice }),
+        body: JSON.stringify({ quantity }),
       }),
     onSuccess: () => invalidateOrder(qc),
   });
@@ -422,22 +390,6 @@ export function useResendOrderConfirmation(id: number) {
         `/admin/orders/${id}/resend-confirmation`,
         { method: "POST" },
       ),
-    onSuccess: () => invalidateOrder(qc),
-  });
-}
-
-/** A ৳0 replacement order for damaged items, linked to this one. */
-export function useCreateExchange(id: number) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      items: { itemId: number; quantity: number }[];
-      reason?: string;
-    }) =>
-      proxyFetch<AdminOrder>(`/admin/orders/${id}/exchange`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
     onSuccess: () => invalidateOrder(qc),
   });
 }

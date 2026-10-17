@@ -194,14 +194,13 @@ export class DailyReportService {
   }): Promise<DailyReportListItem> {
     const db = this.prisma.client;
     const win = p.window ?? businessWindow(p.from, p.to);
-    const [settings, orders, mk, writeOffs] = await Promise.all([
+    const [settings, orders, mk] = await Promise.all([
       this.getSettings(),
       this.loader.load(p.from, p.to, p.window),
       db.marketingCost.aggregate({
         where: { costDate: { gte: utc(p.from), lte: utc(p.to) } },
         _sum: { adsCost: true, otherCost: true },
       }),
-      this.loader.loadWriteOffs(p.from, p.to, p.window),
     ]);
     const built = buildSnapshot({
       from: p.from,
@@ -211,7 +210,6 @@ export class DailyReportService {
       sources: settings.sources,
       fixedCosts: settings.fixedCosts,
       marketing: Number(mk._sum.adsCost ?? 0) + Number(mk._sum.otherCost ?? 0),
-      writeOffs,
     });
     const snapshot = {
       ...built,

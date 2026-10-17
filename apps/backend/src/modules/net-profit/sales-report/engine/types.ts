@@ -55,8 +55,6 @@ export interface ReportHistory {
 export interface ReportOrder {
   id: number;
   orderNumber: string;
-  /** A ৳0 replacement order (Exchange). */
-  exchange?: boolean;
   /** Order date, YYYY-MM-DD in Asia/Dhaka. */
   date: string;
   status: ReportStatus;

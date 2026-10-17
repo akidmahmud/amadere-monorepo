@@ -24,8 +24,6 @@ function createMockPrismaService() {
     store: { findUnique: jest.fn() },
     product: { update: jest.fn() },
     productVariant: { update: jest.fn() },
-    // Returns record per-line back-to-stock / written-off counts.
-    orderItem: { update: jest.fn(), updateMany: jest.fn() },
     orderStatusHistory: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
     payment: {
       findFirst: jest.fn().mockResolvedValue(null),
