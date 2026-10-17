@@ -4,14 +4,11 @@ import { Discount, Prisma, UpsellStage } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { UpsellBarSettingsService } from '../upsell-bar/upsell-bar-settings.service';
 import { phoneKey } from '../discounts/coupon-redemption';
-import { weighedLinePrice } from '../pos/weighed-price';
 
 const Decimal = Prisma.Decimal;
 type DecimalValue = Prisma.Decimal;
 
 export interface PricedLine {
-  /** Sold by weight: the per-kg price unitPrice was worked out from. */
-  perKgPrice?: DecimalValue;
   productId: number;
   variantId: number | null;
   quantity: number;
@@ -57,8 +54,6 @@ export interface CartLineInput {
   productId: number;
   variantId: number | null;
   quantity: number;
-  /** POS sold-by-weight: kg sold; unitPrice becomes price/kg × this, rounded. */
-  weighedKg?: Prisma.Decimal | number | string | null;
 }
 
 // Effective price honouring the product/variant sale window.
@@ -169,7 +164,7 @@ export class PricingService {
         })
       : [];
 
-    const unitPriced: PricedLine[] = lines.map((line) => {
+    return lines.map((line) => {
       const own = storePrices.find(
         (s) =>
           s.productId === line.productId &&
@@ -214,19 +209,6 @@ export class PricingService {
         ...line,
         unitPrice,
         lineTotal: unitPrice.times(line.quantity),
-      };
-    });
-    // Sold by weight: the price found above is per kg.
-    return unitPriced.map((l, idx) => {
-      const kg = lines[idx].weighedKg;
-      if (kg == null) return l;
-      const perKgPrice = new Decimal(l.unitPrice);
-      const unitPrice = weighedLinePrice(perKgPrice, kg);
-      return {
-        ...l,
-        perKgPrice,
-        unitPrice,
-        lineTotal: unitPrice.times(l.quantity),
       };
     });
   }

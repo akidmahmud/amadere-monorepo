@@ -10,13 +10,7 @@ import {
   usePosStats,
   type PosCustomer,
 } from "@/hooks/usePos";
-import {
-  cartReducer,
-  unitPrice,
-  type CartAction,
-  type CartLine,
-  type PosProduct,
-} from "@/lib/pos-cart";
+import { cartReducer, type CartAction } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
 import { PosTopBar } from "@/components/pos/PosTopBar";
 import {
@@ -26,7 +20,6 @@ import {
 } from "@/components/pos/ProductGrid";
 import { CartPanel } from "@/components/pos/CartPanel";
 import { useScanner } from "@/components/pos/useScanner";
-import { WeightDialog } from "@/components/pos/WeightDialog";
 
 export default function PosPage() {
   const { storeId } = usePosContext();
@@ -46,21 +39,6 @@ export default function PosPage() {
     rawDispatch(a);
   }, []);
   const [customer, setCustomer] = useState<PosCustomer | null>(null);
-  // Sold-by-weight item waiting for its weight (line set = re-weighing it).
-  const [weighing, setWeighing] = useState<{
-    product: PosProduct;
-    line?: CartLine;
-  } | null>(null);
-  const addProduct = useCallback(
-    (p: PosProduct) => {
-      if (!p.soldByWeight) return dispatch({ type: "add", product: p });
-      // Each weighed line is one piece off the shelf.
-      if (cart.filter((l) => l.productId === p.productId).length >= p.stock)
-        return toast.push(`No more ${p.name} in stock at this store`);
-      setWeighing({ product: p });
-    },
-    [dispatch, cart, toast],
-  );
   // A cart emptied line by line is no longer the resumed held basket either.
   if (cart.length === 0 && heldSaleId !== undefined) setHeldSaleId(undefined);
 
@@ -90,14 +68,14 @@ export default function PosPage() {
       try {
         const p = await posLookup(code, storeId);
         if (p.stock <= 0) toast.push(`${p.name} is out of stock at this store`);
-        else addProduct(p);
+        else dispatch({ type: "add", product: p });
       } catch {
         toast.push(
           `Barcode ${code} not found. If the keyboard is in Bangla mode, switch it to English.`,
         );
       }
     },
-    [storeId, toast, addProduct],
+    [storeId, toast, dispatch],
   );
   useScanner(addByCode);
 
@@ -145,7 +123,7 @@ export default function PosPage() {
             onSort={setSort}
             view={view}
             onView={setView}
-            onAdd={addProduct}
+            onAdd={(p) => dispatch({ type: "add", product: p })}
             cartQty={Object.fromEntries(cart.map((l) => [l.key, l.qty]))}
             onQty={(key, qty) => dispatch({ type: "setQty", key, qty })}
           />
@@ -157,7 +135,6 @@ export default function PosPage() {
           customer={customer}
           onCustomer={setCustomer}
           heldSaleId={heldSaleId}
-          onWeigh={(line) => setWeighing({ product: line, line })}
           onDone={() => {
             dispatch({ type: "clear" });
             setCustomer(null);
@@ -165,26 +142,6 @@ export default function PosPage() {
           }}
         />
       </div>
-      {weighing && (
-        <WeightDialog
-          name={weighing.product.name}
-          perKg={unitPrice(weighing.product)}
-          initialKg={weighing.line?.weighedKg}
-          onClose={() => setWeighing(null)}
-          onDone={(kg) => {
-            dispatch(
-              weighing.line
-                ? { type: "setWeight", key: weighing.line.key, weighedKg: kg }
-                : {
-                    type: "addWeighed",
-                    product: weighing.product,
-                    weighedKg: kg,
-                  },
-            );
-            setWeighing(null);
-          }}
-        />
-      )}
     </div>
   );
 }

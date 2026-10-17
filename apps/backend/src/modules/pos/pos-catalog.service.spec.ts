@@ -101,15 +101,6 @@ describe('PosCatalogService.list', () => {
       }),
     ]);
   });
-
-  it('tells the till which products are sold by weight', async () => {
-    findMany.mockResolvedValue([
-      product({ id: 1, storeId: 2, soldByWeight: true }),
-      product({ id: 3 }),
-    ]);
-    const out = await svc.list(2);
-    expect(out.map((p) => p.soldByWeight)).toEqual([true, false]);
-  });
 });
 
 describe('PosCatalogService.lookup — exact only', () => {

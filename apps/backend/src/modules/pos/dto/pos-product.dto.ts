@@ -1,6 +1,5 @@
 import { Type } from 'class-transformer';
 import {
-  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -64,11 +63,6 @@ export class PosProductDto {
   @Type(() => Number)
   @IsInt()
   mediaId?: number | null;
-
-  /** Price and cost are per kg; the till asks for each item's weight. */
-  @IsOptional()
-  @IsBoolean()
-  soldByWeight?: boolean;
 }
 
 export class StorePriceDto {

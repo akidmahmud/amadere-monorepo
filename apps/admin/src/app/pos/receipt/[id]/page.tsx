@@ -59,7 +59,6 @@ function toInvoiceData(
           ? `${i.variantLabel} · ${formatWeight(i.weightKg, i.weightUnit)}`
           : i.variantLabel,
       weight: formatWeight(i.weightKg, i.weightUnit),
-      perKg: i.perKg ? Number(i.perKg) : null,
       qty: i.quantity,
       unitPrice: Number(i.unitPrice),
       lineTotal: Number(i.unitPrice) * i.quantity,

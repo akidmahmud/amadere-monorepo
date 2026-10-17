@@ -28,21 +28,15 @@ export interface PosProduct {
   normalWeightUnit?: string | null;
   normalPrice?: string;
   normalSalePrice?: string | null;
-  /** Price is per kg; each item is weighed at the till. */
-  soldByWeight?: boolean;
 }
 
 export interface CartLine extends PosProduct {
   key: string;
   qty: number;
-  /** Sold by weight: kg on this line (qty stays 1). */
-  weighedKg?: number;
 }
 
 export type CartAction =
   | { type: "add"; product: PosProduct }
-  | { type: "addWeighed"; product: PosProduct; weighedKg: number }
-  | { type: "setWeight"; key: string; weighedKg: number }
   | { type: "setQty"; key: string; qty: number }
   | { type: "remove"; key: string }
   | { type: "load"; lines: CartLine[] }
@@ -52,23 +46,9 @@ export const lineKey = (p: { productId: number; variantId: number | null }) =>
   `${p.productId}:${p.variantId ?? 0}`;
 export const unitPrice = (p: PosProduct) => Number(p.salePrice ?? p.price);
 
-/** Price/kg × kg, half up to whole taka, in integer paisa × grams (no float drift). */
-export function weighedPrice(perKg: number, kg: number): number {
-  const paisaTimesGrams = Math.round(perKg * 100) * Math.round(kg * 1000);
-  return Math.round(paisaTimesGrams / 100000);
-}
-
-/** What the line costs: weighed price, or unit price × qty. */
-export const linePrice = (l: CartLine) =>
-  l.weighedKg != null
-    ? weighedPrice(unitPrice(l), l.weighedKg)
-    : unitPrice(l) * l.qty;
-
 export function cartReducer(cart: CartLine[], a: CartAction): CartLine[] {
   switch (a.type) {
     case "add": {
-      // Weighed products go through addWeighed (the till asks the weight).
-      if (a.product.soldByWeight) return cart;
       if (a.product.stock <= 0) return cart;
       const key = lineKey(a.product);
       const hit = cart.find((l) => l.key === key);
@@ -83,18 +63,6 @@ export function cartReducer(cart: CartLine[], a: CartAction): CartLine[] {
             : l,
         )
         .filter((l) => l.qty > 0);
-    case "addWeighed": {
-      // One line per weighed item: a unique key, never a quantity bump.
-      const n = cart.filter((l) => l.productId === a.product.productId).length;
-      // Each line is one piece: no more lines than pieces on the shelf.
-      if (n >= a.product.stock) return cart;
-      const key = `${lineKey(a.product)}:w${n}:${Date.now()}`;
-      return [...cart, { ...a.product, key, qty: 1, weighedKg: a.weighedKg }];
-    }
-    case "setWeight":
-      return cart.map((l) =>
-        l.key === a.key ? { ...l, weighedKg: a.weighedKg } : l,
-      );
     case "remove":
       return cart.filter((l) => l.key !== a.key);
     case "load":
@@ -106,7 +74,7 @@ export function cartReducer(cart: CartLine[], a: CartAction): CartLine[] {
 
 /** Display-only; the server recomputes every total. */
 export const cartSubtotal = (cart: CartLine[]) =>
-  cart.reduce((s, l) => s + linePrice(l), 0);
+  cart.reduce((s, l) => s + unitPrice(l) * l.qty, 0);
 export const cartCount = (cart: CartLine[]) =>
   cart.reduce((s, l) => s + l.qty, 0);
 export const taka = (n: number | string) =>

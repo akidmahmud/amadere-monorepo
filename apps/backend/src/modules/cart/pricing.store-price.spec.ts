@@ -49,27 +49,4 @@ describe('PricingService.priceLines — store prices (POS)', () => {
     expect(client.storePrice.findMany).not.toHaveBeenCalled();
     expect(out.map((l) => l.unitPrice.toString())).toEqual(['280', '500']);
   });
-
-  it('a weighed line is priced per kg × weight, rounded to taka', async () => {
-    const { svc } = make([
-      { productId: 1, variantId: null, price: D(300), salePrice: null },
-    ]);
-    const out = await svc.priceLines(
-      [{ productId: 1, variantId: null, quantity: 1, weighedKg: '1.225' }],
-      4,
-    );
-    expect(out[0].unitPrice.toString()).toBe('368');
-    expect(out[0].lineTotal.toString()).toBe('368');
-    // The per-kg rate is kept: it can't be recovered from the rounded price.
-    expect(out[0].perKgPrice?.toString()).toBe('300');
-  });
-
-  it('a weighed line without a store price uses the product price per kg', async () => {
-    const { svc } = make([]);
-    const out = await svc.priceLines(
-      [{ productId: 1, variantId: null, quantity: 1, weighedKg: '1.5' }],
-      4,
-    );
-    expect(out[0].unitPrice.toString()).toBe('420'); // 280 sale price × 1.5
-  });
 });

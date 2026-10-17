@@ -871,14 +871,12 @@ function OrderDetail({
                           {i.restockedQuantity} returned
                         </span>
                       )}
-                      {!i.perKg && lineSize(i) && (
+                      {lineSize(i) && (
                         <span className="text-gray-500"> · {lineSize(i)}</span>
                       )}
                     </td>
                     <td className="text-right text-gray-600">
-                      {i.perKg
-                        ? `${formatWeight(i.weightKg, i.weightUnit)} × ${taka(Number(i.perKg))}/kg`
-                        : `${i.quantity} × ${taka(Number(i.unitPrice))}`}
+                      {i.quantity} × {taka(Number(i.unitPrice))}
                     </td>
                     <td className="text-right font-semibold">
                       {taka(Number(i.unitPrice) * i.quantity)}

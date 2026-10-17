@@ -18,8 +18,6 @@ export interface CostLine {
     weightOverride: Prisma.Decimal | null;
     costPerItem: Prisma.Decimal | null;
   } | null;
-  /** Sold-by-weight lines: the weight sold, used instead of the product's. */
-  weighedKg?: Prisma.Decimal | null;
 }
 
 export const COST_PRODUCT_SELECT = {
@@ -47,10 +45,7 @@ export async function lineCoster(
   );
   return (i, date) => {
     const kg = Number(
-      i.weighedKg ??
-        i.variant?.weightOverride ??
-        i.product?.shippableWeight ??
-        0,
+      i.variant?.weightOverride ?? i.product?.shippableWeight ?? 0,
     );
     const c =
       resolver.resolve(

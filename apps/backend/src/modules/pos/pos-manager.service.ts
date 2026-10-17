@@ -141,7 +141,6 @@ export class PosManagerService {
               quantity: true,
               unitPrice: true,
               restockedQuantity: true,
-              weighedKg: true,
               product: {
                 select: { ...COST_PRODUCT_SELECT, weightUnit: true },
               },
@@ -211,9 +210,6 @@ export class PosManagerService {
       storeId: number | null,
       i: (typeof rows)[number]['items'][number],
     ) => {
-      // Sold by weight: the weight typed at the till.
-      if (i.weighedKg)
-        return { weightKg: i.weighedKg.toString(), weightUnit: 'kg' };
       const own = storeWeights.find(
         (w) =>
           w.storeId === storeId &&

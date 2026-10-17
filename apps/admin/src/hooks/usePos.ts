@@ -64,10 +64,6 @@ export interface PosSale {
     /** How many of this line were returned already. */
     restockedQuantity?: number;
     unitPrice: string;
-    /** Sold by weight: kg on this line (weightKg then carries it too). */
-    weighedKg?: string | null;
-    /** Sold by weight: price per kg this line was sold at. */
-    perKg?: string | null;
   }[];
   payments: {
     provider: string;
@@ -161,13 +157,7 @@ export const posLookup = (code: string, storeId?: number) =>
 
 export interface SaleBody {
   storeId?: number;
-  items: {
-    productId: number;
-    variantId?: number;
-    quantity: number;
-    /** Sold by weight: kg on this line. */
-    weighedKg?: number;
-  }[];
+  items: { productId: number; variantId?: number; quantity: number }[];
   customerId?: number;
   customerPhone?: string;
   customerName?: string;
