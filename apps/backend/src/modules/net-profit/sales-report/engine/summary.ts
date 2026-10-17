@@ -79,6 +79,9 @@ export interface Summary {
   margin: number;
   aov: number;
   lossRate: number;
+  /** Delivered Exchange orders, and their product cost (already in cogs). */
+  exN: number;
+  exCost: number;
 }
 
 export function summarize(list: OrderCalc[], S: ReportSettings): Summary {
@@ -111,6 +114,8 @@ export function summarize(list: OrderCalc[], S: ReportSettings): Summary {
     margin: 0,
     aov: 0,
     lossRate: 0,
+    exN: 0,
+    exCost: 0,
   };
   for (const c of list) {
     const o = c.o;
@@ -120,6 +125,10 @@ export function summarize(list: OrderCalc[], S: ReportSettings): Summary {
     if (c.overcharge != null && c.overcharge > 0) s.overPos += c.overcharge;
     if (c.overcharge != null && c.overcharge > S.th.over) s.overN++;
     if (o.status === 'Delivered') {
+      if (o.exchange) {
+        s.exN++;
+        s.exCost += c.cogs ?? 0;
+      }
       s.grossSales += c.netSales;
       if (c.contribution == null) {
         s.missing++;

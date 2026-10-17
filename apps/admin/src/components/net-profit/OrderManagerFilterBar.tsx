@@ -48,6 +48,8 @@ export const DATE_RANGES = [
 export interface OrderFilterState {
   q: string;
   status?: string;
+  /** Only Exchange orders (any status); chosen from the status menu. */
+  exchange?: boolean;
   paymentProvider?: string;
   courierProvider?: string;
   risk?: RiskLevel;
@@ -95,13 +97,24 @@ export function OrderManagerFilterBar({
         </svg>
       </div>
 
-      <select value={filters.status ?? ""} onChange={(e) => set("status", e.target.value || undefined)} className={selectClass} style={selectStyle}>
+      <select
+        value={filters.exchange ? "EXCHANGE" : (filters.status ?? "")}
+        onChange={(e) =>
+          // "Exchange" is a filter across statuses, not a status itself.
+          e.target.value === "EXCHANGE"
+            ? onChange({ ...filters, status: undefined, exchange: true })
+            : onChange({ ...filters, status: e.target.value || undefined, exchange: undefined })
+        }
+        className={selectClass}
+        style={selectStyle}
+      >
         <option value="">All Statuses</option>
         {[...statuses].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => (
           <option key={s.status} value={s.status}>
             {s.labelEn}
           </option>
         ))}
+        <option value="EXCHANGE">Exchange</option>
       </select>
 
       <select value={filters.paymentProvider ?? ""} onChange={(e) => set("paymentProvider", e.target.value || undefined)} className={selectClass} style={selectStyle}>
