@@ -1,6 +1,7 @@
 "use client";
 
 import { ExchangeDialog } from "@/components/orders/ExchangeDialog";
+import { ReturnStockSwitches } from "@/components/orders/ReturnStockSwitches";
 import { useState } from "react";
 import Link from "next/link";
 import { BD_DISTRICTS_BY_DIVISION, BD_DIVISIONS } from "@amader/shared";
@@ -413,6 +414,10 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   </div>
                 ))}
               </div>
+
+              {(order.status === "RETURNED" || order.status === "PARTIALLY_RETURNED") && (
+                <ReturnStockSwitches order={order} />
+              )}
 
               {/* Quantity/remove failures were invisible: only addItem's error
                   was ever rendered, so a rejected quantity change looked like

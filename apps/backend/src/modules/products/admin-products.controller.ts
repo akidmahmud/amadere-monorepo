@@ -41,6 +41,7 @@ import { UpdateVariantSkuDto } from './dto/update-variant-sku.dto';
 import { UpdateVariantAdminOnlyDto } from './dto/update-variant-admin-only.dto';
 import { ReorderProductsDto } from './dto/reorder-products.dto';
 import { UpdateVariantWeightDto } from './dto/update-variant-weight.dto';
+import { UpdateVariantAttributesDto } from './dto/update-variant-attributes.dto';
 import { UpdateCrossSellDto } from './dto/update-cross-sell.dto';
 import { UpdateRelatedProductsDto } from './dto/update-related-products.dto';
 
@@ -269,6 +270,21 @@ export class AdminProductsController {
     @Body() dto: UpdateVariantWeightDto,
   ): Promise<void> {
     return this.products.updateVariantWeight(id, variantId, dto.weightOverride);
+  }
+
+  // Re-label a variant (e.g. 500 gram → 250 gram); its id, price and stock stay.
+  @Patch(':id/variants/:variantId/attributes')
+  @RequirePermission('product.update')
+  updateVariantAttributes(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('variantId', ParseIntPipe) variantId: number,
+    @Body() dto: UpdateVariantAttributesDto,
+  ): Promise<void> {
+    return this.products.updateVariantAttributes(
+      id,
+      variantId,
+      dto.attributeValueIds,
+    );
   }
 
   @Get(':id/cross-sell')

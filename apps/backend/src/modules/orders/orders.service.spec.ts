@@ -476,14 +476,41 @@ describe('OrdersService.updateStatus — back to stock or write off', () => {
     expect(client.orderItem.update).not.toHaveBeenCalled();
   });
 
-  it('never delivered: reservations are released as before; the choice is ignored', async () => {
+  it('never delivered (courier return): reservation released, units kept out come off the shelf', async () => {
     const { service, client } = build({ status: 'PROCESSING', completedAt: null, lastHistory: null });
     await service.updateStatus(
       7,
-      { status: 'RETURNED', returnLines: [{ itemId: 1, restock: 0, writeOff: 4 }] } as UpdateOrderStatusDto,
+      { status: 'RETURNED', returnLines: [{ itemId: 1, restock: 1, writeOff: 3 }] } as UpdateOrderStatusDto,
       1,
     );
     expect(client.product.update).toHaveBeenCalledWith({ where: { id: 11 }, data: { reservedStock: { decrement: 4 } } });
+    expect(client.product.update).toHaveBeenCalledWith({ where: { id: 11 }, data: { stock: { decrement: 3 } } });
+    expect(client.orderItem.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { restockedQuantity: 1, writtenOffQuantity: 3 },
+    });
+  });
+
+  it('never delivered, no choice: everything released back to stock, as before', async () => {
+    const { service, client } = build({ status: 'PROCESSING', completedAt: null, lastHistory: null });
+    await service.updateStatus(7, { status: 'RETURNED' } as UpdateOrderStatusDto, 1);
     expect(client.orderItem.update).not.toHaveBeenCalled();
+  });
+
+  it('return stock toggle: switching kept-out units into the main inventory restocks them', async () => {
+    const { service, client } = build({ status: 'RETURNED', restocked: 0, writtenOff: 4, lastHistory: 'RETURNED' });
+    await service.setReturnedStock(7, [{ itemId: 1, restock: 4 }], 1);
+    expect(client.product.update).toHaveBeenCalledWith({ where: { id: 11 }, data: { stock: { increment: 4 } } });
+    expect(client.orderItem.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { restockedQuantity: 4, writtenOffQuantity: 0 },
+    });
+  });
+
+  it('return stock toggle: switching off takes them back out; never more than came back', async () => {
+    const { service, client } = build({ status: 'RETURNED', restocked: 4, writtenOff: 0, lastHistory: 'RETURNED' });
+    await service.setReturnedStock(7, [{ itemId: 1, restock: 0 }], 1);
+    expect(client.product.update).toHaveBeenCalledWith({ where: { id: 11 }, data: { stock: { decrement: 4 } } });
+    await expect(service.setReturnedStock(7, [{ itemId: 1, restock: 5 }], 1)).rejects.toThrow(/only 4 came back/);
   });
 });

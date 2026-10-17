@@ -369,6 +369,28 @@ export function useUpdateVariantWeight(productId: number) {
   });
 }
 
+/** Re-label a variant (e.g. 500 gram → 250 gram); id, price and stock stay. */
+export function useUpdateVariantAttributes(productId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      variantId,
+      attributeValueIds,
+    }: {
+      variantId: number;
+      attributeValueIds: number[];
+    }) =>
+      proxyFetch<void>(
+        `/admin/products/${productId}/variants/${variantId}/attributes`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ attributeValueIds }),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useGenerateProductPreviewToken() {
   return useMutation({
     mutationFn: (id: number) =>

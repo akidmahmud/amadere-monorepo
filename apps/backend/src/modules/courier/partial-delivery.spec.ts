@@ -27,7 +27,11 @@ function makeShipments(orderStatus = 'CONFIRMED') {
         update: jest.fn(),
         findMany: jest.fn(),
       },
-      order: { findUnique: jest.fn().mockResolvedValue({ id: 5, status: orderStatus }) },
+      order: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 5, status: orderStatus, items: [{ id: 1, quantity: 2 }] }),
+      },
       payment: {
         findFirst: jest.fn().mockResolvedValue({ id: 1, provider: 'COD', status: 'PENDING' }),
         update: jest.fn(),
@@ -83,6 +87,26 @@ describe('courier "partial delivery" (customer paid only the delivery charge)', 
     const { svc, salesPosting } = makeShipments();
     await svc.handleCourierWebhook('STEADFAST', '1', 'cancelled', { status: 'cancelled' });
     expect(salesPosting.resizeCodReceivable.mock.calls[0][0].codAmount).toEqual(D(0));
+  });
+
+  it('courier "cancelled" after dispatch = Returned, goods kept out of the main inventory', async () => {
+    const { svc, orders } = makeShipments();
+    await svc.handleCourierWebhook('STEADFAST', '1', 'cancelled', { status: 'cancelled' });
+    expect(orders.updateStatus).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        status: 'RETURNED',
+        returnLines: [{ itemId: 1, restock: 0, writeOff: 2 }],
+      }),
+      null,
+    );
+  });
+
+  it('courier echo of a parcel staff cancelled themselves leaves the order alone', async () => {
+    const { svc, orders, shipment } = makeShipments();
+    Object.assign(shipment, { status: 'CANCELED' });
+    await svc.handleCourierWebhook('STEADFAST', '1', 'cancelled', { status: 'cancelled' });
+    expect(orders.updateStatus).not.toHaveBeenCalled();
   });
 
   it('approval_pending is only the rider word: nothing settled', async () => {

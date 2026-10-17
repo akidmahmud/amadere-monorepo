@@ -268,6 +268,15 @@ export class OrdersService {
           }
         } else {
           await this.releaseReservations(tx, cur.items);
+          // An undelivered parcel coming back (courier return): units not
+          // marked for the main inventory come off the shelf.
+          if (
+            dto.returnLines?.length &&
+            (dto.status === 'RETURNED' ||
+              dto.status === 'PARTIALLY_RETURNED') &&
+            !(await this.posStoreId(tx, cur.storeId))
+          )
+            await this.setReturnStock(tx, cur.items, dto.returnLines);
         }
       }
       // A partial return followed by the rest coming back. The release block
@@ -1126,6 +1135,87 @@ export class OrdersService {
         data: {
           restockedQuantity: onShelf - more,
           writtenOffQuantity: l.writeOff,
+        },
+      });
+    }
+  }
+
+  /**
+   * Returned order: which of the units that came back sit in the main
+   * inventory. Per line, `restock` of the returned units are on the shelf,
+   * the rest stay out (counted as written off). Can be changed any time.
+   */
+  async setReturnedStock(
+    id: number,
+    lines: { itemId: number; restock: number }[],
+    adminUserId: number,
+  ): Promise<OrderDto> {
+    await this.prisma.client.$transaction(async (tx) => {
+      await lockOrderRow(tx, id);
+      const cur = await tx.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      if (!cur) throw new NotFoundException('Order not found');
+      if (cur.status !== 'RETURNED' && cur.status !== 'PARTIALLY_RETURNED')
+        throw new BadRequestException('Only a returned order has return stock');
+      if (await this.posStoreId(tx, cur.storeId))
+        throw new BadRequestException('Shop orders are returned at the till');
+      await this.setReturnStock(tx, cur.items, lines);
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          status: cur.status,
+          note: 'Return stock updated',
+          adminUserId,
+        },
+      });
+    });
+    return this.reload(id);
+  }
+
+  private async setReturnStock(
+    tx: Prisma.TransactionClient,
+    items: {
+      id: number;
+      productId: number | null;
+      variantId: number | null;
+      quantity: number;
+      productTypeSnapshot: string;
+      productNameSnapshot: string;
+      restockedQuantity: number;
+      writtenOffQuantity: number;
+    }[],
+    lines: { itemId: number; restock: number }[],
+  ): Promise<void> {
+    for (const l of lines)
+      if (!items.some((i) => i.id === l.itemId))
+        throw new BadRequestException(`Line #${l.itemId} is not on this order`);
+    // Returns from before per-line counts existed put everything back.
+    const counted = items.some(
+      (i) => i.restockedQuantity > 0 || i.writtenOffQuantity > 0,
+    );
+    for (const item of items) {
+      const onShelf = counted ? item.restockedQuantity : item.quantity;
+      const returned = counted
+        ? item.restockedQuantity + item.writtenOffQuantity
+        : item.quantity;
+      const restock =
+        lines.find((l) => l.itemId === item.id)?.restock ?? onShelf;
+      if (restock < 0 || restock > returned)
+        throw new BadRequestException(
+          `${item.productNameSnapshot}: only ${returned} came back`,
+        );
+      const d = restock - onShelf;
+      if (d > 0)
+        await this.restockReturnedItems(tx, [{ ...item, quantity: d }]);
+      else if (d < 0)
+        await this.decrementStockOnly(tx, [{ ...item, quantity: -d }]);
+      await tx.orderItem.update({
+        where: { id: item.id },
+        data: {
+          restockedQuantity: restock,
+          writtenOffQuantity: returned - restock,
         },
       });
     }

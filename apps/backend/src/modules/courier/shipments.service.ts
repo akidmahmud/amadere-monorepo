@@ -80,7 +80,9 @@ const ORDER_STATUS_ON_SHIPMENT_STATUS: Partial<
 > = {
   DELIVERED: 'COMPLETED',
   RETURNED: 'RETURNED',
-  CANCELED: 'CANCELED',
+  // A parcel the courier cancels after dispatch went out and came back: a
+  // return. (A customer cancelling before dispatch is cancelled by staff.)
+  CANCELED: 'RETURNED',
   // Steadfast "partial delivery": the customer refused (some of) the goods
   // and paid less — often only the delivery charge. The goods come back.
   // Staff confirm which items returned (the note says so).
@@ -730,16 +732,29 @@ export class ShipmentsService {
     // alone, same guard OrdersService.updateStatus itself uses to decide
     // whether a live reservation still exists to commit/release.
     const orderStatus = ORDER_STATUS_ON_SHIPMENT_STATUS[status];
-    if (orderStatus) {
+    // Staff cancelled this parcel themselves (cancelOrReturn): the courier's
+    // echo is not a return.
+    if (orderStatus && !(status === 'CANCELED' && shipment.status === 'CANCELED')) {
       const order = await this.prisma.client.order.findUnique({
         where: { id: shipment.orderId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, items: { select: { id: true, quantity: true } } },
       });
       if (order && ACTIVE_ORDER_STATUSES.has(order.status)) {
         await this.orders.updateStatus(
           order.id,
           {
             status: orderStatus,
+            // Returned goods stay out of the main inventory until staff
+            // switch them on (a damaged spice can't be resold).
+            ...(orderStatus === 'RETURNED'
+              ? {
+                  returnLines: order.items.map((i) => ({
+                    itemId: i.id,
+                    restock: 0,
+                    writeOff: i.quantity,
+                  })),
+                }
+              : {}),
             note:
               status === 'PARTIALLY_DELIVERED'
                 ? `Auto-updated — ${provider} reported partial delivery${collected !== null ? ` (৳${collected.toFixed(0)} collected)` : ''}. Check which items came back.`

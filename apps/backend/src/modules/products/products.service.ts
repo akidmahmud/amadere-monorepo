@@ -1474,6 +1474,54 @@ export class ProductsService {
     });
   }
 
+  /**
+   * Swap which options a variant is (e.g. 500 gram → 250 gram). Same id, so
+   * price, stock and past orders (which keep their own snapshot) are untouched.
+   */
+  async updateVariantAttributes(
+    productId: number,
+    variantId: number,
+    attributeValueIds: number[],
+  ): Promise<void> {
+    const product = await this.prisma.client.product.findFirst({
+      where: { id: productId, deletedAt: null },
+      include: {
+        attributes: true,
+        variants: { include: { attributeValues: true } },
+      },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+    if (!product.variants.some((v) => v.id === variantId))
+      throw new NotFoundException('Variant not found');
+    const ids = [...new Set(attributeValueIds)];
+    await this.validateVariantAttributeValues(
+      product.attributes.map((a) => a.attributeId),
+      [{ attributeValueIds: ids } as CreateProductVariantDto],
+    );
+    const values = await this.prisma.client.attributeValue.findMany({
+      where: { id: { in: ids } },
+      select: { attributeId: true },
+    });
+    if (new Set(values.map((v) => v.attributeId)).size !== values.length)
+      throw new BadRequestException('Pick one option per attribute');
+    const key = (list: number[]) => [...list].sort((a, b) => a - b).join(',');
+    const clash = product.variants.find(
+      (v) =>
+        v.id !== variantId &&
+        key(v.attributeValues.map((l) => l.attributeValueId)) === key(ids),
+    );
+    if (clash)
+      throw new ConflictException('Another variant already has these options');
+    await this.prisma.client.$transaction([
+      this.prisma.client.productVariantAttributeValue.deleteMany({
+        where: { variantId },
+      }),
+      this.prisma.client.productVariantAttributeValue.createMany({
+        data: ids.map((attributeValueId) => ({ variantId, attributeValueId })),
+      }),
+    ]);
+  }
+
   async updateVariantPrice(
     productId: number,
     variantId: number,

@@ -10,7 +10,8 @@ type Status = "RETURNED" | "PARTIALLY_RETURNED";
 /**
  * Marking an order Returned / Partially Returned. A delivered order asks,
  * per item, how many go back to stock and how many are damaged and written
- * off (spices can't be resold). An undelivered one just goes back to stock.
+ * off (spices can't be resold). An undelivered one: a switch per item for
+ * whether it goes back into the main inventory.
  */
 export function ReturnLinesDialog({
   orderId,
@@ -26,6 +27,8 @@ export function ReturnLinesDialog({
   const [counts, setCounts] = useState<
     Record<number, { restock: string; writeOff: string }>
   >({});
+  // Undelivered parcel coming back: which lines go into the main inventory.
+  const [toStock, setToStock] = useState<Record<number, boolean>>({});
 
   const delivered = !!order?.completedAt;
   // Returned earlier and not completed again: the goods are already back on
@@ -78,15 +81,17 @@ export function ReturnLinesDialog({
     update.mutate(
       {
         status,
-        ...(delivered
-          ? {
-              returnLines: lines.map((l) => ({
-                itemId: l.id,
-                restock: onShelfMode ? 0 : l.restock,
-                writeOff: l.writeOff,
-              })),
-            }
-          : {}),
+        returnLines: delivered
+          ? lines.map((l) => ({
+              itemId: l.id,
+              restock: onShelfMode ? 0 : l.restock,
+              writeOff: l.writeOff,
+            }))
+          : lines.map((l) => ({
+              itemId: l.id,
+              restock: toStock[l.id] ? l.quantity : 0,
+              writeOff: toStock[l.id] ? 0 : l.quantity,
+            })),
       },
       { onSuccess: onClose },
     );
@@ -105,9 +110,37 @@ export function ReturnLinesDialog({
         {isLoading || !order ? (
           <p className="text-sm text-muted">Loading…</p>
         ) : !delivered ? (
-          <p className="text-sm text-muted">
-            This order was never delivered, so everything goes back to stock.
-          </p>
+          <>
+            <p className="text-sm text-muted">
+              Switch on the items to <b>add back to the main inventory</b>.
+              Items left off stay out (e.g. damaged).
+            </p>
+            <div className="flex flex-col divide-y divide-border rounded-md border border-border">
+              {lines.map((l) => (
+                <label
+                  key={l.id}
+                  className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={!!toStock[l.id]}
+                    onChange={(e) =>
+                      setToStock((t) => ({ ...t, [l.id]: e.target.checked }))
+                    }
+                    className="h-4 w-4 accent-emerald-700"
+                  />
+                  <span className="flex-1">
+                    {l.name}{" "}
+                    <span className="text-xs text-muted">× {l.quantity}</span>
+                  </span>
+                  <span className="text-xs text-muted">
+                    {toStock[l.id] ? "Main inventory" : "Kept out"}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </>
         ) : onShelfMode ? (
           <>
             <p className="text-sm text-muted">

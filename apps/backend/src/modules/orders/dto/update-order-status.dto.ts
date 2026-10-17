@@ -39,3 +39,17 @@ export class UpdateOrderStatusDto {
   @Type(() => ReturnLineDto)
   returnLines?: ReturnLineDto[];
 }
+
+/** A returned line: how many of the units that came back are in the main inventory. */
+export class ReturnStockLineDto {
+  @ApiProperty() @IsInt() itemId!: number;
+  @ApiProperty() @IsInt() @Min(0) restock!: number;
+}
+
+export class SetReturnStockDto {
+  @ApiProperty({ type: [ReturnStockLineDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReturnStockLineDto)
+  lines!: ReturnStockLineDto[];
+}

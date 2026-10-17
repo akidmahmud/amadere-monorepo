@@ -190,6 +190,19 @@ export function useUpdateOrderStatus(id: number) {
   });
 }
 
+/** Returned order: how many returned units of each line are in the main inventory. */
+export function useSetReturnStock(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lines: { itemId: number; restock: number }[]) =>
+      proxyFetch<AdminOrder>(`/admin/orders/${id}/return-stock`, {
+        method: "PATCH",
+        body: JSON.stringify({ lines }),
+      }),
+    onSuccess: () => invalidateOrder(qc),
+  });
+}
+
 export function useRefundOrder(id: number) {
   const qc = useQueryClient();
   return useMutation({

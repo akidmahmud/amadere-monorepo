@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@amader/admin-ui";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Attribute } from "@/hooks/useAttributes";
 import type { CostPriceUnit, VariantInput } from "@/hooks/useProducts";
 import { computeVariantCost } from "@/lib/variant-cost";
+import { ensureGramsValue } from "@/lib/custom-weight-value";
+import { labelToKg } from "@/lib/variant-weight";
+
+// Picked "Custom" in a weight attribute's select.
+export const CUSTOM = -1;
 
 export interface VariantRowFormProps {
   attributes: Attribute[];
@@ -45,11 +50,28 @@ export function VariantRowForm({
   const [stock, setStock] = useState("0");
   const [isDefault, setIsDefault] = useState(false);
   const [isAdminOnly, setIsAdminOnly] = useState(false);
+  // Custom weight typed in grams, per weight attribute.
+  const [customGrams, setCustomGrams] = useState<Record<number, string>>({});
+  const [customError, setCustomError] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const labelOf = (attr: Attribute, valueId: number) =>
+    attr.values.find((v) => v.id === valueId)?.translations[0]?.value ?? "";
+  // The variant's weight in kg from its picked/custom weight value, used when
+  // the Weight (kg) box is left empty.
+  const pickedKg = attributes
+    .map((a) =>
+      valueByAttribute[a.id] === CUSTOM
+        ? Number(customGrams[a.id]) / 1000 || null
+        : labelToKg(labelOf(a, valueByAttribute[a.id])),
+    )
+    .find((kg) => kg != null);
+  const weightKg = weight ? Number(weight) : (pickedKg ?? undefined);
 
   const effectiveCost = computeVariantCost(
     costPerItem,
     costPriceUnit,
-    weight ? Number(weight) : undefined,
+    weightKg,
   );
   const profit =
     effectiveCost !== undefined && price ? Number(price) - effectiveCost : null;
@@ -60,7 +82,11 @@ export function VariantRowForm({
 
   const canSubmit =
     attributes.length > 0 &&
-    attributes.every((a) => valueByAttribute[a.id]) &&
+    attributes.every((a) =>
+      valueByAttribute[a.id] === CUSTOM
+        ? Number(customGrams[a.id]) > 0
+        : valueByAttribute[a.id],
+    ) &&
     price;
 
   function reset() {
@@ -72,19 +98,36 @@ export function VariantRowForm({
     setStock("0");
     setIsDefault(false);
     setIsAdminOnly(false);
+    setCustomGrams({});
+    setCustomError(null);
   }
 
-  function submit() {
+  async function resolveValueId(attr: Attribute): Promise<number> {
+    const picked = valueByAttribute[attr.id];
+    return picked === CUSTOM
+      ? ensureGramsValue(attr, Number(customGrams[attr.id]), qc)
+      : picked;
+  }
+
+  async function submit() {
     if (!canSubmit) return;
+    let attributeValueIds: number[];
+    try {
+      setCustomError(null);
+      attributeValueIds = await Promise.all(attributes.map(resolveValueId));
+    } catch (e) {
+      setCustomError(e instanceof Error ? e.message : "Could not add the custom weight");
+      return;
+    }
     const result = onSubmit({
       sku: sku || undefined,
       price: Number(price),
       salePrice: salePrice ? Number(salePrice) : undefined,
-      weightOverride: weight ? Number(weight) : undefined,
+      weightOverride: weightKg,
       stock: Number(stock),
       isDefault,
       isAdminOnly,
-      attributeValueIds: Object.values(valueByAttribute),
+      attributeValueIds,
     });
 
     // Local-state flow (new product) returns nothing and is always a success.
@@ -100,7 +143,7 @@ export function VariantRowForm({
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    submit();
+    void submit();
   }
 
   // A plain <div>, not a <form> — this row is embedded inside the product
@@ -117,6 +160,7 @@ export function VariantRowForm({
           <span className="text-[11px] font-bold text-emerald-950">
             {attr.translations[0]?.name}
           </span>
+          <span className="flex gap-1.5">
           <select
             value={valueByAttribute[attr.id] ?? ""}
             onChange={(e) =>
@@ -133,7 +177,24 @@ export function VariantRowForm({
                 {v.translations[0]?.value}
               </option>
             ))}
+            {attr.values.some((v) => labelToKg(v.translations[0]?.value ?? "") != null) && (
+              <option value={CUSTOM}>+ Custom weight (gram)</option>
+            )}
           </select>
+          {valueByAttribute[attr.id] === CUSTOM && (
+            <input
+              type="number"
+              min={1}
+              autoFocus
+              placeholder="Gram, e.g. 750"
+              value={customGrams[attr.id] ?? ""}
+              onChange={(e) =>
+                setCustomGrams((prev) => ({ ...prev, [attr.id]: e.target.value }))
+              }
+              className="num h-9 w-28 rounded-lg border border-emerald-800/20 bg-white px-2.5 text-xs font-semibold text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
+            />
+          )}
+          </span>
         </label>
       ))}
       <label className="flex flex-col gap-1">
@@ -172,6 +233,7 @@ export function VariantRowForm({
           <input
             type="number"
             value={weight}
+            placeholder={pickedKg != null ? String(pickedKg) : undefined}
             onChange={(e) => setWeight(e.target.value)}
             className="num h-9 w-20 rounded-lg border border-emerald-800/20 bg-white px-2.5 text-xs font-semibold text-emerald-950 outline-none transition-all focus:border-emerald-600 focus:ring-2 focus:ring-amber-400/30"
           />
@@ -242,11 +304,14 @@ export function VariantRowForm({
       <button
         type="button"
         disabled={!canSubmit || pending}
-        onClick={submit}
+        onClick={() => void submit()}
         className="h-9 shrink-0 rounded-lg bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-900 px-4 text-xs font-extrabold text-amber-300 shadow-md shadow-emerald-900/15 ring-1 ring-amber-400/40 transition-all hover:from-emerald-700 hover:to-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {submitLabel}
       </button>
+      {customError && (
+        <p className="w-full text-xs font-semibold text-rose-700">{customError}</p>
+      )}
     </div>
   );
 }

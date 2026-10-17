@@ -13,6 +13,7 @@ import {
   useSetDefaultVariant,
   useUpdateProduct,
   useUpdateVariantAdminOnly,
+  useUpdateVariantAttributes,
 } from "@/hooks/useProducts";
 import { useUpdateVariantPrice } from "@/hooks/useProfit";
 import { useUpdateInventoryStock } from "@/hooks/useInventory";
@@ -20,7 +21,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { computeVariantCost } from "@/lib/variant-cost";
-import { VariantRowForm } from "./VariantRowForm";
+import { ensureGramsValue } from "@/lib/custom-weight-value";
+import { labelToKg } from "@/lib/variant-weight";
+import { CUSTOM, VariantRowForm } from "./VariantRowForm";
 
 export interface ExistingVariantsManagerProps {
   productId: number;
@@ -92,6 +95,31 @@ function VariantEditRow({
   const updateWeight = useUpdateVariantWeight(productId);
   const setDefault = useSetDefaultVariant(productId);
   const updateAdminOnly = useUpdateVariantAdminOnly(productId);
+  const updateAttributes = useUpdateVariantAttributes(productId);
+  // The variant's option per attribute (e.g. Weight → "500 gram"), changeable.
+  const savedPicks = Object.fromEntries(
+    attributes.map((a) => [
+      a.id,
+      a.values.find((v) => variant.attributeValueIds.includes(v.id))?.id ?? 0,
+    ]),
+  ) as Record<number, number>;
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [picks, setPicks] = useState(savedPicks);
+  const [customGrams, setCustomGrams] = useState<Record<number, string>>({});
+  const [labelError, setLabelError] = useState<string | null>(null);
+  const labelDirty =
+    editingLabel && attributes.some((a) => picks[a.id] !== savedPicks[a.id]);
+  const kgOf = (p: Record<number, number>) =>
+    attributes
+      .map((a) =>
+        p[a.id] === CUSTOM
+          ? Number(customGrams[a.id]) / 1000 || null
+          : labelToKg(
+              a.values.find((v) => v.id === p[a.id])?.translations[0]?.value ??
+                "",
+            ),
+      )
+      .find((kg) => kg != null) ?? null;
   const [price, setPrice] = useState(String(variant.price));
   const [salePrice, setSalePrice] = useState(
     variant.salePrice != null ? String(variant.salePrice) : "",
@@ -125,16 +153,70 @@ function VariantEditRow({
     wholesale !== savedWholesale ||
     stock !== String(variant.stock) ||
     sku !== (variant.sku ?? "") ||
-    weight !== (variant.weightOverride ?? "");
+    weight !== (variant.weightOverride ?? "") ||
+    labelDirty;
   const pending =
+    updateAttributes.isPending ||
     updatePrice.isPending ||
     updateStock.isPending ||
     updateSku.isPending ||
     updateWeight.isPending ||
     updateAdminOnly.isPending;
 
+  async function saveLabel() {
+    const invalidate = () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY });
+    const incomplete = attributes.some((a) =>
+      picks[a.id] === CUSTOM ? !(Number(customGrams[a.id]) > 0) : !picks[a.id],
+    );
+    if (incomplete) {
+      setLabelError("Pick an option (or type the grams) for each attribute");
+      return;
+    }
+    let attributeValueIds: number[];
+    try {
+      setLabelError(null);
+      attributeValueIds = await Promise.all(
+        attributes.map((a) =>
+          picks[a.id] === CUSTOM
+            ? ensureGramsValue(a, Number(customGrams[a.id]), qc)
+            : picks[a.id],
+        ),
+      );
+    } catch (e) {
+      setLabelError(e instanceof Error ? e.message : "Could not add the weight");
+      return;
+    }
+    updateAttributes.mutate(
+      { variantId: variant.id, attributeValueIds },
+      {
+        onSuccess: () => {
+          setEditingLabel(false);
+          setCustomGrams({});
+          void invalidate();
+        },
+      },
+    );
+    // The weight follows the new label (500 gram → 0.25 kg for 250 gram)
+    // unless it was typed by hand.
+    const oldKg = kgOf(savedPicks);
+    const newKg = kgOf(picks);
+    const saved = variant.weightOverride ?? "";
+    if (
+      newKg != null &&
+      weight === saved &&
+      (saved === "" || Number(saved) === oldKg)
+    ) {
+      setWeight(String(newKg));
+      updateWeight.mutate(
+        { variantId: variant.id, weightOverride: newKg },
+        { onSuccess: invalidate },
+      );
+    }
+  }
+
   function save() {
     const invalidate = () => qc.invalidateQueries({ queryKey: PRODUCTS_KEY });
+    if (labelDirty) void saveLabel();
     if (
       price !== String(variant.price) ||
       salePrice !==
@@ -178,9 +260,77 @@ function VariantEditRow({
 
   return (
     <div className="flex flex-wrap items-end gap-2.5 rounded-xl border border-emerald-800/15 bg-gradient-to-r from-emerald-50/50 via-white to-amber-50/20 p-3 shadow-xs transition-all hover:border-amber-400/40">
-      <span className="mb-1.5 w-28 shrink-0 truncate text-xs font-bold text-emerald-950">
+      {editingLabel && (
+        <div className="flex flex-wrap items-end gap-1.5">
+          {attributes.map((a) => (
+            <label key={a.id} className="flex flex-col gap-1">
+              <span className="text-[11px] font-bold text-emerald-900/80">
+                {a.translations[0]?.name}
+              </span>
+              <span className="flex gap-1">
+                <select
+                  value={picks[a.id] || ""}
+                  onChange={(e) =>
+                    setPicks((p) => ({ ...p, [a.id]: Number(e.target.value) }))
+                  }
+                  className="h-8 rounded-lg border border-emerald-800/20 bg-white px-2 text-xs font-semibold text-emerald-950"
+                >
+                  <option value="">Select</option>
+                  {a.values.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.translations[0]?.value}
+                    </option>
+                  ))}
+                  {a.values.some(
+                    (v) => labelToKg(v.translations[0]?.value ?? "") != null,
+                  ) && <option value={CUSTOM}>+ Custom weight (gram)</option>}
+                </select>
+                {picks[a.id] === CUSTOM && (
+                  <input
+                    type="number"
+                    min={1}
+                    autoFocus
+                    placeholder="Gram, e.g. 750"
+                    value={customGrams[a.id] ?? ""}
+                    onChange={(e) =>
+                      setCustomGrams((g) => ({ ...g, [a.id]: e.target.value }))
+                    }
+                    className="num h-8 w-28 rounded-lg border border-emerald-800/20 bg-white px-2 text-xs font-semibold text-emerald-950"
+                  />
+                )}
+              </span>
+            </label>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setEditingLabel(false);
+              setPicks(savedPicks);
+              setCustomGrams({});
+              setLabelError(null);
+            }}
+            className="mb-1.5 text-[11px] font-semibold text-muted underline"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      <span
+        className={`mb-1.5 w-28 shrink-0 truncate text-xs font-bold text-emerald-950 ${editingLabel ? "hidden" : ""}`}
+      >
         {labelFor(attributes, variant.attributeValueIds) ||
           `Variant #${variant.id}`}
+        <button
+          type="button"
+          onClick={() => {
+            setPicks(savedPicks);
+            setEditingLabel(true);
+          }}
+          title="Change this variant's option (e.g. 500 gram → 250 gram)"
+          className="ml-1 text-[10px] font-semibold text-emerald-700 underline"
+        >
+          Change
+        </button>
         {variant.isDefault && (
           <span className="ml-1 text-[10px] font-extrabold text-amber-600">
             (default)
@@ -382,6 +532,14 @@ function VariantEditRow({
             : "Failed to change visibility"}
         </span>
       )}
+      {(labelError || updateAttributes.isError) && (
+        <p className="w-full text-xs text-danger">
+          {labelError ??
+            (updateAttributes.error instanceof Error
+              ? updateAttributes.error.message
+              : "Could not change the option")}
+        </p>
+      )}
       {updateWeight.isError && (
         <span className="w-full text-xs font-bold text-rose-600">
           {updateWeight.error instanceof Error
@@ -393,11 +551,8 @@ function VariantEditRow({
   );
 }
 
-// No update-variant endpoint exists for attribute-value combos or isDefault
-// — changing those means removing the variant and adding it again (both
-// mutations fire immediately, same pattern already proven on the Attributes
-// page). Price, stock, and SKU DO have real update endpoints (see
-// VariantEditRow above), so those are edited in place instead.
+// Every field of a saved variant, its option ("Change") included, is edited
+// in place in VariantEditRow above; each hits its own PATCH endpoint.
 export function ExistingVariantsManager({
   productId,
   attributes,

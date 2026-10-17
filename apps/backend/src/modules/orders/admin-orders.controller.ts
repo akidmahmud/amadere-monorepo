@@ -24,7 +24,10 @@ import { ApiPaginatedResponse } from '../../common/dto/paginated-response.dto';
 import { OrdersService } from './orders.service';
 import { AdminOrderCreationService } from './admin-order-creation.service';
 import { OrderEmailsService } from '../order-emails/order-emails.service';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import {
+  SetReturnStockDto,
+  UpdateOrderStatusDto,
+} from './dto/update-order-status.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { CreateManualOrderDto } from './dto/create-manual-order.dto';
 import { PreviewCouponDto, PreviewCouponResultDto } from './dto/preview-coupon.dto';
@@ -98,6 +101,18 @@ export class AdminOrdersController {
     @CurrentAdmin() admin: { id: number },
   ): Promise<OrderDto> {
     return this.orders.updateStatus(id, dto, admin.id);
+  }
+
+  /** Returned order: which returned units go into the main inventory (the rest stay out). */
+  @Patch(':id/return-stock')
+  @RequirePermission('order.update')
+  @ApiOkResponse({ type: OrderDto })
+  setReturnStock(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetReturnStockDto,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<OrderDto> {
+    return this.orders.setReturnedStock(id, dto.lines, admin.id);
   }
 
   @Post(':id/refund')
