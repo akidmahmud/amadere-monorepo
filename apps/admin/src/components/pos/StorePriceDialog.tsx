@@ -247,7 +247,7 @@ export function StorePriceDialog({
           {canCost && (
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold">
-                Cost (৳){" "}
+                {p.soldByWeight ? "Cost per kg (৳)" : "Cost (৳)"}{" "}
                 <span className="font-normal text-gray-500">for profit</span>
               </span>
               <input
@@ -264,7 +264,9 @@ export function StorePriceDialog({
             <label className="flex flex-col gap-1">
               <span className="text-xs font-bold">
                 Expiry date{" "}
-                <span className="font-normal text-gray-500">of the stock here</span>
+                <span className="font-normal text-gray-500">
+                  of the stock here
+                </span>
               </span>
               <input
                 type="date"
@@ -276,7 +278,9 @@ export function StorePriceDialog({
             </label>
           )}
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold">Price (৳)</span>
+            <span className="text-xs font-bold">
+              {p.soldByWeight ? "Price per kg (৳)" : "Price (৳)"}
+            </span>
             <input
               className={input}
               inputMode="decimal"
@@ -286,7 +290,9 @@ export function StorePriceDialog({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold">Offer price (৳)</span>
+            <span className="text-xs font-bold">
+              {p.soldByWeight ? "Offer price per kg (৳)" : "Offer price (৳)"}
+            </span>
             <input
               className={`${input} ${s !== null && (n === null || s > n) ? "border-red-400" : ""}`}
               inputMode="decimal"

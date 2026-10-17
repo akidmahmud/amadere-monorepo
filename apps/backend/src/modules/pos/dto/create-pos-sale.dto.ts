@@ -13,6 +13,7 @@ import {
   IsString,
   Length,
   Matches,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -21,6 +22,14 @@ export class PosSaleItemDto {
   @ApiProperty() @IsInt() productId!: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() variantId?: number;
   @ApiProperty() @IsInt() @IsPositive() quantity!: number;
+  @ApiPropertyOptional({
+    description: 'Sold-by-weight items: kg, up to 3 decimals',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @IsPositive()
+  @Max(50)
+  weighedKg?: number;
 }
 
 export class CreatePosSaleDto {
@@ -101,6 +110,18 @@ export class EditPosLineDto {
   @ApiProperty() @IsInt() productId!: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() variantId?: number | null;
   @ApiProperty() @IsInt() @Min(0) quantity!: number;
+  @ApiPropertyOptional({
+    description: 'An existing weighed line being kept or re-weighed',
+  })
+  @IsOptional()
+  @IsInt()
+  lineId?: number;
+  @ApiPropertyOptional({ description: 'Sold-by-weight items: kg' })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @IsPositive()
+  @Max(50)
+  weighedKg?: number;
 }
 
 export class EditPosSaleDto {

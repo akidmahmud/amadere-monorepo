@@ -48,6 +48,7 @@ export class DailyReportLoader {
           id: true,
           orderNumber: true,
           channel: true,
+          exchangeOfOrderId: true,
           storeId: true,
           utmSource: true,
           referrerDomain: true,
@@ -73,6 +74,7 @@ export class DailyReportLoader {
               unitPrice: true,
               quantity: true,
               restockedQuantity: true,
+              weighedKg: true,
               variant: { select: { weightOverride: true } },
               product: { select: { shippableWeight: true, sku: true } },
             },
@@ -145,8 +147,12 @@ export class DailyReportLoader {
       const isPos = r.channel === 'POS' && !recovered;
       let parcelKg = 0;
       const lines = r.items.flatMap((i, idx) => {
+        // A sold-by-weight POS line weighs what was typed at the till.
         const w = Number(
-          i.variant?.weightOverride ?? i.product?.shippableWeight ?? 0,
+          i.weighedKg ??
+            i.variant?.weightOverride ??
+            i.product?.shippableWeight ??
+            0,
         );
         parcelKg += w * i.quantity;
         // POS returns put goods back on the shelf: only the kept quantity is a
@@ -170,6 +176,8 @@ export class DailyReportLoader {
             kg: kgOf(w, qty),
             sales: (grosses[idx] - discs[idx]) * share,
             cost: c ? c.unitCost * qty : null,
+            // Exchange orders report how many units were sent free.
+            ...(r.exchangeOfOrderId != null ? { units: qty } : {}),
           },
         ];
       });
@@ -188,6 +196,7 @@ export class DailyReportLoader {
         source: recovered ? 'WEB_DIRECT' : retailSourceOf(r),
         delivery,
         lines,
+        ...(r.exchangeOfOrderId != null ? { exchange: true } : {}),
       };
     });
 
@@ -234,5 +243,53 @@ export class DailyReportLoader {
     });
 
     return [...retailOrders, ...wholesaleOrders];
+  }
+
+  /**
+   * Returned items written off as damaged, by the day they came back.
+   * Costed at the item's cost on that day. Undefined when there are none.
+   */
+  async loadWriteOffs(
+    from: string,
+    to: string,
+    exact?: { start: Date; end: Date },
+  ): Promise<{ items: number; cost: number } | undefined> {
+    const win = exact ?? businessWindow(from, to);
+    const rows = await this.prisma.client.orderItem.findMany({
+      where: {
+        writtenOffQuantity: { gt: 0 },
+        order: {
+          deletedAt: null,
+          returnedAt: { gte: win.start, lt: win.end },
+        },
+      },
+      select: {
+        productId: true,
+        variantId: true,
+        writtenOffQuantity: true,
+        variant: { select: { weightOverride: true } },
+        product: { select: { shippableWeight: true } },
+        order: { select: { returnedAt: true } },
+      },
+    });
+    if (!rows.length) return undefined;
+    const resolver = await this.costs.loadResolver(
+      uniq(rows.map((i) => i.productId)),
+      uniq(rows.map((i) => i.variantId)),
+    );
+    let items = 0;
+    let cost = 0;
+    for (const i of rows) {
+      const w = Number(
+        i.variant?.weightOverride ?? i.product?.shippableWeight ?? 0,
+      );
+      const c = resolver.resolve(
+        { productId: i.productId, variantId: i.variantId, unitWeightKg: w },
+        dhakaDate(i.order.returnedAt!),
+      );
+      items += i.writtenOffQuantity;
+      cost += (c?.unitCost ?? 0) * i.writtenOffQuantity;
+    }
+    return { items, cost: Math.round(cost * 100) / 100 };
   }
 }

@@ -497,6 +497,55 @@ describe('PosSaleService.get — receipt data', () => {
     const out = await svc.get(null, 1);
     expect(out.items.map((i) => i.variantLabel)).toEqual(['1KG', null]);
   });
+  it('a weighed line reports its own weight and the price per kg', async () => {
+    const order = {
+      id: 1,
+      status: 'COMPLETED',
+      items: [
+        {
+          id: 1,
+          productId: 9,
+          variantId: null,
+          productNameSnapshot: 'Frozen Chicken',
+          unitPrice: D(368),
+          weighedKg: D('1.225'),
+          pricePerKg: D(300),
+          variant: null,
+          product: { shippableWeight: null, weightUnit: null },
+        },
+        {
+          id: 2,
+          productId: 10,
+          variantId: null,
+          productNameSnapshot: 'Oil',
+          unitPrice: D(90),
+          weighedKg: null,
+          variant: null,
+          product: { shippableWeight: D(1), weightUnit: null },
+        },
+      ],
+    };
+    const svc = new PosSaleService(
+      {
+        client: {
+          order: { findFirst: jest.fn().mockResolvedValue(order) },
+          storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const out = await svc.get(null, 1);
+    expect(out.items.map((i) => [i.weightKg, i.weightUnit, i.perKg])).toEqual([
+      ['1.225', 'kg', '300.00'], // stored rate, not 368 / 1.225
+      ['1', null, null],
+    ]);
+  });
 });
 
 describe('PosSaleService.returnSale', () => {
@@ -736,5 +785,109 @@ describe('manual discount and VAT coupon', () => {
     expect(manualDiscountAmount(D(200), 500, 'AMOUNT').toString()).toBe('200');
     expect(manualDiscountAmount(D(200), 150, 'PERCENT').toString()).toBe('200');
     expect(manualDiscountAmount(D(200), undefined, undefined).toString()).toBe('0');
+  });
+});
+
+describe('PosSaleService.create — sold by weight', () => {
+  function setup(priceLine = D(375)) {
+    const tx = {
+      order: {
+        create: jest.fn().mockResolvedValue({ id: 99, orderNumber: 'ORD-1' }),
+      },
+      payment: { create: jest.fn() },
+      posHeldSale: { deleteMany: jest.fn() },
+    };
+    const prisma = {
+      client: {
+        storePrice: { findMany: jest.fn().mockResolvedValue([]) },
+        product: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 9,
+              slug: 'chicken',
+              sku: 'CH',
+              productType: 'PHYSICAL',
+              vatRatePercent: null,
+              soldByWeight: true,
+              translations: [{ name: 'Frozen Chicken' }],
+              variants: [],
+            },
+          ]),
+        },
+        $transaction: jest.fn((fn: (t: unknown) => unknown) => fn(tx)),
+        store: {
+          findUniqueOrThrow: jest
+            .fn()
+            .mockResolvedValue({ id: 4, name: 'S', isActive: true }),
+        },
+      },
+    };
+    const stock = { move: jest.fn() };
+    const pricing = {
+      priceLines: jest
+        .fn()
+        .mockResolvedValue([{ unitPrice: priceLine, perKgPrice: D(300) }]),
+      price: jest.fn(),
+    };
+    const svc = new PosSaleService(
+      prisma as never,
+      stock as never,
+      { tenderAccountId: jest.fn().mockResolvedValue(33) } as never,
+      pricing as never,
+      { postPrepaidCapture: jest.fn() } as never,
+      {
+        getVat: jest.fn().mockResolvedValue({
+          enabled: false,
+          ratePercent: 0,
+          pricesIncludeVat: false,
+        }),
+      } as never,
+      {} as never,
+      { emit: jest.fn() } as never,
+    );
+    return { svc, tx, stock, pricing };
+  }
+
+  it('prices by the weight, saves it on the line and takes one piece off stock', async () => {
+    const { svc, tx, stock, pricing } = setup();
+    await svc.create(
+      4,
+      {
+        items: [{ productId: 9, quantity: 1, weighedKg: 1.25 }],
+        tender: 'CASH',
+        tenderedAmount: 400,
+      },
+      7,
+    );
+    expect(pricing.priceLines).toHaveBeenCalledWith(
+      [expect.objectContaining({ productId: 9, quantity: 1, weighedKg: 1.25 })],
+      4,
+    );
+    const data = tx.order.create.mock.calls[0][0].data;
+    expect(data.items.create[0]).toEqual(
+      expect.objectContaining({
+        weighedKg: 1.25,
+        quantity: 1,
+        unitPrice: D(375),
+        pricePerKg: D(300),
+      }),
+    );
+    expect(data.totalAmount).toEqual(D(375));
+    expect(stock.move).toHaveBeenCalledTimes(1);
+    expect(stock.move).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ productId: 9, qty: -1 }),
+    );
+  });
+
+  it('refuses a weighed product with no weight', async () => {
+    const { svc } = setup();
+    await expect(
+      svc.create(
+        4,
+        { items: [{ productId: 9, quantity: 1 }], tender: 'CASH' },
+        7,
+      ),
+    ).rejects.toThrow(/enter its weight/);
   });
 });

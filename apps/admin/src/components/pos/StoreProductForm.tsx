@@ -22,6 +22,8 @@ export type StoreProductFields = {
   /** Weight/volume as typed in `weightUnit`; printed on the receipt. */
   weightValue: string;
   weightUnit: WeightUnit;
+  /** Price and cost are per kg; the till asks for each item's weight. */
+  soldByWeight: boolean;
 };
 
 export const EMPTY_STORE_PRODUCT: StoreProductFields = {
@@ -34,6 +36,7 @@ export const EMPTY_STORE_PRODUCT: StoreProductFields = {
   categoryId: "",
   weightValue: "",
   weightUnit: "g",
+  soldByWeight: false,
 };
 
 const num = (s: string) => (s.trim() === "" ? null : Number(s));
@@ -66,8 +69,10 @@ export function StoreProductForm({
   const [opening, setOpening] = useState("");
   const [openingExpiry, setOpeningExpiry] = useState("");
   const [image, setImage] = useState(initialImage);
-  const set = (k: Exclude<keyof StoreProductFields, "weightUnit">, v: string) =>
-    setF((x) => ({ ...x, [k]: v }));
+  const set = (
+    k: Exclude<keyof StoreProductFields, "weightUnit" | "soldByWeight">,
+    v: string,
+  ) => setF((x) => ({ ...x, [k]: v }));
   const withStock = id === null && can("pos.stock_in");
   const openingOk =
     opening.trim() === "" ||
@@ -86,10 +91,14 @@ export function StoreProductForm({
             costPerItem: num(f.costPerItem),
             sku: f.sku,
             barcode: f.barcode,
-            weightKg: f.weightValue.trim()
-              ? toBase(Number(f.weightValue), f.weightUnit)
-              : null,
-            weightUnit: f.weightValue.trim() ? f.weightUnit : null,
+            // A weighed item has no fixed pack weight.
+            weightKg:
+              !f.soldByWeight && f.weightValue.trim()
+                ? toBase(Number(f.weightValue), f.weightUnit)
+                : null,
+            weightUnit:
+              !f.soldByWeight && f.weightValue.trim() ? f.weightUnit : null,
+            soldByWeight: f.soldByWeight,
             categoryId: f.categoryId ? Number(f.categoryId) : null,
             // Create: only when a photo was added. Edit: always (null removes).
             mediaId: id === null ? image?.mediaId : (image?.mediaId ?? null),
@@ -151,11 +160,29 @@ export function StoreProductForm({
           autoFocus
         />
       </label>
+      <label className="flex items-center gap-2 text-sm font-bold sm:col-span-2">
+        <input
+          type="checkbox"
+          checked={f.soldByWeight}
+          onChange={(e) =>
+            setF((x) => ({ ...x, soldByWeight: e.target.checked }))
+          }
+        />
+        Sold by weight (price and cost per kg; the till asks for the weight)
+      </label>
       {(
         [
-          ["price", "Price (৳) *"],
-          ["salePrice", "Sale price (৳)"],
-          ["costPerItem", "Cost (৳, for profit)"],
+          ["price", f.soldByWeight ? "Price per kg (৳) *" : "Price (৳) *"],
+          [
+            "salePrice",
+            f.soldByWeight ? "Sale price per kg (৳)" : "Sale price (৳)",
+          ],
+          [
+            "costPerItem",
+            f.soldByWeight
+              ? "Cost per kg (৳, for profit)"
+              : "Cost (৳, for profit)",
+          ],
         ] as const
       ).map(([k, text]) => (
         <label key={k} className={label}>
@@ -201,20 +228,22 @@ export function StoreProductForm({
           onChange={(e) => set("barcode", e.target.value)}
         />
       </label>
-      <label className={label}>
-        <span className="text-xs font-bold">
-          Weight / volume (optional, shown on the receipt)
-        </span>
-        <WeightField
-          label="Weight"
-          value={f.weightValue}
-          unit={f.weightUnit}
-          placeholder="e.g. 500"
-          onChange={(v, u) =>
-            setF((x) => ({ ...x, weightValue: v, weightUnit: u }))
-          }
-        />
-      </label>
+      {!f.soldByWeight && (
+        <label className={label}>
+          <span className="text-xs font-bold">
+            Weight / volume (optional, shown on the receipt)
+          </span>
+          <WeightField
+            label="Weight"
+            value={f.weightValue}
+            unit={f.weightUnit}
+            placeholder="e.g. 500"
+            onChange={(v, u) =>
+              setF((x) => ({ ...x, weightValue: v, weightUnit: u }))
+            }
+          />
+        </label>
+      )}
       {withStock && (
         <label className={label}>
           <span className="text-xs font-bold">Opening stock (optional)</span>

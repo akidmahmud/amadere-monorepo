@@ -17,6 +17,7 @@ import { StoresService } from '../stores/stores.service';
 import { PricingService } from '../cart/pricing.service';
 import { SalesPostingService } from '../net-profit/accounts/ledger/sales-posting.service';
 import { PosSettingsService } from './pos-settings.service';
+import { assertWeighedLines, weighedLinePrice } from './weighed-price';
 import { dhakaRange } from './dhaka-range';
 import { assertStoreActive } from '../stores/store-scope';
 import { PaymentsService } from '../payments/payments.service';
@@ -150,10 +151,21 @@ export class PosSaleService {
       }
     }
 
+    assertWeighedLines(dto.items, (id) => {
+      const p = byId.get(id);
+      return (
+        p && {
+          soldByWeight: p.soldByWeight,
+          name: p.translations[0]?.name ?? p.slug,
+        }
+      );
+    });
+
     const cartLines = dto.items.map((i) => ({
       productId: i.productId,
       variantId: i.variantId ?? null,
       quantity: i.quantity,
+      weighedKg: i.weighedKg ?? null,
     }));
     const priced = await this.pricing.priceLines(cartLines, storeId);
     // A product with no price set would otherwise ring up at ৳0.
@@ -351,6 +363,8 @@ export class PosSaleService {
                 productTypeSnapshot: p.productType,
                 unitPrice: priced[idx].unitPrice,
                 quantity: i.quantity,
+                weighedKg: i.weighedKg ?? null,
+                pricePerKg: priced[idx].perKgPrice ?? null,
               };
             }),
           },
@@ -501,13 +515,20 @@ export class PosSaleService {
         // edit shows the new weight. Snapshot on order_items if that matters.
         weightKg:
           (
+            i.weighedKg ??
             storeWeight(i.productId, i.variantId) ??
             variant?.weightOverride ??
             product?.shippableWeight
           )?.toString() ?? null,
-        weightUnit: storeWeight(i.productId, i.variantId)
-          ? (storeRow(i.productId, i.variantId)?.weightUnit ?? null)
-          : (product?.weightUnit ?? null),
+        weightUnit: i.weighedKg
+          ? 'kg'
+          : storeWeight(i.productId, i.variantId)
+            ? (storeRow(i.productId, i.variantId)?.weightUnit ?? null)
+            : (product?.weightUnit ?? null),
+        /** Sold by weight: the price per kg this line was sold at. */
+        perKg: i.weighedKg
+          ? (i.pricePerKg ?? i.unitPrice.dividedBy(i.weighedKg)).toFixed(2)
+          : null,
         /** Set for this store: printed even next to a variant label. */
         storeWeight: storeWeight(i.productId, i.variantId) != null,
         variantLabel:
@@ -640,7 +661,15 @@ export class PosSaleService {
     storeId: number | null,
     id: number,
     adminId: number,
-    items: { productId: number; variantId?: number | null; quantity: number }[],
+    items: {
+      productId: number;
+      variantId?: number | null;
+      quantity: number;
+      /** An existing weighed line being kept or re-weighed. */
+      lineId?: number;
+      /** Sold by weight: kg on this line. */
+      weighedKg?: number;
+    }[],
     opts: {
       reason?: string;
       dryRun?: boolean;
@@ -661,40 +690,94 @@ export class PosSaleService {
     const saleStore = o.storeId;
     const key = (p: number | null, v: number | null | undefined) =>
       `${p}:${v ?? 0}`;
-    // One line per product/size; quantities of repeats add up.
-    const want = new Map<
-      string,
-      { productId: number; variantId: number | null; quantity: number }
-    >();
-    for (const i of items) {
-      if (!Number.isInteger(i.quantity) || i.quantity < 0)
-        throw new BadRequestException('Quantities must be whole numbers');
-      const k = key(i.productId, i.variantId);
-      const prev = want.get(k);
-      want.set(k, {
-        productId: i.productId,
-        variantId: i.variantId ?? null,
-        quantity: (prev?.quantity ?? 0) + i.quantity,
-      });
-    }
-    for (const [k, w] of want) if (w.quantity === 0) want.delete(k);
-    if (!want.size)
-      throw new BadRequestException(
-        'A sale needs at least one item — delete it or return it instead',
-      );
-    const old = new Map(o.items.map((i) => [key(i.productId, i.variantId), i]));
-
-    // New lines: must be sold at this store, priced like a new sale.
-    const added = [...want.entries()].filter(([k]) => !old.has(k));
+    // Weighed lines are matched one by one: an existing line by its id (old
+    // rows carry `id`, edit items `lineId`), a new one by its position.
+    const lineKeyOf = (
+      i: {
+        id?: number;
+        lineId?: number;
+        productId: number | null;
+        variantId?: number | null;
+        weighedKg?: unknown;
+      },
+      idx: number,
+    ) => {
+      if (i.weighedKg == null) return key(i.productId, i.variantId);
+      const existing = i.lineId ?? i.id;
+      return existing !== undefined ? `L${existing}` : `N${idx}`;
+    };
     const products = await this.prisma.client.product.findMany({
-      where: { id: { in: [...want.values()].map((w) => w.productId) } },
+      where: { id: { in: items.map((i) => i.productId) } },
       include: {
         translations: { where: { locale: Locale.EN }, take: 1 },
         variants: { select: { id: true, sku: true } },
       },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
+    const seenLines = new Set<number>();
+    for (const i of items) {
+      if (i.lineId === undefined) continue;
+      if (
+        !o.items.some(
+          (x) =>
+            x.id === i.lineId && x.weighedKg && x.productId === i.productId,
+        )
+      )
+        throw new BadRequestException('That line is not on this sale');
+      if (seenLines.has(i.lineId))
+        throw new BadRequestException(
+          'A weighed line was sent more than once',
+        );
+      seenLines.add(i.lineId);
+    }
+    // One line per product/size (quantities of repeats add up); one per
+    // weighed item.
+    const want = new Map<
+      string,
+      {
+        productId: number;
+        variantId: number | null;
+        quantity: number;
+        weighedKg: number | null;
+      }
+    >();
+    items.forEach((i, idx) => {
+      if (!Number.isInteger(i.quantity) || i.quantity < 0)
+        throw new BadRequestException('Quantities must be whole numbers');
+      const k = lineKeyOf(i, idx);
+      const prev = want.get(k);
+      want.set(k, {
+        productId: i.productId,
+        variantId: i.variantId ?? null,
+        quantity: (prev?.quantity ?? 0) + i.quantity,
+        weighedKg: i.weighedKg ?? null,
+      });
+    });
+    for (const [k, w] of want) if (w.quantity === 0) want.delete(k);
+    if (!want.size)
+      throw new BadRequestException(
+        'A sale needs at least one item — delete it or return it instead',
+      );
+    const old = new Map(o.items.map((i) => [lineKeyOf(i, -1), i]));
+    // Sold-by-weight rules apply to new lines only: a line already on the
+    // sale keeps how it was sold, even if the product was switched since.
+    assertWeighedLines(
+      items.filter((i, idx) => i.quantity > 0 && !old.has(lineKeyOf(i, idx))),
+      (id) => {
+        const p = byId.get(id);
+        return (
+          p && {
+            soldByWeight: p.soldByWeight,
+            name: p.translations[0]?.name ?? p.slug,
+          }
+        );
+      },
+    );
+
+    // New lines: must be sold at this store, priced like a new sale.
+    const added = [...want.entries()].filter(([k]) => !old.has(k));
     const newPrice = new Map<string, Prisma.Decimal>();
+    const newPerKg = new Map<string, Prisma.Decimal>();
     if (added.length) {
       const sellable = new Set(
         (
@@ -735,13 +818,38 @@ export class PosSaleService {
             `${byId.get(w.productId)?.translations[0]?.name ?? `Product #${w.productId}`} has no price set`,
           );
         newPrice.set(k, price);
+        const perKg = priced[idx].perKgPrice;
+        if (perKg) newPerKg.set(k, new D(perKg));
       });
     }
+    // A re-weighed line keeps the price per kg it was sold at.
+    const keptPrice = (k: string, w: { weighedKg: number | null }) => {
+      const was = old.get(k);
+      if (!was) return newPrice.get(k)!;
+      if (w.weighedKg == null || !was.weighedKg) return was.unitPrice;
+      return weighedLinePrice(perKgOf(k)!, w.weighedKg);
+    };
+    // Stored rate; lines from before it was stored fall back to price ÷ kg.
+    const perKgOf = (k: string) => {
+      const was = old.get(k);
+      if (!was) return newPerKg.get(k) ?? null;
+      if (!was.weighedKg) return null;
+      return was.pricePerKg ?? was.unitPrice.dividedBy(was.weighedKg);
+    };
     const lines = [...want.entries()].map(([k, w]) => ({
       ...w,
       key: k,
-      unitPrice: old.get(k)?.unitPrice ?? newPrice.get(k)!,
+      unitPrice: keptPrice(k, w),
+      pricePerKg: w.weighedKg != null ? perKgOf(k) : null,
     }));
+    const reweighed = (l: (typeof lines)[number]) => {
+      const was = old.get(l.key);
+      return (
+        !!was?.weighedKg &&
+        l.weighedKg != null &&
+        !was.weighedKg.equals(l.weighedKg)
+      );
+    };
 
     const vat = await this.posSettings.getVat();
     const storeRate = new D(vat.enabled ? vat.ratePercent : 0);
@@ -783,11 +891,11 @@ export class PosSaleService {
     const changes = [
       ...lines
         .map((l) => ({ l, was: old.get(l.key)?.quantity ?? 0 }))
-        .filter(({ l, was }) => l.quantity !== was),
+        .filter(({ l, was }) => l.quantity !== was || reweighed(l)),
       ...o.items
-        .filter((i) => !want.has(key(i.productId, i.variantId)))
+        .filter((i) => !want.has(lineKeyOf(i, -1)))
         .map((i) => ({
-          l: { ...i, key: key(i.productId, i.variantId), quantity: 0 },
+          l: { ...i, key: lineKeyOf(i, -1), quantity: 0 },
           was: i.quantity,
         })),
     ];
@@ -822,9 +930,12 @@ export class PosSaleService {
       byId.get(productId ?? 0)?.translations[0]?.name ??
       `#${productId}`;
     const what = [
-      ...changes.map(
-        ({ l, was }) => `${name(l.key, l.productId)} ${was}→${l.quantity}`,
-      ),
+      ...changes.map(({ l, was }) => {
+        const before = old.get(l.key)?.weighedKg;
+        return before && l.quantity > 0 && l.weighedKg != null
+          ? `${name(l.key, l.productId)} ${before.toString()}kg→${l.weighedKg}kg`
+          : `${name(l.key, l.productId)} ${was}→${l.quantity}`;
+      }),
       ...(discountChanged
         ? [
             `discount ৳${o.posManualDiscount.toFixed(2)}→৳${newManual.toFixed(2)}`,
@@ -862,7 +973,12 @@ export class PosSaleService {
         else if (line)
           await tx.orderItem.update({
             where: { id: line.id },
-            data: { quantity: l.quantity },
+            data: {
+              quantity: l.quantity,
+              ...(line.weighedKg && l.weighedKg != null
+                ? { weighedKg: l.weighedKg, unitPrice: l.unitPrice }
+                : {}),
+            },
           });
         else {
           const p = byId.get(l.productId!)!;
@@ -878,12 +994,15 @@ export class PosSaleService {
               productTypeSnapshot: p.productType,
               unitPrice: l.unitPrice,
               quantity: l.quantity,
+              weighedKg: l.weighedKg,
+              pricePerKg: l.pricePerKg,
             },
           });
         }
         if (!l.productId) continue;
         // More sold → stock out (throws if the store hasn't got it); fewer → back in.
         const delta = l.quantity - was;
+        if (delta === 0) continue; // re-weighed only: same piece
         await this.stock.move(tx, {
           storeId: saleStore,
           productId: l.productId,

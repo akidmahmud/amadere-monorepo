@@ -21,6 +21,8 @@ export interface OrderManagerRow {
   id: number;
   orderNumber: string;
   status: string;
+  /** A ৳0 replacement order linked to an original. */
+  isExchange?: boolean;
   totalAmount: string;
   createdAt: string;
   recipientName: string | null;
@@ -73,6 +75,8 @@ interface Paginated<T> {
 
 export interface OrderManagerFilters {
   status?: string;
+  /** Only Exchange orders (any status). */
+  exchange?: boolean;
   paymentProvider?: string;
   courierProvider?: string;
   risk?: RiskLevel;
@@ -139,6 +143,8 @@ export function useDeletedOrdersList(filters: OrderManagerFilters) {
 /** Counts per status plus the money behind them, under the same filters. */
 export interface OrderManagerStatusCounts {
   counts: Record<string, number>;
+  /** Exchange orders among those counted (kept out of `counts`). */
+  exchangeCount?: number;
   /** Decimal string, cancelled orders excluded. */
   totalValue: string;
 }

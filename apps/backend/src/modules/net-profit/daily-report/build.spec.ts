@@ -239,3 +239,43 @@ describe('buildSnapshot — SKU', () => {
     expect(rows.find((r) => r.key === 'p2')?.sku).toBeNull();
   });
 });
+
+describe('buildSnapshot — exchanges and write-offs', () => {
+  const base = {
+    from: '2026-10-16',
+    to: '2026-10-16',
+    generatedAt: '2026-10-16T12:00:00Z',
+    sources: [{ key: 'WEB', label: 'Website', enabled: true }],
+    fixedCosts: [],
+    marketing: 0,
+  };
+  const sale = {
+    id: 1,
+    wholesale: false,
+    source: 'WEB',
+    delivery: 0,
+    lines: [{ key: 'p1', name: 'Turmeric', kg: 0.5, units: 1, sales: 325, cost: 250 }],
+  };
+  const exchange = {
+    id: 2,
+    wholesale: false,
+    source: 'WEB',
+    delivery: 0,
+    exchange: true,
+    lines: [{ key: 'p1', name: 'Turmeric', kg: 0.5, units: 1, sales: 0, cost: 250 }],
+  };
+
+  it('shows what exchanges cost; their cost is already in the profit', () => {
+    const s = buildSnapshot({ ...base, orders: [sale, exchange] });
+    expect(s.exchange).toEqual({ orders: 1, items: 1, cost: 250 });
+    expect(s.grandTotal.profit).toBe(75 - 250);
+  });
+
+  it('carries write-offs as information without changing net profit', () => {
+    const without = buildSnapshot({ ...base, orders: [sale] });
+    const withWo = buildSnapshot({ ...base, orders: [sale], writeOffs: { items: 2, cost: 300 } });
+    expect(withWo.writeOffs).toEqual({ items: 2, cost: 300 });
+    expect(withWo.netProfit).toBe(without.netProfit);
+    expect(without.exchange).toBeUndefined();
+  });
+});

@@ -6,7 +6,8 @@ import { Icon } from "@amader/admin-ui";
 import { useToast } from "@/components/ToastProvider";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import { usePosCatalog, usePosSale } from "@/hooks/usePos";
-import { lineKey, taka, type PosProduct } from "@/lib/pos-cart";
+import { lineKey, taka, weighedPrice, type PosProduct } from "@/lib/pos-cart";
+import { WeightDialog } from "./WeightDialog";
 import { lineSize } from "@/lib/pos-weight";
 import { sizeText } from "@/components/pos/ProductGrid";
 
@@ -21,7 +22,29 @@ type Line = {
   soldAt: string | null;
   todayPrice?: string;
   quantity: number;
+  /** Sold by weight: kg on this line, and its own key (L<id> / N<n>). */
+  weighedKg?: number | null;
+  uid?: string;
+  /** An existing weighed line of this sale. */
+  lineId?: number;
+  /** Its stored price per kg. */
+  perKg?: number;
 };
+
+// Weighed lines are one per item, so they are keyed per line.
+const keyOf = (l: Line) => l.uid ?? lineKey(l);
+/** Price per kg of a weighed line: what it sold at, else today's. */
+const perKgOf = (l: Line) =>
+  l.perKg ??
+  (l.soldAt !== null && l.weighedKg
+    ? Number(l.soldAt) / l.weighedKg
+    : Number(l.todayPrice ?? 0));
+const lineTotal = (l: Line) =>
+  l.weighedKg != null
+    ? l.quantity > 0
+      ? weighedPrice(perKgOf(l), l.weighedKg)
+      : 0
+    : Number(l.soldAt ?? l.todayPrice ?? 0) * l.quantity;
 type Preview = {
   subTotal: string;
   discount: string;
@@ -97,8 +120,20 @@ function Editor({
       size: lineSize(i),
       soldAt: i.unitPrice,
       quantity: i.quantity,
+      ...(i.weighedKg
+        ? {
+            weighedKg: Number(i.weighedKg),
+            uid: `L${i.id}`,
+            lineId: i.id,
+            ...(i.perKg ? { perKg: Number(i.perKg) } : {}),
+          }
+        : {}),
     })),
   );
+  // Weighed item waiting for its weight: an existing line, or a new product.
+  const [weighing, setWeighing] = useState<
+    { line: Line } | { product: PosProduct } | null
+  >(null);
   const [q, setQ] = useState("");
   const [reason, setReason] = useState("");
   // Cashier discount: "" = keep the sale's own; a number replaces it.
@@ -120,6 +155,8 @@ function Editor({
       productId: l.productId,
       variantId: l.variantId,
       quantity: l.quantity,
+      lineId: l.lineId,
+      weighedKg: l.weighedKg ?? undefined,
     }));
   const preview = useQuery({
     queryKey: ["pos-edit-preview", sale.id, body, discount],
@@ -169,10 +206,15 @@ function Editor({
   const setQty = (k: string, qty: number) =>
     setLines((ls) =>
       ls.map((l) =>
-        lineKey(l) === k ? { ...l, quantity: Math.max(0, qty) } : l,
+        keyOf(l) === k ? { ...l, quantity: Math.max(0, qty) } : l,
       ),
     );
   const add = (p: PosProduct) => {
+    if (p.soldByWeight) {
+      setWeighing({ product: p });
+      setQ("");
+      return;
+    }
     setLines((ls) =>
       ls.some((l) => lineKey(l) === lineKey(p))
         ? ls.map((l) =>
@@ -195,6 +237,10 @@ function Editor({
     setQ("");
   };
   const itemsChanged = lines.some((l) => {
+    if (l.weighedKg != null) {
+      const was = sale.items.find((i) => i.id === l.lineId);
+      return !was || l.quantity === 0 || Number(was.weighedKg) !== l.weighedKg;
+    }
     const was = sale.items.find(
       (i) =>
         i.productId === l.productId && (i.variantId ?? null) === l.variantId,
@@ -277,7 +323,7 @@ function Editor({
 
         <div className="divide-y divide-gray-100 rounded-xl border border-gray-100">
           {lines.map((l) => {
-            const k = lineKey(l);
+            const k = keyOf(l);
             const price = Number(l.soldAt ?? l.todayPrice ?? 0);
             return (
               <div
@@ -297,7 +343,9 @@ function Editor({
                     )}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {taka(price)} each
+                    {l.weighedKg != null
+                      ? `${l.weighedKg} kg × ${taka(perKgOf(l))}/kg`
+                      : `${taka(price)} each`}
                     {l.soldAt === null && (
                       <span className="ml-1 rounded bg-emerald-50 px-1.5 font-bold text-[#1d7a46]">
                         new
@@ -305,34 +353,45 @@ function Editor({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center overflow-hidden rounded-lg border border-gray-200">
+                {l.weighedKg != null ? (
                   <button
-                    className="grid h-9 w-9 place-items-center hover:bg-gray-50 disabled:opacity-30"
-                    disabled={l.quantity <= 0}
-                    onClick={() => setQty(k, l.quantity - 1)}
-                    aria-label={`One less ${l.name}`}
+                    className="h-9 rounded-lg border border-gray-200 px-3 text-sm font-bold hover:border-[#1d7a46] disabled:opacity-30"
+                    disabled={l.quantity === 0}
+                    onClick={() => setWeighing({ line: l })}
+                    aria-label={`Change weight of ${l.name}`}
                   >
-                    <Icon name="remove" size={18} />
+                    {l.weighedKg} kg
                   </button>
-                  <input
-                    value={l.quantity}
-                    onChange={(e) =>
-                      setQty(k, Math.floor(Number(e.target.value)) || 0)
-                    }
-                    inputMode="numeric"
-                    className="w-12 text-center text-sm font-bold outline-none"
-                    aria-label={`Quantity of ${l.name}`}
-                  />
-                  <button
-                    className="grid h-9 w-9 place-items-center text-[#1d7a46] hover:bg-emerald-50"
-                    onClick={() => setQty(k, l.quantity + 1)}
-                    aria-label={`One more ${l.name}`}
-                  >
-                    <Icon name="add" size={18} />
-                  </button>
-                </div>
+                ) : (
+                  <div className="flex items-center overflow-hidden rounded-lg border border-gray-200">
+                    <button
+                      className="grid h-9 w-9 place-items-center hover:bg-gray-50 disabled:opacity-30"
+                      disabled={l.quantity <= 0}
+                      onClick={() => setQty(k, l.quantity - 1)}
+                      aria-label={`One less ${l.name}`}
+                    >
+                      <Icon name="remove" size={18} />
+                    </button>
+                    <input
+                      value={l.quantity}
+                      onChange={(e) =>
+                        setQty(k, Math.floor(Number(e.target.value)) || 0)
+                      }
+                      inputMode="numeric"
+                      className="w-12 text-center text-sm font-bold outline-none"
+                      aria-label={`Quantity of ${l.name}`}
+                    />
+                    <button
+                      className="grid h-9 w-9 place-items-center text-[#1d7a46] hover:bg-emerald-50"
+                      onClick={() => setQty(k, l.quantity + 1)}
+                      aria-label={`One more ${l.name}`}
+                    >
+                      <Icon name="add" size={18} />
+                    </button>
+                  </div>
+                )}
                 <span className="w-20 text-right text-sm font-bold">
-                  {taka(price * l.quantity)}
+                  {taka(lineTotal(l))}
                 </span>
                 <button
                   className="grid h-8 w-8 place-items-center rounded-lg text-red-600 hover:bg-red-50"
@@ -367,7 +426,9 @@ function Editor({
                 onClick={() => setDiscType(t)}
                 className={`h-11 w-11 ${discType === t ? "bg-[#1d7a46] text-white" : "hover:bg-gray-50"}`}
                 aria-pressed={discType === t}
-                aria-label={t === "AMOUNT" ? "Discount in taka" : "Discount in percent"}
+                aria-label={
+                  t === "AMOUNT" ? "Discount in taka" : "Discount in percent"
+                }
               >
                 {t === "AMOUNT" ? "৳" : "%"}
               </button>
@@ -447,6 +508,47 @@ function Editor({
           {save.isPending ? "Saving…" : "Save changes"}
         </button>
       </div>
+      {weighing && (
+        <WeightDialog
+          name={"line" in weighing ? weighing.line.name : weighing.product.name}
+          perKg={
+            "line" in weighing
+              ? perKgOf(weighing.line)
+              : Number(weighing.product.salePrice ?? weighing.product.price)
+          }
+          initialKg={
+            "line" in weighing
+              ? (weighing.line.weighedKg ?? undefined)
+              : undefined
+          }
+          onClose={() => setWeighing(null)}
+          onDone={(kg) => {
+            if ("line" in weighing) {
+              const k = keyOf(weighing.line);
+              setLines((ls) =>
+                ls.map((l) => (keyOf(l) === k ? { ...l, weighedKg: kg } : l)),
+              );
+            } else {
+              const p = weighing.product;
+              setLines((ls) => [
+                ...ls,
+                {
+                  productId: p.productId,
+                  variantId: p.variantId,
+                  name: p.name,
+                  variantLabel: p.variantLabel,
+                  soldAt: null,
+                  todayPrice: p.salePrice ?? p.price,
+                  quantity: 1,
+                  weighedKg: kg,
+                  uid: `N${Date.now()}`,
+                },
+              ]);
+            }
+            setWeighing(null);
+          }}
+        />
+      )}
     </Shell>
   );
 }

@@ -18,6 +18,8 @@ export class OrderManagerRowDto {
   id!: number;
   orderNumber!: string;
   status!: OrderStatus;
+  /** A ৳0 replacement order linked to an original. */
+  isExchange!: boolean;
   totalAmount!: string;
   createdAt!: Date;
   recipientName!: string | null;

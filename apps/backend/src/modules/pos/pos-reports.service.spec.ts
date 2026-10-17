@@ -251,6 +251,55 @@ describe('PosReportsService — store profit, sales sheet, customer sheet', () =
     ]);
   });
 
+  it('sales sheet: a weighed line shows its weight', async () => {
+    const orders = [
+      {
+        orderNumber: 'ORD-2',
+        createdAt: new Date('2026-10-16T06:00:00Z'),
+        status: 'COMPLETED',
+        totalAmount: D(420),
+        store: { name: 'Dhanmondi' },
+        assignedAdmin: null,
+        customer: null,
+        payments: [{ provider: 'CASH', transactionRef: null }],
+        items: [
+          {
+            productId: 9,
+            variantId: null,
+            productNameSnapshot: 'Frozen Chicken',
+            skuSnapshot: 'CH',
+            quantity: 1,
+            unitPrice: D(375),
+            weighedKg: new Prisma.Decimal('1.25'),
+            product: { shippableWeight: null, costPerItem: D(250), costPriceUnit: 'PER_KG' },
+            variant: null,
+          },
+          {
+            productId: 6,
+            variantId: null,
+            productNameSnapshot: 'Salt',
+            skuSnapshot: 'S1',
+            quantity: 1,
+            unitPrice: D(45),
+            weighedKg: null,
+            product: { shippableWeight: null, costPerItem: D(30), costPriceUnit: null },
+            variant: null,
+          },
+        ],
+      },
+    ];
+    const svc = new PosReportsService(
+      { client: { order: { findMany: jest.fn().mockResolvedValue(orders) } } } as never,
+      {} as never,
+      { loadResolver: async () => ({ resolve: () => null }) } as never,
+    );
+    const rows = await svc.salesLines(2, '2026-10-16', '2026-10-16');
+    expect(rows.map((r) => [r.product, r.weightKg, r.unitCost])).toEqual([
+      ['Frozen Chicken', '1.250', '312.50'],
+      ['Salt', '', '30.00'],
+    ]);
+  });
+
   it('customer sheet: one row per customer; returns and walk-ins excluded', async () => {
     const o = (
       id: number | null,

@@ -150,6 +150,19 @@ export function buildDailyReportWorkbook(
     size: 12,
     color: { argb: s.netProfit < 0 ? 'FFFF0000' : 'FF000000' },
   };
+  // Information lines: already inside the figures above.
+  const note = (label: string, value: number) =>
+    ws.addRow([label, '', null, null, null, null, null, null, null, null, value]);
+  if (s.exchange)
+    note(
+      `Exchanges: ${s.exchange.orders} orders, ${s.exchange.items} items sent free (cost included above)`,
+      s.exchange.cost,
+    );
+  if (s.writeOffs)
+    note(
+      `Damaged write-offs: ${s.writeOffs.items} items not restocked (already counted when sold)`,
+      s.writeOffs.cost,
+    );
 
   ws.eachRow((row, rn) => {
     if (rn <= 2) return;
