@@ -176,3 +176,8 @@ export class QuickCustomerDto {
   phone!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(1, 80) name?: string;
 }
+
+/** Correct the payment method of a sale. */
+export class ChangePosTenderDto extends PickType(CreatePosSaleDto, [
+  'tender',
+] as const) {}

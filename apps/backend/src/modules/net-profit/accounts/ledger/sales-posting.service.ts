@@ -164,6 +164,51 @@ export class SalesPostingService {
     }
   }
 
+  /**
+   * An order's payment method was corrected (e.g. Cash → bKash): its sale and
+   * refund money is moved to the right account. Each live entry on another
+   * account is reversed there and re-booked on `toAccountId`, same date.
+   * Unlike the postings above this THROWS (e.g. a locked period), so the
+   * caller's transaction rolls the whole change back.
+   */
+  async moveOrderMoney(
+    orderId: number,
+    toAccountId: number | undefined,
+    adminId: number | null,
+    tx: Prisma.TransactionClient,
+  ): Promise<number> {
+    const target = await this.resolveAccountId(toAccountId);
+    if (!target) return 0;
+    const entries = await tx.ledgerEntry.findMany({
+      where: {
+        orderId,
+        source: { in: ['SALE', 'REFUND'] },
+        reversalOfId: null,
+        reversedBy: { none: {} },
+        accountId: { not: target },
+      },
+      orderBy: { id: 'asc' },
+    });
+    for (const e of entries) {
+      await this.ledger.reverse(e.id, adminId, tx);
+      await this.ledger.post(
+        {
+          entryDate: e.entryDate,
+          direction: e.direction,
+          amount: e.amount,
+          accountId: target,
+          source: e.source,
+          orderId,
+          reference: e.reference,
+          note: e.note,
+        },
+        adminId,
+        tx,
+      );
+    }
+    return entries.length;
+  }
+
   async postRefund(input: RefundInput): Promise<void> {
     try {
       const accountId = await this.resolveAccountId(input.accountId);

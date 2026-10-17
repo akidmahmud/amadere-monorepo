@@ -1050,6 +1050,45 @@ export class PosSaleService {
     return { ...preview, sale: await this.get(storeId, id) };
   }
 
+  /**
+   * Fix the payment method a cashier picked by mistake (Cash ↔ Card ↔ Mobile
+   * Banking). The order's money moves to the matching till account.
+   */
+  async changeTender(
+    storeId: number | null,
+    id: number,
+    tender: CreatePosSaleDto['tender'],
+    adminId: number,
+  ) {
+    const o = await this.get(storeId, id);
+    if (o.deletedAt) throw new BadRequestException('This sale is in the Trash');
+    const pay = o.payments[0];
+    if (!pay) throw new BadRequestException('This sale has no payment');
+    const provider = TENDER[tender];
+    if (pay.provider === provider) return o;
+    const accountId = o.storeId
+      ? await this.stores.tenderAccountId(o.storeId, provider)
+      : undefined;
+    const label = (p: string) =>
+      p === 'CASH' ? 'Cash' : p === 'CARD' ? 'Card' : 'Mobile Banking';
+    await this.prisma.client.$transaction(async (tx) => {
+      await tx.payment.update({ where: { id: pay.id }, data: { provider } });
+      // "Change given" only means something for cash.
+      if (provider !== 'CASH')
+        await tx.order.update({ where: { id }, data: { tenderedAmount: null } });
+      await this.salesPosting.moveOrderMoney(id, accountId, adminId, tx);
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          status: o.status,
+          note: `Payment changed: ${label(pay.provider)} → ${label(provider)}`,
+          adminUserId: adminId,
+        },
+      });
+    });
+    return this.get(storeId, id);
+  }
+
   /** Pays `amount` back and keeps the payment's running refunded total. */
   private async refundMoney(
     orderId: number,

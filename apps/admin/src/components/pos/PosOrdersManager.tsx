@@ -185,6 +185,20 @@ export function PosOrdersManager({
     },
     onError: (e) => toast.push(e.message),
   });
+  // Fix a payment method the cashier picked by mistake; the money moves to
+  // that method's till account.
+  const changeTender = useMutation({
+    mutationFn: ({ id, tender }: { id: number; tender: string }) =>
+      proxyFetch(`/admin/pos/sales/${id}/tender`, {
+        method: "PATCH",
+        body: JSON.stringify({ tender }),
+      }),
+    onSuccess: () => {
+      refresh();
+      toast.push("Payment method changed", "success");
+    },
+    onError: (e) => toast.push(e.message),
+  });
   const askDelete = (o: {
     id: number;
     orderNumber: string;
@@ -588,7 +602,30 @@ export function PosOrdersManager({
                       </td>
                       <td className="px-4 text-center">{o.itemCount}</td>
                       <td className="px-4">
-                        {o.tender ? (TENDER_LABEL[o.tender] ?? o.tender) : "—"}
+                        {o.tender && can("pos.refund") ? (
+                          <select
+                            value={o.tender === "BKASH" ? "MOBILE" : o.tender}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              changeTender.mutate({
+                                id: o.id,
+                                tender: e.target.value,
+                              })
+                            }
+                            disabled={changeTender.isPending}
+                            aria-label={`Payment of ${o.orderNumber}`}
+                            title="Change the payment method"
+                            className="h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm hover:border-emerald-600 disabled:opacity-50"
+                          >
+                            <option value="CASH">Cash</option>
+                            <option value="CARD">Card</option>
+                            <option value="MOBILE">Mobile Banking</option>
+                          </select>
+                        ) : o.tender ? (
+                          (TENDER_LABEL[o.tender] ?? o.tender)
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 text-base font-extrabold">
                         {taka(Number(o.totalAmount))}

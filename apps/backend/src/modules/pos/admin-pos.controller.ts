@@ -9,6 +9,7 @@ import {
   Param,
   ParseFilePipe,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -95,6 +96,7 @@ import {
   PosQuoteDto,
   QuickCustomerDto,
   ReturnPosSaleDto,
+  ChangePosTenderDto,
   EditPosSaleDto,
 } from './dto/create-pos-sale.dto';
 
@@ -773,6 +775,24 @@ export class AdminPosController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.sales.get(await this.stores.scope(a.id, can), id);
+  }
+
+  // Fix the payment method (Cash / Card / Mobile Banking) picked by mistake.
+  @Patch('sales/:id/tender')
+  @RequirePermission('pos.refund')
+  @UseInterceptors(AuditLogInterceptor)
+  async changeTender(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ChangePosTenderDto,
+  ) {
+    return this.sales.changeTender(
+      await this.stores.scope(a.id, can),
+      id,
+      dto.tender,
+      a.id,
+    );
   }
 
   // Edit a completed sale (add / remove / change items); dryRun = preview.
