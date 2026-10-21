@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSalesSheet } from "../src/components/net-profit/sales-report/salesSheet.ts";
+// The layout lives in the shared package (also used by the Google Sheet sync).
+import { buildSalesSheet } from "../../../packages/shared/src/sales-sheet.ts";
 
 // Order D56505 as the report returns it — the same order is row 5 of the
 // owner's "Daily Sales Data.xlsx", which this export must reproduce.

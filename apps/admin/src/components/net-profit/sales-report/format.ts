@@ -108,12 +108,9 @@ export const TAG_STYLE: Record<
   plain: { border: COLORS.line, bg: "#fff", fg: COLORS.ink2 },
 };
 
-export const COURIER_LABEL: Record<string, string> = {
-  STEADFAST: "Steadfast",
-  PATHAO: "Pathao",
-  REDX: "RedX",
-  ECOURIER: "eCourier",
-};
+// Shared with the Orders export layout (and so the Google Sheet).
+import { COURIER_LABEL } from "@amader/shared";
+export { COURIER_LABEL };
 export const courierLabel = (c: string | null) =>
   c ? (COURIER_LABEL[c] ?? c) : "Not set";
 

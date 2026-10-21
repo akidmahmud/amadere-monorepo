@@ -44,3 +44,4 @@ export interface PaginatedResult<T> {
 }
 export * from './shipping-rules';
 export * from './daily-report';
+export * from './sales-sheet';

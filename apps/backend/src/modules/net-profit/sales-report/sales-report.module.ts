@@ -12,6 +12,7 @@ import { ReportLoaderService } from './report-loader.service';
 import { SalesReportV2Service } from './sales-report-v2.service';
 import { AdminSalesReportV2Controller } from './admin-sales-report-v2.controller';
 import { CourierBillsService } from './courier-bills.service';
+import { OrderSheetSyncService } from './order-sheet-sync.service';
 
 @Module({
   imports: [
@@ -29,6 +30,8 @@ import { CourierBillsService } from './courier-bills.service';
     ReportLoaderService,
     SalesReportV2Service,
     CourierBillsService,
+    // Live Google Sheet of the Orders export (off without its env vars).
+    OrderSheetSyncService,
   ],
   exports: [SalesReportService, ProductPnlService],
 })

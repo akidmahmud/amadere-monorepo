@@ -17,3 +17,6 @@ docs/
 
 # LinkedIn post drafts + screenshots — local only, never push
 linkedin/
+
+# Google service account keys (live order sheet) — never commit
+.secrets/
