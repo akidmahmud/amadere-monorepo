@@ -7,6 +7,7 @@ import { AppLink } from "@/components/AppLink";
 import { toApiLocale } from "@/lib/api-locale";
 import { useAddToCart } from "@/hooks/useCart";
 import { toProductCardData, type ProductCardData } from "@/lib/product-card-mapper";
+import { cdnImageUrl, IMG } from "@/lib/image-url";
 import type { components } from "@/lib/api/schema";
 
 type PublicProductDto = components["schemas"]["PublicProductDto"];
@@ -31,8 +32,14 @@ function FbtCard({
     <div className="relative flex min-w-[220px] max-w-[360px] flex-1 items-center gap-3 rounded-md border border-green bg-[#F5F5F5] p-2">
       <AppLink href={card.href} className="block h-[70px] w-[70px] shrink-0 overflow-hidden rounded-lg bg-white">
         {card.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={card.imageUrl} alt={card.name} loading="lazy" className="h-full w-full object-contain" />
+          // CSS background, not <img>: Google Images doesn't index it, so the
+          // companions' photos aren't filed under this product page.
+          <div
+            role="img"
+            aria-label={card.name}
+            className="h-full w-full bg-contain bg-center bg-no-repeat"
+            style={{ backgroundImage: `url("${cdnImageUrl(card.imageUrl, IMG.icon).replace(/"/g, "%22")}")` }}
+          />
         )}
       </AppLink>
       <div className="min-w-0 flex-1 pr-5">

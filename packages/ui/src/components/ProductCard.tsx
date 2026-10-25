@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { CardImage } from "./CardImage";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { PackPickerModal } from "./PackPickerModal";
@@ -53,6 +53,9 @@ export interface ProductCardPackOption {
 
 export interface ProductCardProps {
   href: string;
+  /** Draw the photo as a CSS background (see CardImage): product pages'
+   * recommendation cards, so Google Images doesn't file them under that page. */
+  cssImage?: boolean;
   name: string;
   imageUrl?: string | null;
   price: string;
@@ -104,6 +107,7 @@ export function ProductCard({
   linkComponent: Link = DefaultLink,
   className,
   onSelect,
+  cssImage,
 }: ProductCardProps) {
   const defaultPack = defaultPackValue ?? packOptions?.[0]?.value;
   const defaultOption = packOptions?.find((o) => o.value === defaultPack);
@@ -149,12 +153,11 @@ export function ProductCard({
           </span>
         )}
         {imageUrl ? (
-          <Image
+          <CardImage
             src={imageUrl}
-            alt={name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
+            name={name}
+            cssImage={cssImage}
+            className="transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
           />
         ) : (
           <div className="h-full w-full bg-beige" />

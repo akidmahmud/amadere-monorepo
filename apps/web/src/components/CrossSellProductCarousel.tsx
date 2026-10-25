@@ -4,6 +4,7 @@ import { SiteProductCard, SlideCarousel } from "@amader/ui";
 import { AppLink } from "@/components/AppLink";
 import { useCardAddToCart } from "@/hooks/useCardAddToCart";
 import type { ProductCardData } from "@/lib/product-card-mapper";
+import { cdnImageUrl, IMG } from "@/lib/image-url";
 
 export interface CrossSellProductCarouselProps {
   products: ProductCardData[];
@@ -33,6 +34,10 @@ export function CrossSellProductCarousel({ products }: CrossSellProductCarouselP
         <SiteProductCard
           key={product.href}
           {...product}
+          // CSS-background photo: keeps other products' photos from being
+          // filed under this product page in Google Images (see CardImage).
+          imageUrl={product.imageUrl ? cdnImageUrl(product.imageUrl, IMG.card) : product.imageUrl}
+          cssImage
           linkComponent={AppLink}
           addToCartPending={isPending && pendingProductId === product.productId}
           onAddToCart={(packValue) => handleAddToCart(product.productId, packValue)}

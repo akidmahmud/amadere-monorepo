@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { CardImage } from "./CardImage";
 import { cn } from "../lib/cn";
 import { DefaultLink, type LinkComponent } from "../lib/link-component";
 import { formatMoney } from "./PriceTag";
@@ -16,6 +16,9 @@ export interface ProductCardTwoPackOption {
 
 export interface ProductCardTwoProps {
   href: string;
+  /** Draw the photo as a CSS background (see CardImage): product pages'
+   * recommendation cards, so Google Images doesn't file them under that page. */
+  cssImage?: boolean;
   name: string;
   imageUrl?: string | null;
   price: string;
@@ -73,6 +76,7 @@ export function ProductCardTwo({
   linkComponent: Link = DefaultLink,
   className,
   onSelect,
+  cssImage,
 }: ProductCardTwoProps) {
   const hasChoice = (packOptions?.length ?? 0) > 1;
   const singleOption = packOptions?.length === 1 ? packOptions[0] : undefined;
@@ -96,12 +100,11 @@ export function ProductCardTwo({
     <div className={cn("group flex h-full flex-col rounded-[20px] border border-line bg-transparent p-2.5", className)}>
       <Link href={href} onClick={onSelect} className="relative block aspect-square w-full overflow-hidden rounded-[20px] bg-beige">
         {imageUrl ? (
-          <Image
+          <CardImage
             src={imageUrl}
-            alt={name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
+            name={name}
+            cssImage={cssImage}
+            className="transition-transform duration-300 ease-in-out group-hover:scale-[1.04]"
           />
         ) : null}
         {flagLabel && (
