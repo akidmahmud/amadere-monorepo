@@ -78,7 +78,7 @@ export function ProductGallery({ images, videoUrl, className, activeIndex }: Pro
                 active === i ? "border-[#F48721]" : "border-[rgba(34,40,49,0.11)]",
               )}
             >
-              <Image src={image.url} alt="" fill sizes="80px" className="object-contain" />
+              <Image src={image.url} alt={image.alt ?? ""} fill sizes="80px" className="object-contain" />
             </button>
           ))}
           {videoUrl && (

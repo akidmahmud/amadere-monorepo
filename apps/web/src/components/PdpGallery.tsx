@@ -17,7 +17,17 @@ export interface PdpGalleryImage {
 // simply stays where it is, which lands on the primary image (index 0) on
 // first load. That's the requested behaviour: "if a variant doesn't have an
 // image it will show the primary one".
-export function PdpGallery({ images, videoUrl }: { images: PdpGalleryImage[]; videoUrl?: string }) {
+export function PdpGallery({
+  images,
+  videoUrl,
+  name,
+}: {
+  images: PdpGalleryImage[];
+  videoUrl?: string;
+  /** Product name, the photos' alt text. Without it Google Images filed the
+   *  page's well-labelled Related Products photos under this product. */
+  name: string;
+}) {
   const ctx = useSelectedVariant();
   const selected = ctx?.selectedVariantId;
 
@@ -27,7 +37,7 @@ export function PdpGallery({ images, videoUrl }: { images: PdpGalleryImage[]; vi
 
   return (
     <ProductGallery
-      images={images.map((img) => ({ url: img.url }))}
+      images={images.map((img, i) => ({ url: img.url, alt: i === 0 ? name : `${name} — ${i + 1}` }))}
       videoUrl={videoUrl}
       // undefined (not -1/0) when there's no variant-specific image, so the
       // gallery keeps whatever the shopper was looking at instead of being

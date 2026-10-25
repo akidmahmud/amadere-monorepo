@@ -289,7 +289,7 @@ export async function ProductDetailBody({
                 renders nothing at all for a PHYSICAL product, which is why
                 the gallery itself needs no branching. */}
             <div className="relative">
-              <PdpGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} />
+              <PdpGallery images={images} videoUrl={toEmbeddableVideoUrl(product.videoUrl)} name={product.name} />
               {isDigital && <DigitalPreviewButton product={product} />}
             </div>
 
