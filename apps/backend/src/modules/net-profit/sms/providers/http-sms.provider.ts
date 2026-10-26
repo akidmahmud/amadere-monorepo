@@ -138,8 +138,18 @@ export class HttpSmsProvider implements SmsProvider {
         codeMessage,
       };
     } catch (err) {
-      this.logger.warn(`SMS HTTP API send failed for ${to}: ${err instanceof Error ? err.message : String(err)}`);
-      return { failed: true, error: err instanceof Error ? err.message : 'Unknown error' };
+      // Node's fetch says only "fetch failed"; the real reason (ETIMEDOUT,
+      // ECONNREFUSED, ENOTFOUND…) is on err.cause.
+      const cause = (err as { cause?: { code?: string; message?: string } }).cause;
+      const error = [
+        err instanceof Error ? err.message : 'Unknown error',
+        cause?.code || cause?.message ? `(${[cause.code, cause.message].filter(Boolean).join(': ')})` : '',
+        `— could not reach ${baseUrl}`,
+      ]
+        .filter(Boolean)
+        .join(' ');
+      this.logger.warn(`SMS HTTP API send failed for ${to}: ${error}`);
+      return { failed: true, error };
     }
   }
 
