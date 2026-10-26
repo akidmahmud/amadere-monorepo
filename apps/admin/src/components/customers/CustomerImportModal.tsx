@@ -30,6 +30,7 @@ export function CustomerImportModal({
   queryKey = ["customers"],
   title = "Import Customers",
   intro,
+  noun = "customers",
 }: {
   onClose: () => void;
   endpoint?: string;
@@ -38,6 +39,8 @@ export function CustomerImportModal({
   title?: string;
   /** Replaces the default explanation above the file picker. */
   intro?: string;
+  /** What the rows are, in the preview ("customers", "leads"). */
+  noun?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
@@ -110,9 +113,13 @@ export function CustomerImportModal({
           <div className="rounded-[9px] border px-3.5 py-3 text-[0.8rem]" style={{ borderColor: LINE }}>
             <p className="mb-2 font-bold text-text">Preview: {preview.totalRows} rows in the file</p>
             <ul className="flex flex-col gap-1 font-semibold" style={{ color: "#374840" }}>
-              <li>{preview.created} new customers will be added</li>
-              <li>{preview.updated} existing customers will get empty fields filled</li>
-              <li>{preview.unchanged} existing customers have nothing new (left as they are)</li>
+              <li>{preview.created} new {noun} will be added</li>
+              {noun === "customers" && (
+                <li>{preview.updated} existing customers will get empty fields filled</li>
+              )}
+              <li>
+                {preview.unchanged} {noun === "customers" ? "existing customers have nothing new (left as they are)" : `already in the list (left as they are)`}
+              </li>
               <li>{preview.skipped} rows will be skipped</li>
             </ul>
           </div>
@@ -162,7 +169,7 @@ export function CustomerImportModal({
               onMouseEnter={(e) => !pending && (e.currentTarget.style.background = GREEN_DARK)}
               onMouseLeave={(e) => (e.currentTarget.style.background = GREEN)}
             >
-              {pending === "import" ? "Importing…" : `Import ${preview.created + preview.updated} customers`}
+              {pending === "import" ? "Importing…" : `Import ${preview.created + preview.updated} ${noun}`}
             </button>
           )}
         </div>

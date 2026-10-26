@@ -640,7 +640,7 @@ export function PosOrdersManager({
                       </td>
                       <td className="px-4 text-gray-600">{o.cashier}</td>
                       <td className="px-2">
-                        {can("pos.refund") && (
+                        {can("pos.refund") && can("order.delete") && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -968,7 +968,7 @@ function OrderDetail({
                     <Icon name="undo" size={18} /> Return items
                   </button>
                 )}
-              {can("pos.refund") && (
+              {can("pos.refund") && can("order.delete") && (
                 <button
                   className="flex h-10 items-center gap-1 rounded-lg border border-red-200 px-3 text-sm font-bold text-red-700"
                   onClick={() => onDelete(s)}

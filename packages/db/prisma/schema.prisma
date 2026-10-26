@@ -229,6 +229,8 @@ model AdminUser {
   blogPostRevisions  BlogPostRevision[]
   customerNotes      CustomerNote[]
   customerCallLogs   CustomerCallLog[]
+  assignedLeads      Lead[]               @relation("LeadAssignee")
+  leadCallLogs       LeadCallLog[]
   assignedCustomers  Customer[]           @relation("CustomerAssignedAdmin")
   assignedParties    Party[]              @relation("PartyAssignedAdmin")
   partyNotes         PartyNote[]
@@ -4294,4 +4296,91 @@ model WholesaleOrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("wholesale_order_items")
+}
+
+// --- Lead Center -------------------------------------------------------------
+// People who called/messaged but have not ordered yet — usually just a phone
+// number and where they came from. Kept apart from Customer on purpose: a lead
+// becomes a customer only when an order is placed for its phone number
+// (LeadsService.onOrderCreated), and its CRM fields and calls move across then.
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  FOLLOW_UP
+  CONVERTED
+  LOST
+  DNC
+}
+
+enum LeadCallOutcome {
+  ANSWERED_INTERESTED
+  ANSWERED_CALL_BACK
+  ANSWERED_REGULAR_BUYER
+  ANSWERED_WHOLESALE
+  NO_ANSWER
+  BUSY
+  NUMBER_OFF
+  NOT_INTERESTED
+  WRONG_NUMBER
+  DO_NOT_CALL
+  ORDER_PLACED
+}
+
+model Lead {
+  id                  Int               @id @default(autoincrement())
+  /// Normalised like Customer.phone (8801XXXXXXXXX).
+  phone               String
+  name                String?
+  email               String?
+  altPhone            String?           @map("alt_phone")
+  addressLine         String?           @map("address_line")
+  district            String?
+  area                String?
+  /// Where they came from: Inbound call, WhatsApp, Facebook...
+  leadSource          String?           @map("lead_source")
+  leadDate            DateTime?         @map("lead_date") @db.Date
+  interestedProduct   String?           @map("interested_product")
+  assignedAdminId     Int?              @map("assigned_admin_id")
+  priority            CustomerPriority?
+  status              LeadStatus        @default(NEW)
+  nextCallDate        DateTime?         @map("next_call_date") @db.Date
+  lastCallAt          DateTime?         @map("last_call_at")
+  lostReason          String?           @map("lost_reason")
+  customerFeedback    String?           @map("customer_feedback")
+  agentFeedback       String?           @map("agent_feedback")
+  familyDetails       String?           @map("family_details")
+  purchaseReason      String?           @map("purchase_reason")
+  /// Set when an order was placed for this phone; the lead leaves the list.
+  convertedCustomerId Int?              @map("converted_customer_id")
+  convertedOrderId    Int?              @map("converted_order_id")
+  convertedAt         DateTime?         @map("converted_at")
+  deletedAt           DateTime?         @map("deleted_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  assignedAdmin AdminUser?    @relation("LeadAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  calls         LeadCallLog[]
+
+  @@index([phone])
+  @@index([convertedAt, deletedAt])
+  @@index([assignedAdminId])
+  @@map("leads")
+}
+
+model LeadCallLog {
+  id            Int             @id @default(autoincrement())
+  leadId        Int             @map("lead_id")
+  outcome       LeadCallOutcome
+  notes         String?
+  authorAdminId Int             @map("author_admin_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  lead   Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  author AdminUser @relation(fields: [authorAdminId], references: [id])
+
+  @@index([leadId])
+  @@index([createdAt])
+  @@map("lead_call_logs")
 }

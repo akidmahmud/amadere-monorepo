@@ -73,6 +73,8 @@ export default function CustomersPage() {
   const canAssign = useCan("assignment.manage");
   // customer.view alone = look, don't touch: every write control is grayed out.
   const canManage = useCan("customer.manage");
+  // Deleting is its own right: Super Admin, Admin, or a role ticked for it.
+  const canDelete = useCan("customer.delete");
   const viewOnlyTitle = canManage ? undefined : "View only — you do not have permission to edit customers";
 
   function toggle(id: number) {
@@ -245,16 +247,17 @@ export default function CustomersPage() {
             <span className="text-[0.76rem] font-semibold" style={{ color: MUTED }}>
               {selected.size > 0 ? `${selected.size} selected` : "Select customers to act on"}
             </span>
+            {canDelete && (
             <button
               type="button"
-              disabled={selected.size === 0 || bulk.isPending || !canManage}
-              title={viewOnlyTitle}
+              disabled={selected.size === 0 || bulk.isPending}
               onClick={() => setDeleteTarget("bulk")}
               className="inline-flex h-[38px] items-center rounded-[9px] border px-3.5 text-[0.75rem] font-bold disabled:opacity-40"
               style={{ borderColor: "#f8ccd3", background: "#feeaec", color: "#e5484d" }}
             >
               Delete
             </button>
+            )}
             <select
               aria-label="Bulk assign to staff"
               disabled={selected.size === 0 || bulk.isPending || !canAssign}
@@ -293,7 +296,7 @@ export default function CustomersPage() {
             selected={selected}
             onToggle={toggle}
             onToggleAll={toggleAll}
-            onDelete={canManage ? setDeleteTarget : undefined}
+            onDelete={canDelete ? setDeleteTarget : undefined}
           />
         </>
       )}

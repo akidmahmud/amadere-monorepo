@@ -219,12 +219,15 @@ function ModernAddressFields({
 
 export interface NewOrderFormProps {
   initialCustomerId?: number | null;
+  /** Pre-fills the delivery address (a Lead Center lead has no customer yet). */
+  initialAddress?: Partial<CreateManualOrderAddress>;
   onCreated: (order: AdminOrder) => void;
   onCancel: () => void;
 }
 
 export function NewOrderFormModern({
   initialCustomerId,
+  initialAddress,
   onCreated,
   onCancel,
 }: NewOrderFormProps) {
@@ -235,7 +238,7 @@ export function NewOrderFormModern({
   const { data: customerResults } = useCustomers({ q: customerQuery || undefined, pageSize: 5 });
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const [address, setAddress] = useState<CreateManualOrderAddress>(EMPTY_ADDRESS);
+  const [address, setAddress] = useState<CreateManualOrderAddress>({ ...EMPTY_ADDRESS, ...initialAddress });
   const [sameBilling, setSameBilling] = useState(true);
   const [billingAddress, setBillingAddress] = useState<CreateManualOrderAddress>(EMPTY_ADDRESS);
 

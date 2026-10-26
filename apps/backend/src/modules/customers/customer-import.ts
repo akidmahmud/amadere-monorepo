@@ -288,7 +288,7 @@ function bump(m: Map<string, number>, key: string) {
   m.set(key, (m.get(key) ?? 0) + 1);
 }
 
-function cellText(v: unknown): string {
+export function cellText(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (v instanceof Date) return Number.isNaN(v.getTime()) ? '' : v.toISOString();
   if (typeof v === 'object') {
@@ -311,7 +311,7 @@ export function normalizeImportPhone(raw: string): string | null {
   return toBdCompact(/^1[3-9]\d{8}$/.test(digits) ? `0${digits}` : raw);
 }
 
-function toDate(v: unknown): Date | undefined {
+export function toDate(v: unknown): Date | undefined {
   if (v === null || v === undefined || v === '') return undefined;
   if (typeof v === 'object' && !(v instanceof Date)) {
     const o = v as { result?: unknown };

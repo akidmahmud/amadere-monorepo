@@ -82,6 +82,10 @@ export class AdminCustomersController {
     if (dto.action === 'assign' && !can('assignment.manage')) {
       throw new ForbiddenException('Missing permission: assignment.manage');
     }
+    // Deleting (and permanently removing) is its own right.
+    if ((dto.action === 'delete' || dto.action === 'purge') && !can('customer.delete')) {
+      throw new ForbiddenException('Missing permission: customer.delete');
+    }
     return this.customers.adminBulkAction(dto);
   }
 

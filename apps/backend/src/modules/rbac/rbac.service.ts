@@ -6,7 +6,7 @@ import {
   NotFoundException,
   OnApplicationBootstrap,
 } from '@nestjs/common';
-import { PERMISSION_CATALOG } from '@amader/shared';
+import { DELETE_PERMISSIONS, PERMISSION_CATALOG } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -39,11 +39,28 @@ export class RbacService implements OnApplicationBootstrap {
    */
   async onApplicationBootstrap(): Promise<void> {
     try {
+      const before = new Set(
+        (await this.prisma.client.permission.findMany({ select: { key: true } })).map((p) => p.key),
+      );
       const { count } = await this.prisma.client.permission.createMany({
         data: PERMISSION_CATALOG,
         skipDuplicates: true,
       });
       if (count > 0) this.logger.log(`Added ${count} missing permission(s) from the catalog`);
+      // A delete right appearing for the first time goes to the Admin role
+      // only (once — unticking it in Roles later sticks).
+      const fresh = DELETE_PERMISSIONS.filter((k) => !before.has(k));
+      const admin = fresh.length
+        ? await this.prisma.client.role.findFirst({ where: { name: { equals: 'Admin', mode: 'insensitive' } } })
+        : null;
+      if (admin) {
+        const perms = await this.prisma.client.permission.findMany({ where: { key: { in: fresh } } });
+        await this.prisma.client.rolePermission.createMany({
+          data: perms.map((p) => ({ roleId: admin.id, permissionId: p.id })),
+          skipDuplicates: true,
+        });
+        this.logger.log(`Granted ${fresh.join(', ')} to the Admin role`);
+      }
     } catch (err) {
       // Never block startup over this; the next boot tries again.
       this.logger.error(`Permission catalog sync failed: ${(err as Error).message}`);

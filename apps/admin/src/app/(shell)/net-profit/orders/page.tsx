@@ -1,5 +1,7 @@
 "use client";
 
+import { useCan } from "@/hooks/useAdminAuth";
+
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
@@ -216,6 +218,8 @@ function HeaderButton({ children, onClick, href }: { children: React.ReactNode; 
 }
 
 function OrderManagerPageInner() {
+  // Deleting orders is its own right (Super Admin, Admin, or a role ticked for it).
+  const canDelete = useCan("order.delete");
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get("search") || searchParams.get("q");
 
@@ -542,6 +546,7 @@ function OrderManagerPageInner() {
             >
               Block Phone
             </button>
+            {canDelete && (
             <button
               type="button"
               disabled={selected.size === 0 || bulk.isPending}
@@ -551,6 +556,7 @@ function OrderManagerPageInner() {
             >
               Delete
             </button>
+            )}
             <select
               aria-label="Bulk assign to staff"
               disabled={selected.size === 0 || bulk.isPending}
@@ -599,7 +605,7 @@ function OrderManagerPageInner() {
             onConsign={(order, provider) => setConsignOrder({ order, provider })}
             onCheckRisk={setRiskPhone}
             isLoading={isLoading}
-            onDelete={setDeleteTarget}
+            onDelete={canDelete ? setDeleteTarget : undefined}
             staff={staff}
             highlightQuery={uiFilters.q || urlSearch || undefined}
           />

@@ -396,6 +396,13 @@ export const adminNav: AppNavEntry[] = [
     permission: "customer.view",
   },
   {
+    key: "customers-leads",
+    label: "Lead Center",
+    href: "/customers/leads",
+    icon: customersIcon,
+    permission: "customer.view",
+  },
+  {
     key: "customers-tiers",
     label: "Tiers",
     href: "/customers/tiers",

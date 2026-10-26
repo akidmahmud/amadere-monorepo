@@ -81,6 +81,9 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('order', 'update'),
   perm('order', 'refund'),
   perm('order', 'create'),
+  // Deleting orders (Order Manager, Shipments, POS sales). Only Super Admin,
+  // the Admin role, or a role it's ticked for — see DELETE_PERMISSIONS.
+  perm('order', 'delete'),
 
   perm('shipment', 'view'),
   perm('shipment', 'dispatch'),
@@ -239,6 +242,8 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 
   perm('customer', 'view'),
   perm('customer', 'manage'),
+  // Deleting customers and Lead Center leads. See DELETE_PERMISSIONS.
+  perm('customer', 'delete'),
 
   // Who may hand work to someone else — the assignee on an order and on a
   // customer. One key for both on purpose: it is the same decision ("can this
@@ -277,3 +282,10 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('pos', 'settings'),
   perm('stores', 'manage'),
 ];
+
+/**
+ * Delete rights that start with the Admin role only: when one of these is
+ * first added to a database, the role named "Admin" gets it (Super Admin
+ * passes every check anyway). Any other role has to be ticked for it in Roles.
+ */
+export const DELETE_PERMISSIONS = ['customer.delete', 'order.delete'] as const;

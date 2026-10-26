@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { proxyFetch } from "@/lib/api/proxy-client";
+import { useCan } from "@/hooks/useAdminAuth";
 import {
   useCancelShipment,
   useCourierBalance,
@@ -178,6 +179,8 @@ const wholesaleOf = (r: ShipmentQueueRow) =>
   (r as ShipmentQueueRow & { wholesale?: { channel: string | null } | null }).wholesale ?? null;
 
 export function DispatchQueueTable() {
+  // Deleting orders is its own right; wholesale parcels (removed from this list only) follow shipment rights.
+  const canDelete = useCan("order.delete");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [searchInput, setSearchInput] = useState("");
@@ -499,6 +502,7 @@ export function DispatchQueueTable() {
         >
           Print labels
         </button>
+        {canDelete && (
         <button
           type="button"
           disabled={selectedCount === 0}
@@ -507,6 +511,7 @@ export function DispatchQueueTable() {
         >
           Delete selected
         </button>
+        )}
       </div>
 
       <div className="mt-3 overflow-x-auto">
@@ -705,7 +710,7 @@ export function DispatchQueueTable() {
                 </td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap font-bold text-text">৳{row.totalAmount}</td>
                 <td className="px-2.5 py-3 align-middle whitespace-nowrap">
-                  {(
+                  {(ws || canDelete) && (
                   <button
                     type="button"
                     title={ws ? "Remove from Shipments" : "Delete order"}

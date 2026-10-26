@@ -6,6 +6,7 @@ import { useAssignableStaff, useBulkCustomerAction, useDeletedCustomers } from "
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { useToast } from "@/components/ToastProvider";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useCan } from "@/hooks/useAdminAuth";
 
 const MUTED = "#64766b";
 const LINE = "#e5ebe6";
@@ -16,6 +17,7 @@ const DANGER = "#c0392b";
 // green header, inline-editable cells) — the only difference is the data
 // source (soft-deleted rows) and the row action (Restore instead of Delete).
 export function DeletedCustomersTab() {
+  const canDelete = useCan("customer.delete");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { data } = useDeletedCustomers({ page, pageSize });
@@ -127,6 +129,7 @@ export function DeletedCustomersTab() {
         >
           Restore
         </button>
+        {canDelete && (
         <button
           type="button"
           disabled={selected.size === 0 || bulk.isPending}
@@ -136,6 +139,7 @@ export function DeletedCustomersTab() {
         >
           Delete permanently
         </button>
+        )}
         <span className="ml-auto text-[0.76rem] font-semibold" style={{ color: MUTED }}>
           {data?.total ?? 0} deleted customers
         </span>

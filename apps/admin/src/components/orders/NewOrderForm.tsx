@@ -9,6 +9,8 @@ import { NewOrderFormLegacy } from "@/components/orders/NewOrderForm.legacy";
 export interface NewOrderFormProps {
   /** Preselects a customer (e.g. arriving from a customer's detail page). */
   initialCustomerId?: number | null;
+  /** Pre-fills the delivery address (e.g. arriving from a Lead Center lead). */
+  initialAddress?: Partial<import("@/hooks/useOrders").CreateManualOrderAddress>;
   /** Called after the order is successfully created — caller decides what happens next. */
   onCreated: (order: AdminOrder) => void;
   /** Called when the staff member cancels out of the form. */

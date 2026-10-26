@@ -621,6 +621,8 @@ export class AdminPosController {
     @Param('id', ParseIntPipe) id: number,
     @Query() q: StoreQueryDto,
   ) {
+    // Deleting a sale is its own right, on top of refunds.
+    if (!can('order.delete')) throw new ForbiddenException('Missing permission: order.delete');
     return this.sales.deleteSale(
       await this.stores.scope(a.id, can, q.storeId),
       id,

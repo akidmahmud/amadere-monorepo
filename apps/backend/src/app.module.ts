@@ -34,6 +34,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { CourierModule } from './modules/courier/courier.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { LeadsModule } from './modules/leads/leads.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NewsletterModule } from './modules/newsletter/newsletter.module';
 import { NewsletterCampaignsModule } from './modules/newsletter-campaigns/newsletter-campaigns.module';
@@ -160,6 +161,7 @@ import { PushModule } from './modules/push/push.module';
     OrdersModule,
     CourierModule,
     CustomersModule,
+    LeadsModule,
     ReviewsModule,
     NewsletterModule,
     NewsletterCampaignsModule,
