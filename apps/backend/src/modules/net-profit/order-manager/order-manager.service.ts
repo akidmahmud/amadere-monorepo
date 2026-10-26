@@ -104,6 +104,9 @@ interface RawOrderManagerRow {
   staff_note: string | null;
   utm_source: string | null;
   utm_campaign: string | null;
+  utm_medium: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
   assigned_admin_id: number | null;
   assigned_admin_name: string | null;
   items: OrderManagerLineDto[] | null;
@@ -297,7 +300,7 @@ export class OrderManagerService {
     const rows = await this.prisma.client.$queryRaw<RawOrderManagerRow[]>`
       SELECT o.id, o.order_number, o.status, o.total_amount, o.created_at, o.staff_note,
              o.exchange_of_order_id IS NOT NULL AS is_exchange,
-             o.utm_source, o.utm_campaign, o.deleted_at, o.channel,
+             o.utm_source, o.utm_campaign, o.utm_medium, o.utm_content, o.utm_term, o.deleted_at, o.channel,
              o.assigned_admin_id,
              NULLIF(TRIM(CONCAT(au.first_name, ' ', au.last_name)), '') AS assigned_admin_name,
              -- Fall back to the linked customer when there is no shipping
@@ -510,6 +513,9 @@ export class OrderManagerService {
       staffNote: r.staff_note,
       utmSource: r.utm_source,
       utmCampaign: r.utm_campaign,
+      utmMedium: r.utm_medium,
+      utmContent: r.utm_content,
+      utmTerm: r.utm_term,
       assignedAdminId: r.assigned_admin_id,
       assignedAdminName: r.assigned_admin_name,
       // json_agg returns NULL, not [], for an order with no lines.

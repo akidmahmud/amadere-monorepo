@@ -58,6 +58,9 @@ export interface OrderManagerRow {
   staffNote: string | null;
   utmSource: string | null;
   utmCampaign: string | null;
+  utmMedium?: string | null;
+  utmContent?: string | null;
+  utmTerm?: string | null;
   assignedAdminId: number | null;
   assignedAdminName: string | null;
   /** Every line on the order — product name, SKU and quantity as sold. */

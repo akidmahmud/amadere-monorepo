@@ -97,6 +97,8 @@ export const ORDER_COLUMNS = [
   { key: "division", label: "Division", optional: true },
   { key: "internalNote", label: "Internal Note", optional: true },
   { key: "source", label: "Source", optional: true },
+  // Every UTM the order arrived with (source / medium / campaign / content / term).
+  { key: "utm", label: "UTM", minWidth: 200 },
   // "Courier Charge", not "Delivery Charge": the table already speaks of
   // Courier Send and Courier Status, and naming the party says whose fee this
   // is. Sits right before Invoice — it is the number you check against the
@@ -1420,6 +1422,11 @@ function OrderRow({
         <SourceCell order={o} />
       </td>
     ) : null,
+    utm: (
+      <td className={td} style={tdStyle}>
+        <UtmCell order={o} />
+      </td>
+    ),
     // What the CUSTOMER paid for delivery. Not what the courier costs us —
     // that is the next column, and the two are routinely far apart because a
     // free-delivery order still gets billed by the courier.
@@ -1557,6 +1564,29 @@ function OrderRow({
         <Fragment key={k}>{cells[k]}</Fragment>
       ))}
     </tr>
+  );
+}
+
+/** The order's UTM tags, one per line; a dash when it arrived with none. */
+function UtmCell({ order: o }: { order: OrderManagerRow }) {
+  const tags = (
+    [
+      ["source", o.utmSource],
+      ["medium", o.utmMedium],
+      ["campaign", o.utmCampaign],
+      ["content", o.utmContent],
+      ["term", o.utmTerm],
+    ] as const
+  ).filter(([, v]) => v);
+  if (!tags.length) return <span style={{ color: FAINT }}>—</span>;
+  return (
+    <div className="flex max-w-[260px] flex-col gap-0.5 text-[0.72rem] leading-snug">
+      {tags.map(([k, v]) => (
+        <span key={k} className="truncate" title={`utm_${k}=${v}`}>
+          <span style={{ color: FAINT }}>{k}:</span> <span className="font-semibold">{v}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 

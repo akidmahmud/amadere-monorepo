@@ -64,6 +64,9 @@ export class OrderManagerRowDto {
   staffNote!: string | null;
   utmSource!: string | null;
   utmCampaign!: string | null;
+  utmMedium!: string | null;
+  utmContent!: string | null;
+  utmTerm!: string | null;
   assignedAdminId!: number | null;
   assignedAdminName!: string | null;
   /** Every line on the order, in order. Empty only for a corrupt order. */
