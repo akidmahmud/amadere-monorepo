@@ -19,6 +19,8 @@ export interface SmsLog {
   cost: string | null;
   code: number | null;
   codeMessage: string | null;
+  /** Why it failed when the gateway gave no code. */
+  error?: string | null;
   createdAt: string;
 }
 

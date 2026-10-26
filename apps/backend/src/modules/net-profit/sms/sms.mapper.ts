@@ -22,11 +22,13 @@ export class SmsLogDto {
   cost!: string | null;
   code!: number | null;
   codeMessage!: string | null;
+  /** Why a FAILED send failed, when the gateway gave no code (SMS off, not configured, unreachable). */
+  error!: string | null;
   createdAt!: Date;
 }
 
 export function toSmsLogDto(row: SmsLog): SmsLogDto {
-  const meta = (row.meta as { code?: number; codeMessage?: string } | null) ?? null;
+  const meta = (row.meta as { code?: number; codeMessage?: string; error?: string; reason?: string } | null) ?? null;
   return {
     id: row.id,
     to: row.to,
@@ -37,6 +39,9 @@ export function toSmsLogDto(row: SmsLog): SmsLogDto {
     cost: row.cost ? row.cost.toString() : null,
     code: meta?.code ?? null,
     codeMessage: meta?.codeMessage ?? null,
+    error:
+      meta?.error ??
+      (meta?.reason === 'sms_disabled' ? 'SMS sending is turned off (SMS → Settings)' : null),
     createdAt: row.createdAt,
   };
 }

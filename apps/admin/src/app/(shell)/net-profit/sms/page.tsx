@@ -176,9 +176,9 @@ function LogsTab() {
                 <td className="num text-text">{l.to}</td>
                 <td className="max-w-[360px] truncate text-secondary" title={l.body}>
                   {l.body}
-                  {l.status === "FAILED" && l.codeMessage && (
-                    <span className="block text-xs text-danger">
-                      Gateway response {l.code}: {l.codeMessage}
+                  {l.status === "FAILED" && (l.codeMessage || l.error) && (
+                    <span className="block whitespace-normal text-xs text-danger">
+                      {l.codeMessage ? `Gateway response ${l.code}: ${l.codeMessage}` : `Reason: ${l.error}`}
                     </span>
                   )}
                 </td>
