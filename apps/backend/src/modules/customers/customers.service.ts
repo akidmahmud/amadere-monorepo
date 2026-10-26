@@ -104,6 +104,8 @@ const EMPTY_EXTRAS: AdminCustomerListExtras = {
   lastOrderStatus: null,
   topProduct: null,
   topProductSku: null,
+  allProductsSku: null,
+  orderCount: 0,
   lifetimeSpend: 0,
 };
 
@@ -612,10 +614,12 @@ export class CustomersService {
     }
 
     const latestOrderByCustomer = new Map<number, (typeof orders)[number]>();
+    const orderCountByCustomer = new Map<number, number>();
     const quantityByCustomerProduct = new Map<number, Map<string, number>>();
     const skuByName = new Map<string, string>();
     for (const o of orders) {
       if (o.customerId === null) continue;
+      orderCountByCustomer.set(o.customerId, (orderCountByCustomer.get(o.customerId) ?? 0) + 1);
       const latest = latestOrderByCustomer.get(o.customerId);
       if (!latest || o.createdAt > latest.createdAt)
         latestOrderByCustomer.set(o.customerId, o);
@@ -657,8 +661,16 @@ export class CustomersService {
           }
         }
       }
+      const allProductsSku = perProduct
+        ? [...perProduct]
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, qty]) => `${skuByName.get(name) ?? name} x${qty}`)
+            .join(', ')
+        : null;
       const agg = aggByCustomer.get(id);
       extras.set(id, {
+        allProductsSku,
+        orderCount: orderCountByCustomer.get(id) ?? 0,
         // MUST be the same field the list's inline editor writes back
         // (updateAdmin below sets CustomerAddress.addressLine). It used to
         // prefer "area, district", which made the cell unfixable: the row
@@ -810,9 +822,11 @@ export class CustomersService {
       ['Number', (r) => r.phone],
       ['Email', (r) => r.email],
       ['Group', (r) => r.tier],
-      ['Order Count', (r) => r.completedOrderCount],
+      // Every order (as the customer modal counts them), not only completed ones.
+      ['Order Count', (r) => extras.get(r.id)?.orderCount ?? 0],
       ['Order Status', (r) => r.lastOrderStatus],
-      ['Product SKU', (r) => extras.get(r.id)?.topProductSku],
+      // Every product they bought, comma-separated, most-bought first.
+      ['Product SKU', (r) => extras.get(r.id)?.allProductsSku],
       ['Assign To', (r) => r.assignedAdminName],
       ['Start Date', (r) => isoDate(r.createdAt)],
       ['Last Order Date', (r) => isoDate(r.lastOrderDate)],
@@ -850,7 +864,22 @@ export class CustomersService {
       include: ADMIN_CUSTOMER_DETAIL_INCLUDE,
     });
     if (!customer) throw new NotFoundException('Customer not found');
-    return toAdminCustomerDto(customer);
+    // The list's derived columns (top product, last order, RFM), worked out
+    // the same way so the modal and the table never disagree.
+    const extras = (await this.loadListExtras([id])).get(id) ?? EMPTY_EXTRAS;
+    const row = toAdminCustomerListItemDto(customer, extras);
+    return {
+      ...toAdminCustomerDto(customer),
+      insights: {
+        topProduct: row.topProduct,
+        lastOrderDate: row.lastOrderDate,
+        lastOrderStatus: row.lastOrderStatus,
+        lifetimeSpend: extras.lifetimeSpend,
+        fScore: row.fScore,
+        mScore: row.mScore,
+        rfmScore: row.rfmScore,
+      },
+    };
   }
 
   async createCustomer(

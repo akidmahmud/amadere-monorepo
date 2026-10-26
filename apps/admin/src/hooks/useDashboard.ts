@@ -6,6 +6,8 @@ import type { components } from "@/lib/api/schema";
 // generated schema, which has not been regenerated since it was added.
 export type DashboardOverview = components["schemas"]["DashboardOverviewDto"] & {
   topCustomersWindowDays?: number;
+  /** Wholesale & channel orders placed today, cancelled excluded. */
+  todayWholesale?: { orders: number; revenue: string };
 };
 
 // Every field below is genuinely present together once scope === "global" —

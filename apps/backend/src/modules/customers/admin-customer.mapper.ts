@@ -62,6 +62,10 @@ export interface AdminCustomerListExtras {
   topProduct: string | null;
   /** Same product labelled by SKU — the export prints SKUs, the list names. */
   topProductSku: string | null;
+  /** Every product the customer bought, most first: "SKU x3, SKU x1". The export. */
+  allProductsSku: string | null;
+  /** All their orders, whatever the status (the modal's "Orders"). The export. */
+  orderCount: number;
   lifetimeSpend: number;
 }
 
@@ -239,8 +243,21 @@ export class AdminCustomerPurchasedProductDto {
   lastPurchasedAt!: Date;
 }
 
+/** The list's derived columns, for the detail modal (same maths as the list). */
+export class AdminCustomerInsightsDto {
+  topProduct!: string | null;
+  lastOrderDate!: Date | null;
+  lastOrderStatus!: string | null;
+  lifetimeSpend!: number;
+  fScore!: number;
+  mScore!: number;
+  rfmScore!: string;
+}
+
 export class AdminCustomerDto {
   id!: number;
+  /** Detail only (adminGet): the list's derived columns. */
+  insights?: AdminCustomerInsightsDto;
   name!: string;
   /** The two halves of `name`, so the detail modal can edit them separately. */
   firstName!: string | null;

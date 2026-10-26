@@ -3,6 +3,7 @@ import { EXCLUDE_POS_ONLY } from '../customers/pos-only';
 import { EXCLUDE_SEEDED_REVIEWERS } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { DashboardOverviewDto } from './dashboard.dto';
+import { dhakaDate } from '../product-cost-history/dhaka-date';
 
 const NON_CANCELED = { not: 'CANCELED' as const };
 
@@ -74,6 +75,7 @@ export class DashboardService {
       revenueOrders,
       itemsRaw,
       customerSpendRaw,
+      wholesaleTodayAgg,
     ] = await Promise.all([
       this.prisma.client.order.aggregate({
         where: { status: NON_CANCELED, ...LIVE_ORDERS },
@@ -175,6 +177,15 @@ export class DashboardService {
         orderBy: { _sum: { totalAmount: 'desc' } },
         take: 5,
       }),
+      // placedAt is a date-only column (the Dhaka day the order was placed).
+      this.prisma.client.wholesaleOrder.aggregate({
+        where: {
+          placedAt: new Date(`${dhakaDate(new Date())}T00:00:00.000Z`),
+          status: { not: 'CANCELLED' },
+        },
+        _count: { _all: true },
+        _sum: { total: true },
+      }),
     ]);
 
     // Bucket revenue by calendar month (real order history, not synthetic
@@ -275,6 +286,12 @@ export class DashboardService {
       today: {
         orders: todayAgg._count._all,
         revenue: (todayAgg._sum.totalAmount ?? 0).toString(),
+      },
+      // Wholesale & channel orders placed today (cancelled ones voided their
+      // invoice, so they're left out). The Today Revenue card adds this in.
+      todayWholesale: {
+        orders: wholesaleTodayAgg._count._all,
+        revenue: (wholesaleTodayAgg._sum.total ?? 0).toString(),
       },
       completed: {
         orders: completedOrders,

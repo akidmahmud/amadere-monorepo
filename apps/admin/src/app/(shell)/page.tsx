@@ -204,7 +204,23 @@ export default function OverviewPage() {
 
         <StatCard label="Total Products" value={String(g.totalProducts)} bg="var(--stat-yellow-bg)" fg="var(--stat-yellow)" icon={icon(<><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></>)} />
         <StatCard label="Total Customers" value={String(g.totalCustomers)} bg="var(--stat-red-bg)" fg="var(--stat-red)" icon={icon(<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>)} />
-        <StatCard label="Today Revenue" value={`৳ ${Number(g.today.revenue).toLocaleString()}`} bg="var(--stat-purple-bg)" fg="var(--stat-purple)" icon={icon(<><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 6v2" /><path d="M12 16v2" /></>)} />
+        {/* Website/retail orders plus wholesale & channel orders placed today. */}
+        <StatCard
+          label="Today Revenue"
+          value={`৳ ${(Number(g.today.revenue) + Number(g.todayWholesale?.revenue ?? 0)).toLocaleString()}`}
+          sub="Retail + wholesale"
+          bg="var(--stat-purple-bg)"
+          fg="var(--stat-purple)"
+          icon={icon(<><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 6v2" /><path d="M12 16v2" /></>)}
+        />
+        <StatCard
+          label="Today Wholesale Sales"
+          value={`৳ ${Number(g.todayWholesale?.revenue ?? 0).toLocaleString()}`}
+          sub={`${g.todayWholesale?.orders ?? 0} Orders`}
+          bg="var(--stat-blue-bg)"
+          fg="var(--stat-blue)"
+          icon={icon(<><path d="M3 9h18l-2 11H5Z" /><path d="M8 9V6a4 4 0 0 1 8 0v3" /></>)}
+        />
 
         <StatCard label="Average Order Value" value={`৳ ${Number(g.avgOrderValue).toLocaleString()}`} bg="var(--stat-indigo-bg)" fg="var(--stat-indigo)" icon={icon(<><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M9 12h6" /><path d="M9 16h6" /></>)} />
         <StatCard label="Total Revenue" value={`৳ ${Number(g.totalRevenue).toLocaleString()}`} bg="var(--stat-green-bg)" fg="var(--stat-green)" icon={icon(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></>)} />

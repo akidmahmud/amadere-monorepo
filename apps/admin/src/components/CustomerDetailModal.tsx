@@ -3,6 +3,16 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Button, Icon, Modal } from "@amader/admin-ui";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useCan } from "@/hooks/useAdminAuth";
 import {
   BD_ALL_DISTRICTS,
@@ -50,17 +60,6 @@ function Field({ label, children }: { label: string; children?: ReactNode }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-xl border border-border bg-surface-2/40 p-4">
-      <h4 className="mb-3 text-[0.72rem] font-bold uppercase tracking-wide text-secondary">
-        {title}
-      </h4>
-      <dl className="grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-3">{children}</dl>
-    </section>
-  );
-}
-
 function Pill({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "brand" }) {
   return (
     <span
@@ -97,7 +96,7 @@ export function CustomerDetailModal({
 }) {
   const { data: c, isLoading } = useCustomer(customerId);
   const [tab, setTab] = useState<
-    "overview" | "orders" | "products" | "notes" | "calls" | "activity"
+    "overview" | "orders" | "products" | "notes" | "calls" | "person" | "activity"
   >("overview");
 
   const tabs = [
@@ -106,6 +105,7 @@ export function CustomerDetailModal({
     { key: "products", label: "Products", count: c?.purchasedProducts.length },
     { key: "notes", label: "Notes", count: c?.notes.length },
     { key: "calls", label: "Calls", count: c?.callLogs.length },
+    { key: "person", label: "Notes on the person", count: undefined },
     { key: "activity", label: "Activity", count: c?.activity.length },
   ] as const;
 
@@ -211,6 +211,7 @@ export function CustomerDetailModal({
             {tab === "products" && <ProductsTab products={c.purchasedProducts} />}
             {tab === "notes" && <NotesTab customerId={customerId} notes={c.notes} />}
             {tab === "calls" && <CallsTab customerId={customerId} calls={c.callLogs} />}
+            {tab === "person" && <PersonTab c={c} />}
             {tab === "activity" && <ActivityTab activity={c.activity as ActivityEntry[]} />}
           </div>
 
@@ -230,35 +231,186 @@ export function CustomerDetailModal({
   );
 }
 
-function OverviewTab({ c }: { c: Customer }) {
+type CardKey = "personal" | "address" | "crm" | "followup" | "person" | "scores";
+const CARD_TITLES: Record<CardKey, string> = {
+  scores: "Orders & scores",
+  personal: "Personal",
+  address: "Default address",
+  crm: "CRM",
+  followup: "Follow-up",
+  person: "Notes on the person",
+};
+const DEFAULT_ORDER = Object.keys(CARD_TITLES) as CardKey[];
+// Per browser: each staff member arranges the cards the way they work.
+const ORDER_STORAGE = "customer-modal-card-order";
+
+function loadOrder(): CardKey[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ORDER_STORAGE) ?? "[]") as CardKey[];
+    const valid = saved.filter((k) => k in CARD_TITLES);
+    return [...valid, ...DEFAULT_ORDER.filter((k) => !valid.includes(k))];
+  } catch {
+    return DEFAULT_ORDER;
+  }
+}
+
+type Insights = {
+  topProduct: string | null;
+  lastOrderDate: string | null;
+  lastOrderStatus: string | null;
+  lifetimeSpend: number;
+  fScore: number;
+  mScore: number;
+  rfmScore: string;
+};
+
+/** One card: drag handle, title, its own Edit — and its fields or editor. */
+function SortableCard({
+  id,
+  editing,
+  canEdit,
+  onEdit,
+  children,
+}: {
+  id: CardKey;
+  editing: boolean;
+  canEdit: boolean;
+  onEdit?: () => void;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <section
+      ref={setNodeRef}
+      id={`customer-card-${id}`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`scroll-mt-2 rounded-xl border border-border bg-surface-2/40 p-4 ${isDragging ? "relative z-10 shadow-lg" : ""}`}
+    >
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag ${CARD_TITLES[id]}`}
+          title="Drag to reorder"
+          className="cursor-grab touch-none rounded p-0.5 text-muted hover:bg-surface-2 hover:text-text active:cursor-grabbing"
+        >
+          <Icon name="drag_indicator" size={16} />
+        </button>
+        <h4 className="flex-1 text-[0.72rem] font-bold uppercase tracking-wide text-secondary">{CARD_TITLES[id]}</h4>
+        {onEdit && !editing && (
+          <button
+            type="button"
+            disabled={!canEdit}
+            title={canEdit ? "Edit" : "View only — you do not have permission to edit customers"}
+            onClick={onEdit}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-brand-500 hover:bg-brand-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="edit" size={14} />
+            Edit
+          </button>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** "Notes on the person" as its own tab: the same fields as the Overview card, editable here too. */
+function PersonTab({ c }: { c: Customer }) {
   const canManage = useCan("customer.manage");
   const [editing, setEditing] = useState(false);
-  if (editing) return <OverviewEditor c={c} onDone={() => setEditing(false)} />;
-  const a = c.defaultAddress;
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={!canManage}
-          title={canManage ? undefined : "View only — you do not have permission to edit customers"}
-          onClick={() => setEditing(true)}
-        >
-          <Icon name="edit" size={16} />
-          Edit details
-        </Button>
+    <section className="rounded-xl border border-border bg-surface-2/40 p-4">
+      <div className="mb-3 flex items-center">
+        <h4 className="flex-1 text-[0.72rem] font-bold uppercase tracking-wide text-secondary">Notes on the person</h4>
+        {!editing && (
+          <button
+            type="button"
+            disabled={!canManage}
+            title={canManage ? "Edit" : "View only — you do not have permission to edit customers"}
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-brand-500 hover:bg-brand-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="edit" size={14} />
+            Edit
+          </button>
+        )}
       </div>
-      <Section title="Personal">
+      {editing ? (
+        <OverviewEditor c={c} only="person" onDone={() => setEditing(false)} />
+      ) : (
+        <dl className="grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-3">
+          <Field label="Customer feedback">{c.customerFeedback}</Field>
+          <Field label="Agent feedback">{c.amaderFeedback}</Field>
+          <Field label="Family details">{c.familyDetails}</Field>
+          <Field label="Reason for purchase">{c.purchaseReason}</Field>
+        </dl>
+      )}
+    </section>
+  );
+}
+
+function OverviewTab({ c }: { c: Customer }) {
+  const canManage = useCan("customer.manage");
+  const [editing, setEditing] = useState<CardKey | null>(null);
+  const [order, setOrder] = useState<CardKey[]>(loadOrder);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const a = c.defaultAddress;
+  const ins = (c as Customer & { insights?: Insights }).insights;
+  const daysLeft = c.nextCallTarget
+    ? Math.ceil((new Date(c.nextCallTarget).getTime() - Date.now()) / 86_400_000)
+    : null;
+
+  function onDragEnd(e: DragEndEvent) {
+    const from = order.indexOf(e.active.id as CardKey);
+    const to = e.over ? order.indexOf(e.over.id as CardKey) : -1;
+    if (from < 0 || to < 0 || from === to) return;
+    const next = arrayMove(order, from, to);
+    setOrder(next);
+    try {
+      localStorage.setItem(ORDER_STORAGE, JSON.stringify(next));
+    } catch {
+      /* private mode: the order just isn't remembered */
+    }
+  }
+
+  const grid = (children: ReactNode) => (
+    <dl className="grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-3">{children}</dl>
+  );
+  const body: Record<CardKey, ReactNode> = {
+    scores: grid(
+      <>
+        <Field label="Orders">{c.orders.length}</Field>
+        <Field label="Completed orders">{c.completedOrderCount}</Field>
+        <Field label="Lifetime spend">{ins ? money(ins.lifetimeSpend) : null}</Field>
+        <Field label="Top product">{ins?.topProduct}</Field>
+        <Field label="Last order date">{day(ins?.lastOrderDate)}</Field>
+        <Field label="Last order status">{ins?.lastOrderStatus ? <Pill>{ins.lastOrderStatus}</Pill> : null}</Field>
+        <Field label="F score">{ins?.fScore}</Field>
+        <Field label="M score">{ins?.mScore}</Field>
+        <Field label="RFM score">{ins?.rfmScore}</Field>
+      </>,
+    ),
+    personal: grid(
+      <>
         <Field label="Full name">{c.name}</Field>
         <Field label="Phone">{c.phone}</Field>
         <Field label="Email">{c.email}</Field>
         <Field label="Birth date">{day(c.dob)}</Field>
         <Field label="Customer since">{day(c.createdAt)}</Field>
         <Field label="Group / tier">{c.tier}</Field>
-      </Section>
-
-      <Section title="Default address">
+        <Field label="Facebook profile">
+          {c.facebookProfileUrl ? (
+            <a href={c.facebookProfileUrl} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">
+              Open profile
+            </a>
+          ) : null}
+        </Field>
+      </>,
+    ),
+    address: grid(
+      <>
         <Field label="Recipient">{a?.recipientName}</Field>
         <Field label="Phone">{a?.phone}</Field>
         <Field label="Alt. phone">{a?.alternativePhone}</Field>
@@ -268,32 +420,75 @@ function OverviewTab({ c }: { c: Customer }) {
         <Field label="Division">{a?.division}</Field>
         <Field label="Landmark">{a?.landmark}</Field>
         <Field label="Post code">{a?.postCode}</Field>
-      </Section>
-
-      <Section title="CRM">
+      </>,
+    ),
+    crm: grid(
+      <>
         <Field label="Assigned to">{c.assignedAdminName}</Field>
         <Field label="Priority">{c.priority ? <Pill>{c.priority}</Pill> : null}</Field>
         <Field label="Status">{c.crmStatus ? <Pill>{c.crmStatus}</Pill> : null}</Field>
         <Field label="Behaviour">{c.behaviour}</Field>
         <Field label="Favourite">{c.isFavorite ? "Yes" : "No"}</Field>
-        <Field label="Completed orders">{c.completedOrderCount}</Field>
-      </Section>
-
-      <Section title="Follow-up">
+      </>,
+    ),
+    followup: grid(
+      <>
         <Field label="Next call target">{day(c.nextCallTarget)}</Field>
-        <Field label="Cadence">
+        <Field label="Days left">{daysLeft}</Field>
+        <Field label="Cadence (expire time)">
           {c.followUpCadenceDays ? `Every ${c.followUpCadenceDays} days` : null}
         </Field>
         <Field label="New order flag">{c.hasNewOrder ? "Yes" : "No"}</Field>
         <Field label="New order at">{day(c.newOrderAt)}</Field>
-      </Section>
-
-      <Section title="Notes on the person">
+      </>,
+    ),
+    person: grid(
+      <>
         <Field label="Customer feedback">{c.customerFeedback}</Field>
         <Field label="Agent feedback">{c.amaderFeedback}</Field>
         <Field label="Family details">{c.familyDetails}</Field>
         <Field label="Reason for purchase">{c.purchaseReason}</Field>
-      </Section>
+      </>,
+    ),
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Quick jump: straight to a card, whatever order it has been dragged into. */}
+      <div className="flex flex-wrap gap-1.5">
+        {order.map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() =>
+              document.getElementById(`customer-card-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="rounded-pill border border-border bg-surface px-3 py-1 text-xs font-semibold text-secondary hover:border-brand-500 hover:text-brand-500"
+          >
+            {CARD_TITLES[k]}
+          </button>
+        ))}
+      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={order} strategy={verticalListSortingStrategy}>
+          {order.map((k) => (
+            <SortableCard
+              key={k}
+              id={k}
+              editing={editing === k}
+              canEdit={canManage}
+              // The scores are worked out from orders — nothing to edit.
+              onEdit={k === "scores" ? undefined : () => setEditing(k)}
+            >
+              {editing === k && k !== "scores" ? (
+                <OverviewEditor c={c} only={k} onDone={() => setEditing(null)} />
+              ) : (
+                body[k]
+              )}
+            </SortableCard>
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
@@ -321,7 +516,16 @@ function EditField({ label, children }: { label: string; children: ReactNode }) 
  * completed orders stay read-only: tier is recalculated from completed orders,
  * and the other two are facts, not settings.
  */
-function OverviewEditor({ c, onDone }: { c: Customer; onDone: () => void }) {
+function OverviewEditor({
+  c,
+  onDone,
+  only,
+}: {
+  c: Customer;
+  onDone: () => void;
+  /** Edit just this card (the card supplies the frame and title). */
+  only: Exclude<CardKey, "scores">;
+}) {
   const update = useUpdateCustomer(c.id);
   const { data: staff } = useAssignableStaff();
   const canAssign = useCan("assignment.manage");
@@ -426,12 +630,16 @@ function OverviewEditor({ c, onDone }: { c: Customer; onDone: () => void }) {
   }
 
   const grid = "grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-3";
-  const box = (title: string, children: ReactNode) => (
-    <section className="rounded-xl border border-border bg-surface-2/40 p-4">
-      <h4 className="mb-3 text-[0.72rem] font-bold uppercase tracking-wide text-secondary">{title}</h4>
-      <div className={grid}>{children}</div>
-    </section>
-  );
+  const KEY_BY_TITLE: Record<string, CardKey> = {
+    Personal: "personal",
+    "Default address": "address",
+    CRM: "crm",
+    "Follow-up": "followup",
+    "Notes on the person": "person",
+  };
+  // Only the card being edited; save() still sends just what changed.
+  const box = (title: string, children: ReactNode) =>
+    KEY_BY_TITLE[title] === only ? <div className={grid}>{children}</div> : null;
 
   return (
     <form
@@ -723,7 +931,7 @@ function NotesTab({ customerId, notes }: { customerId: number; notes: Customer["
             <div key={n.id} className="rounded-xl border border-border p-3.5">
               <div className="flex items-center justify-between gap-3">
                 <Pill>{n.type.replace(/_/g, " ")}</Pill>
-                <span className="text-xs text-muted">{moment(n.createdAt)}</span>
+                <span className="text-sm font-semibold text-secondary">{moment(n.createdAt)}</span>
               </div>
               <p className="mt-1.5 text-sm text-text">{n.body}</p>
             </div>

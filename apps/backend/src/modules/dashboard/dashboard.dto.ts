@@ -59,6 +59,8 @@ export class DashboardOverviewDto {
   @ApiPropertyOptional() completedOrderRate?: number;
   @ApiPropertyOptional() avgOrderValue?: string;
   @ApiPropertyOptional({ type: PeriodStatsDto }) today?: PeriodStatsDto;
+  /** Wholesale & channel orders placed today, cancelled excluded. */
+  @ApiPropertyOptional({ type: PeriodStatsDto }) todayWholesale?: PeriodStatsDto;
   @ApiPropertyOptional({ type: PeriodStatsDto }) completed?: PeriodStatsDto;
   @ApiPropertyOptional({ type: PeriodStatsDto }) pending?: PeriodStatsDto;
   @ApiPropertyOptional({ type: [OrderStatusCountDto] }) statusBreakdown?: OrderStatusCountDto[];
