@@ -76,7 +76,7 @@ export class AdminOverviewController {
   }
 
   @Get('inventory/export')
-  @RequirePermission('net_profit_overview.view')
+  @RequirePermission('net_profit_overview.view', 'data.export')
   async inventoryExport(@Query('filter') filter: InventoryFilter = 'all', @Res() res: Response) {
     const csv = await this.inventory.exportCsv(filter);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -118,7 +118,7 @@ export class AdminOverviewController {
   }
 
   @Get('returned/export')
-  @RequirePermission('net_profit_overview.view')
+  @RequirePermission('net_profit_overview.view', 'data.export')
   async returnedExport(@Query('range') range: string | undefined, @Query('from') fromParam: string | undefined, @Query('to') toParam: string | undefined, @Res() res: Response) {
     const { from, to } = this.resolveRange(range, fromParam, toParam);
     const csv = await this.returnedOrders.exportCsv(from, to);

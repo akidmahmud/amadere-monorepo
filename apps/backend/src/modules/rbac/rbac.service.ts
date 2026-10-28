@@ -6,7 +6,7 @@ import {
   NotFoundException,
   OnApplicationBootstrap,
 } from '@nestjs/common';
-import { DELETE_PERMISSIONS, PERMISSION_CATALOG } from '@amader/shared';
+import { ADMIN_ONLY_PERMISSIONS, PERMISSION_CATALOG } from '@amader/shared';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -47,9 +47,9 @@ export class RbacService implements OnApplicationBootstrap {
         skipDuplicates: true,
       });
       if (count > 0) this.logger.log(`Added ${count} missing permission(s) from the catalog`);
-      // A delete right appearing for the first time goes to the Admin role
+      // A delete/payment/export right appearing for the first time goes to the Admin role
       // only (once — unticking it in Roles later sticks).
-      const fresh = DELETE_PERMISSIONS.filter((k) => !before.has(k));
+      const fresh = ADMIN_ONLY_PERMISSIONS.filter((k) => !before.has(k));
       const admin = fresh.length
         ? await this.prisma.client.role.findFirst({ where: { name: { equals: 'Admin', mode: 'insensitive' } } })
         : null;

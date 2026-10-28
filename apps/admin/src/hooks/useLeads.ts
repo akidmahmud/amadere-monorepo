@@ -177,6 +177,6 @@ export function useDeletedLeads(page: number) {
 export const useRestoreLead = () =>
   useLeadMutation((id: number) => proxyFetch<LeadDetail>(`/admin/leads/${id}/restore`, { method: "POST" }));
 export const useLogLeadCall = (id: number) =>
-  useLeadMutation((input: { outcome: LeadCallOutcome; notes?: string }) =>
+  useLeadMutation((input: { outcome: LeadCallOutcome; notes?: string; nextCallDate?: string }) =>
     proxyFetch<LeadDetail>(`/admin/leads/${id}/calls`, { method: "POST", body: JSON.stringify(input) }),
   );

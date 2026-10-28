@@ -111,10 +111,20 @@ describe('summarize — exchanges', () => {
   it('counts delivered exchange orders and their product cost (already in cogs)', () => {
     const delivered = DEMO_EXCEL_DAY.find((o) => o.status === 'Delivered')!;
     const plain = calcOrder(delivered, S);
-    const ex = calcOrder({ ...delivered, id: 999, exchange: true }, S);
+    const ex = calcOrder(
+      { ...delivered, id: 999, exchange: true, lines: delivered.lines.map((l) => ({ ...l, exchange: true })) },
+      S,
+    );
     const s = summarize([plain, ex], S);
     expect(s.exN).toBe(1);
-    expect(s.exCost).toBe(ex.cogs ?? 0);
+    expect(s.exCost).toBeCloseTo(ex.cogs ?? 0);
     expect(s.cogs).toBeCloseTo((plain.cogs ?? 0) + (ex.cogs ?? 0));
+  });
+
+  it('exchange cost counts only the replacement lines, not paid extras', () => {
+    const delivered = DEMO_EXCEL_DAY.find((o) => o.status === 'Delivered' && o.lines.length)!;
+    const [first, ...rest] = delivered.lines;
+    const ex = calcOrder({ ...delivered, exchange: true, lines: [{ ...first, exchange: true }, ...rest] }, S);
+    expect(summarize([ex], S).exCost).toBeCloseTo((first.unitCost ?? 0) * first.qty);
   });
 });

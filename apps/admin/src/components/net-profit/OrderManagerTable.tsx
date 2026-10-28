@@ -40,6 +40,7 @@ import {
   type OrderStatus,
   type PaymentProviderType,
 } from "@/hooks/useOrders";
+import { useCan } from "@/hooks/useAdminAuth";
 
 // Same visual language as CustomersTable.tsx (green sticky header, white
 // rows, sticky lead columns, numbered-page pagination) — this page is being
@@ -317,6 +318,8 @@ function StatusCell({
 
 function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
   const updatePayment = useUpdateOrderPayment(order.id);
+  // Changing how an order was paid is Admin-only unless a role is ticked.
+  const canPay = useCan("payment.update");
   const color = order.paymentStatus
     ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? "#9ca3af")
     : "#9ca3af";
@@ -328,7 +331,7 @@ function PaymentStatusCell({ order }: { order: OrderManagerRow }) {
     <div className="flex flex-col items-start gap-1">
       <select
         value={order.paymentStatus ?? ""}
-        disabled={updatePayment.isPending}
+        disabled={!canPay || updatePayment.isPending}
         onClick={(e) => e.stopPropagation()}
         onChange={(e) =>
           updatePayment.mutate({
@@ -589,10 +592,12 @@ function SourceCell({ order }: { order: OrderManagerRow }) {
 
 function PaymentCell({ order }: { order: OrderManagerRow }) {
   const updatePayment = useUpdateOrderPayment(order.id);
+  // Changing how an order was paid is Admin-only unless a role is ticked.
+  const canPay = useCan("payment.update");
   return (
     <select
       value={(order.paymentProvider as PaymentProviderType) ?? ""}
-      disabled={updatePayment.isPending}
+      disabled={!canPay || updatePayment.isPending}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) =>
         updatePayment.mutate({

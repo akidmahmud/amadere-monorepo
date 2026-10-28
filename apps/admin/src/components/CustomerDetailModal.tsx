@@ -98,6 +98,7 @@ export function CustomerDetailModal({
   const [tab, setTab] = useState<
     "overview" | "orders" | "products" | "notes" | "calls" | "person" | "activity"
   >("overview");
+  const [order, setOrder] = useState<CardKey[]>(loadOrder);
 
   const tabs = [
     { key: "overview", label: "Overview", count: undefined },
@@ -115,6 +116,9 @@ export function CustomerDetailModal({
         <p className="text-sm text-muted">Loading…</p>
       ) : (
         <div className="flex flex-col gap-4">
+          {/* Frozen while the cards scroll: who it is, the call bar, the tabs
+              and card shortcuts — a shortcut jumps without losing the call bar. */}
+          <div className="sticky -top-6 z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-surface px-6 pb-3 pt-6">
           {/* Identity strip — the things you need before deciding anything
               else: who they are, how to reach them, what they are worth. */}
           <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface-2/60 p-4">
@@ -181,6 +185,8 @@ export function CustomerDetailModal({
             </div>
           </div>
 
+          <CustomerCallBar customerId={customerId} />
+
           <div className="flex flex-wrap gap-1.5 border-b border-border">
             {tabs.map((t) => (
               <button
@@ -202,15 +208,17 @@ export function CustomerDetailModal({
               </button>
             ))}
           </div>
+          {tab === "overview" && <CardChips order={order} />}
+          </div>
 
           {/* A floor, so switching to an empty tab does not collapse the
               modal and move the tab strip out from under the cursor. */}
           <div className="min-h-[240px]">
-            {tab === "overview" && <OverviewTab c={c} />}
+            {tab === "overview" && <OverviewTab c={c} order={order} setOrder={setOrder} />}
             {tab === "orders" && <OrdersTab orders={c.orders} />}
             {tab === "products" && <ProductsTab products={c.purchasedProducts} />}
             {tab === "notes" && <NotesTab customerId={customerId} notes={c.notes} />}
-            {tab === "calls" && <CallsTab customerId={customerId} calls={c.callLogs} />}
+            {tab === "calls" && <CallsTab calls={c.callLogs} />}
             {tab === "person" && <PersonTab c={c} />}
             {tab === "activity" && <ActivityTab activity={c.activity as ActivityEntry[]} />}
           </div>
@@ -284,7 +292,7 @@ function SortableCard({
       ref={setNodeRef}
       id={`customer-card-${id}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`scroll-mt-2 rounded-xl border border-border bg-surface-2/40 p-4 ${isDragging ? "relative z-10 shadow-lg" : ""}`}
+      className={`scroll-mt-[320px] rounded-xl border border-border bg-surface-2/40 p-4 ${isDragging ? "relative z-10 shadow-lg" : ""}`}
     >
       <div className="mb-3 flex items-center gap-2">
         <button
@@ -351,10 +359,37 @@ function PersonTab({ c }: { c: Customer }) {
   );
 }
 
-function OverviewTab({ c }: { c: Customer }) {
+/** Card shortcuts: jump straight to a card, whatever order it has been dragged into. */
+function CardChips({ order }: { order: CardKey[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {order.map((k) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() =>
+            document.getElementById(`customer-card-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+          className="rounded-pill border border-border bg-surface px-3 py-1 text-xs font-semibold text-secondary hover:border-brand-500 hover:text-brand-500"
+        >
+          {CARD_TITLES[k]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function OverviewTab({
+  c,
+  order,
+  setOrder,
+}: {
+  c: Customer;
+  order: CardKey[];
+  setOrder: (o: CardKey[]) => void;
+}) {
   const canManage = useCan("customer.manage");
   const [editing, setEditing] = useState<CardKey | null>(null);
-  const [order, setOrder] = useState<CardKey[]>(loadOrder);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const a = c.defaultAddress;
   const ins = (c as Customer & { insights?: Insights }).insights;
@@ -454,21 +489,6 @@ function OverviewTab({ c }: { c: Customer }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Quick jump: straight to a card, whatever order it has been dragged into. */}
-      <div className="flex flex-wrap gap-1.5">
-        {order.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() =>
-              document.getElementById(`customer-card-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="rounded-pill border border-border bg-surface px-3 py-1 text-xs font-semibold text-secondary hover:border-brand-500 hover:text-brand-500"
-          >
-            {CARD_TITLES[k]}
-          </button>
-        ))}
-      </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
           {order.map((k) => (
@@ -942,72 +962,96 @@ function NotesTab({ customerId, notes }: { customerId: number; notes: Customer["
   );
 }
 
-function CallsTab({ customerId, calls }: { customerId: number; calls: Customer["callLogs"] }) {
+/**
+ * Pinned call bar: dial, then log what happened. What they said becomes the
+ * Customer feedback column and the date becomes Next call target, so the
+ * list needs no separate edit after a call.
+ */
+function CustomerCallBar({ customerId }: { customerId: number }) {
   const logCall = useLogCustomerCall(customerId);
   const canManage = useCan("customer.manage");
   const dial = useDialCustomer(customerId);
   const [outcome, setOutcome] = useState<string>(CALL_OUTCOMES[0]);
   const [notes, setNotes] = useState("");
+  const [nextCall, setNextCall] = useState("");
   const [failure, setFailure] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col gap-4">
-      <fieldset
-        disabled={!canManage}
-        title={canManage ? undefined : "View only — you do not have permission to log calls"}
-        className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3.5 disabled:[&_*]:cursor-not-allowed disabled:[&_*]:opacity-50"
+    <fieldset
+      disabled={!canManage}
+      title={canManage ? undefined : "View only — you do not have permission to log calls"}
+      className="rounded-xl border border-brand-500/25 bg-brand-500/5 p-3 disabled:[&_*]:cursor-not-allowed disabled:[&_*]:opacity-50"
+    >
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          logCall.mutate(
+            { outcome, notes: notes.trim() || undefined, nextCallTarget: nextCall || undefined },
+            {
+              onSuccess: () => {
+                setNotes("");
+                setNextCall("");
+              },
+            },
+          );
+        }}
       >
-        <div className="flex items-center gap-2.5">
-          <Button
-            type="button"
-            variant="primary"
-            disabled={dial.isPending}
-            onClick={() => {
-              setFailure(null);
-              dial.mutate(undefined, {
-                onError: (err) =>
-                  setFailure(err instanceof Error ? err.message : "Call failed"),
-              });
-            }}
-          >
-            <Icon name="call" size={16} />
-            {dial.isPending ? "Dialing…" : "Call now"}
-          </Button>
-          {failure && <span className="text-xs text-danger">{failure}</span>}
-        </div>
-        <form
-          className="flex flex-wrap items-end gap-2.5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            logCall.mutate(
-              { outcome, notes: notes.trim() || undefined },
-              { onSuccess: () => setNotes("") },
-            );
+        <Button
+          type="button"
+          variant="primary"
+          disabled={dial.isPending}
+          onClick={() => {
+            setFailure(null);
+            dial.mutate(undefined, {
+              onError: (err) => setFailure(err instanceof Error ? err.message : "Call failed"),
+            });
           }}
         >
-          <select
-            value={outcome}
-            onChange={(e) => setOutcome(e.target.value)}
-            aria-label="Call outcome"
-            className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
-          >
-            {CALL_OUTCOMES.map((o) => (
-              <option key={o} value={o}>
-                {o.replace(/_/g, " ")}
-              </option>
-            ))}
-          </select>
+          <Icon name="call" size={16} />
+          {dial.isPending ? "Dialing…" : "Call now"}
+        </Button>
+        <select
+          value={outcome}
+          onChange={(e) => setOutcome(e.target.value)}
+          aria-label="Call outcome"
+          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        >
+          {CALL_OUTCOMES.map((o) => (
+            <option key={o} value={o}>
+              {o.replace(/_/g, " ")}
+            </option>
+          ))}
+        </select>
+        <input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="What did they say? (becomes Customer feedback)"
+          className="h-10 min-w-48 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+        />
+        <label className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs font-semibold text-secondary">
+          Next call
           <input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="What happened on the call?"
-            className="h-10 min-w-56 flex-1 rounded-lg border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500"
+            type="date"
+            value={nextCall}
+            onChange={(e) => setNextCall(e.target.value)}
+            className="bg-transparent text-sm text-text outline-none"
+            aria-label="Next call target"
           />
-          <Button type="submit" variant="ghost" disabled={logCall.isPending}>
-            {logCall.isPending ? "Logging…" : "Log outcome"}
-          </Button>
-        </form>
-      </fieldset>
+        </label>
+        <Button type="submit" variant="ghost" disabled={logCall.isPending}>
+          {logCall.isPending ? "Logging…" : "Log call"}
+        </Button>
+      </form>
+      {failure && <p className="mt-1.5 text-xs text-danger">{failure}</p>}
+      {logCall.isError && <p className="mt-1.5 text-xs text-danger">{(logCall.error as Error).message}</p>}
+    </fieldset>
+  );
+}
+
+function CallsTab({ calls }: { calls: Customer["callLogs"] }) {
+  return (
+    <div className="flex flex-col gap-4">
       {calls.length === 0 ? (
         <Empty>No calls logged yet.</Empty>
       ) : (

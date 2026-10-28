@@ -37,6 +37,7 @@ import { useShippingRuleQuote } from "@/hooks/useShippingRules";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { ConsignModal } from "./ConsignModal";
 import { FraudDetailModal } from "./FraudDetailModal";
+import { useCan } from "@/hooks/useAdminAuth";
 
 const PAYMENT_STATUSES: ManualOrderPaymentStatus[] = ["PENDING", "AUTHORIZED", "CAPTURED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED", "CANCELED"];
 // Same relabeling as OrderManagerTable.tsx / NewOrderForm.tsx — "CAPTURED" is
@@ -130,6 +131,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
   const removeItem = useRemoveOrderItem(row.id);
   const updateDetails = useUpdateOrderDetails(row.id);
   const updatePayment = useUpdateOrderPayment(row.id);
+  const canPay = useCan("payment.update");
   const updateAmounts = useUpdateOrderAmounts(row.id);
   const updateNote = useUpdateOrderNote(row.id);
   const resendConfirmation = useResendOrderConfirmation(row.id);
@@ -223,7 +225,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                     <>
                       Exchange for
                       <button type="button" className="font-semibold text-[#2e7d43] underline" onClick={() => setLinked(order.exchangeOf!)}>
-                        #{order.exchangeOf.orderNumber}
+                        {order.exchangeOf.orderNumber.replace(/^#?/, "#")}
                       </button>
                     </>
                   ) : (
@@ -231,7 +233,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                       Exchanged →
                       {order.exchanges!.map((x) => (
                         <button key={x.id} type="button" className="font-semibold text-[#2e7d43] underline" onClick={() => setLinked(x)}>
-                          #{x.orderNumber}
+                          {x.orderNumber.replace(/^#?/, "#")}
                         </button>
                       ))}
                     </>
@@ -318,6 +320,9 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   <div key={item.id} className="flex items-center gap-3 border-b border-border pb-2 text-sm text-text">
                     <ProductThumb url={undefined} />
                     <span className="flex-1">
+                      {item.isExchange && (
+                        <span className="mr-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">EXCHANGE</span>
+                      )}
                       {item.name} {item.sku && <span className="text-muted">(SKU: {item.sku})</span>}
                       {item.weight && <span className="text-muted"> · {item.weight} kg</span>}
                     </span>
@@ -592,7 +597,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   <span className="text-muted">Payment method</span>
                   <select
                     value={(latestPayment?.provider as unknown as string) ?? ""}
-                    disabled={!latestPayment || updatePayment.isPending}
+                    disabled={!canPay || !latestPayment || updatePayment.isPending}
                     onChange={(e) => updatePayment.mutate({ provider: e.target.value as PaymentProviderType })}
                     className="h-8 rounded-sm border-0 bg-transparent text-right text-sm font-semibold outline-none disabled:opacity-50"
                     style={{ color: BLUE }}
@@ -605,7 +610,7 @@ export function OrderDetailModal({ row, onClose }: { row: OrderDetailModalRow; o
                   <span className="text-muted">Payment status</span>
                   <select
                     value={(latestPayment?.status as unknown as string) ?? ""}
-                    disabled={!latestPayment || updatePayment.isPending}
+                    disabled={!canPay || !latestPayment || updatePayment.isPending}
                     onChange={(e) => updatePayment.mutate({ status: e.target.value as ManualOrderPaymentStatus })}
                     className="h-7 rounded-[6px] border-0 px-2 text-xs font-medium text-white outline-none disabled:opacity-50"
                     style={{ backgroundColor: (latestPayment?.status as unknown as string) === "CAPTURED" ? GREEN : AMBER }}

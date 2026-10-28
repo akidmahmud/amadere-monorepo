@@ -20,6 +20,7 @@ import {
   periodParams,
   type Period,
 } from "./PeriodFilter";
+import { CanExport } from "@/components/CanExport";
 
 type Row = {
   id: number;
@@ -303,7 +304,7 @@ export function PosOrdersManager({
             ...(n === 0 ? tail : [null, null, "", ""]),
           ]);
         },
-        `pos-orders-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        `pos-orders-${new Date().toLocaleDateString("en-CA")}`,
         reportTitle(`POS Orders — ${storeName}`, periodParams(period)),
         (rows) => {
           const sum = (f: (r: (typeof rows)[number]) => number) =>
@@ -481,6 +482,7 @@ export function PosOrdersManager({
                 className="flex-1 bg-transparent outline-none"
               />
             </label>
+            <CanExport>
             <button
               onClick={exportExcel}
               disabled={exporting || !data?.total}
@@ -489,6 +491,7 @@ export function PosOrdersManager({
               <Icon name="download" size={20} />
               {exporting ? "Exporting…" : "Export Excel"}
             </button>
+            </CanExport>
           </div>
         )}
 
@@ -602,7 +605,7 @@ export function PosOrdersManager({
                       </td>
                       <td className="px-4 text-center">{o.itemCount}</td>
                       <td className="px-4">
-                        {o.tender && can("pos.refund") ? (
+                        {o.tender && can("payment.update") ? (
                           <select
                             value={o.tender === "BKASH" ? "MOBILE" : o.tender}
                             onClick={(e) => e.stopPropagation()}

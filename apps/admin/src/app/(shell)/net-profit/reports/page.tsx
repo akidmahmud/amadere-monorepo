@@ -24,6 +24,7 @@ import { CouriersTab } from "@/components/net-profit/sales-report/CouriersTab";
 import { DistrictsTab } from "@/components/net-profit/sales-report/DistrictsTab";
 import { ExceptionsTab } from "@/components/net-profit/sales-report/ExceptionsTab";
 import { RatesAndCostsTab } from "@/components/net-profit/sales-report/RatesAndCostsTab";
+import { CanExport } from "@/components/CanExport";
 
 const ALL_TABS = [
   ["overview", "Overview"],
@@ -66,6 +67,7 @@ function SalesReport() {
         <p className="text-sm" style={{ color: COLORS.ink2 }}>
           Orders, delivery cost and contribution for Amader eBuy Ltd.
         </p>
+        <CanExport>
         <button
           type="button"
           disabled={!canExport || exporting}
@@ -95,6 +97,7 @@ function SalesReport() {
         >
           {exporting ? "Exporting…" : "Export Excel"}
         </button>
+        </CanExport>
       </header>
 
       {tab !== "settings" && (

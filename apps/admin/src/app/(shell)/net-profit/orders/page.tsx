@@ -22,6 +22,7 @@ import { OrderStatusesTab } from "./OrderStatusesTab";
 import { DeletedOrdersTab } from "./DeletedOrdersTab";
 import { downloadCsvAsXlsx, presetTitleRange, reportTitle } from "@/lib/reportExport";
 import { localStamp } from "@/lib/reportTitle";
+import { CanExport } from "@/components/CanExport";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -494,6 +495,7 @@ function OrderManagerPageInner() {
             >
               Hold
             </button>
+            <CanExport>
             <button
               type="button"
               disabled={selected.size === 0 || bulk.isPending}
@@ -503,6 +505,7 @@ function OrderManagerPageInner() {
             >
               Export Excel
             </button>
+            </CanExport>
             <button
               type="button"
               disabled={selected.size === 0}

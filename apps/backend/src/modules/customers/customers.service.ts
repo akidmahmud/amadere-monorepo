@@ -1151,6 +1151,17 @@ export class CustomersService {
         authorAdminId,
       },
     });
+    // What they said last is the Customer feedback column; the next call
+    // date goes straight to Next call target, so nothing else needs touching.
+    const feedback = dto.notes?.trim();
+    if (feedback || dto.nextCallTarget)
+      await this.prisma.client.customer.update({
+        where: { id: customerId },
+        data: {
+          ...(feedback ? { customerFeedback: feedback } : {}),
+          ...(dto.nextCallTarget ? { nextCallTarget: new Date(`${dto.nextCallTarget}T00:00:00.000Z`) } : {}),
+        },
+      });
     return {
       id: call.id,
       phoneCalled: call.phoneCalled,

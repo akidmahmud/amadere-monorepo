@@ -39,7 +39,7 @@ export class AdminSalesReportController {
   // Same columns, same order, same rows as the on-screen table — the export
   // must never be a different report from the one being looked at.
   @Get('pnl/export')
-  @RequirePermission('net_profit_reports.view')
+  @RequirePermission('net_profit_reports.view', 'data.export')
   async productPnlCsv(
     @Res() res: Response,
     @Query('period') period?: PnlPeriod,
@@ -79,7 +79,7 @@ export class AdminSalesReportController {
   }
 
   @Get('export')
-  @RequirePermission('net_profit_reports.view')
+  @RequirePermission('net_profit_reports.view', 'data.export')
   async export(@Query() query: SalesReportQueryDto, @Res() res: Response) {
     const csv = await this.report.exportCsv(
       query.groupBy ?? 'day',
@@ -92,7 +92,7 @@ export class AdminSalesReportController {
   }
 
   @Get('export.html')
-  @RequirePermission('net_profit_reports.view')
+  @RequirePermission('net_profit_reports.view', 'data.export')
   async exportHtml(@Query() query: SalesReportQueryDto, @Res() res: Response) {
     const html = await this.report.exportHtml(
       query.groupBy ?? 'day',

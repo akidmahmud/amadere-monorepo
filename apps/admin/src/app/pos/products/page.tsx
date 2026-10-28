@@ -25,6 +25,8 @@ import {
   type StoreProductFields,
 } from "@/components/pos/StoreProductForm";
 import { PosSubPage, primaryBtn } from "@/components/pos/PosSubPage";
+import { CanExport } from "@/components/CanExport";
+import { downloadXlsx } from "@/components/net-profit/sales-report/exportXlsx";
 import {
   Pager,
   RowMenu,
@@ -195,6 +197,34 @@ export default function PosProductsPage() {
         )),
   );
   const paged = usePaged(shown);
+  // Exactly the list on screen (type filter + search).
+  const exportShown = () => {
+    const label = { all: "All products", own: "Store-only", shared: "Shared (website)" }[kind];
+    const today = new Date().toLocaleDateString("en-CA");
+    return downloadXlsx(
+      `products-${kind}-${store?.code ?? "store"}-${today}`,
+      [
+        ["Product", "Size", "SKU", "Barcode", "Weight", "Price (৳)", "Sale price (৳)", "Stock", "Type"],
+        ...shown.map((p) => {
+          const kg = Number(p.storeWeightKg ?? p.normalWeightKg);
+          const unit = p.storeWeightKg ? p.storeWeightUnit : p.normalWeightUnit;
+          return [
+            p.name,
+            p.variantLabel ?? "",
+            p.sku ?? "",
+            p.barcode ?? "",
+            p.soldByWeight ? "Sold by weight" : kg > 0 ? formatWeight(kg, unit) : "",
+            Number(p.price),
+            p.salePrice ? Number(p.salePrice) : "",
+            p.stock >= 9999 ? "" : p.stock,
+            p.storeOnly ? "Store-only" : "Shared",
+          ];
+        }),
+      ],
+      undefined,
+      `${store?.name ?? ""} — ${label} — ${today}`,
+    ).catch((e: Error) => toast.push(e.message));
+  };
   const pageKeys = paged.items.map(lineKey);
   const allOnPage = pageKeys.length > 0 && pageKeys.every((k) => ticked.has(k));
   const tick = (keys: string[], on: boolean) =>
@@ -332,6 +362,19 @@ export default function PosProductsPage() {
               <option value="own">Store-only</option>
               <option value="shared">Shared (website)</option>
             </select>
+            {view === "products" && (
+              <CanExport>
+                <button
+                  type="button"
+                  onClick={exportShown}
+                  disabled={shown.length === 0}
+                  className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <Icon name="download" size={17} />
+                  Export Excel ({shown.length})
+                </button>
+              </CanExport>
+            )}
             <div className="ml-auto flex flex-wrap gap-2">
               {(
                 [

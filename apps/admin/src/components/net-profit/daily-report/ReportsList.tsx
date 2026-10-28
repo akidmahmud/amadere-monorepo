@@ -11,6 +11,7 @@ import {
 } from "@/hooks/useDailyReports";
 import { GenerateModal } from "./GenerateModal";
 import { inputClass, money } from "./format";
+import { CanExport } from "@/components/CanExport";
 
 export function ReportsList({ canManage }: { canManage: boolean }) {
   const [date, setDate] = useState("");
@@ -119,12 +120,14 @@ export function ReportsList({ canManage }: { canManage: boolean }) {
                   })}
                 </td>
                 <td className="whitespace-nowrap text-right">
+                  <CanExport>
                   <a
                     href={dailyReportExportUrl(r.id)}
                     className="mr-3 text-brand-500 hover:underline"
                   >
                     Excel
                   </a>
+                  </CanExport>
                   {canManage && (
                     <button
                       type="button"

@@ -58,6 +58,7 @@ export class LeadQueryDto {
 export class LogLeadCallDto {
   @ApiPropertyOptional({ enum: LeadCallOutcome }) @IsEnum(LeadCallOutcome) outcome!: LeadCallOutcome;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+  @ApiPropertyOptional({ description: 'YYYY-MM-DD' }) @IsOptional() @Matches(DAY) nextCallDate?: string;
 }
 
 export class LeadDashboardQueryDto {

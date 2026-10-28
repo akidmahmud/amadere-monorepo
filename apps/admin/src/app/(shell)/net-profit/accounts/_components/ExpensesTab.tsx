@@ -24,6 +24,7 @@ import {
 import { ExpenseForm } from "./ExpenseForm";
 import { PaymentModal } from "./PaymentModal";
 import { SectionCard, StatusPill, money } from "./shared";
+import { CanExport } from "@/components/CanExport";
 
 export function ExpensesTab({ range }: { range: DateRange }) {
   const [filters, setFilters] = useState<ExpenseFilters>({});
@@ -139,12 +140,14 @@ export function ExpensesTab({ range }: { range: DateRange }) {
         title="Expense register"
         subtitle={`${rows.length} row${rows.length === 1 ? "" : "s"}`}
         actions={
+          <CanExport>
           <a
             href={accountsExportUrl("expenses", query)}
             className="text-sm font-semibold text-brand-500"
           >
             Export Excel
           </a>
+          </CanExport>
         }
       >
         <div className="overflow-x-auto">

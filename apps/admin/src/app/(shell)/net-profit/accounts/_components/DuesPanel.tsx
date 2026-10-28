@@ -24,6 +24,7 @@ import {
 } from "@/hooks/useAccounts";
 import { PaymentModal } from "./PaymentModal";
 import { BUCKET_LABEL, SectionCard, StatusPill, money, today } from "./shared";
+import { CanExport } from "@/components/CanExport";
 
 /**
  * Receivables and payables are the same screen with different labels and one
@@ -206,12 +207,14 @@ export function DuesPanel({
                 ? "+ Add receivable"
                 : "+ Add payable"}
           </Button>
+          <CanExport>
           <a
             href={accountsExportUrl("dues", query)}
             className="inline-flex items-center text-sm font-semibold text-brand-500"
           >
             Export Excel
           </a>
+          </CanExport>
         </div>
       </SectionCard>
 

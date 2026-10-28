@@ -42,6 +42,8 @@ export interface ReportLine {
   unitCost: number | null;
   /** False when that cost row is unconfirmed. */
   costOk: boolean;
+  /** Replacement sent on an Exchange order. */
+  exchange?: boolean;
 }
 
 export interface ReportHistory {

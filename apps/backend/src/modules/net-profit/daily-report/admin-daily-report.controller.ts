@@ -71,7 +71,7 @@ export class AdminDailyReportController {
   }
 
   @Get(':id/export.xlsx')
-  @RequirePermission('net_profit_daily_report.view')
+  @RequirePermission('net_profit_daily_report.view', 'data.export')
   async export(
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,

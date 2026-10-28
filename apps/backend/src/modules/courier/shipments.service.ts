@@ -155,7 +155,12 @@ export class ShipmentsService {
   ): Promise<ShipmentDto> {
     const order = await this.prisma.client.order.findUnique({
       where: { id: dto.orderId },
-      include: { items: true, addresses: true, payments: true },
+      include: {
+        items: true,
+        addresses: true,
+        payments: true,
+        exchangeOf: { select: { orderNumber: true } },
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
     // A till sale leaves the shop with the customer — nothing to courier.
@@ -229,6 +234,19 @@ export class ShipmentsService {
     const itemDescription = order.items
       .map((i) => `${i.skuSnapshot ?? i.productNameSnapshot} x${i.quantity}`)
       .join(', ');
+    // Steadfast's API has no exchange flag (only normal parcels and return
+    // requests), so the rider is told in the note to collect the old item.
+    const exchangeLines = order.items.filter((i) => i.isExchange);
+    const note = [
+      exchangeLines.length
+        ? `EXCHANGE${order.exchangeOf ? ` for ${order.exchangeOf.orderNumber}` : ''}: ${exchangeLines
+            .map((i) => `${i.skuSnapshot ?? i.productNameSnapshot} x${i.quantity}`)
+            .join(', ')} is a replacement - collect the old item back from the customer`
+        : null,
+      order.customerNote,
+    ]
+      .filter(Boolean)
+      .join(' | ');
 
     // Pathao's store doesn't vary per order — fall back to the configured
     // default (matches the plugin's own bulk-send fallback) so bulk-consign
@@ -252,7 +270,7 @@ export class ShipmentsService {
       recipientAddress: addressParts.join(', '),
       codAmount,
       weightKg: weight,
-      note: order.customerNote ?? undefined,
+      note: note || undefined,
       itemDescription,
       deliveryType: 0,
       pathao: pathaoOptions,

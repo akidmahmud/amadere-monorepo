@@ -83,6 +83,28 @@ export const PROFIT_COLUMNS = [
 
 /** Human column names for the Excel sheets. */
 /** Expiry report columns (CSV / Excel). */
+/**
+ * A report export as filtered on screen: `status` matches the row's status
+ * ("alert" = Expired + Expiring soon, empty = all) and `q` searches `keys`.
+ */
+export function filterReportRows<T extends { status: string }>(
+  rows: T[],
+  status: string | undefined,
+  q: string | undefined,
+  keys: (keyof T)[],
+): T[] {
+  const term = q?.trim().toLowerCase();
+  return rows.filter(
+    (r) =>
+      (!status ||
+        (status === 'alert'
+          ? r.status === 'Expired' || r.status === 'Expiring soon'
+          : r.status === status)) &&
+      (!term ||
+        keys.some((k) => String(r[k] ?? '').toLowerCase().includes(term))),
+  );
+}
+
 export const EXPIRY_COLUMNS = [
   'name',
   'sku',

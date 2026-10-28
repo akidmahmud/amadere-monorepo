@@ -26,7 +26,7 @@ const EMPTY_ADDRESS: CreateManualOrderAddress = {
   postCode: "",
 };
 
-type Line = { productId: number; variantId?: number; name: string; sku: string | null; quantity: number; unitPrice: number; imageUrl?: string };
+type Line = { productId: number; variantId?: number; name: string; sku: string | null; quantity: number; unitPrice: number; imageUrl?: string; isExchange?: boolean; catalogPrice?: number };
 
 const PAYMENT_PROVIDERS = ["COD", "BKASH", "NAGAD", "ROCKET", "UPAY"] as const;
 const PAYMENT_PROVIDER_CONFIG: Record<
@@ -276,6 +276,11 @@ export function NewOrderFormModern({
   const [couponCode, setCouponCode] = useState("");
   const [channel, setChannel] = useState<(typeof CHANNELS)[number]>("WHATSAPP");
   const [customerNote, setCustomerNote] = useState("");
+  // Exchange: ticked lines replace items of a delivered order (priced as
+  // typed, ৳0 by default); other lines in the cart are billed as usual.
+  const [exchangeOn, setExchangeOn] = useState(false);
+  const [exchangeOf, setExchangeOf] = useState("");
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
 
   // Quote the customer fee from active settings, using checkout parcel weight.
   const ruleQuote = useCheckoutShippingQuote(
@@ -338,7 +343,8 @@ export function NewOrderFormModern({
 
   function addLine(item: { productId: number; variantId?: number; name: string; sku: string | null; price: string | null; imageUrl?: string }) {
     setLines((ls) => {
-      const idx = ls.findIndex((l) => l.productId === item.productId && l.variantId === item.variantId);
+      // Never merged into an exchange line: extras are billed separately.
+      const idx = ls.findIndex((l) => !l.isExchange && l.productId === item.productId && l.variantId === item.variantId);
       if (idx >= 0) {
         const copy = [...ls];
         copy[idx] = { ...copy[idx], quantity: copy[idx].quantity + 1 };
@@ -353,6 +359,7 @@ export function NewOrderFormModern({
           sku: item.sku,
           quantity: 1,
           unitPrice: Number(item.price ?? 0),
+          catalogPrice: Number(item.price ?? 0),
           imageUrl: item.imageUrl,
         },
       ];
@@ -362,6 +369,10 @@ export function NewOrderFormModern({
 
   function updateLineQuantity(idx: number, quantity: number) {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, quantity } : l)));
+  }
+
+  function updateLine(idx: number, patch: Partial<Line>) {
+    setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   }
 
   function removeLine(idx: number) {
@@ -376,7 +387,7 @@ export function NewOrderFormModern({
 
   const couponPreview = usePreviewCoupon({
     couponCode: couponCode.trim(),
-    items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })),
+    items: lines.filter((l) => !l.isExchange).map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })),
     customerId: customerId ?? undefined,
   });
   const couponAmountNum = couponPreview.data && !couponPreview.data.error ? Number(couponPreview.data.amount) || 0 : 0;
@@ -407,6 +418,9 @@ export function NewOrderFormModern({
       return;
     }
     setTransactionIdError(false);
+    if (exchangeOn && !exchangeOf.trim()) return setExchangeError("Enter the order ID being exchanged");
+    if (exchangeOn && !lines.some((l) => l.isExchange)) return setExchangeError("Tick Exchange on the item being replaced");
+    setExchangeError(null);
     let order;
     try {
       order = await create.mutateAsync({
@@ -414,7 +428,7 @@ export function NewOrderFormModern({
         channel,
         shippingAddress: cleanAddress(address),
         billingAddress: sameBilling ? undefined : cleanAddress(billingAddress),
-        items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity, unitPrice: l.unitPrice })),
+        items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity, unitPrice: l.unitPrice, isExchange: l.isExchange || undefined })),
         paymentProvider,
         taxAmount: taxAmountNum || undefined,
         discountAmount: discountAmountNum || undefined,
@@ -424,6 +438,7 @@ export function NewOrderFormModern({
         transactionId: transactionId.trim() || undefined,
         paymentStatus,
         customerNote: customerNote || undefined,
+        exchangeOf: exchangeOn ? exchangeOf.trim() : undefined,
       });
     } catch {
       return;
@@ -637,10 +652,43 @@ export function NewOrderFormModern({
                 <Icon name="inventory_2" className="text-brand-500" size={20} />
                 <h3 className="font-bold text-text">Cart & Products</h3>
               </div>
-              <span className="text-xs font-semibold text-secondary">
-                {lines.reduce((sum, l) => sum + l.quantity, 0)} total unit(s)
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Turning it off puts ticked lines back to their normal price.
+                    if (exchangeOn)
+                      setLines((ls) => ls.map((l) => (l.isExchange ? { ...l, isExchange: false, unitPrice: l.catalogPrice ?? l.unitPrice } : l)));
+                    setExchangeOn(!exchangeOn);
+                    setExchangeError(null);
+                  }}
+                  className={`rounded-md border px-2 py-0.5 text-[11px] font-bold transition-colors ${
+                    exchangeOn ? "border-amber-500 bg-amber-500/10 text-amber-700" : "border-border text-secondary hover:text-text"
+                  }`}
+                >
+                  Exchange?
+                </button>
+                <span className="text-xs font-semibold text-secondary">
+                  {lines.reduce((sum, l) => sum + l.quantity, 0)} total unit(s)
+                </span>
+              </div>
             </div>
+
+            {exchangeOn && (
+              <div className="space-y-1 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+                <input
+                  value={exchangeOf}
+                  onChange={(e) => setExchangeOf(e.target.value)}
+                  placeholder="Order ID being exchanged (e.g. 13095 or ORD-20261027-…)"
+                  className={modernInputClass}
+                />
+                <p className="text-[11px] text-secondary">
+                  Tick <b>Exchange</b> on the replacement item (free by default, price editable). Other items are billed as usual;
+                  the courier is told to collect the old item back.
+                </p>
+                {exchangeError && <p className="text-[11px] font-semibold text-rose-600">{exchangeError}</p>}
+              </div>
+            )}
 
             {/* Product Search Input */}
             <div className="relative">
@@ -754,15 +802,40 @@ export function NewOrderFormModern({
               <div className="space-y-2">
                 {lines.map((l, idx) => (
                   <div
-                    key={`${l.productId}-${l.variantId ?? "base"}`}
+                    key={`${idx}-${l.productId}-${l.variantId ?? "base"}`}
                     className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 p-3 transition-all hover:border-border/80"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <ProductThumb url={l.imageUrl} />
                       <div className="min-w-0 flex-1">
                         <h4 className="truncate text-xs font-bold text-text">{l.name}</h4>
-                        <div className="flex items-center gap-2 text-[11px] text-muted">
-                          <span>Unit Price: ৳{l.unitPrice.toFixed(2)}</span>
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                          {exchangeOn && (
+                            <label className="flex items-center gap-1 font-bold text-amber-700">
+                              <input
+                                type="checkbox"
+                                checked={!!l.isExchange}
+                                onChange={(e) =>
+                                  updateLine(idx, { isExchange: e.target.checked, unitPrice: e.target.checked ? 0 : l.catalogPrice ?? l.unitPrice })
+                                }
+                              />
+                              Exchange
+                            </label>
+                          )}
+                          {exchangeOn && l.isExchange ? (
+                            <label className="flex items-center gap-1">
+                              Price ৳
+                              <input
+                                type="number"
+                                min={0}
+                                value={l.unitPrice}
+                                onChange={(e) => updateLine(idx, { unitPrice: Math.max(0, Number(e.target.value) || 0) })}
+                                className="h-6 w-16 rounded border border-border bg-surface px-1 text-xs text-text outline-none focus:border-brand-500"
+                              />
+                            </label>
+                          ) : (
+                            <span>Unit Price: ৳{l.unitPrice.toFixed(2)}</span>
+                          )}
                           {l.sku && <span>• SKU: {l.sku}</span>}
                         </div>
                       </div>

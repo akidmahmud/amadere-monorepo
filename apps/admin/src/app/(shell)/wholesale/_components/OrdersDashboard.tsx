@@ -26,6 +26,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { Pager } from "./Pager";
 import { presetTitleRange, reportTitle } from "@/lib/reportExport";
+import { CanExport } from "@/components/CanExport";
 
 const money = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", {
@@ -508,6 +509,7 @@ export function OrdersDashboard({
             </Button>
             {selected.size > 0 && (
               <>
+                <CanExport>
                 <Button
                   variant="primary"
                   disabled={exporting}
@@ -518,11 +520,13 @@ export function OrdersDashboard({
                     ? "Exporting…"
                     : `Export Selected (${selected.size})`}
                 </Button>
+                </CanExport>
                 <Button variant="ghost" onClick={() => setSelected(new Set())}>
                   Clear selection
                 </Button>
               </>
             )}
+            <CanExport>
             <Button
               variant="ghost"
               disabled={exporting}
@@ -531,6 +535,7 @@ export function OrdersDashboard({
               <Icon name="download" size={18} />
               {exporting && selected.size === 0 ? "Exporting…" : "Export Excel"}
             </Button>
+            </CanExport>
           </div>
         </div>
 

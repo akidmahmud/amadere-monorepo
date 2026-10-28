@@ -168,7 +168,7 @@ export class AdminOrdersController {
   }
 
   @Patch(':id/payment')
-  @RequirePermission('order.update')
+  @RequirePermission('order.update', 'payment.update')
   @ApiOkResponse({ type: OrderDto })
   updatePayment(
     @Param('id', ParseIntPipe) id: number,

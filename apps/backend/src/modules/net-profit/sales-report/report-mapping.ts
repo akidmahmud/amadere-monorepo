@@ -93,6 +93,7 @@ export const LOADER_INCLUDE = {
       unitPrice: true,
       quantity: true,
       weighedKg: true,
+      isExchange: true,
       variant: { select: { weightOverride: true, sku: true } },
       product: { select: { shippableWeight: true, sku: true } },
     },
@@ -197,6 +198,7 @@ export function toReportOrder(
         unitWeight,
         unitCost: cost ? cost.unitCost : null,
         costOk: cost ? cost.ok : false,
+        ...(i.isExchange ? { exchange: true } : {}),
       };
     }),
     delivery: Number(row.shippingAmount),

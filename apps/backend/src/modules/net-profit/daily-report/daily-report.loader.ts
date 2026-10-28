@@ -74,6 +74,7 @@ export class DailyReportLoader {
               unitPrice: true,
               quantity: true,
               restockedQuantity: true,
+              isExchange: true,
               weighedKg: true,
               variant: { select: { weightOverride: true } },
               product: { select: { shippableWeight: true, sku: true } },
@@ -176,8 +177,8 @@ export class DailyReportLoader {
             kg: kgOf(w, qty),
             sales: (grosses[idx] - discs[idx]) * share,
             cost: c ? c.unitCost * qty : null,
-            // Exchange orders report how many units were sent free.
-            ...(r.exchangeOfOrderId != null ? { units: qty } : {}),
+            // Exchange lines report how many units were sent as replacements.
+            ...(i.isExchange ? { units: qty } : {}),
           },
         ];
       });

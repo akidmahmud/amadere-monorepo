@@ -22,6 +22,7 @@ import {
   type BlockerSettings,
   type RuleKey,
 } from "@/hooks/useBlocker";
+import { CanExport } from "@/components/CanExport";
 
 const shieldIcon = <Icon name="block" />;
 
@@ -179,11 +180,13 @@ function AutoTab() {
     <div className="flex flex-col gap-4">
       <FiltersBar q={q} setQ={setQ} status={status} setStatus={setStatus} />
       <div className="flex gap-2.5">
+        <CanExport>
         <a href={blockerExportUrl("AUTO")} className="inline-flex">
           <Button type="button" variant="ghost">
             Export auto CSV
           </Button>
         </a>
+        </CanExport>
         <Button type="button" variant="ghost" disabled={bulkUnblock.isPending} onClick={() => bulkUnblock.mutate("AUTO")}>
           {bulkUnblock.isPending ? "Unblocking…" : "Unblock all active"}
         </Button>
@@ -308,11 +311,13 @@ function ManualTab() {
             </Button>
             <p className="mt-2 text-xs text-muted">Columns: type,value,reason,duration (minutes; blank = permanent),note</p>
           </div>
+          <CanExport>
           <a href={blockerExportUrl("MANUAL")} className="inline-flex">
             <Button type="button" variant="ghost">
               Export manual CSV
             </Button>
           </a>
+          </CanExport>
         </Card>
       </div>
 

@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useAccounts";
 import { CodSettlementModal } from "./CodSettlementModal";
 import { EmptyState, SectionCard, money, today } from "./shared";
+import { CanExport } from "@/components/CanExport";
 
 const RISK_REASON: Record<string, string> = {
   NO_CHALLAN: "No Mushak 6.3 challan number",
@@ -186,12 +187,14 @@ export function VatCashFlowTab({ range }: { range: DateRange }) {
         title="Cash flow by account"
         subtitle="Only recorded payments move these balances"
         actions={
+          <CanExport>
           <a
             href={accountsExportUrl("cashflow", range)}
             className="text-sm font-semibold text-brand-500"
           >
             Export Excel
           </a>
+          </CanExport>
         }
       >
         <div className="overflow-x-auto">

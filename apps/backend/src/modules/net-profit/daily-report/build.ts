@@ -222,7 +222,8 @@ function exchangeTotals(
   );
   const ex = input.orders.filter((o) => o.exchange && shown.has(o.source));
   if (!ex.length) return {};
-  const lines = ex.flatMap((o) => o.lines);
+  // Only the replacement lines; paid extras on the same order are sales.
+  const lines = ex.flatMap((o) => o.lines).filter((l) => l.units != null);
   return {
     exchange: {
       orders: ex.length,

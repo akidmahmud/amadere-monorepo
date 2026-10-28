@@ -51,6 +51,8 @@ export class AdminOrderManagerController {
     // Deleting is its own right (Super Admin / Admin, or a role ticked for it).
     if (dto.action === 'delete' && !can('order.delete'))
       throw new ForbiddenException('Missing permission: order.delete');
+    if (dto.action === 'export' && !can('data.export'))
+      throw new ForbiddenException('Missing permission: data.export');
     return this.orderManager.bulkAction(dto, admin.id);
   }
 

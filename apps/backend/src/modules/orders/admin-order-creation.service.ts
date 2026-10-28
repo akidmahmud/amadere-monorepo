@@ -18,6 +18,9 @@ import { redeemCoupon } from '../discounts/coupon-redemption';
 
 const Decimal = Prisma.Decimal;
 
+/** "#ORD-…", without doubling the "#" imported order numbers already have. */
+const orderRef = (n: string) => (n.startsWith('#') ? n : `#${n}`);
+
 // Staff-facing "create order over the phone" path — deliberately does not
 // call FraudService/BlockerService/OtpSecurityService/AdvancePaymentService
 // (docs/superpowers/specs/2026-07-18-new-order-panel-design.md, Non-goals):
@@ -84,6 +87,20 @@ export class AdminOrderCreationService {
     // "catalog minus override" discount, so later line edits total correctly.
     opts: { exchangeOfOrderId?: number; staffNote?: string } = {},
   ): Promise<OrderDto> {
+    // New Order's "Exchange?": ticked lines replace items of a delivered
+    // order; any other lines on it are ordinary paid sales.
+    let { exchangeOfOrderId, staffNote } = opts;
+    const hasExchangeLines = dto.items.some((i) => i.isExchange);
+    if (dto.exchangeOf?.trim()) {
+      if (!hasExchangeLines)
+        throw new BadRequestException('Mark which item(s) are the exchange');
+      const original = await this.findExchangeable(dto.exchangeOf);
+      exchangeOfOrderId = original.id;
+      staffNote = `Exchange for ${orderRef(original.orderNumber)}`;
+    } else if (hasExchangeLines && exchangeOfOrderId === undefined) {
+      throw new BadRequestException('Enter the order ID being exchanged');
+    }
+
     const products = await this.prisma.client.product.findMany({
       where: { id: { in: dto.items.map((i) => i.productId) } },
       include: {
@@ -115,21 +132,26 @@ export class AdminOrderCreationService {
       })),
     );
 
-    const subTotal = pricedLines.reduce((sum, l) => sum.plus(l.lineTotal), new Decimal(0));
-    const lineItemsTotal = dto.items.reduce((sum, item, idx) => {
-      const effective = item.unitPrice !== undefined ? new Decimal(item.unitPrice) : pricedLines[idx].unitPrice;
-      return sum.plus(effective.times(item.quantity));
-    }, new Decimal(0));
+    const effectivePrice = (item: CreateManualOrderDto['items'][number], idx: number) =>
+      item.unitPrice !== undefined ? new Decimal(item.unitPrice) : pricedLines[idx].unitPrice;
+    // Exchange lines count at their typed price (usually ৳0), not catalog
+    // minus an override "discount", so later line edits total correctly.
+    const subTotal = dto.items.reduce(
+      (sum, item, idx) =>
+        sum.plus(item.isExchange ? effectivePrice(item, idx).times(item.quantity) : pricedLines[idx].lineTotal),
+      new Decimal(0),
+    );
+    const lineItemsTotal = dto.items.reduce(
+      (sum, item, idx) => sum.plus(effectivePrice(item, idx).times(item.quantity)),
+      new Decimal(0),
+    );
     // Per-line price overrides (unitPrice below catalog price) are an
     // implicit discount on top of whatever the staff also typed into the
     // explicit "discount"/"promotion" fields — all three roll into the one
     // stored Order.discountAmount, same as the real checkout's own subTotal
     // vs. totalAmount relationship.
-    const isExchange = opts.exchangeOfOrderId !== undefined;
-    const subTotalStored = isExchange ? lineItemsTotal : subTotal;
-    const lineDiscount = isExchange
-      ? new Decimal(0)
-      : Decimal.max(subTotal.minus(lineItemsTotal), new Decimal(0));
+    const subTotalStored = subTotal;
+    const lineDiscount = Decimal.max(subTotal.minus(lineItemsTotal), new Decimal(0));
     const explicitDiscount = dto.discountAmount != null ? new Decimal(dto.discountAmount) : new Decimal(0);
     const explicitPromotion = dto.promotionAmount != null ? new Decimal(dto.promotionAmount) : new Decimal(0);
     const taxAmount = dto.taxAmount != null ? new Decimal(dto.taxAmount) : new Decimal(0);
@@ -149,9 +171,11 @@ export class AdminOrderCreationService {
     // its limited uses burned or shows up on the order as if it had paid off.
     let couponAmount = new Decimal(0);
     let codeDiscount = new Decimal(0);
-    if (dto.couponCode) {
+    // A coupon applies to the paid lines only, never to exchange replacements.
+    const paidItems = dto.items.filter((i) => !i.isExchange);
+    if (dto.couponCode && paidItems.length) {
       const pricing = await this.pricing.price(
-        dto.items.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
+        paidItems.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
         { couponCode: dto.couponCode, customerId: dto.customerId },
       );
       if (pricing.couponError) {
@@ -204,8 +228,8 @@ export class AdminOrderCreationService {
           totalAmount,
           couponCode: couponAmount.greaterThan(0) ? dto.couponCode : undefined,
           customerNote: dto.customerNote,
-          exchangeOfOrderId: opts.exchangeOfOrderId,
-          staffNote: opts.staffNote,
+          exchangeOfOrderId,
+          staffNote,
           items: {
             create: dto.items.map((item, idx) => {
               const product = productsById.get(item.productId)!;
@@ -222,6 +246,7 @@ export class AdminOrderCreationService {
                 productTypeSnapshot: product.productType,
                 unitPrice: effective,
                 quantity: item.quantity,
+                isExchange: item.isExchange ?? false,
               };
             }),
           },
@@ -383,23 +408,38 @@ export class AdminOrderCreationService {
     );
   }
 
-  /** A ৳0 replacement for damaged items, linked to the delivered original. */
-  async exchange(
-    orderId: number,
-    dto: CreateExchangeDto,
-    adminId: number,
-  ): Promise<OrderDto> {
-    const order = await this.prisma.client.order.findUnique({
-      where: { id: orderId },
+  /**
+   * The delivered order an exchange is for, by order number ("ORD-…",
+   * "REC-…") or id ("#13095" / "13095", as the Order Manager shows it).
+   */
+  private async findExchangeable(ref: string) {
+    const raw = ref.trim();
+    const v = raw.replace(/^#/, '');
+    // Imported orders keep their old "#AEL-…" number, so try it with and
+    // without the "#".
+    const order = await this.prisma.client.order.findFirst({
+      where: /^\d+$/.test(v)
+        ? { id: Number(v) }
+        : { OR: [v, `#${v}`].map((n) => ({ orderNumber: { equals: n, mode: 'insensitive' as const } })) },
       include: { items: true, addresses: true },
     });
-    if (!order) throw new BadRequestException('Order not found');
+    if (!order) throw new BadRequestException(`Order ${ref.trim()} not found`);
     if (order.deletedAt)
       throw new BadRequestException('This order is in the Trash');
     if (order.channel === 'POS')
       throw new BadRequestException('POS sales use POS returns, not exchanges');
     if (!['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'].includes(order.status))
       throw new BadRequestException('Only a delivered order can be exchanged');
+    return order;
+  }
+
+  /** A ৳0 replacement for damaged items, linked to the delivered original. */
+  async exchange(
+    orderId: number,
+    dto: CreateExchangeDto,
+    adminId: number,
+  ): Promise<OrderDto> {
+    const order = await this.findExchangeable(`#${orderId}`);
     const shipping = order.addresses.find((a) => a.type === 'SHIPPING');
     if (!shipping)
       throw new BadRequestException('Order has no shipping address');
@@ -422,6 +462,7 @@ export class AdminOrderCreationService {
         variantId: line.variantId ?? undefined,
         quantity: l.quantity,
         unitPrice: 0,
+        isExchange: true,
       };
     });
     const address = {
@@ -436,7 +477,7 @@ export class AdminOrderCreationService {
       addressLine: shipping.addressLine,
       postCode: shipping.postCode ?? undefined,
     };
-    const note = [`Exchange for #${order.orderNumber}`, dto.reason?.trim()]
+    const note = [`Exchange for ${orderRef(order.orderNumber)}`, dto.reason?.trim()]
       .filter(Boolean)
       .join(' — ');
     return this.create(

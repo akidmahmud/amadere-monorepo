@@ -1670,7 +1670,10 @@ model OrderItem {
   pricePerKg          Decimal?    @map("price_per_kg") @db.Decimal(10, 2)
   /// Returned but damaged: written off, never put back into stock.
   writtenOffQuantity  Int         @default(0) @map("written_off_quantity")
-  downloadedAt        DateTime?   @map("downloaded_at") // digital products
+  /// Sent as a replacement on an Exchange order (the courier collects the
+  /// wrong item back). Other lines on the same order are ordinary sales.
+  isExchange          Boolean     @default(false) @map("is_exchange")
+  downloadedAt       DateTime?   @map("downloaded_at") // digital products
 
   order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product     Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)

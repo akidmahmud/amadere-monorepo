@@ -51,7 +51,7 @@ export class AdminNewsletterController {
   }
 
   @Get('export')
-  @RequirePermission('newsletter.view')
+  @RequirePermission('newsletter.view', 'data.export')
   async export(@Query('q') q: string | undefined, @Res() res: Response) {
     const csv = await this.newsletter.exportCsv(q);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

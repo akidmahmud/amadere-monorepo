@@ -53,6 +53,7 @@ import {
   type DelayUnit,
 } from "@/hooks/useCartCampaigns";
 import { resolveDateRange } from "@/lib/date-range";
+import { CanExport } from "@/components/CanExport";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -491,6 +492,7 @@ function FunnelSection({
         </button>
         {/* Ticked rows win over the filters: "Export" next to "3 selected"
             that quietly wrote the whole filtered set was the reported bug. */}
+        <CanExport>
         <a
           href={recoveryExportUrl(filters, [...selected])}
           className="inline-flex"
@@ -505,6 +507,7 @@ function FunnelSection({
               : "Export CSV"}
           </button>
         </a>
+        </CanExport>
         <input
           ref={fileRef}
           type="file"

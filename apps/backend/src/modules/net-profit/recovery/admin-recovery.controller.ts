@@ -83,7 +83,7 @@ export class AdminRecoveryController {
   }
 
   @Get('export')
-  @RequirePermission('net_profit_recovery.manage')
+  @RequirePermission('net_profit_recovery.manage', 'data.export')
   async export(
     @Res() res: Response,
     @Query('recovered', new ParseBoolPipe({ optional: true })) recovered?: boolean,

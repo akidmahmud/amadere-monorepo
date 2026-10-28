@@ -49,7 +49,7 @@ export class AdminCustomersController {
   }
 
   @Get('export')
-  @RequirePermission('customer.view')
+  @RequirePermission('customer.view', 'data.export')
   async export(@Query() filters: AdminCustomerQueryDto, @Res() res: Response) {
     const csv = await this.customers.adminExportCsv(filters);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

@@ -268,6 +268,9 @@ export class LeadsService {
         data: {
           lastCallAt: new Date(),
           status: next.status,
+          // The latest thing they said is the Customer feedback column.
+          ...(dto.notes?.trim() ? { customerFeedback: dto.notes.trim() } : {}),
+          ...(dto.nextCallDate ? { nextCallDate: toDay(dto.nextCallDate) } : {}),
           ...(next.lostReason && !lead.lostReason ? { lostReason: next.lostReason } : {}),
           // Whoever calls an unassigned lead takes it.
           ...(lead.assignedAdminId === null ? { assignedAdminId: adminId } : {}),
@@ -285,9 +288,13 @@ export class LeadsService {
   async import(buffer: Buffer, dryRun: boolean): Promise<LeadImportResult> {
     const sheet = await readSheet(buffer);
     if (sheet.length === 0) throw new BadRequestException('The file is empty');
-    const columns = sheet[0].cells.map((c) => LEAD_HEADERS[cellText(c).toLowerCase().replace(/[^a-z]/g, '')]);
+    let columns = sheet[0].cells.map((c) => LEAD_HEADERS[cellText(c).toLowerCase().replace(/[^a-z]/g, '')]);
+    // Most lead lists are just numbers: no header, first column a phone.
+    const headerless = !columns.includes('phone') && !!normalizeImportPhone(cellText(sheet[0].cells[0]));
+    if (headerless) columns = ['phone'];
     if (!columns.includes('phone'))
-      throw new BadRequestException('No phone column found. The first row must be a header with a "Number" or "Phone" column.');
+      throw new BadRequestException('No phone column found. Use a "Number" or "Phone" header, or put just the numbers in the first column.');
+    const body = headerless ? sheet : sheet.slice(1);
     const staff = await this.prisma.client.adminUser.findMany({
       where: { deletedAt: null },
       select: { id: true, firstName: true, lastName: true },
@@ -295,12 +302,12 @@ export class LeadsService {
     const staffId = staffLookup(staff.map((s) => ({ id: s.id, name: fullName(s)! })));
 
     const result: LeadImportResult = {
-      dryRun, totalRows: sheet.length - 1, created: 0, updated: 0, unchanged: 0, skipped: 0, skippedRows: [], warnings: [],
+      dryRun, totalRows: body.length, created: 0, updated: 0, unchanged: 0, skipped: 0, skippedRows: [], warnings: [],
     };
     const unknownStaff = new Map<string, number>();
     const rows: Prisma.LeadCreateManyInput[] = [];
     const seen = new Set<string>();
-    const phones = sheet.slice(1).map(({ cells }) => normalizeImportPhone(cellText(cells[columns.indexOf('phone')])));
+    const phones = body.map(({ cells }) => normalizeImportPhone(cellText(cells[columns.indexOf('phone')])));
     const known = phones.filter((p): p is string => !!p).flatMap((p) => phoneLookupCandidates(p));
     const [leads, customers] = await Promise.all([
       this.prisma.client.lead.findMany({ where: { ...OPEN, phone: { in: known } }, select: { phone: true } }),
@@ -309,7 +316,7 @@ export class LeadsService {
     const isLead = new Set(leads.map((l) => l.phone));
     const isCustomer = new Set(customers.flatMap((c) => (c.phone ? phoneLookupCandidates(c.phone) : [])));
 
-    sheet.slice(1).forEach(({ row, cells }, i) => {
+    body.forEach(({ row, cells }, i) => {
       const get = (f: string) => {
         const idx = columns.indexOf(f);
         return idx === -1 ? undefined : cells[idx];

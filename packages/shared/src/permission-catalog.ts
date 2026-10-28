@@ -281,6 +281,11 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
   perm('pos', 'reports'),
   perm('pos', 'settings'),
   perm('stores', 'manage'),
+  // Changing how an order or a POS sale was paid (Cash/Card/Mobile
+  // Banking, payment status). Admin-only unless a role is ticked for it.
+  perm('payment', 'update'),
+  // Every Export / CSV / Excel download, website and POS.
+  perm('data', 'export'),
 ];
 
 /**
@@ -289,3 +294,6 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
  * passes every check anyway). Any other role has to be ticked for it in Roles.
  */
 export const DELETE_PERMISSIONS = ['customer.delete', 'order.delete'] as const;
+
+/** Same rule as DELETE_PERMISSIONS: new ones go to the Admin role once. */
+export const ADMIN_ONLY_PERMISSIONS = [...DELETE_PERMISSIONS, 'payment.update', 'data.export'] as const;

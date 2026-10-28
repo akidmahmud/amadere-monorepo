@@ -121,7 +121,7 @@ export class AdminWholesaleController {
   // Excluded from OpenAPI for the same reason as the orders export: a file,
   // not the JSON envelope.
   @Get('customers/export')
-  @RequirePermission('wholesale.view')
+  @RequirePermission('wholesale.view', 'data.export')
   @ApiExcludeEndpoint()
   async exportCustomers(
     @Query() query: WholesaleCustomerQueryDto,
@@ -320,7 +320,7 @@ export class AdminWholesaleController {
   // numeric order id. Excluded from the OpenAPI schema: it streams a file
   // rather than the JSON envelope every other endpoint returns.
   @Get('orders/export')
-  @RequirePermission('wholesale.view')
+  @RequirePermission('wholesale.view', 'data.export')
   @ApiExcludeEndpoint()
   async exportOrders(
     @Query() query: WholesaleOrderQueryDto,

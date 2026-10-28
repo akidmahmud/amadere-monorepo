@@ -31,7 +31,7 @@ export class AdminReportsController {
   // The whole query string is forwarded to the underlying list, so the file
   // always matches whatever filters produced the screen it was launched from.
   @Get('export/:kind')
-  @RequirePermission('net_profit_accounts.view')
+  @RequirePermission('net_profit_accounts.view', 'data.export')
   async export(
     @Param('kind') kind: ExportKind,
     @Query() query: Record<string, unknown>,

@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderChannel, PaymentProvider, PaymentStatus } from '@amader/db';
 import { Type } from 'class-transformer';
 import {
-  ArrayNotEmpty, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsPositive,
+  ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsPositive,
   IsString, Min, NotEquals, ValidateNested,
 } from 'class-validator';
 import { CheckoutAddressDto } from './checkout-address.dto';
@@ -27,6 +27,11 @@ export class ManualOrderItemDto {
   @IsNumber()
   @Min(0)
   unitPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Replacement for an item on the order in exchangeOf (priced as typed, usually ৳0)' })
+  @IsOptional()
+  @IsBoolean()
+  isExchange?: boolean;
 }
 
 export class CreateManualOrderDto {
@@ -128,4 +133,11 @@ export class CreateManualOrderDto {
   @IsOptional()
   @IsString()
   customerNote?: string;
+
+  @ApiPropertyOptional({
+    description: 'Exchange: the delivered order being exchanged, by order number or #id. Needs at least one isExchange line.',
+  })
+  @IsOptional()
+  @IsString()
+  exchangeOf?: string;
 }

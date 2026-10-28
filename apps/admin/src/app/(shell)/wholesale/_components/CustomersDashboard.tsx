@@ -20,6 +20,7 @@ import { Pager } from "./Pager";
 import { WholesaleCustomerDetailModal } from "./WholesaleCustomerDetailModal";
 import { DATE_RANGES, resolveDateRange } from "./OrdersDashboard";
 import { presetTitleRange, reportTitle } from "@/lib/reportExport";
+import { CanExport } from "@/components/CanExport";
 
 const compactMoney = (v: string | number) =>
   `৳${Number(v || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
@@ -269,6 +270,7 @@ export function CustomersDashboard({
             </div>
           )}
           <div className="flex flex-wrap gap-2.5">
+            <CanExport>
             <Button
               variant="ghost"
               disabled={exporting}
@@ -298,6 +300,7 @@ export function CustomersDashboard({
               <Icon name="download" size={18} />
               {exporting ? "Exporting…" : "Export"}
             </Button>
+            </CanExport>
             <Button variant="ghost" onClick={() => setImportOpen(true)}>
               <Icon name="upload" size={18} />
               Import

@@ -81,6 +81,8 @@ export class OrderItemDto {
   restockedQuantity!: number;
   /** Returned damaged: written off, not restocked. */
   writtenOffQuantity!: number;
+  /** Replacement on an Exchange order (the other lines are paid sales). */
+  isExchange!: boolean;
   taxAmount!: string;
   // Variant weightOverride falls back to the product's shippableWeight —
   // same precedence as ShipmentsService.computeOrderWeight (courier
@@ -309,6 +311,7 @@ export function toOrderDto(order: OrderWithRelations): OrderDto {
       quantity: i.quantity,
       restockedQuantity: i.restockedQuantity,
       writtenOffQuantity: i.writtenOffQuantity,
+      isExchange: i.isExchange,
       taxAmount: i.taxAmount.toString(),
       weight: decimalToString(
         i.variant?.weightOverride ?? i.product?.shippableWeight,

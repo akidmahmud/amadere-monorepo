@@ -34,6 +34,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useToast } from "@/components/ToastProvider";
 import { ProxyApiError } from "@/lib/api/proxy-client";
 import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { CanExport } from "@/components/CanExport";
 
 const STATUS_PILL: Record<string, string> = {
   PUBLISHED: "bg-[#e3f7ee] text-[#16a06d]",
@@ -427,6 +428,7 @@ export function ProductsTable({
           </svg>
           Import
         </button>
+        <CanExport>
         <a
           href={exportHref()}
           className="inline-flex h-[38px] items-center gap-1.5 rounded-inner border border-border px-3 text-[0.78rem] font-bold text-text hover:bg-surface-2"
@@ -447,6 +449,7 @@ export function ProductsTable({
           </svg>
           Export
         </a>
+        </CanExport>
         <Link
           href="/products/new"
           className="inline-flex h-[38px] items-center gap-1.5 rounded-inner bg-brand-500 px-[15px] text-[0.8rem] font-bold text-white hover:bg-brand-600"

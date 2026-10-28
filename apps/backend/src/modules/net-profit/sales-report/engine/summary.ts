@@ -127,7 +127,8 @@ export function summarize(list: OrderCalc[], S: ReportSettings): Summary {
     if (o.status === 'Delivered') {
       if (o.exchange) {
         s.exN++;
-        s.exCost += c.cogs ?? 0;
+        // Replacement lines only; paid extras on the order are ordinary sales.
+        s.exCost += o.lines.reduce((t, l) => t + (l.exchange ? (l.unitCost ?? 0) * l.qty : 0), 0);
       }
       s.grossSales += c.netSales;
       if (c.contribution == null) {

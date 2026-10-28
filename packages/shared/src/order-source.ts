@@ -12,6 +12,9 @@ export const ORDER_SOURCES = [
   // ads" is the question this column exists to answer, and folding fbads into
   // facebook makes it unanswerable.
   'fbads',
+  // Google Ads / TikTok Ads campaigns tag utm_source with these.
+  'GAds',
+  'TAds',
   'instagram',
   'whatsapp',
   'website',

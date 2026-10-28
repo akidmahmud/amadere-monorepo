@@ -8,6 +8,8 @@ import type { PosProduct } from "@/lib/pos-cart";
 import { usePosContext } from "@/components/pos/PosContext";
 import { useScanner } from "@/components/pos/useScanner";
 import { LOW_STOCK } from "@/components/pos/ProductGrid";
+import { CanExport } from "@/components/CanExport";
+import { downloadXlsx } from "@/components/net-profit/sales-report/exportXlsx";
 import {
   PosSubPage,
   primaryBtn,
@@ -43,7 +45,7 @@ const cell =
  * were received and save them as one stock-in. A scan adds 1 to its row.
  */
 export default function StockInPage() {
-  const { storeId } = usePosContext();
+  const { storeId, store } = usePosContext();
   const toast = useToast();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -95,6 +97,28 @@ export default function StockInPage() {
     setQ("");
     toast.push(`+1 ${productLabel(hit)}`, "success");
   });
+
+  // Exactly the list on screen (tab + search), e.g. Low stock for procurement.
+  const exportRows = () => {
+    const label = { all: "All", low: `Low stock (≤${LOW_STOCK})`, out: "Out of stock", picked: "Selected" }[filter];
+    const today = new Date().toLocaleDateString("en-CA");
+    return downloadXlsx(
+      `stock-${filter}-${store?.code ?? "store"}-${today}`,
+      [
+        ["Product", "SKU", "Barcode", "In stock", "Qty received", "Soonest expiry"],
+        ...rows.map((p) => [
+          productLabel(p),
+          p.sku ?? "",
+          p.barcode ?? "",
+          p.stock,
+          lines[keyOf(p)]?.qty.trim() || "",
+          p.expiry ? new Date(p.expiry).toLocaleDateString("en-GB") : "",
+        ]),
+      ],
+      undefined,
+      `${store?.name ?? ""} — ${label} — ${today}`,
+    ).catch((e: Error) => toast.push(e.message));
+  };
 
   const chosen = Object.values(lines).filter((l) => l.qty.trim() !== "");
   const valid = chosen.length > 0 && chosen.every((l) => qtyOk(l.qty));
@@ -151,6 +175,17 @@ export default function StockInPage() {
                 save them together.
               </p>
             </div>
+            <CanExport>
+              <button
+                type="button"
+                onClick={exportRows}
+                disabled={rows.length === 0}
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Icon name="download" size={17} />
+                Export Excel ({rows.length})
+              </button>
+            </CanExport>
           </div>
           <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3">
             {(

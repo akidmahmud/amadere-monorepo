@@ -12,6 +12,7 @@ import {
   useRecoveryRate,
 } from "@/hooks/useRecovery";
 import { resolveDateRange } from "@/lib/date-range";
+import { CanExport } from "@/components/CanExport";
 
 const PAGE_SIZE = 20;
 
@@ -171,6 +172,7 @@ export function RecoveredSection() {
 
           {/* Ticked rows win over the filters — otherwise "Export" beside
               "3 selected" quietly writes the whole history instead. */}
+          <CanExport>
           <a
             href={recoveryExportUrl(filters, [...selected])}
             className="ml-auto inline-flex"
@@ -182,6 +184,7 @@ export function RecoveredSection() {
                 : `Export All (${total})`}
             </Button>
           </a>
+          </CanExport>
           <Button variant="ghost" onClick={reset}>
             Reset
           </Button>

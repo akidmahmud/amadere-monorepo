@@ -172,9 +172,10 @@ export function useAddCustomerNote(id: number) {
 export function useLogCustomerCall(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { outcome: string; notes?: string }) =>
+    mutationFn: (input: { outcome: string; notes?: string; nextCallTarget?: string }) =>
       proxyFetch<CustomerCallLog>(`/admin/customers/${id}/calls`, { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [...LIST_KEY, id] }),
+    // The whole list too: the note is now the row's Customer feedback.
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
   });
 }
 

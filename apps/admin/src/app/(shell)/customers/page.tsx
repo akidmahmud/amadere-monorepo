@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DeletedCustomersTab } from "./DeletedCustomersTab";
 import { useCan } from "@/hooks/useAdminAuth";
 import { downloadCsvAsXlsx, reportTitle } from "@/lib/reportExport";
+import { CanExport } from "@/components/CanExport";
 
 const GREEN = "#2e7d43";
 const GREEN_DARK = "#1d5230";
@@ -158,6 +159,7 @@ export default function CustomersPage() {
           <HeaderButton onClick={() => setSection(section === "deleted" ? "customers" : "deleted")}>
             {section === "deleted" ? "Back to Customers" : "Deleted Customers"}
           </HeaderButton>
+          <CanExport>
           <button
             type="button"
             disabled={exporting}
@@ -189,6 +191,7 @@ export default function CustomersPage() {
             </svg>
             {exporting ? "Exporting…" : selected.size > 0 ? `Export ${selected.size} selected` : "Export"}
           </button>
+          </CanExport>
           <button
             type="button"
             disabled={!canManage}

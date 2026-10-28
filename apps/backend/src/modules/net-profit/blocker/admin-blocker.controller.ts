@@ -109,7 +109,7 @@ export class AdminBlockerController {
   }
 
   @Get('export')
-  @RequirePermission('net_profit_blocker.manage')
+  @RequirePermission('net_profit_blocker.manage', 'data.export')
   async export(@Query('source') source: 'MANUAL' | 'AUTO' | undefined, @Res() res: Response): Promise<void> {
     const csv = await this.blocker.exportCsv(source);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

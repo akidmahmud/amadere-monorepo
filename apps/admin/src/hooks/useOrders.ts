@@ -113,6 +113,8 @@ export type AdminOrder = Omit<
   items: (components["schemas"]["OrderDto"]["items"][number] & {
     restockedQuantity?: number;
     writtenOffQuantity?: number;
+    /** Replacement on an Exchange order (other lines are paid). */
+    isExchange?: boolean;
   })[];
   /** Exchange order: the original it replaces. */
   exchangeOf?: { id: number; orderNumber: string } | null;
@@ -280,6 +282,8 @@ export interface CreateManualOrderInput {
     variantId?: number;
     quantity: number;
     unitPrice?: number;
+    /** Replacement on an exchange (needs exchangeOf). */
+    isExchange?: boolean;
   }[];
   paymentProvider: "COD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY";
   taxAmount?: number;
@@ -290,6 +294,8 @@ export interface CreateManualOrderInput {
   transactionId?: string;
   paymentStatus?: ManualOrderPaymentStatus;
   customerNote?: string;
+  /** Exchange: the delivered order being exchanged (order number or #id). */
+  exchangeOf?: string;
 }
 
 export function useCreateManualOrder() {

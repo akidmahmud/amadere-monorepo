@@ -39,7 +39,7 @@ export class AdminEmailTemplatesController {
   //
   // `keys` (comma-separated) exports just those templates; omit it for all.
   @Get('export')
-  @RequirePermission('email_template.view')
+  @RequirePermission('email_template.view', 'data.export')
   async export(@Query('keys') keys: string | undefined, @Res() res: Response) {
     const wanted = keys
       ? keys.split(',').map((k) => k.trim()).filter(Boolean)

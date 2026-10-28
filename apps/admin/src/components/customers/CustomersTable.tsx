@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BD_DISTRICTS_BY_DIVISION, isValidBdPhone } from "@amader/shared";
 import { Icon } from "@amader/admin-ui";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
@@ -409,6 +409,8 @@ function CustomerRow({
   const [phoneError, setPhoneError] = useState(false);
   const [email, setEmail] = useState(c.email ?? "");
   const [feedback, setFeedback] = useState(c.customerFeedback ?? "");
+  // A call logged from the customer popup rewrites Customer feedback.
+  useEffect(() => setFeedback(c.customerFeedback ?? ""), [c.customerFeedback]);
   const [amaderFeedback, setAmaderFeedback] = useState(c.amaderFeedback ?? "");
   const [family, setFamily] = useState(c.familyDetails ?? "");
   const [reason, setPurchaseReason] = useState(c.purchaseReason ?? "");
@@ -669,6 +671,7 @@ function CustomerRow({
       <td className={td} style={tdStyle}>
         {editing ? (
           <input
+            key={c.nextCallTarget ?? ""}
             type="date"
             defaultValue={toDateInputValue(c.nextCallTarget)}
             onChange={(e) => update.mutate({ nextCallTarget: e.target.value || null })}

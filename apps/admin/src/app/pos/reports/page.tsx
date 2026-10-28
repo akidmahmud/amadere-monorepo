@@ -17,6 +17,7 @@ import {
 import { PosExpenseDialog } from "@/components/pos/PosExpenseDialog";
 import { Icon } from "@amader/admin-ui";
 import { Pager, toolbarInput, usePaged } from "@/components/pos/PosTableKit";
+import { CanExport } from "@/components/CanExport";
 
 interface SalesRow {
   storeId: number;
@@ -241,6 +242,7 @@ export default function PosReportsPage() {
       </div>
 
       {/* Per-store Excel sheets — always for the one selected store. */}
+      <CanExport>
       <div className={`${card} mb-4 flex flex-wrap items-center gap-2`}>
         <span className="mr-2 text-sm font-semibold">
           Excel for {store?.name}:
@@ -273,11 +275,13 @@ export default function PosReportsPage() {
           Uses the date range below.
         </span>
       </div>
+      </CanExport>
 
       {tab === "sales" && (
         <div className={card}>
           <div className="flex items-start justify-between gap-3">
             {rangeBar}
+            <CanExport>
             <button
               className={exportBtn}
               onClick={() =>
@@ -290,6 +294,7 @@ export default function PosReportsPage() {
             >
               Export
             </button>
+            </CanExport>
           </div>
           <table className="w-full text-sm">
             <thead className="text-left text-gray-500">
@@ -334,6 +339,7 @@ export default function PosReportsPage() {
                   <Icon name="add" size={18} /> Add expense
                 </button>
               )}
+              <CanExport>
               <button
                 className={exportBtn}
                 onClick={() =>
@@ -346,6 +352,7 @@ export default function PosReportsPage() {
               >
                 Export
               </button>
+              </CanExport>
             </div>
           </div>
           <p className="mb-3 text-xs text-gray-500">
@@ -468,11 +475,12 @@ export default function PosReportsPage() {
                 Products without a stock count are not listed.
               </p>
             </div>
+            <CanExport>
             <button
               className={exportBtn}
               onClick={() =>
                 exportFile(
-                  `/admin/pos/reports/stock.csv${qs({ storeId, from, to })}`,
+                  `/admin/pos/reports/stock.csv${qs({ storeId, from, to, status: stockStatus, q: stockQ.trim() })}`,
                   `stock-report-${store?.code ?? "store"}-${from}-${to}`,
                   reportTitle(`Stock Report — ${store?.name ?? ""}`, range),
                 )
@@ -480,6 +488,7 @@ export default function PosReportsPage() {
             >
               Export Excel
             </button>
+            </CanExport>
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
             <input
@@ -615,11 +624,12 @@ export default function PosReportsPage() {
                 deliveries. Alert = expired or expiring within 15 days.
               </p>
             </div>
+            <CanExport>
             <button
               className={exportBtn}
               onClick={() =>
                 exportFile(
-                  `/admin/pos/reports/expiry.csv${qs({ storeId })}`,
+                  `/admin/pos/reports/expiry.csv${qs({ storeId, status: expStatus, q: expQ.trim() })}`,
                   `expiry-${store?.code ?? "store"}-${today()}`,
                   `Expiry — ${store?.name ?? ""} — ${today()}`,
                 )
@@ -627,6 +637,7 @@ export default function PosReportsPage() {
             >
               Export Excel
             </button>
+            </CanExport>
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
             {(

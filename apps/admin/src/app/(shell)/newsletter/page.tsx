@@ -17,6 +17,7 @@ import {
   type CsvImportResult,
 } from "@/hooks/useNewsletter";
 import { useCreateTag, useDeleteTag, useNewsletterTags } from "@/hooks/useNewsletterTags";
+import { CanExport } from "@/components/CanExport";
 
 const newsletterIcon = <Icon name="mail" />;
 const inputClass = "h-10 rounded-sm border border-border bg-surface px-3 text-sm text-text outline-none focus:border-brand-500";
@@ -272,11 +273,13 @@ export default function NewsletterPage() {
             <Button type="button" variant="ghost" disabled={importCsv.isPending} onClick={() => fileInputRef.current?.click()}>
               <Icon name="upload_file" size={16} /> {importCsv.isPending ? "Importing…" : "Import CSV"}
             </Button>
+            <CanExport>
             <a href={newsletterExportHref(q || undefined)}>
               <Button type="button" variant="ghost">
                 <Icon name="download" size={16} /> Export CSV
               </Button>
             </a>
+            </CanExport>
           </div>
         </div>
 

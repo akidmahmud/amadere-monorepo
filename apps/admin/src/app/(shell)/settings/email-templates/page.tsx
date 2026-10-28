@@ -16,6 +16,7 @@ import {
   type EmailTemplate,
 } from "@/hooks/useEmailTemplates";
 import type { components } from "@/lib/api/schema";
+import { CanExport } from "@/components/CanExport";
 
 type EmailTemplateGroup = components["schemas"]["EmailTemplateDto"]["group"];
 
@@ -69,6 +70,7 @@ function TemplatesTab({ templates }: { templates: EmailTemplate[] }) {
                   <td className="py-3 text-sm text-secondary">{t.description}</td>
                   <td className="py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      <CanExport>
                       <button
                         type="button"
                         onClick={() => downloadTemplates([t.key])}
@@ -78,6 +80,7 @@ function TemplatesTab({ templates }: { templates: EmailTemplate[] }) {
                       >
                         <Icon name="download" size={16} />
                       </button>
+                      </CanExport>
                       <Link
                         href={`/settings/email-templates/${t.key}`}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-inner bg-brand-500 text-white"
@@ -325,9 +328,11 @@ function ImportExportBar() {
           }}
         />
       </label>
+      <CanExport>
       <Button type="button" variant="primary" onClick={() => downloadTemplates()}>
         Export all
       </Button>
+      </CanExport>
 
       {/* Paste path — needs neither a download nor a file dialog, so it also
           covers "someone sent me a template in chat" without a round trip

@@ -43,4 +43,34 @@ describe('Lead Center', () => {
     expect(tx.customer.update.mock.calls[0][0].data).toMatchObject({ assignedAdminId: 3, priority: 'HIGH', customerFeedback: undefined });
     expect(tx.customerCallLog.createMany.mock.calls[0][0].data[0]).toMatchObject({ customerId: 9, outcome: 'CONNECTED' });
   });
+
+  it('a logged call: its note becomes Customer feedback, and the next call date is set', async () => {
+    const prisma = {
+      client: {
+        leadCallLog: { create: jest.fn((a) => a) },
+        lead: { update: jest.fn((a) => a) },
+        $transaction: jest.fn(),
+      },
+    };
+    const service = new LeadsService(prisma as never);
+    jest.spyOn(service, 'get').mockResolvedValue({ id: 1, status: 'NEW', assignedAdminId: 3, lostReason: null } as never);
+    await service.logCall(1, { outcome: 'ANSWERED_CALL_BACK', notes: ' call after Friday ', nextCallDate: '2026-11-02' }, 3);
+    expect(prisma.client.lead.update.mock.calls[0][0].data).toMatchObject({
+      status: 'FOLLOW_UP',
+      customerFeedback: 'call after Friday',
+      nextCallDate: expect.any(Date),
+    });
+  });
+
+  it('imports a sheet of bare numbers (no header): each number is a lead', async () => {
+    const prisma = {
+      client: {
+        adminUser: { findMany: jest.fn().mockResolvedValue([]) },
+        lead: { findMany: jest.fn().mockResolvedValue([]), createMany: jest.fn() },
+        customer: { findMany: jest.fn().mockResolvedValue([]) },
+      },
+    };
+    const r = await new LeadsService(prisma as never).import(Buffer.from(['01711111111', '01822222222', ''].join(String.fromCharCode(10))), true);
+    expect(r).toMatchObject({ totalRows: 2, created: 2, skipped: 0 });
+  });
 });

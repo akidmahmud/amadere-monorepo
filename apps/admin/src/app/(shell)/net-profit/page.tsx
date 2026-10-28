@@ -15,6 +15,7 @@ import {
 } from "@/hooks/useInventory";
 import { returnedOrdersExportUrl, useReturnedOrders, useReturnedOrdersList } from "@/hooks/useReturnedOrders";
 import { downloadCsvAsXlsx, reportTitle } from "@/lib/reportExport";
+import { CanExport } from "@/components/CanExport";
 
 const GREEN = "#2e7d43";
 const GREEN_HEADER = "#2f7d33";
@@ -401,6 +402,7 @@ function InventoryTab() {
             Save
           </button>
           <span className="inline-flex">
+            <CanExport>
             <button
               type="button"
               onClick={() =>
@@ -415,6 +417,7 @@ function InventoryTab() {
             >
               Export Excel
             </button>
+            </CanExport>
           </span>
         </div>
       </div>
@@ -586,6 +589,7 @@ function ReturnedTab() {
           </button>
         ))}
         <span className="ml-auto">
+          <CanExport>
           <button
             type="button"
             onClick={() =>
@@ -600,6 +604,7 @@ function ReturnedTab() {
           >
             Export Excel
           </button>
+          </CanExport>
         </span>
       </div>
 

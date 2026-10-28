@@ -53,6 +53,29 @@ export class PosStockReportQueryDto extends StoreQueryDto {
   to?: string;
 }
 
+/** The list as filtered on screen: status pill/select and search box. */
+export class PosExpiryExportQueryDto extends StoreQueryDto {
+  @ApiPropertyOptional({ description: '"alert" = Expired + Expiring soon; empty = all' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  q?: string;
+}
+
+export class PosStockExportQueryDto extends PosStockReportQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  status?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  q?: string;
+}
+
 export class PosOrdersQueryDto extends StoreQueryDto {
   @ApiPropertyOptional({
     enum: ['COMPLETED', 'PARTIALLY_RETURNED', 'RETURNED'],

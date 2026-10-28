@@ -245,7 +245,7 @@ function Card({ id, lead, canEdit, draggable = true }: { id: CardKey; lead: Lead
       ref={sortable.setNodeRef}
       id={`lead-card-${id}`}
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={`scroll-mt-28 rounded-xl border border-border bg-surface-2/40 p-4 ${sortable.isDragging ? "relative z-10 shadow-lg" : ""}`}
+      className={`scroll-mt-64 rounded-xl border border-border bg-surface-2/40 p-4 ${sortable.isDragging ? "relative z-10 shadow-lg" : ""}`}
     >
       <div className="mb-2 flex items-center gap-2">
         {draggable && (
@@ -272,8 +272,9 @@ function CallBar({ lead }: { lead: LeadDetail }) {
   const log = useLogLeadCall(lead.id);
   const [outcome, setOutcome] = useState<LeadCallOutcome | "">("");
   const [notes, setNotes] = useState("");
+  const [nextCall, setNextCall] = useState("");
   return (
-    <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border border-[#2e7d43]/25 bg-[#f2f8f3] p-3 shadow-sm dark:bg-surface-2">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#2e7d43]/25 bg-[#f2f8f3] p-3 shadow-sm dark:bg-surface-2">
       <a
         href={`tel:${local(lead.phone)}`}
         className="inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-extrabold text-white"
@@ -298,20 +299,31 @@ function CallBar({ lead }: { lead: LeadDetail }) {
       <input
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Call note (optional)"
+        placeholder="What did they say? (becomes Customer feedback)"
         className="h-10 min-w-[160px] flex-1 rounded-lg border border-border bg-surface px-2.5 text-sm"
       />
+      <label className="flex h-10 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs font-semibold text-secondary">
+        Next call
+        <input
+          type="date"
+          value={nextCall}
+          onChange={(e) => setNextCall(e.target.value)}
+          className="bg-transparent text-sm text-text outline-none"
+          aria-label="Next call date"
+        />
+      </label>
       <button
         type="button"
         disabled={!outcome || log.isPending}
         onClick={() =>
           outcome &&
           log.mutate(
-            { outcome, notes: notes || undefined },
+            { outcome, notes: notes || undefined, nextCallDate: nextCall || undefined },
             {
               onSuccess: () => {
                 setOutcome("");
                 setNotes("");
+                setNextCall("");
               },
             },
           )
@@ -326,8 +338,35 @@ function CallBar({ lead }: { lead: LeadDetail }) {
   );
 }
 
-function Overview({ lead, canEdit }: { lead: LeadDetail; canEdit: boolean }) {
-  const [order, setOrder] = useState<CardKey[]>(loadOrder);
+/** Card shortcuts: jump straight to a card, whatever order it is in. */
+function CardChips({ order }: { order: CardKey[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {order.map((k) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() => document.getElementById(`lead-card-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className="rounded-pill border border-border bg-surface px-3 py-1 text-xs font-semibold text-secondary hover:border-[#2e7d43] hover:text-[#2e7d43]"
+        >
+          {CARDS[k].title}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Overview({
+  lead,
+  canEdit,
+  order,
+  setOrder,
+}: {
+  lead: LeadDetail;
+  canEdit: boolean;
+  order: CardKey[];
+  setOrder: (o: CardKey[]) => void;
+}) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   function onDragEnd(e: DragEndEvent) {
     const from = order.indexOf(e.active.id as CardKey);
@@ -343,18 +382,6 @@ function Overview({ lead, canEdit }: { lead: LeadDetail; canEdit: boolean }) {
   }
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-1.5">
-        {order.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => document.getElementById(`lead-card-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="rounded-pill border border-border bg-surface px-3 py-1 text-xs font-semibold text-secondary hover:border-[#2e7d43] hover:text-[#2e7d43]"
-          >
-            {CARDS[k].title}
-          </button>
-        ))}
-      </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
           {order.map((k) => (
@@ -395,6 +422,7 @@ export function LeadDetailModal({ leadId, onClose }: { leadId: number; onClose: 
   const { data: lead, isLoading, error, refetch, isFetching } = useLead(leadId);
   const canEdit = useCan("customer.manage");
   const [tab, setTab] = useState<"overview" | "calls" | "person">("overview");
+  const [order, setOrder] = useState<CardKey[]>(loadOrder);
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "calls", label: `Calls${lead?.calls.length ? ` ${lead.calls.length}` : ""}` },
@@ -420,6 +448,9 @@ export function LeadDetailModal({ leadId, onClose }: { leadId: number; onClose: 
         <p className="text-sm text-muted">Loading…</p>
       ) : (
         <div className="flex flex-col gap-4">
+          {/* Frozen while the cards scroll: call bar, status, tabs and card
+              shortcuts, so a shortcut jumps without losing the call bar. */}
+          <div className="sticky -top-6 z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-surface px-6 pb-3 pt-6">
           <CallBar lead={lead} />
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-pill bg-[#2e7d43]/10 px-2.5 py-0.5 text-[0.72rem] font-bold" style={{ color: GREEN }}>
@@ -441,8 +472,10 @@ export function LeadDetailModal({ leadId, onClose }: { leadId: number; onClose: 
               </button>
             ))}
           </div>
+          {tab === "overview" && <CardChips order={order} />}
+          </div>
           <div className="min-h-[240px]">
-            {tab === "overview" && <Overview lead={lead} canEdit={canEdit} />}
+            {tab === "overview" && <Overview lead={lead} canEdit={canEdit} order={order} setOrder={setOrder} />}
             {tab === "calls" && <CallsTab lead={lead} />}
             {tab === "person" && (
               <DndContext>

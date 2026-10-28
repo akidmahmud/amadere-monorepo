@@ -19,6 +19,7 @@ import { PosSmsCampaignsTab } from "./PosSmsCampaignsTab";
 import { CustomerHistoryDialog } from "./CustomerHistoryDialog";
 import { CustomerImportModal } from "@/components/customers/CustomerImportModal";
 import { daysAgo } from "@/lib/pos-days";
+import { CanExport } from "@/components/CanExport";
 
 type Row = {
   id: number;
@@ -99,6 +100,7 @@ function CustomersList({
           "Total spent (৳)",
           "Last purchase",
           "Stores",
+          "Tier",
         ],
         (c) => [
           c.name,
@@ -109,9 +111,13 @@ function CustomersList({
             ? new Date(c.lastPurchase).toLocaleDateString("en-GB")
             : "",
           c.stores.join(", "),
+          [...new Set(c.tiers.map((t) => t.name).filter(Boolean))].join(", "),
         ],
-        `pos-customers-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        reportTitle(`POS Customers — ${storeName}`, periodParams(period)),
+        `pos-customers-${tier ? `${tier}-` : ""}${new Date().toLocaleDateString("en-CA")}`,
+        reportTitle(
+          `POS Customers — ${storeName}${tier ? ` — ${tierList.find((t) => t.key === tier)?.name ?? tier}` : ""}`,
+          periodParams(period),
+        ),
       );
       toast.push(`Exported ${n} customer${n === 1 ? "" : "s"}`, "success");
     } catch (e) {
@@ -235,6 +241,7 @@ function CustomersList({
             <Icon name="upload" size={20} />
             Import Excel
           </button>
+          <CanExport>
           <button
             onClick={exportExcel}
             disabled={exporting || !data?.total}
@@ -243,6 +250,7 @@ function CustomersList({
             <Icon name="download" size={20} />
             {exporting ? "Exporting…" : "Export Excel"}
           </button>
+          </CanExport>
         </div>
         <div className="overflow-x-auto rounded-xl">
           <table className="w-full text-sm">

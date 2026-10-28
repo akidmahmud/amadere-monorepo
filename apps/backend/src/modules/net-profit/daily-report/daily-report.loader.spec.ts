@@ -240,7 +240,7 @@ describe('DailyReportLoader — exchanges and write-offs', () => {
       order({
         channel: 'PHONE',
         exchangeOfOrderId: 50,
-        items: [item({ unitPrice: 0, quantity: 2 })],
+        items: [item({ unitPrice: 0, quantity: 2, isExchange: true })],
       }),
     ]).load('2026-09-30', '2026-09-30');
     expect(o.exchange).toBe(true);

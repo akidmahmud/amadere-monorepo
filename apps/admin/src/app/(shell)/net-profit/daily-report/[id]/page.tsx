@@ -8,6 +8,7 @@ import { dailyReportExportUrl, useDailyReport } from "@/hooks/useDailyReports";
 import { ReportSheet } from "@/components/net-profit/daily-report/ReportSheet";
 import { MissingCostNotice } from "@/components/net-profit/daily-report/MissingCostNotice";
 import { money } from "@/components/net-profit/daily-report/format";
+import { CanExport } from "@/components/CanExport";
 
 const Delta = ({ now, before }: { now: number; before: number }) => {
   const d = now - before;
@@ -77,9 +78,11 @@ function DailyReportBody({ params }: { params: Promise<{ id: string }> }) {
             </p>
           )}
         </div>
+        <CanExport>
         <a href={dailyReportExportUrl(r.id)}>
           <Button>Export Excel</Button>
         </a>
+        </CanExport>
       </Card>
 
       <MissingCostNotice s={s} />

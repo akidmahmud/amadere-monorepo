@@ -116,7 +116,7 @@ describe('AdminOrderCreationService.create — productTypeSnapshot', () => {
 
 describe('AdminOrderCreationService.exchange', () => {
   let service: AdminOrderCreationService;
-  let prisma: MockPrisma & { client: { order: { findUnique: jest.Mock } } };
+  let prisma: MockPrisma & { client: { order: { findFirst: jest.Mock } } };
 
   const original = (status = 'COMPLETED') => ({
     id: 50,
@@ -147,7 +147,7 @@ describe('AdminOrderCreationService.exchange', () => {
 
   beforeEach(async () => {
     prisma = createMockPrismaService() as typeof prisma;
-    (prisma.client.order as { findUnique?: jest.Mock }).findUnique = jest.fn().mockResolvedValue(original());
+    (prisma.client.order as { findFirst?: jest.Mock }).findFirst = jest.fn().mockResolvedValue(original());
     prisma.client.product.findMany.mockResolvedValue([
       { id: 7, sku: 'TUR', slug: 'turmeric', productType: 'PHYSICAL', translations: [{ name: 'Turmeric' }], variants: [] },
     ]);
@@ -194,12 +194,54 @@ describe('AdminOrderCreationService.exchange', () => {
       staffNote: 'Exchange for #ORD-50 — Smelled bad',
     });
     expect(data.items.create).toEqual([
-      expect.objectContaining({ productId: 7, quantity: 1, unitPrice: new Decimal(0) }),
+      expect.objectContaining({ productId: 7, quantity: 1, unitPrice: new Decimal(0), isExchange: true }),
     ]);
   });
 
+  it('New Order with exchangeOf: the exchange line is free, extra lines are billed, delivery is new', async () => {
+    const pricing = (service as unknown as { pricing: { priceLines: jest.Mock } }).pricing;
+    pricing.priceLines.mockResolvedValue([
+      { productId: 7, variantId: null, unitPrice: new Decimal(325), lineTotal: new Decimal(325) },
+      { productId: 7, variantId: null, unitPrice: new Decimal(325), lineTotal: new Decimal(650) },
+    ]);
+    await service.create(
+      {
+        channel: 'PHONE',
+        shippingAddress: original().addresses[0],
+        items: [
+          { productId: 7, quantity: 1, unitPrice: 0, isExchange: true },
+          { productId: 7, quantity: 2 },
+        ],
+        paymentProvider: 'COD',
+        shippingAmount: 150,
+        exchangeOf: '#50',
+      } as never,
+      9,
+    );
+    expect(prisma.client.order.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 50 } }));
+    const data = prisma.client.order.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({
+      exchangeOfOrderId: 50,
+      subTotal: new Decimal(650),
+      discountAmount: new Decimal(0),
+      totalAmount: new Decimal(800),
+      staffNote: 'Exchange for #ORD-50',
+    });
+    expect(data.items.create.map((i: { isExchange: boolean }) => i.isExchange)).toEqual([true, false]);
+  });
+
+  it('New Order refuses exchange lines without the original order, and exchangeOf without exchange lines', async () => {
+    const base = { channel: 'PHONE', shippingAddress: original().addresses[0], paymentProvider: 'COD' };
+    await expect(
+      service.create({ ...base, items: [{ productId: 7, quantity: 1, isExchange: true }] } as never, 9),
+    ).rejects.toThrow(/order ID/);
+    await expect(
+      service.create({ ...base, items: [{ productId: 7, quantity: 1 }], exchangeOf: '50' } as never, 9),
+    ).rejects.toThrow(/Mark which/);
+  });
+
   it('refuses an order that was never delivered', async () => {
-    prisma.client.order.findUnique.mockResolvedValue(original('PROCESSING'));
+    prisma.client.order.findFirst.mockResolvedValue(original('PROCESSING'));
     await expect(service.exchange(50, { items: [{ itemId: 501, quantity: 1 }] }, 9)).rejects.toThrow(/delivered/);
   });
 
@@ -215,9 +257,9 @@ describe('AdminOrderCreationService.exchange', () => {
   });
 
   it('refuses an order in the Trash, and a POS sale', async () => {
-    prisma.client.order.findUnique.mockResolvedValue({ ...original(), deletedAt: new Date() });
+    prisma.client.order.findFirst.mockResolvedValue({ ...original(), deletedAt: new Date() });
     await expect(service.exchange(50, { items: [{ itemId: 501, quantity: 1 }] }, 9)).rejects.toThrow(/Trash/);
-    prisma.client.order.findUnique.mockResolvedValue({ ...original(), channel: 'POS' });
+    prisma.client.order.findFirst.mockResolvedValue({ ...original(), channel: 'POS' });
     await expect(service.exchange(50, { items: [{ itemId: 501, quantity: 1 }] }, 9)).rejects.toThrow(/POS/);
   });
 });

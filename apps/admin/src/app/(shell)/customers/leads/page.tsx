@@ -234,13 +234,14 @@ export default function LeadCenterPage() {
                     <TH>Next call</TH>
                     <TH>Calls</TH>
                     <TH style={{ minWidth: 200 }}>Customer feedback</TH>
+                    <TH style={{ minWidth: 200 }}>Agent feedback</TH>
                     <TH>Actions</TH>
                   </tr>
                 </thead>
                 <tbody>
                   {(isLoading || data?.items.length === 0) && (
                     <tr>
-                      <td colSpan={13} className="px-3 py-10 text-center text-sm" style={{ color: FAINT }}>
+                      <td colSpan={14} className="px-3 py-10 text-center text-sm" style={{ color: FAINT }}>
                         {isLoading ? "Loading…" : "No leads. Import your lead sheet or add one."}
                       </td>
                     </tr>
@@ -278,6 +279,9 @@ export default function LeadCenterPage() {
                       <td className={td}>{l.callCount ?? 0}</td>
                       <td className={`${td} max-w-[240px] truncate`} title={l.customerFeedback ?? undefined}>
                         {l.customerFeedback ?? <span style={{ color: FAINT }}>—</span>}
+                      </td>
+                      <td className={`${td} max-w-[240px] truncate`} title={l.agentFeedback ?? undefined}>
+                        {l.agentFeedback ?? <span style={{ color: FAINT }}>—</span>}
                       </td>
                       <td className={td}>
                         {canDelete && (
@@ -323,7 +327,7 @@ export default function LeadCenterPage() {
           queryKey={["leads"]}
           title="Import Leads"
           noun="leads"
-          intro="Upload your lead sheet (.xlsx or .csv) as it is. Columns are matched by their header (Name, Number, Lead source, Lead date, Interested product, Assign to, Priority, Call date, Next call date, Customer feedback…). Numbers that are already a lead or already a customer are skipped. Nothing is saved until you press Import."
+          intro="Upload your lead sheet (.xlsx or .csv) as it is. Columns are matched by their header (Name, Number, Lead source, Lead date, Interested product, Assign to, Priority, Call date, Next call date, Customer feedback…). A sheet with only a Number column, or just the numbers with no header, works too: each number becomes a lead you fill in later. Numbers that are already a lead or already a customer are skipped. Nothing is saved until you press Import."
         />
       )}
       <ConfirmDialog

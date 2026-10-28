@@ -42,6 +42,8 @@ import {
   PosDateQueryDto,
   PosRangeQueryDto,
   PosStockReportQueryDto,
+  PosExpiryExportQueryDto,
+  PosStockExportQueryDto,
 } from './dto/pos-query.dto';
 import {
   CUSTOMER_SHEET_COLUMNS,
@@ -51,6 +53,7 @@ import {
   SHEET_HEADERS,
   STOCK_COLUMNS,
   EXPIRY_COLUMNS,
+  filterReportRows,
   toCsv,
 } from './pos-reports.service';
 import { PosSettingsService } from './pos-settings.service';
@@ -781,7 +784,7 @@ export class AdminPosController {
 
   // Fix the payment method (Cash / Card / Mobile Banking) picked by mistake.
   @Patch('sales/:id/tender')
-  @RequirePermission('pos.refund')
+  @RequirePermission('pos.access', 'payment.update')
   @UseInterceptors(AuditLogInterceptor)
   async changeTender(
     @CurrentAdmin() a: Admin,
@@ -981,7 +984,7 @@ export class AdminPosController {
   }
 
   @Get('reports/sales.csv')
-  @RequirePermission('pos.reports')
+  @RequirePermission('pos.reports', 'data.export')
   async salesCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
@@ -1022,15 +1025,18 @@ export class AdminPosController {
   }
 
   @Get('reports/expiry.csv')
-  @RequirePermission('pos.reports')
+  @RequirePermission('pos.reports', 'data.export')
   async expiryCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
-    @Query() q: StoreQueryDto,
+    @Query() q: PosExpiryExportQueryDto,
     @Res() res: Response,
   ) {
-    const rows = await this.reports.expiry(
-      await this.oneStore(a, can, q.storeId),
+    const rows = filterReportRows(
+      await this.reports.expiry(await this.oneStore(a, can, q.storeId)),
+      q.status,
+      q.q,
+      ['name', 'sku'],
     );
     sendCsv(
       res,
@@ -1040,17 +1046,18 @@ export class AdminPosController {
   }
 
   @Get('reports/stock.csv')
-  @RequirePermission('pos.reports')
+  @RequirePermission('pos.reports', 'data.export')
   async stockCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
-    @Query() q: PosStockReportQueryDto,
+    @Query() q: PosStockExportQueryDto,
     @Res() res: Response,
   ) {
-    const rows = await this.reports.stock(
-      await this.oneStore(a, can, q.storeId),
-      q.from,
-      q.to,
+    const rows = filterReportRows(
+      await this.reports.stock(await this.oneStore(a, can, q.storeId), q.from, q.to),
+      q.status,
+      q.q,
+      ['name', 'sku', 'barcode'],
     );
     sendCsv(
       res,
@@ -1074,7 +1081,7 @@ export class AdminPosController {
   }
 
   @Get('reports/profit.csv')
-  @RequirePermission('pos.reports')
+  @RequirePermission('pos.reports', 'data.export')
   async profitCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
@@ -1095,7 +1102,7 @@ export class AdminPosController {
 
   /** The store's sales sheet: one row per line sold. */
   @Get('reports/sales-lines.csv')
-  @RequirePermission('pos.reports')
+  @RequirePermission('pos.reports', 'data.export')
   async salesLinesCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
@@ -1116,7 +1123,7 @@ export class AdminPosController {
 
   /** The store's customer sheet: one row per customer who bought there. */
   @Get('reports/customers.csv')
-  @RequirePermission('pos.reports')
+  @RequirePermission('pos.reports', 'data.export')
   async customersCsv(
     @CurrentAdmin() a: Admin,
     @Can() can: PermissionCheck,
