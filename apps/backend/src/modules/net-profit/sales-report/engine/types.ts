@@ -69,6 +69,8 @@ export interface ReportOrder {
   phone: string;
   ctype: CustomerType;
   district: string;
+  /** Street, thana, post code (the Orders sheet's Address column). */
+  address?: string;
   zone: string;
   lines: ReportLine[];
   /** Delivery charge the customer paid. */
@@ -78,6 +80,9 @@ export interface ReportOrder {
   advance: number;
   /** Courier key (CourierProviderName) or null when not set. */
   courier: string | null;
+  /** Display only: a wholesale order's courier (Sundarban, AJR…). Not in
+   *  `courier`, so courier costing and the Couriers tab ignore it. */
+  shipVia?: string | null;
   /** What the courier billed, from the statement import; null = no bill yet. */
   actual: number | null;
   hist: ReportHistory;

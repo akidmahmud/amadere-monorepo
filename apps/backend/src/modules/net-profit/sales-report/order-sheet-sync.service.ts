@@ -28,7 +28,7 @@ const COLOR = {
   dayText: rgb('1F5C3F'),
 };
 /** The courier block the export shades light blue (full view, 0-based, inclusive). */
-const BAND: [number, number] = [16, 22];
+const BAND: [number, number] = [17, 23];
 
 /** "2026-10" → "Oct 2026", the month's tab. */
 export const monthTab = (ym: string) =>

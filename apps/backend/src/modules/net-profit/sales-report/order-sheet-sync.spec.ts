@@ -30,4 +30,19 @@ describe('order sheet month tab', () => {
     expect(values[5][0]).toBe('11 Oct, 2026');
     expect(values[6]).toEqual(exp[3]);
   });
+
+  it('every order has its Address after District; a wholesale row shows its courier (AJR, Sundarban…)', () => {
+    const wholesale = {
+      ...order('WS-1', '2026-10-18'),
+      o: { ...order('WS-1', '2026-10-18').o, channel: 'Wholesale', courier: null, shipVia: 'AJR Courier', address: 'Shop 4, Notun Bazar, Bandarban' },
+    };
+    const [, head, row] = buildSalesSheet([wholesale], {}, true);
+    const col = (h: string) => head.indexOf(h);
+    expect(col('Address')).toBe(col('District') + 1);
+    expect(row[col('Address')]).toBe('Shop 4, Notun Bazar, Bandarban');
+    expect(row[col('Courier')]).toBe('AJR Courier');
+    // A retail order's courier still comes from `courier`.
+    const [, , retail] = buildSalesSheet([order('A', '2026-10-18')], {}, true);
+    expect(retail[col('Courier')]).toBe('Steadfast');
+  });
 });

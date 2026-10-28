@@ -81,7 +81,7 @@ export const LOADER_INCLUDE = {
   addresses: {
     where: { type: 'SHIPPING' as const },
     take: 1,
-    select: { recipientName: true, phone: true, district: true },
+    select: { recipientName: true, phone: true, district: true, addressLine: true, area: true, postCode: true },
   },
   items: {
     orderBy: { id: 'asc' as const },
@@ -167,6 +167,7 @@ export function toReportOrder(
     ctype:
       !first || row.createdAt.getTime() <= first.getTime() ? 'New' : 'Repeat',
     district: addr?.district ?? '',
+    address: [addr?.addressLine, addr?.area, addr?.postCode].filter(Boolean).join(', '),
     zone: zoneOf(ctx.zones, addr?.district),
     lines: row.items.map((i, idx) => {
       // A sold-by-weight POS line weighs what was typed at the till.
@@ -253,6 +254,17 @@ const WHOLESALE_STATUS: Record<string, ReportStatus> = {
   CANCELLED: 'Cancelled',
 };
 
+/** Wholesale couriers as the sheet shows them (labels as in the admin). */
+const WHOLESALE_COURIER_LABEL: Record<string, string> = {
+  STEADFAST: 'Steadfast',
+  SUNDARBAN: 'Sundarban Courier',
+  AJR: 'AJR Courier',
+  SA_PARIBAHAN: 'S.A. Paribahan',
+  OWN_TRANSPORT: 'Own Transport',
+  CUSTOMER_PICKUP: 'Customer Pickup',
+  CHANNEL_DELIVERY: 'By Own / Channel',
+};
+
 /** "Wholesale", or the sales channel marked as wholesale: "Daraz (Wholesale)". */
 export const wholesaleChannelLabel = (row: {
   type: string;
@@ -294,6 +306,7 @@ export function toWholesaleReportOrder(
     ctype:
       !first || row.createdAt.getTime() <= first.getTime() ? 'New' : 'Repeat',
     district: row.district ?? '',
+    address: [row.addressLine, row.thana, row.landmark, row.postCode].filter(Boolean).join(', '),
     zone: zoneOf(ctx.zones, row.district ?? undefined),
     lines: row.items.map((i, idx) => {
       const unitWeight = Number(
@@ -327,6 +340,11 @@ export function toWholesaleReportOrder(
     payment: row.paymentMethod ?? 'CASH',
     advance: 0,
     courier: null,
+    shipVia: row.courier
+      ? row.courier === 'OTHER'
+        ? row.courierName || 'Other'
+        : WHOLESALE_COURIER_LABEL[row.courier]
+      : null,
     actual: null,
     hist:
       row.status === 'DELIVERED' ? { delivered: dhakaDate(row.updatedAt) } : {},

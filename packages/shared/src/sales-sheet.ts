@@ -30,8 +30,13 @@ export interface SalesSheetRow {
     phone: string;
     ctype: string;
     district: string;
+    /** Street, thana, post code: enough to write a delivery receipt. */
+    address?: string;
     payment: string;
     courier: string | null;
+    /** Shown in Courier when `courier` is empty: a wholesale order's courier
+     *  (Sundarban, AJR…), kept out of `courier` so courier costing ignores it. */
+    shipVia?: string | null;
     delivery?: number;
     actual?: number | null;
   };
@@ -57,10 +62,10 @@ export type SalesSheetCell = string | number;
 type Cell = SalesSheetCell;
 
 const GROUPS: Record<number, string> = {
-  12: 'Actual value - Sale value',
-  15: 'from Customer',
-  16: 'Actual Cost SF',
-  17: 'As per courier logic',
+  13: 'Actual value - Sale value',
+  16: 'from Customer',
+  17: 'Actual Cost SF',
+  18: 'As per courier logic',
 };
 
 const HEAD = [
@@ -73,6 +78,7 @@ const HEAD = [
   'CustomerName',
   'CustomerPhone',
   'District',
+  'Address',
   'Product SKU',
   'Qty',
   'Sale Value',
@@ -92,9 +98,9 @@ const HEAD = [
   'Gain/Loss',
 ];
 // Agents (view_own) get the sales columns only — the money ones never reach them.
-const SALES_COLS = 15;
+const SALES_COLS = 16;
 /** Where Invoice Value is inserted in the full view: right after 'Sale Value'. */
-export const INVOICE_COL = 12;
+export const INVOICE_COL = 13;
 
 const PAYMENT_LABEL: Record<string, string> = {
   COD: 'COD',
@@ -151,13 +157,14 @@ export function buildSalesSheet(
         o.customer,
         o.phone,
         o.district,
+        o.address ?? '',
         // SKU, not the full name; a product with no SKU entered keeps its name.
         l ? l.sku || l.name : '',
         l ? (weight > 0 ? r3(weight) : l.qty) : '',
         l ? r2(l.qty * l.price - l.disc) : '',
         l && l.disc ? r2(l.disc) : '',
         PAYMENT_LABEL[o.payment] ?? o.payment,
-        o.courier ? courierLabel(o.courier) : '',
+        o.courier ? courierLabel(o.courier) : (o.shipVia ?? ''),
       ];
       if (money) {
         const pct = o.courier ? codPct[o.courier] : undefined;
