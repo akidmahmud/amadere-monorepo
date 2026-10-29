@@ -20,6 +20,7 @@ import {
   useWholesaleChannels,
   useWholesalePaymentAccounts,
   useWholesaleProducts,
+  useWholesaleStaff,
   pickableKey,
   type PickableProduct,
   type WholesaleChannel,
@@ -36,6 +37,7 @@ import {
   type ChannelValues,
 } from "./ChannelFieldInputs";
 import { Thumb } from "./Thumb";
+import { useAdminMe } from "@/hooks/useAdminAuth";
 
 const money = (v: number | string) =>
   `৳${Number(v || 0).toLocaleString("en-BD", {
@@ -210,6 +212,10 @@ export function CreateOrderPanel({
   const [productQuery, setProductQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [note, setNote] = useState("");
+  // undefined = not touched: the server assigns whoever is logged in.
+  const [assignee, setAssignee] = useState<number | null | undefined>();
+  const { data: me } = useAdminMe();
+  const { data: staff } = useWholesaleStaff();
 
   const [channel, setChannel] = useState<WholesaleOrderChannel>("WHATSAPP");
   const [method, setMethod] = useState<WholesalePaymentMethod>("CASH");
@@ -407,6 +413,7 @@ export function CreateOrderPanel({
     setTransactionId("");
     setChannelValues({});
     setNote("");
+    setAssignee(undefined);
     setErrors([]);
   }
 
@@ -464,6 +471,7 @@ export function CreateOrderPanel({
         paidAmount,
         paymentAccountId: paidAmount === "0" ? undefined : chosenAccount,
         note: note.trim() || undefined,
+        assignedAdminId: assignee,
       });
       reset();
       onCreated(order.orderNumber);
@@ -995,6 +1003,25 @@ export function CreateOrderPanel({
                 ))}
               </div>
             )}
+
+            <div className="mt-4">
+              <Field label="Assigned to">
+                <select
+                  className={INPUT}
+                  value={assignee === undefined ? (me?.id ?? "") : (assignee ?? "")}
+                  onChange={(e) =>
+                    setAssignee(e.target.value ? Number(e.target.value) : null)
+                  }
+                >
+                  <option value="">—</option>
+                  {(staff ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
 
             <div className="mt-4">
               <Field label="Order note / special instructions">

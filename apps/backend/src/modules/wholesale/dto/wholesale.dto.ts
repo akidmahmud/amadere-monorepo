@@ -533,6 +533,14 @@ export class CreateWholesaleOrderDto {
   @IsString()
   @MaxLength(1000)
   note?: string;
+
+  @ApiPropertyOptional({
+    description: 'Staff the order is assigned to; null = nobody.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt()
+  assignedAdminId?: number | null;
 }
 
 /**
@@ -607,6 +615,14 @@ export class UpdateWholesaleOrderDto {
   @IsOptional()
   @IsNumberString()
   discount?: string;
+
+  @ApiPropertyOptional({
+    description: 'Staff the order is assigned to; null = nobody.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsInt()
+  assignedAdminId?: number | null;
 }
 
 export class RecordWholesalePaymentDto {

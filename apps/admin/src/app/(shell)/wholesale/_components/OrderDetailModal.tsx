@@ -99,6 +99,8 @@ export function OrderDetailModal({
           <Item label="Consignment ID" value={order.consignmentId ?? ""} />
           {order.courier === "STEADFAST" && <SteadfastBooking orderId={order.id} />}
           <Item label="Invoice" value={order.invoiceDocNo ?? ""} />
+          <Item label="Created by" value={order.createdByName ?? ""} />
+          <Item label="Assigned to" value={order.assignedAdminName ?? ""} />
           {/* Shown for a cash sale too — only the courier above is
               wholesale-only, and a counter sale still went to someone. */}
           <Item label="Recipient" value={d.recipientName ?? ""} />

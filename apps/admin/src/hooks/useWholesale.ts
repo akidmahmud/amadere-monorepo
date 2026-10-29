@@ -317,6 +317,9 @@ export interface WholesaleOrder {
   invoiceDocNo: string | null;
   note: string | null;
   placedAt: string;
+  createdByName: string | null;
+  assignedAdminId: number | null;
+  assignedAdminName: string | null;
   items: WholesaleOrderItem[];
   /** Latest Steadfast booking (courier STEADFAST); null = not booked. */
   shipment?: {
@@ -352,6 +355,7 @@ export interface OrderEditInput {
   courierName?: string | null;
   consignmentId?: string;
   note?: string;
+  assignedAdminId?: number | null;
   channelData?: Record<string, string>;
   items?: {
     productId?: number;
@@ -401,6 +405,8 @@ export interface OrderInput {
   paymentAccountId?: number;
   status?: WholesaleOrderStatus;
   note?: string;
+  /** Omit to assign the logged-in staff. */
+  assignedAdminId?: number | null;
 }
 
 type Paginated<T> = { items?: T[]; total?: number };

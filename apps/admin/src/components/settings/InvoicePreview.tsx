@@ -50,6 +50,9 @@ const SAMPLE: WholesaleOrder = {
   invoiceDocNo: "AR-0000-0000",
   note: "This is a preview. No such order exists.",
   placedAt: new Date().toISOString(),
+  createdByName: null,
+  assignedAdminId: null,
+  assignedAdminName: null,
   items: [
     {
       id: 1,

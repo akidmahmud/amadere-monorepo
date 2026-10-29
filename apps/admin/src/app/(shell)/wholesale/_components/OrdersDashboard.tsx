@@ -15,7 +15,9 @@ import {
   labelOf,
   useCancelWholesaleOrder,
   useRestoreWholesaleOrder,
+  useUpdateWholesaleOrder,
   useWholesaleChannels,
+  useWholesaleStaff,
   useWholesaleOrders,
   useWholesaleStats,
   wholesaleInvoiceHref,
@@ -579,6 +581,8 @@ export function OrdersDashboard({
                       "Payment",
                       "Total",
                       "Created",
+                      "Created by",
+                      "Assigned to",
                       "Action",
                     ].map((h) => (
                       <th key={h} className="px-3 py-2.5 text-left font-bold">
@@ -646,6 +650,15 @@ export function OrdersDashboard({
                       </td>
                       <td className="px-3 py-3 text-secondary">
                         {dateLabel(o.placedAt)}
+                      </td>
+                      <td className="px-3 py-3 text-secondary">
+                        {o.createdByName ?? "—"}
+                      </td>
+                      <td
+                        className="px-3 py-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <AssigneeSelect order={o} />
                       </td>
                       <td className="px-3 py-3">
                         <RowActions
@@ -768,6 +781,33 @@ export function OrdersDashboard({
         pending={cancelOrder.isPending || restoreOrder.isPending}
       />
     </div>
+  );
+}
+
+/** Inline reassign; anyone who can edit orders may change it. */
+function AssigneeSelect({ order }: { order: WholesaleOrder }) {
+  const { data: staff } = useWholesaleStaff();
+  const update = useUpdateWholesaleOrder();
+  return (
+    <select
+      aria-label={`Assign ${order.orderNumber}`}
+      value={order.assignedAdminId ?? ""}
+      disabled={update.isPending}
+      onChange={(e) =>
+        update.mutate({
+          id: order.id,
+          assignedAdminId: e.target.value ? Number(e.target.value) : null,
+        })
+      }
+      className="h-7 max-w-[140px] rounded-md border border-border bg-surface px-1.5 text-[11px] text-text"
+    >
+      <option value="">—</option>
+      {(staff ?? []).map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
   );
 }
 

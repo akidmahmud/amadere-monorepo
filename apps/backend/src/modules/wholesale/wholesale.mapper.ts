@@ -157,6 +157,10 @@ export class WholesaleOrderDto {
   invoiceDocNo!: string | null;
   note!: string | null;
   placedAt!: Date;
+  createdById!: number | null;
+  createdByName!: string | null;
+  assignedAdminId!: number | null;
+  assignedAdminName!: string | null;
   items!: WholesaleOrderItemDto[];
   /** Latest Steadfast booking; null = not booked. */
   shipment!: {
@@ -182,8 +186,13 @@ type OrderRow = Prisma.WholesaleOrderGetPayload<{
       };
     };
     dues: { select: { id: true; docNo: true; voidedAt: true; kind: true } };
+    creator: { select: { id: true; firstName: true; lastName: true } };
+    assignedAdmin: { select: { id: true; firstName: true; lastName: true } };
   };
 }>;
+
+const staffName = (u: { firstName: string | null; lastName: string | null } | null) =>
+  u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() : null;
 
 export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): WholesaleOrderDto {
   const liveDue = row.dues.find((d) => !d.voidedAt) ?? null;
@@ -236,6 +245,10 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
     invoiceDocNo: liveDue?.docNo ?? null,
     note: row.note,
     placedAt: row.placedAt,
+    createdById: row.createdBy,
+    createdByName: staffName(row.creator),
+    assignedAdminId: row.assignedAdminId,
+    assignedAdminName: staffName(row.assignedAdmin),
     items: row.items.map((item) => ({
       id: item.id,
       productId: item.productId,

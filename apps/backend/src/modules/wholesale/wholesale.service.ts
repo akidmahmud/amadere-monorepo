@@ -117,6 +117,8 @@ const ORDER_INCLUDE = {
     },
   },
   dues: { select: { id: true, docNo: true, voidedAt: true, kind: true } },
+  creator: { select: { id: true, firstName: true, lastName: true } },
+  assignedAdmin: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.WholesaleOrderInclude;
 
 /** Statuses that have NOT put the goods back on the shelf. */
@@ -261,6 +263,14 @@ export class WholesaleService {
     query: WholesaleCustomerQueryDto,
   ): Promise<PaginatedResult<WholesaleCustomerDto>> {
     return this.listCustomerSet(query, false);
+  }
+
+  private async assertStaff(id: number): Promise<void> {
+    const staff = await this.prisma.client.adminUser.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!staff) throw new BadRequestException('Staff member not found');
   }
 
   /** Bulk "Assign to…" from the Customer Dashboard; null unassigns. */
@@ -1626,6 +1636,7 @@ export class WholesaleService {
 
     const placedAt = toDateOnly(dto.placedAt);
     await this.ledger.assertPeriodOpen(placedAt);
+    if (dto.assignedAdminId) await this.assertStaff(dto.assignedAdminId);
 
     // Resolved before the transaction opens: a payment with nowhere to land
     // must fail the whole order, not book a sale whose cash silently vanished.
@@ -1685,6 +1696,9 @@ export class WholesaleService {
           note: dto.note?.trim() || null,
           placedAt,
           createdBy: adminId,
+          // Defaults to whoever is logged in; the form can pick someone else.
+          assignedAdminId:
+            dto.assignedAdminId === undefined ? adminId : dto.assignedAdminId,
           items: {
             create: lines.map((l) => ({
               productId: l.productId,
@@ -1840,7 +1854,11 @@ export class WholesaleService {
         ? {}
         : { consignmentId: dto.consignmentId.trim() || null }),
       ...(dto.note === undefined ? {} : { note: dto.note.trim() || null }),
+      ...(dto.assignedAdminId === undefined
+        ? {}
+        : { assignedAdminId: dto.assignedAdminId }),
     };
+    if (dto.assignedAdminId) await this.assertStaff(dto.assignedAdminId);
 
     const restating =
       dto.items !== undefined ||
