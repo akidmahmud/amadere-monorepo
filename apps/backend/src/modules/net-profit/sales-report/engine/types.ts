@@ -71,6 +71,10 @@ export interface ReportOrder {
   district: string;
   /** Street, thana, post code (the Orders sheet's Address column). */
   address?: string;
+  /** Courier tracking / consignment ID (Orders sheet). */
+  tracking?: string | null;
+  /** Customer note + private note (Orders sheet's Comment column). */
+  comment?: string | null;
   zone: string;
   lines: ReportLine[];
   /** Delivery charge the customer paid. */

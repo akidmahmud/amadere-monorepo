@@ -343,7 +343,7 @@ export const adminNav: AppNavEntry[] = [
     permission: "review.view",
   },
 
-  label("net-profit-label", "Net Profit"),
+  label("net-profit-label", "Reporting"),
   {
     key: "net-profit-overview",
     label: "Overview",

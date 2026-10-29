@@ -105,6 +105,8 @@ export const LOADER_INCLUDE = {
     select: {
       provider: true,
       billedCharge: true,
+      trackingCode: true,
+      consignmentId: true,
       status: true,
       collectedCodAmount: true,
       settledCodAmount: true,
@@ -168,6 +170,14 @@ export function toReportOrder(
       !first || row.createdAt.getTime() <= first.getTime() ? 'New' : 'Repeat',
     district: addr?.district ?? '',
     address: [addr?.addressLine, addr?.area, addr?.postCode].filter(Boolean).join(', '),
+    tracking: shipment?.trackingCode ?? shipment?.consignmentId ?? null,
+    comment:
+      [
+        row.customerNote?.trim() && `Customer: ${row.customerNote.trim()}`,
+        row.staffNote?.trim() && `Note: ${row.staffNote.trim()}`,
+      ]
+        .filter(Boolean)
+        .join(' | ') || null,
     zone: zoneOf(ctx.zones, addr?.district),
     lines: row.items.map((i, idx) => {
       // A sold-by-weight POS line weighs what was typed at the till.
@@ -307,6 +317,8 @@ export function toWholesaleReportOrder(
       !first || row.createdAt.getTime() <= first.getTime() ? 'New' : 'Repeat',
     district: row.district ?? '',
     address: [row.addressLine, row.thana, row.landmark, row.postCode].filter(Boolean).join(', '),
+    tracking: row.consignmentId ?? null,
+    comment: row.note?.trim() || null,
     zone: zoneOf(ctx.zones, row.district ?? undefined),
     lines: row.items.map((i, idx) => {
       const unitWeight = Number(

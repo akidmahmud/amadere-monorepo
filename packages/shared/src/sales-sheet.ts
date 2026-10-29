@@ -30,8 +30,12 @@ export interface SalesSheetRow {
     phone: string;
     ctype: string;
     district: string;
-    /** Street, thana, post code: enough to write a delivery receipt. */
+    /** Street, thana, district, post code: enough to write a delivery receipt. */
     address?: string;
+    /** The courier's tracking / consignment ID. */
+    tracking?: string | null;
+    /** Customer's checkout note and the staff's private note. */
+    comment?: string | null;
     payment: string;
     courier: string | null;
     /** Shown in Courier when `courier` is empty: a wholesale order's courier
@@ -62,10 +66,10 @@ export type SalesSheetCell = string | number;
 type Cell = SalesSheetCell;
 
 const GROUPS: Record<number, string> = {
-  13: 'Actual value - Sale value',
-  16: 'from Customer',
-  17: 'Actual Cost SF',
-  18: 'As per courier logic',
+  14: 'Actual value - Sale value',
+  17: 'from Customer',
+  18: 'Actual Cost SF',
+  19: 'As per courier logic',
 };
 
 const HEAD = [
@@ -77,10 +81,11 @@ const HEAD = [
   'Customer Type',
   'CustomerName',
   'CustomerPhone',
-  'District',
   'Address',
+  'Tracking ID',
   'Product SKU',
-  'Qty',
+  'Qty (Kg)',
+  'Comment',
   'Sale Value',
   'Discount',
   'Payment Method',
@@ -98,9 +103,9 @@ const HEAD = [
   'Gain/Loss',
 ];
 // Agents (view_own) get the sales columns only — the money ones never reach them.
-const SALES_COLS = 16;
+const SALES_COLS = 17;
 /** Where Invoice Value is inserted in the full view: right after 'Sale Value'. */
-export const INVOICE_COL = 13;
+export const INVOICE_COL = 14;
 
 const PAYMENT_LABEL: Record<string, string> = {
   COD: 'COD',
@@ -156,11 +161,13 @@ export function buildSalesSheet(
         o.ctype === 'Repeat' ? 'Repeated' : 'New',
         o.customer,
         o.phone,
-        o.district,
-        o.address ?? '',
+        // District inside Address, so one cell is the whole delivery address.
+        [o.address, o.district].filter(Boolean).join(', '),
+        first ? (o.tracking ?? '') : '',
         // SKU, not the full name; a product with no SKU entered keeps its name.
         l ? l.sku || l.name : '',
         l ? (weight > 0 ? r3(weight) : l.qty) : '',
+        first ? (o.comment ?? '') : '',
         l ? r2(l.qty * l.price - l.disc) : '',
         l && l.disc ? r2(l.disc) : '',
         PAYMENT_LABEL[o.payment] ?? o.payment,

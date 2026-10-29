@@ -31,17 +31,21 @@ describe('order sheet month tab', () => {
     expect(values[6]).toEqual(exp[3]);
   });
 
-  it('every order has its Address after District; a wholesale row shows its courier (AJR, Sundarban…)', () => {
+  it('columns: Phone, Address (with district), Tracking ID, SKU, Qty (Kg), Comment, Sale Value; wholesale shows its courier', () => {
+    const base = order('WS-1', '2026-10-18');
     const wholesale = {
-      ...order('WS-1', '2026-10-18'),
-      o: { ...order('WS-1', '2026-10-18').o, channel: 'Wholesale', courier: null, shipVia: 'AJR Courier', address: 'Shop 4, Notun Bazar, Bandarban' },
+      ...base,
+      o: { ...base.o, channel: 'Wholesale', courier: null, shipVia: 'AJR Courier', district: 'Bandarban',
+        address: 'Shop 4, Notun Bazar', tracking: 'AJR-5531', comment: 'Customer: call before 5pm | Note: fragile' },
     };
     const [, head, row] = buildSalesSheet([wholesale], {}, true);
+    expect(head.slice(5, 14)).toEqual(['Customer Type', 'CustomerName', 'CustomerPhone', 'Address', 'Tracking ID', 'Product SKU', 'Qty (Kg)', 'Comment', 'Sale Value']);
+    expect(head[14]).toBe('Invoice Value');
     const col = (h: string) => head.indexOf(h);
-    expect(col('Address')).toBe(col('District') + 1);
     expect(row[col('Address')]).toBe('Shop 4, Notun Bazar, Bandarban');
+    expect(row[col('Tracking ID')]).toBe('AJR-5531');
+    expect(row[col('Comment')]).toBe('Customer: call before 5pm | Note: fragile');
     expect(row[col('Courier')]).toBe('AJR Courier');
-    // A retail order's courier still comes from `courier`.
     const [, , retail] = buildSalesSheet([order('A', '2026-10-18')], {}, true);
     expect(retail[col('Courier')]).toBe('Steadfast');
   });

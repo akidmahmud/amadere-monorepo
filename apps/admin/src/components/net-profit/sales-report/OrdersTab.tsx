@@ -35,7 +35,7 @@ export function OrdersTab({ f, money, onExport }: TabProps) {
         r.cod,
       ]),
     );
-    // Two header rows (group labels + titles); columns Q–W are the courier
+    // Two header rows (group labels + titles); columns S–Y are the courier
     // block the owner's sheet shades light blue.
     onExport(
       "sales-report",
@@ -45,7 +45,7 @@ export function OrdersTab({ f, money, onExport }: TabProps) {
         headerRows: 2,
         // Courier block; one column further right in the full view, where
         // Invoice Value is inserted before it.
-        band: money ? [17, 23] : [16, 22],
+        band: money ? [18, 24] : [17, 23],
       },
     );
   }, [f, money, settings.data, onExport]);
