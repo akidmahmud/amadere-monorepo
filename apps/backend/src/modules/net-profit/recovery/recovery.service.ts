@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { IncompleteOrder, Prisma } from '@amader/db';
 import { PaginatedResult, normalizeBdPhone, phoneLookupCandidates } from '@amader/shared';
@@ -241,6 +241,7 @@ export class RecoveryService {
     private readonly email: SmtpEmailProvider,
     private readonly config: ConfigService,
     private readonly fraud: FraudService,
+    private readonly events: EventEmitter2,
   ) {}
 
   /**
@@ -1120,6 +1121,13 @@ export class RecoveryService {
     // else creates the locked entitlement. Without this, a staff-recreated
     // ebook order pays fine and unlockForOrder later just matches zero rows.
     await this.downloads.createForOrder(order.id);
+
+    // Like the New Order panel: CustomerOrderEventListener links (or creates
+    // by phone) the customer, so the order shows in the Customer dashboard.
+    this.events.emit(ORDER_CREATED_EVENT, {
+      orderId: order.id,
+      customerId: order.customerId,
+    } satisfies OrderCreatedEvent);
 
     return { orderId: order.id, orderNumber: order.orderNumber };
   }

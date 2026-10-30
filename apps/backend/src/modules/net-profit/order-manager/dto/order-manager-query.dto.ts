@@ -6,6 +6,12 @@ import { PaginationQueryDto } from '../../../../common/dto/pagination-query.dto'
 
 export const ORDER_MANAGER_MAX_PAGE_SIZE = 20000;
 
+/** Multi-select filters arrive as "a,b,c"; an array already is one. */
+const csv = ({ value }: { value: unknown }) =>
+  typeof value === 'string'
+    ? value.split(',').map((v) => v.trim()).filter(Boolean)
+    : value;
+
 export class OrderManagerQueryDto extends PaginationQueryDto {
   // Larger than the site-wide 100 so staff can pick "All" on one page.
   // ponytail: one capped query; switch to virtual scrolling if All gets slow.
@@ -17,10 +23,11 @@ export class OrderManagerQueryDto extends PaginationQueryDto {
   @Max(ORDER_MANAGER_MAX_PAGE_SIZE)
   declare pageSize?: number;
 
-  @ApiPropertyOptional({ enum: OrderStatus })
+  @ApiPropertyOptional({ enum: OrderStatus, description: 'Comma-separated for several' })
   @IsOptional()
-  @IsEnum(OrderStatus)
-  status?: OrderStatus;
+  @Transform(csv)
+  @IsEnum(OrderStatus, { each: true })
+  status?: OrderStatus[];
 
   /** true = only Exchange orders (linked to an original), any status. */
   @ApiPropertyOptional()
@@ -29,30 +36,34 @@ export class OrderManagerQueryDto extends PaginationQueryDto {
   @IsBoolean()
   exchange?: boolean;
 
-  @ApiPropertyOptional({ enum: PaymentProvider })
+  @ApiPropertyOptional({ enum: PaymentProvider, description: 'Comma-separated for several' })
   @IsOptional()
-  @IsEnum(PaymentProvider)
-  paymentProvider?: PaymentProvider;
+  @Transform(csv)
+  @IsEnum(PaymentProvider, { each: true })
+  paymentProvider?: PaymentProvider[];
 
-  @ApiPropertyOptional({ enum: CourierProviderName })
+  @ApiPropertyOptional({ enum: CourierProviderName, description: 'Comma-separated for several' })
   @IsOptional()
-  @IsEnum(CourierProviderName)
-  courierProvider?: CourierProviderName;
+  @Transform(csv)
+  @IsEnum(CourierProviderName, { each: true })
+  courierProvider?: CourierProviderName[];
 
-  @ApiPropertyOptional({ enum: RiskLevel })
+  @ApiPropertyOptional({ enum: RiskLevel, description: 'Comma-separated for several' })
   @IsOptional()
-  @IsEnum(RiskLevel)
-  risk?: RiskLevel;
+  @Transform(csv)
+  @IsEnum(RiskLevel, { each: true })
+  risk?: RiskLevel[];
 
   @ApiPropertyOptional({ description: 'Shipping address division, e.g. "Dhaka"' })
   @IsOptional()
   @IsString()
   division?: string;
 
-  @ApiPropertyOptional({ enum: OrderChannel, description: 'Order.channel — the Origin column' })
+  @ApiPropertyOptional({ enum: OrderChannel, description: 'Order.channel — the Origin column; comma-separated for several' })
   @IsOptional()
-  @IsEnum(OrderChannel)
-  channel?: OrderChannel;
+  @Transform(csv)
+  @IsEnum(OrderChannel, { each: true })
+  channel?: OrderChannel[];
 
   @ApiPropertyOptional({
     description:
@@ -60,20 +71,24 @@ export class OrderManagerQueryDto extends PaginationQueryDto {
       'the raw string: "facebook" also finds fb / FB / facebook.com / ' +
       'm.facebook.com but never the paid markers, and "fbads" finds fbads / ' +
       'fb-ads / fb_ads / facebook-ads / facebookads. "none" finds orders with ' +
-      'no source recorded. Anything else is an exact, case-insensitive match.',
+      'no source recorded. Anything else is an exact, case-insensitive match. ' +
+      'Comma-separated for several (any of them).',
   })
   @IsOptional()
-  @IsString()
-  utmSource?: string;
+  @Transform(csv)
+  @IsString({ each: true })
+  utmSource?: string[];
 
   @ApiPropertyOptional({
     description:
       'Filter by the staff member an order is assigned to. Pass an admin id, ' +
-      'or the literal "none" for orders nobody has picked up yet.',
+      'or the literal "none" for orders nobody has picked up yet. ' +
+      'Comma-separated for several (any of them).',
   })
   @IsOptional()
-  @IsString()
-  assignedAdminId?: string;
+  @Transform(csv)
+  @IsString({ each: true })
+  assignedAdminId?: string[];
 
   @ApiPropertyOptional({ description: 'Free-text search — order number, recipient name, or phone' })
   @IsOptional()

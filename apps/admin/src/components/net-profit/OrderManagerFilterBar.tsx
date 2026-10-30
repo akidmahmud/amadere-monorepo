@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { ORDER_SOURCES } from "@amader/shared";
 import { ORDER_CHANNELS, ORDER_CHANNEL_LABELS } from "@/hooks/useOrders";
 import type { AssignableStaff } from "@/hooks/useCustomers";
@@ -52,7 +53,8 @@ export interface OrderFilterState {
   exchange?: boolean;
   paymentProvider?: string;
   courierProvider?: string;
-  risk?: RiskLevel;
+  /** Multi-select filters below hold their picks comma-joined ("COD,BKASH"). */
+  risk?: string;
   /** An admin id as a string, or "none" for orders nobody has picked up. */
   assignedAdminId?: string;
   division?: string;
@@ -61,6 +63,76 @@ export interface OrderFilterState {
   dateRange?: string;
   dateFrom?: string;
   dateTo?: string;
+}
+
+const split = (v?: string) => (v ? v.split(",") : []);
+const join = (v: string[]) => (v.length ? v.join(",") : undefined);
+const plain = (v: string) => ({ value: v, label: v });
+
+/** Dropdown of checkboxes; nothing ticked = no filter. */
+function MultiSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string[];
+  onChange: (next: string[]) => void;
+  options: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const picked = options.filter((o) => value.includes(o.value));
+  const text =
+    picked.length === 0 ? label : picked.length === 1 ? picked[0].label : `${picked[0].label} +${picked.length - 1}`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`${selectClass} max-w-[170px] truncate text-left`}
+        style={{ ...selectStyle, ...(picked.length ? { borderColor: "#2e7d32", color: "#1b5e20" } : {}) }}
+      >
+        {text}
+      </button>
+      {open && (
+        <div
+          className="absolute left-0 top-[42px] z-30 max-h-72 min-w-[190px] overflow-y-auto rounded-[9px] border bg-white py-1 shadow-lg"
+          style={{ borderColor: LINE }}
+        >
+          {picked.length > 0 && (
+            <button type="button" onClick={() => onChange([])} className="block w-full px-3 py-1.5 text-left text-[0.72rem] font-semibold text-red-600 hover:bg-gray-50">
+              Clear
+            </button>
+          )}
+          {options.map((o) => (
+            <label key={o.value} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.75rem] hover:bg-gray-50" style={{ color: "#374840" }}>
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-green-700"
+                checked={value.includes(o.value)}
+                onChange={(e) =>
+                  onChange(e.target.checked ? [...value, o.value] : value.filter((v) => v !== o.value))
+                }
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function OrderManagerFilterBar({
@@ -97,104 +169,57 @@ export function OrderManagerFilterBar({
         </svg>
       </div>
 
-      <select
-        value={filters.exchange ? "EXCHANGE" : (filters.status ?? "")}
-        onChange={(e) =>
-          // "Exchange" is a filter across statuses, not a status itself.
-          e.target.value === "EXCHANGE"
-            ? onChange({ ...filters, status: undefined, exchange: true })
-            : onChange({ ...filters, status: e.target.value || undefined, exchange: undefined })
+      <MultiSelect
+        label="All Statuses"
+        // "Exchange" is a filter across statuses, not a status itself.
+        value={[...split(filters.status), ...(filters.exchange ? ["EXCHANGE"] : [])]}
+        onChange={(v) =>
+          onChange({
+            ...filters,
+            status: join(v.filter((x) => x !== "EXCHANGE")),
+            exchange: v.includes("EXCHANGE") || undefined,
+          })
         }
-        className={selectClass}
-        style={selectStyle}
-      >
-        <option value="">All Statuses</option>
-        {[...statuses].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => (
-          <option key={s.status} value={s.status}>
-            {s.labelEn}
-          </option>
-        ))}
-        <option value="EXCHANGE">Exchange</option>
-      </select>
+        options={[
+          ...[...statuses].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({ value: s.status, label: s.labelEn })),
+          { value: "EXCHANGE", label: "Exchange" },
+        ]}
+      />
 
-      <select value={filters.paymentProvider ?? ""} onChange={(e) => set("paymentProvider", e.target.value || undefined)} className={selectClass} style={selectStyle}>
-        <option value="">All Payments</option>
-        {PAYMENT_PROVIDERS.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
+      <MultiSelect label="All Payments" value={split(filters.paymentProvider)} onChange={(v) => set("paymentProvider", join(v))} options={PAYMENT_PROVIDERS.map(plain)} />
 
-      <select value={filters.courierProvider ?? ""} onChange={(e) => set("courierProvider", e.target.value || undefined)} className={selectClass} style={selectStyle}>
-        <option value="">All Couriers</option>
-        {COURIER_PROVIDERS.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
+      <MultiSelect label="All Couriers" value={split(filters.courierProvider)} onChange={(v) => set("courierProvider", join(v))} options={COURIER_PROVIDERS.map(plain)} />
 
-      <select value={filters.risk ?? ""} onChange={(e) => set("risk", (e.target.value || undefined) as RiskLevel | undefined)} className={selectClass} style={selectStyle}>
-        <option value="">All Risk Levels</option>
-        {RISK_LEVELS.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-      </select>
+      <MultiSelect label="All Risk Levels" value={split(filters.risk)} onChange={(v) => set("risk", join(v))} options={RISK_LEVELS.map(plain)} />
 
-      {/* "Unassigned" is a real option, not the empty one: empty already means
+      {/* "Unassigned" is a real option: nothing ticked already means
           "don't filter", so without it there is no way to ask for the pile
           nobody has picked up yet. */}
-      <select
-        value={filters.assignedAdminId ?? ""}
-        onChange={(e) => set("assignedAdminId", e.target.value || undefined)}
-        className={selectClass}
-        style={selectStyle}
-      >
-        <option value="">All Staff</option>
-        <option value="none">Unassigned</option>
-        {staff.map((s) => (
-          <option key={s.id} value={String(s.id)}>
-            {s.name}
-          </option>
-        ))}
-      </select>
+      <MultiSelect
+        label="All Staff"
+        value={split(filters.assignedAdminId)}
+        onChange={(v) => set("assignedAdminId", join(v))}
+        options={[{ value: "none", label: "Unassigned" }, ...staff.map((s) => ({ value: String(s.id), label: s.name }))]}
+      />
 
       {/* Origin reads Order.channel, the same field the detail modal edits, so
           this filter and the Origin column can never disagree. */}
-      <select
-        value={filters.channel ?? ""}
-        onChange={(e) => set("channel", e.target.value || undefined)}
-        className={selectClass}
-        style={selectStyle}
-      >
-        <option value="">All Origins</option>
-        {ORDER_CHANNELS.map((c) => (
-          <option key={c} value={c}>
-            {ORDER_CHANNEL_LABELS[c]}
-          </option>
-        ))}
-      </select>
+      <MultiSelect
+        label="All Origins"
+        value={split(filters.channel)}
+        onChange={(v) => set("channel", join(v))}
+        options={ORDER_CHANNELS.map((c) => ({ value: c, label: ORDER_CHANNEL_LABELS[c] }))}
+      />
 
       {/* Matches the Source COLUMN's reading, not the raw string: picking
           facebook also finds fb / m.facebook.com, and never the paid markers.
           "No source" is its own option for the same reason "Unassigned" is. */}
-      <select
-        value={filters.utmSource ?? ""}
-        onChange={(e) => set("utmSource", e.target.value || undefined)}
-        className={selectClass}
-        style={selectStyle}
-      >
-        <option value="">All Sources</option>
-        <option value="none">No source</option>
-        {ORDER_SOURCES.map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
-        ))}
-      </select>
+      <MultiSelect
+        label="All Sources"
+        value={split(filters.utmSource)}
+        onChange={(v) => set("utmSource", join(v))}
+        options={[{ value: "none", label: "No source" }, ...ORDER_SOURCES.map(plain)]}
+      />
 
       <input
         type="text"

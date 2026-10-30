@@ -154,37 +154,42 @@ export class OrderManagerService {
       // Till sales live in the POS Order Manager, not here.
       Prisma.sql`o.channel <> 'POS'::"OrderChannel"`,
     ];
-    if (includeStatus && query.status)
-      conditions.push(Prisma.sql`o.status = ${query.status}::"OrderStatus"`);
+    // Multi-select: each filter matches ANY of its picked values.
+    const anyOf = (col: Prisma.Sql, vals?: string[]) => {
+      if (vals?.length)
+        conditions.push(Prisma.sql`${col}::text IN (${Prisma.join(vals)})`);
+    };
+    if (includeStatus) anyOf(Prisma.sql`o.status`, query.status);
     if (query.exchange)
       conditions.push(Prisma.sql`o.exchange_of_order_id IS NOT NULL`);
-    if (query.paymentProvider)
-      conditions.push(
-        Prisma.sql`p.provider = ${query.paymentProvider}::"PaymentProvider"`,
-      );
-    if (query.courierProvider)
-      conditions.push(
-        Prisma.sql`s.provider = ${query.courierProvider}::"CourierProviderName"`,
-      );
+    anyOf(Prisma.sql`p.provider`, query.paymentProvider);
+    anyOf(Prisma.sql`s.provider`, query.courierProvider);
     if (query.division)
       conditions.push(Prisma.sql`oa.division = ${query.division}`);
-    if (query.channel)
-      conditions.push(Prisma.sql`o.channel = ${query.channel}::"OrderChannel"`);
-    if (query.utmSource) conditions.push(utmSourceCondition(query.utmSource));
-    if (query.risk)
+    anyOf(Prisma.sql`o.channel`, query.channel);
+    if (query.utmSource?.length)
       conditions.push(
-        Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel") = ${query.risk}::"RiskLevel"`,
+        Prisma.sql`(${Prisma.join(query.utmSource.map(utmSourceCondition), ' OR ')})`,
       );
+    anyOf(Prisma.sql`COALESCE(fc.risk_level, 'UNKNOWN'::"RiskLevel")`, query.risk);
     // "none" rather than an empty/absent value for unassigned: absent already
     // means "don't filter at all", so there would otherwise be no way to ask
     // for the pile nobody has picked up -- which is the main thing a manager
     // opens this filter to find.
-    if (query.assignedAdminId === 'none') {
-      conditions.push(Prisma.sql`o.assigned_admin_id IS NULL`);
-    } else if (query.assignedAdminId) {
-      const id = Number(query.assignedAdminId);
-      if (Number.isInteger(id))
-        conditions.push(Prisma.sql`o.assigned_admin_id = ${id}`);
+    if (query.assignedAdminId?.length) {
+      const ids = query.assignedAdminId
+        .map(Number)
+        .filter((id) => Number.isInteger(id));
+      const parts = [
+        ...(query.assignedAdminId.includes('none')
+          ? [Prisma.sql`o.assigned_admin_id IS NULL`]
+          : []),
+        ...(ids.length
+          ? [Prisma.sql`o.assigned_admin_id IN (${Prisma.join(ids)})`]
+          : []),
+      ];
+      if (parts.length)
+        conditions.push(Prisma.sql`(${Prisma.join(parts, ' OR ')})`);
     }
     if (query.q) {
       const like = `%${query.q}%`;

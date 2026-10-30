@@ -1443,7 +1443,7 @@ export class WholesaleService {
    * product line with the order fields repeated, quantities and prices by
    * weight, cost beside price (see order-csv.ts). Wholesale-only facts map
    * onto it: Source is the channel (with its "show in table" fields), Origin
-   * where a wholesale order came in from, Assign whoever created it.
+   * where a wholesale order came in from, Assign the order's assignee.
    *
    * Discount is the order discount plus every line's own discount, so that
    * Σ Invoice Value − Discount + Delivery Charge still equals Grand Total.
@@ -1456,6 +1456,7 @@ export class WholesaleService {
       include: {
         party: { select: { name: true, phone: true } },
         salesChannel: { select: { name: true } },
+        assignedAdmin: { select: { firstName: true, lastName: true } },
         items: {
           orderBy: { id: 'asc' },
           include: {
@@ -1475,21 +1476,6 @@ export class WholesaleService {
         c.id,
         new Map(c.fields.map((f) => [f.key, f.label])),
       ]),
-    );
-    const creatorIds = [
-      ...new Set(
-        orders
-          .map((o) => o.createdBy)
-          .filter((id): id is number => id !== null),
-      ),
-    ];
-    const creators = new Map(
-      (
-        await this.prisma.client.adminUser.findMany({
-          where: { id: { in: creatorIds } },
-          select: { id: true, firstName: true, lastName: true },
-        })
-      ).map((u) => [u.id, `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()]),
     );
 
     const rows: string[][] = [];
@@ -1525,7 +1511,9 @@ export class WholesaleService {
         o.paymentStatus,
         o.paymentMethod ?? '',
         o.note ?? '',
-        o.createdBy ? (creators.get(o.createdBy) ?? '') : '',
+        o.assignedAdmin
+          ? `${o.assignedAdmin.firstName} ${o.assignedAdmin.lastName ?? ''}`.trim()
+          : '',
         '',
         o.district ?? '',
         `${csvDate(o.createdAt)}, ${csvTime(o.createdAt)}`,

@@ -54,8 +54,9 @@
     "addFailed": "কার্টে যোগ করা যায়নি"
   },
   "relatedProducts": {
-    "manualHeading": "আমাদের শপে আরও দেখতে পারেন",
-    "autoHeading": "সম্পর্কিত পণ্য",
+    "manualHeading": "অন্যরাও পছন্দ করেছেন",
+    "autoHeading": "অন্যরাও পছন্দ করেছেন",
+    "crossSellHeading": "আপনার পছন্দ হতে পারে",
     "moreProducts": "আরও পণ্য"
   },
   "bookTabs": {

@@ -48,11 +48,12 @@ function serviceWith(rows: unknown[], products: unknown[], variants: unknown[]) 
       customer: { findMany: jest.fn().mockResolvedValue([]) },
     },
   } as unknown as PrismaService;
-  // Only `prisma` is exercised by exportCsv; the other ten collaborators are
+  // Only `prisma` is exercised by exportCsv; the other collaborators are
   // constructor-injected and never touched on this path.
   const stub = {} as never;
   const service = new RecoveryService(
     prisma,
+    stub,
     stub,
     stub,
     stub,

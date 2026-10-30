@@ -54,8 +54,9 @@
     "addFailed": "Couldn't add to cart"
   },
   "relatedProducts": {
-    "manualHeading": "You may also like from our shop",
-    "autoHeading": "Related Products",
+    "manualHeading": "People also like",
+    "autoHeading": "People also like",
+    "crossSellHeading": "You may also like",
     "moreProducts": "More Products"
   },
   "bookTabs": {

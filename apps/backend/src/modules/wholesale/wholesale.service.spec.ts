@@ -793,6 +793,7 @@ describe('WholesaleService', () => {
       paymentStatus: 'PAID',
       paymentMethod: 'CASH',
       createdBy: 5,
+      assignedAdmin: { firstName: 'Rafi', lastName: 'Ahmed' },
       createdAt: new Date('2026-08-31T10:00:00Z'),
       items: [
         {
@@ -811,11 +812,6 @@ describe('WholesaleService', () => {
 
     beforeEach(() => {
       prisma.client.wholesaleOrder.findMany.mockResolvedValue([exportRow]);
-      prisma.client.adminUser = {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([{ id: 5, firstName: 'Rafi', lastName: 'Ahmed' }]),
-      };
       jest.spyOn(service, 'listChannels').mockResolvedValue([
         { id: 7, fields: [{ key: 'gp', label: 'GP Number' }] },
       ] as never);

@@ -488,7 +488,7 @@ export async function ProductDetailBody({
       {crossSellProducts.length > 0 && (
         <div className="mx-auto max-w-full px-5 py-10 sm:max-w-[80%]">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-[#222831]">Cross Sell Products</h2>
+            <h2 className="text-xl font-bold text-[#222831]">{tRelated("crossSellHeading")}</h2>
             <AppLink href="/products" className="text-sm font-medium text-green hover:underline">
               More Products →
             </AppLink>

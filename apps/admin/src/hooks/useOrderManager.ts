@@ -82,7 +82,8 @@ export interface OrderManagerFilters {
   exchange?: boolean;
   paymentProvider?: string;
   courierProvider?: string;
-  risk?: RiskLevel;
+  /** Comma-joined for several, like the other list filters. */
+  risk?: string;
   /** Admin id as a string, or "none" for unassigned. */
   assignedAdminId?: string;
   division?: string;
