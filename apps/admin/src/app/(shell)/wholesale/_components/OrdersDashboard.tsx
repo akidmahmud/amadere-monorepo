@@ -152,11 +152,6 @@ export function PaymentCell({ order }: { order: WholesaleOrder }) {
       <span className="block text-text">
         {labelOf(PAYMENT_METHODS, order.paymentMethod) || "—"}
       </span>
-      {order.transactionId && (
-        <span className="block text-[10px] text-muted">
-          Txn: {order.transactionId}
-        </span>
-      )}
       <span
         className={`inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${
           PAY_TONE[order.paymentStatus] ?? ""
@@ -164,6 +159,11 @@ export function PaymentCell({ order }: { order: WholesaleOrder }) {
       >
         {labelOf(PAYMENT_STATUSES, order.paymentStatus)}
       </span>
+      {order.transactionId && (
+        <span className="block text-[10px] text-muted">
+          Txn: {order.transactionId}
+        </span>
+      )}
     </div>
   );
 }

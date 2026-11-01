@@ -34,7 +34,12 @@ export function PaymentModal({
   const [accountId, setAccountId] = useState<number | undefined>();
   const [amount, setAmount] = useState(order?.due ?? "0");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState("");
   const chosenAccount = accountId ?? likelyPaymentAccount(accounts.data, order?.paymentMethod ?? "CASH");
+  // Non-cash shows a transaction ID box; mobile banking must fill it.
+  const accountType = accounts.data?.find((a) => a.id === chosenAccount)?.type;
+  const needsTxn = !!accountType && accountType !== "CASH";
+  const txnRequired = accountType === "MOBILE_WALLET";
 
   if (!order) return null;
 
@@ -58,8 +63,18 @@ export function PaymentModal({
       return;
     }
 
+    if (txnRequired && !transactionId.trim()) {
+      setErrorMsg("Enter the transaction ID.");
+      return;
+    }
+
     try {
-      await collect.mutateAsync({ id: orderId, amount, accountId: chosenAccount });
+      await collect.mutateAsync({
+        id: orderId,
+        amount,
+        accountId: chosenAccount,
+        transactionId: needsTxn ? transactionId.trim() || undefined : undefined,
+      });
       onClose();
     } catch (err) {
       setErrorMsg(
@@ -127,6 +142,20 @@ export function PaymentModal({
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
+          </div>
+        )}
+
+        {needsTxn && (
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-secondary">
+              Transaction ID {txnRequired && <span className="text-danger">*</span>}
+            </label>
+            <input
+              className={inputClass}
+              placeholder="e.g. bKash TrxID"
+              value={transactionId}
+              onChange={(e) => setTransactionId(e.target.value)}
+            />
           </div>
         )}
 

@@ -2125,12 +2125,23 @@ export class WholesaleService {
         amount: dto.amount,
         paymentDate: (dto.paymentDate ?? new Date().toISOString()).slice(0, 10),
         accountId,
-        reference: dto.reference,
+        reference: dto.reference || dto.transactionId,
         note: dto.note,
       },
       adminId,
     );
-    return this.findOrder(id);
+    // Keep the stored status (used by the filters and the CSV) in step.
+    const result = await this.findOrder(id);
+    await this.prisma.client.wholesaleOrder.update({
+      where: { id },
+      data: {
+        paymentStatus: result.paymentStatus,
+        ...(dto.transactionId?.trim()
+          ? { transactionId: dto.transactionId.trim() }
+          : {}),
+      },
+    });
+    return { ...result, transactionId: dto.transactionId?.trim() || result.transactionId };
   }
 
   // -------------------------------------------------------------------------

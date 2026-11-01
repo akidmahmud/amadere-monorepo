@@ -804,14 +804,16 @@ export function useRecordWholesalePayment() {
       id,
       amount,
       accountId,
+      transactionId,
     }: {
       id: number;
       amount: string;
       accountId?: number;
+      transactionId?: string;
     }) =>
       proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/payments`, {
         method: "POST",
-        body: JSON.stringify({ amount, accountId }),
+        body: JSON.stringify({ amount, accountId, transactionId }),
       }),
     onSuccess: invalidate,
   });

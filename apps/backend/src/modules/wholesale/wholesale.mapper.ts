@@ -194,6 +194,14 @@ type OrderRow = Prisma.WholesaleOrderGetPayload<{
 const staffName = (u: { firstName: string | null; lastName: string | null } | null) =>
   u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() : null;
 
+export function paymentStatusFor(
+  total: Prisma.Decimal,
+  paid: Prisma.Decimal,
+): WholesalePaymentStatus {
+  if (paid.lessThanOrEqualTo(0)) return 'UNPAID';
+  return paid.greaterThanOrEqualTo(total) ? 'PAID' : 'PARTIALLY_PAID';
+}
+
 export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): WholesaleOrderDto {
   const liveDue = row.dues.find((d) => !d.voidedAt) ?? null;
 
@@ -219,7 +227,10 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
     channelName: row.salesChannel?.name ?? null,
     channelData: (row.channelData as Record<string, string | number> | null) ?? null,
     paymentMethod: row.paymentMethod,
-    paymentStatus: row.paymentStatus,
+    // From the money actually collected, not the stored column: a payment
+    // taken later (Collect, or straight in Accounts) never rewrote it.
+    paymentStatus:
+      row.status === 'CANCELLED' ? row.paymentStatus : paymentStatusFor(row.total, paid),
     transactionId: row.transactionId,
     courier: row.courier,
     courierName: row.courierName,

@@ -647,6 +647,13 @@ export class RecordWholesalePaymentDto {
   @IsString()
   @MaxLength(200)
   reference?: string;
+
+  @ApiPropertyOptional({ description: 'Mobile banking / bank transaction ID; saved on the order' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  transactionId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
