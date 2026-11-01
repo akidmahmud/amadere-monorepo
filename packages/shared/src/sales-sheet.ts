@@ -32,7 +32,7 @@ export interface SalesSheetRow {
     district: string;
     /** Street, thana, district, post code: enough to write a delivery receipt. */
     address?: string;
-    /** The courier's tracking / consignment ID. */
+    /** The courier's consignment ID. */
     tracking?: string | null;
     /** Customer's checkout note and the staff's private note. */
     comment?: string | null;
@@ -82,7 +82,7 @@ const HEAD = [
   'CustomerName',
   'CustomerPhone',
   'Address',
-  'Tracking ID',
+  'Consignment ID',
   'Product SKU',
   'Qty (Kg)',
   'Comment',

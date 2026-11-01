@@ -105,7 +105,6 @@ export const LOADER_INCLUDE = {
     select: {
       provider: true,
       billedCharge: true,
-      trackingCode: true,
       consignmentId: true,
       status: true,
       collectedCodAmount: true,
@@ -170,7 +169,7 @@ export function toReportOrder(
       !first || row.createdAt.getTime() <= first.getTime() ? 'New' : 'Repeat',
     district: addr?.district ?? '',
     address: [addr?.addressLine, addr?.area, addr?.postCode].filter(Boolean).join(', '),
-    tracking: shipment?.trackingCode ?? shipment?.consignmentId ?? null,
+    tracking: shipment?.consignmentId ?? null,
     comment:
       [
         row.customerNote?.trim() && `Customer: ${row.customerNote.trim()}`,
@@ -202,7 +201,7 @@ export function toReportOrder(
             ? `p${i.productId}`
             : `n:${i.productNameSnapshot}`,
         name: i.productNameSnapshot,
-        sku: i.skuSnapshot || i.variant?.sku || i.product?.sku || null,
+        sku: i.product?.sku || i.skuSnapshot || null,
         qty: i.quantity,
         price: Number(i.unitPrice),
         disc: discs[idx],
@@ -339,7 +338,7 @@ export function toWholesaleReportOrder(
             ? `p${i.productId}`
             : `n:${i.nameSnapshot}`,
         name: i.nameSnapshot,
-        sku: i.skuSnapshot || i.variant?.sku || i.product?.sku || null,
+        sku: i.product?.sku || i.skuSnapshot || null,
         qty: i.quantity,
         price: Number(i.unitPrice),
         disc: Number(i.discount) + discs[idx],

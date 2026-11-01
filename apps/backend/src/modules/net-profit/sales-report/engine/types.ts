@@ -29,7 +29,7 @@ export interface ReportLine {
   /** Groups the Products tab: `v<variantId>`, `p<productId>`, or `n:<name>` once the product is gone. */
   key: string;
   name: string;
-  /** SKU as sold (snapshot, else the variant's, else the product's); what exports print. */
+  /** The product's SKU (else the snapshot); what exports print. */
   sku?: string | null;
   qty: number;
   /** Unit selling price. */
@@ -71,7 +71,7 @@ export interface ReportOrder {
   district: string;
   /** Street, thana, post code (the Orders sheet's Address column). */
   address?: string;
-  /** Courier tracking / consignment ID (Orders sheet). */
+  /** Courier consignment ID (Orders sheet). */
   tracking?: string | null;
   /** Customer note + private note (Orders sheet's Comment column). */
   comment?: string | null;

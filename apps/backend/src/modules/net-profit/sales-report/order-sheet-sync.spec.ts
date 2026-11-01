@@ -31,7 +31,7 @@ describe('order sheet month tab', () => {
     expect(values[6]).toEqual(exp[3]);
   });
 
-  it('columns: Phone, Address (with district), Tracking ID, SKU, Qty (Kg), Comment, Sale Value; wholesale shows its courier', () => {
+  it('columns: Phone, Address (with district), Consignment ID, SKU, Qty (Kg), Comment, Sale Value; wholesale shows its courier', () => {
     const base = order('WS-1', '2026-10-18');
     const wholesale = {
       ...base,
@@ -39,11 +39,11 @@ describe('order sheet month tab', () => {
         address: 'Shop 4, Notun Bazar', tracking: 'AJR-5531', comment: 'Customer: call before 5pm | Note: fragile' },
     };
     const [, head, row] = buildSalesSheet([wholesale], {}, true);
-    expect(head.slice(5, 14)).toEqual(['Customer Type', 'CustomerName', 'CustomerPhone', 'Address', 'Tracking ID', 'Product SKU', 'Qty (Kg)', 'Comment', 'Sale Value']);
+    expect(head.slice(5, 14)).toEqual(['Customer Type', 'CustomerName', 'CustomerPhone', 'Address', 'Consignment ID', 'Product SKU', 'Qty (Kg)', 'Comment', 'Sale Value']);
     expect(head[14]).toBe('Invoice Value');
     const col = (h: string) => head.indexOf(h);
     expect(row[col('Address')]).toBe('Shop 4, Notun Bazar, Bandarban');
-    expect(row[col('Tracking ID')]).toBe('AJR-5531');
+    expect(row[col('Consignment ID')]).toBe('AJR-5531');
     expect(row[col('Comment')]).toBe('Customer: call before 5pm | Note: fragile');
     expect(row[col('Courier')]).toBe('AJR Courier');
     const [, , retail] = buildSalesSheet([order('A', '2026-10-18')], {}, true);
