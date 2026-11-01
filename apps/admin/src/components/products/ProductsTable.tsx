@@ -347,6 +347,8 @@ export function ProductsTable({
       if (Array.isArray(v)) v.forEach((x) => params.append(k, String(x)));
       else params.set(k, String(v));
     }
+    // Ticked rows win over the filters.
+    if (selected.size) params.set("ids", [...selected].join(","));
     return `/api/backend/admin/products/export?${params.toString()}`;
   }
 

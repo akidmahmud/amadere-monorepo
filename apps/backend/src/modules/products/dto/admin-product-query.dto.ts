@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ContentStatus, ProductType, StockStatus } from '@amader/db';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { ProductFilterQueryDto } from './product-filter-query.dto';
 
 /**
@@ -21,6 +21,12 @@ export const ADMIN_PRODUCTS_MAX_PAGE_SIZE = 1000;
 // endpoint) so status/stockStatus/date-range never leak into public query
 // validation.
 export class AdminProductQueryDto extends ProductFilterQueryDto {
+  /** Export only: comma-separated product ids (the ticked rows). */
+  @ApiPropertyOptional({ example: '12,15' })
+  @IsOptional()
+  @IsString()
+  ids?: string;
+
   // Lets the Digital Products section (a dedicated admin nav entry, not a
   // filter chip on the main Products page) reuse the same list endpoint
   // instead of forking a parallel one — see useDigitalProducts.ts.

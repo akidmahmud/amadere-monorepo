@@ -206,13 +206,17 @@ export default function PosProductsPage() {
         ).catch(() => [])
       ).map((c) => [`${c.productId}:${c.variantId ?? ""}`, c.cost]),
     );
-    const label = { all: "All products", own: "Store-only", shared: "Shared (website)" }[kind];
+    // Ticked rows only when any are ticked, else the list on screen.
+    const rowsOut = ticked.size ? shown.filter((p) => ticked.has(lineKey(p))) : shown;
+    const label = ticked.size
+      ? "Selected"
+      : { all: "All products", own: "Store-only", shared: "Shared (website)" }[kind];
     const today = new Date().toLocaleDateString("en-CA");
     return downloadXlsx(
       `products-${kind}-${store?.code ?? "store"}-${today}`,
       [
         ["Product", "Size", "SKU", "Barcode", "Weight", "Price (৳)", "Sale price (৳)", "Cost (৳)", "Stock", "Type"],
-        ...shown.map((p) => {
+        ...rowsOut.map((p) => {
           const kg = Number(p.storeWeightKg ?? p.normalWeightKg);
           const unit = p.storeWeightKg ? p.storeWeightUnit : p.normalWeightUnit;
           return [
@@ -379,7 +383,7 @@ export default function PosProductsPage() {
                   className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                   <Icon name="download" size={17} />
-                  Export Excel ({shown.length})
+                  Export Excel ({ticked.size || shown.length})
                 </button>
               </CanExport>
             )}

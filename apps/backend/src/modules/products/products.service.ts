@@ -398,38 +398,45 @@ export class ProductsService {
   }
 
   async adminExportCsv(filters: AdminProductQueryDto): Promise<string> {
-    const where = this.buildAdminWhere(filters);
+    const ids = filters.ids
+      ?.split(',')
+      .map(Number)
+      .filter((n) => Number.isInteger(n));
     const items = await this.prisma.client.product.findMany({
-      where,
+      where: ids?.length ? { id: { in: ids } } : this.buildAdminWhere(filters),
       include: PRODUCT_INCLUDE,
       orderBy: { createdAt: 'desc' },
       take: 10_000,
     });
-    // Cost goes last so the first seven columns still re-import (importCsv).
-    const header = 'Name,Slug,SKU,Category,Stock,Price,Status,Created At,Cost';
-    const lines = items.map((p) => {
+    // One row per variant (product columns repeated), so every size has its
+    // own SKU, price, stock and cost. Variant columns go after the first
+    // seven so the file still re-imports (importCsv reads those by position;
+    // repeated product values just write the same thing again).
+    const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header =
+      'Name,Slug,SKU,Category,Stock,Price,Status,Created At,Variant,Variant SKU,Variant Price,Variant Sale Price,Variant Stock,Cost';
+    const lines = items.flatMap((p) => {
       const name = p.translations[0]?.name ?? p.slug;
       const category = p.categories[0]?.category.translations[0]?.name ?? '';
-      // Per-unit cost, as reports use it; a variant product lists each size.
-      const cost = p.variants.length
-        ? p.variants
-            .map((v) => {
-              const label =
-                v.attributeValues
-                  .map((a) => a.attributeValue.translations[0]?.value)
-                  .filter(Boolean)
-                  .join(' / ') || v.sku || `#${v.id}`;
-              const c = lineUnitCost(
-                v.costPerItem,
-                p.costPerItem,
-                p.costPriceUnit,
-                Number(v.weightOverride ?? p.shippableWeight ?? 0),
-              );
-              return `${label}: ${c === null ? '' : c.toFixed(2)}`;
-            })
-            .join(' | ')
-        : (p.costPerItem?.toString() ?? '');
-      return `"${name}",${p.slug},${p.sku ?? ''},"${category}",${p.stock},${p.price ?? ''},${p.status},${p.createdAt.toISOString().slice(0, 10)},"${cost}"`;
+      const head = [name, p.slug, p.sku, category, p.stock, p.price, p.status, p.createdAt.toISOString().slice(0, 10)];
+      if (!p.variants.length)
+        return [[...head, '', '', '', '', '', p.costPerItem].map(q).join(',')];
+      return p.variants.map((v) => {
+        const label = v.attributeValues
+          .map((a) => a.attributeValue.translations[0]?.value)
+          .filter(Boolean)
+          .join(' / ');
+        // Per-unit cost, as reports use it (a per-kg rate scaled by weight).
+        const cost = lineUnitCost(
+          v.costPerItem,
+          p.costPerItem,
+          p.costPriceUnit,
+          Number(v.weightOverride ?? p.shippableWeight ?? 0),
+        );
+        return [...head, label, v.sku, v.price, v.salePrice, v.stock, cost === null ? '' : cost.toFixed(2)]
+          .map(q)
+          .join(',');
+      });
     });
     return [header, ...lines].join('\n');
   }
