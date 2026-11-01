@@ -13,6 +13,7 @@ import { Locale, Prisma } from '@amader/db';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { StockService, stockKey } from '../stock/stock.service';
 import { dhakaRange } from './dhaka-range';
+import { lineUnitCost } from '../net-profit/order-manager/order-csv';
 
 /** Same threshold as ProductsService.LOW_STOCK_THRESHOLD. */
 export const POS_LOW_STOCK = 10;
@@ -141,6 +142,37 @@ export class PosCatalogService {
       take,
     });
     return this.toPos(storeId, rows);
+  }
+
+  /** Unit cost per catalogue line, for the Products export only (never the till). */
+  async costs(
+    storeId: number,
+  ): Promise<{ productId: number; variantId: number | null; cost: number | null }[]> {
+    const rows = await this.prisma.client.product.findMany({
+      where: { deletedAt: null, OR: [{ storeId: null }, { storeId }] },
+      select: {
+        id: true,
+        hasVariants: true,
+        costPerItem: true,
+        costPriceUnit: true,
+        shippableWeight: true,
+        variants: { select: { id: true, costPerItem: true, weightOverride: true } },
+      },
+    });
+    return rows.flatMap((p) =>
+      p.hasVariants
+        ? p.variants.map((v) => ({
+            productId: p.id,
+            variantId: v.id as number | null,
+            cost: lineUnitCost(
+              v.costPerItem,
+              p.costPerItem,
+              p.costPriceUnit,
+              Number(v.weightOverride ?? p.shippableWeight ?? 0),
+            ),
+          }))
+        : [{ productId: p.id, variantId: null as number | null, cost: p.costPerItem === null ? null : Number(p.costPerItem) }],
+    );
   }
 
   /** Scanner/typed code → exact barcode or SKU first, else the first search hit. */

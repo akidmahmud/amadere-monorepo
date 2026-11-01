@@ -716,6 +716,16 @@ export class AdminPosController {
     );
   }
 
+  @Get('catalog/costs')
+  @RequirePermission('pos.access', 'data.export')
+  async catalogCosts(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: StoreQueryDto,
+  ) {
+    return this.catalog.costs(await this.oneStore(a, can, q.storeId));
+  }
+
   @Get('categories')
   @RequirePermission('pos.access')
   categories() {

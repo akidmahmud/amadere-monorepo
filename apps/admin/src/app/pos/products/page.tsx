@@ -198,13 +198,20 @@ export default function PosProductsPage() {
   );
   const paged = usePaged(shown);
   // Exactly the list on screen (type filter + search).
-  const exportShown = () => {
+  const exportShown = async () => {
+    const costs = new Map(
+      (
+        await proxyFetch<{ productId: number; variantId: number | null; cost: number | null }[]>(
+          `/admin/pos/catalog/costs?storeId=${storeId}`,
+        ).catch(() => [])
+      ).map((c) => [`${c.productId}:${c.variantId ?? ""}`, c.cost]),
+    );
     const label = { all: "All products", own: "Store-only", shared: "Shared (website)" }[kind];
     const today = new Date().toLocaleDateString("en-CA");
     return downloadXlsx(
       `products-${kind}-${store?.code ?? "store"}-${today}`,
       [
-        ["Product", "Size", "SKU", "Barcode", "Weight", "Price (৳)", "Sale price (৳)", "Stock", "Type"],
+        ["Product", "Size", "SKU", "Barcode", "Weight", "Price (৳)", "Sale price (৳)", "Cost (৳)", "Stock", "Type"],
         ...shown.map((p) => {
           const kg = Number(p.storeWeightKg ?? p.normalWeightKg);
           const unit = p.storeWeightKg ? p.storeWeightUnit : p.normalWeightUnit;
@@ -216,6 +223,7 @@ export default function PosProductsPage() {
             p.soldByWeight ? "Sold by weight" : kg > 0 ? formatWeight(kg, unit) : "",
             Number(p.price),
             p.salePrice ? Number(p.salePrice) : "",
+            costs.get(`${p.productId}:${p.variantId ?? ""}`) ?? "",
             p.stock >= 9999 ? "" : p.stock,
             p.storeOnly ? "Store-only" : "Shared",
           ];

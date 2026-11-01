@@ -17,6 +17,7 @@ import {
   toPaginatedResult,
 } from '../../common/pagination.util';
 import { PRODUCT_INCLUDE, PRODUCT_LIST_INCLUDE } from './product-includes';
+import { lineUnitCost } from '../net-profit/order-manager/order-csv';
 import {
   toAdminProductDto,
   toAdminProductListItemDto,
@@ -404,11 +405,31 @@ export class ProductsService {
       orderBy: { createdAt: 'desc' },
       take: 10_000,
     });
-    const header = 'Name,Slug,SKU,Category,Stock,Price,Status,Created At';
+    // Cost goes last so the first seven columns still re-import (importCsv).
+    const header = 'Name,Slug,SKU,Category,Stock,Price,Status,Created At,Cost';
     const lines = items.map((p) => {
       const name = p.translations[0]?.name ?? p.slug;
       const category = p.categories[0]?.category.translations[0]?.name ?? '';
-      return `"${name}",${p.slug},${p.sku ?? ''},"${category}",${p.stock},${p.price ?? ''},${p.status},${p.createdAt.toISOString().slice(0, 10)}`;
+      // Per-unit cost, as reports use it; a variant product lists each size.
+      const cost = p.variants.length
+        ? p.variants
+            .map((v) => {
+              const label =
+                v.attributeValues
+                  .map((a) => a.attributeValue.translations[0]?.value)
+                  .filter(Boolean)
+                  .join(' / ') || v.sku || `#${v.id}`;
+              const c = lineUnitCost(
+                v.costPerItem,
+                p.costPerItem,
+                p.costPriceUnit,
+                Number(v.weightOverride ?? p.shippableWeight ?? 0),
+              );
+              return `${label}: ${c === null ? '' : c.toFixed(2)}`;
+            })
+            .join(' | ')
+        : (p.costPerItem?.toString() ?? '');
+      return `"${name}",${p.slug},${p.sku ?? ''},"${category}",${p.stock},${p.price ?? ''},${p.status},${p.createdAt.toISOString().slice(0, 10)},"${cost}"`;
     });
     return [header, ...lines].join('\n');
   }
