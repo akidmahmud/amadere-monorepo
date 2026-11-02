@@ -131,6 +131,18 @@ const nextConfig: NextConfig = {
           },
         ],
       })),
+      // Last, so it wins: a `?_rsc=` URL fetched WITHOUT the RSC header (a
+      // crawler, a copied link) renders full HTML, and Cloudflare (which
+      // ignores `Vary: rsc`) cached that HTML under the RSC key. The browser
+      // then got HTML where it expected the RSC payload, fell back to a full
+      // reload, asked again, and looped forever (/categories/amader-chatu,
+      // 2026-11-02). Never let that response into a shared cache.
+      {
+        source: "/:path*",
+        has: [{ type: "query" as const, key: "_rsc" }],
+        missing: [{ type: "header" as const, key: "rsc" }],
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+      },
     ];
   },
   // PERF-BRIEF.md §4/§5.

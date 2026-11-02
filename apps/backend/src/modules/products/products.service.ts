@@ -279,7 +279,11 @@ export class ProductsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      // The pickers filter this list in the browser, so it must be the WHOLE
+      // catalogue: a cap of 100 hid every older product from wholesale orders
+      // (Akher Juice Powder, 2026-11-02).
+      // ponytail: one bounded read; search server-side if the catalogue nears this.
+      take: 5000,
     });
     return products.map((p) => {
       const variant = p.variants.find((v) => v.isDefault) ?? p.variants[0];

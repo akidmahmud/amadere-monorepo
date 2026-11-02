@@ -12,6 +12,7 @@ import {
   useSaveDailyReportSettings,
 } from "@/hooks/useDailyReports";
 import { inputClass } from "./format";
+import { MarketingCostCard } from "./MarketingCostCard";
 
 const TYPE_LABEL: Record<FixedCostType, string> = {
   PER_DAY: "৳ per day",
@@ -240,6 +241,10 @@ export function SettingsPanel() {
           </Button>
         </div>
       </Card>
+
+      <MarketingCostCard
+        linked={d.fixedCosts.some((c) => c.active && c.type === "MARKETING_LEDGER")}
+      />
 
       <div className="flex items-center gap-3">
         <Button onClick={onSave} disabled={save.isPending}>
