@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PaginatedResult, toBdCompact } from '@amader/shared';
-import { Prisma, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
+import { Prisma, WholesaleCourier, WholesaleOrderStatus, WholesaleOrderType } from '@amader/db';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCustomerNoteDto } from '../customers/dto/create-customer-note.dto';
@@ -243,6 +243,29 @@ export function courierNameFor(
   name: string | null | undefined,
 ): string | null {
   return courier === 'OTHER' ? name?.trim() || null : null;
+}
+
+const HIDDEN_COURIERS_KEY = 'wholesale.hiddenCouriers';
+
+// A name typed under "Other" that is really one of our couriers. Typing
+// "steadfast" there saved an OTHER order that was never booked with
+// Steadfast, so it never reached Shipments (WS-2611-0013, 2026-11-04).
+const KNOWN_COURIERS: Record<string, WholesaleCourier> = {
+  steadfast: 'STEADFAST',
+  sundarban: 'SUNDARBAN',
+  sundorbon: 'SUNDARBAN',
+  ajr: 'AJR',
+  saparibahan: 'SA_PARIBAHAN',
+};
+
+/** OTHER + a known courier's name → that courier; anything else unchanged. */
+export function knownCourier(
+  courier: WholesaleCourier | undefined,
+  name: string | null | undefined,
+): WholesaleCourier | undefined {
+  if (courier !== 'OTHER' || !name) return courier;
+  const key = name.toLowerCase().replace(/courier|[^a-z]/g, '');
+  return KNOWN_COURIERS[key] ?? courier;
 }
 
 @Injectable()
@@ -1540,6 +1563,8 @@ export class WholesaleService {
     dto: CreateWholesaleOrderDto,
     adminId: number | null,
   ): Promise<WholesaleOrderDto> {
+    dto.courier = knownCourier(dto.courier, dto.courierName);
+    if (dto.courier === 'OTHER') await this.unhideCourier(dto.courierName);
     const party = await this.prisma.client.party.findFirst({
       where: { id: dto.partyId, roles: { has: 'WHOLESALE' }, deletedAt: null },
     });
@@ -1782,6 +1807,8 @@ export class WholesaleService {
     id: number,
     dto: UpdateWholesaleOrderDto,
   ): Promise<WholesaleOrderDto> {
+    dto.courier = knownCourier(dto.courier, dto.courierName);
+    if (dto.courier === 'OTHER') await this.unhideCourier(dto.courierName);
     const order = await this.prisma.client.wholesaleOrder.findUnique({
       where: { id },
       include: {
@@ -2326,6 +2353,47 @@ export class WholesaleService {
       orderBy: { _max: { createdAt: 'desc' } },
       take: 50,
     });
-    return rows.map((r) => r.courierName!);
+    // Our own couriers are already in the list; don't offer a typed copy.
+    // Nor a name staff removed from the dropdown.
+    const hidden = await this.hiddenCouriers();
+    return rows
+      .map((r) => r.courierName!)
+      .filter(
+        (n) =>
+          knownCourier('OTHER', n) === 'OTHER' &&
+          !hidden.includes(n.trim().toLowerCase()),
+      );
+  }
+
+  /** Removed from the dropdown only: orders that use the name keep it. */
+  async hideCustomCourier(name: string): Promise<void> {
+    const key = name.trim().toLowerCase();
+    if (!key) throw new BadRequestException('Courier name is required');
+    const hidden = await this.hiddenCouriers();
+    if (!hidden.includes(key)) await this.saveHiddenCouriers([...hidden, key]);
+  }
+
+  /** Typing a removed name again brings it back. */
+  private async unhideCourier(name: string | null | undefined): Promise<void> {
+    const key = name?.trim().toLowerCase();
+    if (!key) return;
+    const hidden = await this.hiddenCouriers();
+    if (hidden.includes(key))
+      await this.saveHiddenCouriers(hidden.filter((h) => h !== key));
+  }
+
+  private async hiddenCouriers(): Promise<string[]> {
+    const row = await this.prisma.client.setting.findUnique({
+      where: { key: HIDDEN_COURIERS_KEY },
+    });
+    return Array.isArray(row?.value) ? (row.value as string[]) : [];
+  }
+
+  private async saveHiddenCouriers(names: string[]): Promise<void> {
+    await this.prisma.client.setting.upsert({
+      where: { key: HIDDEN_COURIERS_KEY },
+      create: { key: HIDDEN_COURIERS_KEY, value: names },
+      update: { value: names },
+    });
   }
 }

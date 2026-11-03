@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { promptDialog } from "@/components/PosConfirm";
 import { proxyFetch } from "@/lib/api/proxy-client";
 import type { WholesaleCourier } from "@/hooks/useWholesale";
 
 const NEW = "__new_courier";
+const REMOVE = "__remove_courier";
 const CUSTOM = "custom:";
 
 /**
@@ -31,6 +32,7 @@ export function CourierSelect({
   /** Shown as an empty first option (create form). */
   placeholder?: string;
 }) {
+  const qc = useQueryClient();
   const { data: saved = [] } = useQuery({
     queryKey: ["wholesale-custom-couriers"],
     queryFn: () => proxyFetch<string[]>("/admin/wholesale/couriers/custom"),
@@ -66,6 +68,27 @@ export function CourierSelect({
           if (name?.trim()) onChange("OTHER", name.trim());
           return; // cancelled: keep the previous choice
         }
+        if (v === REMOVE) {
+          const name = await promptDialog({
+            title: "Remove a courier",
+            message: `Type the name to take out of this list: ${saved.join(", ")}. Orders that already use it keep it.`,
+            placeholder: saved[0],
+            confirmLabel: "Remove",
+            icon: "delete",
+            required: true,
+          });
+          const match = saved.find(
+            (n) => n.toLowerCase() === name?.trim().toLowerCase(),
+          );
+          if (match) {
+            await proxyFetch("/admin/wholesale/couriers/custom/remove", {
+              method: "POST",
+              body: JSON.stringify({ name: match }),
+            });
+            await qc.invalidateQueries({ queryKey: ["wholesale-custom-couriers"] });
+          }
+          return; // keep the current choice
+        }
         if (v.startsWith(CUSTOM))
           return onChange("OTHER", v.slice(CUSTOM.length));
         onChange(v as WholesaleCourier | "", null);
@@ -91,6 +114,9 @@ export function CourierSelect({
       {/* An old order saved as plain "Other" (no name) keeps showing it. */}
       {value === "OTHER" && <option value="OTHER">Other</option>}
       <option value={NEW}>Other… (add a new courier)</option>
+      {saved.length > 0 && (
+        <option value={REMOVE}>Remove an added courier…</option>
+      )}
     </select>
   );
 }

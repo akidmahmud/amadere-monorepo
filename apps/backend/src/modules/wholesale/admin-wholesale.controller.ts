@@ -87,6 +87,13 @@ export class AdminWholesaleController {
     return this.wholesale.customCouriers();
   }
 
+  // Takes a typed courier name out of the dropdown; orders keep it.
+  @Post('couriers/custom/remove')
+  @RequirePermission('wholesale.update')
+  async removeCustomCourier(@Body() body: { name?: string }): Promise<void> {
+    await this.wholesale.hideCustomCourier(String(body?.name ?? ''));
+  }
+
   @Get('products')
   @RequirePermission('wholesale.view')
   @ApiOkResponse({ type: [AdminProductPickerItemDto] })
