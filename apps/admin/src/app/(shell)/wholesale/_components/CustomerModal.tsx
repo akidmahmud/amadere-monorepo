@@ -66,6 +66,9 @@ export function CustomerModal({
     thana: editing?.thana ?? "",
     landmark: editing?.landmark ?? "",
     postCode: editing?.postCode ?? "",
+    contactName: editing?.contactName ?? "",
+    contactPhone: editing?.contactPhone ?? "",
+    contactDesignation: editing?.contactDesignation ?? "",
     creditLimit: editing?.creditLimit ?? "",
     creditDays: editing?.creditDays?.toString() ?? "",
     openingReceivable: "",
@@ -90,6 +93,9 @@ export function CustomerModal({
         thana: form.thana.trim(),
         landmark: form.landmark.trim(),
         postCode: form.postCode.trim(),
+        contactName: form.contactName.trim(),
+        contactPhone: form.contactPhone.trim(),
+        contactDesignation: form.contactDesignation.trim(),
         creditLimit: form.creditLimit.trim() || undefined,
         creditDays: form.creditDays.trim()
           ? Number(form.creditDays)
@@ -233,6 +239,36 @@ export function CustomerModal({
                 placeholder="e.g. 1212"
                 value={form.postCode}
                 onChange={(e) => setForm({ ...form, postCode: e.target.value })}
+              />
+            </ModalField>
+
+            {/* Optional: the person staff actually talk to at the shop. */}
+            <ModalField label="Contact Person Name">
+              <input
+                className={inputClass}
+                placeholder="e.g. Rahim Uddin"
+                value={form.contactName}
+                onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+              />
+            </ModalField>
+
+            <ModalField label="Contact Person Number">
+              <input
+                className={inputClass}
+                placeholder="01XXXXXXXXX"
+                value={form.contactPhone}
+                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+              />
+            </ModalField>
+
+            <ModalField label="Designation">
+              <input
+                className={inputClass}
+                placeholder="e.g. Owner, Manager"
+                value={form.contactDesignation}
+                onChange={(e) =>
+                  setForm({ ...form, contactDesignation: e.target.value })
+                }
               />
             </ModalField>
           </div>

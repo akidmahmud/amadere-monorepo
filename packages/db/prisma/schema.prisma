@@ -3541,6 +3541,10 @@ model Party {
   thana             String?
   landmark          String?
   postCode          String?              @map("post_code")
+  /// Optional person to talk to at the shop (owner, manager...).
+  contactName        String? @map("contact_name")
+  contactPhone       String? @map("contact_phone")
+  contactDesignation String? @map("contact_designation")
   bin               String? // VAT registration -- required to claim input VAT
   tin               String?
   customerId        Int?                 @map("customer_id")

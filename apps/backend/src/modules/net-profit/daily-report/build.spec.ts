@@ -279,3 +279,27 @@ describe('buildSnapshot — exchanges and write-offs', () => {
     expect(without.exchange).toBeUndefined();
   });
 });
+
+describe('buildSnapshot — one cost on several sources', () => {
+  it('shares a fixed amount by sales instead of charging each source in full', () => {
+    const t = buildSnapshot({
+      ...FIXTURE_INPUT,
+      fixedCosts: [
+        {
+          id: 'm',
+          name: 'Marketing',
+          type: 'PER_DAY',
+          amount: 1000,
+          scope: 'SOURCE',
+          sourceKeys: ['WEB_DIRECT', 'WHATSAPP'],
+          active: true,
+        },
+      ],
+    });
+    const charged = t.sources
+      .filter((b) => b.key === 'WEB_DIRECT' || b.key === 'WHATSAPP')
+      .map((b) => b.fixedCosts.find((f) => f.id === 'm')?.value ?? 0);
+    expect(charged).toHaveLength(2);
+    expect(charged.reduce((a, v) => a + v, 0)).toBeCloseTo(1000, 1);
+  });
+});

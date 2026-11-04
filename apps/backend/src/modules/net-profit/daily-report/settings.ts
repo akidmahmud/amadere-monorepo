@@ -110,10 +110,12 @@ export function validateSettings(input: unknown): DailyReportSettings {
       fail(`${label} percent must be 100 or less.`);
     if (c.scope !== 'REPORT' && c.scope !== 'SOURCE')
       fail(`${label} has an unknown scope.`);
-    if (
-      c.scope === 'SOURCE' &&
-      (typeof c.sourceKey !== 'string' || !c.sourceKey)
-    )
+    const keys = Array.isArray(c.sourceKeys)
+      ? c.sourceKeys.filter((k): k is string => typeof k === 'string' && !!k)
+      : typeof c.sourceKey === 'string' && c.sourceKey
+        ? [c.sourceKey]
+        : [];
+    if (c.scope === 'SOURCE' && !keys.length)
       fail(`${label} must name its source.`);
     if (typeof c.active !== 'boolean')
       fail(`${label} active must be true or false.`);
@@ -123,7 +125,7 @@ export function validateSettings(input: unknown): DailyReportSettings {
       type,
       amount: c.amount,
       scope: c.scope,
-      ...(c.scope === 'SOURCE' ? { sourceKey: c.sourceKey as string } : {}),
+      ...(c.scope === 'SOURCE' ? { sourceKeys: [...new Set(keys)] } : {}),
       active: c.active,
     };
   });

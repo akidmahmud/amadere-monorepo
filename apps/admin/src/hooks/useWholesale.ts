@@ -172,6 +172,9 @@ export interface WholesaleCustomer {
   thana: string | null;
   landmark: string | null;
   postCode: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactDesignation: string | null;
   creditLimit: string | null;
   creditDays: number | null;
   note: string | null;
@@ -232,6 +235,9 @@ export type WholesaleCustomerPatch = Partial<
     | "alternativePhone"
     | "landmark"
     | "postCode"
+    | "contactName"
+    | "contactPhone"
+    | "contactDesignation"
     | "note"
     | "isActive"
   > & {
@@ -340,6 +346,9 @@ export interface CustomerInput {
   thana?: string;
   landmark?: string;
   postCode?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactDesignation?: string;
   creditLimit?: string;
   creditDays?: number;
   openingReceivable?: string;

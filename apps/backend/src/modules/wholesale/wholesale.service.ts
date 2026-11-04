@@ -392,6 +392,9 @@ export class WholesaleService {
       ['number', (c) => c.phone],
       ['Alternative Phone', (c) => c.alternativePhone],
       ['Email', (c) => c.email],
+      ['Contact Person', (c) => c.contactName],
+      ['Contact Number', (c) => c.contactPhone],
+      ['Designation', (c) => c.contactDesignation],
       ['Order Count', (c) => c.orderCount],
       ['Total Purchase', (c) => c.purchaseTotal],
       ['Due', (c) => c.due],
@@ -577,6 +580,9 @@ export class WholesaleService {
         thana: p.thana,
         landmark: p.landmark,
         postCode: p.postCode,
+        contactName: p.contactName,
+        contactPhone: p.contactPhone,
+        contactDesignation: p.contactDesignation,
         creditLimit: p.creditLimit?.toFixed(2) ?? null,
         creditDays: p.creditDays,
         note: p.note,
@@ -889,6 +895,9 @@ export class WholesaleService {
         thana: dto.thana?.trim() || null,
         landmark: dto.landmark?.trim() || null,
         postCode: dto.postCode?.trim() || null,
+        contactName: dto.contactName?.trim() || null,
+        contactPhone: dto.contactPhone?.trim() || null,
+        contactDesignation: dto.contactDesignation?.trim() || null,
         creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : null,
         creditDays: dto.creditDays ?? null,
         openingReceivable: decimalOrThrow(
@@ -931,6 +940,15 @@ export class WholesaleService {
         ...(dto.postCode === undefined
           ? {}
           : { postCode: dto.postCode.trim() || null }),
+        ...(dto.contactName === undefined
+          ? {}
+          : { contactName: dto.contactName.trim() || null }),
+        ...(dto.contactPhone === undefined
+          ? {}
+          : { contactPhone: dto.contactPhone.trim() || null }),
+        ...(dto.contactDesignation === undefined
+          ? {}
+          : { contactDesignation: dto.contactDesignation.trim() || null }),
         ...(dto.creditLimit === undefined
           ? {}
           : {

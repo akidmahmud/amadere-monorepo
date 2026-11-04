@@ -284,6 +284,12 @@ function OverviewTab({ c }: { c: WholesaleCustomer }) {
         <Field label="Post code">{c.postCode}</Field>
       </Section>
 
+      <Section title="Contact person">
+        <Field label="Name">{c.contactName}</Field>
+        <Field label="Number">{c.contactPhone}</Field>
+        <Field label="Designation">{c.contactDesignation}</Field>
+      </Section>
+
       <Section title="Account">
         <Field label="Credit limit">{c.creditLimit ? money(c.creditLimit) : null}</Field>
         <Field label="Payment terms">
@@ -429,6 +435,9 @@ function OverviewEditor({ c, onDone }: { c: WholesaleCustomer; onDone: () => voi
     district: c.district ?? "",
     landmark: c.landmark ?? "",
     postCode: c.postCode ?? "",
+    contactName: c.contactName ?? "",
+    contactPhone: c.contactPhone ?? "",
+    contactDesignation: c.contactDesignation ?? "",
     creditLimit: c.creditLimit ? String(Number(c.creditLimit)) : "",
     creditDays: c.creditDays === null ? "" : String(c.creditDays),
     note: c.note ?? "",
@@ -491,6 +500,7 @@ function OverviewEditor({ c, onDone }: { c: WholesaleCustomer; onDone: () => voi
     // Plain text: empty clears it.
     for (const k of [
       "alternativePhone", "address", "thana", "district", "landmark", "postCode", "note",
+      "contactName", "contactPhone", "contactDesignation",
       "customerFeedback", "amaderFeedback", "familyDetails", "purchaseReason",
     ] as const) {
       if (changed(k)) patch[k] = f[k];
@@ -581,6 +591,9 @@ function OverviewEditor({ c, onDone }: { c: WholesaleCustomer; onDone: () => voi
           </EditField>
           <EditField label="Landmark">{text("landmark")}</EditField>
           <EditField label="Post code">{text("postCode")}</EditField>
+          <EditField label="Contact person">{text("contactName")}</EditField>
+          <EditField label="Contact number">{text("contactPhone")}</EditField>
+          <EditField label="Designation">{text("contactDesignation")}</EditField>
         </>,
       )}
       {box(

@@ -100,6 +100,21 @@ export class CreateWholesaleCustomerDto {
   @IsString()
   @MaxLength(20)
   postCode?: string;
+  @ApiPropertyOptional({ description: 'Contact person at the shop' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  contactName?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
+  @ApiPropertyOptional({ description: 'e.g. Owner, Manager' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  contactDesignation?: string;
 
   @ApiPropertyOptional({ description: 'Credit ceiling, as a decimal string' })
   @IsOptional()
@@ -181,6 +196,21 @@ export class UpdateWholesaleCustomerDto {
   @IsString()
   @MaxLength(20)
   postCode?: string;
+  @ApiPropertyOptional({ description: 'Contact person at the shop' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  contactName?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  contactPhone?: string;
+  @ApiPropertyOptional({ description: 'e.g. Owner, Manager' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  contactDesignation?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumberString() creditLimit?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) creditDays?: number;
 

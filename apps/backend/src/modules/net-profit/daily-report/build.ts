@@ -65,6 +65,11 @@ export function fixedCostValue(
   }
 }
 
+/** The sources a SOURCE-scoped cost applies to (old single-source rows too). */
+export function costSourceKeys(c: DailyReportFixedCost): string[] {
+  return c.sourceKeys?.length ? c.sourceKeys : c.sourceKey ? [c.sourceKey] : [];
+}
+
 function apply(
   c: DailyReportFixedCost,
   ctx: { days: string[]; sales: number; marketing: number },
@@ -102,12 +107,14 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
   const wholesaleOrderIds: number[] = [];
   let estimatedLines = 0;
 
+  const scopedBy = new Map<string, DailyReportFixedCost[]>();
   for (const src of input.sources) {
     if (!src.enabled) continue;
     const orders = input.orders.filter((o) => o.source === src.key);
     const scoped = active.filter(
-      (c) => c.scope === 'SOURCE' && c.sourceKey === src.key,
+      (c) => c.scope === 'SOURCE' && costSourceKeys(c).includes(src.key),
     );
+    scopedBy.set(src.key, scoped);
     // A source-scoped cost (shop rent) is still owed on a day with no sales.
     if (!orders.length && !scoped.length) continue;
 
@@ -168,21 +175,38 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
       .sort((a, b) => b.qty - a.qty);
 
     const subtotal = totals(products, delivery);
-    const fixedCosts = scoped.map((c) =>
-      apply(c, { days, sales: subtotal.sales, marketing: input.marketing }),
-    );
     blocks.push({
       key: src.key,
       label: src.label,
       products,
       subtotal,
-      fixedCosts,
-      net: r2(
-        subtotal.profit -
-          subtotal.delivery -
-          sum(fixedCosts.map((f) => f.value)),
-      ),
+      fixedCosts: [], // filled below, once every source's sales are known
+      net: 0,
     });
+  }
+
+  // A cost picked for several sources is ONE cost shared between them (by
+  // each one's share of their combined sales), never charged in full to
+  // each. A percent-of-sales cost is already per source.
+  const salesOf = new Map(blocks.map((b) => [b.key, b.subtotal.sales]));
+  for (const b of blocks) {
+    b.fixedCosts = (scopedBy.get(b.key) ?? []).map((c) => {
+      const applied = apply(c, {
+        days,
+        sales: b.subtotal.sales,
+        marketing: input.marketing,
+      });
+      const keys = costSourceKeys(c).filter((k) => salesOf.has(k));
+      if (c.type === 'PERCENT_OF_SALES' || keys.length <= 1) return applied;
+      const total = sum(keys.map((k) => salesOf.get(k) ?? 0));
+      const share = total > 0 ? b.subtotal.sales / total : 1 / keys.length;
+      return { ...applied, value: r2(applied.value * share) };
+    });
+    b.net = r2(
+      b.subtotal.profit -
+        b.subtotal.delivery -
+        sum(b.fixedCosts.map((f) => f.value)),
+    );
   }
 
   const grandTotal = totals(

@@ -15,8 +15,11 @@ export interface DailyReportFixedCost {
   /** ৳ for PER_DAY / PER_MONTH, % for PERCENT_OF_SALES, ignored for MARKETING_LEDGER. */
   amount: number;
   scope: FixedCostScope;
-  /** Required when scope = SOURCE. */
+  /** Old single-source form; read as `sourceKeys: [sourceKey]`. */
   sourceKey?: string;
+  /** scope = SOURCE: the sources it applies to (one or more). A fixed amount
+   *  is shared between them by sales, never charged to each in full. */
+  sourceKeys?: string[];
   active: boolean;
 }
 

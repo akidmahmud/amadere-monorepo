@@ -20,3 +20,5 @@ linkedin/
 
 # Google service account keys (live order sheet) — never commit
 .secrets/
+# VPS copy of R2 media (MirroredMediaStorage)
+media-mirror/

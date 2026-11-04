@@ -53,6 +53,12 @@ export class R2MediaStorage implements MediaStorage {
     };
   }
 
+  /** The public URL a key has (or will have) — no R2 call. */
+  publicUrl(key: string): string {
+    const base = this.config.getOrThrow<string>('R2_PUBLIC_BASE_URL').replace(/\/$/, '');
+    return `${base}/${key}`;
+  }
+
   async upload(
     key: string,
     body: Buffer,

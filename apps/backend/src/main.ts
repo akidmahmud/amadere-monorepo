@@ -4,7 +4,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response, NextFunction } from 'express';
+import { join } from 'node:path';
 import { AppModule } from './app.module';
+import { mediaMirrorDir } from './modules/media/storage/mirrored-media-storage';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
@@ -58,6 +60,17 @@ async function bootstrap() {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
     next();
+  });
+
+  // The VPS copy of every public R2 file, for the cdn.amadere.com Worker to
+  // fall back on when R2 is down (MirroredMediaStorage). Keys are random
+  // UUIDs and never overwritten, so cache forever. Private files are in a
+  // sibling folder that is never served.
+  app.useStaticAssets(join(mediaMirrorDir(config), 'public'), {
+    prefix: '/media-mirror/',
+    immutable: true,
+    maxAge: '365d',
+    fallthrough: false,
   });
 
   app.setGlobalPrefix('api/v1', {

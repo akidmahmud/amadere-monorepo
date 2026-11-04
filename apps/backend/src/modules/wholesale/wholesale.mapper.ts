@@ -25,6 +25,9 @@ export class WholesaleCustomerDto {
   thana!: string | null;
   landmark!: string | null;
   postCode!: string | null;
+  contactName!: string | null;
+  contactPhone!: string | null;
+  contactDesignation!: string | null;
   creditLimit!: string | null;
   creditDays!: number | null;
   note!: string | null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   DailyReportFixedCost,
   DailyReportSettingsView,
@@ -20,6 +20,83 @@ const TYPE_LABEL: Record<FixedCostType, string> = {
   PERCENT_OF_SALES: "% of sales",
   MARKETING_LEDGER: "From Marketing Cost entries",
 };
+
+/** "Applies to" with tick boxes: nothing ticked = the whole report. */
+function AppliesTo({
+  sources,
+  value,
+  onChange,
+}: {
+  sources: { key: string; label: string }[];
+  value: string[];
+  onChange: (keys: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const picked = sources.filter((s) => value.includes(s.key));
+  const text =
+    picked.length === 0
+      ? "Whole report"
+      : picked.length === 1
+        ? `${picked[0].label} only`
+        : `${picked[0].label} +${picked.length - 1}`;
+  const toggle = (key: string, on: boolean) =>
+    onChange(on ? [...value, key] : value.filter((k) => k !== key));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Applies to"
+        className={`${inputClass} min-w-56 max-w-72 truncate text-left`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {text}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-64 overflow-y-auto rounded-lg border border-border bg-surface py-1 shadow-lg">
+          <div className="flex items-center justify-between px-3 py-1.5 text-xs">
+            <span className="text-muted">
+              {picked.length ? `${picked.length} selected` : "Whole report"}
+            </span>
+            {picked.length > 0 && (
+              <button
+                type="button"
+                className="font-semibold text-danger"
+                onClick={() => onChange([])}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {sources.map((s) => (
+            <label
+              key={s.key}
+              className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-2"
+            >
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand-500"
+                checked={value.includes(s.key)}
+                onChange={(e) => toggle(s.key, e.target.checked)}
+              />
+              {s.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function SettingsPanel() {
   const q = useDailyReportSettings(true);
@@ -129,8 +206,9 @@ export function SettingsPanel() {
         <h3 className="font-bold">Fixed costs</h3>
         <p className="text-xs text-muted">
           Costs taken off net profit, e.g. Marketing, VAT, rent, salaries.
-          “Whole report” costs appear under the grand total, and a cost for one
-          source is taken off that source&apos;s total.
+          “Whole report” costs appear under the grand total. Tick one or more
+          sources to take a cost off those sources instead; a fixed amount on
+          several sources is shared between them by their sales.
         </p>
         {d.fixedCosts.map((c, i) => (
           <div
@@ -175,29 +253,22 @@ export function SettingsPanel() {
                 }
               />
             )}
-            <select
-              className={inputClass}
-              aria-label="Applies to"
+            <AppliesTo
+              sources={d.sources}
               value={
-                c.scope === "REPORT" ? "REPORT" : `SOURCE:${c.sourceKey ?? ""}`
+                c.scope === "REPORT"
+                  ? []
+                  : (c.sourceKeys ?? (c.sourceKey ? [c.sourceKey] : []))
               }
-              onChange={(e) => {
-                const v = e.target.value;
+              onChange={(keys) =>
                 setCost(
                   i,
-                  v === "REPORT"
-                    ? { scope: "REPORT", sourceKey: undefined }
-                    : { scope: "SOURCE", sourceKey: v.slice(7) },
-                );
-              }}
-            >
-              <option value="REPORT">Whole report</option>
-              {d.sources.map((s) => (
-                <option key={s.key} value={`SOURCE:${s.key}`}>
-                  {s.label} only
-                </option>
-              ))}
-            </select>
+                  keys.length
+                    ? { scope: "SOURCE", sourceKeys: keys, sourceKey: undefined }
+                    : { scope: "REPORT", sourceKeys: undefined, sourceKey: undefined },
+                )
+              }
+            />
             <ToggleSwitch
               checked={c.active}
               onChange={(v) => setCost(i, { active: v })}

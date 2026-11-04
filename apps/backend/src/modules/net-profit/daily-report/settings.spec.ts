@@ -103,7 +103,7 @@ describe('validateSettings', () => {
           type: 'PER_MONTH',
           amount: 30000,
           scope: 'SOURCE',
-          sourceKey: 'SHOP',
+          sourceKeys: ['SHOP'],
           active: true,
         },
       ],
