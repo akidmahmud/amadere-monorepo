@@ -21,6 +21,13 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-/var/www/amadere-monorepo}"
 BRANCH="${BRANCH:-master}"
 LOCK_FILE="${LOCK_FILE:-/tmp/amadere-deploy.lock}"
+# The last commit that BUILT and restarted. Not HEAD: HEAD moves at
+# `git reset` before the build, so a build killed half-way (OOM, 2026-10/11)
+# used to leave HEAD == origin and every later tick did nothing — the admin
+# sat on a half-written .next for days. Untracked, so reset never touches it.
+DEPLOYED_FILE="${DEPLOYED_FILE:-$REPO_DIR/.deployed-commit}"
+FAILED_FILE="${FAILED_FILE:-$REPO_DIR/.deploy-failed}"
+RETRY_AFTER_SECONDS="${RETRY_AFTER_SECONDS:-900}"
 
 # A build takes minutes and the timer fires every minute, so overlapping runs
 # are the normal case, not an edge case. Second and later callers exit
@@ -44,8 +51,16 @@ cd "$REPO_DIR"
 
 git fetch --quiet origin "$BRANCH"
 
-LOCAL="$(git rev-parse HEAD)"
+LOCAL="$(cat "$DEPLOYED_FILE" 2>/dev/null || true)"
 REMOTE="$(git rev-parse "origin/$BRANCH")"
+
+# A commit whose build just failed is retried, but not every minute.
+if [ -f "$FAILED_FILE" ] && [ "${FORCE:-}" != "1" ]; then
+  read -r FAILED_SHA FAILED_AT < "$FAILED_FILE" || true
+  if [ "${FAILED_SHA:-}" = "$REMOTE" ] && [ $(( $(date +%s) - ${FAILED_AT:-0} )) -lt "$RETRY_AFTER_SECONDS" ]; then
+    exit 0
+  fi
+fi
 
 # FORCE=1 rebuilds and restarts even when nothing changed. Needed for the
 # very first run (the one-time `git reset` that puts this script on the box
@@ -62,7 +77,7 @@ if [ "$LOCAL" = "$REMOTE" ]; then
   echo "=== Forced redeploy of ${LOCAL:0:8} at $(date -Is) ==="
 else
   echo "=== Deploying ${LOCAL:0:8} -> ${REMOTE:0:8} at $(date -Is) ==="
-  git log --oneline "$LOCAL..$REMOTE" | sed 's/^/  /'
+  git log --oneline "$LOCAL..$REMOTE" 2>/dev/null | sed 's/^/  /' || true
 fi
 
 # Mirror origin exactly — no local changes should ever exist on the deploy
@@ -85,12 +100,23 @@ pnpm --filter @amader/db exec prisma migrate deploy
 # next build process is already running" — only then do we clear .next and
 # retry, so the destructive cleanup only ever happens in that rare failure
 # case, not on every deploy.
-pnpm build || {
+#
+# --concurrency=1: building backend, admin and web at the same time ran the
+# VPS out of memory (systemd: "Failed with result 'oom-kill'") on every
+# deploy from late October 2026. One at a time is slower but finishes.
+build() { pnpm turbo run build --concurrency=1; }
+build || {
   echo "Build failed — clearing .next (possible stale build lock) and retrying once"
   rm -rf apps/admin/.next apps/web/.next
-  pnpm build
+  build
+} || {
+  echo "$REMOTE $(date +%s)" > "$FAILED_FILE"
+  echo "=== Build of ${REMOTE:0:8} FAILED at $(date -Is); retrying in $((RETRY_AFTER_SECONDS / 60)) min ===" >&2
+  exit 1
 }
 
 pm2 restart backend admin web
+echo "$REMOTE" > "$DEPLOYED_FILE"
+rm -f "$FAILED_FILE"
 
 echo "=== Deployed $(git rev-parse --short HEAD) at $(date -Is) ==="

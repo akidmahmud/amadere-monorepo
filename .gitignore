@@ -22,3 +22,6 @@ linkedin/
 .secrets/
 # VPS copy of R2 media (MirroredMediaStorage)
 media-mirror/
+# deploy/poll-deploy.sh state
+.deployed-commit
+.deploy-failed
