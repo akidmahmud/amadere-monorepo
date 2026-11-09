@@ -54,6 +54,9 @@ export interface IncompleteOrder {
   /** Where the cart came from — which ad brought this shopper in. */
   utmSource: string | null;
   utmCampaign: string | null;
+  /** Null on carts captured before IPs were recorded. */
+  ipAddress: string | null;
+  ipBlocked?: boolean;
   lastSeenAt: string;
   createdAt: string;
   /** Cached courier-fraud verdict for `phone`. Null means never checked —
@@ -273,6 +276,19 @@ export function useCancelIncompleteOrder() {
       proxyFetch<IncompleteOrder>(`/admin/net-profit/recovery/${id}/cancel`, {
         method: "POST",
         body: JSON.stringify({ reason }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: LIST_KEY });
+    },
+  });
+}
+
+export function useBlockRecoveryIp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      proxyFetch<void>(`/admin/net-profit/recovery/${id}/block-ip`, {
+        method: "POST",
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_KEY });

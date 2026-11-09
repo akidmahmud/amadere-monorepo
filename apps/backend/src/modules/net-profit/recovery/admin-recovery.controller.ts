@@ -24,6 +24,7 @@ import type { Response } from 'express';
 import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { PermissionGuard } from '../../../common/auth/permission.guard';
 import { RequirePermission } from '../../../common/auth/permission.decorator';
+import { CurrentAdmin } from '../../../common/auth/current-admin.decorator';
 import { AuditLogInterceptor } from '../../../common/audit-log/audit-log.interceptor';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { CheckoutAddressDto } from '../../orders/dto/checkout-address.dto';
@@ -211,6 +212,13 @@ export class AdminRecoveryController {
   @RequirePermission('net_profit_recovery.manage')
   cancel(@Param('id', ParseIntPipe) id: number, @Body() dto: CancelIncompleteOrderDto) {
     return this.recovery.cancel(id, dto.reason);
+  }
+
+  // Both permissions: this writes an Order Blocker rule.
+  @Post(':id/block-ip')
+  @RequirePermission('net_profit_recovery.manage', 'net_profit_blocker.manage')
+  blockIp(@Param('id', ParseIntPipe) id: number, @CurrentAdmin() admin: { id: number }) {
+    return this.recovery.blockIp(id, admin.id);
   }
 
   @Post(':id/create-order')

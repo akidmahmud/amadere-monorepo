@@ -153,11 +153,11 @@ export class CheckoutService {
           'Could not send the code to that email address. Try SMS instead.',
         );
       }
-      await this.markOtpSent(identity, dto);
+      await this.markOtpSent(identity, dto, ip);
       return;
     }
     await this.sms.sendTemplate('otp', dto.phone, 'EN', { code });
-    await this.markOtpSent(identity, dto);
+    await this.markOtpSent(identity, dto, ip);
   }
 
   /**
@@ -171,20 +171,29 @@ export class CheckoutService {
    * If they go on to verify, the order-created listener flips the same row to
    * recovered, so only the genuine drop-offs remain in the list.
    */
-  private async markOtpSent(identity: CartIdentity, dto: RequestCodOtpDto): Promise<void> {
+  private async markOtpSent(identity: CartIdentity, dto: RequestCodOtpDto, ip?: string): Promise<void> {
+    if (await this.ipBlocked(ip)) return;
     await this.recovery.captureCheckoutStage(identity, {
       stage: 'otp',
       name: dto.name,
       phone: dto.phone,
       email: dto.email,
+      ip,
     });
+  }
+
+  /** A blocked visitor stops filling the Recovery list with junk. */
+  private async ipBlocked(ip?: string): Promise<boolean> {
+    return !!ip && (await this.blocker.check({ ip })).blocked;
   }
 
   /** Checkout-form beacon — see CheckoutAbandonmentDto. */
   async recordAbandonment(
     identity: CartIdentity,
     dto: CheckoutAbandonmentDto,
+    ip?: string,
   ): Promise<void> {
+    if (await this.ipBlocked(ip)) return;
     // Attribution is pulled out explicitly: the rest-spread would otherwise
     // sweep utm_*/referrer into `address` and bury them in the address JSON
     // blob, where nothing can query them.
@@ -209,6 +218,7 @@ export class CheckoutService {
       phone,
       email,
       address,
+      ip,
       attribution: {
         utmSource,
         utmMedium,

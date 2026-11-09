@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Request, Response, NextFunction } from 'express';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
+import { loadOwnAddresses, resolveClientIp } from './common/client-ip';
 import { mediaMirrorDir } from './modules/media/storage/mirrored-media-storage';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -32,6 +33,15 @@ async function bootstrap() {
   // traffic. Trusting exactly one hop reads the real client IP from
   // X-Forwarded-For instead.
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  // Must run before anything reads req.ip (see client-ip.ts).
+  await loadOwnAddresses(config.get<string>('API_BASE_URL'));
+  app.getHttpAdapter().getInstance().use((req: Request, _res: Response, next: NextFunction) => {
+    Object.defineProperty(req, 'ip', {
+      value: resolveClientIp(req.ip, req.headers['x-client-ip']),
+    });
+    next();
+  });
 
   // Express advertises `x-powered-by: Express` by default. No reason to hand
   // the stack to anyone probing — disable it.

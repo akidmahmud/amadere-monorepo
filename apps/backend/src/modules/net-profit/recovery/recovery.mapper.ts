@@ -1,5 +1,6 @@
 import { IncompleteOrder } from '@amader/db';
 import { FraudCheckDto } from '../fraud/fraud.mapper';
+import { isOwnAddress } from '../../../common/client-ip';
 
 const TRASH_RETENTION_DAYS = 30;
 
@@ -35,6 +36,9 @@ export class IncompleteOrderDto {
    *  and prioritise accordingly. */
   utmSource!: string | null;
   utmCampaign!: string | null;
+  ipAddress!: string | null;
+  /** An active Order Blocker rule covers this IP (list only). */
+  ipBlocked?: boolean;
   lastSeenAt!: Date;
   createdAt!: Date;
 
@@ -77,6 +81,9 @@ export function toIncompleteOrderDto(
     recoveryAttempts: row.recoveryAttempts,
     utmSource: row.utmSource,
     utmCampaign: row.utmCampaign,
+    // Carts captured while every visitor looked like this server: not a
+    // real visitor IP, and offering to block it would block every customer.
+    ipAddress: row.ipAddress && !isOwnAddress(row.ipAddress) ? row.ipAddress : null,
     riskLevel: risk?.riskLevel ?? null,
     riskSuccessRate: risk?.successRate ?? null,
     riskCheckedAt: risk?.checkedAt ?? null,

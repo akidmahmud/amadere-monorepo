@@ -39,7 +39,7 @@ export class CheckoutController {
     @Req() req: RequestWithCartIdentity,
     @Body() dto: CheckoutAbandonmentDto,
   ): Promise<void> {
-    return this.checkout.recordAbandonment(req.cartIdentity, dto);
+    return this.checkout.recordAbandonment(req.cartIdentity, dto, req.ip);
   }
 
   @Post()

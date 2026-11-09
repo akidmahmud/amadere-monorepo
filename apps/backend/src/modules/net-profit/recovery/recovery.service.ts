@@ -23,6 +23,9 @@ import { SmtpEmailProvider } from '../cart-campaigns/providers/smtp-email.provid
 import { renderRecoveryEmail, RenderedRecoveryEmail } from './recovery-email.renderer';
 import { DownloadsService } from '../../digital-products/downloads.service';
 import { IncompleteOrderDto, toIncompleteOrderDto } from './recovery.mapper';
+import { isOwnAddress } from '../../../common/client-ip';
+
+const MAX_NAME = 80;
 import { FraudService } from '../fraud/fraud.service';
 
 const SETTINGS_NAMESPACE = 'recovery';
@@ -253,12 +256,52 @@ export class RecoveryService {
   private async withRisk(rows: IncompleteOrder[]): Promise<IncompleteOrderDto[]> {
     const phones = rows.map((r) => r.phone).filter((p): p is string => !!p);
     const byPhone = await this.fraud.latestByPhones(phones);
+    const ips = [...new Set(rows.flatMap((r) => r.ipAddress ?? []))];
+    const blocked = new Set(
+      (
+        await this.prisma.client.blockRule.findMany({
+          where: {
+            type: 'IP',
+            value: { in: ips },
+            isActive: true,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          select: { value: true },
+        })
+      ).map((r) => r.value),
+    );
     return rows.map((row) => {
       // latestByPhones keys on the normalized (+880…) form, and the DTO it
       // returns carries the local 01… form, so the lookup goes through the
       // same normalizer rather than the raw column.
       const key = row.phone ? (normalizeBdPhone(row.phone) ?? row.phone) : null;
-      return toIncompleteOrderDto(row, key ? byPhone.get(key) : undefined);
+      return {
+        ...toIncompleteOrderDto(row, key ? byPhone.get(key) : undefined),
+        ipBlocked: !!row.ipAddress && blocked.has(row.ipAddress),
+      };
+    });
+  }
+
+  /** Same rule table as Order Blocker, so it can be undone from there. */
+  async blockIp(id: number, adminId: number): Promise<void> {
+    const row = await this.prisma.client.incompleteOrder.findUnique({
+      where: { id },
+      select: { ipAddress: true, name: true },
+    });
+    if (!row) throw new NotFoundException('Cart not found');
+    if (!row.ipAddress || isOwnAddress(row.ipAddress)) {
+      throw new BadRequestException('No visitor IP was recorded for this cart');
+    }
+    await this.prisma.client.blockRule.upsert({
+      where: { type_value: { type: 'IP', value: row.ipAddress } },
+      create: {
+        type: 'IP',
+        value: row.ipAddress,
+        customerName: row.name,
+        reason: 'Blocked from Cart Recovery',
+        createdBy: adminId,
+      },
+      update: { isActive: true, expiresAt: null },
     });
   }
 
@@ -504,6 +547,8 @@ export class RecoveryService {
        *  checkout sends. This is the only chance to record it — once the
        *  cart is abandoned the cookie is out of reach. */
       attribution?: RecoveryAttribution;
+      /** Visitor IP, so staff can block it from the Recovery list. */
+      ip?: string;
     },
   ): Promise<void> {
     try {
@@ -550,9 +595,11 @@ export class RecoveryService {
       // carries a phone but no name, and it must not wipe the name the
       // checkout-stage capture already stored.
       const contact = {
-        ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+        // Capped: scammers paste whole addresses into the name box.
+        ...(input.name?.trim() ? { name: input.name.trim().slice(0, MAX_NAME) } : {}),
         ...(input.phone?.trim() ? { phone: input.phone.trim() } : {}),
         ...(input.email?.trim() ? { email: input.email.trim() } : {}),
+        ...(input.ip ? { ipAddress: input.ip } : {}),
       };
 
       // Only the parts actually typed. Merged over whatever is already

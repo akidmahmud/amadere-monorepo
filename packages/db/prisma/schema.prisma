@@ -3011,6 +3011,8 @@ model IncompleteOrder {
   /// deleting does not demand one up front the way cancelling used to.
   deletedAt        DateTime? @map("deleted_at")
   recoveryAttempts Int       @default(0) @map("recovery_attempts")
+  /// Visitor IP at the last checkout/OTP capture, for the Block IP button.
+  ipAddress        String?   @map("ip_address")
   lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
 
   /// Where the shopper came from, captured at abandonment from the same

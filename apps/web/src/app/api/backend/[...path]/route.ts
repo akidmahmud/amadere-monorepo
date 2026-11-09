@@ -70,6 +70,10 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
         // change. NOTE: this only lands correctly while `trust proxy` in
         // main.ts matches the real hop count between here and Nest.
         ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+        // The reverse proxy in front of the API replaces X-Forwarded-For with
+        // this server's own address, so name the visitor separately too. The
+        // backend only believes it from this machine (common/client-ip.ts).
+        ...(clientIp ? { "X-Client-IP": clientIp } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body,

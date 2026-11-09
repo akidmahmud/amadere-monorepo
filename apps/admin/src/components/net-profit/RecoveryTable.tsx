@@ -3,11 +3,20 @@
 import React from "react";
 import { Button, Icon, RiskBadge } from "@amader/admin-ui";
 import { canonicalFacebookSource } from "@amader/shared";
-import { STAGE_LABELS, type IncompleteOrder } from "@/hooks/useRecovery";
+import {
+  STAGE_LABELS,
+  useBlockRecoveryIp,
+  type IncompleteOrder,
+} from "@/hooks/useRecovery";
+import { useCan } from "@/hooks/useAdminAuth";
 import { MobileRecordCard } from "@/components/MobileRecordCard";
 import { FraudDetailModal } from "@/components/FraudDetailModal";
 import { EditableReasonCell } from "./EditableReasonCell";
 import { RecoveryEmailModal } from "./RecoveryEmailModal";
+
+/** Scammers paste whole addresses as a name; the full text stays on hover. */
+const shortName = (name: string | null) =>
+  name && name.length > 28 ? `${name.slice(0, 28)}…` : name;
 
 const LINE = "#e5ebe6";
 const INK = "#1e2b22";
@@ -104,6 +113,8 @@ export function RecoveryTable({
   deletingId?: number | null;
   isLoading: boolean;
 }) {
+  const blockIp = useBlockRecoveryIp();
+  const canBlock = useCan("net_profit_blocker.manage");
   // Which row's email preview is open. Null = closed.
   const [emailingId, setEmailingId] = React.useState<number | null>(null);
   // The number whose courier history is open. One modal for the whole table,
@@ -143,7 +154,7 @@ export function RecoveryTable({
           return (
             <MobileRecordCard
               key={row.id}
-              title={row.name || "Unknown"}
+              title={shortName(row.name) || "Unknown"}
               subtitle={row.email ?? undefined}
               badge={
                 <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-extrabold text-text">
@@ -291,9 +302,41 @@ export function RecoveryTable({
                       }}
                     >
                       <div className="flex flex-col gap-0.5">
-                        <span className="font-bold text-[#2e7d43]">
-                          {row.name || "Anonymous Shopper"}
+                        <span
+                          className="font-bold text-[#2e7d43]"
+                          title={row.name ?? undefined}
+                        >
+                          {shortName(row.name) || "Anonymous Shopper"}
                         </span>
+                        {row.ipAddress && (
+                          <span className="inline-flex items-center gap-1.5 text-[0.68rem] font-medium text-muted">
+                            IP {row.ipAddress}
+                            {row.ipBlocked ? (
+                              <span className="font-bold text-[#e5484d]">
+                                Blocked
+                              </span>
+                            ) : (
+                              canBlock && (
+                                <button
+                                  type="button"
+                                  disabled={blockIp.isPending}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      confirm(
+                                        `Block IP ${row.ipAddress}? Orders from it will be refused. Mobile networks share IPs, so a real customer could be affected. Undo in Order Blocker.`,
+                                      )
+                                    )
+                                      blockIp.mutate(row.id);
+                                  }}
+                                  className="font-bold text-[#e5484d] hover:underline disabled:opacity-40"
+                                >
+                                  Block IP
+                                </button>
+                              )
+                            )}
+                          </span>
+                        )}
                         {row.phone && (
                           // Click-to-call straight from the row: chasing an
                           // abandoned cart IS a phone call, so making staff
