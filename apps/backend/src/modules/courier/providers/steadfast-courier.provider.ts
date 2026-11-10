@@ -79,7 +79,9 @@ export class SteadfastCourierProvider implements CourierProvider {
   ): Promise<CreateConsignmentResult> {
     const payload = {
       invoice: input.invoiceNumber,
-      recipient_name: input.recipientName,
+      // Steadfast caps the name at 100 characters; a pasted address as a
+      // name would otherwise get the whole booking refused.
+      recipient_name: input.recipientName.slice(0, 100),
       // Steadfast expects the local 11-digit shape (01XXXXXXXXX), not this
       // app's site-wide storage format (880XXXXXXXXXX, see phoneLookupCandidates
       // elsewhere) — same conversion fraudCheck() already does below, applied
@@ -95,7 +97,9 @@ export class SteadfastCourierProvider implements CourierProvider {
       recipient_address: input.recipientAddress.slice(0, 250),
       cod_amount: Number(input.codAmount),
       note: input.note ?? '',
-      item_description: input.itemDescription ?? '',
+      // Steadfast rejects the whole booking over 255 chars ("The item
+      // description may not be greater than 255 characters").
+      item_description: (input.itemDescription ?? '').slice(0, 255),
       delivery_type: input.deliveryType ?? 0,
     };
 

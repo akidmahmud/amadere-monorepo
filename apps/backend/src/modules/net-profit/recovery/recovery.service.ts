@@ -1058,7 +1058,7 @@ export class RecoveryService {
       // Variants carry their own price: a `hasVariants` product has NULL
       // price/salePrice on the Product row itself (see the schema note), so
       // pricing from Product alone yields zero for every such item.
-      include: { variants: { select: { id: true, price: true, salePrice: true } } },
+      include: { variants: { select: { id: true, price: true, salePrice: true, sku: true } } },
     });
     const productById = new Map(products.map((p) => [p.id, p]));
 
@@ -1096,6 +1096,10 @@ export class RecoveryService {
         quantity: i.quantity,
         unitPrice,
         name: i.name,
+        // Snapshotted like checkout does: the courier booking describes the
+        // parcel by SKU, and without one it fell back to the long product
+        // names and Steadfast refused it (over 255 characters).
+        sku: variant?.sku ?? product?.sku ?? null,
         // Reused from the same load, so a staff-recreated digital order still
         // snapshots DIGITAL and doesn't land in the courier dispatch queue.
         productType: product?.productType ?? 'PHYSICAL',
@@ -1140,6 +1144,7 @@ export class RecoveryService {
             productId: i.productId,
             variantId: i.variantId,
             productNameSnapshot: i.name,
+            skuSnapshot: i.sku,
             unitPrice: i.unitPrice,
             quantity: i.quantity,
             productTypeSnapshot: i.productType,
