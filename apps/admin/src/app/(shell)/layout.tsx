@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useAbandonmentAlert";
 import { useNewOrderAlert } from "@/hooks/useNewOrderAlert";
 import { usePendingOrderCount } from "@/hooks/useOrderManager";
+import { useSmsOutOfBalance } from "@/hooks/useSms";
 
 // A super admin sees every row (matches the backend PermissionGuard's own
 // bypass). Anyone else only sees rows whose `permission` they've been
@@ -70,6 +71,10 @@ export default function ShellLayout({
   // is waiting behind this link", or it contradicts the page it points at.
   const pendingOrders = usePendingOrderCount(canSeeOrders);
 
+  const canSeeSms =
+    !!me && (me.isSuperAdmin || me.permissions.includes("net_profit_sms.view"));
+  const smsNoBalance = useSmsOutOfBalance(canSeeSms);
+
   // The abandoned-cart ROWS are fetched only after the bell has been opened
   // once — they carry cart snapshots, and the cheap count-only poll in
   // useAbandonmentAlert exists precisely so every admin isn't pulling them
@@ -83,6 +88,19 @@ export default function ShellLayout({
   // then a single roll-up row for abandoned carts rather than one row per
   // cart — the Recovery page is the place to actually work through those.
   const notifications: AppNotification[] = [
+    // First: while it lasts, no OTP or order SMS reaches anyone.
+    ...(smsNoBalance
+      ? [
+          {
+            id: "sms-balance",
+            title: "SMS balance is empty",
+            subtitle: "Messages are failing — top up the SMS gateway",
+            href: "/net-profit/sms",
+            unread: true,
+            type: "alert" as const,
+          },
+        ]
+      : []),
     ...orderAlert.notifications.map((o) => ({
       id: `order-${o.id}`,
       title: `New order ${o.orderNumber}`,
@@ -154,14 +172,16 @@ export default function ShellLayout({
     const withBadges = visible.map((entry) =>
       "href" in entry && badges[entry.href]
         ? { ...entry, badge: badges[entry.href] }
-        : entry,
+        : "href" in entry && entry.href === "/net-profit/sms" && smsNoBalance
+          ? { ...entry, dot: true }
+          : entry,
     );
     // No red dot on Recovery any more. It used to mark "something new arrived",
     // but the row now carries the actual count, and a dot sitting where a
     // number belongs just reads as a number that failed to load. Zero waiting
     // means nothing is drawn, which is the honest state.
     return withBadges;
-  }, [me, abandonment.total, pendingOrders]);
+  }, [me, abandonment.total, pendingOrders, smsNoBalance]);
 
   return (
     <AppShell
@@ -176,8 +196,10 @@ export default function ShellLayout({
       userName={me ? `${me.firstName} ${me.lastName}`.trim() || me.email : "…"}
       userSubtitle={me?.email}
       pageTitle={pageTitleFor(pathname)}
-      hasNotification={abandonment.unseen > 0 || orderAlert.unseen > 0}
-      notificationCount={orderAlert.unseen + (abandonment.unseen > 0 ? 1 : 0)}
+      hasNotification={smsNoBalance || abandonment.unseen > 0 || orderAlert.unseen > 0}
+      notificationCount={
+        orderAlert.unseen + (abandonment.unseen > 0 ? 1 : 0) + (smsNoBalance ? 1 : 0)
+      }
       notifications={notifications}
       onNotificationsOpen={() => {
         setBellOpened(true);

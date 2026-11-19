@@ -19,7 +19,7 @@ function make(overrides: Record<string, unknown> = {}) {
     taxAmount: D(0),
     totalAmount: D(100),
     tenderedAmount: D(100),
-    payments: [{ provider: 'CASH', transactionRef: null }],
+    payments: [{ id: 9, provider: 'CASH', transactionRef: null, amount: D(0), createdAt: new Date(0) }],
     items: [
       { id: 1, productId: 10, variantId: null, quantity: 2, unitPrice: D(50), restockedQuantity: 0, productNameSnapshot: 'Oil' },
     ],
@@ -28,7 +28,7 @@ function make(overrides: Record<string, unknown> = {}) {
   const tx = {
     order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     orderItem: { update: jest.fn(), delete: jest.fn(), create: jest.fn() },
-    payment: { updateMany: jest.fn() },
+    payment: { update: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
   };
   const product = (id: number, name: string) => ({
@@ -89,7 +89,7 @@ describe('PosSaleService.editSale', () => {
     expect(r.difference).toBe('-50.00');
     expect(stock.move.mock.calls[0][1]).toMatchObject({ type: 'RETURN', qty: 1 });
     expect(salesPosting.postRefund).toHaveBeenCalledWith(expect.objectContaining({ amount: D(50) }));
-    expect(tx.payment.updateMany).toHaveBeenCalledWith({ where: { orderId: 5 }, data: { amount: D(50) } });
+    expect(tx.payment.update).toHaveBeenCalledWith({ where: { id: 9 }, data: { amount: D(50) } });
   });
 
   it('dry run previews without writing', async () => {
@@ -127,7 +127,7 @@ function makeWeighed(todayPrice = '352') {
     taxAmount: D(0),
     totalAmount: D(425),
     tenderedAmount: D(425),
-    payments: [{ provider: 'CASH', transactionRef: null }],
+    payments: [{ id: 9, provider: 'CASH', transactionRef: null, amount: D(0), createdAt: new Date(0) }],
     items: [
       { id: 51, productId: 9, variantId: null, quantity: 1, unitPrice: D(375), weighedKg: new Prisma.Decimal('1.25'), restockedQuantity: 0, productNameSnapshot: 'Frozen Chicken' },
       { id: 52, productId: 10, variantId: null, quantity: 1, unitPrice: D(50), weighedKg: null, restockedQuantity: 0, productNameSnapshot: 'Oil' },
@@ -136,7 +136,7 @@ function makeWeighed(todayPrice = '352') {
   const tx = {
     order: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     orderItem: { update: jest.fn(), delete: jest.fn(), create: jest.fn() },
-    payment: { updateMany: jest.fn() },
+    payment: { update: jest.fn() },
     orderStatusHistory: { create: jest.fn() },
   };
   const product = (id: number, name: string, soldByWeight = false) => ({

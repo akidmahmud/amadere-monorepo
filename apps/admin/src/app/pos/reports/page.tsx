@@ -113,6 +113,39 @@ export default function PosReportsPage() {
       ),
     enabled: tab === "sales",
   });
+  const daily = useQuery({
+    queryKey: ["pos-report-sales-daily", scopeId, from, to, everyStore],
+    queryFn: () =>
+      proxyFetch<
+        {
+          date: string;
+          orders: number;
+          gross: string;
+          vat: string;
+          returns: string;
+          net: string;
+        }[]
+      >(`/admin/pos/reports/sales-daily${qs({ storeId: scopeId, from, to })}`),
+    enabled: tab === "sales",
+  });
+  const dailyPage = usePaged(daily.data ?? [], 15);
+  const profitDaily = useQuery({
+    queryKey: ["pos-report-profit-daily", scopeId, from, to, everyStore],
+    queryFn: () =>
+      proxyFetch<
+        {
+          date: string;
+          gross: string;
+          returns: string;
+          vat: string;
+          netSales: string;
+          expenses: string;
+          profit: string;
+        }[]
+      >(`/admin/pos/reports/profit-daily${qs({ storeId: scopeId, from, to })}`),
+    enabled: tab === "profit",
+  });
+  const profitDailyPage = usePaged(profitDaily.data ?? [], 15);
   const profit = useQuery({
     queryKey: ["pos-report-profit", scopeId, from, to, everyStore],
     queryFn: () =>
@@ -326,6 +359,63 @@ export default function PosReportsPage() {
         </div>
       )}
 
+      {tab === "sales" && (daily.data?.length ?? 0) > 0 && (
+        <div className={`${card} mt-4`}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="font-bold">Date-wise breakdown</h3>
+            <CanExport>
+              <button
+                className={exportBtn}
+                onClick={() =>
+                  exportFile(
+                    `/admin/pos/reports/sales-daily.csv${qs({ storeId: scopeId, from, to })}`,
+                    `pos-sales-daily-${from}-${to}`,
+                    reportTitle(`POS Daily Sales — ${storeLabel}`, range),
+                  )
+                }
+              >
+                Export
+              </button>
+            </CanExport>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="text-left text-gray-500">
+              <tr>
+                <th className="py-2">Date</th>
+                <th className="text-right">Sales</th>
+                <th className="text-right">Gross</th>
+                <th className="text-right">VAT</th>
+                <th className="text-right">Returns</th>
+                <th className="text-right">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dailyPage.items.map((r) => (
+                <tr
+                  key={r.date}
+                  className={`border-t border-gray-100 ${r.orders ? "" : "text-gray-400"}`}
+                >
+                  <td className="py-2 font-semibold">
+                    {new Date(`${r.date}T00:00:00`).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      weekday: "short",
+                    })}
+                  </td>
+                  <td className="text-right">{r.orders}</td>
+                  <td className="text-right">{taka(r.gross)}</td>
+                  <td className="text-right">{taka(r.vat)}</td>
+                  <td className="text-right">{taka(r.returns)}</td>
+                  <td className="text-right font-semibold">{taka(r.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pager {...dailyPage} noun="days" />
+        </div>
+      )}
+
       {tab === "profit" && (
         <div className={card}>
           <div className="flex items-start justify-between gap-3">
@@ -393,6 +483,77 @@ export default function PosReportsPage() {
           {profit.data?.length === 0 && (
             <div className="py-6 text-center text-sm text-gray-500">
               Nothing in this period.
+            </div>
+          )}
+          {(profitDaily.data?.length ?? 0) > 0 && (
+            <div className="mt-6 border-t border-gray-100 pt-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="font-bold">Date-wise breakdown</h3>
+                <CanExport>
+                  <button
+                    className={exportBtn}
+                    onClick={() =>
+                      exportFile(
+                        `/admin/pos/reports/profit-daily.csv${qs({ storeId: scopeId, from, to })}`,
+                        `store-profit-daily-${from}-${to}`,
+                        reportTitle(`Store Profit by Day — ${storeLabel}`, range),
+                      )
+                    }
+                  >
+                    Export
+                  </button>
+                </CanExport>
+              </div>
+              <table className="w-full text-sm">
+                <thead className="text-left text-gray-500">
+                  <tr>
+                    <th className="py-2">Date</th>
+                    <th className="text-right">Gross</th>
+                    <th className="text-right">Returns</th>
+                    <th className="text-right">VAT</th>
+                    <th className="text-right">Net sales</th>
+                    <th className="text-right">Expenses</th>
+                    <th className="text-right">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profitDailyPage.items.map((r) => {
+                    const idle =
+                      Number(r.gross) === 0 &&
+                      Number(r.returns) === 0 &&
+                      Number(r.expenses) === 0;
+                    return (
+                      <tr
+                        key={r.date}
+                        className={`border-t border-gray-100 ${idle ? "text-gray-400" : ""}`}
+                      >
+                        <td className="py-2 font-semibold">
+                          {new Date(`${r.date}T00:00:00`).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              weekday: "short",
+                            },
+                          )}
+                        </td>
+                        <td className="text-right">{taka(r.gross)}</td>
+                        <td className="text-right">{taka(r.returns)}</td>
+                        <td className="text-right">{taka(r.vat)}</td>
+                        <td className="text-right">{taka(r.netSales)}</td>
+                        <td className="text-right">{taka(r.expenses)}</td>
+                        <td
+                          className={`text-right font-bold ${idle ? "" : Number(r.profit) < 0 ? "text-red-600" : "text-emerald-700"}`}
+                        >
+                          {taka(r.profit)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <Pager {...profitDailyPage} noun="days" />
             </div>
           )}
           <div className="mt-6 border-t border-gray-100 pt-4">

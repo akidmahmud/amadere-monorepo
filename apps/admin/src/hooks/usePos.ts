@@ -34,6 +34,8 @@ export interface PosCustomer {
 }
 
 export interface PosSale {
+  /** Agent feedback (the order's staff note). */
+  staffNote?: string | null;
   id: number;
   storeId: number | null;
   tenderedAmount: string | null;
@@ -73,6 +75,7 @@ export interface PosSale {
     provider: string;
     amount: string;
     transactionRef: string | null;
+    createdAt: string;
   }[];
   store: {
     name: string;
@@ -175,6 +178,8 @@ export interface SaleBody {
   tender: "CASH" | "CARD" | "MOBILE";
   tenderedAmount?: number;
   transactionRef?: string;
+  /** Split payment: part paid in cash when tender is CARD / MOBILE. */
+  cashPart?: number;
   heldSaleId?: number;
 }
 

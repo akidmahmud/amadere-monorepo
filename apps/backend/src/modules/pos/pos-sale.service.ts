@@ -36,6 +36,10 @@ const ZERO = new D(0);
 export const POS_TRASH_DAYS = 30;
 export const POS_SALE_COMPLETED_EVENT = 'pos.sale.completed';
 
+/** The card / mobile row on a split sale; the only row otherwise. */
+const latestPayment = <T extends { createdAt: Date }>(pays: T[]) =>
+  [...pays].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+
 const TENDER: Record<CreatePosSaleDto['tender'], PaymentProvider> = {
   CASH: 'CASH',
   CARD: 'CARD',
@@ -305,6 +309,15 @@ export class PosSaleService {
       throw new BadRequestException('Cash received is less than the total');
     const provider = TENDER[dto.tender];
     const now = new Date();
+    // Split payment: e.g. ৳200 cash + ৳800 card. Two payment rows, each into
+    // its own till account.
+    const cashPart =
+      dto.tender !== 'CASH' && dto.cashPart ? new D(dto.cashPart) : ZERO;
+    if (cashPart.greaterThanOrEqualTo(totals.total) && cashPart.greaterThan(0))
+      throw new BadRequestException(
+        'Cash part must be less than the total — use Cash for the whole sale',
+      );
+    const restPart = totals.total.minus(cashPart);
 
     const storeNames = new Map(
       (
@@ -388,13 +401,26 @@ export class PosSaleService {
           adminUserId: adminId,
         });
       }
+      if (cashPart.greaterThan(0))
+        await tx.payment.create({
+          data: {
+            orderId: created.id,
+            provider: 'CASH',
+            status: 'CAPTURED',
+            amount: cashPart,
+            // Older than the main row, so "latest payment" (refunds, the
+            // Order Manager's tender) stays the card / mobile part.
+            createdAt: new Date(now.getTime() - 1000),
+          },
+        });
       await tx.payment.create({
         data: {
           orderId: created.id,
           provider,
           status: 'CAPTURED',
-          amount: totals.total,
+          amount: restPart,
           transactionRef: dto.transactionRef,
+          createdAt: now,
         },
       });
       if (couponUsed && dto.couponCode) {
@@ -413,9 +439,16 @@ export class PosSaleService {
     });
 
     // After commit, best-effort: SalesPostingService logs failures, never throws.
+    if (cashPart.greaterThan(0))
+      await this.salesPosting.postPrepaidCapture({
+        orderId: order.id,
+        amount: cashPart,
+        capturedAt: now,
+        accountId: await this.stores.tenderAccountId(storeId, 'CASH'),
+      });
     await this.salesPosting.postPrepaidCapture({
       orderId: order.id,
-      amount: totals.total,
+      amount: restPart,
       capturedAt: now,
       reference: dto.transactionRef,
       accountId: await this.stores.tenderAccountId(storeId, provider),
@@ -1013,10 +1046,24 @@ export class PosSaleService {
           adminUserId: adminId,
         });
       }
-      await tx.payment.updateMany({
-        where: { orderId: id },
-        data: { amount: total },
-      });
+      // Split sale: the cash part stays; the latest (card / mobile) row takes
+      // the new remainder.
+      const pays = [...o.payments].sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+      );
+      const main = pays[pays.length - 1];
+      const others = pays
+        .slice(0, -1)
+        .reduce((s, p) => s.plus(p.amount), ZERO);
+      if (main && total.minus(others).lessThanOrEqualTo(0))
+        throw new BadRequestException(
+          'New total is below the cash already paid on this split sale',
+        );
+      if (main)
+        await tx.payment.update({
+          where: { id: main.id },
+          data: { amount: total.minus(others) },
+        });
       await tx.orderStatusHistory.create({
         data: {
           orderId: id,
@@ -1027,8 +1074,9 @@ export class PosSaleService {
       });
     });
 
-    // Money: the difference in or out of the same till account.
-    const pay = o.payments[0];
+    // Money: the difference in or out of the same till account (the
+    // card / mobile one on a split sale).
+    const pay = latestPayment(o.payments);
     const accountId = pay
       ? await this.stores.tenderAccountId(saleStore, pay.provider)
       : undefined;
@@ -1059,34 +1107,92 @@ export class PosSaleService {
     id: number,
     tender: CreatePosSaleDto['tender'],
     adminId: number,
+    /** With CARD / MOBILE: the part paid in cash (a split payment). */
+    cashPartIn?: number,
   ) {
     const o = await this.get(storeId, id);
     if (o.deletedAt) throw new BadRequestException('This sale is in the Trash');
-    const pay = o.payments[0];
+    const pays = [...o.payments].sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+    const pay = pays[pays.length - 1]; // the main (card / mobile) row
     if (!pay) throw new BadRequestException('This sale has no payment');
     const provider = TENDER[tender];
-    if (pay.provider === provider) return o;
+    const cash =
+      tender !== 'CASH' && cashPartIn ? new D(cashPartIn) : ZERO;
+    if (cash.greaterThan(0) && cash.greaterThanOrEqualTo(o.totalAmount))
+      throw new BadRequestException(
+        'Cash part must be less than the total — choose Cash instead',
+      );
+    if (cash.greaterThan(0) && o.posRefundedAmount.greaterThan(0))
+      throw new BadRequestException(
+        'Items of this sale were returned — it cannot be split now',
+      );
+    const oldCash = pays
+      .slice(0, -1)
+      .reduce((s, p) => s.plus(p.amount), ZERO);
+    if (pay.provider === provider && oldCash.equals(cash)) return o;
     const accountId = o.storeId
       ? await this.stores.tenderAccountId(o.storeId, provider)
       : undefined;
-    const label = (p: string) =>
-      p === 'CASH' ? 'Cash' : p === 'CARD' ? 'Card' : 'Mobile Banking';
+    const cashAccountId =
+      cash.greaterThan(0) && o.storeId
+        ? await this.stores.tenderAccountId(o.storeId, 'CASH')
+        : undefined;
+    const label = (p: string, c: Prisma.Decimal) =>
+      `${c.greaterThan(0) ? `Cash ৳${c.toFixed(2)} + ` : ''}${
+        p === 'CASH' ? 'Cash' : p === 'CARD' ? 'Card' : 'Mobile Banking'
+      }`;
     await this.prisma.client.$transaction(async (tx) => {
-      await tx.payment.update({ where: { id: pay.id }, data: { provider } });
-      // "Change given" only means something for cash.
+      // Rebuild the rows: one main row, plus a cash row when split.
+      await tx.payment.deleteMany({
+        where: { id: { in: pays.slice(0, -1).map((p) => p.id) } },
+      });
+      await tx.payment.update({
+        where: { id: pay.id },
+        data: { provider, amount: o.totalAmount.minus(cash) },
+      });
+      if (cash.greaterThan(0))
+        await tx.payment.create({
+          data: {
+            orderId: id,
+            provider: 'CASH',
+            status: 'CAPTURED',
+            amount: cash,
+            createdAt: new Date(pay.createdAt.getTime() - 1000),
+          },
+        });
+      // "Change given" only means something for an all-cash sale.
       if (provider !== 'CASH')
         await tx.order.update({ where: { id }, data: { tenderedAmount: null } });
-      await this.salesPosting.moveOrderMoney(id, accountId, adminId, tx);
+      await this.salesPosting.splitOrderMoney(
+        id,
+        accountId,
+        cashAccountId,
+        cash,
+        adminId,
+        tx,
+      );
       await tx.orderStatusHistory.create({
         data: {
           orderId: id,
           status: o.status,
-          note: `Payment changed: ${label(pay.provider)} → ${label(provider)}`,
+          note: `Payment changed: ${label(pay.provider, oldCash)} → ${label(provider, cash)}`,
           adminUserId: adminId,
         },
       });
     });
     return this.get(storeId, id);
+  }
+
+  /** Optional agent feedback, kept in the order's staff note. */
+  async setFeedback(storeId: number | null, id: number, feedback: string) {
+    await this.get(storeId, id); // store scope
+    await this.prisma.client.order.update({
+      where: { id },
+      data: { staffNote: feedback.trim() || null },
+    });
+    return { feedback: feedback.trim() || null };
   }
 
   /** Pays `amount` back and keeps the payment's running refunded total. */
@@ -1225,7 +1331,8 @@ export class PosSaleService {
       });
       await reclaimOrderCoupons(tx, id);
     });
-    const pay = o.payments[0];
+    // ponytail: a restored split sale books it all to the card / mobile till.
+    const pay = latestPayment(o.payments);
     await this.salesPosting.postPrepaidCapture({
       orderId: id,
       amount: o.totalAmount.minus(o.posRefundedAmount),

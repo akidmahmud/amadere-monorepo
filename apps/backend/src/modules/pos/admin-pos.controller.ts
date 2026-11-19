@@ -101,6 +101,7 @@ import {
   ReturnPosSaleDto,
   ChangePosTenderDto,
   EditPosSaleDto,
+  PosFeedbackDto,
 } from './dto/create-pos-sale.dto';
 
 type Admin = { id: number };
@@ -807,6 +808,22 @@ export class AdminPosController {
       id,
       dto.tender,
       a.id,
+      dto.cashPart,
+    );
+  }
+
+  @Post('sales/:id/feedback')
+  @RequirePermission('pos.access')
+  async setFeedback(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PosFeedbackDto,
+  ) {
+    return this.sales.setFeedback(
+      await this.stores.scope(a.id, can),
+      id,
+      dto.feedback,
     );
   }
 
@@ -993,6 +1010,36 @@ export class AdminPosController {
     );
   }
 
+  @Get('reports/sales-daily')
+  @RequirePermission('pos.reports')
+  async salesDaily(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosRangeQueryDto,
+  ) {
+    return this.reports.salesByDay(
+      await this.stores.scope(a.id, can, q.storeId),
+      q.from,
+      q.to,
+    );
+  }
+
+  @Get('reports/sales-daily.csv')
+  @RequirePermission('pos.reports', 'data.export')
+  async salesDailyCsv(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosRangeQueryDto,
+    @Res() res: Response,
+  ) {
+    const rows = await this.reports.salesByDay(
+      await this.stores.scope(a.id, can, q.storeId),
+      q.from,
+      q.to,
+    );
+    sendCsv(res, `pos-sales-daily-${q.from}-${q.to}.csv`, toCsv(rows));
+  }
+
   @Get('reports/sales.csv')
   @RequirePermission('pos.reports', 'data.export')
   async salesCsv(
@@ -1090,7 +1137,37 @@ export class AdminPosController {
     );
   }
 
-  @Get('reports/profit.csv')
+  @Get('reports/profit-daily')
+  @RequirePermission('pos.reports')
+  async profitDaily(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosRangeQueryDto,
+  ) {
+    return this.reports.profitByDay(
+      await this.stores.scope(a.id, can, q.storeId),
+      q.from,
+      q.to,
+    );
+  }
+
+  @Get('reports/profit-daily.csv')
+  @RequirePermission('pos.reports', 'data.export')
+  async profitDailyCsv(
+    @CurrentAdmin() a: Admin,
+    @Can() can: PermissionCheck,
+    @Query() q: PosRangeQueryDto,
+    @Res() res: Response,
+  ) {
+    const rows = await this.reports.profitByDay(
+      await this.stores.scope(a.id, can, q.storeId),
+      q.from,
+      q.to,
+    );
+    sendCsv(res, `pos-profit-daily-${q.from}-${q.to}.csv`, toCsv(rows));
+  }
+
+    @Get('reports/profit.csv')
   @RequirePermission('pos.reports', 'data.export')
   async profitCsv(
     @CurrentAdmin() a: Admin,

@@ -4062,3 +4062,16 @@ Media details panel: the file-name box now resets by remounting per file
 (`key={detailsItem.id}`) instead of syncing state in an effect (react-hooks
 lint). The alt-text box still has the old effect pattern (pre-existing lint
 error, left as is).
+
+## 2026-11-17 — SMS: empty balance alert
+When the newest SMS failed with gateway code -4 (Insufficient Balance), admin now shows a red dot on the SMS menu row, a "SMS balance is empty" bell notification, a red banner on the SMS page, and "NO BALANCE" on those log rows. Checked every 2 minutes; clears by itself once a send succeeds after a top-up. Files: apps/admin hooks/useSms.ts, (shell)/layout.tsx, (shell)/net-profit/sms/page.tsx.
+
+## 2026-11-19 — POS: split payment, agent feedback, admin-only totals
+- Split payment: with Card or Mobile Banking selected, the cashier can enter "Part paid in cash" (e.g. 200 cash + 800 card). Two payment rows, each booked to its own till account. Shown on the receipt, Order Manager and Excel export. Editing a split sale keeps the cash part; its payment method cannot be switched.
+- Agent feedback: optional box in the Edit order dialog (can be saved on its own), shown as an "Agent feedback" column in the POS Order Manager and in its Excel export. Stored in the order staff note.
+- POS Order Manager all-time cards (Sales, Total orders, Completed, Returned) now only show for super admins and roles with the POS Reports permission.
+- POS Order Manager Payment dropdown now also has "Cash + Card" and "Cash + Mobile Banking". Picking one asks how much was cash; the payment rows are rebuilt and the cash part is moved to the cash till (reversible transfer, so switching back is exact).
+
+## 2026-11-19 — POS Reports: date-wise sales breakdown
+Sales tab now has a "Date-wise breakdown" table under the store table: one row per day in the chosen range (Sales, Gross, VAT, Returns, Net; newest first, empty days greyed), 15 days per page, with its own Excel export. Respects the store / All stores choice. New endpoints: GET /admin/pos/reports/sales-daily and sales-daily.csv.
+- Store profit tab: same date-wise breakdown (Gross, Returns, VAT, Net sales, Expenses, Profit per day; expenses by expense date), paged, with Excel export. GET /admin/pos/reports/profit-daily and profit-daily.csv.

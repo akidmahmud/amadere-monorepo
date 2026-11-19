@@ -112,6 +112,8 @@ export function CartPanel({
   const [tender, setTender] = useState<Tender>("CASH");
   const [cashIn, setCashIn] = useState("");
   const [trxRef, setTrxRef] = useState("");
+  // Split payment: part in cash, the rest on card / mobile.
+  const [cashPart, setCashPart] = useState("");
   const [draft, setDraft] = useState<CustomerDraft>({ phone: null, name: "" });
   const [saleCount, setSaleCount] = useState(0);
   const [showCoupons, setShowCoupons] = useState(false);
@@ -168,12 +170,14 @@ export function CartPanel({
   const q = cart.length ? quote.data : undefined;
   const total = Number(q?.total ?? 0);
   const change = tender === "CASH" && cashIn ? Number(cashIn) - total : 0;
+  const split = tender !== "CASH" ? Number(cashPart) || 0 : 0;
   const ready =
     cart.length > 0 &&
     !!q &&
     !quote.isFetching &&
     !sale.isPending &&
-    (tender !== "CASH" || !cashIn || change >= 0);
+    (tender !== "CASH" || !cashIn || change >= 0) &&
+    split < total;
 
   const complete = () => {
     sale.mutate(
@@ -198,6 +202,7 @@ export function CartPanel({
         tenderedAmount:
           tender === "CASH" && cashIn ? Number(cashIn) : undefined,
         transactionRef: tender !== "CASH" ? trxRef || undefined : undefined,
+        cashPart: split > 0 ? split : undefined,
         heldSaleId,
       },
       {
@@ -212,6 +217,7 @@ export function CartPanel({
           setManual({ value: "", type: "AMOUNT" });
           setCashIn("");
           setTrxRef("");
+          setCashPart("");
           setTender("CASH");
           setDraft({ phone: null, name: "" });
           setSaleCount((n) => n + 1);
@@ -516,17 +522,42 @@ export function CartPanel({
             </span>
           </div>
         ) : (
-          <input
-            value={trxRef}
-            onChange={(e) => setTrxRef(e.target.value)}
-            placeholder={
-              tender === "CARD"
-                ? "Card slip no. (optional)"
-                : "bKash / Nagad TrxID"
-            }
-            lang="en"
-            className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
-          />
+          <>
+            <input
+              value={trxRef}
+              onChange={(e) => setTrxRef(e.target.value)}
+              placeholder={
+                tender === "CARD"
+                  ? "Card slip no. (optional)"
+                  : "bKash / Nagad TrxID"
+              }
+              lang="en"
+              className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#1d7a46]"
+            />
+            <div className="flex items-center gap-3 text-sm">
+              <label className="flex flex-1 items-center gap-2">
+                <span className="shrink-0 text-gray-600">Part paid in cash</span>
+                <input
+                  value={cashPart}
+                  onChange={(e) =>
+                    setCashPart(e.target.value.replace(/[^\d.]/g, ""))
+                  }
+                  inputMode="decimal"
+                  placeholder="0 (optional)"
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 outline-none focus:border-[#1d7a46]"
+                />
+              </label>
+              {split > 0 && (
+                <span
+                  className={`shrink-0 font-bold ${split >= total ? "text-red-600" : "text-gray-800"}`}
+                >
+                  {split >= total
+                    ? "More than total"
+                    : `${tender === "CARD" ? "Card" : "Mobile"} ${taka(total - split)}`}
+                </span>
+              )}
+            </div>
+          </>
         )}
 
         <button

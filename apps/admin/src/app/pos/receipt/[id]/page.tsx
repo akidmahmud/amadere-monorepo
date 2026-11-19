@@ -26,7 +26,11 @@ function toInvoiceData(
     | { enabled: boolean; ratePercent: number; pricesIncludeVat: boolean }
     | undefined,
 ): PosInvoiceData {
-  const pay = s.payments[0];
+  // Oldest first: on a split sale the cash part, then card / mobile.
+  const pays = [...s.payments].sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  );
+  const pay = pays[pays.length - 1];
   const total = Number(s.totalAmount);
   const tendered = s.tenderedAmount != null ? Number(s.tenderedAmount) : null;
   const customer = s.customer
@@ -74,7 +78,14 @@ function toInvoiceData(
     vatRatePercent: vat?.enabled ? vat.ratePercent : 0,
     vatIncluded: vat?.pricesIncludeVat ?? false,
     total,
-    paidBy: pay ? (TENDER[pay.provider] ?? pay.provider) : "",
+    paidBy:
+      pays.length > 1
+        ? pays
+            .map((p) => `${TENDER[p.provider] ?? p.provider} ৳${Number(p.amount).toFixed(2)}`)
+            .join(" + ")
+        : pay
+          ? (TENDER[pay.provider] ?? pay.provider)
+          : "",
     tendered,
     change: tendered != null ? Math.max(0, tendered - total) : null,
     trxRef: pay?.transactionRef ?? null,

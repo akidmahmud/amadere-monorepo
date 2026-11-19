@@ -7,6 +7,8 @@ import {
   useBulkSendSms,
   useSmsBalance,
   useSmsLogs,
+  useSmsOutOfBalance,
+  isNoBalance,
   useSmsSettings,
   useSmsTemplates,
   useTestSendSms,
@@ -176,7 +178,11 @@ function LogsTab() {
                 <td className="num text-text">{l.to}</td>
                 <td className="max-w-[360px] truncate text-secondary" title={l.body}>
                   {l.body}
-                  {l.status === "FAILED" && (l.codeMessage || l.error) && (
+                  {l.status === "FAILED" && isNoBalance(l) ? (
+                    <span className="block whitespace-normal text-xs font-bold text-danger">
+                      SMS balance empty — top up the gateway
+                    </span>
+                  ) : l.status === "FAILED" && (l.codeMessage || l.error) && (
                     <span className="block whitespace-normal text-xs text-danger">
                       {l.codeMessage ? `Gateway response ${l.code}: ${l.codeMessage}` : `Reason: ${l.error}`}
                     </span>
@@ -188,7 +194,7 @@ function LogsTab() {
                       l.status === "SENT" ? "bg-success/10 text-success" : l.status === "FAILED" ? "bg-danger/10 text-danger" : "bg-border text-secondary"
                     }`}
                   >
-                    {l.status}
+                    {l.status === "FAILED" && isNoBalance(l) ? "NO BALANCE" : l.status}
                   </span>
                 </td>
                 <td className="text-muted">{new Date(l.createdAt).toLocaleString()}</td>
@@ -599,10 +605,16 @@ function BulkSendTab() {
 
 export default function SmsPage() {
   const [tab, setTab] = useState("templates");
+  const noBalance = useSmsOutOfBalance(true);
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader icon={smsIcon} title="SMS & OTP" subtitle="Transactional templates, order-status triggers, and checkout verification." />
+      {noBalance && (
+        <div className="rounded-sm border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">
+          SMS balance is empty. Order and OTP messages are failing until the SMS gateway is topped up.
+        </div>
+      )}
       <Tabs
         variant="pill"
         options={[

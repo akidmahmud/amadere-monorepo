@@ -47,6 +47,9 @@ type Row = {
     unitCost?: string;
   }[];
   tender: string | null;
+  /** Cash paid alongside card / mobile; null when not split. */
+  cashPart?: string | null;
+  agentFeedback?: string | null;
 };
 type Page = {
   items: Row[];
@@ -189,10 +192,19 @@ export function PosOrdersManager({
   // Fix a payment method the cashier picked by mistake; the money moves to
   // that method's till account.
   const changeTender = useMutation({
-    mutationFn: ({ id, tender }: { id: number; tender: string }) =>
+    mutationFn: ({
+      id,
+      tender,
+      cashPart,
+    }: {
+      id: number;
+      tender: string;
+      /** Split: the part paid in cash. */
+      cashPart?: number;
+    }) =>
       proxyFetch(`/admin/pos/sales/${id}/tender`, {
         method: "PATCH",
-        body: JSON.stringify({ tender }),
+        body: JSON.stringify({ tender, cashPart }),
       }),
     onSuccess: () => {
       refresh();
@@ -252,6 +264,7 @@ export function PosOrdersManager({
           "Order total (৳)",
           "Status",
           "Cashier",
+          "Agent feedback",
         ],
         // One row per product; the order's own details and total sit on its
         // first row only, so the Order total column adds up per order.
@@ -269,7 +282,11 @@ export function PosOrdersManager({
             o.customer?.phone ?? "",
           ];
           const money = [
-            o.tender ? (TENDER_LABEL[o.tender] ?? o.tender) : "",
+            o.tender
+              ? o.cashPart
+                ? `Cash ${o.cashPart} + ${TENDER_LABEL[o.tender] ?? o.tender}`
+                : (TENDER_LABEL[o.tender] ?? o.tender)
+              : "",
             // Subtotal − discount + VAT (added on top) = order total.
             Number(o.subTotal ?? 0),
             Number(o.discountAmount ?? 0),
@@ -279,6 +296,7 @@ export function PosOrdersManager({
             Number(o.totalAmount),
             STATUS_LABEL[o.status] ?? o.status,
             o.cashier ?? "",
+            o.agentFeedback ?? "",
           ];
           const items = o.items?.length
             ? o.items
@@ -301,7 +319,7 @@ export function PosOrdersManager({
             i.returned || null,
             ...(n === 0 ? money : ["", null, null]),
             i.name ? net[n] : null,
-            ...(n === 0 ? tail : [null, null, "", ""]),
+            ...(n === 0 ? tail : [null, null, "", "", ""]),
           ]);
         },
         `pos-orders-${new Date().toLocaleDateString("en-CA")}`,
@@ -311,16 +329,29 @@ export function PosOrdersManager({
             Number(rows.reduce((t, r) => t + f(r), 0).toFixed(3));
           const col = (c: number) => sum((r) => Number(r[c]) || 0);
           return [
-            "TOTAL", "", "", "", "", "", "",
+            "TOTAL",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
             // Weight: kg sold (each unit's weight × qty), not a sum of sizes.
             sum((r) => (Number(r[7]) || 0) * (Number(r[8]) || 0)),
             col(8), // Qty
-            null, null, // unit price / unit cost: not additive
+            null,
+            null, // unit price / unit cost: not additive
             col(11), // Line total
             col(12), // Returned
             "",
-            col(14), col(15), col(16), col(17), col(18), // Subtotal, Discount, After discount, VAT, Order total
-            "", "",
+            col(14),
+            col(15),
+            col(16),
+            col(17),
+            col(18), // Subtotal, Discount, After discount, VAT, Order total
+            "",
+            "",
+            "",
           ];
         },
       );
@@ -342,61 +373,64 @@ export function PosOrdersManager({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#1d7a46] text-white">
-            <Icon name="bar_chart" size={26} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm text-gray-600">
-              Sales
-              <span className="ml-1 font-semibold text-[#1d7a46]">
-                ·{" "}
-                {tender
-                  ? (TENDER_LABEL[tender === "MOBILE" ? "BKASH" : tender] ??
-                    tender)
-                  : "All payments"}
+      {/* All-time money: only for those who may see POS reports (admins). */}
+      {can("pos.reports") && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#1d7a46] text-white">
+              <Icon name="bar_chart" size={26} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm text-gray-600">
+                Sales
+                <span className="ml-1 font-semibold text-[#1d7a46]">
+                  ·{" "}
+                  {tender
+                    ? (TENDER_LABEL[tender === "MOBILE" ? "BKASH" : tender] ??
+                      tender)
+                    : "All payments"}
+                </span>
+              </div>
+              <div className="text-3xl font-extrabold">
+                {data?.sales ? taka(Number(data.sales.amount)) : "—"}
+              </div>
+              <div className="text-xs text-gray-500">
+                {data?.sales
+                  ? `${data.sales.orders} order${data.sales.orders === 1 ? "" : "s"}${data.sales.allDates ? " · all dates" : " · selected dates"}`
+                  : ""}
+              </div>
+            </div>
+          </div>
+          {(
+            [
+              ["Total orders", data?.counts.ALL, "receipt_long"],
+              ["Completed", data?.counts.COMPLETED, "check_circle"],
+              [
+                "Returned",
+                (data?.counts.RETURNED ?? 0) +
+                  (data?.counts.PARTIALLY_RETURNED ?? 0) || undefined,
+                "undo",
+              ],
+            ] as const
+          ).map(([label, n, icon]) => (
+            <div
+              key={label}
+              className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+            >
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#1d7a46]">
+                <Icon name={icon} size={26} />
+              </span>
+              <div className="flex-1">
+                <div className="text-sm text-gray-600">{label}</div>
+                <div className="text-3xl font-extrabold">{n ?? "—"}</div>
+              </div>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#1d7a46]">
+                <Icon name={icon} size={22} />
               </span>
             </div>
-            <div className="text-3xl font-extrabold">
-              {data?.sales ? taka(Number(data.sales.amount)) : "—"}
-            </div>
-            <div className="text-xs text-gray-500">
-              {data?.sales
-                ? `${data.sales.orders} order${data.sales.orders === 1 ? "" : "s"}${data.sales.allDates ? " · all dates" : " · selected dates"}`
-                : ""}
-            </div>
-          </div>
+          ))}
         </div>
-        {(
-          [
-            ["Total orders", data?.counts.ALL, "receipt_long"],
-            ["Completed", data?.counts.COMPLETED, "check_circle"],
-            [
-              "Returned",
-              (data?.counts.RETURNED ?? 0) +
-                (data?.counts.PARTIALLY_RETURNED ?? 0) || undefined,
-              "undo",
-            ],
-          ] as const
-        ).map(([label, n, icon]) => (
-          <div
-            key={label}
-            className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
-          >
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#1d7a46]">
-              <Icon name={icon} size={26} />
-            </span>
-            <div className="flex-1">
-              <div className="text-sm text-gray-600">{label}</div>
-              <div className="text-3xl font-extrabold">{n ?? "—"}</div>
-            </div>
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#1d7a46]">
-              <Icon name={icon} size={22} />
-            </span>
-          </div>
-        ))}
-      </div>
+      )}
 
       <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
         <div className="flex flex-wrap gap-1 border-b border-gray-100 px-1">
@@ -483,14 +517,14 @@ export function PosOrdersManager({
               />
             </label>
             <CanExport>
-            <button
-              onClick={exportExcel}
-              disabled={exporting || !data?.total}
-              className="flex h-11 items-center gap-2 rounded-xl bg-[#1d7a46] px-4 text-sm font-bold text-white hover:bg-[#186a3c] disabled:opacity-50"
-            >
-              <Icon name="download" size={20} />
-              {exporting ? "Exporting…" : "Export Excel"}
-            </button>
+              <button
+                onClick={exportExcel}
+                disabled={exporting || !data?.total}
+                className="flex h-11 items-center gap-2 rounded-xl bg-[#1d7a46] px-4 text-sm font-bold text-white hover:bg-[#186a3c] disabled:opacity-50"
+              >
+                <Icon name="download" size={20} />
+                {exporting ? "Exporting…" : "Export Excel"}
+              </button>
             </CanExport>
           </div>
         )}
@@ -523,6 +557,7 @@ export function PosOrdersManager({
                     <th className="px-4 font-bold">Total</th>
                     <th className="px-4 font-bold">Status</th>
                     <th className="px-4 font-bold">Cashier</th>
+                    <th className="px-4 font-bold">Agent feedback</th>
                     <th className="w-12 px-2" />
                   </tr>
                 </thead>
@@ -530,7 +565,7 @@ export function PosOrdersManager({
                   {(isLoading || error || data?.items.length === 0) && (
                     <tr>
                       <td
-                        colSpan={11}
+                        colSpan={12}
                         className="px-5 py-10 text-center text-gray-500"
                       >
                         {isLoading
@@ -607,23 +642,47 @@ export function PosOrdersManager({
                       <td className="px-4">
                         {o.tender && can("payment.update") ? (
                           <select
-                            value={o.tender === "BKASH" ? "MOBILE" : o.tender}
+                            value={`${o.cashPart ? "CASH_" : ""}${o.tender === "BKASH" ? "MOBILE" : o.tender}`}
                             onClick={(e) => e.stopPropagation()}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (!v.startsWith("CASH_"))
+                                return changeTender.mutate({
+                                  id: o.id,
+                                  tender: v,
+                                });
+                              // Split: ask how much of the total was cash.
+                              const got = window.prompt(
+                                `How much of ${taka(Number(o.totalAmount))} was paid in cash?`,
+                                o.cashPart ? String(Number(o.cashPart)) : "",
+                              );
+                              const cash = Number(got);
+                              if (!got || !(cash > 0)) return;
                               changeTender.mutate({
                                 id: o.id,
-                                tender: e.target.value,
-                              })
-                            }
+                                tender: v.slice(5),
+                                cashPart: cash,
+                              });
+                            }}
                             disabled={changeTender.isPending}
                             aria-label={`Payment of ${o.orderNumber}`}
-                            title="Change the payment method"
+                            title={
+                              o.cashPart
+                                ? `Cash ${taka(Number(o.cashPart))} + ${taka(Number(o.totalAmount) - Number(o.cashPart))} ${TENDER_LABEL[o.tender] ?? o.tender}`
+                                : "Change the payment method"
+                            }
                             className="h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm hover:border-emerald-600 disabled:opacity-50"
                           >
                             <option value="CASH">Cash</option>
                             <option value="CARD">Card</option>
                             <option value="MOBILE">Mobile Banking</option>
+                            <option value="CASH_CARD">Cash + Card</option>
+                            <option value="CASH_MOBILE">
+                              Cash + Mobile Banking
+                            </option>
                           </select>
+                        ) : o.tender && o.cashPart ? (
+                          `Cash ${taka(Number(o.cashPart))} + ${TENDER_LABEL[o.tender] ?? o.tender}`
                         ) : o.tender ? (
                           (TENDER_LABEL[o.tender] ?? o.tender)
                         ) : (
@@ -642,6 +701,14 @@ export function PosOrdersManager({
                         <StatusPill status={o.status} />
                       </td>
                       <td className="px-4 text-gray-600">{o.cashier}</td>
+                      <td
+                        className="max-w-[220px] px-4 text-sm text-gray-700"
+                        title={o.agentFeedback ?? undefined}
+                      >
+                        <span className="line-clamp-2">
+                          {o.agentFeedback || "—"}
+                        </span>
+                      </td>
                       <td className="px-2">
                         {can("pos.refund") && can("order.delete") && (
                           <button

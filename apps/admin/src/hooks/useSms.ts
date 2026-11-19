@@ -66,6 +66,24 @@ export function useSmsLogs() {
   return useQuery({ queryKey: LOGS_KEY, queryFn: () => proxyFetch<Paginated<SmsLog>>("/admin/net-profit/sms/logs") });
 }
 
+/** Gateway code -4 = "Insufficient Balance". */
+export const isNoBalance = (l: Pick<SmsLog, "code">) => l.code === -4;
+
+/**
+ * True while the newest finished send failed for lack of credit. Clears on
+ * its own once a send succeeds after a top-up.
+ */
+export function useSmsOutOfBalance(enabled: boolean) {
+  const { data } = useQuery({
+    queryKey: [...LOGS_KEY, "latest"],
+    queryFn: () => proxyFetch<Paginated<SmsLog>>("/admin/net-profit/sms/logs?page=1&pageSize=5"),
+    enabled,
+    refetchInterval: 120_000,
+  });
+  const latest = data?.items.find((l) => l.status !== "QUEUED");
+  return !!latest && isNoBalance(latest);
+}
+
 export function useTestSendSms() {
   const qc = useQueryClient();
   return useMutation({

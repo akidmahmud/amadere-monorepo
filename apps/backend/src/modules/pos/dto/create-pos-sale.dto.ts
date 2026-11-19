@@ -14,6 +14,7 @@ import {
   Length,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -87,6 +88,15 @@ export class CreatePosSaleDto {
   @IsString()
   transactionRef?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Split payment: part paid in cash when tender is CARD/MOBILE; the rest goes on that tender',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cashPart?: number;
+
   @ApiPropertyOptional() @IsOptional() @IsInt() heldSaleId?: number;
 }
 
@@ -147,6 +157,11 @@ export class EditPosSaleDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() dryRun?: boolean;
 }
 
+export class PosFeedbackDto {
+  /** Agent feedback on the sale; empty clears it. */
+  @ApiProperty() @IsString() @MaxLength(1000) feedback!: string;
+}
+
 export class ReturnPosLineDto {
   @ApiProperty() @IsInt() itemId!: number;
   @ApiProperty() @IsInt() @IsPositive() qty!: number;
@@ -178,6 +193,8 @@ export class QuickCustomerDto {
 }
 
 /** Correct the payment method of a sale. */
+/** cashPart > 0 with CARD / MOBILE = "Cash + Card" / "Cash + Mobile Banking". */
 export class ChangePosTenderDto extends PickType(CreatePosSaleDto, [
   'tender',
+  'cashPart',
 ] as const) {}

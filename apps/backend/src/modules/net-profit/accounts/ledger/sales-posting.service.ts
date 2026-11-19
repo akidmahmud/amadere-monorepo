@@ -209,6 +209,51 @@ export class SalesPostingService {
     return entries.length;
   }
 
+  /**
+   * POS payment change: all of the order's money to `toAccountId`, then
+   * `cashPart` of it moved on to the cash till (a split sale). An earlier
+   * split's transfer is undone first, so switching back and forth stays exact.
+   */
+  async splitOrderMoney(
+    orderId: number,
+    toAccountId: number | undefined,
+    cashAccountId: number | undefined,
+    cashPart: Prisma.Decimal,
+    adminId: number | null,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    const old = await tx.ledgerEntry.findMany({
+      where: {
+        orderId,
+        source: 'TRANSFER',
+        reversalOfId: null,
+        reversedBy: { none: {} },
+      },
+    });
+    for (const e of old) await this.ledger.reverse(e.id, adminId, tx);
+    await this.moveOrderMoney(orderId, toAccountId, adminId, tx);
+    const from = await this.resolveAccountId(toAccountId);
+    const to = await this.resolveAccountId(cashAccountId);
+    if (!cashPart.greaterThan(0) || !from || !to || from === to) return;
+    const leg = (direction: 'IN' | 'OUT', accountId: number) =>
+      this.ledger.post(
+        {
+          entryDate: new Date(),
+          direction,
+          amount: cashPart,
+          accountId,
+          source: 'TRANSFER',
+          orderId,
+          reference: null,
+          note: 'Cash part of a split POS payment',
+        },
+        adminId,
+        tx,
+      );
+    await leg('OUT', from);
+    await leg('IN', to);
+  }
+
   async postRefund(input: RefundInput): Promise<void> {
     try {
       const accountId = await this.resolveAccountId(input.accountId);

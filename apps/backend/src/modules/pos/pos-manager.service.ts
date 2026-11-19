@@ -128,6 +128,7 @@ export class PosManagerService {
           taxAmount: true,
           totalAmount: true,
           posRefundedAmount: true,
+          staffNote: true,
           store: { select: { id: true, name: true } },
           customer: {
             select: { firstName: true, lastName: true, phone: true },
@@ -148,10 +149,10 @@ export class PosManagerService {
               variant: { select: COST_VARIANT_SELECT },
             },
           },
+          // All rows: a split sale has a cash row plus the card / mobile one.
           payments: {
-            select: { provider: true },
+            select: { provider: true, amount: true },
             orderBy: { createdAt: 'desc' },
-            take: 1,
           },
         },
       }),
@@ -231,7 +232,8 @@ export class PosManagerService {
     };
     return {
       ...toPaginatedResult(
-        rows.map(({ customer, assignedAdmin, items, payments, ...o }) => ({
+        rows.map(({ customer, assignedAdmin, items, payments, staffNote, ...o }) => ({
+          agentFeedback: staffNote,
           ...o,
           customer: customer
             ? {
@@ -255,6 +257,14 @@ export class PosManagerService {
             unitCost: unitCost(i, dhakaDate(o.createdAt)),
           })),
           tender: payments[0]?.provider ?? null,
+          /** Cash paid alongside card / mobile; null when not split. */
+          cashPart:
+            payments.length > 1
+              ? payments
+                  .slice(1)
+                  .reduce((s, p) => s.plus(p.amount), new Prisma.Decimal(0))
+                  .toFixed(2)
+              : null,
         })),
         total,
         page,

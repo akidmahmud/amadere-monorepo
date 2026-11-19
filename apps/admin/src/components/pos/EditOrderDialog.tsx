@@ -136,6 +136,8 @@ function Editor({
   >(null);
   const [q, setQ] = useState("");
   const [reason, setReason] = useState("");
+  const [feedback, setFeedback] = useState(sale.staffNote ?? "");
+  const feedbackChanged = feedback.trim() !== (sale.staffNote ?? "");
   // Cashier discount: "" = keep the sale's own; a number replaces it.
   const [disc, setDisc] = useState("");
   const [discType, setDiscType] = useState<"AMOUNT" | "PERCENT">("AMOUNT");
@@ -170,15 +172,23 @@ function Editor({
     retry: false,
   });
   const save = useMutation({
-    mutationFn: () =>
-      proxyFetch<Preview>(`/admin/pos/sales/${sale.id}/edit`, {
+    mutationFn: async () => {
+      if (feedbackChanged)
+        await proxyFetch(`/admin/pos/sales/${sale.id}/feedback`, {
+          method: "POST",
+          body: JSON.stringify({ feedback: feedback.trim() }),
+        });
+      // Feedback only: nothing else to save.
+      if (!changed) return { difference: "0" } as Preview;
+      return proxyFetch<Preview>(`/admin/pos/sales/${sale.id}/edit`, {
         method: "POST",
         body: JSON.stringify({
           items: body,
           ...discount,
           reason: reason.trim() || undefined,
         }),
-      }),
+      });
+    },
     onSuccess: (r) => {
       for (const k of [
         "pos-sale",
@@ -443,6 +453,15 @@ function Editor({
           onChange={(e) => setReason(e.target.value)}
         />
 
+        <textarea
+          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#1d7a46]"
+          placeholder="Agent feedback (optional) — shows in the Order Manager"
+          rows={2}
+          maxLength={1000}
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+        />
+
         {preview.error && (
           <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
             {(preview.error as Error).message}
@@ -497,7 +516,7 @@ function Editor({
         <button
           className="h-10 rounded-lg bg-[#1d7a46] px-5 text-sm font-bold text-white hover:bg-[#186a3c] disabled:opacity-40"
           disabled={
-            !changed ||
+            (!changed && !feedbackChanged) ||
             body.length === 0 ||
             !!preview.error ||
             preview.isFetching ||

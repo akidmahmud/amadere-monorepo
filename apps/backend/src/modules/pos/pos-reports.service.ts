@@ -239,6 +239,128 @@ export class PosReportsService {
   }
 
   /**
+   * The same figures per Dhaka day, newest first, one row for every day in
+   * the range (zero days included, so gaps are visible).
+   */
+  async salesByDay(scope: number | null, from: string, to: string) {
+    const days = await this.dayBuckets(scope, from, to);
+    return [...days].reverse().map(([date, d]) => ({
+      date,
+      orders: d.orders,
+      gross: d.gross.toFixed(2),
+      vat: d.vat.toFixed(2),
+      returns: d.returns.toFixed(2),
+      net: d.gross.minus(d.returns).toFixed(2),
+    }));
+  }
+
+  /** Store profit per Dhaka day, on the same basis as profit() below. */
+  async profitByDay(scope: number | null, from: string, to: string) {
+    const stores = await this.prisma.client.store.findMany({
+      where: scope ? { id: scope } : {},
+      select: { costCentreId: true },
+    });
+    const [days, expenses] = await Promise.all([
+      this.dayBuckets(scope, from, to),
+      this.prisma.client.expense.groupBy({
+        by: ['expenseDate'],
+        where: {
+          voidedAt: null,
+          costCentreId: {
+            in: stores
+              .map((s) => s.costCentreId)
+              .filter((id): id is number => id !== null),
+          },
+          expenseDate: {
+            gte: new Date(`${from}T00:00:00.000Z`),
+            lte: new Date(`${to}T00:00:00.000Z`),
+          },
+        },
+        _sum: { netAmount: true },
+      }),
+    ]);
+    // expense_date is a DATE column: its UTC day is the calendar day.
+    const exp = new Map(
+      expenses.map((e) => [
+        e.expenseDate.toISOString().slice(0, 10),
+        e._sum.netAmount ?? ZERO,
+      ]),
+    );
+    return [...days].reverse().map(([date, d]) => {
+      const vat = d.vat.minus(d.refundedVat);
+      const netSales = d.gross.minus(d.returns).minus(vat);
+      const e = exp.get(date) ?? ZERO;
+      return {
+        date,
+        gross: d.gross.toFixed(2),
+        returns: d.returns.toFixed(2),
+        vat: vat.toFixed(2),
+        netSales: netSales.toFixed(2),
+        expenses: e.toFixed(2),
+        profit: netSales.minus(e).toFixed(2),
+      };
+    });
+  }
+
+  /** Per Dhaka day in [from, to], every day present (empty ones too). */
+  private async dayBuckets(scope: number | null, from: string, to: string) {
+    const range = dhakaRange(from, to);
+    const base: Prisma.OrderWhereInput = {
+      channel: 'POS',
+      deletedAt: null,
+      ...(scope ? { storeId: scope } : {}),
+    };
+    // ponytail: rows summed in memory; fine for months of POS sales, move to
+    // a GROUP BY on the Dhaka date if ranges grow to years.
+    const [sold, returned] = await Promise.all([
+      this.prisma.client.order.findMany({
+        where: { ...base, createdAt: range, status: { not: 'CANCELED' } },
+        select: { createdAt: true, totalAmount: true, taxAmount: true },
+      }),
+      this.prisma.client.order.findMany({
+        where: {
+          ...base,
+          returnedAt: range,
+          status: { in: ['RETURNED', 'PARTIALLY_RETURNED'] },
+        },
+        select: { returnedAt: true, posRefundedAmount: true, posRefundedVat: true },
+      }),
+    ]);
+    const days = new Map<
+      string,
+      {
+        orders: number;
+        gross: Prisma.Decimal;
+        vat: Prisma.Decimal;
+        returns: Prisma.Decimal;
+        refundedVat: Prisma.Decimal;
+      }
+    >();
+    for (let t = range.gte.getTime(); t < range.lt.getTime(); t += 86_400_000)
+      days.set(dhakaDate(new Date(t)), {
+        orders: 0,
+        gross: ZERO,
+        vat: ZERO,
+        returns: ZERO,
+        refundedVat: ZERO,
+      });
+    for (const o of sold) {
+      const d = days.get(dhakaDate(o.createdAt));
+      if (!d) continue;
+      d.orders += 1;
+      d.gross = d.gross.plus(o.totalAmount);
+      d.vat = d.vat.plus(o.taxAmount);
+    }
+    for (const o of returned) {
+      const d = o.returnedAt && days.get(dhakaDate(o.returnedAt));
+      if (!d) continue;
+      d.returns = d.returns.plus(o.posRefundedAmount);
+      d.refundedVat = d.refundedVat.plus(o.posRefundedVat ?? ZERO);
+    }
+    return days;
+  }
+
+  /**
    * Store profit for [from, to] (Dhaka days): gross − returns − VAT on what
    * was kept, minus the expenses booked to each store's cost centre (net of
    * VAT, same basis). No cost of goods — POS stock-in costs aren't a ledger yet.
@@ -338,9 +460,8 @@ export class PosReportsService {
         assignedAdmin: { select: { firstName: true, lastName: true } },
         customer: { select: { firstName: true, lastName: true, phone: true } },
         payments: {
-          take: 1,
           orderBy: { createdAt: 'desc' },
-          select: { provider: true, transactionRef: true },
+          select: { provider: true, transactionRef: true, amount: true },
         },
         items: {
           include: {
@@ -405,10 +526,16 @@ export class PosReportsService {
         unitCost: unitCost(i, dhakaDate(o.createdAt)),
         lineTotal: new Prisma.Decimal(i.unitPrice).times(i.quantity).toFixed(2),
         saleTotal: new Prisma.Decimal(o.totalAmount).toFixed(2),
+        // Split sale: "Cash 200.00 + Card 800.00".
         payment:
-          TENDER_LABEL[o.payments[0]?.provider ?? ''] ??
-          o.payments[0]?.provider ??
-          '',
+          o.payments.length > 1
+            ? [...o.payments]
+                .reverse()
+                .map((p) => `${TENDER_LABEL[p.provider] ?? p.provider} ${new Prisma.Decimal(p.amount).toFixed(2)}`)
+                .join(' + ')
+            : (TENDER_LABEL[o.payments[0]?.provider ?? ''] ??
+              o.payments[0]?.provider ??
+              ''),
         trxRef: o.payments[0]?.transactionRef ?? '',
         status: o.status,
       })),
