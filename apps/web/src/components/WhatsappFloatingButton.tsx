@@ -26,7 +26,9 @@ function useIsProductPage(): boolean {
 
 export function WhatsappFloatingButton({ config }: { config: WhatsappConfig | null }) {
   const isProductPage = useIsProductPage();
-  if (!config?.enabled || !config.phoneNumber) return null;
+  // Not on checkout: one tap away from leaving mid-purchase.
+  const isCheckout = usePathname().split("/").filter(Boolean)[0] === "checkout";
+  if (!config?.enabled || !config.phoneNumber || isCheckout) return null;
 
   const href = buildWhatsappLink(config.phoneNumber, config.floatingMessageTemplate);
 

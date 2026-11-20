@@ -170,13 +170,26 @@ export function CheckoutFbtSection({
       : 0;
 
   return (
-    <section className="rounded-2xl border border-[#E5EFE7] bg-white p-4 sm:p-5">
-      <h2 className="font-ui text-base font-bold text-[#1E293B] sm:text-lg">
+    <section
+      className={cn(
+        "rounded-2xl border border-[#E5EFE7] bg-white",
+        // Phone: about the height of the coupon card.
+        carousel ? "p-4" : "p-4 sm:p-5",
+      )}
+    >
+      <h2
+        className={cn(
+          "font-ui font-bold",
+          carousel ? "mb-2.5 text-[15px] text-green" : "text-base text-[#1E293B] sm:text-lg",
+        )}
+      >
         অন্যরাও সাথে নিয়েছেন
       </h2>
-      <p className="mb-4 mt-0.5 font-body text-xs text-[#64748B]">
-        একসাথে নিলে বেশি সাশ্রয়! নিচের আইটেমগুলো একসাথে নিন এবং বাঁচান।
-      </p>
+      {!carousel && (
+        <p className="mb-4 mt-0.5 font-body text-xs text-[#64748B]">
+          একসাথে নিলে বেশি সাশ্রয়! নিচের আইটেমগুলো একসাথে নিন এবং বাঁচান।
+        </p>
+      )}
 
       {carousel ? (
         <>
@@ -185,7 +198,7 @@ export function CheckoutFbtSection({
           <div className="relative">
             <div
               ref={stripRef}
-              className="-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {cards.map((card) => {
                 const isChecked = !unchecked.has(card.productId);
@@ -199,13 +212,13 @@ export function CheckoutFbtSection({
                     className={cn(
                       // The whole card toggles, not just the corner box — a 16px
                       // checkbox is a poor tap target on a phone.
-                      "relative flex w-[140px] shrink-0 snap-start flex-col rounded-xl border-2 bg-white p-2 text-left transition-colors",
+                      "relative flex w-[190px] shrink-0 snap-start items-center gap-2 rounded-xl border-2 bg-white p-1.5 pr-7 text-left transition-colors",
                       isChecked
                         ? "border-[#1B753C]"
                         : "border-[#E5E5E5] hover:border-slate-300",
                     )}
                   >
-                    <span className="block aspect-square w-full overflow-hidden rounded-lg bg-[#F8F9FA]">
+                    <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-[#F8F9FA]">
                       {card.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -216,19 +229,21 @@ export function CheckoutFbtSection({
                         />
                       )}
                     </span>
-                    <span
-                      className="mt-1.5 line-clamp-2 min-h-[2.2rem] font-ui text-xs font-semibold leading-snug text-[#1E293B]"
-                      title={card.name}
-                    >
-                      {card.name}
-                    </span>
-                    <span className="mt-0.5 font-ui text-sm font-bold text-[#1B753C]">
-                      ৳
-                      {toBnNum(formatMoney(card.price).replace("৳", "").trim())}
+                    <span className="min-w-0">
+                      <span
+                        className="block truncate font-ui text-xs font-semibold text-[#1E293B]"
+                        title={card.name}
+                      >
+                        {card.name}
+                      </span>
+                      <span className="block font-ui text-[13px] font-bold text-[#1B753C]">
+                        ৳
+                        {toBnNum(formatMoney(card.price).replace("৳", "").trim())}
+                      </span>
                     </span>
                     <span
                       className={cn(
-                        "absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors",
+                        "absolute right-1.5 top-1/2 flex h-[18px] w-[18px] -translate-y-1/2 items-center justify-center rounded border-2 transition-colors",
                         isChecked
                           ? "border-[#1B753C] bg-[#1B753C] text-white"
                           : "border-slate-300 bg-white text-transparent",
@@ -265,7 +280,7 @@ export function CheckoutFbtSection({
                     })
                   }
                   className={cn(
-                    "absolute top-[38%] hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-line bg-white text-lg font-bold text-[#1B753C] shadow md:grid",
+                    "absolute top-1/2 hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-line bg-white text-lg font-bold text-[#1B753C] shadow md:grid",
                     dir < 0 ? "-left-3" : "-right-3",
                   )}
                 >
@@ -275,10 +290,10 @@ export function CheckoutFbtSection({
           </div>
 
           {/* Total and CTA under the strip. */}
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[#1B753C] px-4 py-3 text-white">
+          <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl bg-[#1B753C] px-3 py-2 text-white">
             <div className="min-w-0">
               <span className="flex items-baseline gap-1.5">
-                <span className="font-ui text-lg font-extrabold leading-none">
+                <span className="font-ui text-base font-extrabold leading-none">
                   ৳{toBnNum(total.toFixed(0))}
                 </span>
                 {saved > 0 && (
@@ -290,7 +305,7 @@ export function CheckoutFbtSection({
                 )}
               </span>
               {saved > 0 && (
-                <span className="mt-1 inline-block rounded-full bg-white/15 px-2 py-0.5 font-ui text-[0.7rem] font-bold leading-none text-white">
+                <span className="mt-0.5 block font-ui text-[0.68rem] font-bold leading-none text-white/90">
                   সাশ্রয় ৳{toBnNum(saved.toFixed(0))} (
                   {toBnNum(savingsPercent)}%)
                 </span>
@@ -300,7 +315,7 @@ export function CheckoutFbtSection({
               type="button"
               disabled={isPending || checkedCards.length === 0}
               onClick={() => onAddItems(checkedCards)}
-              className="shrink-0 rounded-lg bg-white px-3 py-2 font-ui text-xs font-bold text-[#1B753C] transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+              className="shrink-0 rounded-lg bg-white px-3 py-1.5 font-ui text-xs font-bold text-[#1B753C] transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending
                 ? "যোগ হচ্ছে…"

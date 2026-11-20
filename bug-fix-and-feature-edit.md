@@ -4086,3 +4086,5 @@ Sales tab now has a "Date-wise breakdown" table under the store table: one row p
 - Checkout / cart drawer: full product name now wraps onto extra lines instead of being cut with "...".
 - Checkout offer progress bar slimmed to one line ("Add just 2 more item(s) → 4 items - 5% off + free shipping") plus a thin bar; removed the icon, subtitle, free-shipping pill and the two caption lines. Cart drawer version unchanged.
 - Checkout offer bar always in Bangla ("আর মাত্র ১টি আইটেম যোগ করুন → …"). The offer name after the arrow is the stage label typed in admin, so write it in Bangla there.
+- Checkout: WhatsApp floating button hidden on the checkout page.
+- Checkout (phone): "অন্যরাও সাথে নিয়েছেন" made compact, about the coupon card height: small heading, no subtitle, slim side-scrolling item chips (44px image, one-line name, price, tick), slim total + add bar. Desktop unchanged.
