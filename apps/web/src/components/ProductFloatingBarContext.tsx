@@ -11,6 +11,9 @@ export interface ProductFloatingBarState {
   isScrolledPast: boolean;
   /** Fire-and-forget: adds the product to the cart then opens the cart drawer */
   onAddToCart: (() => void) | null;
+  /** What the product page has picked right now (size, quantity). */
+  pickedVariantId: string | null;
+  pickedQty: number | null;
   /** Fire-and-forget: adds the product to the cart then navigates to /checkout */
   onBuyNow: (() => void) | null;
   /** Whether the mutation is in-flight (disables both buttons) */
@@ -44,6 +47,8 @@ export interface ProductFloatingBarState {
 const INITIAL: Omit<ProductFloatingBarState, "_update" | "_reset"> = {
   isScrolledPast: false,
   onAddToCart: null,
+  pickedVariantId: null,
+  pickedQty: null,
   onBuyNow: null,
   isPending: false,
   outOfStock: false,

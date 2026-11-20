@@ -82,28 +82,30 @@ export function ProductFloatingBarProvider({
       : undefined;
 
   // --- Handlers (stable refs via useCallback) ---
+  // The size and quantity the customer picked on the page, read at tap time
+  // (the bar used to always add the default size × 1).
+  const picked = useCallback(() => {
+    const st = useProductFloatingBarStore.getState();
+    return {
+      productId: product.id,
+      variantId: product.hasVariants
+        ? Number(st.pickedVariantId ?? selectedVariantId)
+        : undefined,
+      quantity: st.pickedQty ?? (product.minOrderQuantity || 1),
+    };
+  }, [product.id, product.hasVariants, product.minOrderQuantity, selectedVariantId]);
+
   const handleAddToCart = useCallback(() => {
     openCartDrawer();
     addToCart.mutate(
-      {
-        productId: product.id,
-        variantId: product.hasVariants ? Number(selectedVariantId) : undefined,
-        quantity: product.minOrderQuantity || 1,
-      },
+      picked(),
       { onError: () => closeCartDrawer() },
     );
-  }, [addToCart, product.id, product.hasVariants, product.minOrderQuantity, selectedVariantId, openCartDrawer, closeCartDrawer]);
+  }, [addToCart, picked, openCartDrawer, closeCartDrawer]);
 
   const handleBuyNow = useCallback(() => {
-    addToCart.mutate(
-      {
-        productId: product.id,
-        variantId: product.hasVariants ? Number(selectedVariantId) : undefined,
-        quantity: product.minOrderQuantity || 1,
-      },
-      { onSuccess: () => router.push("/checkout") },
-    );
-  }, [addToCart, product.id, product.hasVariants, product.minOrderQuantity, selectedVariantId, router]);
+    addToCart.mutate(picked(), { onSuccess: () => router.push("/checkout") });
+  }, [addToCart, picked, router]);
 
   // --- Push state into the global store ---
   useEffect(() => {

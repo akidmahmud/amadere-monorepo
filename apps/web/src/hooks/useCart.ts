@@ -113,6 +113,11 @@ function useCartMutation<TArgs>(
       // cache directly means every mounted view refetches with its own
       // correct provider rather than momentarily showing this codFee-less
       // total.
+      // The response IS the new cart, so the side cart (plain key, no payment
+      // method) shows it right away instead of waiting on a second round
+      // trip. Every key, this one included, still refetches in the
+      // background to pick up provider-specific totals.
+      queryClient.setQueryData(cartKey(locale), cart);
       queryClient.invalidateQueries({ queryKey: ["cart", locale] });
       onTrack?.(cart, args);
     },

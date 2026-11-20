@@ -21,6 +21,7 @@ import { useToast } from "@/components/ToastProvider";
 import { useSelectedVariant } from "@/components/SelectedVariantProvider";
 import { WhatsappOrderButton } from "@/components/WhatsappOrderButton";
 import { CallNowButton } from "@/components/CallNowButton";
+import { useProductFloatingBarStore } from "@/components/ProductFloatingBarContext";
 import type { WhatsappConfig } from "@/lib/whatsapp";
 import type { components } from "@/lib/api/schema";
 import { BackInStockButton } from "@/components/BackInStockButton";
@@ -141,6 +142,12 @@ export function PdpPurchasePanel({
   // Same cast as product-detail.tsx: the generated schema types productType
   // as an opaque object because the DTO carries no @ApiProperty enum.
   const isDigital = (product.productType as unknown as string) === "DIGITAL";
+
+  // Tell the bottom Add to Cart / Buy Now bar what is picked here.
+  const setPicked = useProductFloatingBarStore((st) => st._update);
+  useEffect(() => {
+    setPicked({ pickedVariantId: selectedVariantId ?? null, pickedQty: qty });
+  }, [selectedVariantId, qty, setPicked]);
 
   function addItem(onSuccess: () => void, onError?: () => void) {
     addToCart.mutate(
