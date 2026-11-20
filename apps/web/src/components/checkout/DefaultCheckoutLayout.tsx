@@ -13,7 +13,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, FormProvider, useForm, type FieldErrors } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import {
   Button,
   CartLineItem,
@@ -98,7 +98,6 @@ export function DefaultCheckoutLayout() {
     setFraudResult,
     setPreflightBlock,
     setShowOtpPopup,
-    setVoucherInput,
     shippingAddressRef,
     shippingDistrict,
     shippingPhone,
@@ -107,8 +106,11 @@ export function DefaultCheckoutLayout() {
     toggleFbt,
     updateItem,
     useNewAddress,
-    voucherCheck,
   } = useCheckoutContext();
+  // The floating "order" bar appears once a name is typed: from then on the
+  // customer is committed enough that the button should always be in reach.
+  const typedName = useWatch({ control, name: "shippingAddress.recipientName" });
+  const showFloatingOrder = hasItems && !!typedName?.trim();
 
   return (
     <>
@@ -120,7 +122,8 @@ export function DefaultCheckoutLayout() {
             stages={cart.upsell.stages}
             nextStage={cart.upsell.nextStage}
             currentCount={cart.upsell.currentCount}
-            locale={locale}
+            // Bangla on both locales, like the order button.
+            locale="BN"
             className="mb-6"
           />
         )}
@@ -147,7 +150,10 @@ export function DefaultCheckoutLayout() {
         <div className="grid grid-cols-2 gap-6 max-lg:grid-cols-1">
           <div>
             <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
-              <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Order Review</h2>
+              <div className="mb-2 flex items-center justify-between border-b border-line pb-2.5">
+                <h2 className="font-ui text-[15px] font-bold text-green">আপনার অর্ডার</h2>
+                <span className="font-ui text-xs font-semibold uppercase tracking-wide text-muted">সাবটোটাল</span>
+              </div>
               {cart?.items.map((item) => (
                 <CartLineItem
                   key={item.id}
@@ -219,7 +225,7 @@ export function DefaultCheckoutLayout() {
               </div>
             ) : (
             <div ref={shippingAddressRef} className="mb-5.5 rounded-brand border border-line bg-white p-5">
-              <h2 className="mb-4 font-ui text-[15px] font-semibold text-green">Shipping Address</h2>
+              <h2 className="mb-4 font-ui text-[15px] font-bold text-green">ডেলিভারি তথ্য দিন</h2>
 
               <SavedAddressPicker
                 addresses={savedAddresses}
@@ -240,10 +246,10 @@ export function DefaultCheckoutLayout() {
                 prefix="shippingAddress"
                 onFraudResult={setFraudResult}
                 noteField={
-                  <div className="mb-3.5">
+                  <div>
                     <textarea
                       rows={2}
-                      placeholder="Note for your order (optional)"
+                      placeholder="অর্ডার নোট (ঐচ্ছিক)"
                       className="w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 font-body text-sm outline-none focus:border-green"
                       {...register("customerNote")}
                     />
@@ -258,23 +264,6 @@ export function DefaultCheckoutLayout() {
             </div>
             )}
 
-            {!digitalOnly && (
-            <div className="rounded-brand border border-line bg-white p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-ui text-[15px] font-semibold text-green">Billing Address</h2>
-                <Checkbox
-                  checked={billingSameAsShipping}
-                  onCheckedChange={(checked) => form.setValue("billingSameAsShipping", checked)}
-                  label="Same as shipping"
-                />
-              </div>
-              {!billingSameAsShipping && (
-                <div className="mt-4">
-                  <AddressFields prefix="billingAddress" />
-                </div>
-              )}
-            </div>
-            )}
           </div>
 
           <div>
@@ -336,25 +325,6 @@ export function DefaultCheckoutLayout() {
 
             <CheckoutCouponField />
 
-            <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
-              <h2 className="mb-3 font-ui text-[15px] font-semibold text-green">Have a gift voucher?</h2>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Gift voucher code"
-                  {...register("giftVoucherCode", { onChange: (e) => setVoucherInput(e.target.value) })}
-                />
-              </div>
-              {voucherCheck.data && (
-                <p className={`mt-2 font-body text-xs ${voucherCheck.data.usable ? "text-green" : "text-red-600"}`}>
-                  {voucherCheck.data.usable
-                    ? `Valid — ${formatMoney(voucherCheck.data.remainingBalance)} available`
-                    : "This voucher isn't usable"}
-                </p>
-              )}
-              {voucherCheck.isError && (
-                <p className="mt-2 font-body text-xs text-red-600">Voucher not found</p>
-              )}
-            </div>
 
             {cart && hasItems && (
               <div className="mb-5.5 rounded-brand border border-line bg-white p-5">
@@ -412,6 +382,7 @@ export function DefaultCheckoutLayout() {
           {hasItems && frequentlyBoughtCards.length > 0 && (
             <div className="col-span-full mt-5 border-t border-line pt-5 md:hidden">
               <CheckoutFbtSection
+                carousel
                 cards={frequentlyBoughtCards}
                 onAddItems={handleAddMultipleCards}
                 isPending={addToCart.isPending}
@@ -439,6 +410,26 @@ export function DefaultCheckoutLayout() {
             </div>
           )}
         </div>
+
+        {showFloatingOrder && (
+          <>
+            {/* Room so the bar never covers the last field or button. */}
+            <div className="h-24" aria-hidden />
+            <div className="checkout-float-bar fixed inset-x-0 bottom-0 z-[60] border-t border-line bg-white/95 px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur">
+              <div className="mx-auto max-w-md">
+                <Button
+                  type="submit"
+                  variant="green"
+                  block
+                  disabled={placeOrder.isPending}
+                  className="checkout-shake"
+                >
+                  {placeOrderLabel}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
     </>
   );
 }

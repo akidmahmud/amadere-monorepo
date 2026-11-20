@@ -61,36 +61,54 @@ export function AddressFields({
     (t) => ({ value: t, hint: BD_THANA_BN[t], aliases: BD_THANA_BN[t] ? [BD_THANA_BN[t]] : [] }),
   );
 
+  // Bangla label above each box (not placeholder-only): a placeholder
+  // vanishes the moment someone types, and on a phone that leaves a column of
+  // unlabelled boxes. Fewer boxes too — landmark and alternative phone went,
+  // they were the fields customers stalled on.
+  const label = (text: string, required = false) => (
+    <span className="mb-1.5 block font-body text-[13px] font-semibold text-ink">
+      {text}
+      {required && <span className="text-red-600"> *</span>}
+    </span>
+  );
+  const err = (msg?: string) => msg && <p className="mt-1 font-body text-xs text-red-600">{msg}</p>;
+
   return (
-    <div>
-      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {/* Name before phone, per explicit request. The grid is source-order,
-            so swapping the two blocks moves the field on both the stacked
-            phone layout and the two-column desktop one. */}
-        <div>
-          <Input placeholder="Your Full Name *" {...register(`${prefix}.recipientName`)} />
-          {fieldErrors?.recipientName && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.recipientName.message}</p>
-          )}
-        </div>
-        <div>
-          <Input placeholder="017*********" {...banglaDigits(register(`${prefix}.phone`))} />
-          {fieldErrors?.phone && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.phone.message}</p>
-          )}
-          {onFraudResult && <CheckoutFraudBadge phone={watch(`${prefix}.phone`) ?? ""} onResult={onFraudResult} />}
-        </div>
+    <div className="space-y-3.5">
+      <label className="block">
+        {label("আপনার নাম", true)}
+        <Input placeholder="আপনার নাম লিখুন..." autoComplete="name" {...register(`${prefix}.recipientName`)} />
+        {err(fieldErrors?.recipientName?.message)}
+      </label>
+
+      <div>
+        <label className="block">
+          {label("মোবাইল নাম্বার", true)}
+          <Input
+            placeholder="01XXXXXXXXX"
+            inputMode="tel"
+            autoComplete="tel"
+            {...banglaDigits(register(`${prefix}.phone`))}
+          />
+        </label>
+        {err(fieldErrors?.phone?.message)}
+        {onFraudResult && <CheckoutFraudBadge phone={watch(`${prefix}.phone`) ?? ""} onResult={onFraudResult} />}
       </div>
 
-      <div className="mb-3.5">
-        <Input placeholder="House no. / building / street / area *" {...register(`${prefix}.addressLine`)} />
-        {fieldErrors?.addressLine && (
-          <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.addressLine.message}</p>
-        )}
-      </div>
+      <label className="block">
+        {label("আপনার ঠিকানা", true)}
+        <Input
+          placeholder="বাসা নং, রোড, এলাকা লিখুন..."
+          autoComplete="street-address"
+          {...register(`${prefix}.addressLine`)}
+        />
+        {err(fieldErrors?.addressLine?.message)}
+      </label>
 
-      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Steadfast needs both, so they stay — side by side to save a row. */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
+          {label("জেলা", true)}
           <Controller
             name={`${prefix}.district`}
             control={control}
@@ -108,17 +126,16 @@ export function AddressFields({
                 // `division` is derived from this exact string server-side, so
                 // a typo here has to be impossible.
                 allowFreeText={false}
-                placeholder="এখানে জেলা টাইপ করুন *"
+                placeholder="জেলা টাইপ করুন"
                 aria-label="District"
                 emptyMessage="No district matches"
               />
             )}
           />
-          {fieldErrors?.district && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.district.message}</p>
-          )}
+          {err(fieldErrors?.district?.message)}
         </div>
         <div>
+          {label("থানা", true)}
           <Controller
             name={`${prefix}.area`}
             control={control}
@@ -127,40 +144,26 @@ export function AddressFields({
                 options={thanaOptions}
                 value={field.value ?? ""}
                 onChange={field.onChange}
-                // Free text on purpose: only two districts have a curated area
-                // list, so for the other 63 this is simply a text box that
-                // happens to have nothing to suggest.
-                placeholder="এখানে থানা টাইপ করুন *"
+                // Free text on purpose: only some districts have a curated
+                // area list; for the rest this is a plain text box.
+                placeholder="থানা টাইপ করুন"
                 aria-label="Thana or area"
                 emptyMessage="Type your thana / area"
               />
             )}
           />
-          {fieldErrors?.area && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.area.message}</p>}
+          {err(fieldErrors?.area?.message)}
         </div>
       </div>
 
-      <div className="mb-3.5">
-        <Input placeholder="Landmark (optional)" {...register(`${prefix}.landmark`)} />
-      </div>
+      {/* Optional, for customers abroad (probashi) ordering for family. */}
+      <label className="block">
+        {label("ইমেইল (ঐচ্ছিক — প্রবাসীদের জন্য)")}
+        <Input type="email" placeholder="example@email.com" autoComplete="email" {...register(`${prefix}.email`)} />
+        {err(fieldErrors?.email?.message)}
+      </label>
 
       {noteField}
-
-      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <Input
-            placeholder="Alternative Phone (optional)"
-            {...banglaDigits(register(`${prefix}.alternativePhone`))}
-          />
-          {fieldErrors?.alternativePhone && (
-            <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.alternativePhone.message}</p>
-          )}
-        </div>
-        <div>
-          <Input placeholder="Recipient Email (optional)" {...register(`${prefix}.email`)} />
-          {fieldErrors?.email && <p className="mt-1 font-body text-xs text-red-600">{fieldErrors.email.message}</p>}
-        </div>
-      </div>
     </div>
   );
 }

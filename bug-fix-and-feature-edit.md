@@ -4075,3 +4075,14 @@ When the newest SMS failed with gateway code -4 (Insufficient Balance), admin no
 ## 2026-11-19 — POS Reports: date-wise sales breakdown
 Sales tab now has a "Date-wise breakdown" table under the store table: one row per day in the chosen range (Sales, Gross, VAT, Returns, Net; newest first, empty days greyed), 15 days per page, with its own Excel export. Respects the store / All stores choice. New endpoints: GET /admin/pos/reports/sales-daily and sales-daily.csv.
 - Store profit tab: same date-wise breakdown (Gross, Returns, VAT, Net sales, Expenses, Profit per day; expenses by expense date), paged, with Excel export. GET /admin/pos/reports/profit-daily and profit-daily.csv.
+
+## 2026-11-20 — Checkout decluttered (mobile first)
+- Address form: Bangla labels above each box (আপনার নাম, মোবাইল নাম্বার, আপনার ঠিকানা, জেলা + থানা side by side, ইমেইল optional for probashi, order note). Removed Landmark and Alternative Phone.
+- Removed the Billing Address card (billing stays "same as shipping") and the "Have a gift voucher?" card.
+- Order summary titled "আপনার অর্ডার" with a সাবটোটাল header.
+- "অন্যরাও সাথে নিয়েছেন": swipe carousel on phones only; desktop keeps the old equation layout.
+- Once a name is typed, a floating "অর্ডার করুন — ৳total" bar slides up at the bottom, stays while scrolling, and shakes every few seconds (off for reduced-motion users).
+- Pixel/GA events untouched (they fire from useCheckoutState, not the layout).
+- Checkout / cart drawer: full product name now wraps onto extra lines instead of being cut with "...".
+- Checkout offer progress bar slimmed to one line ("Add just 2 more item(s) → 4 items - 5% off + free shipping") plus a thin bar; removed the icon, subtitle, free-shipping pill and the two caption lines. Cart drawer version unchanged.
+- Checkout offer bar always in Bangla ("আর মাত্র ১টি আইটেম যোগ করুন → …"). The offer name after the arrow is the stage label typed in admin, so write it in Bangla there.

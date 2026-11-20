@@ -35,7 +35,7 @@ export function CartLineItem({ item, onQuantityChange, onRemove, linkComponent: 
         {item.imageUrl && <img loading="lazy" src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />}
       </Link>
       <div className="min-w-0 flex-1">
-        <Link href={item.href} className="mb-1.5 block truncate font-ui text-[13px] text-ink">
+        <Link href={item.href} className="mb-1.5 block break-words font-ui text-[13px] leading-snug text-ink">
           {item.name}
         </Link>
         {item.variantLabel && <p className="mb-1.5 text-xs text-muted">{item.variantLabel}</p>}

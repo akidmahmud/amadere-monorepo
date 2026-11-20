@@ -121,6 +121,26 @@ body * {
 }
 
 
+/* Checkout floating order bar: slides up once the customer has typed a name,
+   then the button gives a short shake every few seconds. */
+@keyframes checkout-pop-up {
+  from { transform: translateY(110%); }
+  to { transform: translateY(0); }
+}
+@keyframes checkout-shake {
+  0%, 82%, 100% { transform: translateX(0); }
+  85% { transform: translateX(-6px); }
+  88% { transform: translateX(6px); }
+  91% { transform: translateX(-5px); }
+  94% { transform: translateX(4px); }
+  97% { transform: translateX(-2px); }
+}
+.checkout-float-bar { animation: checkout-pop-up 0.35s ease-out; }
+.checkout-shake { animation: checkout-shake 3s ease-in-out 0.6s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .checkout-float-bar, .checkout-shake { animation: none; }
+}
+
 /* Checkout on phones drops the site footer.
 
    The footer is a tall block of link columns, policies and payment marks. On a
