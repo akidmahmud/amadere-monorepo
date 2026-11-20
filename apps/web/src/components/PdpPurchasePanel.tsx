@@ -49,10 +49,12 @@ const heartIcon = (filled: boolean) => (
     viewBox="0 0 24 24"
     fill={filled ? "currentColor" : "none"}
     stroke="currentColor"
-    strokeWidth={1.8}
-    className="h-4.5 w-4.5"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="h-5 w-5"
   >
-    <path d="M12 20.5s-7-4.35-9.5-8.6C.6 8.6 2 5 5.5 5c2 0 3.5 1.2 4.5 2.7C11 6.2 12.5 5 14.5 5 18 5 19.4 8.6 17.5 11.9 15 16.15 12 20.5 12 20.5z" />
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
   </svg>
 );
 
@@ -275,26 +277,41 @@ export function PdpPurchasePanel({
           quantity row — was missing entirely before. */}
       <hr className="mb-3 border-line md:mb-4" />
 
+      {/* Mobile pack sizes: tappable chips (every option visible at once, the
+          picked one green) in one swipeable row — clearer than a dropdown,
+          and one line tall. Desktop keeps PackSizeSelector above. */}
+      {product.hasVariants && packOptions.length > 0 && selectedVariantId && (
+        <div
+          role="radiogroup"
+          aria-label="Select pack size"
+          className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+        >
+          {packOptions.map((option) => {
+            const on = option.value === selectedVariantId;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setSelectedVariantId(option.value)}
+                className={`flex h-11 min-w-[110px] shrink-0 items-center justify-center rounded-full border-2 px-5 font-ui text-base font-semibold transition-colors ${
+                  on ? "border-green bg-green text-white" : "border-line bg-white text-ink"
+                }`}
+              >
+                {option.label}
+                <span className={`ml-1.5 font-bold ${on ? "text-white" : "text-green"}`}>
+                  {formatMoney(option.price)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="mb-2 flex items-center gap-3 md:mb-3">
-        {/* Slim, inline stand-in for the desktop PackSizeSelector card grid
-            (kept above the CTAs, unchanged) — that card layout is too wide
-            to sit next to the qty stepper on a phone, so mobile gets a
-            native select sharing this row instead, per explicit request. */}
-        {product.hasVariants && packOptions.length > 0 && selectedVariantId && (
-          <select
-            aria-label="Select pack size"
-            value={selectedVariantId}
-            onChange={(e) => setSelectedVariantId(e.target.value)}
-            className="h-10 min-w-0 flex-1 rounded-full border border-line bg-white px-3 font-ui text-base text-ink md:hidden"
-          >
-            {packOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label} — {formatMoney(option.price)}
-              </option>
-            ))}
-          </select>
-        )}
         <QtyStepper
+          size="lg"
           value={qty}
           onChange={setQty}
           min={product.minOrderQuantity || 1}
@@ -305,7 +322,7 @@ export function PdpPurchasePanel({
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           onClick={handleToggleWishlist}
           disabled={addToWishlist.isPending || removeFromWishlist.isPending}
-          className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line ${isWishlisted ? "text-red-600" : "text-muted"}`}
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border transition-colors ${isWishlisted ? "border-red-200 bg-red-50 text-red-500" : "border-red-100 bg-white text-red-400 hover:bg-red-50"}`}
         >
           {heartIcon(isWishlisted)}
         </button>
@@ -325,7 +342,7 @@ export function PdpPurchasePanel({
           2-col grid on mobile but `contents` on desktop so its two children
           fall directly into the parent grid's second row instead of being
           squeezed into a single cell. */}
-      <div id="pdp-buy-buttons" className="mb-3 flex flex-col gap-3 md:mb-4 md:grid md:grid-cols-2">
+      <div id="pdp-buy-buttons" className="mb-3 grid grid-cols-2 gap-3 md:mb-4">
         {!outOfStock && isDigital && (
           // Spans both grid columns on desktop — it is the only purchase
           // action here, so leaving it at half width would look like the
@@ -334,7 +351,7 @@ export function PdpPurchasePanel({
             type="button"
             disabled={addToCart.isPending}
             onClick={handleBuyNow}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-green text-sm font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
+            className="col-span-2 flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-green text-base font-bold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {downloadIcon}
             {addToCart.isPending ? "Preparing…" : "Download"}
@@ -346,7 +363,7 @@ export function PdpPurchasePanel({
               type="button"
               disabled={addToCart.isPending}
               onClick={handleAddToCart}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-md border-2 border-green bg-transparent text-sm font-semibold uppercase text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full border-2 border-green bg-transparent text-base font-bold uppercase text-green transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               {addToCart.isPending ? "Adding…" : "Add To Cart"}
             </button>
@@ -354,7 +371,7 @@ export function PdpPurchasePanel({
               type="button"
               disabled={addToCart.isPending}
               onClick={handleBuyNow}
-              className="flex h-11 w-full animate-[wiggle_2.5s_ease-in-out_infinite] items-center justify-center gap-2 rounded-md bg-green text-sm font-semibold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="checkout-shake flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-green text-base font-bold uppercase text-white transition-colors hover:bg-green-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               {addToCart.isPending ? "Adding…" : "Buy Now"}
             </button>
@@ -365,7 +382,7 @@ export function PdpPurchasePanel({
             There is nothing to negotiate over the phone about a PDF that
             downloads itself the moment checkout completes. */}
         {!isDigital && (
-          <div className="grid grid-cols-2 gap-3 md:contents">
+          <div className="contents">
             <WhatsappOrderButton config={whatsappConfig} productName={product.name} />
             <CallNowButton config={whatsappConfig} />
           </div>

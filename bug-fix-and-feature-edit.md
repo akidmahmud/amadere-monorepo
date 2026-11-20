@@ -4088,3 +4088,15 @@ Sales tab now has a "Date-wise breakdown" table under the store table: one row p
 - Checkout offer bar always in Bangla ("আর মাত্র ১টি আইটেম যোগ করুন → …"). The offer name after the arrow is the stage label typed in admin, so write it in Bangla there.
 - Checkout: WhatsApp floating button hidden on the checkout page.
 - Checkout (phone): "অন্যরাও সাথে নিয়েছেন" made compact, about the coupon card height: small heading, no subtitle, slim side-scrolling item chips (44px image, one-line name, price, tick), slim total + add bar. Desktop unchanged.
+
+## 2026-11-20 — Product page (mobile)
+- Bottom bar: product pages now show the Chat / Add to Cart / Buy Now bar straight away instead of the Home/Menu/Cart/Blog/Account bar (falls back to the nav bar when out of stock). Its Buy Now shakes every few seconds.
+- Page buttons now 2x2 and pill-shaped on every width: Add to Cart + Buy Now (shaking) on one row, WhatsApp + Call Now on the next.
+- Pack size on phones: tappable chips ("1KG ৳450", "500 gram ৳225"), selected one green, one swipeable row, instead of a dropdown. Desktop selector unchanged.
+- Product page wishlist button: new symmetric heart icon, slightly bigger, red (fills red with a light red background once saved).
+- Product page quantity stepper: bigger white − / + buttons (36px) and bigger number; wishlist button matched to its height. Cart rows keep the small stepper.
+- Product page bottom bar: "Chat" text removed; WhatsApp is now a round 44px icon button, same height as Add to Cart / Buy Now.
+- Product page bottom bar: WhatsApp button replaced by a round Home button (green outline, links to the home page).
+- Product page (phone) pack size chips enlarged: 44px tall, 16px text, min 110px wide.
+- Product page buttons (Add to Cart, Buy Now, WhatsApp, Call Now) enlarged: 52px tall, 16px bold text.
+- Product page WhatsApp button: proper WhatsApp logo, 24px; Call Now phone icon enlarged to match.

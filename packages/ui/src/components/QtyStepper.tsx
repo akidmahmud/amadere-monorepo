@@ -23,6 +23,8 @@ export interface QtyStepperProps {
    * a burst of clicks.
    */
   commitDelayMs?: number;
+  /** "lg": bigger, white +/- buttons (product page). */
+  size?: "md" | "lg";
 }
 
 export function QtyStepper({
@@ -33,7 +35,12 @@ export function QtyStepper({
   disabled,
   className,
   commitDelayMs = 0,
+  size = "md",
 }: QtyStepperProps) {
+  const stepBtn =
+    size === "lg"
+      ? "grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-xl font-semibold text-ink shadow-sm active:scale-95 disabled:opacity-40"
+      : "grid h-7 w-7 shrink-0 place-items-center rounded-full text-base text-[#8a94a3] disabled:opacity-40";
   // Instant local echo — the +/- buttons and typed edits update this
   // immediately, regardless of how long the real onChange (often a network
   // mutation) takes to actually resolve. Without this, every click waited
@@ -126,7 +133,7 @@ export function QtyStepper({
         aria-label="Decrease quantity"
         disabled={!canDecrement}
         onClick={() => scheduleCommit(-1)}
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-base text-[#8a94a3] disabled:opacity-40"
+        className={stepBtn}
       >
         –
       </button>
@@ -155,7 +162,10 @@ export function QtyStepper({
           disabled={disabled}
           onClick={startEditing}
           aria-label="Edit quantity"
-          className="min-w-[22px] text-center font-ui text-sm font-semibold text-[#2f5fdb] disabled:opacity-70"
+          className={cn(
+            "text-center font-ui font-semibold text-[#2f5fdb] disabled:opacity-70",
+            size === "lg" ? "min-w-[30px] text-base" : "min-w-[22px] text-sm",
+          )}
         >
           {displayValue}
         </button>
@@ -165,7 +175,7 @@ export function QtyStepper({
         aria-label="Increase quantity"
         disabled={!canIncrement}
         onClick={() => scheduleCommit(1)}
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-base text-[#8a94a3] disabled:opacity-40"
+        className={stepBtn}
       >
         +
       </button>
