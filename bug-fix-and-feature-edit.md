@@ -4102,3 +4102,5 @@ Sales tab now has a "Date-wise breakdown" table under the store table: one row p
 - Product page WhatsApp button: proper WhatsApp logo, 24px; Call Now phone icon enlarged to match.
 - Product page bottom bar (Add to Cart / Buy Now) now uses the size and quantity picked on the page; it always added the default size x 1 before.
 - Side cart after Add to Cart is faster: the add response (already the full new cart) is shown immediately instead of waiting for a second cart fetch; totals still refresh in the background. Applies to every Add to Cart on the site.
+
+- **Order window: billing address is now editable.** A pencil next to "Billing address" opens the same form as shipping (name, phone, email, address, district, thana, division) and saves to the order's billing snapshot via `PATCH /admin/orders/:id/details` with new `addressType: "BILLING"` (default stays SHIPPING). Printed/downloaded invoices already read the billing address, so edits show there. Files: update-order-details.dto.ts, orders.service.ts, useOrders.ts, OrderDetailModal.tsx (address form moved to a shared `addressForm` const).

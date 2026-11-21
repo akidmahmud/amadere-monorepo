@@ -705,7 +705,7 @@ export class OrdersService {
         dto.recipientName !== undefined
       ) {
         await tx.orderAddress.updateMany({
-          where: { orderId, type: OrderAddressType.SHIPPING },
+          where: { orderId, type: dto.addressType ?? OrderAddressType.SHIPPING },
           // Each written only when sent — passing the others as undefined is
           // what Prisma wants for "leave unchanged", but `area` is nullable
           // so an empty string must clear it rather than store "".

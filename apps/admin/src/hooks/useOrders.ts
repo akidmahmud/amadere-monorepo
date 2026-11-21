@@ -400,6 +400,7 @@ export function useUpdateOrderDetails(id: number) {
   return useMutation({
     mutationFn: (input: {
       channel?: OrderChannel;
+      addressType?: "SHIPPING" | "BILLING";
       recipientName?: string;
       phone?: string;
       email?: string;
