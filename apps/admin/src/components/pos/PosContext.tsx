@@ -7,7 +7,7 @@ import { usePosStores, type PosStore } from "@/hooks/usePos";
 interface PosContextValue {
   can: (key: string) => boolean;
   allStores: boolean;
-  /** Sent as ?storeId= — undefined lets the server use the user's own store. */
+  /** Sent as ?storeId= — the picked store, or a one-shop user's own store. */
   storeId: number | undefined;
   setStoreId: (id: number) => void;
   store: PosStore | undefined;
@@ -83,7 +83,9 @@ export function PosProvider({ children }: { children: React.ReactNode }) {
   const value: PosContextValue = {
     can,
     allStores,
-    storeId: allStores ? activeId : undefined,
+    // Always the active store: pages render only once they have one. The
+    // server pins a one-shop user to their own store whatever is sent.
+    storeId: activeId,
     setStoreId: (id) => {
       setPicked(id);
       try {

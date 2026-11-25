@@ -373,8 +373,8 @@ export function PosOrdersManager({
 
   return (
     <div className="space-y-5">
-      {/* All-time money: only for those who may see POS reports (admins). */}
-      {can("pos.reports") && (
+      {/* All-time money: admins only (all-shops users), not one-shop staff. */}
+      {can("pos.all_stores") && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#1d7a46] text-white">
