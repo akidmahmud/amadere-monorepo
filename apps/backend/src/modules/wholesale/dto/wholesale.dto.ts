@@ -738,6 +738,13 @@ export class WholesaleOrderQueryDto extends WholesaleDateRangeQueryDto {
   channelId?: number;
 
   @ApiPropertyOptional({
+    description: 'A staff id, or "none" for orders nobody is assigned to',
+  })
+  @IsOptional()
+  @Matches(/^(\d+|none)$/)
+  assignedAdminId?: string;
+
+  @ApiPropertyOptional({
     description:
       'Export only: comma-separated order ids ("Export selected"). When set, the other filters are ignored.',
   })

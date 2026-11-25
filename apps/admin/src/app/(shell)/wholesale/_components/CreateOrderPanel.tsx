@@ -1064,6 +1064,35 @@ export function CreateOrderPanel({
                 />
               </Field>
 
+              {/* A channel without delivery (GP, Cash Sale…) has no courier
+                  card, so its payment status is picked here. Defaults to
+                  Paid; Unpaid / Partially paid are collected later from the
+                  Orders dashboard. */}
+              {!hasDelivery && (
+                <Field label="Payment status">
+                  <select
+                    className={INPUT}
+                    value={paymentStatus}
+                    onChange={(e) =>
+                      setPaymentStatus(e.target.value as WholesalePaymentStatus)
+                    }
+                  >
+                    {PAYMENT_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                  {paymentStatus === "PARTIALLY_PAID" && (
+                    <p className="mt-1.5 text-[10px] text-muted">
+                      Nothing is collected now — record the part payment from
+                      the Orders dashboard so it posts to Accounts against this
+                      invoice.
+                    </p>
+                  )}
+                </Field>
+              )}
+
               {/* Only when money is actually recorded now, and only worth
                   asking when there is more than one account to choose. */}
               {paymentStatus === "PAID" && (accounts.data?.length ?? 0) > 1 && (

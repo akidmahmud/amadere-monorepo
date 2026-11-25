@@ -1387,6 +1387,14 @@ export class WholesaleService {
       ...(query.type ? { type: query.type } : {}),
       ...(query.partyId ? { partyId: query.partyId } : {}),
       ...(query.channelId ? { channelId: query.channelId } : {}),
+      ...(query.assignedAdminId
+        ? {
+            assignedAdminId:
+              query.assignedAdminId === 'none'
+                ? null
+                : Number(query.assignedAdminId),
+          }
+        : {}),
       ...this.orderDateRange(query),
       // Every column the dashboard prints is searchable, products included:
       // staff look an order up by what was in it at least as often as by its
@@ -2021,6 +2029,9 @@ export class WholesaleService {
   async cancelOrder(
     id: number,
     adminId: number | null,
+    // true = the collected payments are reversed too (voiding the invoice
+    // reverses every ledger entry against it, receipts included).
+    voidPayments = false,
   ): Promise<WholesaleOrderDto> {
     const order = await this.prisma.client.wholesaleOrder.findUnique({
       where: { id },
@@ -2043,7 +2054,7 @@ export class WholesaleService {
       (sum, d) => sum.plus(paidByDue.get(d.id) ?? ZERO),
       ZERO,
     );
-    if (paid.greaterThan(ZERO)) {
+    if (paid.greaterThan(ZERO) && !voidPayments) {
       throw new BadRequestException(
         `৳${paid.toFixed(2)} has been collected on this order. Reverse the receipt in Accounts before cancelling.`,
       );
@@ -2187,6 +2198,158 @@ export class WholesaleService {
       },
     });
     return { ...result, transactionId: dto.transactionId?.trim() || result.transactionId };
+  }
+
+  // -------------------------------------------------------------------------
+  // Accounts tab: wholesale invoices (sales) and receipts, with void
+  // -------------------------------------------------------------------------
+
+  /** Wholesale invoices (one per order) with what has been collected. */
+  async accountInvoices(q: { page?: number; pageSize?: number; search?: string }) {
+    const page = Math.max(1, q.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, q.pageSize ?? 20));
+    const search = q.search?.trim();
+    const where: Prisma.DueWhereInput = {
+      kind: 'RECEIVABLE',
+      wholesaleOrderId: { not: null },
+      ...(search
+        ? {
+            OR: [
+              { docNo: { contains: search, mode: 'insensitive' } },
+              { wholesaleOrder: { orderNumber: { contains: search, mode: 'insensitive' } } },
+              { wholesaleOrder: { party: { name: { contains: search, mode: 'insensitive' } } } },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.client.due.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          wholesaleOrder: {
+            select: { id: true, orderNumber: true, status: true, party: { select: { name: true } } },
+          },
+        },
+      }),
+      this.prisma.client.due.count({ where }),
+    ]);
+    const paid = await this.ledger.paidForDues(rows);
+    return {
+      items: rows.map((d) => ({
+        id: d.id,
+        docNo: d.docNo,
+        issueDate: d.issueDate,
+        amount: d.amount.toFixed(2),
+        paid: (paid.get(d.id) ?? ZERO).toFixed(2),
+        voidedAt: d.voidedAt,
+        orderId: d.wholesaleOrder?.id ?? null,
+        orderNumber: d.wholesaleOrder?.orderNumber ?? null,
+        orderStatus: d.wholesaleOrder?.status ?? null,
+        customer: d.wholesaleOrder?.party?.name ?? null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** Money received against wholesale invoices (the original entries only). */
+  async accountReceipts(q: { page?: number; pageSize?: number; search?: string }) {
+    const page = Math.max(1, q.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, q.pageSize ?? 20));
+    const search = q.search?.trim();
+    const where: Prisma.LedgerEntryWhereInput = {
+      direction: 'IN',
+      reversalOfId: null,
+      due: {
+        kind: 'RECEIVABLE',
+        wholesaleOrderId: { not: null },
+        ...(search
+          ? {
+              OR: [
+                { docNo: { contains: search, mode: 'insensitive' } },
+                { wholesaleOrder: { orderNumber: { contains: search, mode: 'insensitive' } } },
+                { wholesaleOrder: { party: { name: { contains: search, mode: 'insensitive' } } } },
+              ],
+            }
+          : {}),
+      },
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.client.ledgerEntry.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          account: { select: { name: true } },
+          reversedBy: { select: { id: true, createdAt: true } },
+          due: {
+            select: {
+              docNo: true,
+              wholesaleOrder: { select: { id: true, orderNumber: true, party: { select: { name: true } } } },
+            },
+          },
+        },
+      }),
+      this.prisma.client.ledgerEntry.count({ where }),
+    ]);
+    return {
+      items: rows.map((e) => ({
+        id: e.id,
+        date: e.entryDate,
+        amount: e.amount.toFixed(2),
+        account: e.account.name,
+        reference: e.reference,
+        invoiceNo: e.due?.docNo ?? null,
+        orderId: e.due?.wholesaleOrder?.id ?? null,
+        orderNumber: e.due?.wholesaleOrder?.orderNumber ?? null,
+        customer: e.due?.wholesaleOrder?.party?.name ?? null,
+        voidedAt: e.reversedBy[0]?.createdAt ?? null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** Reverse one receipt; the order's payment status follows the ledger. */
+  async voidReceipt(entryId: number, adminId: number | null) {
+    const entry = await this.prisma.client.ledgerEntry.findUnique({
+      where: { id: entryId },
+      include: {
+        reversedBy: { select: { id: true } },
+        due: { select: { kind: true, voidedAt: true, wholesaleOrderId: true } },
+      },
+    });
+    const orderId = entry?.due?.wholesaleOrderId;
+    if (!entry || !orderId || entry.due!.kind !== 'RECEIVABLE' || entry.direction !== 'IN' || entry.reversalOfId) {
+      throw new NotFoundException('Wholesale receipt not found');
+    }
+    if (entry.reversedBy.length) throw new BadRequestException('That receipt is already voided');
+    if (entry.due!.voidedAt) throw new BadRequestException("That receipt's invoice is already voided");
+    await this.ledger.assertPeriodOpen(entry.entryDate);
+    await this.ledger.reverse(entry.id, adminId);
+    const order = await this.findOrder(orderId);
+    await this.prisma.client.wholesaleOrder.update({
+      where: { id: orderId },
+      data: { paymentStatus: order.paymentStatus },
+    });
+    return { ok: true };
+  }
+
+  /** Void a sale: cancel the order (restock), void its invoice and its receipts. */
+  async voidSale(dueId: number, adminId: number | null) {
+    const due = await this.prisma.client.due.findUnique({
+      where: { id: dueId },
+      select: { wholesaleOrderId: true, voidedAt: true },
+    });
+    if (!due?.wholesaleOrderId) throw new NotFoundException('Wholesale invoice not found');
+    if (due.voidedAt) throw new BadRequestException('That invoice is already voided');
+    return this.cancelOrder(due.wholesaleOrderId, adminId, true);
   }
 
   // -------------------------------------------------------------------------

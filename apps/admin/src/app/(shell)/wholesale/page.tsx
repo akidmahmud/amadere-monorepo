@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, Icon, PageHeader, Tabs } from "@amader/admin-ui";
 import { InvoiceSettingsForm } from "@/components/settings/InvoiceSettingsForm";
 import { ChannelSettings } from "./_components/ChannelSettings";
+import { AccountsTab } from "./_components/AccountsTab";
 import {
   useWholesaleCustomers,
   type WholesaleCustomer,
@@ -16,7 +17,13 @@ import { OrderModal } from "./_components/OrderModal";
 import { OrdersDashboard } from "./_components/OrdersDashboard";
 import { PaymentModal } from "./_components/PaymentModal";
 
-type Screen = "create" | "orders" | "customers" | "invoice" | "channels";
+type Screen =
+  | "create"
+  | "orders"
+  | "customers"
+  | "accounts"
+  | "invoice"
+  | "channels";
 
 export default function WholesalePage() {
   const [screen, setScreen] = useState<Screen>("create");
@@ -56,6 +63,7 @@ export default function WholesalePage() {
           { value: "create", label: "Create Order" },
           { value: "orders", label: "Orders Dashboard" },
           { value: "customers", label: "Customer Dashboard" },
+          { value: "accounts", label: "Accounts" },
           { value: "invoice", label: "Invoice Settings" },
           { value: "channels", label: "Channel Settings" },
         ]}
@@ -110,6 +118,8 @@ export default function WholesalePage() {
           <InvoiceSettingsForm />
         </div>
       )}
+
+      {screen === "accounts" && <AccountsTab onDone={announce} />}
 
       {screen === "channels" && <ChannelSettings onSaved={announce} />}
 

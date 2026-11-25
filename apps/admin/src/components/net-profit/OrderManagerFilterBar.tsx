@@ -41,6 +41,7 @@ export const DATE_RANGES = [
   { value: "12h", label: "Last 12 hours" },
   { value: "24h", label: "Last 24 hours" },
   { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
   { value: "custom", label: "Custom" },

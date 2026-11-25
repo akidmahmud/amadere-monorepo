@@ -390,8 +390,59 @@ export class AdminWholesaleController {
   cancelOrder(
     @Param('id', ParseIntPipe) id: number,
     @CurrentAdmin() admin: { id: number },
+    @Can() can: PermissionCheck,
+    @Body() body?: { voidPayments?: boolean },
   ): Promise<WholesaleOrderDto> {
-    return this.wholesale.cancelOrder(id, admin.id);
+    // Voiding collected money is an Accounts action, on top of deleting.
+    const voidPayments = body?.voidPayments === true;
+    if (voidPayments && !can('net_profit_accounts.manage')) {
+      throw new ForbiddenException(
+        'Missing permission: net_profit_accounts.manage',
+      );
+    }
+    return this.wholesale.cancelOrder(id, admin.id, voidPayments);
+  }
+
+  // Accounts tab: wholesale invoices (sales) and receipts.
+  @Get('accounts/invoices')
+  @RequirePermission('wholesale.view')
+  accountInvoices(@Query() q: { page?: string; pageSize?: string; search?: string }) {
+    return this.wholesale.accountInvoices({
+      page: Number(q.page) || 1,
+      pageSize: Number(q.pageSize) || 20,
+      search: q.search,
+    });
+  }
+
+  @Get('accounts/receipts')
+  @RequirePermission('wholesale.view')
+  accountReceipts(@Query() q: { page?: string; pageSize?: string; search?: string }) {
+    return this.wholesale.accountReceipts({
+      page: Number(q.page) || 1,
+      pageSize: Number(q.pageSize) || 20,
+      search: q.search,
+    });
+  }
+
+  // Voiding money is an Accounts right, on top of wholesale access.
+  @Post('accounts/receipts/:id/void')
+  @RequirePermission('net_profit_accounts.manage')
+  @UseInterceptors(AuditLogInterceptor)
+  voidReceipt(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentAdmin() admin: { id: number },
+  ) {
+    return this.wholesale.voidReceipt(id, admin.id);
+  }
+
+  @Post('accounts/invoices/:id/void')
+  @RequirePermission('net_profit_accounts.manage')
+  @UseInterceptors(AuditLogInterceptor)
+  voidSale(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentAdmin() admin: { id: number },
+  ) {
+    return this.wholesale.voidSale(id, admin.id);
   }
 
   @Post('orders/:id/restore')

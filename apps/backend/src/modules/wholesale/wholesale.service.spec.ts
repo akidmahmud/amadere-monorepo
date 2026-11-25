@@ -534,6 +534,17 @@ describe('WholesaleService', () => {
     expect(dues.void).not.toHaveBeenCalled();
   });
 
+  it('with voidPayments, cancels a paid order and voids the invoice (reversing its receipts)', async () => {
+    ledger.paidForDues.mockResolvedValue(new Map([[90, D('800.00')]]));
+    await service.cancelOrder(savedOrder.id, 1, true);
+    expect(tx.wholesaleOrder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'CANCELLED' }),
+      }),
+    );
+    expect(dues.void).toHaveBeenCalledWith(90, 1);
+  });
+
   it('restores a cancelled order by taking stock again and reopening its original invoice', async () => {
     const cancelled = {
       ...savedOrder,

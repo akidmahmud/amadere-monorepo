@@ -523,6 +523,8 @@ export function useWholesaleOrders(
   channelId?: number,
   from?: string,
   to?: string,
+  /** A staff id, or "none" for unassigned orders. */
+  assignedAdminId?: string,
 ) {
   return useQuery({
     queryKey: [
@@ -536,6 +538,7 @@ export function useWholesaleOrders(
       channelId ?? null,
       from ?? null,
       to ?? null,
+      assignedAdminId ?? null,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -549,6 +552,7 @@ export function useWholesaleOrders(
       if (channelId) params.set("channelId", String(channelId));
       if (from) params.set("from", from);
       if (to) params.set("to", to);
+      if (assignedAdminId) params.set("assignedAdminId", assignedAdminId);
       const res = await proxyFetch<Paginated<WholesaleOrder>>(
         `/admin/wholesale/orders?${params}`,
       );
@@ -781,6 +785,7 @@ export async function downloadWholesaleOrdersCsv(opts: {
   channelId?: number;
   from?: string;
   to?: string;
+  assignedAdminId?: string;
   ids?: number[];
   /** The sheet's title row — reportTitle("Wholesale Orders", ...). */
   title: string;
@@ -795,6 +800,7 @@ export async function downloadWholesaleOrdersCsv(opts: {
     if (opts.channelId) params.set("channelId", String(opts.channelId));
     if (opts.from) params.set("from", opts.from);
     if (opts.to) params.set("to", opts.to);
+    if (opts.assignedAdminId) params.set("assignedAdminId", opts.assignedAdminId);
   }
 
   await downloadCsvAsXlsx(
@@ -831,9 +837,11 @@ export function useRecordWholesalePayment() {
 export function useCancelWholesaleOrder() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (id: number) =>
+    // voidPayments: also reverse the money already collected (Accounts).
+    mutationFn: ({ id, voidPayments }: { id: number; voidPayments?: boolean }) =>
       proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/cancel`, {
         method: "POST",
+        body: JSON.stringify({ voidPayments: !!voidPayments }),
       }),
     onSuccess: invalidate,
   });

@@ -59,12 +59,16 @@ function ModalField({
   return (
     <label className="flex flex-col justify-end space-y-1">
       <div className="flex items-center justify-between gap-1 min-h-[20px]">
-        <span className="text-xs font-semibold tracking-wide text-secondary truncate">
+        {/* The label wins the space; a long hint is what gets cut. */}
+        <span className="flex-none text-xs font-semibold tracking-wide text-secondary">
           {label}
           {required && <span className="text-danger font-bold"> *</span>}
         </span>
         {hint && (
-          <span className="flex-none text-[10px] text-muted whitespace-nowrap leading-none">
+          <span
+            title={hint}
+            className="min-w-0 truncate text-[10px] text-muted leading-none"
+          >
             {hint}
           </span>
         )}
@@ -722,8 +726,8 @@ export function OrderModal({
                 // Collect, which posts a ledger entry on its receivable. A
                 // second "paid" input here would double-count.
                 <ModalField
-                  label="Already Collected (৳)"
-                  hint="Use Collect to add"
+                  label="Collected (৳)"
+                  hint="Add via Collect"
                 >
                   <div
                     className={`${inputClass} flex items-center bg-surface-2 font-semibold text-emerald-600 dark:text-emerald-400`}

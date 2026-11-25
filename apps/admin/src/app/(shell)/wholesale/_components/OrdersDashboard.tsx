@@ -49,6 +49,7 @@ export const DATE_RANGES = [
   { value: "12h", label: "Last 12 hours" },
   { value: "24h", label: "Last 24 hours" },
   { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
   { value: "custom", label: "Custom" },
@@ -86,6 +87,12 @@ export function resolveDateRange(
     };
   }
   const to = new Date();
+  if (value === "yesterday") {
+    // The previous calendar day, local midnight to midnight.
+    const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+    return { from: start.toISOString(), to: new Date(end.getTime() - 1).toISOString() };
+  }
   if (value === "today") {
     const from = new Date(
       to.getFullYear(),
@@ -236,6 +243,8 @@ export function OrdersDashboard({
     ? Number(type.slice(3))
     : undefined;
   const [status, setStatus] = useState("ALL");
+  const [assignee, setAssignee] = useState("");
+  const { data: staffList } = useWholesaleStaff();
   const [dateRange, setDateRange] = useState("today");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -263,6 +272,7 @@ export function OrdersDashboard({
     action: "delete" | "restore";
   } | null>(null);
   const canDelete = useCan("wholesale.delete");
+  const canVoidMoney = useCan("net_profit_accounts.manage");
   const cancelOrder = useCancelWholesaleOrder();
   const restoreOrder = useRestoreWholesaleOrder();
 
@@ -284,6 +294,7 @@ export function OrdersDashboard({
     channelFilter,
     resolvedRange.from,
     resolvedRange.to,
+    assignee || undefined,
   );
   const stats = useWholesaleStats(resolvedRange.from, resolvedRange.to);
   const rows = orders.data?.items ?? [];
@@ -309,6 +320,7 @@ export function OrdersDashboard({
         channelId: channelFilter,
         from: resolvedRange.from,
         to: resolvedRange.to,
+        assignedAdminId: assignee || undefined,
         ids,
         // A selection ignores the filters, so it is dated the day of export.
         title: reportTitle(
@@ -345,7 +357,10 @@ export function OrdersDashboard({
 
   function confirmCancel(order: WholesaleOrder) {
     setFailure(null);
-    cancelOrder.mutate(order.id, {
+    // Money already collected is reversed with it, when allowed — otherwise
+    // the server refuses and says to reverse it in Accounts first.
+    const voidPayments = Number(order.paid) > 0 && canVoidMoney;
+    cancelOrder.mutate({ id: order.id, voidPayments }, {
       onSuccess: () => setConfirmation(null),
       onError: (error: unknown) => {
         setConfirmation(null);
@@ -490,6 +505,20 @@ export function OrdersDashboard({
               {ORDER_STATUSES.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className={INPUT}
+              value={assignee}
+              onChange={(e) => refilter(() => setAssignee(e.target.value))}
+              aria-label="Assigned to"
+            >
+              <option value="">All assignees</option>
+              <option value="none">Unassigned</option>
+              {(staffList ?? []).map((u) => (
+                <option key={u.id} value={String(u.id)}>
+                  {u.name}
                 </option>
               ))}
             </select>
@@ -768,7 +797,13 @@ export function OrdersDashboard({
         description={
           confirmation?.action === "restore"
             ? `${confirmation.order.orderNumber} will return to Pending. Its products will leave stock again and the original receivable will be reopened.`
-            : `${confirmation?.order.orderNumber ?? "This order"} will be safely cancelled. Its products return to stock and its receivable is voided. You can restore it later from Deleted Orders.`
+            : `${confirmation?.order.orderNumber ?? "This order"} will be safely cancelled. Its products return to stock and its receivable is voided.${
+                confirmation && Number(confirmation.order.paid) > 0
+                  ? canVoidMoney
+                    ? ` The ৳${Number(confirmation.order.paid).toLocaleString("en-BD")} already collected will be voided in Accounts too.`
+                    : ` ৳${Number(confirmation.order.paid).toLocaleString("en-BD")} has been collected — only someone with Accounts access can delete it.`
+                  : ""
+              } You can restore it later from Deleted Orders.`
         }
         confirmLabel={
           confirmation?.action === "restore" ? "Restore Order" : "Delete Order"

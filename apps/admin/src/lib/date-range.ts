@@ -37,6 +37,12 @@ export function resolveDateRange(
   }
   if (!value) return {};
   const to = new Date();
+  if (value === "yesterday") {
+    // The previous calendar day, local midnight to midnight.
+    const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+    return { from: start.toISOString(), to: new Date(end.getTime() - 1).toISOString() };
+  }
   if (value === "today") {
     // Calendar day (local midnight to now), not a rolling 24h window — at 2am
     // a rolling "Today" swallows nearly all of yesterday. "24h" is the rolling
