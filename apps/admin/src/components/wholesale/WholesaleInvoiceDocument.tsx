@@ -156,7 +156,14 @@ export function WholesaleInvoiceDocument({
                 )}
               </td>
               <td className="py-2">{money(item.unitPrice)}</td>
-              <td className="py-2">{item.quantity}</td>
+              <td className="py-2">
+                {item.quantity}
+                {item.returnedQty > 0 && (
+                  <span className="block text-xs text-red-700">
+                    {item.returnedQty} returned
+                  </span>
+                )}
+              </td>
               <td className="py-2 text-right">{money(item.lineTotal)}</td>
             </tr>
           ))}
@@ -182,6 +189,14 @@ export function WholesaleInvoiceDocument({
               <tr>
                 <td className="py-1">Discount</td>
                 <td className="py-1 text-right">−{money(order.discount)}</td>
+              </tr>
+            )}
+            {Number(order.returnedAmount ?? 0) > 0 && (
+              <tr>
+                <td className="py-1">Returned</td>
+                <td className="py-1 text-right">
+                  −{money(order.returnedAmount)}
+                </td>
               </tr>
             )}
             <tr className="border-t border-neutral-300 font-bold">

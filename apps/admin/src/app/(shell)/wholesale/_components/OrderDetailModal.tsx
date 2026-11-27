@@ -203,6 +203,33 @@ export function OrderDetailModal({
             </span>
           </div>
         </div>
+        {order.returns?.length > 0 && (
+          <div className="rounded-xl border border-border p-3">
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-secondary">
+              Returns ({money(order.returnedAmount)})
+            </h4>
+            <ul className="space-y-2 text-xs">
+              {order.returns.map((r) => (
+                <li key={r.id} className="border-t border-border pt-2 first:border-0 first:pt-0">
+                  <div className="flex justify-between font-semibold text-text">
+                    <span>
+                      {new Date(r.createdAt).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}
+                      {r.createdByName && ` · ${r.createdByName}`}
+                    </span>
+                    <span>−{money(r.amount)}</span>
+                  </div>
+                  <div className="text-secondary">
+                    {r.items.map((i) => `${i.name} × ${i.quantity}`).join(", ")}
+                  </div>
+                  {Number(r.refunded) > 0 && (
+                    <div className="text-amber-600">Refunded {money(r.refunded)}</div>
+                  )}
+                  {r.note && <div className="text-muted">{r.note}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Modal>
   );

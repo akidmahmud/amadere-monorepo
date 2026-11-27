@@ -57,6 +57,7 @@ import {
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
   RecordWholesalePaymentDto,
+  CreateWholesaleReturnDto,
   UpdateWholesaleChannelDto,
   UpdateWholesaleCustomerDto,
   UpdateWholesaleOrderDto,
@@ -401,6 +402,20 @@ export class AdminWholesaleController {
       );
     }
     return this.wholesale.cancelOrder(id, admin.id, voidPayments);
+  }
+
+  // Take back some or all of an order: restock, lower the invoice, refund
+  // anything collected above the new total.
+  @Post('orders/:id/return')
+  @RequirePermission('wholesale.update')
+  @UseInterceptors(AuditLogInterceptor)
+  @ApiOkResponse({ type: WholesaleOrderDto })
+  returnItems(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateWholesaleReturnDto,
+    @CurrentAdmin() admin: { id: number },
+  ): Promise<WholesaleOrderDto> {
+    return this.wholesale.returnItems(id, dto, admin.id);
   }
 
   // Accounts tab: wholesale invoices (sales) and receipts.

@@ -818,3 +818,41 @@ export class CreateWholesaleChannelDto {
 export class UpdateWholesaleChannelDto extends PartialType(
   CreateWholesaleChannelDto,
 ) {}
+
+// ---------------------------------------------------------------------------
+// Returns
+// ---------------------------------------------------------------------------
+
+export class WholesaleReturnLineDto {
+  @ApiProperty({ description: 'Order line (wholesale_order_items.id)' })
+  @IsInt()
+  itemId!: number;
+
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+}
+
+export class CreateWholesaleReturnDto {
+  @ApiProperty({ type: [WholesaleReturnLineDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => WholesaleReturnLineDto)
+  items!: WholesaleReturnLineDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Account any refund is paid from; falls back to the default posting account',
+  })
+  @IsOptional()
+  @IsInt()
+  refundAccountId?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}

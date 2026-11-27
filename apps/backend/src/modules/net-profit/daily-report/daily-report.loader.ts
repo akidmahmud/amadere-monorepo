@@ -54,6 +54,8 @@ export class DailyReportLoader {
           referrerDomain: true,
           createdAt: true,
           discountAmount: true,
+          shippingAmount: true,
+          codFee: true,
           addresses: {
             where: { type: 'SHIPPING' },
             take: 1,
@@ -146,6 +148,15 @@ export class DailyReportLoader {
       const date = dhakaDate(r.createdAt);
       const recovered = isRecoveredOrder(r.orderNumber);
       const isPos = r.channel === 'POS' && !recovered;
+      // What the customer paid for delivery (+ COD fee) is sales too, spread
+      // over the lines by value. Without it the courier cost below was
+      // charged against the products with none of the delivery income beside
+      // it, so products showed a loss and the report's sales came in under
+      // the Order Manager's (which totals order total_amount).
+      const nets = grosses.map((g, idx) => g - discs[idx]);
+      const fees = isPos
+        ? nets.map(() => 0)
+        : spreadDiscount(nets, Number(r.shippingAmount) + Number(r.codFee));
       let parcelKg = 0;
       const lines = r.items.flatMap((i, idx) => {
         // A sold-by-weight POS line weighs what was typed at the till.
@@ -175,7 +186,7 @@ export class DailyReportLoader {
             // Rows are per product, so the product's own SKU; else what was sold.
             sku: i.product?.sku || i.skuSnapshot || null,
             kg: kgOf(w, qty),
-            sales: (grosses[idx] - discs[idx]) * share,
+            sales: (nets[idx] + fees[idx]) * share,
             cost: c ? c.unitCost * qty : null,
             // Exchange lines report how many units were sent as replacements.
             ...(i.isExchange ? { units: qty } : {}),

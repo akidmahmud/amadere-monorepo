@@ -106,6 +106,8 @@ export class WholesaleOrderItemDto {
   /** Taka off this line, before the order-level discount. */
   discount!: string;
   lineTotal!: string;
+  /** Units of this line returned so far. */
+  returnedQty!: number;
   /** Read off the product now, not snapshotted — null once it is deleted. */
   imageUrl!: string | null;
 }
@@ -122,6 +124,23 @@ export class WholesaleDeliveryDto {
   thana!: string | null;
   landmark!: string | null;
   postCode!: string | null;
+}
+
+export class WholesaleReturnLineSnapshotDto {
+  itemId!: number;
+  name!: string;
+  quantity!: number;
+  amount!: string;
+}
+
+export class WholesaleReturnDto {
+  id!: number;
+  createdAt!: Date;
+  amount!: string;
+  refunded!: string;
+  note!: string | null;
+  createdByName!: string | null;
+  items!: WholesaleReturnLineSnapshotDto[];
 }
 
 export class WholesaleOrderDto {
@@ -165,6 +184,11 @@ export class WholesaleOrderDto {
   assignedAdminId!: number | null;
   assignedAdminName!: string | null;
   items!: WholesaleOrderItemDto[];
+  /** Value of goods returned; `total` is already net of it. */
+  returnedAmount!: string;
+  /** NONE, PARTIAL or FULL — from the lines' returned quantities. */
+  returnStatus!: 'NONE' | 'PARTIAL' | 'FULL';
+  returns!: WholesaleReturnDto[];
   /** Latest Steadfast booking; null = not booked. */
   shipment!: {
     id: number;
@@ -189,6 +213,7 @@ type OrderRow = Prisma.WholesaleOrderGetPayload<{
       };
     };
     dues: { select: { id: true; docNo: true; voidedAt: true; kind: true } };
+    returns: true;
     creator: { select: { id: true; firstName: true; lastName: true } };
     assignedAdmin: { select: { id: true; firstName: true; lastName: true } };
   };
@@ -273,7 +298,23 @@ export function toWholesaleOrderDto(row: OrderRow, paid: Prisma.Decimal): Wholes
       quantity: item.quantity,
       discount: item.discount.toFixed(2),
       lineTotal: item.lineTotal.toFixed(2),
+      returnedQty: item.returnedQty,
       imageUrl: item.product?.media[0]?.media.url ?? null,
+    })),
+    returnedAmount: row.returnedAmount.toFixed(2),
+    returnStatus: row.items.every((i) => i.returnedQty >= i.quantity)
+      ? 'FULL'
+      : row.items.some((i) => i.returnedQty > 0)
+        ? 'PARTIAL'
+        : 'NONE',
+    returns: (row.returns ?? []).map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      amount: r.amount.toFixed(2),
+      refunded: r.refunded.toFixed(2),
+      note: r.note,
+      createdByName: r.createdByName,
+      items: r.items as unknown as WholesaleReturnLineSnapshotDto[],
     })),
   };
 }

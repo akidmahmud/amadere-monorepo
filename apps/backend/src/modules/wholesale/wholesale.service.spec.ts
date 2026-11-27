@@ -67,7 +67,8 @@ describe('WholesaleService', () => {
     // deleteMany/update are only exercised by the edit path, but they are
     // declared here rather than bolted on in a beforeEach so the mock's shape
     // stays a single typed object.
-    wholesaleOrderItem: { deleteMany: jest.fn() },
+    wholesaleOrderItem: { deleteMany: jest.fn(), update: jest.fn() },
+    wholesaleReturn: { create: jest.fn() },
     due: {
       create: jest.fn(),
       findFirst: jest.fn().mockResolvedValue(null),
@@ -88,6 +89,8 @@ describe('WholesaleService', () => {
     deliveryCharge: D('60.00'),
     discount: D('100.00'),
     total: D('860.00'),
+    returnedAmount: D('0.00'),
+    returns: [],
     note: null,
     placedAt: new Date('2026-08-31'),
     cancelledAt: null,
@@ -103,6 +106,7 @@ describe('WholesaleService', () => {
         quantity: 2,
         discount: D('0.00'),
         lineTotal: D('900.00'),
+        returnedQty: 0,
         // Shaped like ORDER_INCLUDE: the mapper reads the line's thumbnail
         // off the product, and updateOrder reads productType off the same
         // relation.
@@ -543,6 +547,43 @@ describe('WholesaleService', () => {
       }),
     );
     expect(dues.void).toHaveBeenCalledWith(90, 1);
+  });
+
+  it('a return restocks, lowers the invoice and refunds what was collected above the new total', async () => {
+    // 1 of 2 Sattu: line ৳450 less its share of the ৳100 order discount
+    // (800/900) = ৳400. Total 860 → 460; ৳800 collected → ৳340 refunded.
+    await service.returnItems(savedOrder.id, { items: [{ itemId: 1, quantity: 1 }] }, null);
+    expect(tx.wholesaleOrderItem.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { returnedQty: { increment: 1 } },
+    });
+    expect(tx.product.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { stock: { increment: 1 } },
+    });
+    expect(tx.due.update).toHaveBeenCalledWith({ where: { id: 90 }, data: { amount: D('460.00') } });
+    expect(ledger.post).toHaveBeenCalledWith(
+      expect.objectContaining({ direction: 'OUT', amount: D('340.00'), source: 'REFUND', dueId: 90, accountId: 4 }),
+      null,
+      tx,
+    );
+    expect(tx.wholesaleReturn.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ amount: D('400.00'), refunded: D('340.00') }),
+    });
+  });
+
+  it('a return on an unpaid order refunds nothing', async () => {
+    ledger.paidForDues.mockResolvedValue(new Map([[90, D('0')]]));
+    await service.returnItems(savedOrder.id, { items: [{ itemId: 1, quantity: 1 }] }, null);
+    expect(ledger.post).not.toHaveBeenCalled();
+    expect(tx.due.update).toHaveBeenCalledWith({ where: { id: 90 }, data: { amount: D('460.00') } });
+  });
+
+  it('refuses to return more than is still out', async () => {
+    await expect(
+      service.returnItems(savedOrder.id, { items: [{ itemId: 1, quantity: 3 }] }, null),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.wholesaleReturn.create).not.toHaveBeenCalled();
   });
 
   it('restores a cancelled order by taking stock again and reopening its original invoice', async () => {

@@ -96,6 +96,7 @@ export function OrderModal({
   const update = useUpdateWholesaleOrder();
   const products = useWholesaleProducts();
   const isEdit = !!editing;
+  const hasReturns = Number(editing?.returnedAmount ?? 0) > 0;
   const pending = isEdit ? update.isPending : create.isPending;
   const failure = isEdit ? update.error : create.error;
 
@@ -250,10 +251,16 @@ export function OrderModal({
           courierName: noDelivery ? undefined : courierName,
           consignmentId: consignmentId.trim(),
           status,
-          items,
-          deliveryCharge: noDelivery ? undefined : deliveryCharge,
+          // After a return the lines and amounts are fixed (Return changes
+          // them); the rest of the order can still be edited.
+          ...(hasReturns
+            ? {}
+            : {
+                items,
+                deliveryCharge: noDelivery ? undefined : deliveryCharge,
+                discount,
+              }),
           channelData: salesChannel ? channelValues : undefined,
-          discount,
           note: note.trim(),
         });
       } else {
@@ -439,6 +446,12 @@ export function OrderModal({
             <Icon name="inventory_2" size={16} className="text-brand-500" />
             Wholesale Products & Pricing
           </h4>
+          {hasReturns && (
+            <p className="rounded-lg bg-amber-500/10 p-2.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+              Items have been returned on this order, so its products and amounts
+              can&apos;t be changed here — use Return. Other details still save.
+            </p>
+          )}
 
           {/* Searchable Product Combobox */}
           <div className="relative">

@@ -89,6 +89,21 @@ describe('DailyReportLoader', () => {
     expect(o.lines[0]).toMatchObject({ kg: 2, sales: 400, cost: 200 });
   });
 
+  it('website: the delivery charge + COD fee the customer paid count as sales, spread by line value', async () => {
+    const [o] = await make([
+      order({
+        channel: 'WEBSITE',
+        shippingAmount: 120,
+        codFee: 30,
+        shipments: [{ billedCharge: 110 }],
+        items: [item({ unitPrice: 200, quantity: 2 }), item({ productId: 6, unitPrice: 100, quantity: 2 })],
+      }),
+    ]).load('2026-09-30', '2026-09-30');
+    // Lines 400 + 200; fee 150 split 100 / 50. Courier cost stays separate.
+    expect(o.lines.map((l) => l.sales)).toEqual([500, 250]);
+    expect(o.delivery).toBe(110);
+  });
+
   it('wholesale delivery is a pass-through (customer pays it), so it costs 0', async () => {
     const w = {
       id: 9,

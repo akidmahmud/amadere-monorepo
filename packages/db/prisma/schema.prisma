@@ -4248,6 +4248,10 @@ model WholesaleOrder {
   deliveryCharge Decimal @default(0) @map("delivery_charge") @db.Decimal(12, 2)
   discount       Decimal @default(0) @db.Decimal(12, 2)
   total          Decimal @db.Decimal(12, 2)
+  /// Value of goods returned so far. `total` is already reduced by it (so the
+  /// invoice, payment status and amount due all follow); this keeps how much
+  /// of the drop was returns.
+  returnedAmount Decimal @default(0) @map("returned_amount") @db.Decimal(12, 2)
 
   note        String?
   placedAt    DateTime  @map("placed_at") @db.Date
@@ -4276,6 +4280,7 @@ model WholesaleOrder {
   dues         Due[]
   /// Steadfast bookings (courier STEADFAST), shown in Shipments tagged Wholesale.
   shipments    Shipment[]
+  returns      WholesaleReturn[]
 
   @@index([partyId])
   @@index([status])
@@ -4305,6 +4310,8 @@ model WholesaleOrderItem {
   /// able to show why a line total is not quantity x rate.
   discount     Decimal @default(0) @db.Decimal(12, 2)
   lineTotal    Decimal @map("line_total") @db.Decimal(12, 2)
+  /// Units of this line the customer has returned (quantity is what was sold).
+  returnedQty  Int     @default(0) @map("returned_qty")
 
   order   WholesaleOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -4313,6 +4320,26 @@ model WholesaleOrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("wholesale_order_items")
+}
+
+/// One return against a wholesale/channel order: what came back, its value,
+/// and any money handed back (a REFUND ledger entry on the order's invoice).
+model WholesaleReturn {
+  id              Int      @id @default(autoincrement())
+  orderId         Int      @map("order_id")
+  /// [{ itemId, name, quantity, amount }] -- a snapshot, like the order lines.
+  items           Json
+  amount          Decimal  @db.Decimal(12, 2)
+  refunded        Decimal  @default(0) @db.Decimal(12, 2)
+  refundAccountId Int?     @map("refund_account_id")
+  note            String?
+  createdByName   String?  @map("created_by_name")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  order WholesaleOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("wholesale_returns")
 }
 
 // --- Lead Center -------------------------------------------------------------

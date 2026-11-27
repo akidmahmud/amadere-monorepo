@@ -287,8 +287,20 @@ export interface WholesaleOrderItem {
   /** Taka off this line, before the order-level discount. */
   discount: string;
   lineTotal: string;
+  /** Units of this line returned so far. */
+  returnedQty: number;
   /** Read off the product now, not snapshotted — null once it is deleted. */
   imageUrl: string | null;
+}
+
+export interface WholesaleReturn {
+  id: number;
+  createdAt: string;
+  amount: string;
+  refunded: string;
+  note: string | null;
+  createdByName: string | null;
+  items: { itemId: number; name: string; quantity: number; amount: string }[];
 }
 
 export interface WholesaleOrder {
@@ -321,6 +333,10 @@ export interface WholesaleOrder {
   paid: string;
   due: string;
   invoiceDocNo: string | null;
+  /** Value of goods returned; `total` is already net of it. */
+  returnedAmount: string;
+  returnStatus: "NONE" | "PARTIAL" | "FULL";
+  returns: WholesaleReturn[];
   note: string | null;
   placedAt: string;
   createdByName: string | null;
@@ -1075,5 +1091,26 @@ export function useLogWholesaleCustomerCall(id: number) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: crmKey(id) }),
+  });
+}
+
+/** Take back some or all of an order (restock, lower invoice, refund excess). */
+export function useReturnWholesaleOrder() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: number;
+      items: { itemId: number; quantity: number }[];
+      refundAccountId?: number;
+      note?: string;
+    }) =>
+      proxyFetch<WholesaleOrder>(`/admin/wholesale/orders/${id}/return`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: invalidate,
   });
 }

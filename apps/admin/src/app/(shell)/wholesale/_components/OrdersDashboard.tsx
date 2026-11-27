@@ -27,6 +27,7 @@ import { useCan } from "@/hooks/useAdminAuth";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { Pager } from "./Pager";
+import { ReturnModal } from "./ReturnModal";
 import { presetTitleRange, reportTitle } from "@/lib/reportExport";
 import { CanExport } from "@/components/CanExport";
 
@@ -166,6 +167,14 @@ export function PaymentCell({ order }: { order: WholesaleOrder }) {
       >
         {labelOf(PAYMENT_STATUSES, order.paymentStatus)}
       </span>
+      {order.returnStatus && order.returnStatus !== "NONE" && (
+        <span
+          className={`ml-1 inline-block rounded-full border px-2.5 py-0.5 text-[9px] font-bold tracking-wide ${TONE.rose}`}
+          title={`৳${order.returnedAmount} returned`}
+        >
+          {order.returnStatus === "FULL" ? "Returned" : "Part returned"}
+        </span>
+      )}
       {order.transactionId && (
         <span className="block text-[10px] text-muted">
           Txn: {order.transactionId}
@@ -253,6 +262,8 @@ export function OrdersDashboard({
   // view. A cancelled order can't be edited, so it falls back to the
   // read-only detail modal — otherwise it would have no way to be looked at.
   const [viewing, setViewing] = useState<WholesaleOrder | null>(null);
+  const [returning, setReturning] = useState<WholesaleOrder | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const openOrder = (o: WholesaleOrder) =>
     o.status === "CANCELLED" ? setViewing(o) : onEditOrder(o);
   const [exporting, setExporting] = useState(false);
@@ -694,6 +705,7 @@ export function OrdersDashboard({
                           order={o}
                           onCollect={() => onCollectPayment(o)}
                           onEdit={() => onEditOrder(o)}
+                          onReturn={() => setReturning(o)}
                           onCancel={() => cancel(o)}
                           onRestore={() => restore(o)}
                           canCancel={canDelete}
@@ -756,6 +768,7 @@ export function OrdersDashboard({
                     order={o}
                     onCollect={() => onCollectPayment(o)}
                     onEdit={() => onEditOrder(o)}
+                    onReturn={() => setReturning(o)}
                     onCancel={() => cancel(o)}
                     onRestore={() => restore(o)}
                     canCancel={canDelete}
@@ -777,6 +790,21 @@ export function OrdersDashboard({
 
       {viewing && (
         <OrderDetailModal order={viewing} onClose={() => setViewing(null)} />
+      )}
+      {returning && (
+        <ReturnModal
+          order={returning}
+          onClose={() => setReturning(null)}
+          onDone={(m) => {
+            setNotice(m);
+            window.setTimeout(() => setNotice(null), 4000);
+          }}
+        />
+      )}
+      {notice && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-[#0f5c3e] px-4 py-3 text-sm font-semibold text-white shadow-lg">
+          {notice}
+        </div>
       )}
       <ConfirmDialog
         open={confirmation !== null}
@@ -850,6 +878,7 @@ function RowActions({
   order,
   onCollect,
   onEdit,
+  onReturn,
   onCancel,
   onRestore,
   canCancel,
@@ -858,6 +887,7 @@ function RowActions({
   order: WholesaleOrder;
   onCollect: () => void;
   onEdit: () => void;
+  onReturn: () => void;
   onCancel: () => void;
   onRestore: () => void;
   canCancel: boolean;
@@ -882,6 +912,11 @@ function RowActions({
       {order.status !== "CANCELLED" && (
         <button type="button" className={link} onClick={onEdit}>
           Edit
+        </button>
+      )}
+      {order.status !== "CANCELLED" && order.returnStatus !== "FULL" && (
+        <button type="button" className={link} onClick={onReturn}>
+          Return
         </button>
       )}
       <a

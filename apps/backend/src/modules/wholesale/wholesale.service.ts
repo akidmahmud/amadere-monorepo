@@ -48,6 +48,7 @@ import {
 import {
   CreateWholesaleCustomerDto,
   CreateWholesaleOrderDto,
+  CreateWholesaleReturnDto,
   RecordWholesalePaymentDto,
   CreateWholesaleChannelDto,
   UpdateWholesaleChannelDto,
@@ -63,6 +64,7 @@ import {
   WholesaleCustomerDto,
   WholesaleOrderDto,
   WholesaleStatsDto,
+  paymentStatusFor,
   toWholesaleOrderDto,
   type WholesaleActivityDto,
   type WholesaleCustomerCrmDto,
@@ -117,6 +119,7 @@ const ORDER_INCLUDE = {
     },
   },
   dues: { select: { id: true, docNo: true, voidedAt: true, kind: true } },
+  returns: { orderBy: { createdAt: 'desc' as const } },
   creator: { select: { id: true, firstName: true, lastName: true } },
   assignedAdmin: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.WholesaleOrderInclude;
@@ -1906,6 +1909,14 @@ export class WholesaleService {
       dto.deliveryCharge !== undefined ||
       dto.discount !== undefined;
 
+    // Lines carry how many came back; rebuilding them would lose that and
+    // re-take stock for goods already returned.
+    if (restating && order.returnedAmount.greaterThan(ZERO)) {
+      throw new BadRequestException(
+        'Items have been returned on this order, so its products and amounts can no longer be edited. Use Return for further changes.',
+      );
+    }
+
     if (!restating) {
       await this.prisma.client.wholesaleOrder.update({
         where: { id },
@@ -1937,7 +1948,7 @@ export class WholesaleService {
           sku: i.skuSnapshot,
           isDigital: i.product?.productType === 'DIGITAL',
           unitPrice: i.unitPrice,
-          quantity: i.quantity,
+          quantity: i.quantity - i.returnedQty,
           // Carried through: this branch is "the caller changed the money but
           // not the lines", so an existing per-line discount must survive the
           // restatement rather than silently reset to zero.
@@ -2070,7 +2081,7 @@ export class WholesaleService {
         order.items.map((i) => ({
           productId: i.productId,
           variantId: i.variantId,
-          quantity: i.quantity,
+          quantity: i.quantity - i.returnedQty,
           isDigital: i.product?.productType === 'DIGITAL',
         })),
         'increment',
@@ -2198,6 +2209,142 @@ export class WholesaleService {
       },
     });
     return { ...result, transactionId: dto.transactionId?.trim() || result.transactionId };
+  }
+
+  // -------------------------------------------------------------------------
+  // Returns
+  // -------------------------------------------------------------------------
+
+  /**
+   * Take back part (or all) of an order.
+   *
+   * Each returned unit is valued at its line price less its share of the
+   * order discount; the delivery charge is never returned. The goods go back
+   * in stock, the order total and its invoice drop by that value (so payment
+   * status and amount due follow on their own), and if more had been
+   * collected than the new total, the difference is refunded: a REFUND ledger
+   * entry against the invoice, out of the chosen account.
+   */
+  async returnItems(
+    id: number,
+    dto: CreateWholesaleReturnDto,
+    adminId: number | null,
+  ): Promise<WholesaleOrderDto> {
+    const order = await this.prisma.client.wholesaleOrder.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: { select: { productType: true } } } },
+        dues: { where: { voidedAt: null }, select: { id: true, kind: true } },
+      },
+    });
+    if (!order) throw new NotFoundException(`Wholesale order ${id} not found`);
+    if (order.status === 'CANCELLED') {
+      throw new BadRequestException('That order is cancelled — nothing to return');
+    }
+    const due = order.dues[0];
+    if (!due) throw new BadRequestException('That order has no open invoice');
+
+    // Same line twice in one request = one line with the summed quantity.
+    const wanted = new Map<number, number>();
+    for (const l of dto.items) wanted.set(l.itemId, (wanted.get(l.itemId) ?? 0) + l.quantity);
+
+    // Share of the order-level discount each taka of line value carries.
+    const keep = order.subtotal.isZero()
+      ? new Decimal(1)
+      : order.subtotal.minus(order.discount).div(order.subtotal);
+    const lines: { item: (typeof order.items)[number]; qty: number; amount: Prisma.Decimal }[] = [];
+    for (const [itemId, qty] of wanted) {
+      const item = order.items.find((i) => i.id === itemId);
+      if (!item) throw new BadRequestException(`Line ${itemId} is not on this order`);
+      const left = item.quantity - item.returnedQty;
+      if (qty > left) {
+        throw new BadRequestException(
+          `Only ${left} of ${item.nameSnapshot} can still be returned`,
+        );
+      }
+      const amount = item.lineTotal
+        .times(qty)
+        .div(item.quantity)
+        .times(keep)
+        .toDecimalPlaces(2);
+      lines.push({ item, qty, amount });
+    }
+    const value = lines.reduce((sum, l) => sum.plus(l.amount), ZERO);
+    const newTotal = Decimal.max(ZERO, order.total.minus(value));
+
+    const paid = (await this.ledger.paidForDues([due])).get(due.id) ?? ZERO;
+    const refund = Decimal.max(ZERO, paid.minus(newTotal));
+    const refundAccountId = refund.greaterThan(ZERO)
+      ? await this.resolveAccount(dto.refundAccountId)
+      : null;
+    const admin = adminId
+      ? await this.prisma.client.adminUser.findUnique({
+          where: { id: adminId },
+          select: { firstName: true, lastName: true },
+        })
+      : null;
+
+    await this.prisma.client.$transaction(async (tx) => {
+      for (const l of lines) {
+        await tx.wholesaleOrderItem.update({
+          where: { id: l.item.id },
+          data: { returnedQty: { increment: l.qty } },
+        });
+      }
+      await this.moveStock(
+        tx,
+        lines.map((l) => ({
+          productId: l.item.productId,
+          variantId: l.item.variantId,
+          quantity: l.qty,
+          isDigital: l.item.product?.productType === 'DIGITAL',
+        })),
+        'increment',
+      );
+      await tx.wholesaleOrder.update({
+        where: { id },
+        data: {
+          total: newTotal,
+          returnedAmount: { increment: value },
+          paymentStatus: paymentStatusFor(newTotal, paid.minus(refund)),
+        },
+      });
+      await tx.due.update({ where: { id: due.id }, data: { amount: newTotal } });
+      if (refundAccountId) {
+        await this.ledger.post(
+          {
+            entryDate: new Date(new Date().toISOString().slice(0, 10)),
+            direction: 'OUT',
+            amount: refund,
+            accountId: refundAccountId,
+            partyId: order.partyId,
+            source: 'REFUND',
+            dueId: due.id,
+            note: `Refund for return on ${order.orderNumber}`,
+          },
+          adminId,
+          tx,
+        );
+      }
+      await tx.wholesaleReturn.create({
+        data: {
+          orderId: id,
+          items: lines.map((l) => ({
+            itemId: l.item.id,
+            name: l.item.nameSnapshot,
+            quantity: l.qty,
+            amount: l.amount.toFixed(2),
+          })),
+          amount: value,
+          refunded: refund,
+          refundAccountId,
+          note: dto.note?.trim() || null,
+          createdByName: admin ? `${admin.firstName ?? ''} ${admin.lastName ?? ''}`.trim() : null,
+        },
+      });
+    });
+
+    return this.findOrder(id);
   }
 
   // -------------------------------------------------------------------------
