@@ -21,6 +21,7 @@ const HEAD = [
   'avg value',
   'Product cost/kg',
   'Total Product Cost',
+  'Delivery charge received',
   'Delivery Cost',
   'Profit by Product',
   'Fixed costs',
@@ -32,13 +33,14 @@ const fill = (c: Cell, argb: string) => {
   c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } };
 };
 
-/** One cost row: name in B, value in J (Fixed costs). */
+/** One cost row: name in B, value in K (Fixed costs). */
 const costRow = (ws: Worksheet, name: string, value: number) =>
-  ws.addRow(['', name, null, null, null, null, null, null, null, value, null]);
+  ws.addRow(['', name, null, null, null, null, null, null, null, null, value, null]);
 
 function totalRow(
   ws: Worksheet,
   label: string,
+  sub: string,
   t: DailyReportTotals,
   fixed: number | null,
   net: number | null,
@@ -46,12 +48,13 @@ function totalRow(
 ) {
   const r = ws.addRow([
     label,
-    '',
+    sub,
     t.qty,
     t.sales,
     t.avg,
     null,
     t.cost,
+    t.deliveryReceived ?? null,
     t.delivery,
     t.profit,
     fixed,
@@ -101,6 +104,7 @@ export function buildDailyReportWorkbook(
         p.costPerKg,
         p.cost,
         null,
+        null,
         p.profit,
         null,
         null,
@@ -108,7 +112,7 @@ export function buildDailyReportWorkbook(
       if (i === 0) fill(r.getCell(1), srcFill);
     });
     const fixed = b.fixedCosts.reduce((a, f) => a + f.value, 0);
-    totalRow(ws, 'total', b.subtotal, fixed || null, b.net, false);
+    totalRow(ws, 'total', b.label, b.subtotal, fixed || null, b.net, false);
     for (const f of b.fixedCosts)
       costRow(ws, `Less: ${fixedCostLabel(f)}`, f.value);
     ws.addRow([]);
@@ -124,6 +128,7 @@ export function buildDailyReportWorkbook(
   totalRow(
     ws,
     'GRAND TOTAL',
+    '',
     s.grandTotal,
     Math.round(sourceFixed * 100) / 100 || null,
     Math.round(sourceNet * 100) / 100,
@@ -142,17 +147,18 @@ export function buildDailyReportWorkbook(
     null,
     null,
     null,
+    null,
     s.netProfit,
   ]);
   n.font = { bold: true, size: 12 };
-  n.getCell(11).font = {
+  n.getCell(12).font = {
     bold: true,
     size: 12,
     color: { argb: s.netProfit < 0 ? 'FFFF0000' : 'FF000000' },
   };
   // Information lines: already inside the figures above.
   const note = (label: string, value: number) =>
-    ws.addRow([label, '', null, null, null, null, null, null, null, null, value]);
+    ws.addRow([label, '', null, null, null, null, null, null, null, null, null, value]);
   if (s.exchange)
     note(
       `Exchanges: ${s.exchange.orders} orders, ${s.exchange.items} items sent free (cost included above)`,

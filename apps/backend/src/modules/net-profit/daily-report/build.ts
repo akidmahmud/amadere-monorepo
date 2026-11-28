@@ -25,7 +25,10 @@ export interface BuildOrder {
   id: number;
   wholesale: boolean;
   source: string;
+  /** Courier cost. */
   delivery: number;
+  /** Delivery charge (+ COD fee) the customer paid; 0 when none. */
+  deliveryReceived?: number;
   lines: BuildLine[];
   /** A ৳0 replacement order (Exchange). */
   exchange?: boolean;
@@ -86,6 +89,7 @@ function apply(
 function totals(
   rows: { qty: number; sales: number; cost: number; profit: number }[],
   delivery: number,
+  deliveryReceived: number,
 ): DailyReportTotals {
   const qty = r3(sum(rows.map((r) => r.qty)));
   const sales = r2(sum(rows.map((r) => r.sales)));
@@ -95,6 +99,7 @@ function totals(
     avg: div(sales, qty),
     cost: r2(sum(rows.map((r) => r.cost))),
     delivery: r2(delivery),
+    deliveryReceived: r2(deliveryReceived),
     profit: r2(sum(rows.map((r) => r.profit))),
   };
 }
@@ -130,9 +135,11 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
       }
     >();
     let delivery = 0;
+    let deliveryReceived = 0;
     for (const o of orders) {
       (o.wholesale ? wholesaleOrderIds : orderIds).push(o.id);
       delivery += o.delivery;
+      deliveryReceived += o.deliveryReceived ?? 0;
       for (const l of o.lines) {
         const row = byKey.get(l.key) ?? {
           name: l.name,
@@ -174,7 +181,7 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
       })
       .sort((a, b) => b.qty - a.qty);
 
-    const subtotal = totals(products, delivery);
+    const subtotal = totals(products, delivery, deliveryReceived);
     blocks.push({
       key: src.key,
       label: src.label,
@@ -202,8 +209,11 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
       const share = total > 0 ? b.subtotal.sales / total : 1 / keys.length;
       return { ...applied, value: r2(applied.value * share) };
     });
+    // Owner's sheet: product profit + delivery charge received − delivery
+    // cost − fixed costs.
     b.net = r2(
-      b.subtotal.profit -
+      b.subtotal.profit +
+        (b.subtotal.deliveryReceived ?? 0) -
         b.subtotal.delivery -
         sum(b.fixedCosts.map((f) => f.value)),
     );
@@ -212,6 +222,7 @@ export function buildSnapshot(input: BuildInput): DailyReportSnapshot {
   const grandTotal = totals(
     blocks.map((b) => b.subtotal),
     sum(blocks.map((b) => b.subtotal.delivery)),
+    sum(blocks.map((b) => b.subtotal.deliveryReceived ?? 0)),
   );
   const reportFixedCosts = active
     .filter((c) => c.scope === 'REPORT')

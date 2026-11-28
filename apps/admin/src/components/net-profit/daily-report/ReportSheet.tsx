@@ -7,28 +7,33 @@ import {
 import { money, qty } from "./format";
 
 const num = "px-2 py-1 text-right tabular-nums";
+// Same columns as the owner's sheet (and the Excel export).
 const HEAD = [
   "Source",
   "SKU",
   "Qty (kg)",
-  "Sales",
-  "Avg",
-  "Cost/kg",
-  "Product cost",
-  "Delivery",
-  "Product profit",
+  "Total sales value",
+  "Avg value",
+  "Product cost/kg",
+  "Total product cost",
+  "Delivery charge received",
+  "Delivery cost",
+  "Profit by product",
   "Fixed costs",
   "Net profit",
 ];
 
 function TotalRow({
   label,
+  sub,
   t,
   fixed,
   net,
   strong,
 }: {
   label: string;
+  /** Second cell, e.g. the source name on its total row. */
+  sub?: string;
   t: DailyReportTotals;
   fixed?: number;
   net?: number;
@@ -41,12 +46,15 @@ function TotalRow({
       }
     >
       <td className="px-2 py-1">{label}</td>
-      <td />
+      <td className="px-2 py-1">{sub}</td>
       <td className={num}>{qty(t.qty)}</td>
       <td className={num}>{money(t.sales)}</td>
       <td className={num}>{money(t.avg)}</td>
       <td />
       <td className={num}>{money(t.cost)}</td>
+      <td className={num}>
+        {t.deliveryReceived != null ? money(t.deliveryReceived) : "—"}
+      </td>
       <td className={num}>{money(t.delivery)}</td>
       <td className={num}>{money(t.profit)}</td>
       <td className={num}>{fixed ? money(fixed) : ""}</td>
@@ -63,7 +71,7 @@ const CostRow = ({ c }: { c: DailyReportAppliedCost }) => (
   <tr className="border-b border-border bg-amber-50/60 font-medium text-text">
     <td />
     <td className="px-2 py-1.5">Less: {fixedCostLabel(c)}</td>
-    <td colSpan={7} />
+    <td colSpan={8} />
     <td className={`${num} font-semibold text-danger`}>−{money(c.value)}</td>
     <td />
   </tr>
@@ -92,7 +100,7 @@ export function ReportSheet({ s }: { s: DailyReportSnapshot }) {
           ))}
           {s.sources.length === 0 && (
             <tr>
-              <td colSpan={11} className="py-8 text-center text-muted">
+              <td colSpan={12} className="py-8 text-center text-muted">
                 No sales in this period.
               </td>
             </tr>
@@ -114,8 +122,9 @@ export function ReportSheet({ s }: { s: DailyReportSnapshot }) {
           ))}
           <tr className="text-base font-bold">
             <td className="px-2 py-2">NET PROFIT</td>
-            <td colSpan={9} className="px-2 text-xs font-normal text-muted">
-              = Product profit − Delivery − all fixed costs
+            <td colSpan={10} className="px-2 text-xs font-normal text-muted">
+              = Profit by product + Delivery charge received − Delivery cost −
+              all fixed costs
             </td>
             <td className={`${num} ${s.netProfit < 0 ? "text-danger" : ""}`}>
               {money(s.netProfit)}
@@ -123,7 +132,7 @@ export function ReportSheet({ s }: { s: DailyReportSnapshot }) {
           </tr>
           {s.exchange && (
             <tr className="text-sm text-muted">
-              <td className="px-2 py-1" colSpan={10}>
+              <td className="px-2 py-1" colSpan={11}>
                 Exchanges: {s.exchange.orders} orders, {s.exchange.items} items
                 sent free (cost included above)
               </td>
@@ -132,7 +141,7 @@ export function ReportSheet({ s }: { s: DailyReportSnapshot }) {
           )}
           {s.writeOffs && (
             <tr className="text-sm text-muted">
-              <td className="px-2 py-1" colSpan={10}>
+              <td className="px-2 py-1" colSpan={11}>
                 Damaged write-offs: {s.writeOffs.items} items returned and not
                 restocked (already counted when sold)
               </td>
@@ -160,7 +169,7 @@ function FragmentBlock({
           <td className="px-2 py-1" style={{ background: tint }}>
             {b.label}
           </td>
-          <td colSpan={10} className="px-2 text-muted">
+          <td colSpan={11} className="px-2 text-muted">
             No sales
           </td>
         </tr>
@@ -192,16 +201,17 @@ function FragmentBlock({
           <td className={num}>{money(p.costPerKg)}</td>
           <td className={num}>{money(p.cost)}</td>
           <td />
+          <td />
           <td className={num}>{money(p.profit)}</td>
           <td colSpan={2} />
         </tr>
       ))}
-      <TotalRow label="total" t={b.subtotal} fixed={fixed} net={b.net} />
+      <TotalRow label="total" sub={b.label} t={b.subtotal} fixed={fixed} net={b.net} />
       {b.fixedCosts.map((c) => (
         <CostRow key={c.id} c={c} />
       ))}
       <tr>
-        <td colSpan={11} className="h-3" />
+        <td colSpan={12} className="h-3" />
       </tr>
     </>
   );

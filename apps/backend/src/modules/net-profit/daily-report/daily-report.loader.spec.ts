@@ -89,7 +89,7 @@ describe('DailyReportLoader', () => {
     expect(o.lines[0]).toMatchObject({ kg: 2, sales: 400, cost: 200 });
   });
 
-  it('website: the delivery charge + COD fee the customer paid count as sales, spread by line value', async () => {
+  it('website: the delivery charge + COD fee the customer paid are recorded beside the courier cost', async () => {
     const [o] = await make([
       order({
         channel: 'WEBSITE',
@@ -99,8 +99,9 @@ describe('DailyReportLoader', () => {
         items: [item({ unitPrice: 200, quantity: 2 }), item({ productId: 6, unitPrice: 100, quantity: 2 })],
       }),
     ]).load('2026-09-30', '2026-09-30');
-    // Lines 400 + 200; fee 150 split 100 / 50. Courier cost stays separate.
-    expect(o.lines.map((l) => l.sales)).toEqual([500, 250]);
+    // Product sales stay products only; the 150 is its own figure.
+    expect(o.lines.map((l) => l.sales)).toEqual([400, 200]);
+    expect(o.deliveryReceived).toBe(150);
     expect(o.delivery).toBe(110);
   });
 

@@ -50,6 +50,7 @@ describe('buildSnapshot', () => {
       avg: 231.43,
       cost: 450,
       delivery: 130,
+      deliveryReceived: 0,
       profit: 360,
     });
     expect(web.net).toBe(230);
@@ -79,6 +80,7 @@ describe('buildSnapshot', () => {
       avg: 0,
       cost: 0,
       delivery: 0,
+      deliveryReceived: 0,
       profit: 0,
     });
     expect(shop.fixedCosts[0].value).toBe(1000);
@@ -92,6 +94,7 @@ describe('buildSnapshot', () => {
       avg: 218.79,
       cost: 2700,
       delivery: 260,
+      deliveryReceived: 0,
       profit: 910,
     });
     expect(s.reportFixedCosts.map((c) => [c.name, c.value])).toEqual([
@@ -301,5 +304,33 @@ describe('buildSnapshot — one cost on several sources', () => {
       .map((b) => b.fixedCosts.find((f) => f.id === 'm')?.value ?? 0);
     expect(charged).toHaveLength(2);
     expect(charged.reduce((a, v) => a + v, 0)).toBeCloseTo(1000, 1);
+  });
+});
+
+describe('buildSnapshot — delivery charge received', () => {
+  it("net = profit by product + delivery received − delivery cost (owner's sheet)", () => {
+    const s = buildSnapshot({
+      from: '2026-11-26',
+      to: '2026-11-26',
+      generatedAt: '2026-11-26T14:00:00.000Z',
+      orders: [
+        {
+          id: 1,
+          wholesale: false,
+          source: 'WEB',
+          delivery: 1765,
+          deliveryReceived: 2870,
+          lines: [{ key: 'a', name: 'Atta', kg: 25.65, sales: 10020, cost: 4970 }],
+        },
+      ],
+      sources: [{ key: 'WEB', label: 'Website', enabled: true }],
+      fixedCosts: [],
+      marketing: 0,
+    });
+    const web = s.sources[0];
+    expect(web.subtotal).toMatchObject({ sales: 10020, deliveryReceived: 2870, delivery: 1765, profit: 5050 });
+    expect(web.net).toBe(6155);
+    expect(s.grandTotal.deliveryReceived).toBe(2870);
+    expect(s.netProfit).toBe(6155);
   });
 });

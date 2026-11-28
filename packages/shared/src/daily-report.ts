@@ -45,7 +45,11 @@ export interface DailyReportTotals {
   sales: number;
   avg: number;
   cost: number;
+  /** Courier cost. */
   delivery: number;
+  /** Delivery charge (+ COD fee) the customers paid. Absent on reports
+   *  saved before it was recorded. */
+  deliveryReceived?: number;
   profit: number;
 }
 

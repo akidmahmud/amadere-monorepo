@@ -24,7 +24,8 @@ describe('buildDailyReportWorkbook', () => {
       'Amader eBuy Limited - Sep 30, 2026 - Daily Report',
     );
     expect(ws.getRow(2).getCell(3).value).toBe('Sum of Qty (kg)');
-    expect(ws.getRow(2).getCell(11).value).toBe('Net Profit');
+    expect(ws.getRow(2).getCell(12).value).toBe('Net Profit');
+    expect(ws.getRow(2).getCell(8).value).toBe('Delivery charge received');
   });
 
   it('labels the first product row of each source and marks estimates', () => {
@@ -36,7 +37,7 @@ describe('buildDailyReportWorkbook', () => {
 
   it('writes the grand total and a red negative net profit', () => {
     expect(find(ws, 'GRAND TOTAL').getCell(4).value).toBe(3610);
-    const net = find(ws, 'NET PROFIT').getCell(11);
+    const net = find(ws, 'NET PROFIT').getCell(12);
     expect(net.value).toBe(-1130.5);
     expect(net.font?.color?.argb).toBe('FFFF0000');
   });
@@ -53,8 +54,8 @@ describe('buildDailyReportWorkbook', () => {
 
   it('grand total shows source fixed costs and net before report costs', () => {
     const g = find(ws, 'GRAND TOTAL');
-    expect(g.getCell(10).value).toBe(1100); // 100 call staff + 1000 shop rent
-    expect(g.getCell(11).value).toBe(-450); // 230 − 80 + 400 − 1000
+    expect(g.getCell(11).value).toBe(1100); // 100 call staff + 1000 shop rent
+    expect(g.getCell(12).value).toBe(-450); // 230 − 80 + 400 − 1000
   });
 
   it('fixed-cost rows say what the cost is', () => {

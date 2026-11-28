@@ -148,15 +148,13 @@ export class DailyReportLoader {
       const date = dhakaDate(r.createdAt);
       const recovered = isRecoveredOrder(r.orderNumber);
       const isPos = r.channel === 'POS' && !recovered;
-      // What the customer paid for delivery (+ COD fee) is sales too, spread
-      // over the lines by value. Without it the courier cost below was
-      // charged against the products with none of the delivery income beside
-      // it, so products showed a loss and the report's sales came in under
-      // the Order Manager's (which totals order total_amount).
-      const nets = grosses.map((g, idx) => g - discs[idx]);
-      const fees = isPos
-        ? nets.map(() => 0)
-        : spreadDiscount(nets, Number(r.shippingAmount) + Number(r.codFee));
+      // What the customer paid for delivery (+ COD fee): its own column
+      // ("Delivery charge received"), set against the courier cost. Without
+      // it the courier cost was charged with none of the delivery income
+      // beside it, so sources showed a loss.
+      const deliveryReceived = isPos
+        ? 0
+        : Number(r.shippingAmount ?? 0) + Number(r.codFee ?? 0);
       let parcelKg = 0;
       const lines = r.items.flatMap((i, idx) => {
         // A sold-by-weight POS line weighs what was typed at the till.
@@ -186,7 +184,7 @@ export class DailyReportLoader {
             // Rows are per product, so the product's own SKU; else what was sold.
             sku: i.product?.sku || i.skuSnapshot || null,
             kg: kgOf(w, qty),
-            sales: (nets[idx] + fees[idx]) * share,
+            sales: (grosses[idx] - discs[idx]) * share,
             cost: c ? c.unitCost * qty : null,
             // Exchange lines report how many units were sent as replacements.
             ...(i.isExchange ? { units: qty } : {}),
@@ -207,6 +205,7 @@ export class DailyReportLoader {
         wholesale: false,
         source: recovered ? 'WEB_DIRECT' : retailSourceOf(r),
         delivery,
+        deliveryReceived,
         lines,
         ...(r.exchangeOfOrderId != null ? { exchange: true } : {}),
       };
